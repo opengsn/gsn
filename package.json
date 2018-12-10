@@ -1,0 +1,51 @@
+{
+  "license": "MIT",
+  "name": "tabookey-gasless",
+  "repository": {
+    "url": "https://github.com/tabookey-dev/tabookey-gasless",
+    "type": "git"
+  },
+  "contributors": [
+    {
+      "name": "Dror Tirosh",
+      "email": "dror@tabookey.com"
+    },
+    {
+      "name": "Yoav Weiss",
+      "email": "yoav@tabookey.com"
+    },
+    {
+      "name": "Shahaf Nacson",
+      "email": "shahaf@tabookey.com"
+    },
+    {
+      "name": "Alex Forshtat",
+      "email": "alex@tabookey.com"
+    }
+  ],
+  "version": "0.1.0",
+  "dependencies": {
+    "promisify": "0.0.3",
+    "es6-promisify": "^6.0.1",
+    "ethereumjs-tx": "^1.3.7",
+    "ethereumjs-util": "^6.0.0",
+    "abi-decoder": "^1.2.0",
+    "web3-utils": "^1.0.0-beta.36"
+  },
+  "scripts": {
+    "test": "./restart-relay.sh test",
+    "web": "./restart-relay.sh web"
+  },
+  "devDependencies": {
+    "truffle-core": "^4.1.14",
+    "ganache-cli": "^6.2.3",
+    "run-with-testrpc": "^0.3.0",
+    "eth-crypto": "^1.2.7",
+    "web3": "0.20.6",
+    "eslint": "^5.9.0",
+    "truffle": "^4.1.14",
+    "browser-request": "^0.3.3"
+  },
+  "main": "src/js/relayclient/relayclient.js",
+  "description": "Tabookey Gasless Relay Framework"
+}

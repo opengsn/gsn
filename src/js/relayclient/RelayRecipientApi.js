@@ -1,0 +1,1 @@
+module.exports=[{"constant":true,"inputs":[],"name":"get_relay_hub","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]
