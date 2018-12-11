@@ -1,0 +1,36 @@
+version: 2 # use CircleCI 2.0
+jobs: # a collection of steps
+  build: # runs not using Workflows must have a `build` job as entry point
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: tabookey/eth-devtools # ...with this image as the primary container; this is where all `steps` will run
+    steps: # a collection of executable commands
+      - checkout # special step to check out source code to working directory
+      - run:
+          name: update-npm
+          command: 'sudo npm install -g npm@latest'
+      - restore_cache: # special step to restore the dependency cache
+          key: dependency-cache-{{ checksum "package.json" }}
+      - run:
+          name: install-npm-wee
+          command: npm install
+      - save_cache: # special step to save the dependency cache
+          key: dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - ./node_modules
+
+      - run: # run tests
+          name: test
+          command: npm test
+
+      - save_cache: # repeat cache saving, with source source downloaded for eth.
+          key: dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - ./node_modules
+            - ./server/src/github.com #available after first build
+
+      - store_artifacts: # special step to save test results as as artifact
+          path: test-results.xml
+          prefix: tests
+      - store_test_results: # special step to upload test results for display in Test Summary
+          path: test-results.xml
