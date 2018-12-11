@@ -34,6 +34,7 @@
   },
   "scripts": {
     "test": "./restart-relay.sh test",
+    "lint": "eslint ./src ./test",
     "web": "./restart-relay.sh web"
   },
   "devDependencies": {
