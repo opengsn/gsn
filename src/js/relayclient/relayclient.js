@@ -128,8 +128,8 @@ RelayClient.prototype.findRelay = async function (relayHubAddress, minStake, min
     return a.txFee - b.txFee
   }).slice(0, size)
 
-  let firstRelayToRespond = await raceToSuccess(
-    filteredRelays.map(relay => getRelayAddress(relay.relayUrl))
+  let firstRelayToRespond = await this.raceToSuccess(
+    filteredRelays.map(relay => this.getRelayAddress(relay.relayUrl))
   );
 
   let lookupResult = {
@@ -168,7 +168,7 @@ RelayClient.prototype.getRelaysAdded = async function (relayHubAddress) {
  * From https://stackoverflow.com/a/37235207 (modified to catch exceptions)
  * Resolves once any promise resolves, ignores the rest, ignores rejections
  */
-function raceToSuccess(promises) {
+RelayClient.prototype.raceToSuccess = function(promises) {
   let numRejected = 0;
   return new Promise(
     (resolve, reject) =>
@@ -178,9 +178,9 @@ function raceToSuccess(promises) {
             resolve(res)
           )
             .catch(err => {
-              console.log(err)
+              // console.log(err)
               if (++numRejected === promises.length) {
-                reject("No response from any server.");
+                reject("No response from any server.", err);
               }
             })
       )
@@ -244,21 +244,27 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       self.broadcastRawTx(raw_tx, txHash);
       resolve(validTransaction);
     }
-    httpSend(relayUrl + "/relay", jsonRequestData, callback)
+    self.httpSend(relayUrl + "/relay", jsonRequestData, callback)
   });
 }
 
+var logreq = false
 var unique_id = 1
-function httpSend(url, jsonRequestData, callback) {
 
-  // let localid = unique_id++
-  // console.log( "sending request: ",url, "id=",localid, JSON.stringify(jsonRequestData).slice(0,40))
+RelayClient.prototype.httpSend = function(url, jsonRequestData, callback) {
+
+  let localid = unique_id++
+  if ( logreq ) {
+    console.log( "sending request:",localid,url, JSON.stringify(jsonRequestData).slice(0,40))
+  }
 
   callback1 = function (e, r) {
     if (e && ("" + e).indexOf("Invalid JSON RPC response") >= 0) {
       e = { error: "invalid-json" }
     }
-    // console.log( "got response id=",localid, JSON.stringify(r).slice(0,40), "err=",(""+e).slice(0,40))
+    if (logreq) {
+      console.log( "got response:",localid, JSON.stringify(r).slice(0,40), "err=",JSON.stringify(e).slice(0,40))
+    }
     callback(e, r)
   }
   new web3.providers.HttpProvider(url).sendAsync(jsonRequestData, callback1);
@@ -417,17 +423,14 @@ RelayClient.prototype.runRelay = function (payload, callback) {
 }
 
 
-RelayClient.prototype.getRelayAddress = function () {
-  return getRelayAddress(this.config.relayUrl);
-}
-
 /**
-//returns struct from the relay server, and adds the URL to it:
-// { relayUrl: url, 
+ //returns struct from the relay server, and adds the URL to it:
+ // { relayUrl: url,
 //   RelayServerAddress: address
 // }
-*/
-function getRelayAddress(relayUrl) {
+ */
+RelayClient.prototype.getRelayAddress = function (relayUrl) {
+  let self=this
   return new Promise(function (resolve, reject) {
     let callback = function (error, body) {
       if (error) {
@@ -442,11 +445,12 @@ function getRelayAddress(relayUrl) {
         reject(err);
       }
     }
-    httpSend(relayUrl + "/getaddr", {}, callback)
+    self.httpSend(relayUrl + "/getaddr", {}, callback)
   });
 }
 
-function postAuditTransaction(signedTx, relayUrl) {
+RelayClient.prototype.postAuditTransaction = function(signedTx, relayUrl) {
+  let self=this
   return new Promise(function (resolve, reject) {
     let callback = function (error, response) {
       if (error) {
@@ -455,7 +459,7 @@ function postAuditTransaction(signedTx, relayUrl) {
       }
       resolve(response);
     }
-    httpSend(relayUrl + "/audit", { signedTx: signedTx }, callback);  });
+    self.httpSend(relayUrl + "/audit", { signedTx: signedTx }, callback);  });
 }
 
 /**
@@ -467,7 +471,7 @@ function postAuditTransaction(signedTx, relayUrl) {
  */
 RelayClient.prototype.auditTransaction = async function (transaction, auditingRelays) {
   for (relay in auditingRelays) {
-    await postAuditTransaction(transaction, auditingRelays[relay]);
+    await this.postAuditTransaction(transaction, auditingRelays[relay]);
   }
 }
 
