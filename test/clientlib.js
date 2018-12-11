@@ -63,7 +63,7 @@ contract('RelayClient', function (accounts) {
     it("should get Relay Server's signing address from server", async function () {
         let tbk = new RelayClient(web3, {relayUrl: localhostOne});
         let res = await tbk.getRelayAddress(localhostOne);
-        assert.equal("deliberately failed0x610bb1573d1046fcb8a70bbbd395754cd57c2b60", res.RelayServerAddress)
+        assert.equal("0x610bb1573d1046fcb8a70bbbd395754cd57c2b60", res.RelayServerAddress)
     });
 
     // Note: a real relay server is not registered in this test.
