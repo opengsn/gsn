@@ -199,6 +199,7 @@ func parseCommandLine() (relayParams RelayParams) {
 	gasPrice := flag.Int64("GasPrice",100,"Relay's gas price per transaction")
 	privateKey := flag.String("PrivateKey","77c5495fbb039eed474fc940f29955ed0531693cc9212911efd35dff0373153f","Relay's ethereum private key")
 	unstakeDelay := flag.Int64("UnstakeDelay",12,"Relay's time delay before being able to unsatke from relayhub (in days)")
+	ethereumNodeUrl := flag.String("EthereumNodeUrl","http://localhost:8545","The relay's ethereum node")
 
 	flag.Parse()
 
@@ -215,6 +216,7 @@ func parseCommandLine() (relayParams RelayParams) {
 		log.Fatal("Invalid private key",err)
 	}
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
+	relayParams.EthereumNodeURL = *ethereumNodeUrl
 
 	fmt.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
 
@@ -229,12 +231,12 @@ func initServer(relayParams RelayParams) {
 	fmt.Println("Constructing relay server in url ", relayParams.Url)
 	relay = &librelay.RelayServer{relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
-		relayParams.GasLimit, relayParams.GasPrice, relayParams.PrivateKey, relayParams.UnstakeDelay}
+		relayParams.GasLimit, relayParams.GasPrice, relayParams.PrivateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL }
 
 	stakeAndRegister()
 	// Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
-	//stopKeepAlive = schedule(keepAlive, 3*time.Minute)
+	//stopKeepAlive = schedule(keepAlive, 1*time.Millisecond)
 }
 
 func stakeAndRegister() {

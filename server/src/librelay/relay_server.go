@@ -19,7 +19,6 @@ import (
 	"time"
 )
 
-const ethereumNodeURL = "http://localhost:8545"
 const BlockTime = 20*time.Second
 
 var lastNonce uint64 = 0
@@ -97,10 +96,11 @@ type RelayServer struct {
 	GasPrice        *big.Int
 	PrivateKey      *ecdsa.PrivateKey
 	UnstakeDelay    *big.Int
+	EthereumNodeURL string
 }
 
 func (relay *RelayServer) Stake() (err error) {
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -165,7 +165,7 @@ func (relay *RelayServer) Stake() (err error) {
 }
 
 func (relay *RelayServer) Unstake() (err error) {
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -230,7 +230,7 @@ func (relay *RelayServer) Unstake() (err error) {
 
 func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) {
 
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -304,19 +304,13 @@ func (relay *RelayServer) UnregisterRelay() error {
 }
 
 func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err error) {
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
 	}
 
-	publicKey := relay.PrivateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Println("error casting public key to ECDSA", err)
-		return
-	}
-	relayAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	relayAddress := relay.Address()
 
 	rhub, err := librelay.NewRelayHub(hub, client)
 	if err != nil {
@@ -343,7 +337,7 @@ func (relay *RelayServer) Withdraw() {
 
 func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
 
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -383,13 +377,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	publicKey := relay.PrivateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Println("error casting public key to ECDSA", err)
-		return
-	}
-	relayAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	relayAddress := relay.Address()
 
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
@@ -437,7 +425,8 @@ func (relay *RelayServer) Address() (relayAddress common.Address) {
 	publicKey := relay.PrivateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		log.Println("error casting public key to ECDSA")
+		log.Fatalln(
+			"error casting public key to ECDSA")
 		return
 	}
 	relayAddress = crypto.PubkeyToAddress(*publicKeyECDSA)
@@ -451,7 +440,7 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 
 	log.Println("AuditRelaysTransactions start")
 	ctx := context.Background()
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -513,7 +502,7 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 
 // TODO
 func (relay *RelayServer) ScanBlockChainToPenalize() (err error) {
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -694,19 +683,13 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 	recipientNonce big.Int,
 	relayFee big.Int) (res uint32, err error) {
 
-	client, err := ethclient.Dial(ethereumNodeURL)
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		fmt.Println("Could not connect to ethereum node", err)
 		return
 	}
 
-	publicKey := relay.PrivateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Println("error casting public key to ECDSA", err)
-		return
-	}
-	relayAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	relayAddress := relay.Address()
 
 	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
 	if err != nil {
@@ -735,14 +718,7 @@ func (relay *RelayServer) validateFee(relayFee big.Int) bool {
 
 func (relay *RelayServer) pollNonce(client *ethclient.Client) (nonce uint64, err error) {
 	ctx := context.Background()
-	publicKey := relay.PrivateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		err = fmt.Errorf("error casting public key to ECDSA")
-		return
-	}
-
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	fromAddress := relay.Address()
 	nonce, err = client.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		log.Println(err)

@@ -22,6 +22,7 @@ import (
 
 const runGanache = false
 const runTruffleMigrate = true
+const ethereumNodeURL = "http://localhost:8545"
 
 var relayHubAddress = common.HexToAddress("0x254dffcd3277c0b1660f6d42efbb754edababc2b") //0xe78a0f7e598cc8b0bb87894b0f60dd2a88d6a8ab
 
@@ -97,7 +98,7 @@ func TestRelayServer_CreateRelayTransaction(t *testing.T) {
 	fmt.Println("Constructing relay server")
 	var relay IRelay = &RelayServer{ownerAddress, fee, url, port,
 		relayHubAddress, stakeAmount,
-		gasLimit, gasPrice, privateKey, unstakeDelay}
+		gasLimit, gasPrice, privateKey, unstakeDelay, ethereumNodeURL}
 	fmt.Println("Staking...")
 	err = relay.Stake()
 	if err != nil {
