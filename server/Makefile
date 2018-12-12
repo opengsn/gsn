@@ -10,7 +10,7 @@ ETHFILE=./src/github.com/ethereum/go-ethereum/Makefile
 
 GEN_FILE=$(buildpath)/src/gen/librelay/relay_hub_sol.go 
 
-$(server_exe): $(ETHFILE) $(GEN_FILE) $(shell find . -maxdepth 3 -name '*.go') Makefile
+$(server_exe): $(GEN_FILE) $(ETHFILE) $(shell find . -maxdepth 3 -name '*.go') Makefile
 	echo "Using GOPATH=$(GOPATH)"
 	mkdir -p $(buildpath)/bin
 	go build -o $(server_exe) src/RelayHttpServer.go 
