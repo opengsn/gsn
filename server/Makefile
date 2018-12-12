@@ -15,13 +15,13 @@ $(server_exe): $(GEN_FILE) $(ETHFILE) $(shell find . -maxdepth 3 -name '*.go') M
 	mkdir -p $(buildpath)/bin
 	go build -o $(server_exe) src/RelayHttpServer.go 
 
-go-get: $(ETHFILE)
+go-get: $(ETHFILE) 
 
-$(ETHFILE):
+$(ETHFILE): Makefile
 	@echo "Downloading the ethereum library.  Might take a few minutes."
 	go get -v -d ./...
 
-gen-file: $(GEN_FILE)
+gen-file: $(GEN_FILE) Makefile
 
 $(GEN_FILE): ../contracts/RelayHub.sol ../contracts/RelayHubApi.sol
 	mkdir -p $(buildpath)/src/gen/librelay
