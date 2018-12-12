@@ -16,9 +16,11 @@ import (
 	"log"
 	"math/big"
 	"sync"
+	"time"
 )
 
 const ethereumNodeURL = "http://localhost:8545"
+const BlockTime = 20*time.Second
 
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
@@ -137,9 +139,10 @@ func (relay *RelayServer) Stake() (err error) {
 		log.Println(err)
 		return
 	}
-	for iter.Event == nil ||
+	start := time.Now()
+	for (iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) {
+		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
 			iter, err = rhub.FilterStaked(filterOpts)
 			if err != nil {
@@ -147,6 +150,11 @@ func (relay *RelayServer) Stake() (err error) {
 				return
 			}
 		}
+	}
+	if iter.Event == nil ||
+		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) {
+		return fmt.Errorf("Stake() probably failed: could not receive Staked() event for our relay")
 	}
 
 	fmt.Println("stake() tx finished")
@@ -194,9 +202,11 @@ func (relay *RelayServer) Unstake() (err error) {
 		log.Println(err)
 		return
 	}
-	for iter.Event == nil ||
+
+	start := time.Now()
+	for (iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) {
+		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
 			iter, err = rhub.FilterUnstaked(filterOpts)
 			if err != nil {
@@ -204,6 +214,11 @@ func (relay *RelayServer) Unstake() (err error) {
 				return
 			}
 		}
+	}
+	if iter.Event == nil ||
+		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) {
+		return fmt.Errorf("Unstake() probably failed: could not receive Unstaked() event for our relay")
 	}
 
 	fmt.Println("unstake() finished")
@@ -254,12 +269,14 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		log.Println(err)
 		return
 	}
-	for iter.Event == nil ||
+
+	start := time.Now()
+	for (iter.Event == nil ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
 		(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
-		(iter.Event.Url != relay.Url) {
+		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
 			iter, err = rhub.FilterRelayAdded(filterOpts)
 			if err != nil {
@@ -267,6 +284,14 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 				return
 			}
 		}
+	}
+	if iter.Event == nil ||
+		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
+		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
+		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+		(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+		(iter.Event.Url != relay.Url) {
+			return fmt.Errorf("RegisterRelay() probably failed: could not receive RelayAdded() event for our relay")
 	}
 
 	fmt.Println("RegisterRelay() finished")
@@ -723,6 +748,8 @@ func (relay *RelayServer) pollNonce(client *ethclient.Client) (nonce uint64, err
 		log.Println(err)
 		return
 	}
+
+	log.Println("Nonce is", nonce)
 
 	if lastNonce <= nonce {
 		lastNonce = nonce
