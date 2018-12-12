@@ -15,7 +15,7 @@ $(server_exe): $(GEN_FILE) $(ETHFILE) $(shell find . -maxdepth 3 -name '*.go') M
 	mkdir -p $(buildpath)/bin
 	go build -o $(server_exe) src/RelayHttpServer.go 
 
-go-get: $(ETHFILE) 
+go-get: $(GEN_FILE) $(ETHFILE) 
 
 $(ETHFILE): Makefile
 	@echo "Downloading the ethereum library.  Might take a few minutes."
