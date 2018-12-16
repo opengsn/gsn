@@ -17,46 +17,46 @@ contract('RelayClient', function (accounts) {
     let rhub;
     let sr;
     let gasLess;
+    let relayproc
 
     before(async function () {
         rhub = await RelayHub.deployed()
         sr = await SampleRecipient.deployed()
+
         let deposit = 100000000000;
         await sr.deposit({value: deposit});
-        let known_deposit = await rhub.balances(sr.address);
-        assert.equal(deposit, known_deposit);
+        // let known_deposit = await rhub.balances(sr.address);
+        // assert.ok(known_deposit>= deposit, "deposited "+deposit+" but found only "+known_deposit);
         gasLess = await web3.personal.newAccount("password")
         console.log("gasLess = " + gasLess);
+        console.log("starting relay")
+
+        relayproc = await testutils.startRelay(rhub, {
+            verbose: process.env.relaylog,
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0]})
+
     });
+
+    after(async function () {
+        await testutils.stopRelay(relayproc)
+    })
 
     it("test balanceOf target contract", async () => {
 
         let relayclient = new RelayClient(web3)
         let b1 = await relayclient.balanceOf(sr.address)
-        console.log("balance before redeposit" + b1.toNumber())
+        console.log("balance before redeposit", b1.toNumber())
         let added = 200000
         await sr.deposit({value: added});
         let b2 = await relayclient.balanceOf(sr.address)
-        console.log("balance after redeposit" + b2.toNumber())
+        console.log("balance after redeposit", b2.toNumber())
         assert.equal(b2 - b1, added)
 
     })
 
-    function postRelayHubAddress(relayHubAddress, relayUrl) {
-        return new Promise(function (resolve, reject) {
-            let callback = function (error, response) {
-                if (error) {
-                    reject(error);
-                    return
-                }
-                resolve(response);
-            }
-            new web3.providers.HttpProvider(relayUrl + "/setRelayHub").sendAsync({relayHubAddress: relayHubAddress}, callback);
-        });
-    }
 
     it("should send RelayHub address to server (in debug mode)", async function () {
-        let res = await postRelayHubAddress(rhub.address, localhostOne);
+        let res = await testutils.postRelayHubAddress(rhub.address, localhostOne);
         assert.equal("OK", res)
     });
 
