@@ -121,6 +121,7 @@ func (relay *RelayServer) Stake() (err error) {
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
+	fmt.Println("Stake() starting. RelayHub address ",relay.RelayHubAddress.Hex())
 	tx, err := rhub.Stake(auth, relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
@@ -150,6 +151,7 @@ func (relay *RelayServer) Stake() (err error) {
 				return
 			}
 		}
+		time.Sleep(500*time.Millisecond)
 	}
 	if iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
@@ -214,6 +216,7 @@ func (relay *RelayServer) Unstake() (err error) {
 				return
 			}
 		}
+		time.Sleep(500*time.Millisecond)
 	}
 	if iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
@@ -250,7 +253,7 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	fmt.Println("RegisterRelay() starting")
+	fmt.Println("RegisterRelay() starting. RelayHub address ",relay.RelayHubAddress.Hex())
 	tx, err := rhub.RegisterRelay(auth, relay.OwnerAddress, relay.Fee, relay.Url, common.HexToAddress("0"))
 	if err != nil {
 		log.Println(err)
@@ -269,13 +272,15 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		log.Println(err)
 		return
 	}
+	fmt.Println("tx created:", types.HomesteadSigner{}.Hash(tx).Hex())
 
 	start := time.Now()
 	for (iter.Event == nil ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
+		//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+		//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
 			iter, err = rhub.FilterRelayAdded(filterOpts)
@@ -284,12 +289,14 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 				return
 			}
 		}
+		time.Sleep(500*time.Millisecond)
 	}
 	if iter.Event == nil ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
+		//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+		//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url) {
 			return fmt.Errorf("RegisterRelay() probably failed: could not receive RelayAdded() event for our relay")
 	}
@@ -309,9 +316,9 @@ func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err
 		log.Println("Could not connect to ethereum node", err)
 		return
 	}
-
 	relayAddress := relay.Address()
-
+	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
+	log.Println("hub to check", hub.Hex())
 	rhub, err := librelay.NewRelayHub(hub, client)
 	if err != nil {
 		log.Println(err)
@@ -327,7 +334,9 @@ func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err
 		log.Println(err)
 		return
 	}
-	return (res.Stake.Cmp(big.NewInt(0)) != 0), nil
+	log.Println("Stake:", res.Stake.String())
+	registered = (res.Stake.Cmp(big.NewInt(0)) != 0)
+	return registered, nil
 }
 
 // TODO

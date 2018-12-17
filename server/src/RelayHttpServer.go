@@ -129,6 +129,7 @@ func setHubHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("RelayHubAddress", request.RelayHubAddress.String())
+	log.Println("Checking if already registered to this hub")
 	res, err := relay.IsRegistered(request.RelayHubAddress)
 	if err != nil {
 		log.Println(err)
@@ -139,7 +140,10 @@ func setHubHandler(w http.ResponseWriter, r *http.Request) {
 	relayServer := relay.(*librelay.RelayServer)
 	relayServer.RelayHubAddress = request.RelayHubAddress
 	if !res {
+		log.Println("Not registered.")
 		stakeAndRegister()
+	}else {
+		log.Println("Already registered.")
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -198,7 +202,7 @@ func parseCommandLine() (relayParams RelayParams) {
 	gasLimit := flag.Uint64("GasLimit",100000,"Relay's gas limit per transaction")
 	gasPrice := flag.Int64("GasPrice",100,"Relay's gas price per transaction")
 	privateKey := flag.String("PrivateKey","77c5495fbb039eed474fc940f29955ed0531693cc9212911efd35dff0373153f","Relay's ethereum private key")
-	unstakeDelay := flag.Int64("UnstakeDelay",12,"Relay's time delay before being able to unsatke from relayhub (in days)")
+	unstakeDelay := flag.Int64("UnstakeDelay",1200,"Relay's time delay before being able to unsatke from relayhub (in days)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl","http://localhost:8545","The relay's ethereum node")
 
 	flag.Parse()
@@ -232,7 +236,6 @@ func initServer(relayParams RelayParams) {
 	relay = &librelay.RelayServer{relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.GasPrice, relayParams.PrivateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL }
-
 	stakeAndRegister()
 	// Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
