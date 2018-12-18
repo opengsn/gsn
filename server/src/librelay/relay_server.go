@@ -67,6 +67,8 @@ func (response *RelayTransactionResponse) MarshalJSON() ([]byte, error) {
 
 type IRelay interface {
 
+	Balance() (balance *big.Int, err error)
+
 	Stake() (err error)
 
 	Unstake() (err error)
@@ -100,6 +102,22 @@ type RelayServer struct {
 	PrivateKey      *ecdsa.PrivateKey
 	UnstakeDelay    *big.Int
 	EthereumNodeURL string
+}
+
+func (relay *RelayServer) Balance() (balance *big.Int, err error) {
+	log.Println("Checking relay server's ether balance at",relay.Address().Hex())
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
+	if err != nil {
+		log.Println("Could not connect to ethereum node", err)
+		return
+	}
+	balance, err = client.BalanceAt(context.Background(),relay.Address(),nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Println("relay server balance:", balance)
+	return
 }
 
 func (relay *RelayServer) Stake() (err error) {

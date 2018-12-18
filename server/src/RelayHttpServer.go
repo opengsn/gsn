@@ -2,10 +2,14 @@ package main
 
 import (
 	"./librelay"
+	"crypto/ecdsa"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -13,21 +17,26 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
 const DebugAPI = true
+const KEYSTORE_DIR = "./keystore"
 
 var relay librelay.IRelay
 var server *http.Server
+//var stopKeepAlive chan bool
+//var stopScanningBlockChain chan bool
 
 type RelayParams librelay.RelayServer
 
 func main() {
-	log.Println("RelayHttpServer starting")
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.Println("RelayHttpServer starting")
 
-	initServer(parseCommandLine())
+	configRelay(parseCommandLine())
 
 	server = &http.Server{Addr: ":8090", Handler: nil}
 
@@ -40,9 +49,22 @@ func main() {
 		http.HandleFunc("/setRelayHub", setHubHandler)
 	}
 
+	//if _, err = os.Stat(filepath.Join(KEYSTORE_DIR,"")); os.IsNotExist(err) {
+	// wait for funding
+	log.Println("Waiting for funding...")
+	balance,err:= relay.Balance()
+	for ;err != nil && balance.Uint64() == 0; balance,err = relay.Balance(){
+		time.Sleep(5*time.Second)
+	}
+	log.Println("Relay funded. Balance:",balance)
+
+	stakeAndRegister()
+	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
+	//stopKeepAlive = schedule(keepAlive, 1*time.Millisecond)
+
 	port := "8090"
 	log.Printf("RelayHttpServer started.Listening on port: %s\n", port)
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -234,20 +256,56 @@ func parseCommandLine() (relayParams RelayParams) {
 
 }
 
-var stopKeepAlive chan bool
-//var stopScanningBlockChain chan bool
-
-func initServer(relayParams RelayParams) {
+func configRelay(relayParams RelayParams) {
 	fmt.Println("Constructing relay server in url ", relayParams.Url)
-	//initPrivateKey()
+	privateKey := loadPrivateKey()
+	fmt.Println("Private key: ",hexutil.Encode(crypto.FromECDSA(privateKey)))
+	fmt.Println("Public key: ",crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	relay = &librelay.RelayServer{relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.GasPrice, relayParams.PrivateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL}
-	stakeAndRegister()
-	// Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
-	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
-	//stopKeepAlive = schedule(keepAlive, 1*time.Millisecond)
+}
 
+// Loads (creates if doesn't exist) private key from keystore file
+func loadPrivateKey() *ecdsa.PrivateKey {
+	// Init a keystore
+	ks := keystore.NewKeyStore(
+		KEYSTORE_DIR,
+		keystore.LightScryptN,
+		keystore.LightScryptP)
+
+	// find (or create) account
+	var account accounts.Account
+	var err error
+	log.Println("ks accounts len",len(ks.Accounts()))
+	if _, err = os.Stat(filepath.Join(KEYSTORE_DIR,"")); os.IsNotExist(err) {
+		account, err = ks.NewAccount("")
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Unlock the signing account
+		if err := ks.Unlock(account, ""); err != nil {
+			log.Fatalln(err)
+		}
+	}else {
+		account = ks.Accounts()[0]
+	}
+
+	// Open the account key file
+
+	keyJson, err := ioutil.ReadFile(account.URL.Path)
+	if err != nil {
+		log.Fatalln("key json read error:")
+		panic(err)
+	}
+
+	keyWrapper, err := keystore.DecryptKey(keyJson, "")
+	if err != nil {
+		log.Fatalln("key decrypt error:")
+	}
+	log.Println("key extracted: addr=", keyWrapper.Address.String())
+
+	return keyWrapper.PrivateKey
 }
 
 func stakeAndRegister() {
