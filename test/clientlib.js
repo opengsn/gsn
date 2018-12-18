@@ -62,6 +62,7 @@ contract('RelayClient', function (accounts) {
 
     it("should get Relay Server's signing address from server", async function () {
         let tbk = new RelayClient(web3, { relayUrl: localhostOne });
+        tbk.serverHelper.setHub(RelayHub, rhub)
         let pinger = await tbk.serverHelper.newActiveRelayPinger()
         let res = await pinger.getRelayAddressPing(localhostOne);
         assert.equal("0x610bb1573d1046fcb8a70bbbd395754cd57c2b60", res.RelayServerAddress)
@@ -81,7 +82,7 @@ contract('RelayClient', function (accounts) {
         // 2 x will not ping
         await register_new_relay(rhub, 1000, 20, 15, "https://abcd.com", accounts[4]);
         await rhub.remove_relay_by_owner(accounts[4], { from: accounts[4] });
-        await register_new_relay(rhub, 1000, 20, 15, "https://abcd.com", accounts[4]);
+        await register_new_relay(rhub, 1000, 20, 15, "go_resolve_this_address", accounts[4]);
 
         await register_new_relay(rhub, 1000, 20, 30, "https://abcd.com", accounts[5]);
 
@@ -89,6 +90,7 @@ contract('RelayClient', function (accounts) {
         let minStake = 1000
         let minDelay = 10
         let tbk = new RelayClient(web3, { minStake: minStake, minDelay: minDelay });
+        tbk.serverHelper.setHub(RelayHub, rhub)
         let pinger = await tbk.serverHelper.newActiveRelayPinger()
         let relay = await pinger.nextRelay()
         assert.equal(relayAddress, relay.RelayServerAddress);
