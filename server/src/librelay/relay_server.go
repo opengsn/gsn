@@ -23,6 +23,8 @@ const BlockTime = 20*time.Second
 
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
+var unconfirmedTxs = make(map[uint64]*types.Transaction)
+
 
 type RelayTransactionRequest struct {
 	EncodedFunction string
@@ -64,6 +66,7 @@ func (response *RelayTransactionResponse) MarshalJSON() ([]byte, error) {
 }
 
 type IRelay interface {
+
 	Stake() (err error)
 
 	Unstake() (err error)
@@ -113,10 +116,10 @@ func (relay *RelayServer) Stake() (err error) {
 	}
 
 	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce(client)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
@@ -125,11 +128,11 @@ func (relay *RelayServer) Stake() (err error) {
 	tx, err := rhub.Stake(auth, relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
-		nonceMutex.Unlock()
+		//relay.replayUnconfirmedTxs(client)
 		return
 	}
+	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	nonceMutex.Unlock()
 
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
@@ -179,21 +182,21 @@ func (relay *RelayServer) Unstake() (err error) {
 		return
 	}
 	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce(client)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	tx, err := rhub.Unstake(auth)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
+		//relay.replayUnconfirmedTxs(client)
 		return
 	}
+	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	nonceMutex.Unlock()
 
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
@@ -246,10 +249,10 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		return
 	}
 	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce(client)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
@@ -257,11 +260,15 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 	tx, err := rhub.RegisterRelay(auth, relay.OwnerAddress, relay.Fee, relay.Url, common.HexToAddress("0"))
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
+		//relay.replayUnconfirmedTxs(client)
 		return
 	}
+	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	nonceMutex.Unlock()
+	//ctx := context.Background()
+	//receipt,err := client.TransactionReceipt(ctx,tx.Hash())
+	//client.TransactionReceipt(ctx,types.HomesteadSigner{}.Hash(tx))
+
 
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
@@ -409,10 +416,10 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	fmt.Println("To.balance: ", to_balance)
 
 	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce(client)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
@@ -420,11 +427,11 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
+		//relay.replayUnconfirmedTxs(client)
 		return
 	}
+	//unconfirmedTxs[lastNonce] = signedTx
 	lastNonce++
-	nonceMutex.Unlock()
 
 	fmt.Println("tx sent:", types.HomesteadSigner{}.Hash(signedTx).Hex())
 	return
@@ -640,21 +647,21 @@ func (relay *RelayServer) penalizeOtherRelay(client *ethclient.Client, signedTx1
 	//log.Println("signedTx sig",hexutil.Encode(sig2))
 
 	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce(client)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	tx, err := rhub.PenalizeRepeatedNonce(auth, rawTxBytes1, sig1, rawTxBytes2, sig2)
 	if err != nil {
 		log.Println(err)
-		nonceMutex.Unlock()
+		//relay.replayUnconfirmedTxs(client)
 		return err
 	}
+	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	nonceMutex.Unlock()
 
 	fmt.Println("tx sent:", types.HomesteadSigner{}.Hash(tx).Hex())
 	return nil
@@ -743,4 +750,27 @@ func (relay *RelayServer) pollNonce(client *ethclient.Client) (nonce uint64, err
 	}
 	log.Println("lastNonce is", lastNonce)
 	return
+}
+
+func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client){
+	log.Println("replayUnconfirmedTxs start")
+	log.Println("unconfirmedTxs size", len(unconfirmedTxs))
+	ctx := context.Background()
+	nonce, err := client.PendingNonceAt(ctx, relay.Address())
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for i := uint64(0); i < nonce; i++{
+		delete(unconfirmedTxs,i)
+	}
+	log.Println("unconfirmedTxs size after deletion", len(unconfirmedTxs))
+	for i,tx := range unconfirmedTxs {
+		log.Println("replaying tx nonce ", i)
+		err = client.SendTransaction(ctx,tx)
+		if err != nil {
+			log.Println("tx ", i, ":",err)
+		}
+	}
+	log.Println("replayUnconfirmedTxs end")
 }
