@@ -16,6 +16,8 @@ const relayRecipientAbi = require('./RelayRecipientApi')
 const {promisify} = require("es6-promisify");
 //const {promisify} = require("promisify");
 
+const est_blocks_per_day = 7200
+
 abi_decoder.addABI(relayHubAbi)
 
 
@@ -39,11 +41,13 @@ function RelayClient(web3, config) {
     this.config = config || {}
     this.web3 = web3
     this.httpSend = new HttpWrapper(this.web3)
-    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend)
+
+    let blockDayAgo = Math.max(1,web3.eth.blockNumber - est_blocks_per_day)
+    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, blockDayAgo, this.httpSend)
 
     this.RelayRecipient = web3.eth.contract(relayRecipientAbi)
     this.RelayHub = web3.eth.contract(relayHubAbi)
-    this.serverHelper.setHub(this.RelayHub)
+
     //add missing "getPastEvents" in web3 v0.2..
 }
 
@@ -152,10 +156,10 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
           relayFee, gasprice, gaslimit, nonce, relayHubAddress, relayAddress, signature);
       }
       catch (error) {
-        console.log(error)
+        console.error("validateRelayResponse" + error)
       }
 
-      if (validTransaction === undefined) {
+      if (typeof validTransaction === 'undefined' || validTransaction === null) {
         reject("Failed to validate response")
         return
       }
@@ -229,6 +233,8 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   let relayHub = this.RelayHub.at(relayHubAddress)
 
   var nonce = (await promisify(relayHub.get_nonce.call)(options.from)).toNumber()
+
+  this.serverHelper.setHub(this.RelayHub, relayHub)
 
   let pinger = await this.serverHelper.newActiveRelayPinger()
   for (;;) {

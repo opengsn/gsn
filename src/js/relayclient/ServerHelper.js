@@ -6,8 +6,7 @@ class ActiveRelayPinger {
 
     // TODO: 'httpSend' should be on a network layer
     constructor(filteredRelays, httpSend) {
-        this.filteredRelays = filteredRelays
-        this.remainingRelays = filteredRelays
+        this.remainingRelays = filteredRelays.slice()
         this.httpSend = httpSend
         this.pingedRelays = 0
         this.relaysCount = filteredRelays.size
@@ -18,12 +17,12 @@ class ActiveRelayPinger {
      * @returns the first relay to respond to a ping message. Note: will never return the same relay twice.
      */
     async nextRelay() {
-        if (this.filteredRelays.length === 0 || this.remainingRelays.length === 0) {
+        if (this.remainingRelays.length === 0) {
             return null
         }
 
         let firstRelayToRespond = await this.raceToSuccess(
-            this.filteredRelays.map(relay => this.getRelayAddressPing(relay.relayUrl))
+            this.remainingRelays.slice(0, 3).map(relay => this.getRelayAddressPing(relay.relayUrl))
         );
         this.remainingRelays = this.remainingRelays.filter(a => a.relayUrl !== firstRelayToRespond.relayUrl)
         this.pingedRelays++
@@ -85,29 +84,36 @@ class ServerHelper {
      * 
      * @param {*} minStake 
      * @param {*} minDelay 
+     * @param {*} fromBlock 
      * @param {*} httpSend 
      */
-    constructor(minStake, minDelay, httpSend) {
+    constructor(minStake, minDelay, fromBlock, httpSend) {
         this.minStake = minStake
         this.minDelay = minDelay
+        this.fromBlock = fromBlock
         this.httpSend = httpSend
 
         this.filteredRelays = []
         this.isInitialized = false
     }
+    
     /**
-     * @param {*} relayHub 
-     * @param {*} relayHubAddress 
+     * 
+     * @param {*} relayHubContract 
+     * @param {*} relayHubInstance 
      */
-    setHub(relayHub) {
-        //todo: re-run only on hub
-        this.relayHub = relayHub
-        addPastEvents(this.relayHub)
-        this.relayHubAddress = this.relayHub.address
+    setHub(relayHubContract, relayHubInstance) {
+        if (this.relayHubInstance !== relayHubInstance){
+            this.filteredRelays = []
+        }
+        this.relayHubContract = relayHubContract
+        this.relayHubInstance = relayHubInstance
+        addPastEvents(this.relayHubContract)
+        this.relayHubAddress = this.relayHubInstance.address
     }
 
     async newActiveRelayPinger() {
-        if (this.relayHub === 'undefined') {
+        if (typeof this.relayHubInstance === 'undefined') {
             throw new Error("Must call to setHub first!")
         }
         if (this.filteredRelays.length == 0)
@@ -123,7 +129,7 @@ class ServerHelper {
      */
     async fetchRelaysAdded() {
         let activeRelays = {}
-        let addedAndRemovedEvents = await this.relayHub.getPastEvents({ address: this.relayHub.address, fromBlock: 1, topics: [["RelayAdded", "RelayRemoved"]] })
+        let addedAndRemovedEvents = await this.relayHubContract.getPastEvents({ address: this.relayHubInstance.address, fromBlock: this.fromBlock, topics: [["RelayAdded", "RelayRemoved"]] })
 
         for (var index in addedAndRemovedEvents) {
             let event = addedAndRemovedEvents[index]
