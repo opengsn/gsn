@@ -377,6 +377,12 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
+	// Check that the relayhub is the correct one
+	if bytes.Compare(relay.RelayHubAddress.Bytes(),request.RelayHubAddress.Bytes()) != 0 {
+		err = fmt.Errorf("Wrong hub address.\nRelay server's hub address: %s, request's hub address: %s\n",relay.RelayHubAddress.Hex(),request.RelayHubAddress.Hex())
+		return
+	}
+
 	// Check that the fee is acceptable, i.e. we want to relay this tx
 	if !relay.validateFee(request.RelayFee) {
 		err = fmt.Errorf("Unacceptable fee")
