@@ -39,7 +39,7 @@ function getEcRecoverMeta(message, signature) {
 
 module.exports = {
     register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
-        await relayHub.stake(delay, {from: account, value: stake})
+        await relayHub.stake(account, delay, {from: account, value: stake})
         return await relayHub.register_relay(account, txFee, url, 0, {from: account})
     },
 

@@ -36,9 +36,9 @@ contract RelayHub is RelayHubApi {
     mapping (address => uint) public balances;
 
     modifier lock_stake() {
-        require(stakes[msg.sender].stake > minimum_stake);  // Has enough stake?
-        require(stakes[msg.sender].unstake_delay > minimum_unstake_delay);  // Locked for enough time?
-        require(msg.sender.balance >= minimum_relay_balance);
+        require(stakes[msg.sender].stake > minimum_stake,"stake lower than minimum");  // Has enough stake?
+        require(stakes[msg.sender].unstake_delay > minimum_unstake_delay,"delay lower than minimum");  // Locked for enough time?
+        require(msg.sender.balance >= minimum_relay_balance,"balance lower than minimum");
         stakes[msg.sender].unstake_time = 0;    // Activate the lock
         _;
     }
@@ -86,33 +86,40 @@ contract RelayHub is RelayHubApi {
         emit Withdrawn(msg.sender, amount);
     }
 
-    function stake(uint unstake_delay) public payable {
+    function stake(address relay, uint unstake_delay) public payable {
         // Create or increase the stake and unstake_delay
+        require(relays[relay].owner == address(0) || relays[relay].owner == msg.sender, "not owner");
+        relays[relay].owner = msg.sender;
 
-        stakes[msg.sender].stake += msg.value;
-        require(stakes[msg.sender].stake >= minimum_stake);
-        require(unstake_delay >= minimum_unstake_delay && unstake_delay >= stakes[msg.sender].unstake_delay);
-        stakes[msg.sender].unstake_delay = unstake_delay;
-        emit Staked(msg.sender, msg.value);
+        stakes[relay].stake += msg.value;
+        require(stakes[relay].stake >= minimum_stake, "stake is lower than minimum_stake");
+        require(unstake_delay >= minimum_unstake_delay && unstake_delay >= stakes[relay].unstake_delay, "unstake_delay too low");
+        stakes[relay].unstake_delay = unstake_delay;
+        emit Staked(relay, msg.value);
     }
 
-    function can_unstake() public view returns(bool) {
-        if (relays[msg.sender].timestamp != 0 || stakes[msg.sender].unstake_time == 0)  // Relay still registered so unstake time hasn't been set
+    function can_unstake(address relay) public view returns(bool) {
+        // Only owner can unstake
+        if (relays[relay].owner != msg.sender) {
             return false;
-        return stakes[msg.sender].unstake_time <= now;  // Finished the unstaking delay period?
+        }
+        if (relays[relay].timestamp != 0 || stakes[relay].unstake_time == 0)  // Relay still registered so unstake time hasn't been set
+            return false;
+        return stakes[relay].unstake_time <= now;  // Finished the unstaking delay period?
     }
 
-    modifier unstake_allowed() {
-        require(can_unstake());
+    modifier unstake_allowed(address relay) {
+//        require(can_unstake(relay));
+        can_unstake(relay);
         _;
     }
 
-    function unstake() public unstake_allowed {
-        uint amount = stakes[msg.sender].stake;
-        msg.sender.transfer(stakes[msg.sender].stake);
-        delete stakes[msg.sender];
-        delete relays[msg.sender];
-        emit Unstaked(msg.sender, amount);
+    function unstake(address relay) public unstake_allowed(relay) {
+        uint amount = stakes[relay].stake;
+        msg.sender.transfer(stakes[relay].stake);
+        delete stakes[relay];
+        delete relays[relay];
+        emit Unstaked(relay, amount);
     }
 
     function register_relay(address owner, uint transaction_fee, string url, address optional_relay_removal) public lock_stake {
@@ -130,9 +137,10 @@ contract RelayHub is RelayHubApi {
     }
 
     function remove_relay_internal(address relay) internal {
-        delete relays[relay];
-        stakes[msg.sender].unstake_time = stakes[msg.sender].unstake_delay + now;   // Start the unstake counter
-        emit RelayRemoved(relay, stakes[msg.sender].unstake_time);
+//        delete relays[relay];
+        relays[relay].timestamp = 0;
+        stakes[relay].unstake_time = stakes[relay].unstake_delay + now;   // Start the unstake counter
+        emit RelayRemoved(relay, stakes[relay].unstake_time);
     }
 
     function remove_stale_relay(address relay) public { // Trustless, assumed to be called by anyone willing to pay for the gas.  Verifies staleness.  Normally called by relays to keep the list current.
@@ -251,6 +259,8 @@ contract RelayHub is RelayHubApi {
         // TODO: maybe change to unstake_internal
         delete stakes[addr1];
         delete relays[addr1];
+        // TODO: move ownership of relay
+//        relays[addr1].owner = msg.sender;
     }
 
     function bytesToBytes32(bytes b, uint offset) private pure returns (bytes32) {

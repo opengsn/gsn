@@ -62,7 +62,7 @@ contract("RelayHub", function (accounts) {
         assert.equal(0, z);
 
         let expected_stake = web3.toWei('1', 'ether');
-        await rhub.stake(7, {value: expected_stake})
+        await rhub.stake(accounts[0], 7, {value: expected_stake})
         let stake = await rhub.stakes(accounts[0])
         assert.equal(expected_stake, stake[0].toNumber());
         assert.equal(7, stake[1]);
@@ -220,15 +220,16 @@ contract("RelayHub", function (accounts) {
 
     it("test_unstake", async function () {
         let stake = await rhub.stakes.call(accounts[0]);
-        let can_unstake = await rhub.can_unstake.call();
+        let can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(false, can_unstake)
         await increaseTime(stake[1] / 2)
-        can_unstake = await rhub.can_unstake.call();
+        can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(false, can_unstake)
         await increaseTime(stake[1] / 2)
-        can_unstake = await rhub.can_unstake.call();
+        can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(true, can_unstake)
-        await rhub.unstake();
+        let res = await rhub.unstake(accounts[0]);
+        console.log()
     });
 
     let dayInSec = 24 * 60 * 60;
@@ -261,7 +262,7 @@ contract("RelayHub", function (accounts) {
         let res = await rhub.remove_stale_relay(accounts[0])
         assert.equal("RelayRemoved", res.logs[0].event)
         await increaseTime(dayInSec + 1);
-        await rhub.unstake();
+        await rhub.unstake(accounts[0]);
         let stake = await rhub.stakes(accounts[0]);
         assert.equal(0, stake[0]);
     });

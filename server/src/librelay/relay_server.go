@@ -143,7 +143,7 @@ func (relay *RelayServer) Stake() (err error) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
 	fmt.Println("Stake() starting. RelayHub address ",relay.RelayHubAddress.Hex())
-	tx, err := rhub.Stake(auth, relay.UnstakeDelay)
+	tx, err := rhub.Stake(auth,relay.Address(), relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
 		//relay.replayUnconfirmedTxs(client)
@@ -207,7 +207,7 @@ func (relay *RelayServer) Unstake() (err error) {
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	tx, err := rhub.Unstake(auth)
+	tx, err := rhub.Unstake(auth, relay.Address())
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
