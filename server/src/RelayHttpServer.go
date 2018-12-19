@@ -23,7 +23,8 @@ import (
 )
 
 const DebugAPI = true
-const KEYSTORE_DIR = "./keystore"
+
+var KEYSTORE_DIR = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 
 var relay librelay.IRelay
 var server *http.Server
@@ -52,11 +53,11 @@ func main() {
 	//if _, err = os.Stat(filepath.Join(KEYSTORE_DIR,"")); os.IsNotExist(err) {
 	// wait for funding
 	log.Println("Waiting for funding...")
-	balance,err:= relay.Balance()
-	for ;err != nil && balance.Uint64() == 0; balance,err = relay.Balance(){
-		time.Sleep(5*time.Second)
+	balance, err := relay.Balance()
+	for ; err != nil && balance.Uint64() == 0; balance, err = relay.Balance() {
+		time.Sleep(5 * time.Second)
 	}
-	log.Println("Relay funded. Balance:",balance)
+	log.Println("Relay funded. Balance:", balance)
 
 	stakeAndRegister()
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
@@ -232,6 +233,7 @@ func parseCommandLine() (relayParams RelayParams) {
 	privateKey := flag.String("PrivateKey", "77c5495fbb039eed474fc940f29955ed0531693cc9212911efd35dff0373153f", "Relay's ethereum private key")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
+	workdir := flag.String("Workdir", os.Getenv("PWD"), "The relay server's workdir")
 
 	flag.Parse()
 
@@ -250,7 +252,10 @@ func parseCommandLine() (relayParams RelayParams) {
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 
+	KEYSTORE_DIR = filepath.Join(*workdir, "keystore")
+
 	fmt.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
+	fmt.Println("Using workdir: " + *workdir)
 
 	return relayParams
 
@@ -259,8 +264,8 @@ func parseCommandLine() (relayParams RelayParams) {
 func configRelay(relayParams RelayParams) {
 	fmt.Println("Constructing relay server in url ", relayParams.Url)
 	privateKey := loadPrivateKey()
-	fmt.Println("Private key: ",hexutil.Encode(crypto.FromECDSA(privateKey)))
-	fmt.Println("Public key: ",crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
+	fmt.Println("Private key: ", hexutil.Encode(crypto.FromECDSA(privateKey)))
+	fmt.Println("Public key: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	relay = &librelay.RelayServer{relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.GasPrice, relayParams.PrivateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL}
@@ -277,8 +282,8 @@ func loadPrivateKey() *ecdsa.PrivateKey {
 	// find (or create) account
 	var account accounts.Account
 	var err error
-	log.Println("ks accounts len",len(ks.Accounts()))
-	if _, err = os.Stat(filepath.Join(KEYSTORE_DIR,"")); os.IsNotExist(err) {
+	log.Println("ks accounts len", len(ks.Accounts()))
+	if _, err = os.Stat(filepath.Join(KEYSTORE_DIR, "")); os.IsNotExist(err) {
 		account, err = ks.NewAccount("")
 		if err != nil {
 			log.Fatal(err)
@@ -287,7 +292,7 @@ func loadPrivateKey() *ecdsa.PrivateKey {
 		if err := ks.Unlock(account, ""); err != nil {
 			log.Fatalln(err)
 		}
-	}else {
+	} else {
 		account = ks.Accounts()[0]
 	}
 

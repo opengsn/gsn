@@ -61,7 +61,7 @@ fi
 
 if [ -n "$1" ]; then
 
-$gobin/RelayHttpServer -RelayHubAddress $hubaddr &
+$gobin/RelayHttpServer -RelayHubAddress $hubaddr -Workdir $root/build/server &
 
 cd $root
 sleep 1
@@ -86,7 +86,7 @@ exit $exitcode
 
 else
 
-$gobin/RelayHttpServer -RelayHubAddress $hubaddr
+$gobin/RelayHttpServer -RelayHubAddress $hubaddr -Workdir $root/build/server
 	
 fi
 
