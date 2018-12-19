@@ -109,8 +109,7 @@ contract RelayHub is RelayHubApi {
     }
 
     modifier unstake_allowed(address relay) {
-//        require(can_unstake(relay));
-        can_unstake(relay);
+        require(can_unstake(relay));
         _;
     }
 
