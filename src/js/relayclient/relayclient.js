@@ -14,7 +14,6 @@ const relayHubAbi = require('./RelayHubApi')
 const relayRecipientAbi = require('./RelayRecipientApi')
 
 const {promisify} = require("es6-promisify");
-//const {promisify} = require("promisify");
 
 const est_blocks_per_day = 7200
 
@@ -121,7 +120,6 @@ function parseHexString(str) {
  * @returns a Promise that resolves to an instance of {@link EthereumTx} signed by a relay
  */
 RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress) {
-
   var self = this
 
   return new Promise(function (resolve, reject) {
@@ -185,6 +183,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
  */
 RelayClient.prototype.broadcastRawTx = function (raw_tx, tx_hash) {
     var self = this
+
     self.web3.eth.sendRawTransaction(raw_tx, function (error, result) {
         if (!error) {
             console.log(JSON.stringify(result));
@@ -295,8 +294,27 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
 RelayClient.prototype.hook = function (contract) {
     enableRelay(contract, {
         verbose: this.config.verbose,
-        runRelay: this.runRelay.bind(this)
+        runRelay: this.runRelay.bind(this),
+        hookTransactionReceipt : hookTransactionReceipt
     })
+}
+
+function hookTransactionReceipt(orig_getTransactionReceipt) {
+    return (hash, cb) => {
+        orig_getTransactionReceipt(hash, (err, res) => {
+            if (err == null) {
+                if ( res && res.logs ) {
+                    let logs = abi_decoder.decodeLogs(res.logs)
+                    relayed = logs.find(e => e && e.name == 'TransactionRelayed')
+                    if (relayed && relayed.events.find(e => e.name == "ret").value === false) {
+                        console.log("log=" + relayed + " changing status to zero")
+                        res.status = 0
+                    }
+                }
+            }
+            cb(err, res)
+        })
+    }
 }
 
 RelayClient.prototype.runRelay = function (payload, callback) {

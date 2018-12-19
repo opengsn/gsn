@@ -36,6 +36,16 @@ function enableRelay(contractOrWeb3orArtifacts, relayOptions) {
 function enableWeb3relay(web3, relayOptions) {
 
     enableProviderRelay(web3.currentProvider, "provider", relayOptions)
+
+    if ( typeof web3.web3 != 'undefined')
+        web3 = web3.web3
+
+    if ( web3.relayEnabled )
+        return web3
+
+    web3.eth.getTransactionReceipt = relayOptions.hookTransactionReceipt(web3.eth.getTransactionReceipt)
+    web3.relayEnabled=true
+
     return web3
 }
 
@@ -58,7 +68,7 @@ function enableContractRelay(contract, relayOptions) {
     // if ( !contract.web3 )
     // 	provider = contract.contract._eth._requestManager.provider
     //else
-    enableProviderRelay(contract.web3.currentProvider, contract.contractName, relayOptions)
+    enableWeb3relay(contract.web3, contract.contractName, relayOptions)
     return contract
 }
 

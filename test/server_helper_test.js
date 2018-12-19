@@ -32,7 +32,7 @@ contract('ServerHelper', function (accounts) {
     // It should be registered already by the 'postRelayHubAddress' in 'before'
     it("should discover a relay from the relay contract", async function () {
         // unstake delay too low
-        await register_new_relay(rhub, 1000, 2, 20, "https://abcd.com", accounts[1]);
+        await register_new_relay(rhub, 1000, 2, 20, "https://abcd.com", accounts[7]);
         // unregistered
         await register_new_relay(rhub, 1000, 20, 2, "https://abcd.com", accounts[2]);
         // stake too low

@@ -20,6 +20,13 @@ contract SampleRecipient is RelayRecipient {
         RelayHub(relay_hub).withdraw(balance);
     }
 
+    event Reverting(string message);
+    function testRevert() public {
+        require( this == address(0), "always fail" );
+        emit Reverting("if you see this revert failed..." );
+    }
+
+
     function () external payable {}
 
     event SampleRecipientEmitted(string message, address real_sender, address msg_sender, address origin);
