@@ -4,6 +4,12 @@ const child_process = require('child_process')
 
 module.exports = {
 
+    //start a background relay process.
+    // rhub - relay hub contract
+    //options:
+    //  verbose: enable background process logging.
+    //  stake, delay, txfee, url, relayOwner: parameters to pass to register_new_relay, to stake and register it.
+    //  
     startRelay: async function (rhub, options) {
         server = __dirname + "/../build/server/bin/RelayHttpServer"
 
@@ -17,13 +23,11 @@ module.exports = {
 
         let proc = child_process.spawn(server, args)
 
-        if( options.verbose )
+        if ( options.verbose )
             relaylog = (msg)=> msg.split("\n").forEach(line=>console.log("relay-"+proc.pid+"> "+line))
         else
             relaylog=function(){}
         relaylog( "server started")
-
-        proc.state = "init"
 
         return new Promise((resolve, reject) => {
 
@@ -33,7 +37,6 @@ module.exports = {
                 lastresponse = str
                 relaylog(str)
                 if (str.indexOf("Listening on port") >= 0) {
-                    proc.state = "started"
                     proc.alreadystarted = 1
                     resolve(proc)
                 }

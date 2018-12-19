@@ -13,7 +13,6 @@ const relayRecipientAbi = require('./RelayRecipientApi')
 const addPastEvents = require('./addPastEvents')
 
 const {promisify} = require("es6-promisify");
-//const {promisify} = require("promisify");
 
 abi_decoder.addABI(relayHubAbi)
 
@@ -121,7 +120,7 @@ RelayClient.prototype.findRelay = async function (relayHubAddress, minStake, min
     let size = filteredRelays.length > backups ? backups : filteredRelays.length
 
     if (size == 0) {
-        throw new Error("no valid relays. orig relays=" + JSON.stringify(origRelays))
+        throw new Error("no valid relays. hub="+relayHubAddress+" orig relays=" + JSON.stringify(origRelays))
     }
 
     filteredRelays = filteredRelays.sort((a, b) => {
@@ -264,11 +263,15 @@ RelayClient.prototype.httpSend = function (url, jsonRequestData, callback) {
     }
 
     let callback1 = function (e, r) {
+        if ( r && r.error ) {
+            e = r
+            r=null
+        }
         if (e && ("" + e).indexOf("Invalid JSON RPC response") >= 0) {
             e = {error: "invalid-json"}
         }
         if (logreq) {
-            console.log("got response:", localid, JSON.stringify(r).slice(0, 40), "err=", JSON.stringify(e).slice(0, 40))
+            console.log("got response:", localid, JSON.stringify(r).slice(0, 80), "err=", JSON.stringify(e).slice(0, 80))
         }
         callback(e, r)
     }
@@ -286,6 +289,7 @@ RelayClient.prototype.httpSend = function (url, jsonRequestData, callback) {
  */
 RelayClient.prototype.broadcastRawTx = function (raw_tx, tx_hash) {
     var self = this
+
     self.web3.eth.sendRawTransaction(raw_tx, function (error, result) {
         if (!error) {
             console.log(JSON.stringify(result));
@@ -389,8 +393,27 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
 RelayClient.prototype.hook = function (contract) {
     enableRelay(contract, {
         verbose: this.config.verbose,
-        runRelay: this.runRelay.bind(this)
+        runRelay: this.runRelay.bind(this),
+        hookTransactionReceipt : hookTransactionReceipt
     })
+}
+
+function hookTransactionReceipt(orig_getTransactionReceipt) {
+    return (hash, cb) => {
+        orig_getTransactionReceipt(hash, (err, res) => {
+            if (err == null) {
+                if ( res && res.logs ) {
+                    let logs = abi_decoder.decodeLogs(res.logs)
+                    relayed = logs.find(e => e && e.name == 'TransactionRelayed')
+                    if (relayed && relayed.events.find(e => e.name == "ret").value === false) {
+                        console.log("log=" + relayed + " changing status to zero")
+                        res.status = 0
+                    }
+                }
+            }
+            cb(err, res)
+        })
+    }
 }
 
 RelayClient.prototype.runRelay = function (payload, callback) {
