@@ -4,15 +4,18 @@ const getTransactionSignature = utils.getTransactionSignature;
 const removeHexPrefix = utils.removeHexPrefix;
 const padTo64 = utils.padTo64;
 
+const ServerHelper = require('./ServerHelper');
+const HttpWrapper = require('./HttpWrapper');
 const ethUtils = require('ethereumjs-util');
 const ethJsTx = require('ethereumjs-tx');
 const abi_decoder = require('abi-decoder');
 
 const relayHubAbi = require('./RelayHubApi')
 const relayRecipientAbi = require('./RelayRecipientApi')
-const addPastEvents = require('./addPastEvents')
 
 const {promisify} = require("es6-promisify");
+
+const est_blocks_per_day = 7200
 
 abi_decoder.addABI(relayHubAbi)
 
@@ -36,11 +39,15 @@ function RelayClient(web3, config) {
     // TODO: require sign() or privKey
     this.config = config || {}
     this.web3 = web3
+    this.httpSend = new HttpWrapper(this.web3)
+
+    let blockDayAgo = Math.max(1,web3.eth.blockNumber - est_blocks_per_day)
+    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, blockDayAgo, this.httpSend)
 
     this.RelayRecipient = web3.eth.contract(relayRecipientAbi)
     this.RelayHub = web3.eth.contract(relayHubAbi)
+
     //add missing "getPastEvents" in web3 v0.2..
-    addPastEvents(this.RelayHub)
 }
 
 /**
@@ -97,99 +104,6 @@ RelayClient.prototype.validateRelayResponse = function (returned_tx, address_rel
     }
 }
 
-/**
- * @returns on object containing the first relay to respond to a ping message,
- * as well as two other relays selected by fee, stake and delay.
- */
-RelayClient.prototype.findRelay = async function (relayHubAddress, minStake, minDelay, backups) {
-    let filteredRelays = await this.getRelaysAdded(relayHubAddress);
-
-    let origRelays = filteredRelays
-    if (minStake) {
-        filteredRelays = filteredRelays.filter(a => a.stake >= minStake)
-    }
-
-    if (minDelay) {
-        filteredRelays = filteredRelays.filter(a => a.unstakeDelay >= minDelay)
-    }
-
-    if (!backups) {
-        backups = 3
-    }
-
-    let size = filteredRelays.length > backups ? backups : filteredRelays.length
-
-    if (size == 0) {
-        throw new Error("no valid relays. hub="+relayHubAddress+" orig relays=" + JSON.stringify(origRelays))
-    }
-
-    filteredRelays = filteredRelays.sort((a, b) => {
-        return a.txFee - b.txFee
-    }).slice(0, size)
-
-    let firstRelayToRespond = await this.raceToSuccess(
-        filteredRelays.map(relay => this.getRelayAddress(relay.relayUrl))
-    );
-
-    let lookupResult = {
-        firstRelayToRespond: firstRelayToRespond,
-        otherRelays: filteredRelays.filter(a => a.relayUrl !== firstRelayToRespond.relayUrl)
-    }
-
-    return lookupResult
-}
-
-/**
- * Iterates through all RelayAdded and RelayRemoved logs emitted by given hub
- * @param {*} relayHubAddress
- * @returns an array of relays cuurently registered on given RelayHub contract
- */
-RelayClient.prototype.getRelaysAdded = async function (relayHubAddress) {
-    let activeRelays = {}
-    let addedAndRemovedEvents = await this.RelayHub.getPastEvents({
-        address: relayHubAddress,
-        fromBlock: 1,
-        topics: [["RelayAdded", "RelayRemoved"]]
-    })
-
-    for (var index in addedAndRemovedEvents) {
-        let event = addedAndRemovedEvents[index]
-        if (event.event === "RelayAdded") {
-            activeRelays[event.args.relay] = {
-                relayUrl: event.args.url,
-                transactionFee: event.args.transactionFee,
-                stake: event.args.stake,
-                unstakeDelay: event.args.unstakeDelay
-            }
-        } else if (event.event === "RelayRemoved") {
-            delete activeRelays[event.args.relay]
-        }
-    }
-    return Object.values(activeRelays)
-}
-/**
- * From https://stackoverflow.com/a/37235207 (modified to catch exceptions)
- * Resolves once any promise resolves, ignores the rest, ignores rejections
- */
-RelayClient.prototype.raceToSuccess = function (promises) {
-    let numRejected = 0;
-    return new Promise(
-        (resolve, reject) =>
-            promises.forEach(
-                promise =>
-                    promise.then((res) =>
-                        resolve(res)
-                    )
-                        .catch(err => {
-                            // console.log(err)
-                            if (++numRejected === promises.length) {
-                                reject("No response from any server.", err);
-                            }
-                        })
-            )
-    );
-}
-
 function parseHexString(str) {
     var result = [];
     while (str.length >= 2) {
@@ -206,76 +120,56 @@ function parseHexString(str) {
  * @returns a Promise that resolves to an instance of {@link EthereumTx} signed by a relay
  */
 RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress) {
-    var self = this
+  var self = this
 
-    return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve, reject) {
 
-        let jsonRequestData = {
-            "encodedFunction": encodedFunction,
-            "signature": parseHexString(signature.replace(/^0x/, '')),
-            "from": from,
-            "to": to,
-            "gasPrice": gasprice,
-            "gasLimit": gaslimit,
-            "relayFee": relayFee,
-            "RecipientNonce": nonce,
-            "RelayHubAddress": relayHubAddress
-        };
+    let jsonRequestData = {
+      "encodedFunction": encodedFunction,
+      "signature": parseHexString(signature.replace(/^0x/, '')),
+      "from": from,
+      "to": to,
+      "gasPrice": gasprice,
+      "gasLimit": gaslimit,
+      "relayFee": relayFee,
+      "RecipientNonce": nonce,
+      "RelayHubAddress": relayHubAddress
+    };
 
-        let callback = async function (error, body) {
-            if (error) {
-                reject(error);
-                return
-            }
+    let callback = async function (error, body) {
+      if (error) {
+        reject(error);
+        return
+      }
 
-            if (!body) {
-                reject("Empty body received from server.");
-                return
-            }
+      if (!body) {
+        reject("Empty body received from server.");
+        return
+      }
 
-            let validTransaction = self.validateRelayResponse(
-                body, relayAddress, from, to, encodedFunction,
-                relayFee, gasprice, gaslimit, nonce, relayHubAddress, relayAddress, signature);
+      let validTransaction
+      try {
+        validTransaction = self.validateRelayResponse(
+          body, relayAddress, from, to, encodedFunction,
+          relayFee, gasprice, gaslimit, nonce, relayHubAddress, relayAddress, signature);
+      }
+      catch (error) {
+        console.error("validateRelayResponse" + error)
+      }
 
-            if (validTransaction === undefined) {
-                reject("Failed to validate response")
-                return
-            }
+      if (typeof validTransaction === 'undefined' || validTransaction === null) {
+        reject("Failed to validate response")
+        return
+      }
 
-            var raw_tx = '0x' + validTransaction.serialize().toString('hex');
-            let txHash = "0x" + validTransaction.hash(false).toString('hex')
-            console.log("txHash= " + txHash);
-            self.broadcastRawTx(raw_tx, txHash);
-            resolve(validTransaction);
-        }
-        self.httpSend(relayUrl + "/relay", jsonRequestData, callback)
-    });
-}
-
-var logreq = false
-var unique_id = 1
-
-RelayClient.prototype.httpSend = function (url, jsonRequestData, callback) {
-
-    let localid = unique_id++
-    if (logreq) {
-        console.log("sending request:", localid, url, JSON.stringify(jsonRequestData).slice(0, 40))
+      var raw_tx = '0x' + validTransaction.serialize().toString('hex');
+      let txHash = "0x" + validTransaction.hash(false).toString('hex')
+      console.log("txHash= " + txHash);
+      self.broadcastRawTx(raw_tx, txHash);
+      resolve(validTransaction);
     }
-
-    let callback1 = function (e, r) {
-        if ( r && r.error ) {
-            e = r
-            r=null
-        }
-        if (e && ("" + e).indexOf("Invalid JSON RPC response") >= 0) {
-            e = {error: "invalid-json"}
-        }
-        if (logreq) {
-            console.log("got response:", localid, JSON.stringify(r).slice(0, 80), "err=", JSON.stringify(e).slice(0, 80))
-        }
-        callback(e, r)
-    }
-    new this.web3.providers.HttpProvider(url).sendAsync(jsonRequestData, callback1);
+    self.httpSend.send(relayUrl + "/relay", jsonRequestData, callback)
+  });
 }
 
 /**
@@ -329,47 +223,48 @@ RelayClient.prototype.balanceOf = async function (target) {
  * return value is the same as from sendTransaction
  */
 RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, options) {
-    let relayRecipient = this.RelayRecipient.at(options.to)
 
-    let relayHubAddress = await promisify(relayRecipient.get_relay_hub.call)()
+  var self = this
+  let relayRecipient = this.RelayRecipient.at(options.to)
 
-    let relayUrl = this.config.relayUrl;
-    let relayAddress = this.config.relayAddress;
+  let relayHubAddress = await promisify(relayRecipient.get_relay_hub.call)()
 
-    if (!relayUrl || !relayAddress) {
+  let relayHub = this.RelayHub.at(relayHubAddress)
 
-        let res = await this.findRelay(relayHubAddress, this.config.minStake, this.config.minDelay, this.config.backups)
+  var nonce = (await promisify(relayHub.get_nonce.call)(options.from)).toNumber()
 
-        let r = res.firstRelayToRespond
-        relayUrl = r.relayUrl
-        relayAddress = r.RelayServerAddress
+  this.serverHelper.setHub(this.RelayHub, relayHub)
+
+  let pinger = await this.serverHelper.newActiveRelayPinger()
+  for (;;) {
+    let activeRelay = await pinger.nextRelay()    
+    if (activeRelay === null) {
+        throw new Error("No relay responded! " + pinger.relaysCount + " attempted, " + pinger.pingedRelays + " pinged")
     }
-
-    let relayHub = this.RelayHub.at(relayHubAddress)
-
-    var nonce = (await promisify(relayHub.get_nonce.call)(options.from)).toNumber()
+    let relayAddress = activeRelay.RelayServerAddress
+    let relayUrl = activeRelay.relayUrl
 
     let hash =
-        utils.getTransactionHash(
-            options.from,
-            options.to,
-            encodedFunctionCall,
-            options.txfee,
-            options.gas_price,
-            options.gas_limit,
-            nonce,
-            relayHub.address,
-            relayAddress);
+      utils.getTransactionHash(
+        options.from,
+        options.to,
+        encodedFunctionCall,
+        options.txfee,
+        options.gas_price,
+        options.gas_limit,
+        nonce,
+        relayHub.address,
+        relayAddress);
 
     let signature
-    if (typeof this.config.signForAccount === "function") {
-        console.log("=== using signForAccount")
-        signature = this.config.signForAccount(options.from, hash);
+    if (typeof self.config.signForAccount === "function") {
+      console.log("=== using signForAccount")
+      signature = self.config.signForAccount(options.from, hash);
     } else {
-        signature = await getTransactionSignature(options.from, hash);
+      signature = await getTransactionSignature(options.from, hash);
     }
-
-    return this.sendViaRelay(
+    try {
+      let validTransaction = await self.sendViaRelay(
         relayUrl,
         signature,
         options.from,
@@ -381,7 +276,13 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         nonce,
         relayHub.address,
         relayAddress
-    )
+      )
+      return validTransaction
+    }
+    catch (error) {
+      console.log("relayTransaction", error)
+    }
+  }
 }
 
 /**
@@ -450,43 +351,19 @@ RelayClient.prototype.runRelay = function (payload, callback) {
 }
 
 
-/**
- //returns struct from the relay server, and adds the URL to it:
- // { relayUrl: url,
-//   RelayServerAddress: address
-// }
- */
-RelayClient.prototype.getRelayAddress = function (relayUrl) {
-    let self = this
-    return new Promise(function (resolve, reject) {
-        let callback = function (error, body) {
-            if (error) {
-                reject(error);
-                return
-            }
-            try {
-                body.relayUrl = relayUrl
-                resolve(body);
-            } catch (err) {
-                reject(err);
-            }
-        }
-        self.httpSend(relayUrl + "/getaddr", {}, callback)
-    });
-}
 
-RelayClient.prototype.postAuditTransaction = function (signedTx, relayUrl) {
-    let self = this
-    return new Promise(function (resolve, reject) {
-        let callback = function (error, response) {
-            if (error) {
-                reject(error);
-                return
-            }
-            resolve(response);
-        }
-        self.httpSend(relayUrl + "/audit", {signedTx: signedTx}, callback);
-    });
+RelayClient.prototype.postAuditTransaction = function(signedTx, relayUrl) {
+  var self = this
+  return new Promise(function (resolve, reject) {
+    let callback = function (error, response) {
+      if (error) {
+        reject(error);
+        return
+      }
+      resolve(response);
+    }
+    self.httpSend.send(relayUrl + "/audit", { signedTx: signedTx }, callback);
+  });
 }
 
 /**

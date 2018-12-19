@@ -76,7 +76,6 @@ module.exports = {
             }
         });
     },
-
     evmMine: function () {
         web3.currentProvider.send({
             jsonrpc: '2.0',
@@ -98,5 +97,4 @@ module.exports = {
             new web3.providers.HttpProvider(relayUrl + "/setRelayHub").sendAsync({relayHubAddress: relayHubAddress}, callback);
         })
     }
-
 }
