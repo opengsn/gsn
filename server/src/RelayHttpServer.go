@@ -41,23 +41,14 @@ func main() {
 
 	server = &http.Server{Addr: ":8090", Handler: nil}
 
-	http.HandleFunc("/relay", relayHandler)
+	http.HandleFunc("/relay", assureBalance(relayHandler))
 	http.HandleFunc("/getaddr", getEthAddrHandler)
 	//Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
-	//http.HandleFunc("/audit", auditRelaysHandler)
+	//http.HandleFunc("/audit", assureBalance(auditRelaysHandler))
 
 	if DebugAPI { // we let the client dictate which RelayHub we use on the blockchain
-		http.HandleFunc("/setRelayHub", setHubHandler)
+		http.HandleFunc("/setRelayHub", assureBalance(setHubHandler))
 	}
-
-	//if _, err = os.Stat(filepath.Join(KEYSTORE_DIR,"")); os.IsNotExist(err) {
-	// wait for funding
-	log.Println("Waiting for funding...")
-	balance, err := relay.Balance()
-	for ; err != nil && balance.Uint64() == 0; balance, err = relay.Balance() {
-		time.Sleep(5 * time.Second)
-	}
-	log.Println("Relay funded. Balance:", balance)
 
 	stakeAndRegister()
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
@@ -65,9 +56,31 @@ func main() {
 
 	port := "8090"
 	log.Printf("RelayHttpServer started.Listening on port: %s\n", port)
-	err = server.ListenAndServe()
+	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+}
+
+// http.HandlerFunc wrapper to make sure we have enough balance to operate
+func assureBalance(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// wait for funding
+		balance, err := relay.Balance()
+		if err != nil {
+			log.Println(err)
+			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
+			return
+		}
+		if balance.Uint64() == 0 {
+			err = fmt.Errorf("Waiting for funding...")
+			log.Println(err)
+			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
+			return
+		}
+		log.Println("Relay funded. Balance:", balance)
+		fn(w, r)
 	}
 
 }
@@ -233,7 +246,7 @@ func parseCommandLine() (relayParams RelayParams) {
 	privateKey := flag.String("PrivateKey", "77c5495fbb039eed474fc940f29955ed0531693cc9212911efd35dff0373153f", "Relay's ethereum private key")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
-	workdir := flag.String("Workdir", os.Getenv("PWD"), "The relay server's workdir")
+	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
 
 	flag.Parse()
 
@@ -308,28 +321,28 @@ func loadPrivateKey() *ecdsa.PrivateKey {
 	if err != nil {
 		log.Fatalln("key decrypt error:")
 	}
-	log.Println("key extracted: addr=", keyWrapper.Address.String())
+	log.Println("key extracted. addr:", keyWrapper.Address.String())
 
 	return keyWrapper.PrivateKey
 }
 
 func stakeAndRegister() {
 	fmt.Println("Staking...")
-	for err := relay.Stake(); err != nil; {
+	for err := relay.Stake(); err != nil; err = relay.Stake(){
 		if err != nil {
 			log.Println(err)
 		}
 		fmt.Println("Staking again...")
-		time.Sleep(time.Second)
+		time.Sleep(2*time.Second)
 	}
 	fmt.Println("Done staking")
 	fmt.Println("Registering relay...")
-	for err := relay.RegisterRelay(common.HexToAddress("0")); err != nil; {
+	for err := relay.RegisterRelay(common.HexToAddress("0")); err != nil;err = relay.RegisterRelay(common.HexToAddress("0")) {
 		if err != nil {
 			log.Println(err)
 		}
 		fmt.Println("Registering again...")
-		time.Sleep(time.Second)
+		time.Sleep(2*time.Second)
 	}
 	fmt.Println("Done registering")
 }
