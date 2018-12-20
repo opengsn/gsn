@@ -1,3 +1,4 @@
+/* global contract it assert before after */
 const ServerHelper = require('../src/js/relayclient/ServerHelper');
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper');
 const testutils = require('./testutils')
@@ -7,7 +8,6 @@ const postRelayHubAddress = testutils.postRelayHubAddress;
 const RelayHub = artifacts.require("./RelayHub.sol");
 
 const localhostOne = "http://localhost:8090"
-const relayAddress = "0x610bb1573d1046fcb8a70bbbd395754cd57c2b60";
 
 contract('ServerHelper', function (accounts) {
     let minStake = 1000
@@ -20,21 +20,14 @@ contract('ServerHelper', function (accounts) {
         rhub = await RelayHub.deployed()
         relayproc = await testutils.startRelay(rhub, {
             verbose: process.env.relaylog,
-            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[8]})
-
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0]})
         await postRelayHubAddress(rhub.address, localhostOne)
         serverHelper.setHub(RelayHub, rhub)
-    });
+    })
 
     after(async function () {
         await testutils.stopRelay(relayproc)
     })
-
-    it("should get Relay Server's signing address from server", async function () {
-        let pinger = await serverHelper.newActiveRelayPinger()
-        let res = await pinger.getRelayAddressPing(localhostOne);
-        assert.equal("0x610bb1573d1046fcb8a70bbbd395754cd57c2b60", res.RelayServerAddress)
-    });
 
     // Note: a real relay server is not registered in this test.
     // It should be registered already by the 'postRelayHubAddress' in 'before'
@@ -58,7 +51,6 @@ contract('ServerHelper', function (accounts) {
         serverHelper.setHub(RelayHub, rhub)
         let pinger = await serverHelper.newActiveRelayPinger()
         let relay = await pinger.nextRelay()
-        assert.equal(relayAddress, relay.RelayServerAddress);
         assert.equal(localhostOne, relay.relayUrl);
     });
 })

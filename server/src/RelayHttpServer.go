@@ -26,6 +26,7 @@ const DebugAPI = true
 
 var KEYSTORE_DIR = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 
+var stakedAndRegistered = false
 var relay librelay.IRelay
 var server *http.Server
 //var stopKeepAlive chan bool
@@ -41,16 +42,15 @@ func main() {
 
 	server = &http.Server{Addr: ":8090", Handler: nil}
 
-	http.HandleFunc("/relay", assureBalance(relayHandler))
+	http.HandleFunc("/relay", assureRelayReady(relayHandler))
 	http.HandleFunc("/getaddr", getEthAddrHandler)
 	//Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
-	//http.HandleFunc("/audit", assureBalance(auditRelaysHandler))
+	//http.HandleFunc("/audit", assureRelayReady(auditRelaysHandler))
 
 	if DebugAPI { // we let the client dictate which RelayHub we use on the blockchain
-		http.HandleFunc("/setRelayHub", assureBalance(setHubHandler))
+		http.HandleFunc("/setRelayHub", setHubHandler)
 	}
-
-	stakeAndRegister()
+	go waitForStakeAndRegister()
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
 	//stopKeepAlive = schedule(keepAlive, 1*time.Millisecond)
 
@@ -63,9 +63,16 @@ func main() {
 
 }
 
-// http.HandlerFunc wrapper to make sure we have enough balance to operate
-func assureBalance(fn http.HandlerFunc) http.HandlerFunc {
+// http.HandlerFunc wrapper to assure we have enough balance to operate, and server already has stake and registered
+func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !stakedAndRegistered {
+			err := fmt.Errorf("Relay not staked and registered yet" )
+			log.Println(err)
+			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
+			return
+		}
+
 		// wait for funding
 		balance, err := relay.Balance()
 		if err != nil {
@@ -169,23 +176,13 @@ func setHubHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("RelayHubAddress", request.RelayHubAddress.String())
-	log.Println("Checking if already registered to this hub")
-	res, err := relay.IsRegistered(request.RelayHubAddress)
-	if err != nil {
-		log.Println(err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
+	log.Println("Checking if already staked to this hub")
+
 	// as a workaround when setting a relayhub address in debug mode
 	//stopKeepAlive <- true
 	relayServer := relay.(*librelay.RelayServer)
 	relayServer.RelayHubAddress = request.RelayHubAddress
-	if !res {
-		log.Println("Not registered.")
-		stakeAndRegister()
-	} else {
-		log.Println("Already registered.")
-	}
+	go waitForStakeAndRegister()
 	//stopKeepAlive = schedule(keepAlive, 3*time.Second)
 
 	w.WriteHeader(http.StatusOK)
@@ -236,7 +233,7 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseCommandLine() (relayParams RelayParams) {
-	ownerAddress := flag.String("OwnerAddress", "0x610bb1573d1046fcb8a70bbbd395754cd57c2b60", "Relay's owner address")
+	ownerAddress := flag.String("OwnerAddress", common.HexToAddress("0").Hex(), "Relay's owner address")
 	fee := flag.Int64("Fee", 11, "Relay's per transaction fee")
 	url := flag.String("Url", "http://localhost:8090", "Relay's owner address")
 	relayHubAddress := flag.String("RelayHubAddress", "0x254dffcd3277c0b1660f6d42efbb754edababc2b", "RelayHub address")
@@ -281,7 +278,7 @@ func configRelay(relayParams RelayParams) {
 	fmt.Println("Public key: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	relay = &librelay.RelayServer{relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
-		relayParams.GasLimit, relayParams.GasPrice, relayParams.PrivateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL}
+		relayParams.GasLimit, relayParams.GasPrice, privateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL}
 }
 
 // Loads (creates if doesn't exist) private key from keystore file
@@ -326,25 +323,27 @@ func loadPrivateKey() *ecdsa.PrivateKey {
 	return keyWrapper.PrivateKey
 }
 
-func stakeAndRegister() {
-	fmt.Println("Staking...")
-	for err := relay.Stake(); err != nil; err = relay.Stake(){
+func waitForStakeAndRegister() {
+	staked,err := relay.IsStaked(relay.HubAddress())
+	for ; err != nil || !staked; staked,err = relay.IsStaked(relay.HubAddress()) {
 		if err != nil {
 			log.Println(err)
 		}
-		fmt.Println("Staking again...")
-		time.Sleep(2*time.Second)
+		stakedAndRegistered = false
+		log.Println("Waiting for stake...")
+		time.Sleep(1*time.Second)
 	}
-	fmt.Println("Done staking")
+
 	fmt.Println("Registering relay...")
 	for err := relay.RegisterRelay(common.HexToAddress("0")); err != nil;err = relay.RegisterRelay(common.HexToAddress("0")) {
 		if err != nil {
 			log.Println(err)
 		}
-		fmt.Println("Registering again...")
-		time.Sleep(2*time.Second)
+		fmt.Println("Trying to register again...")
+		time.Sleep(5*time.Second)
 	}
 	fmt.Println("Done registering")
+	stakedAndRegistered = true
 }
 
 func keepAlive() {

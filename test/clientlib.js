@@ -1,4 +1,4 @@
-/* globals web3 artifacts contract it before assert */
+/* globals web3 artifacts contract it before after assert */
 
 const RelayClient = require('../src/js/relayclient/relayclient');
 const RelayHub = artifacts.require("./RelayHub.sol");
@@ -12,6 +12,10 @@ const localhostOne = "http://localhost:8090"
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
 const postRelayHubAddress = testutils.postRelayHubAddress;
+
+const util = require("util")
+const request = util.promisify(require("request"))
+
 
 contract('RelayClient', function (accounts) {
 
@@ -239,10 +243,12 @@ contract('RelayClient', function (accounts) {
         }
         let tbk = new RelayClient(web3, { serverHelper: mockServerHelper });
         tbk.httpSend = httpSend
+        let res = await request(localhostOne+'/getaddr')
+        let relayServerAddress = JSON.parse(res.body).RelayServerAddress
         let filteredRelays = [
             { relayUrl: "localhost1", RelayServerAddress: accounts[10] },
             { relayUrl: "localhost2", RelayServerAddress: accounts[10] },
-            { relayUrl: localhostOne, RelayServerAddress: accounts[10] }
+            { relayUrl: localhostOne, RelayServerAddress: relayServerAddress }
         ]
 
         var counter = 0

@@ -77,6 +77,8 @@ type IRelay interface {
 
 	UnregisterRelay() (err error)
 
+	IsStaked(hub common.Address) (staked bool, err error)
+
 	IsRegistered(hub common.Address) (registered bool, err error)
 
 	Withdraw()
@@ -84,6 +86,8 @@ type IRelay interface {
 	CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error)
 
 	Address() (relayAddress common.Address)
+
+	HubAddress() (common.Address)
 
 	AuditRelaysTransactions(signedTx *types.Transaction) (err error)
 
@@ -335,6 +339,47 @@ func (relay *RelayServer) UnregisterRelay() error {
 	return relay.Unstake()
 }
 
+func (relay *RelayServer) IsStaked(hub common.Address) (staked bool, err error) {
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
+	if err != nil {
+		log.Println("Could not connect to ethereum node", err)
+		return
+	}
+	relayAddress := relay.Address()
+	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
+	log.Println("hub to check stake", hub.Hex())
+	rhub, err := librelay.NewRelayHub(hub, client)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	callOpt := &bind.CallOpts{
+		From:    relayAddress,
+		Pending: true,
+	}
+
+	stakeEntry, err := rhub.Stakes(callOpt, relayAddress)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Println("Stake:", stakeEntry.Stake.String())
+	staked = (stakeEntry.Stake.Cmp(big.NewInt(0)) != 0)
+
+	if staked && (relay.OwnerAddress.Hex() == common.HexToAddress("0").Hex()) {
+		log.Println("Got staked for the first time, setting owner")
+		relayEntry, err := rhub.Relays(callOpt, relayAddress)
+		if err != nil {
+			log.Println(err)
+			return false,err
+		}
+		relay.OwnerAddress = relayEntry.Owner
+		log.Println("Owner is", relay.OwnerAddress.Hex())
+	}
+
+	return
+}
+
 func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err error) {
 	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
@@ -353,14 +398,14 @@ func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err
 		From:    relayAddress,
 		Pending: true,
 	}
-
-	res, err := rhub.Stakes(callOpt, relayAddress)
+	relayEntry, err := rhub.Relays(callOpt, relayAddress)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	log.Println("Stake:", res.Stake.String())
-	registered = (res.Stake.Cmp(big.NewInt(0)) != 0)
+	log.Println("Owner:", relayEntry.Owner.String())
+	registered = (relayEntry.Timestamp.Uint64() != 0)
+
 	return registered, nil
 }
 
@@ -471,6 +516,10 @@ func (relay *RelayServer) Address() (relayAddress common.Address) {
 	}
 	relayAddress = crypto.PubkeyToAddress(*publicKeyECDSA)
 	return
+}
+
+func (relay *RelayServer) HubAddress() (common.Address) {
+	return relay.RelayHubAddress
 }
 
 var maybePenalizable = make(map[common.Address]types.TxByNonce)

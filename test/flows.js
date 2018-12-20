@@ -63,16 +63,13 @@ options.forEach(params => {
             it(params.title + "enable relay", async function () {
                 let res = await testutils.postRelayHubAddress(rhub.address, localhostOne);
                 assert.equal('"OK"', JSON.stringify(res))
-
                 rhub.depositFor(sr.address, {value: 1e16})
-
                 new RelayClient(web3, {
                     // verbose:true,
                     txfee: 12,
                     force_gasPrice: 3,			//override requested gas price
                     force_gasLimit: 100000		//override requested gas limit.
                 }).hook(SampleRecipient)
-
             })
         }
 
@@ -99,7 +96,7 @@ options.forEach(params => {
             if (params.relay) {
                 assert.ok(ex == null, "should succeed sending gasless transaction through relay")
             } else {
-                assert.ok(ex.toString().indexOf("enough funds") > 0, "Expected Error with 'not enough funds'. got: " + ex)
+                assert.ok(ex.toString().indexOf("funds") > 0, "Expected Error with 'funds'. got: " + ex)
             }
 
         })

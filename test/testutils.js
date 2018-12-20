@@ -1,7 +1,12 @@
-/* global web3 */
+ /* global web3 artifacts */
 
 const child_process = require('child_process')
-
+const util = require("util")
+const request = util.promisify(require("request"))
+const localhostOne = "http://localhost:8090"
+const RelayHub = artifacts.require("RelayHub");
+const addPastEvents = require( '../src/js/relayclient/addPastEvents' )
+addPastEvents(RelayHub)
 module.exports = {
 
     //start a background relay process.
@@ -11,29 +16,29 @@ module.exports = {
     //  stake, delay, txfee, url, relayOwner: parameters to pass to register_new_relay, to stake and register it.
     //  
     startRelay: async function (rhub, options) {
-        server = __dirname + "/../build/server/bin/RelayHttpServer"
+        let server = __dirname + "/../build/server/bin/RelayHttpServer"
 
         options = options || {}
         let args = []
-        if (rhub && options.stake) {
-            await this.register_new_relay(rhub, options.stake, options.delay || 3600, options.txfee || 12, options.url || "http://asd.asd.asd", options.relayOwner)
+        args.push( "-Workdir", "./build/server" )
+        if ( rhub ) {
             args = ["-RelayHubAddress", rhub.address]
         }
-        args.push( "-Workdir", "./build/server" )
 
         let proc = child_process.spawn(server, args)
 
+        let relaylog
         if ( options.verbose )
             relaylog = (msg)=> msg.split("\n").forEach(line=>console.log("relay-"+proc.pid+"> "+line))
         else
             relaylog=function(){}
         relaylog( "server started")
 
-        return new Promise((resolve, reject) => {
+        await new Promise((resolve, reject) => {
 
             let lastresponse
             let listener = data => {
-                str = data.toString().replace(/\s+$/, "")
+                let str = data.toString().replace(/\s+$/, "")
                 lastresponse = str
                 relaylog(str)
                 if (str.indexOf("Listening on port") >= 0) {
@@ -51,6 +56,20 @@ module.exports = {
             };
             proc.on('exit', doaListener.bind(proc))
         })
+
+        let res = await request(localhostOne+'/getaddr')
+        console.log("Relay Server Address request",res.body)
+        let relayServerAddress = JSON.parse(res.body).RelayServerAddress
+        console.log("Relay Server Address",relayServerAddress)
+        await web3.eth.sendTransaction({to:relayServerAddress, from:web3.eth.accounts[0], value:web3.toWei("2", "ether")})
+        await rhub.stake(relayServerAddress, options.delay || 3600, {from: options.relayOwner, value: options.stake})
+        res = []
+        while (!res.length) {
+            res = await RelayHub.getPastEvents({fromBlock:1, topics:["RelayAdded"],address:rhub.address })
+        }
+        assert.equal(res[0].args.relay,relayServerAddress)
+
+        return proc
 
     },
 
