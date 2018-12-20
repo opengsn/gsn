@@ -50,18 +50,6 @@ contract("RelayHub", function (accounts) {
         sig = await getTransactionSignature(accounts[0], digest)
         let deposit = 100000000000;
         await sr.deposit({value: deposit});
-        let promise = new Promise(function (resolve, reject) {
-            new web3.providers.HttpProvider("http://localhost:8090/getaddr").sendAsync({}, function(error, response){
-                if (error){ 
-                    reject(error)
-                }
-                else {
-                    resolve(response.RelayServerAddress)
-                }
-            })
-        })
-        let addr = await promise
-        web3.eth.sendTransaction({to:addr, from:accounts[0], value:web3.toWei("0.5", "ether")})
     });
 
     var real_sender = accounts[0];

@@ -14,13 +14,21 @@ contract('ServerHelper', function (accounts) {
     let minDelay = 10
     var serverHelper = new ServerHelper(minStake, minDelay, 1, new HttpWrapper(web3))
     let rhub
+    let relayproc
 
     before(async function(){
         rhub = await RelayHub.deployed()
+        relayproc = await testutils.startRelay(rhub, {
+            verbose: process.env.relaylog,
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[8]})
+
         await postRelayHubAddress(rhub.address, localhostOne)
         serverHelper.setHub(RelayHub, rhub)
-    })
+    });
 
+    after(async function () {
+        await testutils.stopRelay(relayproc)
+    })
 
     it("should get Relay Server's signing address from server", async function () {
         let pinger = await serverHelper.newActiveRelayPinger()
