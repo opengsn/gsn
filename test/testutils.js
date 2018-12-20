@@ -64,13 +64,20 @@ module.exports = {
         await web3.eth.sendTransaction({to:relayServerAddress, from:web3.eth.accounts[0], value:web3.toWei("2", "ether")})
         await rhub.stake(relayServerAddress, options.delay || 3600, {from: options.relayOwner, value: options.stake})
         res = []
-        while (!res.length) {
+        let count = 0
+        while (count++ < 10) {
             res = await RelayHub.getPastEvents({fromBlock:1, topics:["RelayAdded"],address:rhub.address })
+            if (res.length) break
+            await module.exports.sleep(1000)
+
         }
         assert.equal(res[0].args.relay,relayServerAddress)
 
         return proc
 
+    },
+    sleep: function (ms) {
+     return new Promise(resolve => setTimeout(resolve, ms));
     },
 
     stopRelay: function (proc) {

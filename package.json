@@ -33,7 +33,7 @@
     "web3-utils": "^1.0.0-beta.36"
   },
   "scripts": {
-    "test": "run-with-testrpc -d -a11 'truffle test' ",
+    "test": "make -C server/ && run-with-testrpc -d -a11 'truffle test' ",
     "lint": "eslint ./src ./test",
     "web": "./restart-relay.sh web"
   },
