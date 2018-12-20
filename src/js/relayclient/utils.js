@@ -1,6 +1,7 @@
 /* global web3 */
 const ethUtils = require('ethereumjs-util');
 const Web3Utils = require('web3-utils');
+const EthCrypto = require('eth-crypto');
 
 const relay_prefix = "rlx:"
 
@@ -27,14 +28,6 @@ function bytesToHex_noPrefix(bytes) {
         hex = "0" + hex;
     }
     return hex
-}
-
-function getEcRecoverMeta(message, signature) {
-    let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(message), "hex")]);
-    let signed = web3.sha3(msg.toString('hex'), {encoding: "hex"});
-    let buf_signed = Buffer.from(removeHexPrefix(signed), "hex");
-    let signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(buf_signed, signature.v, signature.r, signature.s)));
-    return signer;
 }
 
 module.exports = {
@@ -127,7 +120,43 @@ module.exports = {
         return sig;
     },
 
-    getEcRecoverMeta: getEcRecoverMeta,
+    getTransactionSignatureWithKey: function(privKey, hash) {
+        let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(hash), "hex")])
+        let signed = web3.sha3(msg.toString('hex'), {encoding: "hex"});
+        let keyHex = "0x" + Buffer.from(privKey).toString('hex')
+        const sig_ = EthCrypto.sign(keyHex, signed)
+        let signature = ethUtils.fromRpcSig(sig_);
+        let sig = Web3Utils.toHex(signature.v) + removeHexPrefix(Web3Utils.bytesToHex(signature.r)) + removeHexPrefix(Web3Utils.bytesToHex(signature.s));
+        return sig
+    },
+    getEcRecoverMeta: function(message, signature) {
+        if (typeof signature === 'string'){
+            let v = this.parseHexString(signature.substr(2,2))
+            let r = this.parseHexString(signature.substr(4, 65))
+            let s = this.parseHexString(signature.substr(68, 65))
+            signature = {
+                v: v,
+                r: r,
+                s: s
+            }
+        }
+        let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(message), "hex")]);
+        let signed = web3.sha3(msg.toString('hex'), {encoding: "hex"});
+        let buf_signed = Buffer.from(removeHexPrefix(signed), "hex");
+        let signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(buf_signed, signature.v, signature.r, signature.s)));
+        return signer;
+    },
+
+    parseHexString: function(str) {
+        var result = [];
+        while (str.length >= 2) {
+            result.push(parseInt(str.substring(0, 2), 16));
+    
+            str = str.substring(2, str.length);
+        }
+    
+        return result;
+    },
     removeHexPrefix: removeHexPrefix,
     padTo64: padTo64
 }

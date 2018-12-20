@@ -13,7 +13,7 @@ const localhostOne = "http://localhost:8090"
 contract('ServerHelper', function (accounts) {
     let minStake = 1000
     let minDelay = 10
-    var serverHelper = new ServerHelper(minStake, minDelay, 1, new HttpWrapper(web3))
+    var serverHelper = new ServerHelper(minStake, minDelay, new HttpWrapper(web3))
     let rhub
     let relayproc
 

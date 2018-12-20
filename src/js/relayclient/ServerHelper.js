@@ -84,13 +84,11 @@ class ServerHelper {
      * 
      * @param {*} minStake 
      * @param {*} minDelay 
-     * @param {*} fromBlock 
      * @param {*} httpSend 
      */
-    constructor(minStake, minDelay, fromBlock, httpSend) {
+    constructor(minStake, minDelay, httpSend) {
         this.minStake = minStake
         this.minDelay = minDelay
-        this.fromBlock = fromBlock
         this.httpSend = httpSend
 
         this.filteredRelays = []
@@ -112,12 +110,13 @@ class ServerHelper {
         this.relayHubAddress = this.relayHubInstance.address
     }
 
-    async newActiveRelayPinger() {
+    async newActiveRelayPinger(fromBlock = 1) {
         if (typeof this.relayHubInstance === 'undefined') {
             throw new Error("Must call to setHub first!")
         }
-        if (this.filteredRelays.length == 0)
+        if (this.filteredRelays.length == 0 || this.fromBlock !== fromBlock)
         {
+            this.fromBlock = fromBlock
             await this.fetchRelaysAdded()
         }
         return new ActiveRelayPinger(this.filteredRelays, this.httpSend)

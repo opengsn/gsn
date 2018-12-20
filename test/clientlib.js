@@ -1,9 +1,11 @@
 /* globals web3 artifacts contract it before after assert */
 
 const RelayClient = require('../src/js/relayclient/relayclient');
+const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require("./RelayHub.sol");
 const SampleRecipient = artifacts.require("./SampleRecipient.sol");
 const ethJsTx = require('ethereumjs-tx');
+const ethUtils = require('ethereumjs-util');
 
 const relayAddress = "0x610bb1573d1046fcb8a70bbbd395754cd57c2b60";
 
@@ -272,5 +274,47 @@ contract('RelayClient', function (accounts) {
         // The transaction was checked by internal logic of RelayClient (tested elsewhere) and deemed valid
         assert.equal(32, validTransaction.hash(false).length)
 
+    })
+
+    it("should create a new ephemeral keypair", async function(){
+        let rc = new RelayClient(web3)
+        let keypair = rc.newEphemeralKeypair()
+        let address = "0x" + ethUtils.privateToAddress(keypair.privateKey).toString('hex')
+        assert.equal(address, keypair.address)
+    })
+
+    it("should use a given ephemeral key for signing", async function(){
+        let rc = new RelayClient(web3)
+        let ephemeralKeypair = rc.newEphemeralKeypair()
+        rc.useKeypairForSigning(ephemeralKeypair)
+        var did_assert = false
+        rc.sendViaRelay = function(relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress){
+            let message = utils.getTransactionHash(
+                from,
+                to,
+                encodedFunction,
+                relayFee,
+                gasprice,
+                gaslimit,
+                nonce,
+                relayHubAddress,
+                relayAddress);
+            let addr = utils.getEcRecoverMeta(message, signature)
+            assert.equal(ephemeralKeypair.address, addr)
+            did_assert = true
+        }
+        let encoded = sr.contract.emitMessage.getData("hello world");
+        let gasPrice = 3;
+        let to = sr.address;
+        let options = {
+            from: gasLess,
+            to: to,
+            txfee: 12,
+            gas_price: gasPrice,
+            gas_limit: 1000000
+        }
+
+        await rc.relayTransaction(encoded, options)
+        assert.equal(true, did_assert)
     })
 });

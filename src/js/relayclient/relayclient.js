@@ -1,12 +1,15 @@
 const enableRelay = require('./enableRelay')
 const utils = require('./utils')
 const getTransactionSignature = utils.getTransactionSignature;
+const getTransactionSignatureWithKey = utils.getTransactionSignatureWithKey;
+const parseHexString = utils.parseHexString;
 const removeHexPrefix = utils.removeHexPrefix;
 const padTo64 = utils.padTo64;
 
 const ServerHelper = require('./ServerHelper');
 const HttpWrapper = require('./HttpWrapper');
 const ethUtils = require('ethereumjs-util');
+const ethWallet = require('ethereumjs-wallet');
 const ethJsTx = require('ethereumjs-tx');
 const abi_decoder = require('abi-decoder');
 
@@ -40,9 +43,8 @@ function RelayClient(web3, config) {
     this.config = config || {}
     this.web3 = web3
     this.httpSend = new HttpWrapper(this.web3)
-
-    let blockDayAgo = Math.max(1,web3.eth.blockNumber - est_blocks_per_day)
-    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, blockDayAgo, this.httpSend)
+  
+    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend)
 
     this.RelayRecipient = web3.eth.contract(relayRecipientAbi)
     this.RelayHub = web3.eth.contract(relayHubAbi)
@@ -104,16 +106,6 @@ RelayClient.prototype.validateRelayResponse = function (returned_tx, address_rel
     }
 }
 
-function parseHexString(str) {
-    var result = [];
-    while (str.length >= 2) {
-        result.push(parseInt(str.substring(0, 2), 16));
-
-        str = str.substring(2, str.length);
-    }
-
-    return result;
-}
 
 /**
  * Performs a '/relay' HTTP request to the given url
@@ -232,10 +224,13 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   let relayHub = this.RelayHub.at(relayHubAddress)
 
   var nonce = (await promisify(relayHub.get_nonce.call)(options.from)).toNumber()
-
+  
   this.serverHelper.setHub(this.RelayHub, relayHub)
-
-  let pinger = await this.serverHelper.newActiveRelayPinger()
+  
+  
+  let blockNow = await promisify(web3.eth.getBlockNumber)()
+  let blockDayAgo = Math.max(1, blockNow - est_blocks_per_day)
+  let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo)
   for (;;) {
     let activeRelay = await pinger.nextRelay()    
     if (activeRelay === null) {
@@ -257,9 +252,9 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         relayAddress);
 
     let signature
-    if (typeof self.config.signForAccount === "function") {
-      console.log("=== using signForAccount")
-      signature = self.config.signForAccount(options.from, hash);
+    if (typeof self.ephemeralKeypair === "object" && self.ephemeralKeypair !== null) {
+      console.log("=== using ephemeralKeypair")
+      signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash);
     } else {
       signature = await getTransactionSignature(options.from, hash);
     }
@@ -377,6 +372,18 @@ RelayClient.prototype.auditTransaction = async function (transaction, auditingRe
     for (let relay in auditingRelays) {
         await this.postAuditTransaction(transaction, auditingRelays[relay]);
     }
+}
+
+RelayClient.prototype.newEphemeralKeypair = function(){
+    let a = ethWallet.generate()
+    return {
+        privateKey: a.privKey,
+        address: "0x" + a.getAddress().toString('hex')
+    }
+}
+
+RelayClient.prototype.useKeypairForSigning = function(ephemeralKeypair){
+    this.ephemeralKeypair = ephemeralKeypair
 }
 
 module.exports = RelayClient;
