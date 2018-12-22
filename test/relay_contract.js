@@ -187,9 +187,9 @@ contract("RelayHub", function (accounts) {
                 gasPrice: gas_price,
                 gasLimit: 100000000
             });
-            assert.fail();
+            assert.fail("relay should fail");
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "can_relay failed"))
+            assert.equal(true, isErrorMessageCorrect(error, "can_relay failed"), "wrong error: "+error)
             let can_relay = await rhub.can_relay.call(accounts[0], from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
             assert.equal(3, can_relay.valueOf())
         }

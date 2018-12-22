@@ -142,7 +142,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
         return
       }
 
-      if (!body) {
+      if (!body || !body.nonce ) {
         reject("Empty body received from server.");
         return
       }
@@ -154,7 +154,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
           relayFee, gasprice, gaslimit, nonce, relayHubAddress, relayAddress, signature);
       }
       catch (error) {
-        console.error("validateRelayResponse" + error)
+        console.error("validateRelayResponse " + error)
       }
 
       if (typeof validTransaction === 'undefined' || validTransaction === null) {

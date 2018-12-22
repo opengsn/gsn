@@ -37,7 +37,6 @@ contract('RelayClient', function (accounts) {
         console.log("starting relay")
 
         relayproc = await testutils.startRelay(rhub, {
-            verbose: process.env.relaylog,
             stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0]})
 
     });
@@ -89,7 +88,7 @@ contract('RelayClient', function (accounts) {
         let res
         do {
             res = await web3.eth.getTransactionReceipt(txhash)
-            // testutils.sleep(1)
+            await testutils.sleep(500)
         } while (res === null)
 
         //validate we've got the "SampleRecipientEmitted" event

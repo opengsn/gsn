@@ -48,6 +48,7 @@ type AuditRelaysRequest struct {
 
 type GetEthAddrResponse struct {
 	RelayServerAddress common.Address
+	Ready bool
 }
 
 type RelayTransactionResponse struct {

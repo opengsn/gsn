@@ -144,6 +144,7 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Sending relayServer eth address")
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
+		Ready: stakedAndRegistered,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
 	if err != nil {

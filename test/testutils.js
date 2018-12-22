@@ -2,11 +2,12 @@
 
 const child_process = require('child_process')
 const util = require("util")
-const request = util.promisify(require("request"))
+const HttpWrapper = require( "../src/js/relayclient/HttpWrapper")
 const localhostOne = "http://localhost:8090"
 const RelayHub = artifacts.require("RelayHub");
 const addPastEvents = require( '../src/js/relayclient/addPastEvents' )
 addPastEvents(RelayHub)
+
 module.exports = {
 
     //start a background relay process.
@@ -27,11 +28,10 @@ module.exports = {
 
         let proc = child_process.spawn(server, args)
 
-        let relaylog
-        if ( options.verbose )
+        let relaylog=function(){}
+        if ( process.env.relaylog )
             relaylog = (msg)=> msg.split("\n").forEach(line=>console.log("relay-"+proc.pid+"> "+line))
-        else
-            relaylog=function(){}
+
         relaylog( "server started")
 
         await new Promise((resolve, reject) => {
@@ -57,21 +57,21 @@ module.exports = {
             proc.on('exit', doaListener.bind(proc))
         })
 
-        let res = await request(localhostOne+'/getaddr')
-        console.log("Relay Server Address request",res.body)
-        let relayServerAddress = JSON.parse(res.body).RelayServerAddress
+        http = new HttpWrapper(web3)
+        let res = await http.sendPromise(localhostOne+'/getaddr')
+        let relayServerAddress = res.RelayServerAddress
         console.log("Relay Server Address",relayServerAddress)
         await web3.eth.sendTransaction({to:relayServerAddress, from:web3.eth.accounts[0], value:web3.toWei("2", "ether")})
         await rhub.stake(relayServerAddress, options.delay || 3600, {from: options.relayOwner, value: options.stake})
-        res = []
-        let count = 0
-        while (count++ < 10) {
-            res = await RelayHub.getPastEvents({fromBlock:1, topics:["RelayAdded"],address:rhub.address })
-            if (res.length) break
-            await module.exports.sleep(1000)
 
+        res=""
+        let count = 20
+        while (count-- > 0) {
+            res = await http.sendPromise(localhostOne+'/getaddr')
+            if ( res.Ready ) break;
+            await module.exports.sleep(500)
         }
-        assert.equal(res[0].args.relay,relayServerAddress)
+        assert.ok(res.Ready, "Timed out waiting for relay to get staked and registered")
 
         return proc
 
