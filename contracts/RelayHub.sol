@@ -19,7 +19,6 @@ contract RelayHub is RelayHubApi {
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
     struct Relay {
-        address owner;
         uint timestamp;
         uint transaction_fee;
     }
@@ -30,6 +29,8 @@ contract RelayHub is RelayHubApi {
         uint stake;             // Size of the stake
         uint unstake_delay;     // How long between removal and unstaking
         uint unstake_time;      // When is the stake released.  Non-zero means that the relay has been removed and is waiting for unstake.
+        address owner;
+        bool removed;
     }
 
     mapping (address => Stake) public stakes;
@@ -92,8 +93,8 @@ contract RelayHub is RelayHubApi {
 
     function stake(address relay, uint unstake_delay) external payable {
         // Create or increase the stake and unstake_delay
-        require(relays[relay].owner == address(0) || relays[relay].owner == msg.sender, "not owner");
-        relays[relay].owner = msg.sender;
+        require(stakes[relay].owner == address(0) || stakes[relay].owner == msg.sender, "not owner");
+        stakes[relay].owner = msg.sender;
 
         stakes[relay].stake += msg.value;
         require(stakes[relay].stake >= minimum_stake, "stake is lower than minimum_stake");
@@ -104,7 +105,7 @@ contract RelayHub is RelayHubApi {
 
     function can_unstake(address relay) public view returns(bool) {
         // Only owner can unstake
-        if (relays[relay].owner != msg.sender) {
+        if (stakes[relay].owner != msg.sender) {
             return false;
         }
         if (relays[relay].timestamp != 0 || stakes[relay].unstake_time == 0)  // Relay still registered so unstake time hasn't been set
@@ -121,7 +122,6 @@ contract RelayHub is RelayHubApi {
         uint amount = stakes[relay].stake;
         msg.sender.transfer(stakes[relay].stake);
         delete stakes[relay];
-        delete relays[relay];
         emit Unstaked(relay, amount);
     }
 
@@ -131,7 +131,9 @@ contract RelayHub is RelayHubApi {
         if (msg.sender.balance < low_ether) {
             emit NeedsFunding(msg.sender);
         }
-        relays[msg.sender] = Relay(owner, now, transaction_fee);
+        // Penalized relay cannot reregister
+        require(!stakes[msg.sender].removed, "Penalized relay cannot reregister");
+        relays[msg.sender] = Relay(now, transaction_fee);
         emit RelayAdded(msg.sender, transaction_fee, stakes[msg.sender].stake, stakes[msg.sender].unstake_delay, url);
 
         // @optional_relay_removal is unrelated to registration, but incentivizes relays to help purging stale relays from the list.  Providing a stale relay will cause its removal, and offset the gas price of registration.
@@ -140,9 +142,10 @@ contract RelayHub is RelayHubApi {
     }
 
     function remove_relay_internal(address relay) internal {
-//        delete relays[relay];
+        delete relays[relay];
         relays[relay].timestamp = 0;
         stakes[relay].unstake_time = stakes[relay].unstake_delay + now;   // Start the unstake counter
+        stakes[relay].removed = true;
         emit RelayRemoved(relay, stakes[relay].unstake_time);
     }
 
@@ -154,7 +157,7 @@ contract RelayHub is RelayHubApi {
     }
 
     modifier relay_owner(address relay) {
-        require(relays[relay].owner == msg.sender, "not owner");
+        require(stakes[relay].owner == msg.sender, "not owner");
         _;
     }
 
@@ -191,7 +194,7 @@ contract RelayHub is RelayHubApi {
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
         relays[msg.sender].timestamp = now;
 
-        require(0==can_relay(msg.sender, from, RelayRecipient(to), transaction_orig, transaction_fee, gas_price, gas_limit, nonce, sig), "can_relay failed");
+        require(0 == can_relay(msg.sender, from, RelayRecipient(to), transaction_orig, transaction_fee, gas_price, gas_limit, nonce, sig), "can_relay failed");
         if (msg.sender.balance < low_ether) {
             emit NeedsFunding(msg.sender);
         }
@@ -208,7 +211,7 @@ contract RelayHub is RelayHubApi {
         emit TransactionRelayed(msg.sender, keccak256(transaction), from, ret, charge);
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
-        balances[relays[msg.sender].owner] += charge;
+        balances[stakes[msg.sender].owner] += charge;
     }
 
     function executeCallWithGas(uint allowed_gas, address to, uint256 value, bytes data) internal returns (bool success) {
@@ -252,18 +255,18 @@ contract RelayHub is RelayHubApi {
         // note: we compare the hash of the data to save gas over iterating both byte arrays
         require( decoded_tx1.nonce == decoded_tx2.nonce, "Different nonce");
         require(addr1 == addr2, "Different signer");
-        require(keccak256(abi.encodePacked(decoded_tx1.data)) != keccak256(abi.encodePacked(decoded_tx2.data)), "tx.data is equal " ) ;
-        // Checking that we do have addr1 as a registered relay
-        require( stakes[addr1].stake > 0, "Unregistered relay" );
+        require(keccak256(abi.encodePacked(decoded_tx1.data)) != keccak256(abi.encodePacked(decoded_tx2.data)), "tx.data is equal" ) ;
+        // Checking that we do have addr1 as a staked relay
+        require( stakes[addr1].stake > 0, "Unstaked relay" );
+        // Checking that the relay wasn't penalized yet
+        require(!stakes[addr1].removed, "Relay already penalized");
         // compensating the sender with the stake of the relay
         uint amount = stakes[addr1].stake;
-        msg.sender.transfer(amount);
-        emit Penalized(addr1, msg.sender,amount);
-        // TODO: maybe change to unstake_internal
-        delete stakes[addr1];
-        delete relays[addr1];
-        // TODO: move ownership of relay
-//        relays[addr1].owner = msg.sender;
+//        msg.sender.transfer(amount);
+        // move ownership of relay
+        stakes[addr1].owner = msg.sender;
+        emit Penalized(addr1, msg.sender, amount);
+        remove_relay_by_owner(addr1);
     }
 
     function bytesToBytes32(bytes b, uint offset) private pure returns (bytes32) {
