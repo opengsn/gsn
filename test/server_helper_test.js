@@ -4,6 +4,7 @@ const HttpWrapper = require('../src/js/relayclient/HttpWrapper');
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
 const postRelayHubAddress = testutils.postRelayHubAddress;
+const increaseTime = testutils.increaseTime;
 
 const RelayHub = artifacts.require("./RelayHub.sol");
 
@@ -43,11 +44,16 @@ contract('ServerHelper', function (accounts) {
         // 2 x will not ping
         await register_new_relay(rhub, 1000, 20, 15, "https://abcd.com", accounts[4]);
         await rhub.remove_relay_by_owner(accounts[4], { from: accounts[4] });
+        await increaseTime(20 + 1);
+        await rhub.unstake(accounts[4],{ from: accounts[4] });
         await register_new_relay(rhub, 1000, 20, 15, "go_resolve_this_address", accounts[4]);
 
         await register_new_relay(rhub, 1000, 20, 30, "https://abcd.com", accounts[5]);
 
         await rhub.remove_relay_by_owner(accounts[2], { from: accounts[2] });
+        await increaseTime(20 + 1);
+        await rhub.unstake(accounts[2],{ from: accounts[2] });
+
         serverHelper.setHub(RelayHub, rhub)
         let pinger = await serverHelper.newActiveRelayPinger()
         let relay = await pinger.nextRelay()

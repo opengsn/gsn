@@ -353,8 +353,11 @@ contract("RelayHub", function (accounts) {
         assert.equal("Penalized", res.logs[0].event)
         assert.equal(accounts[0], res.logs[0].args.relay)
         assert.equal(snitching_account, res.logs[0].args.sender)
+        increaseTime(dayInSec)
+        let res2 = await rhub.unstake(accounts[0],{from:snitching_account, gasPrice: gasPricePenalize,gasLimit: 100000000})
+
         let balance_of_acc7 = web3.eth.getBalance(snitching_account);
-        let expected_balance_after_penalize = snitching_account_initial_balance.plus(stake[0]).minus(res.receipt.gasUsed * gasPricePenalize)
+        let expected_balance_after_penalize = snitching_account_initial_balance.plus(stake[0]).minus(res.receipt.gasUsed * gasPricePenalize).minus(res2.receipt.gasUsed * gasPricePenalize)
         assert.equal(expected_balance_after_penalize.toString(), balance_of_acc7.toString());
     });
 

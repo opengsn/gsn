@@ -19,12 +19,11 @@ import (
 	"time"
 )
 
-const BlockTime = 20*time.Second
+const BlockTime = 20 * time.Second
 
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
 var unconfirmedTxs = make(map[uint64]*types.Transaction)
-
 
 type RelayTransactionRequest struct {
 	EncodedFunction string
@@ -48,7 +47,7 @@ type AuditRelaysRequest struct {
 
 type GetEthAddrResponse struct {
 	RelayServerAddress common.Address
-	Ready bool
+	Ready              bool
 }
 
 type RelayTransactionResponse struct {
@@ -67,7 +66,6 @@ func (response *RelayTransactionResponse) MarshalJSON() ([]byte, error) {
 }
 
 type IRelay interface {
-
 	Balance() (balance *big.Int, err error)
 
 	Stake() (err error)
@@ -110,13 +108,13 @@ type RelayServer struct {
 }
 
 func (relay *RelayServer) Balance() (balance *big.Int, err error) {
-	log.Println("Checking relay server's ether balance at",relay.Address().Hex())
+	log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
 	}
-	balance, err = client.BalanceAt(context.Background(),relay.Address(),nil)
+	balance, err = client.BalanceAt(context.Background(), relay.Address(), nil)
 	if err != nil {
 		log.Println(err)
 		return
@@ -147,8 +145,8 @@ func (relay *RelayServer) Stake() (err error) {
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
-	fmt.Println("Stake() starting. RelayHub address ",relay.RelayHubAddress.Hex())
-	tx, err := rhub.Stake(auth,relay.Address(), relay.UnstakeDelay)
+	fmt.Println("Stake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
+	tx, err := rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
 		//relay.replayUnconfirmedTxs(client)
@@ -177,7 +175,7 @@ func (relay *RelayServer) Stake() (err error) {
 				return
 			}
 		}
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	if iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
@@ -242,7 +240,7 @@ func (relay *RelayServer) Unstake() (err error) {
 				return
 			}
 		}
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	if iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
@@ -279,7 +277,7 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	fmt.Println("RegisterRelay() starting. RelayHub address ",relay.RelayHubAddress.Hex())
+	fmt.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex())
 	tx, err := rhub.RegisterRelay(auth, relay.OwnerAddress, relay.Fee, relay.Url, common.HexToAddress("0"))
 	if err != nil {
 		log.Println(err)
@@ -291,7 +289,6 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 	//ctx := context.Background()
 	//receipt,err := client.TransactionReceipt(ctx,tx.Hash())
 	//client.TransactionReceipt(ctx,types.HomesteadSigner{}.Hash(tx))
-
 
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
@@ -309,8 +306,8 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-		//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
 			iter, err = rhub.FilterRelayAdded(filterOpts)
@@ -319,16 +316,16 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 				return
 			}
 		}
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	if iter.Event == nil ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-		//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url) {
-			return fmt.Errorf("RegisterRelay() probably failed: could not receive RelayAdded() event for our relay")
+		return fmt.Errorf("RegisterRelay() probably failed: could not receive RelayAdded() event for our relay")
 	}
 
 	fmt.Println("RegisterRelay() finished")
@@ -369,15 +366,9 @@ func (relay *RelayServer) IsStaked(hub common.Address) (staked bool, err error) 
 
 	if staked && (relay.OwnerAddress.Hex() == common.HexToAddress("0").Hex()) {
 		log.Println("Got staked for the first time, setting owner")
-		relayEntry, err := rhub.Relays(callOpt, relayAddress)
-		if err != nil {
-			log.Println(err)
-			return false,err
-		}
-		relay.OwnerAddress = relayEntry.Owner
+		relay.OwnerAddress = stakeEntry.Owner
 		log.Println("Owner is", relay.OwnerAddress.Hex())
 	}
-
 	return
 }
 
@@ -404,7 +395,6 @@ func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err
 		log.Println(err)
 		return
 	}
-	log.Println("Owner:", relayEntry.Owner.String())
 	registered = (relayEntry.Timestamp.Uint64() != 0)
 
 	return registered, nil
@@ -424,8 +414,8 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 
 	// Check that the relayhub is the correct one
-	if bytes.Compare(relay.RelayHubAddress.Bytes(),request.RelayHubAddress.Bytes()) != 0 {
-		err = fmt.Errorf("Wrong hub address.\nRelay server's hub address: %s, request's hub address: %s\n",relay.RelayHubAddress.Hex(),request.RelayHubAddress.Hex())
+	if bytes.Compare(relay.RelayHubAddress.Bytes(), request.RelayHubAddress.Bytes()) != 0 {
+		err = fmt.Errorf("Wrong hub address.\nRelay server's hub address: %s, request's hub address: %s\n", relay.RelayHubAddress.Hex(), request.RelayHubAddress.Hex())
 		return
 	}
 
@@ -577,14 +567,14 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 		log.Println(err)
 		return
 	}
-	log.Println("Before scanning, current account nonce, tx nonce", otherNonce,signedTx.Nonce())
+	log.Println("Before scanning, current account nonce, tx nonce", otherNonce, signedTx.Nonce())
 	//If it is, scan the blockchain for the other tx of the same nonce and penalize!
 	if signedTx.Nonce() <= otherNonce {
 		err = relay.scanBlockChainToPenalizeInternal(client, lastBlockScanned, nil)
 		if err != nil {
 			log.Println("scanBlockChainToPenalizeInternal failed")
 			return
-		} 
+		}
 	}
 	log.Println("AuditRelaysTransactions end")
 	return nil
@@ -655,7 +645,7 @@ func getTransactionsByAddress(client *ethclient.Client, address common.Address, 
 	}
 	transactions = make(types.Transactions, 0, nonce)
 	one := big.NewInt(1)
-	log.Println("startBlock ", startBlock.Uint64(), "endBlock ",endBlock.Uint64())
+	log.Println("startBlock ", startBlock.Uint64(), "endBlock ", endBlock.Uint64())
 	for bi := startBlock; bi.Cmp(endBlock) < 0; bi.Add(bi, one) {
 
 		// TODO: this is a bug in ganache that returns a malformed serialized json to BlockByNumber/BlockByHash
@@ -669,7 +659,7 @@ func getTransactionsByAddress(client *ethclient.Client, address common.Address, 
 		//block, err := client.BlockByHash(context.Background(), header.Hash())
 		block, err := client.BlockByNumber(context.Background(), bi)
 		if err != nil {
-			log.Println("bi",bi.Uint64())
+			log.Println("bi", bi.Uint64())
 			log.Println(err)
 			continue
 		}
@@ -791,9 +781,9 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 		Pending: true,
 	}
 
-	log.Println( "before CanRelay" )
+	log.Println("before CanRelay")
 	res, err = rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature)
-	log.Printf( "after CanRelay: res=%d\n", res )
+	log.Printf("after CanRelay: res=%d\n", res)
 	if err != nil {
 		log.Println(err)
 		return
@@ -826,7 +816,7 @@ func (relay *RelayServer) pollNonce(client *ethclient.Client) (nonce uint64, err
 	return
 }
 
-func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client){
+func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 	log.Println("replayUnconfirmedTxs start")
 	log.Println("unconfirmedTxs size", len(unconfirmedTxs))
 	ctx := context.Background()
@@ -835,15 +825,15 @@ func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client){
 		log.Println(err)
 		return
 	}
-	for i := uint64(0); i < nonce; i++{
-		delete(unconfirmedTxs,i)
+	for i := uint64(0); i < nonce; i++ {
+		delete(unconfirmedTxs, i)
 	}
 	log.Println("unconfirmedTxs size after deletion", len(unconfirmedTxs))
-	for i,tx := range unconfirmedTxs {
+	for i, tx := range unconfirmedTxs {
 		log.Println("replaying tx nonce ", i)
-		err = client.SendTransaction(ctx,tx)
+		err = client.SendTransaction(ctx, tx)
 		if err != nil {
-			log.Println("tx ", i, ":",err)
+			log.Println("tx ", i, ":", err)
 		}
 	}
 	log.Println("replayUnconfirmedTxs end")
