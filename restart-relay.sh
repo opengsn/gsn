@@ -13,6 +13,7 @@ else
 fi
 
 function onexit() {
+	echo onexit
 	pkill -f ganache
 	pkill -f RelayHttpServer
 }
@@ -58,6 +59,10 @@ if [ -z "$hubaddr" ]; then
 echo "FATAL: failed to detect RelayHub address"
 exit 1
 fi
+
+#fund relay:
+relayurl=http://localhost:8090
+( sleep 1 ; ./scripts/fundrelay.js $hubaddr $relayurl 0 ) &
 
 if [ -n "$1" ]; then
 

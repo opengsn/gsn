@@ -79,6 +79,10 @@ contract RelayHub is RelayHubApi {
         return balances[target];
     }
 
+    function stakeOf(address relay) external view returns (uint256) {
+        return stakes[relay].stake;
+    }
+
     function withdraw(uint amount) public {
         require(balances[msg.sender] >= amount, "insufficient funds");
         balances[msg.sender] -= amount;
@@ -86,7 +90,7 @@ contract RelayHub is RelayHubApi {
         emit Withdrawn(msg.sender, amount);
     }
 
-    function stake(address relay, uint unstake_delay) public payable {
+    function stake(address relay, uint unstake_delay) external payable {
         // Create or increase the stake and unstake_delay
         require(relays[relay].owner == address(0) || relays[relay].owner == msg.sender, "not owner");
         relays[relay].owner = msg.sender;
