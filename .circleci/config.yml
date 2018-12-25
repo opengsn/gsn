@@ -27,6 +27,9 @@ jobs: # a collection of steps
           paths:
             - ./server/src/github.com/ethereum
 
+      - run:
+          name: compile
+          command: make -C server
 
       - run: # run tests
           name: test

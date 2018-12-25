@@ -77,7 +77,8 @@ function getPastEvents(options, cb) {
         return new Promise((resolve, reject) => {
             provider.sendAsync(payload, (err, res) => {
                 if (err) return reject(err)
-                else return resolve(res.result.map(logmapper))
+                if (!res.result) reject(res)
+                return resolve(res.result.map(logmapper))
             })
         })
 }

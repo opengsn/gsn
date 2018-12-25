@@ -1,4 +1,4 @@
-/* globals web3 artifacts contract it before assert */
+/* globals web3 artifacts contract it before after assert */
 
 const RelayClient = require('../src/js/relayclient/relayclient');
 const RelayHub = artifacts.require("./RelayHub.sol");
@@ -11,87 +11,56 @@ const localhostOne = "http://localhost:8090"
 
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
+const postRelayHubAddress = testutils.postRelayHubAddress;
+
+const util = require("util")
+const request = util.promisify(require("request"))
+
 
 contract('RelayClient', function (accounts) {
 
     let rhub;
     let sr;
     let gasLess;
+    let relayproc
 
     before(async function () {
         rhub = await RelayHub.deployed()
         sr = await SampleRecipient.deployed()
+
         let deposit = 100000000000;
         await sr.deposit({value: deposit});
-        let known_deposit = await rhub.balances(sr.address);
-        assert.equal(deposit, known_deposit);
+        // let known_deposit = await rhub.balances(sr.address);
+        // assert.ok(known_deposit>= deposit, "deposited "+deposit+" but found only "+known_deposit);
         gasLess = await web3.personal.newAccount("password")
         console.log("gasLess = " + gasLess);
+        console.log("starting relay")
+
+        relayproc = await testutils.startRelay(rhub, {
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0]})
+
     });
+
+    after(async function () {
+        await testutils.stopRelay(relayproc)
+    })
 
     it("test balanceOf target contract", async () => {
 
         let relayclient = new RelayClient(web3)
         let b1 = await relayclient.balanceOf(sr.address)
-        console.log("balance before redeposit" + b1.toNumber())
+        console.log("balance before redeposit", b1.toNumber())
         let added = 200000
-        await sr.deposit({value: added});
+        await sr.deposit({ value: added });
         let b2 = await relayclient.balanceOf(sr.address)
-        console.log("balance after redeposit" + b2.toNumber())
+        console.log("balance after redeposit", b2.toNumber())
         assert.equal(b2 - b1, added)
 
     })
 
-    function postRelayHubAddress(relayHubAddress, relayUrl) {
-        return new Promise(function (resolve, reject) {
-            let callback = function (error, response) {
-                if (error) {
-                    reject(error);
-                    return
-                }
-                resolve(response);
-            }
-            new web3.providers.HttpProvider(relayUrl + "/setRelayHub").sendAsync({relayHubAddress: relayHubAddress}, callback);
-        });
-    }
-
     it("should send RelayHub address to server (in debug mode)", async function () {
-        let res = await postRelayHubAddress(rhub.address, localhostOne);
+        let res = await testutils.postRelayHubAddress(rhub.address, localhostOne);
         assert.equal("OK", res)
-    });
-
-    it("should get Relay Server's signing address from server", async function () {
-        let tbk = new RelayClient(web3, {relayUrl: localhostOne});
-        let res = await tbk.getRelayAddress(localhostOne);
-        assert.equal("0x610bb1573d1046fcb8a70bbbd395754cd57c2b60", res.RelayServerAddress)
-    });
-
-    // Note: a real relay server is not registered in this test.
-    // It may be registered by the "should send RelayHub address to server (in debug mode)" test.
-    it("should discover a relay from the relay contract", async function () {
-        // unstake delay too low
-        await register_new_relay(rhub, 1000, 2, 20, "https://abcd.com", accounts[1]);
-        // unregistered
-        await register_new_relay(rhub, 1000, 20, 2, "https://abcd.com", accounts[2]);
-        // stake too low
-        await register_new_relay(rhub, 500, 20, 20, "https://abcd.com", accounts[3]);
-
-        // Added, removed, added again - go figure.
-        // 2 x will not ping
-        await register_new_relay(rhub, 1000, 20, 15, "https://abcd.com", accounts[4]);
-        await rhub.remove_relay_by_owner(accounts[4], {from: accounts[4]});
-        await register_new_relay(rhub, 1000, 20, 15, "https://abcd.com", accounts[4]);
-
-        await register_new_relay(rhub, 1000, 20, 30, "https://abcd.com", accounts[5]);
-
-        await rhub.remove_relay_by_owner(accounts[2], {from: accounts[2]});
-        let tbk = new RelayClient(web3);
-        let minStake = 1000
-        let minDelay = 10
-        let relay = await tbk.findRelay(rhub.address, minStake, minDelay);
-        assert.equal(relayAddress, relay.firstRelayToRespond.RelayServerAddress);
-        assert.equal(localhostOne, relay.firstRelayToRespond.relayUrl);
-        assert.equal(2, relay.otherRelays.length);
     });
 
     it("should use relay provided in constructor");
@@ -119,7 +88,7 @@ contract('RelayClient', function (accounts) {
         let res
         do {
             res = await web3.eth.getTransactionReceipt(txhash)
-            // testutils.sleep(1)
+            await testutils.sleep(500)
         } while (res === null)
 
         //validate we've got the "SampleRecipientEmitted" event
@@ -145,13 +114,13 @@ contract('RelayClient', function (accounts) {
 
         relayclient.hook(SampleRecipient)
 
-        let res = await sr.emitMessage("hello world", {from: gasLess})
+        let res = await sr.emitMessage("hello world", { from: gasLess })
 
         assert.equal(res.logs[0].event, "SampleRecipientEmitted")
         assert.equal(res.logs[0].args.message, "hello world")
         assert.equal(res.logs[0].args.real_sender, gasLess)
         assert.equal(res.logs[0].args.msg_sender.toLowerCase(), rhub.address.toLowerCase())
-        res = await sr.emitMessage("hello again", {from: accounts[3]})
+        res = await sr.emitMessage("hello again", { from: accounts[3] })
         assert.equal(res.logs[0].event, "SampleRecipientEmitted")
         assert.equal(res.logs[0].args.message, "hello again")
 
@@ -195,7 +164,7 @@ contract('RelayClient', function (accounts) {
         let reused_nonce = web3.eth.getTransactionCount(perpetrator_relay)
 
         // Make sure the transaction with that nonce was mined
-        let result = await sr.emitMessage("hello world", {from: perpetrator_relay})
+        let result = await sr.emitMessage("hello world", { from: perpetrator_relay })
         var log = result.logs[0];
         assert.equal("SampleRecipientEmitted", log.event);
 
@@ -212,7 +181,7 @@ contract('RelayClient', function (accounts) {
         transaction2.sign(perpetrator_priv_key)
         let rawTx = "0x" + transaction2.serialize().toString('hex')
 
-        let tbk = new RelayClient(web3, {relayUrl: localhostOne});
+        let tbk = new RelayClient(web3, { relayUrl: localhostOne });
         await tbk.auditTransaction(rawTx, [localhostOne]);
         // let the auditor do the job
         // testutils.sleep(10)
@@ -224,4 +193,84 @@ contract('RelayClient', function (accounts) {
         // TODO: validate reward distributed fairly
 
     });
+
+    function timeout(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    it("should fallback to other relays if the preferred one does not respond correctly", async function () {
+        let rc = new RelayClient(web3)
+        let orig_httpSend = rc.httpSend
+        let httpSend = {
+            send: function (url, jsonRequestData, callback) {
+                if (!url.includes("relay")) {
+                    orig_httpSend(url, jsonRequestData, callback)
+                    return
+                }
+                if (counter == 0) {
+                    counter++
+                    setTimeout(callback(new Error("Test error"), null), 100)
+                }
+                else if (counter == 1) {
+                    counter++
+                    setTimeout(callback(null, JSON.stringify({})), 100)
+                }
+                else {
+                    let callback_wrap = function (e, r) {
+                        assert.equal(null, e)
+                        assert.equal(true, r.input.includes(message_hex))
+                        callback(e, r)
+                    }
+                    orig_httpSend.send(url, jsonRequestData, callback_wrap)
+                }
+            }
+        }
+        let mockServerHelper = {
+            getRelaysAdded: async function () {
+                await timeout(200)
+                return filteredRelays
+            },
+            newActiveRelayPinger: function () {
+                return {
+                    nextRelay: async function () {
+                        await timeout(200)
+                        return filteredRelays[counter]
+                    },
+                }
+            },
+            setHub: function(){}
+        }
+        let tbk = new RelayClient(web3, { serverHelper: mockServerHelper });
+        tbk.httpSend = httpSend
+        let res = await request(localhostOne+'/getaddr')
+        let relayServerAddress = JSON.parse(res.body).RelayServerAddress
+        let filteredRelays = [
+            { relayUrl: "localhost1", RelayServerAddress: accounts[10] },
+            { relayUrl: "localhost2", RelayServerAddress: accounts[10] },
+            { relayUrl: localhostOne, RelayServerAddress: relayServerAddress }
+        ]
+
+        var counter = 0
+
+        let message = "hello world"
+        let message_hex = "0b68656c6c6f20776f726c64"
+        let encoded = sr.contract.emitMessage.getData(message)
+
+        let options = {
+            from: gasLess,
+            to: sr.address,
+            txfee: 12,
+            gas_price: 3,
+            gas_limit: 1000000
+        }
+
+        let validTransaction = await tbk.relayTransaction(encoded, options);
+
+        // RelayClient did retry for 2 times
+        assert.equal(2, counter)
+
+        // The transaction was checked by internal logic of RelayClient (tested elsewhere) and deemed valid
+        assert.equal(32, validTransaction.hash(false).length)
+
+    })
 });

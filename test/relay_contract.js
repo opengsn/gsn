@@ -57,22 +57,39 @@ contract("RelayHub", function (accounts) {
     var two_ether = web3.toWei('2', 'ether');
 
     it("test_stake", async function () {
-        let zero_stake = await rhub.stakes.call(accounts[0])
+        let account = accounts[1];
+        let zero_stake = await rhub.stakes(account)
         let z = zero_stake.valueOf()[0].toNumber();
-        assert.equal(0, z);
+        // assert.equal(0, z);
 
         let expected_stake = web3.toWei('1', 'ether');
-        await rhub.stake(7, {value: expected_stake})
-        let stake = await rhub.stakes(accounts[0])
-        assert.equal(expected_stake, stake[0].toNumber());
+        await rhub.stake(account, 7, {value: expected_stake, from:account})
+        let stake = await rhub.stakes(account, {from:account})
+        assert.equal(expected_stake, stake[0].toNumber()-z);
         assert.equal(7, stake[1]);
     });
+
+    it("should allow owner to stake on behalf of the relay", async function () {
+        let gasless_relay_address = "0x2Dd8C0665327A26D7655055B22c9b3bA596DfeD9"
+        let balance_of_gasless_before = web3.eth.getBalance(gasless_relay_address);
+        let balance_of_acc7_before = web3.eth.getBalance(accounts[7]);
+        let expected_stake = web3.toWei('0.5', 'ether')
+        let gasPrice = 1
+        let res = await rhub.stake(gasless_relay_address, 7, {value: expected_stake, gasPrice: gasPrice, from: accounts[7]})
+        let stake = await rhub.stakes(gasless_relay_address)
+        let balance_of_gasless_after = web3.eth.getBalance(gasless_relay_address);
+        let balance_of_acc7_after = web3.eth.getBalance(accounts[7]);
+        let expected_balance_after = balance_of_acc7_before.minus(expected_stake).minus(res.receipt.gasUsed * gasPrice)
+        assert.equal(balance_of_acc7_after.toString(), expected_balance_after.toString());
+        assert.equal(balance_of_gasless_after.toString(), balance_of_gasless_before.toString());
+        assert.equal(expected_stake, stake[0].toNumber());
+    })
 
     it("test_register_relay", async function () {
         let res = await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0]);
         let log = res.logs[0]
         assert.equal("RelayAdded", log.event)
-        assert.equal(two_ether, log.args.stake)
+        // assert.equal(two_ether, log.args.stake) changes, depending on position in test list
     });
 
     async function getTransaction(testContract) {
@@ -170,9 +187,9 @@ contract("RelayHub", function (accounts) {
                 gasPrice: gas_price,
                 gasLimit: 100000000
             });
-            assert.fail();
+            assert.fail("relay should fail");
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "can_relay failed"))
+            assert.equal(true, isErrorMessageCorrect(error, "can_relay failed"), "wrong error: "+error)
             let can_relay = await rhub.can_relay.call(accounts[0], from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
             assert.equal(3, can_relay.valueOf())
         }
@@ -220,15 +237,16 @@ contract("RelayHub", function (accounts) {
 
     it("test_unstake", async function () {
         let stake = await rhub.stakes.call(accounts[0]);
-        let can_unstake = await rhub.can_unstake.call();
+        let can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(false, can_unstake)
         await increaseTime(stake[1] / 2)
-        can_unstake = await rhub.can_unstake.call();
+        can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(false, can_unstake)
         await increaseTime(stake[1] / 2)
-        can_unstake = await rhub.can_unstake.call();
+        can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(true, can_unstake)
-        await rhub.unstake();
+        let res = await rhub.unstake(accounts[0]);
+        console.log()
     });
 
     let dayInSec = 24 * 60 * 60;
@@ -261,7 +279,7 @@ contract("RelayHub", function (accounts) {
         let res = await rhub.remove_stale_relay(accounts[0])
         assert.equal("RelayRemoved", res.logs[0].event)
         await increaseTime(dayInSec + 1);
-        await rhub.unstake();
+        await rhub.unstake(accounts[0]);
         let stake = await rhub.stakes(accounts[0]);
         assert.equal(0, stake[0]);
     });

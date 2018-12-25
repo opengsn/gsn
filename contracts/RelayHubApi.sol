@@ -22,5 +22,8 @@ contract  RelayHubApi {
     
     function depositFor(address target) public payable;
     function balanceOf(address target) external view returns (uint256);
+
+    function stake(address relayaddr, uint unstake_delay) external payable;
+    function stakeOf(address relayaddr) external view returns (uint256);
 }
 
