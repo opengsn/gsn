@@ -427,8 +427,8 @@ contract("RelayHub", function (accounts) {
             await rhub.deposit({ value: 1 })
             relay_recepient_balance_before = await rhub.balances(sr.address)
             let relay_balance_before = web3.eth.getBalance(accounts[0]);
-            let r = await rhub.relays(accounts[0])
-            let owner = r[0]
+            let r = await rhub.stakes(accounts[0])
+            let owner = r[3]
 
             let relay_owner_hub_balance_before = await rhub.balances(owner)
 
