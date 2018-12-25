@@ -143,7 +143,6 @@ contract RelayHub is RelayHubApi {
 
     function remove_relay_internal(address relay) internal {
         delete relays[relay];
-        relays[relay].timestamp = 0;
         stakes[relay].unstake_time = stakes[relay].unstake_delay + now;   // Start the unstake counter
         stakes[relay].removed = true;
         emit RelayRemoved(relay, stakes[relay].unstake_time);
@@ -262,7 +261,6 @@ contract RelayHub is RelayHubApi {
         require(!stakes[addr1].removed, "Relay already penalized");
         // compensating the sender with the stake of the relay
         uint amount = stakes[addr1].stake;
-//        msg.sender.transfer(amount);
         // move ownership of relay
         stakes[addr1].owner = msg.sender;
         emit Penalized(addr1, msg.sender, amount);
