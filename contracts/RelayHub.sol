@@ -14,7 +14,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant low_ether = 1 ether;    // XXX TBD - relay still works, but owner should be notified to fund the relay soon.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant gas_overhead = 20000;  // XXX TBD - calculate the total gas overhead of relay(), before the first gasleft() and after the last gasleft().  Fairly small.
+    uint constant gas_overhead = 47135;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
