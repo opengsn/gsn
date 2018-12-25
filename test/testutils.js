@@ -23,7 +23,7 @@ module.exports = {
         let args = []
         args.push( "-Workdir", "./build/server" )
         if ( rhub ) {
-            args = ["-RelayHubAddress", rhub.address]
+            args.push("-RelayHubAddress", rhub.address)
         }
 
         let proc = child_process.spawn(server, args)

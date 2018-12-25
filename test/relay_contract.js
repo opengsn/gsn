@@ -13,6 +13,7 @@ const getTransactionHash = utils.getTransactionHash;
 const rlp = require('rlp');
 
 const ethJsTx = require('ethereumjs-tx');
+const BigNumber = require('bignumber.js');
 
 const message = "hello world";
 
@@ -54,7 +55,6 @@ contract("RelayHub", function (accounts) {
 
     var real_sender = accounts[0];
     var one_ether = web3.toWei('1', 'ether');
-    var two_ether = web3.toWei('2', 'ether');
 
     it("test_stake", async function () {
         let account = accounts[1];
@@ -415,4 +415,62 @@ contract("RelayHub", function (accounts) {
         }
     });
 
+    [0, 1, 3, 5, 10, 50, 100, 200].forEach(requested_fee => {
+        it("should compensate relay with requested fee of " + requested_fee + "%", async function () {
+            let relay_recepient_balance_before = await rhub.balances(sr.address)
+            if (relay_recepient_balance_before.equals(0)){
+                let deposit = 100000000;
+                await sr.deposit({ value: deposit });
+            }
+            // This is required to initialize rhub's balances[acc[0]] value
+            // If it is not set, the transacion will cost 15'000 gas more then expected by 'gas_overhead'
+            await rhub.deposit({ value: 1 })
+            relay_recepient_balance_before = await rhub.balances(sr.address)
+            let relay_balance_before = web3.eth.getBalance(accounts[0]);
+            let r = await rhub.relays(accounts[0])
+            let owner = r[0]
+
+            let relay_owner_hub_balance_before = await rhub.balances(owner)
+
+
+            let digest = await getTransactionHash(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
+            let sig = await getTransactionSignature(accounts[0], digest)
+            let res = await rhub.relay(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig, {
+                from: accounts[0],
+                gasPrice: gas_price,
+                gasLimit: 100000000
+            });
+            relay_nonce++;
+
+
+            let relay_owner_hub_balance_after = await rhub.balances(owner)
+            let relay_balance_after = web3.eth.getBalance(accounts[0])
+
+            // What is the factor relay is expecting to get paid by. I.e. for 10% it is '1.1'; For 200% it is '3.0'
+            let requested_coeff = new BigNumber(requested_fee).dividedBy(100).plus(1).toPrecision(3, BigNumber.ROUND_HALF_UP)
+
+            // Calculate the actual factor. Rounding is expected. 
+            let revenue = relay_owner_hub_balance_after.minus(relay_owner_hub_balance_before)
+            let expenses = relay_balance_before.minus(relay_balance_after)
+            let received_coeff = revenue.dividedBy(expenses)
+            // I don't know how does rounding work for BigNumber, but it seems to be broken to me
+            if (received_coeff.lessThan(1))
+            {
+                received_coeff = received_coeff.toPrecision(2, BigNumber.ROUND_HALF_UP)
+            }
+            else {
+                received_coeff = received_coeff.toPrecision(3, BigNumber.ROUND_HALF_UP)
+            }
+            assert.equal(requested_coeff, received_coeff)
+
+            // Check that relay did pay it's gas fee on itslef.
+            let expected_balance_after = relay_balance_before.minus(res.receipt.gasUsed * gas_price)
+            assert.equal(expected_balance_after.toString(), relay_balance_after.toString())
+
+            // Check that relay's revenue is deducted from recepient's stake.
+            let relay_recepient_balance_after = await rhub.balances(sr.address)
+            let expected_recepient_balance = relay_recepient_balance_before.minus(revenue)
+            assert.equal(expected_recepient_balance.toString(), relay_recepient_balance_after.toString())
+        });
+    })
 });
