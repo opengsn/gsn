@@ -125,7 +125,7 @@ contract RelayHub is RelayHubApi {
         emit Unstaked(relay, amount);
     }
 
-    function register_relay(address owner, uint transaction_fee, string url, address optional_relay_removal) public lock_stake {
+    function register_relay(uint transaction_fee, string url, address optional_relay_removal) public lock_stake {
         // Anyone with a stake can register a relay.  Apps choose relays by their transaction fee, stake size and unstake delay, optionally crossed against a blacklist.  Apps verify the relay's action in realtime.
         require(msg.sender.balance >= minimum_relay_balance);
         if (msg.sender.balance < low_ether) {
