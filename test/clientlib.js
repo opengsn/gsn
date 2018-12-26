@@ -86,7 +86,7 @@ contract('RelayClient', function (accounts) {
         let tbk = new RelayClient(web3, relay_client_config);
 
         let validTransaction = await tbk.relayTransaction(encoded, options);
-        let txhash = "0x" + validTransaction.hash(false).toString('hex');
+        let txhash = "0x" + validTransaction.hash(true).toString('hex');
         let res
         do {
             res = await web3.eth.getTransactionReceipt(txhash)
@@ -272,7 +272,7 @@ contract('RelayClient', function (accounts) {
         assert.equal(2, counter)
 
         // The transaction was checked by internal logic of RelayClient (tested elsewhere) and deemed valid
-        assert.equal(32, validTransaction.hash(false).length)
+        assert.equal(32, validTransaction.hash(true).length)
 
     })
 

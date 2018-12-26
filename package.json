@@ -39,14 +39,14 @@
     "web": "./restart-relay.sh web"
   },
   "devDependencies": {
-    "truffle-core": "^4.1.14",
-    "ganache-cli": "^6.2.3",
-    "run-with-testrpc": "^0.3.0",
-    "eth-crypto": "^1.2.7",
-    "web3": "0.20.6",
+    "browser-request": "^0.3.3",
     "eslint": "^5.9.0",
+    "eth-crypto": "^1.2.7",
+    "ganache-cli": "^6.2.5",
+    "run-with-testrpc": "^0.3.0",
     "truffle": "^4.1.14",
-    "browser-request": "^0.3.3"
+    "truffle-core": "^4.1.14",
+    "web3": "0.20.6"
   },
   "main": "src/js/relayclient/relayclient.js",
   "description": "Tabookey Gasless Relay Framework"
