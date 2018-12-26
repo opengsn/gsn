@@ -6,12 +6,14 @@ const testutils = require('./testutils')
 const utils = require('../src/js/relayclient/utils')
 
 const register_new_relay = testutils.register_new_relay;
+const register_new_relay_with_privkey = testutils.register_new_relay_with_privkey;
 const increaseTime = testutils.increaseTime;
 const waitAllContractEventGet = utils.waitAllContractEventGet;
 const getTransactionSignature = utils.getTransactionSignature;
 const getTransactionHash = utils.getTransactionHash;
 const rlp = require('rlp');
 
+const ethUtils = require('ethereumjs-util');
 const ethJsTx = require('ethereumjs-tx');
 const BigNumber = require('bignumber.js');
 
@@ -180,6 +182,7 @@ contract("RelayHub", function (accounts) {
     it("should not accept relay requests if destination recepient doesn't approve it", async function () {
         let from = accounts[6];
         let relay_nonce = 0;
+        await sr.set_blacklisted(from)
         let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
         let sig = await getTransactionSignature(from, digest)
         try {
@@ -312,8 +315,9 @@ contract("RelayHub", function (accounts) {
     }
 
     it("should penalize relay for signing two distinct transactions with the same nonce", async function () {
-        await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0]);
-        let stake = await rhub.stakes(accounts[0]);
+        let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
+        await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
+        let stake = await rhub.stakes(address);
         assert.equal(one_ether, stake[0].toNumber());
 
         data1 = rhub.contract.relay.getData(1, 1, 1, 1, 1, 1, 1, 1);
@@ -351,10 +355,10 @@ contract("RelayHub", function (accounts) {
             gasLimit: 100000000
         });
         assert.equal("Penalized", res.logs[0].event)
-        assert.equal(accounts[0], res.logs[0].args.relay)
+        assert.equal(address, res.logs[0].args.relay)
         assert.equal(snitching_account, res.logs[0].args.sender)
         increaseTime(dayInSec)
-        let res2 = await rhub.unstake(accounts[0],{from:snitching_account, gasPrice: gasPricePenalize,gasLimit: 100000000})
+        let res2 = await rhub.unstake(address,{from:snitching_account, gasPrice: gasPricePenalize,gasLimit: 100000000})
 
         let balance_of_acc7 = web3.eth.getBalance(snitching_account);
         let expected_balance_after_penalize = snitching_account_initial_balance.plus(stake[0]).minus(res.receipt.gasUsed * gasPricePenalize).minus(res2.receipt.gasUsed * gasPricePenalize)

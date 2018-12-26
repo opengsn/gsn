@@ -247,8 +247,8 @@ contract('RelayClient', function (accounts) {
         let res = await request(localhostOne+'/getaddr')
         let relayServerAddress = JSON.parse(res.body).RelayServerAddress
         let filteredRelays = [
-            { relayUrl: "localhost1", RelayServerAddress: accounts[10] },
-            { relayUrl: "localhost2", RelayServerAddress: accounts[10] },
+            { relayUrl: "localhost1", RelayServerAddress: "0x1" },
+            { relayUrl: "localhost2", RelayServerAddress: "0x2" },
             { relayUrl: localhostOne, RelayServerAddress: relayServerAddress }
         ]
 

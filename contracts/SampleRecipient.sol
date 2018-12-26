@@ -38,7 +38,11 @@ contract SampleRecipient is RelayRecipient {
         relays_whitelist[relay] = on;
     }
 
-    address constant blacklisted = 0x3E5e9111Ae8eB78Fe1CC3bb8915d5D461F3Ef9A9;
+    address public blacklisted;
+
+    function set_blacklisted(address addr) public {
+        blacklisted = addr;
+    }
 
     function may_relay(address relay, address from, bytes /* transaction */) public view returns(uint32) {
         // The factory accepts relayed transactions from anyone, so we whitelist our own relays to prevent abuse.

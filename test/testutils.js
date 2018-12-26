@@ -5,6 +5,8 @@ const util = require("util")
 const HttpWrapper = require( "../src/js/relayclient/HttpWrapper")
 const localhostOne = "http://localhost:8090"
 const RelayHub = artifacts.require("RelayHub");
+const ethUtils = require('ethereumjs-util');
+const ethJsTx = require('ethereumjs-tx');
 const addPastEvents = require( '../src/js/relayclient/addPastEvents' )
 addPastEvents(RelayHub)
 
@@ -88,6 +90,40 @@ module.exports = {
     register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
         await relayHub.stake(account, delay, {from: account, value: stake})
         return await relayHub.register_relay(txFee, url, 0, {from: account})
+    },
+
+    register_new_relay_with_privkey: async function (relayHub, stake, delay, txFee, url, account, web3, privKey) {
+        let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
+        await relayHub.stake(address, delay, {from: account, value: stake})
+        await web3.eth.sendTransaction({to: address, from: account, value: web3.toWei("1", "ether")})
+        let nonce = web3.eth.getTransactionCount(address)
+        // let stake_data = relayHub.contract.stake.getData(account, delay)
+        // , {from: account, value: stake})
+        let register_data = relayHub.contract.register_relay.getData(txFee, url, 0)
+        //  {from: account})
+        let validTransaction = new ethJsTx({
+            nonce: nonce,
+            gasPrice: 1,
+            gasLimit: 1000000,
+            to: relayHub.address,
+            value: 0,
+            data: register_data,
+        });
+        validTransaction.sign(privKey)
+        var raw_tx = '0x' + validTransaction.serialize().toString('hex');
+
+        let promise = new Promise((resolve,reject) => {
+            web3.eth.sendRawTransaction(raw_tx, (err, res) => {
+                if (err) {
+                    reject(err)
+                }
+                else {
+                    resolve(res)
+                }
+            })
+        })
+        let res = await promise
+        console.log(res)
     },
 
     increaseTime: function (time) {
