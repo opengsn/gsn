@@ -155,7 +155,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       }
 
       var raw_tx = '0x' + validTransaction.serialize().toString('hex');
-      let txHash = "0x" + validTransaction.hash(false).toString('hex')
+      let txHash = "0x" + validTransaction.hash(true).toString('hex')
       console.log("txHash= " + txHash);
       self.broadcastRawTx(raw_tx, txHash);
       resolve(validTransaction);
@@ -334,8 +334,7 @@ RelayClient.prototype.runRelay = function (payload, callback) {
             if (relayClientOptions.verbose)
                 console.log("RR response: ", payload.id, validTransaction)
 
-            validTransaction.chainId = 1
-            var hash = "0x" + validTransaction.hash(false).toString('hex')
+            var hash = "0x" + validTransaction.hash(true).toString('hex')
             callback(null, {jsonrpc: '2.0', id: payload.id, result: hash})
         })
         .catch(err => {
