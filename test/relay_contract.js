@@ -44,6 +44,7 @@ contract("RelayHub", function (accounts) {
     let transaction;
     let sig;
     let digest;
+    let gas_limit_any_value = 8000029
 
     before(async function () {
         rhub = await RelayHub.deployed();
@@ -135,7 +136,7 @@ contract("RelayHub", function (accounts) {
     it("test_perform_relay_send_message", async function () {
         let result = await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
             gasPrice: gas_price,
-            gasLimit: 100000000
+            gasLimit: gas_limit_any_value
         });
         relay_nonce++;
         var log_relayed = result.logs[0];
@@ -159,7 +160,7 @@ contract("RelayHub", function (accounts) {
             await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: accounts[6],
                 gasPrice: gas_price,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             assert.fail();
         } catch (error) {
@@ -171,7 +172,7 @@ contract("RelayHub", function (accounts) {
         try {
             await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 gasPrice: gas_price - 1,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             assert.fail();
         } catch (error) {
@@ -188,7 +189,7 @@ contract("RelayHub", function (accounts) {
         try {
             await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 gasPrice: gas_price,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             assert.fail("relay should fail");
         } catch (error) {
@@ -217,7 +218,7 @@ contract("RelayHub", function (accounts) {
         try {
             await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 gasPrice: gas_price,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             assert.fail();
         } catch (error) {
@@ -289,7 +290,6 @@ contract("RelayHub", function (accounts) {
 
     let nonce_any_value = 4;
     let gas_price_any_value = 4;
-    let gas_limit_any_value = 100000000;
     let tx_value_any_value = 0;
     let gasPricePenalize = 5;
 
@@ -352,13 +352,13 @@ contract("RelayHub", function (accounts) {
         let res = await rhub.penalize_repeated_nonce(unsignedTransaction1Encoded, sig1, unsignedTransaction2Encoded, sig2, {
             from: snitching_account,
             gasPrice: gasPricePenalize,
-            gasLimit: 100000000
+            gasLimit: gas_limit_any_value
         });
         assert.equal("Penalized", res.logs[0].event)
         assert.equal(address, res.logs[0].args.relay)
         assert.equal(snitching_account, res.logs[0].args.sender)
         increaseTime(dayInSec)
-        let res2 = await rhub.unstake(address,{from:snitching_account, gasPrice: gasPricePenalize,gasLimit: 100000000})
+        let res2 = await rhub.unstake(address,{from:snitching_account, gasPrice: gasPricePenalize,gasLimit: gas_limit_any_value})
 
         let balance_of_acc7 = web3.eth.getBalance(snitching_account);
         let expected_balance_after_penalize = snitching_account_initial_balance.plus(stake[0]).minus(res.receipt.gasUsed * gasPricePenalize).minus(res2.receipt.gasUsed * gasPricePenalize)
@@ -375,7 +375,7 @@ contract("RelayHub", function (accounts) {
             await rhub.penalize_repeated_nonce(unsignedTransaction1Encoded, sig1, unsignedTransaction1Encoded, sig1, {
                 from: snitching_account,
                 gasPrice: gasPricePenalize,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             assert.fail()
         } catch (error) {
@@ -394,7 +394,7 @@ contract("RelayHub", function (accounts) {
             await rhub.penalize_repeated_nonce(unsignedTransaction1Encoded, sig1, unsignedTransaction2Encoded_nextNonce, sig2_nextNonce, {
                 from: snitching_account,
                 gasPrice: gasPricePenalize,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             assert.fail()
         } catch (error) {
@@ -411,7 +411,7 @@ contract("RelayHub", function (accounts) {
             await rhub.penalize_repeated_nonce(unsignedTransaction1Encoded, sig1, unsignedTransaction2Encoded, sig2_fromAccountSix, {
                 from: snitching_account,
                 gasPrice: gasPricePenalize,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             assert.fail()
         } catch (error) {
@@ -442,7 +442,7 @@ contract("RelayHub", function (accounts) {
             let res = await rhub.relay(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: accounts[0],
                 gasPrice: gas_price,
-                gasLimit: 100000000
+                gasLimit: gas_limit_any_value
             });
             relay_nonce++;
 

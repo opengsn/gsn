@@ -43,7 +43,8 @@ options.forEach(params => {
                     delay: 3600,
                     txfee: 12,
                     url: "asd",
-                    relayOwner: accounts[0]
+                    relayOwner: accounts[0],
+                    EthereumNodeUrl: web3.currentProvider.host
                 })
                 console.log("relay started")
                 from = gasless
