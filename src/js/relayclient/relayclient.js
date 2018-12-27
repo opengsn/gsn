@@ -300,7 +300,7 @@ function hookTransactionReceipt(orig_getTransactionReceipt) {
                 if ( res && res.logs ) {
                     let logs = abi_decoder.decodeLogs(res.logs)
                     relayed = logs.find(e => e && e.name == 'TransactionRelayed')
-                    if (relayed && relayed.events.find(e => e.name == "ret").value === false) {
+                    if (relayed && relayed.events.find(e => e.name == "success").value === false) {
                         console.log("log=" + relayed + " changing status to zero")
                         res.status = 0
                     }

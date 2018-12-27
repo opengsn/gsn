@@ -56,7 +56,7 @@ contract KnownUsersRecipient is RelayRecipient {
     /**
      * validate caller is an admin or a user.
      */
-    function may_relay(address /*relay*/, address from, bytes /* transaction */) public view returns(uint32) {
+    function accept_relayed_call(address /*relay*/, address from, bytes /* encoded_function */) public view returns(uint32) {
 
         if ( isUser(from) || isAdmin(from) ) return 0;
 

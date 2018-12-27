@@ -12,7 +12,7 @@ contract  RelayHubApi {
     event RelayAdded(address relay, uint transactionFee, uint stake, uint unstakeDelay, string url);  // relay not indexed, that's how apps learn of new relays
     event RelayRemoved(address indexed relay, uint unstake_time);  // relay is indexed, as apps need to watch for removal of relays in their pool.
     event NeedsFunding(address indexed relay);
-    event TransactionRelayed(address indexed relay, bytes32 indexed hash, address from, bool ret, uint charge);
+    event TransactionRelayed(address indexed relay, bytes32 indexed hash, address from, bool success, uint charge);
     event Deposited(address src, uint amount);
     event Withdrawn(address dest, uint amount);
     event Penalized(address relay, address sender, uint amount);
