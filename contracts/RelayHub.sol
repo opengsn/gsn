@@ -84,6 +84,11 @@ contract RelayHub is RelayHubApi {
         return stakes[relay].stake;
     }
 
+    function ownerOf(address relayaddr) external view returns (address) {
+        return stakes[relayaddr].owner;
+    }
+
+
     function withdraw(uint amount) public {
         require(balances[msg.sender] >= amount, "insufficient funds");
         balances[msg.sender] -= amount;

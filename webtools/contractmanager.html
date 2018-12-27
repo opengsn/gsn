@@ -1,0 +1,31 @@
+<body onload="onload()">
+
+<script src="tabookey-webtools.pack.js"></script>
+<script>
+    var CMgr
+</script>
+
+<h1>Contract (Relay Recipient) Manager</h1>
+
+Make sure your contract has enough funds deposited to the RelayHub, so it will be able to pay for relayed calls.<br>
+
+<div id="dataform">
+Relay Recipient Contract: <input id="addr" size="60" onchange="CMgr.checkBalance(value); CMgr.saveForm(dataform)">
+    <input type="submit" value="recheck" onclick="CMgr.checkBalance(addr.value)">
+<br>
+Deposit: <input id="eth" value="0.1" onchange="CMgr.saveForm(dataform)"> eth<br>
+
+<input type="submit" value="Deposit" onclick="CMgr.depositFor(addr.value, eth.value)">
+</div>
+
+<hr>
+
+<div id="logpanel"></div>
+
+<script>
+    function onload() {
+        CMgr = new webtools.ContractManager()
+        CMgr.loadForm(dataform)
+    }
+</script>
+</body>

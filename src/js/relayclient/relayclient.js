@@ -253,7 +253,6 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
 
     let signature
     if (typeof self.ephemeralKeypair === "object" && self.ephemeralKeypair !== null) {
-      console.log("=== using ephemeralKeypair")
       signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash);
     } else {
       signature = await getTransactionSignature(options.from, hash);
