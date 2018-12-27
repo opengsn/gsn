@@ -9,7 +9,7 @@ class ActiveRelayPinger {
         this.remainingRelays = filteredRelays.slice()
         this.httpSend = httpSend
         this.pingedRelays = 0
-        this.relaysCount = filteredRelays.size
+        this.relaysCount = filteredRelays.length
     }
 
     /**

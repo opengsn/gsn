@@ -24,6 +24,17 @@
             "args": [
                 "test"
             ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "ROPSTEN Truffle Test",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/node_modules/truffle-core/cli.js",
+            "args": [
+                "test",
+                "--network", "ropsten"
+            ]
         }
     ]
 }

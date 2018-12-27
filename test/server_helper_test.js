@@ -21,7 +21,7 @@ contract('ServerHelper', function (accounts) {
         rhub = await RelayHub.deployed()
         relayproc = await testutils.startRelay(rhub, {
             verbose: process.env.relaylog,
-            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0]})
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host})
         await postRelayHubAddress(rhub.address, localhostOne)
         serverHelper.setHub(RelayHub, rhub)
     })
