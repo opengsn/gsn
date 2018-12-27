@@ -36,7 +36,7 @@
     "web3-utils": "^1.0.0-beta.36"
   },
   "scripts": {
-    "test": "make -C server/ && run-with-testrpc 'truffle test' ",
+    "test": "make && run-with-testrpc -l 8000000 'truffle test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js &&http-server webtools/ -o",
     "lint": "eslint ./src ./test -f unix",

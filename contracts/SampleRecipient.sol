@@ -44,13 +44,19 @@ contract SampleRecipient is RelayRecipient {
         blacklisted = addr;
     }
 
-    function may_relay(address relay, address from, bytes /* transaction */) public view returns(uint32) {
+    function accept_relayed_call(address relay, address from, bytes /* encoded_function */) public view returns(uint32) {
         // The factory accepts relayed transactions from anyone, so we whitelist our own relays to prevent abuse.
         // This protection only makes sense for contracts accepting anonymous calls, and therefore not used by Gatekeeper or Multisig.
         // May be protected by a user_credits map managed by a captcha-protected web app or association with a google account.
         if ( relays_whitelist[relay] ) return 0;
         if (from == blacklisted) return 3;
 		return 0;
+    }
+
+    event SampleRecipientPostCall(uint used_gas );
+    function post_relayed_call(address /*relay*/ , address /* from */, bytes /* encoded_function */, bool /* success */, uint used_gas ) external {
+        //do something, just to verify it gets called.
+        emit SampleRecipientPostCall(used_gas);
     }
 
 }

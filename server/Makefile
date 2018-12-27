@@ -20,6 +20,7 @@ go-get: $(GEN_FILE) $(ETHFILE)
 $(ETHFILE): Makefile
 	@echo "Downloading the ethereum library.  Might take a few minutes."
 	go get -v -d ./...
+	touch $(ETHFILE)
 
 gen-file: $(GEN_FILE) Makefile
 

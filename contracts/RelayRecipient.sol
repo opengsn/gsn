@@ -4,7 +4,7 @@ pragma solidity ^0.4.18;
 //
 // The recipient contract is responsible to:
 // * pass a trusted RelayHub singleton to the constructor.
-// * Implement may_relay, which acts as a whitelist/blacklist of senders.  It is advised that the recipient's owner will be able to update that list to remove abusers.
+// * Implement accept_relayed_call, which acts as a whitelist/blacklist of senders.  It is advised that the recipient's owner will be able to update that list to remove abusers.
 // * In every function that cares about the sender, use "address sender = get_sender()" instead of msg.sender.  It'll return msg.sender for non-relayed transactions, or the real sender in case of relayed transactions.
 
 import "./RelayRecipientApi.sol";
@@ -65,20 +65,29 @@ contract RelayRecipient is RelayRecipientApi {
         return orig_msg_data;
     }
 
-	//Contract must inherit and re-implement this method.
-	// return "0" if the the contract is willing to accept the charges from this sender, for this transaction.
-	// 	any other value is a failure. actual value is for diagnostics only.
-	//  values below 10 are reserved by can_relay
-	// @param relay the relay that attempts to relay this function call. 
-	//			the contract may restrict some encoded functions to specific known relays.
-	// @param from the sender (signer) of this function call. 
-	// @param encoded_function the encoded function call (without any signature). 
-	//			the contract may check the method signature for valid methods
-    function may_relay(address /* relay */, address from, bytes /* encoded_function */) public view returns(uint32) {
-        // Inherited and implemented by the recipient contract.  Returns 0 if it's willing to accept the charges of this sender, for that transaction.
-		// any other value is failure
-        require(msg.sender != from); // Just to prevent a warning
-        return 99;
+    /*
+	 * Contract must inherit and re-implement this method.
+	 *  @return "0" if the the contract is willing to accept the charges from this sender, for this function call.
+	 *  	any other value is a failure. actual value is for diagnostics only.
+	 *   values below 10 are reserved by can_relay
+	 *  @param relay the relay that attempts to relay this function call.
+	 * 			the contract may restrict some encoded functions to specific known relays.
+	 *  @param from the sender (signer) of this function call.
+	 *  @param encoded_function the encoded function call (without any ethereum signature).
+	 * 			the contract may check the method-id for valid methods
+	 */
+    function accept_relayed_call(address relay, address from, bytes encoded_function ) public view returns(uint32);
+
+    /**
+     * This method is called after the relayed call.
+     * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
+     * the method is given all parameters of accept_relayed_call, and also the success/failure status and actual used gas.
+     * - success - true if the relayed call succeeded, false if it reverted
+     * - used_gas - gas used by the relayed call. Note that for gas compensation calculation, the gas used by
+     *   the post_relayed_call() is also taken into account.
+     */
+    function post_relayed_call(address /*relay*/ , address /* from */, bytes /* encoded_function */, bool /* success */, uint /* used_gas */ ) external {
+        if (false) place_holder=place_holder;
     }
 
     function bytesToAddress(bytes b) private pure returns (address addr) {

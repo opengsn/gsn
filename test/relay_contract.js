@@ -134,6 +134,9 @@ contract("RelayHub", function (accounts) {
     // Relay is allowed to retry the SAME tx with a higher gas_price without being Penalized.
     // Need to create test for such flow.
     it("test_perform_relay_send_message", async function () {
+
+        let startBlock=web3.eth.blockNumber
+
         let result = await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
@@ -142,9 +145,9 @@ contract("RelayHub", function (accounts) {
         var log_relayed = result.logs[0];
         var args_relayed = log_relayed.args;
         assert.equal("TransactionRelayed", log_relayed.event);
-        assert.equal(true, args_relayed.ret)
+        assert.equal(true, args_relayed.success)
         var logs_messages = await waitAllContractEventGet(sr.contract.SampleRecipientEmitted({}, {
-            fromBlock: 0,
+            fromBlock: startBlock,
             toBlock: 'latest'
         }));
         assert.equal(1, logs_messages.length)
@@ -152,6 +155,14 @@ contract("RelayHub", function (accounts) {
         var args_message = log_message.args;
         assert.equal("SampleRecipientEmitted", log_message.event);
         assert.equal(message, args_message.message);
+
+        var postevent = await waitAllContractEventGet(sr.contract.SampleRecipientPostCall({}, {
+            fromBlock: startBlock,
+            toBlock: 'latest'
+        }))
+        assert.equal("SampleRecipientPostCall", postevent[0].event)
+        assert.notEqual(0, postevent[0].args.used_gas)
+
     });
     it("should not accept relay requests from unknown addresses", async function () {
         digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);

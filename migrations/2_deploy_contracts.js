@@ -10,6 +10,6 @@ module.exports = function(deployer) {
 		return deployer.deploy(SampleRecipient, RelayHub.address);
 	});
 	deployer.link(RelayHub, RelayRecepient);
-	deployer.deploy(RelayRecepient);
+	// deployer.deploy(RelayRecepient);
 	deployer.link(RelayHub, SampleRecipient);
 };

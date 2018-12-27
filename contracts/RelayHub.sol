@@ -176,10 +176,10 @@ contract RelayHub is RelayHubApi {
     }
 
 	//check if the Hub can accept this relayed operation.
-	// it validates the caller's signature and nonce, and then delegates to the destination's may_relay
+	// it validates the caller's signature and nonce, and then delegates to the destination's accept_relayed_call
 	// for contract-specific checks.
 	// returns "0" if the relay is valid. other values represent errors.
-	// values 1..10 are reserved for can_relay. other values can be used by may_relay of target contracts.
+	// values 1..10 are reserved for can_relay. other values can be used by accept_relayed_call of target contracts.
     function can_relay(address relay, address from, RelayRecipient to, bytes transaction, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes sig) public view returns(uint32) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, transaction, transaction_fee, gas_price, gas_limit, nonce, address(this));
         bytes32 hashed_message = keccak256(abi.encodePacked(packed, relay));
@@ -189,7 +189,7 @@ contract RelayHub is RelayHubApi {
         if (nonces[from] != nonce)
             return 2;   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
-        return to.may_relay(relay, from, transaction); // Check to.may_relay, see if it agrees to accept the charges.
+        return to.accept_relayed_call(relay, from, transaction); // Check to.accept_relayed_call, see if it agrees to accept the charges.
     }
 
     function relay(address from, address to, bytes transaction_orig, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes sig) public {
@@ -208,11 +208,12 @@ contract RelayHub is RelayHubApi {
 
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
-        bool ret = executeCallWithGas(gas_limit, to, 0, transaction); // transaction must end with @from at this point
+        bool success = executeCallWithGas(gas_limit, to, 0, transaction); // transaction must end with @from at this point
         nonces[from]++;
+        RelayRecipient(to).post_relayed_call(msg.sender, from, transaction_orig, success, (gas_overhead+initial_gas-gasleft()) );
         // Relay transaction_fee is in %.  E.g. if transaction_fee=50, token payment will be equivalent to used_gas*(100+transaction_fee)*gas_price = used_gas*150*gas_price.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
-        emit TransactionRelayed(msg.sender, keccak256(transaction), from, ret, charge);
+        emit TransactionRelayed(msg.sender, keccak256(transaction), from, success, charge);
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[stakes[msg.sender].owner] += charge;
@@ -289,5 +290,4 @@ contract RelayHub is RelayHubApi {
         }
     }
 
- }
-
+}
