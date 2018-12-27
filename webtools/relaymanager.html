@@ -1,0 +1,57 @@
+<body onload="onload()">
+
+<script src="tabookey-webtools.pack.js"> </script>
+<script>
+    var RMgr
+
+    function onload() {
+        RMgr = new webtools.RelayManager()
+        RMgr.loadForm(dataform)
+        RMgr.saveHubAndOwner(hubaddr.value, owner.value)
+    }
+</script>
+<h1>Relay Owner Tool</h1>
+
+This is a web tool for a relay manager.<br>
+With this tool you can put funds into the relay, so it can serve requests:
+
+<ol>
+    <li/> Specify the hub you're using
+    <li/> Specify the MetaMask account to use (0 is the default account)
+    <li/> Enter the URL to the relay to check
+    <li/> click "Check" to probe the relay, and check its current status
+    <li/> Enter the required stake and balance levels.
+    <li/> click <b>Apply</b>, to validate that the relay has that level of fund and stake.
+    <li/> If the relays level are enough, nothing will happen. if they are lower, the different will be added
+     (This is more relevant to balance, as it is used for the transaction gas)
+</ol>
+In the future, this tool will also allow deploying new relays, and show statistics.<br>
+<br>
+
+<div id="dataform">
+    Relay Hub: <input id="hubaddr" size="60" onchange="RMgr.saveHubAndOwner(hubaddr.value, owner.value); RMgr.saveForm(dataform)"> <br>
+
+    Owner account: <input id="owner" size="10" onchange="RMgr.saveHubAndOwner(hubaddr.value, owner.value); RMgr.saveForm(dataform)"> <br>
+
+    Relay url: <input id="relayurl" value="http://localhost:8090" size="60" onchange="RMgr.saveForm(dataform)">
+    <input type="submit" value="Check" id="check-relay" onclick="RMgr.checkRelay(relayurl.value)">
+    <br><br>
+    <table border="0"><tr>
+        <td>
+            Stake level:<input id="stake" size="20" value="0.1" onchange="RMgr.saveForm(dataform)">
+            time:<input id="staketime" size="20" value="30s" onchange="RMgr.saveForm(dataform)"><br>
+            Ether level:<input id="eth" size="20" value="0.1" onchange="RMgr.saveForm(dataform)"><br>
+        </td>
+        <td>
+            <input type="submit" value="Apply!" id="do-stake" onclick="RMgr.checkRelay(relayurl.value, eth.value, stake.value, staketime.value)">
+        </td>
+    </tr></table>
+</div>
+
+<br>
+<hr>
+
+<div id="logpanel">
+</div>
+
+</body>

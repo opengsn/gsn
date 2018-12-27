@@ -30,13 +30,16 @@
     "ethereumjs-tx": "^1.3.7",
     "ethereumjs-util": "^6.0.0",
     "ethereumjs-wallet": "^0.6.3",
+    "http-server": "^0.11.1",
     "promisify": "0.0.3",
     "truffle-hdwallet-provider": "^1.0.1",
     "web3-utils": "^1.0.0-beta.36"
   },
   "scripts": {
     "test": "make -C server/ && run-with-testrpc 'truffle test' ",
-    "lint": "eslint ./src ./test",
+    "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
+    "webtools": "webpack-cli --config ./webtools.webpack.js &&http-server webtools/ -o",
+    "lint": "eslint ./src ./test -f unix",
     "web": "./restart-relay.sh web"
   },
   "devDependencies": {

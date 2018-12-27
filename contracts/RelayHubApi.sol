@@ -25,5 +25,6 @@ contract  RelayHubApi {
 
     function stake(address relayaddr, uint unstake_delay) external payable;
     function stakeOf(address relayaddr) external view returns (uint256);
+    function ownerOf(address relayaddr) external view returns (address);
 }
 
