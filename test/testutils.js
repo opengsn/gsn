@@ -27,7 +27,9 @@ module.exports = {
         if ( rhub ) {
             args.push("-RelayHubAddress", rhub.address)
         }
-
+        if (options.EthereumNodeUrl) {
+            args.push("-EthereumNodeUrl", options.EthereumNodeUrl)
+        }
         let proc = child_process.spawn(server, args)
 
         let relaylog=function(){}

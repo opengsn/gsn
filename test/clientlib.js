@@ -18,7 +18,7 @@ const postRelayHubAddress = testutils.postRelayHubAddress;
 const util = require("util")
 const request = util.promisify(require("request"))
 
-
+var gasPrice = web3.eth.gasPrice.toNumber()
 contract('RelayClient', function (accounts) {
 
     let rhub;
@@ -30,8 +30,7 @@ contract('RelayClient', function (accounts) {
         rhub = await RelayHub.deployed()
         sr = await SampleRecipient.deployed()
 
-        let deposit = 100000000000;
-        await sr.deposit({value: deposit});
+        await sr.deposit({value: web3.toWei('1', 'ether')});
         // let known_deposit = await rhub.balances(sr.address);
         // assert.ok(known_deposit>= deposit, "deposited "+deposit+" but found only "+known_deposit);
         gasLess = await web3.personal.newAccount("password")
@@ -39,7 +38,7 @@ contract('RelayClient', function (accounts) {
         console.log("starting relay")
 
         relayproc = await testutils.startRelay(rhub, {
-            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0]})
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host})
 
     });
 
@@ -56,7 +55,7 @@ contract('RelayClient', function (accounts) {
         await sr.deposit({ value: added });
         let b2 = await relayclient.balanceOf(sr.address)
         console.log("balance after redeposit", b2.toNumber())
-        assert.equal(b2 - b1, added)
+        assert.equal(b2.minus(b1).toString(), added.toString())
 
     })
 
@@ -69,7 +68,6 @@ contract('RelayClient', function (accounts) {
 
     it("should send transaction to a relay and receive a response", async function () {
         let encoded = sr.contract.emitMessage.getData("hello world");
-        let gasPrice = 3;
         let to = sr.address;
         let options = {
             from: gasLess,
@@ -109,8 +107,8 @@ contract('RelayClient', function (accounts) {
             // relayAddress: relayAddress,
 
             txfee: 12,
-            force_gasPrice: 3,			//override requested gas price
-            force_gasLimit: 100000,		//override requested gas limit.
+            force_gasPrice: gasPrice,			//override requested gas price
+            force_gasLimit: 4000029,		//override requested gas limit.
         }
         let relayclient = new RelayClient(web3, relay_client_config);
 
@@ -136,7 +134,7 @@ contract('RelayClient', function (accounts) {
         let data1 = rhub.contract.relay.getData(1, 1, 1, 1, 1, 1, 1, 1);
         let transaction = new ethJsTx({
             nonce: 2,
-            gasPrice: 2,
+            gasPrice: gasPrice,
             gasLimit: 200000,
             to: sr.address,
             value: 0,
@@ -262,7 +260,7 @@ contract('RelayClient', function (accounts) {
             from: gasLess,
             to: sr.address,
             txfee: 12,
-            gas_price: 3,
+            gas_price: gasPrice,
             gas_limit: 1000000
         }
 
@@ -304,7 +302,6 @@ contract('RelayClient', function (accounts) {
             did_assert = true
         }
         let encoded = sr.contract.emitMessage.getData("hello world");
-        let gasPrice = 3;
         let to = sr.address;
         let options = {
             from: gasLess,
