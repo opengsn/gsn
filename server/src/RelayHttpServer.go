@@ -24,7 +24,7 @@ import (
 
 const DebugAPI = true
 
-var KEYSTORE_DIR = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
+var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 
 var ready = false
 var relay librelay.IRelay
@@ -257,7 +257,7 @@ func parseCommandLine() (relayParams RelayParams) {
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 
-	KEYSTORE_DIR = filepath.Join(*workdir, "keystore")
+	KeystoreDir = filepath.Join(*workdir, "keystore")
 
 	fmt.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
 	fmt.Println("Using workdir: " + *workdir)
@@ -279,7 +279,7 @@ func configRelay(relayParams RelayParams) {
 func loadPrivateKey() *ecdsa.PrivateKey {
 	// Init a keystore
 	ks := keystore.NewKeyStore(
-		KEYSTORE_DIR,
+		KeystoreDir,
 		keystore.LightScryptN,
 		keystore.LightScryptP)
 
@@ -287,7 +287,7 @@ func loadPrivateKey() *ecdsa.PrivateKey {
 	var account accounts.Account
 	var err error
 	log.Println("ks accounts len", len(ks.Accounts()))
-	if _, err = os.Stat(filepath.Join(KEYSTORE_DIR, "")); os.IsNotExist(err) {
+	if _, err = os.Stat(filepath.Join(KeystoreDir, "")); os.IsNotExist(err) {
 		account, err = ks.NewAccount("")
 		if err != nil {
 			log.Fatal(err)
