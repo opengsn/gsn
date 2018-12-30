@@ -29,7 +29,7 @@ contract AnonUsersRecipient is RelayRecipient {
     }
     /**
      */
-    function accept_relayed_call(address /*relay*/, address /*from*/, bytes function_call ) public view returns(uint32) {
+    function accept_relayed_call(address /*relay*/, address /*from*/, bytes function_call, uint /*gas_price*/, uint /*transaction_fee*/ ) external view returns(uint32) {
 
         //validate this is a method call we accept:
         for ( uint i=0; i<method_sig.length; i++ ) {
@@ -41,7 +41,7 @@ contract AnonUsersRecipient is RelayRecipient {
         return 0;
     }
 
-    function post_relayed_call(address /*relay*/, address /*from*/, bytes /*function_call*/, bool success, uint charge ) external {
+    function post_relayed_call(address /*relay*/, address /*from*/, bytes /*encoded_function*/, bool /*success*/, uint /*used_gas*/, uint /*transaction_fee*/ ) external {
 
         if ( block.timestamp - last_timestamp > 3600 ) {
             call_count = 0;

@@ -46,15 +46,16 @@ contract TokenRecipient is RelayRecipient {
         //user doesn't have enough tokens. reject request.
         if ( mytoken.balanceOf(from)<tx_price ) 
             return 10;
+        return 0;
+    }
+
+    function post_relayed_call(address /*relay*/, address from, bytes /*encoded_function*/, bool /*success*/, uint /*used_gas*/, uint /*transaction_fee*/ ) external {
 
         //failed to charge the user for tokens.
-        // (note that either the user (or the token contract itself) must approve this 
-        // contract to call transferFrom(), or
-        if ( !mytoken.transferFrom(from, token_holder, tx_price) )
-            return 11;
-
-        //succeeded charging the user. the transaction can take place.
-        return 0;
+        // (note that the user (or the token contract itself) must approve this 
+        // contract to call transferFrom()).
+        // this transfer shouldn't fail, as we checked the balance in accept_relayed_call(), above.
+        require( mytoken.transferFrom(from, token_holder, tx_price) );
     }
 
 }
