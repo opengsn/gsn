@@ -145,7 +145,7 @@ func (relay *RelayServer) Stake() (err error) {
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
-	fmt.Println("Stake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
+	log.Println("Stake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
 	tx, err := rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
@@ -183,9 +183,9 @@ func (relay *RelayServer) Stake() (err error) {
 		return fmt.Errorf("Stake() probably failed: could not receive Staked() event for our relay")
 	}
 
-	fmt.Println("stake() tx finished")
+	log.Println("stake() tx finished")
 
-	fmt.Println("tx sent:", types.HomesteadSigner{}.Hash(tx).Hex())
+	log.Println("tx sent:", tx.Hash().Hex())
 	return nil
 
 }
@@ -248,9 +248,9 @@ func (relay *RelayServer) Unstake() (err error) {
 		return fmt.Errorf("Unstake() probably failed: could not receive Unstaked() event for our relay")
 	}
 
-	fmt.Println("unstake() finished")
+	log.Println("unstake() finished")
 
-	fmt.Println("tx sent:", types.HomesteadSigner{}.Hash(tx).Hex())
+	log.Println("tx sent:", tx.Hash().Hex())
 	return nil
 
 }
@@ -277,7 +277,7 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	fmt.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex())
+	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex())
 	tx, err := rhub.RegisterRelay(auth, relay.Fee, relay.Url, common.HexToAddress("0"))
 	if err != nil {
 		log.Println(err)
@@ -299,7 +299,7 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		log.Println(err)
 		return
 	}
-	fmt.Println("tx created:", types.HomesteadSigner{}.Hash(tx).Hex())
+	log.Println("tx created:", tx.Hash().Hex())
 
 	start := time.Now()
 	for (iter.Event == nil ||
@@ -328,8 +328,8 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		return fmt.Errorf("RegisterRelay() probably failed: could not receive RelayAdded() event for our relay")
 	}
 
-	fmt.Println("RegisterRelay() finished")
-	fmt.Println("tx sent:", types.HomesteadSigner{}.Hash(tx).Hex())
+	log.Println("RegisterRelay() finished")
+	log.Println("tx sent:", tx.Hash().Hex())
 	return nil
 }
 
@@ -419,13 +419,19 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	// Check that the fee is acceptable, i.e. we want to relay this tx
+	// Check that the fee is acceptable
 	if !relay.validateFee(request.RelayFee) {
 		err = fmt.Errorf("Unacceptable fee")
 		return
 	}
 
-	fmt.Println("Checking if canRelay()...")
+	// Check that the gasPrice is acceptable
+	if relay.GasPrice.Cmp(&request.GasPrice) > 0 {
+		err = fmt.Errorf("Unacceptable gasPrice")
+		return
+	}
+
+	log.Println("Checking if canRelay()...")
 	// check can_relay view function to see if we'll get paid for relaying this tx
 	res, err := relay.canRelay(request.EncodedFunction,
 		request.Signature,
@@ -443,7 +449,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		err = fmt.Errorf("can_relay() view function returned error code=%d", res)
 		return
 	}
-	fmt.Println("canRelay() succeeded")
+	log.Println("canRelay() succeeded")
 	// can_relay returned true, so we can relay the tx
 
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
@@ -473,7 +479,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		log.Println(err)
 		return
 	}
-	fmt.Println("To.balance: ", to_balance)
+	log.Println("To.balance: ", to_balance)
 
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -493,7 +499,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	//unconfirmedTxs[lastNonce] = signedTx
 	lastNonce++
 
-	fmt.Println("tx sent:", types.HomesteadSigner{}.Hash(signedTx).Hex())
+	log.Println("tx sent:", signedTx.Hash().Hex())
 	return
 }
 
@@ -727,7 +733,7 @@ func (relay *RelayServer) penalizeOtherRelay(client *ethclient.Client, signedTx1
 	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
 
-	fmt.Println("tx sent:", types.HomesteadSigner{}.Hash(tx).Hex())
+	log.Println("tx sent:", tx.Hash().Hex())
 	return nil
 
 }
@@ -765,7 +771,7 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 
 	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
-		fmt.Println("Could not connect to ethereum node", err)
+		log.Println("Could not connect to ethereum node", err)
 		return
 	}
 
