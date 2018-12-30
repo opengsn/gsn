@@ -4,6 +4,7 @@ const promisify = utils.promisify
 const RelayHubApi = require('../relayclient/RelayHubApi')
 
 const RelayHub = web3.eth.contract(RelayHubApi)
+const networkVersions = { 1: "Mainnet", 42: "Kovan", 3: "Ropsten", 4: "Rinkeby", 1337 : "Local-geth" }
 
 class RelayManager {
 
@@ -25,6 +26,10 @@ class RelayManager {
     }
 
     async saveHubAndOwner(hubaddr, owneracct) {
+
+        let node = await promisify(web3.version.getNode)();
+        let ver = web3.version.network;
+        this.log( "network node: ", node , "version: <b>", networkVersions[ver] || ver, "</b>" )
 
         this.owner = owneracct
         this.hub = await this.getHub(hubaddr)
