@@ -75,20 +75,20 @@ contract RelayRecipient is RelayRecipientApi {
 	 *  @param from the sender (signer) of this function call.
 	 *  @param encoded_function the encoded function call (without any ethereum signature).
 	 * 			the contract may check the method-id for valid methods
+	 *  @param gas_price - the gas price for this transaction
+	 *  @param transaction_fee - the relay compensation (in %) for this transaction
 	 */
-    function accept_relayed_call(address relay, address from, bytes encoded_function ) public view returns(uint32);
+    function accept_relayed_call(address relay, address from, bytes encoded_function, uint gas_price, uint transaction_fee ) external view returns(uint32);
 
     /**
      * This method is called after the relayed call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
      * the method is given all parameters of accept_relayed_call, and also the success/failure status and actual used gas.
      * - success - true if the relayed call succeeded, false if it reverted
-     * - used_gas - gas used by the relayed call. Note that for gas compensation calculation, the gas used by
-     *   the post_relayed_call() is also taken into account.
+     * - used_gas - gas used up to this point. Note that gas calculation (for the purpose of compensation
+     *   to the relay) is done after this method returns.
      */
-    function post_relayed_call(address /*relay*/ , address /* from */, bytes /* encoded_function */, bool /* success */, uint /* used_gas */ ) external {
-        if (false) place_holder=place_holder;
-    }
+    function post_relayed_call(address relay, address from, bytes encoded_function, bool success, uint used_gas, uint transaction_fee ) external;
 
     function bytesToAddress(bytes b) private pure returns (address addr) {
         assembly {

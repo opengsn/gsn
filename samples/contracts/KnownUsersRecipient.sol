@@ -63,4 +63,7 @@ contract KnownUsersRecipient is RelayRecipient {
         return 10;
     }
 
+    function post_relayed_call(address /*relay*/, address /*from*/, bytes /*encoded_function*/, bool /*success*/, uint /*used_gas*/, uint /*transaction_fee*/ ) external {
+    }
+
 }
