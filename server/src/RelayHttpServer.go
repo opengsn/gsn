@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -241,7 +240,6 @@ func parseCommandLine() (relayParams RelayParams) {
 	stakeAmount := flag.Int64("StakeAmount", 1002, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
 	gasPrice := flag.Int64("GasPrice", 100, "Relay's gas price per transaction")
-	privateKey := flag.String("PrivateKey", "77c5495fbb039eed474fc940f29955ed0531693cc9212911efd35dff0373153f", "Relay's ethereum private key")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
@@ -255,11 +253,6 @@ func parseCommandLine() (relayParams RelayParams) {
 	relayParams.StakeAmount = big.NewInt(*stakeAmount)
 	relayParams.GasLimit = *gasLimit
 	relayParams.GasPrice = big.NewInt(*gasPrice)
-	var err error
-	relayParams.PrivateKey, err = crypto.HexToECDSA(*privateKey)
-	if err != nil {
-		log.Fatal("Invalid private key", err)
-	}
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 
@@ -275,7 +268,6 @@ func parseCommandLine() (relayParams RelayParams) {
 func configRelay(relayParams RelayParams) {
 	fmt.Println("Constructing relay server in url ", relayParams.Url)
 	privateKey := loadPrivateKey()
-	fmt.Println("Private key: ", hexutil.Encode(crypto.FromECDSA(privateKey)))
 	fmt.Println("Public key: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	relay = &librelay.RelayServer{relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
