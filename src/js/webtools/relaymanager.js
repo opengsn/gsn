@@ -31,6 +31,10 @@ class RelayManager {
         let ver = web3.version.network;
         this.log( "network node: ", node , "version: <b>", networkVersions[ver] || ver, "</b>" )
 
+        if ( !web3.eth.accounts || ! web3.eth.accounts.length ) {
+            this.log( "<b>No accounts - login into metamask</b>")
+        }
+        
         this.owner = owneracct
         this.hub = await this.getHub(hubaddr)
 
