@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"io/ioutil"
 	"log"
@@ -25,7 +26,7 @@ const DebugAPI = true
 
 var KEYSTORE_DIR = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 
-var stakedAndRegistered = false
+var ready = false
 var relay librelay.IRelay
 var server *http.Server
 //var stopKeepAlive chan bool
@@ -49,7 +50,7 @@ func main() {
 	if DebugAPI { // we let the client dictate which RelayHub we use on the blockchain
 		http.HandleFunc("/setRelayHub", setHubHandler)
 	}
-	go waitForStakeAndRegister()
+	go prepareServerOnBlockchain()
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
 	//stopKeepAlive = schedule(keepAlive, 1*time.Millisecond)
 
@@ -65,7 +66,7 @@ func main() {
 // http.HandlerFunc wrapper to assure we have enough balance to operate, and server already has stake and registered
 func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !stakedAndRegistered {
+		if !ready {
 			err := fmt.Errorf("Relay not staked and registered yet" )
 			log.Println(err)
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
@@ -143,7 +144,7 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Sending relayServer eth address")
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
-		Ready: stakedAndRegistered,
+		Ready:              ready,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
 	if err != nil {
@@ -182,7 +183,7 @@ func setHubHandler(w http.ResponseWriter, r *http.Request) {
 	//stopKeepAlive <- true
 	relayServer := relay.(*librelay.RelayServer)
 	relayServer.RelayHubAddress = request.RelayHubAddress
-	go waitForStakeAndRegister()
+	go prepareServerOnBlockchain()
 	//stopKeepAlive = schedule(keepAlive, 3*time.Second)
 
 	w.WriteHeader(http.StatusOK)
@@ -316,16 +317,29 @@ func loadPrivateKey() *ecdsa.PrivateKey {
 	return keyWrapper.PrivateKey
 }
 
-func waitForStakeAndRegister() {
+// Wait for server to be staked & funded by owner, then try and register on RelayHub
+func prepareServerOnBlockchain() {
 	staked,err := relay.IsStaked(relay.HubAddress())
 	for ; err != nil || !staked; staked,err = relay.IsStaked(relay.HubAddress()) {
 		if err != nil {
 			log.Println(err)
 		}
-		stakedAndRegistered = false
+		ready = false
 		log.Println("Waiting for stake...")
-		time.Sleep(1*time.Second)
+		time.Sleep(5*time.Second)
 	}
+
+	// wait for funding
+	balance, err := relay.Balance()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for ; err != nil || balance.Uint64() <= params.Ether ; balance, err = relay.Balance() {
+		log.Println("Server's balance too low. Waiting for funding...")
+		time.Sleep(10*time.Second)
+	}
+	log.Println("Relay funded. Balance:", balance)
 
 	fmt.Println("Registering relay...")
 	for err := relay.RegisterRelay(common.HexToAddress("0")); err != nil;err = relay.RegisterRelay(common.HexToAddress("0")) {
@@ -333,10 +347,10 @@ func waitForStakeAndRegister() {
 			log.Println(err)
 		}
 		fmt.Println("Trying to register again...")
-		time.Sleep(5*time.Second)
+		time.Sleep(1*time.Minute)
 	}
 	fmt.Println("Done registering")
-	stakedAndRegistered = true
+	ready = true
 }
 
 func keepAlive() {
