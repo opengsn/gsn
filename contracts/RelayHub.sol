@@ -37,8 +37,8 @@ contract RelayHub is RelayHubApi {
     mapping (address => uint) public balances;
 
     modifier lock_stake() {
-        require(stakes[msg.sender].stake > minimum_stake,"stake lower than minimum");  // Has enough stake?
-        require(stakes[msg.sender].unstake_delay > minimum_unstake_delay,"delay lower than minimum");  // Locked for enough time?
+        require(stakes[msg.sender].stake >= minimum_stake,"stake lower than minimum");  // Has enough stake?
+        require(stakes[msg.sender].unstake_delay >= minimum_unstake_delay,"delay lower than minimum");  // Locked for enough time?
         require(msg.sender.balance >= minimum_relay_balance,"balance lower than minimum");
         stakes[msg.sender].unstake_time = 0;    // Activate the lock
         _;
@@ -132,7 +132,6 @@ contract RelayHub is RelayHubApi {
 
     function register_relay(uint transaction_fee, string url, address optional_relay_removal) public lock_stake {
         // Anyone with a stake can register a relay.  Apps choose relays by their transaction fee, stake size and unstake delay, optionally crossed against a blacklist.  Apps verify the relay's action in realtime.
-        require(msg.sender.balance >= minimum_relay_balance);
         if (msg.sender.balance < low_ether) {
             emit NeedsFunding(msg.sender);
         }
