@@ -36,9 +36,12 @@ contract RelayHub is RelayHubApi {
     mapping (address => Stake) public stakes;
     mapping (address => uint) public balances;
 
+    function validate_stake(address relay) private view {
+        require(stakes[relay].stake >= minimum_stake,"stake lower than minimum");  // Has enough stake?
+        require(stakes[relay].unstake_delay >= minimum_unstake_delay,"delay lower than minimum");  // Locked for enough time?
+    }
     modifier lock_stake() {
-        require(stakes[msg.sender].stake >= minimum_stake,"stake lower than minimum");  // Has enough stake?
-        require(stakes[msg.sender].unstake_delay >= minimum_unstake_delay,"delay lower than minimum");  // Locked for enough time?
+        validate_stake(msg.sender);
         require(msg.sender.balance >= minimum_relay_balance,"balance lower than minimum");
         stakes[msg.sender].unstake_time = 0;    // Activate the lock
         _;
@@ -100,11 +103,11 @@ contract RelayHub is RelayHubApi {
         // Create or increase the stake and unstake_delay
         require(stakes[relay].owner == address(0) || stakes[relay].owner == msg.sender, "not owner");
         stakes[relay].owner = msg.sender;
-
         stakes[relay].stake += msg.value;
-        require(stakes[relay].stake >= minimum_stake, "stake is lower than minimum_stake");
-        require(unstake_delay >= minimum_unstake_delay && unstake_delay >= stakes[relay].unstake_delay, "unstake_delay too low");
+        // Make sure that the relay doesn't decrease his delay if already registered
+        require(unstake_delay >= stakes[relay].unstake_delay, "unstake_delay cannot be decreased");
         stakes[relay].unstake_delay = unstake_delay;
+        validate_stake(relay);
         emit Staked(relay, msg.value);
     }
 
