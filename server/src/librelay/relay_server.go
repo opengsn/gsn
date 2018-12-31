@@ -255,9 +255,26 @@ func (relay *RelayServer) Unstake() (err error) {
 
 }
 
+/*type TbkClient struct {
+	*ethclient.Client
+}
+
+func (tbkClient *TbkClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+	log.Println("EstimateGas Hooked")
+	gas,err := tbkClient.Client.EstimateGas(ctx,msg)
+	if (err == nil) {
+		log.Println("EstimateGas is", gas)
+		gas += 20000*params.Wei
+		log.Println("New EstimateGas is", gas)
+	}
+	return gas,err
+
+}*/
+
 func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) {
 
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
+	client := &TbkClient{}
+	client.Client, err = ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -271,7 +288,7 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 	}
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce(client)
+	nonce, err := relay.pollNonce(client.Client)
 	if err != nil {
 		log.Println(err)
 		return
@@ -531,12 +548,11 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 		log.Println("Could not connect to ethereum node", err)
 		return
 	}
-	// TODO verify on geth: eip155 and homestead give the same Sender() but different Hash(), it seems like homestead's Hash is the correct one from ganache...
 	// probably due to ganache starting from earlier block than when eip155 introduced
 	signer := types.HomesteadSigner{} //types.NewEIP155Signer(signedTx.ChainId())
 
 	// check if @signedTx is already on the blockchain. If it is, return
-	tx, _, err := client.TransactionByHash(ctx, signer.Hash(signedTx))
+	tx, _, err := client.TransactionByHash(ctx, signedTx.Hash())
 	if err == nil { // signedTx already on the blockchain
 		log.Println("tx already on the blockchain")
 		log.Println("tx ", tx)

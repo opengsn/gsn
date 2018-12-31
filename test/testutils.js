@@ -69,7 +69,7 @@ module.exports = {
         await rhub.stake(relayServerAddress, options.delay || 3600, {from: options.relayOwner, value: options.stake})
 
         res=""
-        let count = 20
+        let count = 25
         while (count-- > 0) {
             res = await http.sendPromise(localhostOne+'/getaddr')
             if ( res.Ready ) break;
