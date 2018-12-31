@@ -10,9 +10,9 @@ module.exports = {
   		host: "127.0.0.1",
   		port: 8545,
                 network_id: "*",
-                gas: 8000000,  
+                //gas: 8000000,  
                 //gas:5000000,
-		gasPrice: 1000,
+		//gasPrice: 1000,
 
     },
     ropsten: {
