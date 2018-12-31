@@ -255,22 +255,6 @@ func (relay *RelayServer) Unstake() (err error) {
 
 }
 
-/*type TbkClient struct {
-	*ethclient.Client
-}
-
-func (tbkClient *TbkClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
-	log.Println("EstimateGas Hooked")
-	gas,err := tbkClient.Client.EstimateGas(ctx,msg)
-	if (err == nil) {
-		log.Println("EstimateGas is", gas)
-		gas += 20000*params.Wei
-		log.Println("New EstimateGas is", gas)
-	}
-	return gas,err
-
-}*/
-
 func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) {
 
 	client := &TbkClient{}
