@@ -29,8 +29,8 @@ module.exports = {
         if (options.EthereumNodeUrl) {
             args.push("-EthereumNodeUrl", options.EthereumNodeUrl)
         }
-        if (options.GasPriceFactor) {
-            args.push("-GasPriceFactor", options.GasPriceFactor)
+        if (options.GasPricePercent) {
+            args.push("-GasPricePercent", options.GasPricePercent)
         }
         let proc = child_process.spawn(server, args)
 

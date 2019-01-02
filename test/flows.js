@@ -14,8 +14,8 @@ let RelayHub = artifacts.require('RelayHub')
 let RelayClient = require('../src/js/relayclient/relayclient')
 
 const localhostOne = "http://localhost:8090"
-const gasPriceFactor = 50
-var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPriceFactor)/100
+const gasPricePercent = 50
+var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPricePercent)/100
 
 let options = [
     {title: "Direct-", relay: 0},
@@ -46,7 +46,7 @@ options.forEach(params => {
                     url: "asd",
                     relayOwner: accounts[0],
                     EthereumNodeUrl: web3.currentProvider.host,
-                    GasPriceFactor:gasPriceFactor
+                    GasPricePercent:gasPricePercent
                 })
                 console.log("relay started")
                 from = gasless

@@ -9,7 +9,7 @@ const increaseTime = testutils.increaseTime;
 const RelayHub = artifacts.require("./RelayHub.sol");
 
 const localhostOne = "http://localhost:8090"
-const gasPriceFactor = 50
+const gasPricePercent = 50
 
 contract('ServerHelper', function (accounts) {
     let minStake = 1000
@@ -22,7 +22,7 @@ contract('ServerHelper', function (accounts) {
         rhub = await RelayHub.deployed()
         relayproc = await testutils.startRelay(rhub, {
             verbose: process.env.relaylog,
-            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPriceFactor:gasPriceFactor})
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
         await postRelayHubAddress(rhub.address, localhostOne)
         serverHelper.setHub(RelayHub, rhub)
     })

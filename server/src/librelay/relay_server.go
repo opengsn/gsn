@@ -106,11 +106,11 @@ type RelayServer struct {
 	RelayHubAddress common.Address
 	StakeAmount     *big.Int
 	GasLimit        uint64
-	GasPriceFactor  *big.Int
+	GasPricePercent *big.Int
 	PrivateKey      *ecdsa.PrivateKey
 	UnstakeDelay    *big.Int
 	EthereumNodeURL string
-	gasPrice        *big.Int // set dynamically as suggestedGasPrice*GasPriceFactor
+	gasPrice        *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
 }
 
 func (relay *RelayServer) Balance() (balance *big.Int, err error) {
@@ -147,7 +147,7 @@ func (relay *RelayServer) RefreshGasPrice() (err error) {
 		log.Println("SuggestGasPrice() failed ", err)
 		return
 	}
-	relay.gasPrice = gasPrice.Mul(big.NewInt(0).Add(relay.GasPriceFactor,big.NewInt(100)), gasPrice).Div(gasPrice,big.NewInt(100))
+	relay.gasPrice = gasPrice.Mul(big.NewInt(0).Add(relay.GasPricePercent,big.NewInt(100)), gasPrice).Div(gasPrice,big.NewInt(100))
 	return
 }
 

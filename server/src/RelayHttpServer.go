@@ -251,7 +251,7 @@ func parseCommandLine() (relayParams RelayParams) {
 	relayHubAddress := flag.String("RelayHubAddress", "0x254dffcd3277c0b1660f6d42efbb754edababc2b", "RelayHub address")
 	stakeAmount := flag.Int64("StakeAmount", 1002, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
-	gasPriceFactor := flag.Int64("GasPriceFactor", 50, "Relay's gas price multiplier per transaction. GasPrice = GasPriceFactor*eth_gasPrice() ")
+	gasPricePercent := flag.Int64("GasPricePercent", 50, "Relay's gas price percentage per transaction. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
@@ -264,7 +264,7 @@ func parseCommandLine() (relayParams RelayParams) {
 	relayParams.RelayHubAddress = common.HexToAddress(*relayHubAddress)
 	relayParams.StakeAmount = big.NewInt(*stakeAmount)
 	relayParams.GasLimit = *gasLimit
-	relayParams.GasPriceFactor = big.NewInt(*gasPriceFactor)
+	relayParams.GasPricePercent = big.NewInt(*gasPricePercent)
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 
@@ -283,7 +283,7 @@ func configRelay(relayParams RelayParams) {
 	log.Println("Public key: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	relay = &librelay.RelayServer{OwnerAddress: relayParams.OwnerAddress, Fee: relayParams.Fee, Url: relayParams.Url, Port: relayParams.Port,
 		RelayHubAddress: relayParams.RelayHubAddress, StakeAmount: relayParams.StakeAmount,
-		GasLimit: relayParams.GasLimit, GasPriceFactor: relayParams.GasPriceFactor, PrivateKey: privateKey, UnstakeDelay: relayParams.UnstakeDelay, EthereumNodeURL: relayParams.EthereumNodeURL}
+		GasLimit: relayParams.GasLimit, GasPricePercent: relayParams.GasPricePercent, PrivateKey: privateKey, UnstakeDelay: relayParams.UnstakeDelay, EthereumNodeURL: relayParams.EthereumNodeURL}
 }
 
 // Wait for server to be staked & funded by owner, then try and register on RelayHub
