@@ -18,7 +18,8 @@ const postRelayHubAddress = testutils.postRelayHubAddress;
 const util = require("util")
 const request = util.promisify(require("request"))
 
-var gasPrice = web3.eth.gasPrice.toNumber()
+const gasPriceFactor = 50
+var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPriceFactor)/100
 contract('RelayClient', function (accounts) {
 
     let rhub;
@@ -38,7 +39,7 @@ contract('RelayClient', function (accounts) {
         console.log("starting relay")
 
         relayproc = await testutils.startRelay(rhub, {
-            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host})
+            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPriceFactor:gasPriceFactor})
 
     });
 

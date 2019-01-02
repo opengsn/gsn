@@ -16,7 +16,6 @@ type TbkClient struct {
 }
 
 func (tbkClient *TbkClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
-	log.Println("EstimateGas Hooked")
 	gas,err := tbkClient.Client.EstimateGas(ctx,msg)
 	if (err == nil) {
 		log.Println("EstimateGas is", gas)

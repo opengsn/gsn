@@ -29,6 +29,9 @@ module.exports = {
         if (options.EthereumNodeUrl) {
             args.push("-EthereumNodeUrl", options.EthereumNodeUrl)
         }
+        if (options.GasPriceFactor) {
+            args.push("-GasPriceFactor", options.GasPriceFactor)
+        }
         let proc = child_process.spawn(server, args)
 
         let relaylog=function(){}
@@ -72,7 +75,7 @@ module.exports = {
         while (count-- > 0) {
             res = await http.sendPromise(localhostOne+'/getaddr')
             if ( res.Ready ) break;
-            await module.exports.sleep(1000)
+            await module.exports.sleep(1500)
         }
         assert.ok(res.Ready, "Timed out waiting for relay to get staked and registered")
 
