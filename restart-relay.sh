@@ -37,7 +37,7 @@ blocktime=${T=0}
 pkill -f ganache-cli && echo killed old ganache.
 pkill -f RelayHttpServer && echo kill old relayserver
 
-GANACHE="$root/node_modules/.bin/ganache-cli -b $blocktime -a 11 -h 0.0.0.0 "
+GANACHE="$root/node_modules/.bin/ganache-cli -l 8000000 -b $blocktime -a 11 -h 0.0.0.0 "
 
 if [ -n "$DEBUG" ]; then
 	$GANACHE -d --verbose &

@@ -5,11 +5,12 @@ const addPastEvents = require('./addPastEvents')
 class ActiveRelayPinger {
 
     // TODO: 'httpSend' should be on a network layer
-    constructor(filteredRelays, httpSend) {
+    constructor(filteredRelays, httpSend, gasPrice) {
         this.remainingRelays = filteredRelays.slice()
         this.httpSend = httpSend
         this.pingedRelays = 0
         this.relaysCount = filteredRelays.length
+        this.gasPrice = gasPrice
     }
 
     /**
@@ -22,7 +23,9 @@ class ActiveRelayPinger {
         }
 
         let firstRelayToRespond = await this.raceToSuccess(
-            this.remainingRelays.slice(0, 3).map(relay => this.getRelayAddressPing(relay.relayUrl))
+            this.remainingRelays
+                .map(relay => this.getRelayAddressPing(relay.relayUrl, this.gasPrice))
+                .slice(0, 3)
         );
         this.remainingRelays = this.remainingRelays.filter(a => a.relayUrl !== firstRelayToRespond.relayUrl)
         this.pingedRelays++
@@ -32,16 +35,21 @@ class ActiveRelayPinger {
     /**
      * @returns JSON response from the relay server, but adds the requested URL to it:
      * { relayUrl: url,
-     *   RelayServerAddress: address
+     *   RelayServerAddress: address,
+     *   Ready: bool,   //should ignore relays with "false"
+     *   MinGasPrice:   //minimum gas requirement by this relay.
      * }
      */
-    async getRelayAddressPing(relayUrl) {
+    async getRelayAddressPing(relayUrl, gasPrice) {
         let self = this
         return new Promise(function (resolve, reject) {
             let callback = function (error, body) {
                 if (error) {
                     reject(error);
                     return
+                }
+                if ( !body || !body.Ready || body.MinGasPrice > gasPrice ) {
+                    reject( body)
                 }
                 try {
                     body.relayUrl = relayUrl
@@ -110,7 +118,7 @@ class ServerHelper {
         this.relayHubAddress = this.relayHubInstance.address
     }
 
-    async newActiveRelayPinger(fromBlock = 1) {
+    async newActiveRelayPinger(fromBlock, gasPrice ) {
         if (typeof this.relayHubInstance === 'undefined') {
             throw new Error("Must call to setHub first!")
         }
@@ -119,7 +127,7 @@ class ServerHelper {
             this.fromBlock = fromBlock
             await this.fetchRelaysAdded()
         }
-        return new ActiveRelayPinger(this.filteredRelays, this.httpSend)
+        return new ActiveRelayPinger(this.filteredRelays, this.httpSend, gasPrice)
     }
 
     /**
@@ -128,7 +136,7 @@ class ServerHelper {
      */
     async fetchRelaysAdded() {
         let activeRelays = {}
-        let addedAndRemovedEvents = await this.relayHubContract.getPastEvents({ address: this.relayHubInstance.address, fromBlock: this.fromBlock, topics: [["RelayAdded", "RelayRemoved"]] })
+        let addedAndRemovedEvents = await this.relayHubContract.getPastEvents({ address: this.relayHubInstance.address, fromBlock: this.fromBlock || 1, topics: [["RelayAdded", "RelayRemoved"]] })
 
         for (var index in addedAndRemovedEvents) {
             let event = addedAndRemovedEvents[index]
