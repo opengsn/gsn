@@ -47,6 +47,7 @@ type AuditRelaysRequest struct {
 
 type GetEthAddrResponse struct {
 	RelayServerAddress common.Address
+	MinGasPrice        big.Int
 	Ready              bool
 }
 
@@ -67,6 +68,10 @@ func (response *RelayTransactionResponse) MarshalJSON() ([]byte, error) {
 
 type IRelay interface {
 	Balance() (balance *big.Int, err error)
+
+	GasPrice() (big.Int)
+
+	RefreshGasPrice() (err error)
 
 	Stake() (err error)
 
@@ -101,10 +106,11 @@ type RelayServer struct {
 	RelayHubAddress common.Address
 	StakeAmount     *big.Int
 	GasLimit        uint64
-	GasPrice        *big.Int
+	GasPriceFactor  *big.Int
 	PrivateKey      *ecdsa.PrivateKey
 	UnstakeDelay    *big.Int
 	EthereumNodeURL string
+	gasPrice        *big.Int // set dynamically as suggestedGasPrice*GasPriceFactor
 }
 
 func (relay *RelayServer) Balance() (balance *big.Int, err error) {
@@ -120,6 +126,28 @@ func (relay *RelayServer) Balance() (balance *big.Int, err error) {
 		return
 	}
 	log.Println("relay server balance:", balance)
+	return
+}
+
+func (relay *RelayServer) GasPrice() (big.Int) {
+	if relay.gasPrice == nil {
+		return *big.NewInt(0)
+	}
+	return *relay.gasPrice
+}
+
+func (relay *RelayServer) RefreshGasPrice() (err error) {
+	client, err := ethclient.Dial(relay.EthereumNodeURL)
+	if err != nil {
+		log.Println("Could not connect to ethereum node", err)
+		return
+	}
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		log.Println("SuggestGasPrice() failed ", err)
+		return
+	}
+	relay.gasPrice = gasPrice.Mul(big.NewInt(0).Add(relay.GasPriceFactor,big.NewInt(100)), gasPrice).Div(gasPrice,big.NewInt(100))
 	return
 }
 
@@ -417,18 +445,21 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	// Check that the relayhub is the correct one
 	if bytes.Compare(relay.RelayHubAddress.Bytes(), request.RelayHubAddress.Bytes()) != 0 {
 		err = fmt.Errorf("Wrong hub address.\nRelay server's hub address: %s, request's hub address: %s\n", relay.RelayHubAddress.Hex(), request.RelayHubAddress.Hex())
+		log.Println(err)
 		return
 	}
 
 	// Check that the fee is acceptable
 	if !relay.validateFee(request.RelayFee) {
 		err = fmt.Errorf("Unacceptable fee")
+		log.Println(err)
 		return
 	}
 
-	// Check that the gasPrice is acceptable
-	if relay.GasPrice.Cmp(&request.GasPrice) > 0 {
+	// Check that the gasPrice is initialized & acceptable
+	if relay.gasPrice == nil || relay.gasPrice.Cmp(&request.GasPrice) > 0 {
 		err = fmt.Errorf("Unacceptable gasPrice")
+		log.Println(err)
 		return
 	}
 
@@ -448,6 +479,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 	if res != 0 {
 		err = fmt.Errorf("can_relay() view function returned error code=%d", res)
+		log.Println(err)
 		return
 	}
 	log.Println("canRelay() succeeded")

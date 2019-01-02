@@ -14,6 +14,8 @@ let RelayHub = artifacts.require('RelayHub')
 let RelayClient = require('../src/js/relayclient/relayclient')
 
 const localhostOne = "http://localhost:8090"
+const gasPriceFactor = 50
+var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPriceFactor)/100
 
 let options = [
     {title: "Direct-", relay: 0},
@@ -43,7 +45,8 @@ options.forEach(params => {
                     txfee: 12,
                     url: "asd",
                     relayOwner: accounts[0],
-                    EthereumNodeUrl: web3.currentProvider.host
+                    EthereumNodeUrl: web3.currentProvider.host,
+                    GasPriceFactor:gasPriceFactor
                 })
                 console.log("relay started")
                 from = gasless
@@ -63,11 +66,11 @@ options.forEach(params => {
             it(params.title + "enable relay", async function () {
                 let res = await testutils.postRelayHubAddress(rhub.address, localhostOne);
                 assert.equal('"OK"', JSON.stringify(res))
-                rhub.depositFor(sr.address, {value: 1e16})
+                rhub.depositFor(sr.address, {value: 1e17})
                 new RelayClient(web3, {
                     // verbose:true,
                     txfee: 12,
-                    force_gasPrice: 3,			//override requested gas price
+                    force_gasPrice: 3e10,			//override requested gas price
                     force_gasLimit: 100000		//override requested gas limit.
                 }).hook(SampleRecipient)
             })
@@ -114,8 +117,9 @@ options.forEach(params => {
             } catch (e) {
                 ex = e
             }
-            assert.ok(ex != null, "Expected to throw " + msg + " but threw nothing")
-            assert.ok(ex.toString().includes(msg), "Expected to throw " + msg + " but threw " + ex.message)
+            assert.ok(ex != null, "Expected to throw1 " + msg + " but threw nothing")
+            console.log("msg wtf?? ", ex.toString())
+            assert.ok(ex.toString().includes(msg), "Expected to throw2 " + msg + " but threw " + ex.message)
         }
 
     })  //of contract
