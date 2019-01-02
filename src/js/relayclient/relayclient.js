@@ -23,8 +23,8 @@ const est_blocks_per_day = 7200
 
 abi_decoder.addABI(relayHubAbi)
 
-//default gas price (unless client specifies one): the web3.eth.gasPrice*GASPRICE_FACTOR
-const DEFAULT_GASPRICE_FACTOR = 10
+//default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
+const GASPRICE_PERCENT = 50
 
 
 /**
@@ -233,7 +233,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   this.serverHelper.setHub(this.RelayHub, relayHub)
 
     //gas-price multiplicator: either default (10%) or configuration factor
-  let pct = (this.config.gaspriceFactorPercent || DEFAULT_GASPRICE_FACTOR)
+  let pct = (this.config.gaspriceFactorPercent || GASPRICE_PERCENT)
 
   let gasPrice = this.config.force_gasPrice ||  //forced gasprice
                     options.gas_price ||        //user-supplied gas price

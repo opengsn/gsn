@@ -72,7 +72,6 @@ contract('RelayClient', function (accounts) {
             from: gasLess,
             to: to,
             txfee: 12,
-            gas_price: gasPrice,
             gas_limit: 1000000
         }
         let relay_client_config = {
@@ -259,7 +258,6 @@ contract('RelayClient', function (accounts) {
             from: gasLess,
             to: sr.address,
             txfee: 12,
-            gas_price: gasPrice,
             gas_limit: 1000000
         }
 
@@ -306,7 +304,6 @@ contract('RelayClient', function (accounts) {
             from: gasLess,
             to: to,
             txfee: 12,
-            gas_price: gasPrice,
             gas_limit: 1000000
         }
 
