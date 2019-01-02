@@ -1,19 +1,16 @@
 package main
 
 import (
-	"./librelay"
-	"crypto/ecdsa"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"io/ioutil"
+	"librelay"
 	"log"
 	"math/big"
 	"net/http"
@@ -26,24 +23,6 @@ import (
 const DebugAPI = true
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
-
-type SyncBool struct {
-	val   bool
-	mutex *sync.Mutex
-}
-
-func (b *SyncBool) GetVal() (val bool){
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	val = b.val
-	return
-}
-
-func (b *SyncBool) SetVal(val bool) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	b.val = val
-}
 
 var ready = &SyncBool{val: false, mutex: &sync.Mutex{}}
 
@@ -71,7 +50,6 @@ func main() {
 	if DebugAPI { // we let the client dictate which RelayHub we use on the blockchain
 		http.HandleFunc("/setRelayHub", setHubHandler)
 	}
-	//go refreshBlockchainView()
 
 	stopKeepAlive = schedule(keepAlive, 1*time.Minute, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*time.Minute, 0)
@@ -127,7 +105,7 @@ func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-	fmt.Println("auditRelaysHandler Start")
+	log.Println("auditRelaysHandler Start")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("Could not read request body", body, err)
@@ -156,7 +134,7 @@ func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 		return
 	}
-	fmt.Println("auditRelaysHandler end")
+	log.Println("auditRelaysHandler end")
 	resp, err := json.Marshal("OK")
 	if err != nil {
 		log.Println(err)
@@ -171,7 +149,7 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-	fmt.Println("Sending relayServer eth address")
+	log.Println("Sending relayServer eth address")
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
@@ -183,7 +161,7 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 		return
 	}
-	fmt.Printf("address %s sent\n", relay.Address().Hex())
+	log.Printf("address %s sent\n", relay.Address().Hex())
 
 	w.Write(resp)
 }
@@ -193,7 +171,7 @@ func setHubHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-	fmt.Println("setHubHandler Start")
+	log.Println("setHubHandler Start")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("Could not read request body", body, err)
@@ -234,7 +212,7 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-	fmt.Println("Relay Handler Start")
+	log.Println("Relay Handler Start")
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
@@ -292,62 +270,20 @@ func parseCommandLine() (relayParams RelayParams) {
 
 	KeystoreDir = filepath.Join(*workdir, "keystore")
 
-	fmt.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
-	fmt.Println("Using workdir: " + *workdir)
+	log.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
+	log.Println("Using workdir: " + *workdir)
 
 	return relayParams
 
 }
 
 func configRelay(relayParams RelayParams) {
-	fmt.Println("Constructing relay server in url ", relayParams.Url)
-	privateKey := loadPrivateKey()
-	fmt.Println("Public key: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
+	log.Println("Constructing relay server in url ", relayParams.Url)
+	privateKey := loadPrivateKey(KeystoreDir)
+	log.Println("Public key: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	relay = &librelay.RelayServer{OwnerAddress: relayParams.OwnerAddress, Fee: relayParams.Fee, Url: relayParams.Url, Port: relayParams.Port,
 		RelayHubAddress: relayParams.RelayHubAddress, StakeAmount: relayParams.StakeAmount,
 		GasLimit: relayParams.GasLimit, GasPriceFactor: relayParams.GasPriceFactor, PrivateKey: privateKey, UnstakeDelay: relayParams.UnstakeDelay, EthereumNodeURL: relayParams.EthereumNodeURL}
-}
-
-// Loads (creates if doesn't exist) private key from keystore file
-func loadPrivateKey() *ecdsa.PrivateKey {
-	// Init a keystore
-	ks := keystore.NewKeyStore(
-		KeystoreDir,
-		keystore.LightScryptN,
-		keystore.LightScryptP)
-
-	// find (or create) account
-	var account accounts.Account
-	var err error
-	log.Println("ks accounts len", len(ks.Accounts()))
-	if _, err = os.Stat(filepath.Join(KeystoreDir, "")); os.IsNotExist(err) {
-		account, err = ks.NewAccount("")
-		if err != nil {
-			log.Fatal(err)
-		}
-		// Unlock the signing account
-		if err := ks.Unlock(account, ""); err != nil {
-			log.Fatalln(err)
-		}
-	} else {
-		account = ks.Accounts()[0]
-	}
-
-	// Open the account key file
-
-	keyJson, err := ioutil.ReadFile(account.URL.Path)
-	if err != nil {
-		log.Fatalln("key json read error:")
-		panic(err)
-	}
-
-	keyWrapper, err := keystore.DecryptKey(keyJson, "")
-	if err != nil {
-		log.Fatalln("key decrypt error:")
-	}
-	log.Println("key extracted. addr:", keyWrapper.Address.String())
-
-	return keyWrapper.PrivateKey
 }
 
 // Wait for server to be staked & funded by owner, then try and register on RelayHub
@@ -369,7 +305,7 @@ func refreshBlockchainView() {
 			log.Println(err)
 		}
 		ready.SetVal(false)
-		fmt.Println("Trying to get gasPrice from node again...")
+		log.Println("Trying to get gasPrice from node again...")
 		time.Sleep(10 * time.Second)
 
 	}
@@ -419,29 +355,10 @@ func keepAlive() {
 }
 
 func scanBlockChainToPenalize() {
-	fmt.Println("scanBlockChainToPenalize start...")
+	log.Println("scanBlockChainToPenalize start...")
 	err := relay.ScanBlockChainToPenalize()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Done scanBlockChainToPenalize")
-}
-
-func schedule(job func(), delay time.Duration, when time.Duration) chan bool {
-
-	stop := make(chan bool)
-
-	go func() {
-		time.Sleep(when)
-		for {
-			job()
-			select {
-			case <-time.After(delay):
-			case <-stop:
-				return
-			}
-		}
-	}()
-
-	return stop
+	log.Println("Done scanBlockChainToPenalize")
 }
