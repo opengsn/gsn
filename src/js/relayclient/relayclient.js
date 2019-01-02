@@ -1,3 +1,4 @@
+/* global web3 */
 const enableRelay = require('./enableRelay')
 const utils = require('./utils')
 const getTransactionSignature = utils.getTransactionSignature;
@@ -305,7 +306,7 @@ function hookTransactionReceipt(orig_getTransactionReceipt) {
             if (err == null) {
                 if ( res && res.logs ) {
                     let logs = abi_decoder.decodeLogs(res.logs)
-                    relayed = logs.find(e => e && e.name == 'TransactionRelayed')
+                    let relayed = logs.find(e => e && e.name == 'TransactionRelayed')
                     if (relayed && relayed.events.find(e => e.name == "success").value === false) {
                         console.log("log=" + relayed + " changing status to zero")
                         res.status = 0

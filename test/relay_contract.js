@@ -260,8 +260,7 @@ contract("RelayHub", function (accounts) {
         await increaseTime(stake[1] / 2)
         can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(true, can_unstake)
-        let res = await rhub.unstake(accounts[0]);
-        console.log()
+        await rhub.unstake(accounts[0]);
     });
 
     let dayInSec = 24 * 60 * 60;

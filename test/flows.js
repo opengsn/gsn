@@ -1,4 +1,4 @@
-/* global contract it assert before after */
+/* global web3 contract it assert before after artifacts */
 // test various flows, in multiple modes:
 //  once in Direct mode, and once in Relay (gasless) mode.
 // the two modes must behave just the same (with an exception of gasless test, which must fail on direct mode, and must
@@ -9,13 +9,13 @@ var testutils = require('./testutils.js')
 
 let SampleRecipient = artifacts.require('SampleRecipient')
 
-RelayHub = artifacts.require('RelayHub')
+let RelayHub = artifacts.require('RelayHub')
 
-RelayClient = require('../src/js/relayclient/relayclient')
+let RelayClient = require('../src/js/relayclient/relayclient')
 
 const localhostOne = "http://localhost:8090"
 
-options = [
+let options = [
     {title: "Direct-", relay: 0},
     {title: "Relayed-", relay: 1}
 ]
@@ -27,7 +27,6 @@ options.forEach(params => {
         let sr
         let rhub
         let accounts = acc
-        let sender = acc[0]
         let gasless
         let relayproc
 
@@ -77,7 +76,7 @@ options.forEach(params => {
         it(params.title + "send normal transaction", async () => {
 
             console.log("running emitMessage (should succeed")
-            res = await sr.emitMessage("hello", {from: from})
+            let res = await sr.emitMessage("hello", {from: from})
             assert.equal("hello", res.logs[0].args.message)
         })
 
@@ -88,7 +87,7 @@ options.forEach(params => {
             console.log("running gasless-emitMessage (should fail for direct, succeed for relayed")
             let ex
             try {
-                res = await sr.emitMessage("hello, from gasless", {from: gasless})
+                let res = await sr.emitMessage("hello, from gasless", {from: gasless})
                 console.log("res after gasless emit:", res.logs[0].args.message)
             } catch (e) {
                 ex = e
@@ -108,7 +107,7 @@ options.forEach(params => {
         })
 
         async function asyncShouldThrow(asyncFunc, str) {
-            msg = str || 'Error'
+            let msg = str || 'Error'
             let ex = null
             try {
                 await asyncFunc()
