@@ -70,7 +70,7 @@ options.forEach(params => {
                 new RelayClient(web3, {
                     // verbose:true,
                     txfee: 12,
-                    force_gasPrice: 3e10,			//override requested gas price
+                    force_gasPrice: gasPrice,			//override requested gas price
                     force_gasLimit: 100000		//override requested gas limit.
                 }).hook(SampleRecipient)
             })
@@ -117,9 +117,8 @@ options.forEach(params => {
             } catch (e) {
                 ex = e
             }
-            assert.ok(ex != null, "Expected to throw1 " + msg + " but threw nothing")
-            console.log("msg wtf?? ", ex.toString())
-            assert.ok(ex.toString().includes(msg), "Expected to throw2 " + msg + " but threw " + ex.message)
+            assert.ok(ex != null, "Expected to throw " + msg + " but threw nothing")
+            assert.ok(ex.toString().includes(msg), "Expected to throw " + msg + " but threw " + ex.message)
         }
 
     })  //of contract
