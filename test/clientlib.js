@@ -64,8 +64,6 @@ contract('RelayClient', function (accounts) {
         assert.equal("OK", res)
     });
 
-    it("should use relay provided in constructor");
-
     it("should send transaction to a relay and receive a response", async function () {
         let encoded = sr.contract.emitMessage.getData("hello world");
         let to = sr.address;

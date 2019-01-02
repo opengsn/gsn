@@ -22,6 +22,9 @@ const est_blocks_per_day = 7200
 
 abi_decoder.addABI(relayHubAbi)
 
+//default gas price (unless client specifies one): the web3.eth.gasPrice*GASPRICE_FACTOR
+const GASPRICE_FACTOR = 1.1
+
 
 /**
  * create a RelayClient library object, to force contracts to go through a relay.
@@ -226,11 +229,14 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   var nonce = (await promisify(relayHub.get_nonce.call)(options.from)).toNumber()
   
   this.serverHelper.setHub(this.RelayHub, relayHub)
-  
-  
+
+  let gasPrice = this.config.force_gasPrice ||  //forced gasprice
+                    options.gas_price ||        //user-supplied gas price
+                    ( await promisify(web3.eth.getGasPrice)() ) * GASPRICE_FACTOR           //default
+
   let blockNow = await promisify(web3.eth.getBlockNumber)()
   let blockDayAgo = Math.max(1, blockNow - est_blocks_per_day)
-  let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo)
+  let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo, gasPrice)
   for (;;) {
     let activeRelay = await pinger.nextRelay()    
     if (activeRelay === null) {
@@ -245,7 +251,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         options.to,
         encodedFunctionCall,
         options.txfee,
-        options.gas_price,
+        gasPrice,
         options.gas_limit,
         nonce,
         relayHub.address,
@@ -264,7 +270,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         options.from,
         options.to,
         encodedFunctionCall,
-        options.gas_price,
+        gasPrice,
         options.gas_limit,
         options.txfee,
         nonce,
@@ -320,8 +326,8 @@ RelayClient.prototype.runRelay = function (payload, callback) {
         from: params.from,
         to: params.to,
         txfee: relayClientOptions.txfee,
-        gas_limit: relayClientOptions.force_gasLimit || parseInt(params.gas, 16),
-        gas_price: relayClientOptions.force_gasPrice || parseInt(params.gasPrice, 16)
+        gas_limit: params.gas && parseInt(params.gas, 16),
+        gas_price: params.gasPrice && parseInt(params.gasPrice, 16 )
     }
 
     if (relayClientOptions.verbose)

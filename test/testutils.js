@@ -73,7 +73,7 @@ module.exports = {
         while (count-- > 0) {
             res = await http.sendPromise(localhostOne+'/getaddr')
             if ( res.Ready ) break;
-            await module.exports.sleep(500)
+            await module.exports.sleep(1000)
         }
         assert.ok(res.Ready, "Timed out waiting for relay to get staked and registered")
 

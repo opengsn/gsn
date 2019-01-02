@@ -61,11 +61,11 @@ class RelayManager {
             return
         }
 
-        let owner = web3.eth.accounts[this.owner]
+        let owner = web3.eth.accounts[this.owner||0]
 
         if (currentOwner == '0x0000000000000000000000000000000000000000') {
             this.log("Relay not owned: waiting for owner")
-        } else if (currentOwner == owner) {
+        } else if (currentOwner.toLowerCase() == owner.toLowerCase()) {
             this.log("Relay ready")
         } else {
             this.log("NOT OUR RELAY: owned by: " + currentOwner)
