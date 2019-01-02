@@ -1,4 +1,4 @@
-/* global contract it assert before after */
+/* global web3 contract it assert before after artifacts */
 const ServerHelper = require('../src/js/relayclient/ServerHelper');
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper');
 const testutils = require('./testutils')

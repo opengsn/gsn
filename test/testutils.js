@@ -1,7 +1,6 @@
- /* global web3 artifacts */
+ /* global web3 artifacts assert */
 
 const child_process = require('child_process')
-const util = require("util")
 const HttpWrapper = require( "../src/js/relayclient/HttpWrapper")
 const localhostOne = "http://localhost:8090"
 const RelayHub = artifacts.require("RelayHub");
@@ -61,7 +60,7 @@ module.exports = {
             proc.on('exit', doaListener.bind(proc))
         })
 
-        http = new HttpWrapper(web3)
+        let http = new HttpWrapper(web3)
         let res = await http.sendPromise(localhostOne+'/getaddr')
         let relayServerAddress = res.RelayServerAddress
         console.log("Relay Server Address",relayServerAddress)
