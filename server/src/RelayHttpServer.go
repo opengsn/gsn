@@ -290,8 +290,8 @@ func configRelay(relayParams RelayParams) {
 func refreshBlockchainView() {
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
-	registered, err := relay.IsRegistered(relay.HubAddress())
-	for ; err != nil || !registered; registered, err = relay.IsRegistered(relay.HubAddress()) {
+	when, err := relay.WhenRegistered(relay.HubAddress())
+	for ; err != nil || when == 0; when, err = relay.WhenRegistered(relay.HubAddress()) {
 		if err != nil {
 			log.Println(err)
 		}
@@ -343,6 +343,13 @@ func waitForOwnerActions() {
 func keepAlive() {
 
 	waitForOwnerActions()
+	when, err := relay.WhenRegistered(relay.HubAddress())
+	if err != nil {
+		log.Println(err)
+	} else if time.Now().Unix()-when < 24*int64(time.Hour/time.Second) { // time.Duration is in nanosec - converting to sec like unix
+		log.Println("Relay registered lately. No need to reregister")
+		return
+	}
 	log.Println("Registering relay...")
 	for err := relay.RegisterRelay(common.HexToAddress("0")); err != nil; err = relay.RegisterRelay(common.HexToAddress("0")) {
 		if err != nil {

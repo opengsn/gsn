@@ -83,7 +83,7 @@ type IRelay interface {
 
 	IsStaked(hub common.Address) (staked bool, err error)
 
-	IsRegistered(hub common.Address) (registered bool, err error)
+	WhenRegistered(hub common.Address) (when int64, err error)
 
 	Withdraw()
 
@@ -401,7 +401,7 @@ func (relay *RelayServer) IsStaked(hub common.Address) (staked bool, err error) 
 	return
 }
 
-func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err error) {
+func (relay *RelayServer) WhenRegistered(hub common.Address) (when int64, err error) {
 	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
@@ -424,9 +424,10 @@ func (relay *RelayServer) IsRegistered(hub common.Address) (registered bool, err
 		log.Println(err)
 		return
 	}
-	registered = (relayEntry.Timestamp.Uint64() != 0)
+	when = relayEntry.Timestamp.Int64()
+	log.Println("Timestamp:",relayEntry.Timestamp,"unix:",time.Unix(relayEntry.Timestamp.Int64(),0))
 
-	return registered, nil
+	return
 }
 
 // TODO
