@@ -22,11 +22,21 @@ class ActiveRelayPinger {
             return null
         }
 
-        let firstRelayToRespond = await this.raceToSuccess(
-            this.remainingRelays
-                .map(relay => this.getRelayAddressPing(relay.relayUrl, this.gasPrice))
-                .slice(0, 3)
-        );
+        let firstRelayToRespond
+        for ( ;!firstRelayToRespond && this.remainingRelays.length ; ) {
+            let bulkSize = Math.min( 3, this.remainingRelays.length)
+            try {
+                firstRelayToRespond = await this.raceToSuccess(
+                    this.remainingRelays
+                        .slice(0, bulkSize)
+                        .map(relay => this.getRelayAddressPing(relay.relayUrl, this.gasPrice))
+                );
+            } catch (e) {
+                //none of the first `bulkSize` items matched. remove them, to continue with the next bulk.
+                this.remainingRelays = this.remainingRelays.slice(bulkSize)
+            }
+        }
+
         this.remainingRelays = this.remainingRelays.filter(a => a.relayUrl !== firstRelayToRespond.relayUrl)
         this.pingedRelays++
         return firstRelayToRespond
@@ -50,6 +60,7 @@ class ActiveRelayPinger {
                 }
                 if ( !body || !body.Ready || body.MinGasPrice > gasPrice ) {
                     reject( body)
+                    return
                 }
                 try {
                     body.relayUrl = relayUrl
@@ -89,10 +100,10 @@ class ActiveRelayPinger {
 
 class ServerHelper {
     /**
-     * 
-     * @param {*} minStake 
-     * @param {*} minDelay 
-     * @param {*} httpSend 
+     *
+     * @param {*} minStake
+     * @param {*} minDelay
+     * @param {*} httpSend
      */
     constructor(minStake, minDelay, httpSend) {
         this.minStake = minStake
@@ -101,12 +112,13 @@ class ServerHelper {
 
         this.filteredRelays = []
         this.isInitialized = false
+        this.ActiveRelayPinger = ActiveRelayPinger
     }
-    
+
     /**
-     * 
-     * @param {*} relayHubContract 
-     * @param {*} relayHubInstance 
+     *
+     * @param {*} relayHubContract
+     * @param {*} relayHubInstance
      */
     setHub(relayHubContract, relayHubInstance) {
         if (this.relayHubInstance !== relayHubInstance){
@@ -127,7 +139,11 @@ class ServerHelper {
             this.fromBlock = fromBlock
             await this.fetchRelaysAdded()
         }
-        return new ActiveRelayPinger(this.filteredRelays, this.httpSend, gasPrice)
+        return this.createActiveRelayPinger(this.filteredRelays, this.httpSend, gasPrice)
+    }
+
+    createActiveRelayPinger(filteredRelays, httpSend, gasPrice) {
+        return new ActiveRelayPinger(filteredRelays, httpSend, gasPrice)
     }
 
     /**
