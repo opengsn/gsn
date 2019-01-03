@@ -9,7 +9,7 @@ const increaseTime = testutils.increaseTime;
 const RelayHub = artifacts.require("./RelayHub.sol");
 
 const localhostOne = "http://localhost:8090"
-const gasPricePercent = 50
+const gasPricePercent = 20
 
 contract('ServerHelper', function (accounts) {
     let minStake = 1000
