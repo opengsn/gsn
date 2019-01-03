@@ -114,7 +114,6 @@ type RelayServer struct {
 }
 
 func (relay *RelayServer) Balance() (balance *big.Int, err error) {
-	log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 	client, err := ethclient.Dial(relay.EthereumNodeURL)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
@@ -373,8 +372,6 @@ func (relay *RelayServer) IsStaked(hub common.Address) (staked bool, err error) 
 		return
 	}
 	relayAddress := relay.Address()
-	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
-	log.Println("hub to check stake", hub.Hex())
 	rhub, err := librelay.NewRelayHub(hub, client)
 	if err != nil {
 		log.Println(err)
@@ -425,7 +422,6 @@ func (relay *RelayServer) WhenRegistered(hub common.Address) (when int64, err er
 		return
 	}
 	when = relayEntry.Timestamp.Int64()
-	log.Println("Timestamp:",relayEntry.Timestamp,"unix:",time.Unix(relayEntry.Timestamp.Int64(),0))
 
 	return
 }

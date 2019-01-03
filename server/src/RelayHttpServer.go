@@ -77,6 +77,7 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// wait for funding
+		log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 		balance, err := relay.Balance()
 		if err != nil {
 			log.Println(err)
@@ -295,6 +296,7 @@ func refreshBlockchainView() {
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
 	when, err := relay.WhenRegistered(relay.HubAddress())
+	log.Println("when registered:",when,"unix:",time.Unix(when,0))
 	for ; err != nil || when == 0; when, err = relay.WhenRegistered(relay.HubAddress()) {
 		if err != nil {
 			log.Println(err)
@@ -320,6 +322,7 @@ func refreshBlockchainView() {
 }
 
 func waitForOwnerActions() {
+	log.Println("hub to check stake", relay.HubAddress().Hex())
 	staked, err := relay.IsStaked(relay.HubAddress())
 	for ; err != nil || !staked; staked, err = relay.IsStaked(relay.HubAddress()) {
 		if err != nil {
@@ -331,6 +334,7 @@ func waitForOwnerActions() {
 	}
 
 	// wait for funding
+	log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 	balance, err := relay.Balance()
 	if err != nil {
 		log.Println(err)
@@ -348,6 +352,7 @@ func keepAlive() {
 
 	waitForOwnerActions()
 	when, err := relay.WhenRegistered(relay.HubAddress())
+	log.Println("when registered:",when,"unix:",time.Unix(when,0))
 	if err != nil {
 		log.Println(err)
 	} else if time.Now().Unix()-when < delayBetweenRegistrations {
