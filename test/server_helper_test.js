@@ -59,4 +59,55 @@ contract('ServerHelper', function (accounts) {
         let relay = await pinger.nextRelay()
         assert.equal(localhostOne, relay.relayUrl);
     });
+
+
+    //mock for HttpWrapper: instead of sending any ping, the URL is expected to be a json. (ignoring the "getaddr" suffix)
+    // if it contains "error", then return it as error. otherwise, its the http send response.
+    class MockHttpWrapper {
+        constructor() {
+            this.pinged=0
+        }
+
+        send(url, jsonRequestData, callback) {
+
+            let relayInfo = JSON.parse(url.replace(/\/\w+$/,''))
+
+            this.pinged++
+
+            if (relayInfo.error) {
+                setTimeout(() => callback(new Error(url), null), 0)
+            } else {
+                setTimeout(() => callback(null, relayInfo), 0)
+            }
+        }
+    }
+
+    it( "ActiveRelayPinger should keep trying find a relay after 6 broken (high gas, not ready) relays", async function() {
+
+        let mockRelays = [
+            { relayUrl:"url1", error: "failed relay1", stake:1, unstakeDelay:1 },
+            { relayUrl:"url2", Ready:false, stake:1, unstakeDelay:1 },
+            { relayUrl:"url3", error: "failed relay1", stake:1, unstakeDelay:1 },
+            { relayUrl:"url4", MinGasPrice: 1e20, Ready:true, stake:1, unstakeDelay:1 },
+            { relayUrl:"url5", MinGasPrice: 1, Ready:true, stake:1, unstakeDelay:1 },
+            { relayUrl:"url6", Ready:false, stake:1, unstakeDelay:1 },
+            { relayUrl:"url7", MinGasPrice: 1, Ready:true, stake:1, unstakeDelay:1 },
+        ]
+
+
+        mockRelays.forEach(r => r.relayUrl = JSON.stringify(r))
+
+        let mockHttpWrapper = new MockHttpWrapper( mockRelays )
+
+        let pinger = new serverHelper.ActiveRelayPinger(mockRelays, mockHttpWrapper, 100)
+
+        //should skip the bad relays, 3 at a time, and reach relay 5
+        let r = await pinger.nextRelay()
+        //validate its "url5" that got returned (the other were rejected)
+        assert.equal("url5", JSON.parse(r.relayUrl).relayUrl )
+        //make sure we totally tried exactly 6 relays (we ping in triplets)
+        assert.equal(6, mockHttpWrapper.pinged )
+
+    })
+
 })

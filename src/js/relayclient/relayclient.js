@@ -24,7 +24,7 @@ const est_blocks_per_day = 7200
 abi_decoder.addABI(relayHubAbi)
 
 //default gas price (unless client specifies one): the web3.eth.gasPrice*GASPRICE_FACTOR
-const GASPRICE_FACTOR = 1.1
+const DEFAULT_GASPRICE_FACTOR = 10
 
 
 /**
@@ -35,7 +35,8 @@ const GASPRICE_FACTOR = 1.1
  *lookup for relay
  *    minStake - ignore relays with stake below this (wei) value.
  *    minDelay - ignore relays with delay lower this (sec) value
- *    backups - open that many connections to relays on requests.
+ *    gaspriceFactorPercent - increase (in %) over current gasPrice average. default is 10%.
+ *          Note that the resulting gasPrice must be accepted by relay (above its minGasPrice)
  *
  *manual settings: these can be used to override the default setting.
  *    relayUrl, relayAddress - avoid lookup on relayHub for relays, and always use this URL/address
@@ -47,7 +48,7 @@ function RelayClient(web3, config) {
     this.config = config || {}
     this.web3 = web3
     this.httpSend = new HttpWrapper(this.web3)
-  
+
     this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend)
 
     this.RelayRecipient = web3.eth.contract(relayRecipientAbi)
@@ -228,18 +229,21 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   let relayHub = this.RelayHub.at(relayHubAddress)
 
   var nonce = (await promisify(relayHub.get_nonce.call)(options.from)).toNumber()
-  
+
   this.serverHelper.setHub(this.RelayHub, relayHub)
+
+    //gas-price multiplicator: either default (10%) or configuration factor
+  let pct = (this.config.gaspriceFactorPercent || DEFAULT_GASPRICE_FACTOR)
 
   let gasPrice = this.config.force_gasPrice ||  //forced gasprice
                     options.gas_price ||        //user-supplied gas price
-                    ( await promisify(web3.eth.getGasPrice)() ) * GASPRICE_FACTOR           //default
+                    ( await promisify(web3.eth.getGasPrice)() ) * (pct+100)/100
 
   let blockNow = await promisify(web3.eth.getBlockNumber)()
   let blockDayAgo = Math.max(1, blockNow - est_blocks_per_day)
   let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo, gasPrice)
   for (;;) {
-    let activeRelay = await pinger.nextRelay()    
+    let activeRelay = await pinger.nextRelay()
     if (activeRelay === null) {
         throw new Error("No relay responded! " + pinger.relaysCount + " attempted, " + pinger.pingedRelays + " pinged")
     }
