@@ -92,3 +92,11 @@ func schedule(job func(), delay time.Duration, when time.Duration) chan bool {
 
 	return stop
 }
+
+func sleep(duration time.Duration, shortSleep bool) {
+	if shortSleep {
+		time.Sleep(time.Second)
+	}else {
+		time.Sleep(duration)
+	}
+}

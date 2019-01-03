@@ -23,6 +23,7 @@ module.exports = {
         options = options || {}
         let args = []
         args.push( "-Workdir", "./build/server" )
+        args.push( "-ShortSleep" )
         if ( rhub ) {
             args.push("-RelayHubAddress", rhub.address)
         }

@@ -23,6 +23,8 @@ import (
 const DebugAPI = true
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
+var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
+var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
 var ready = &SyncBool{val: false, mutex: &sync.Mutex{}}
 
@@ -251,10 +253,11 @@ func parseCommandLine() (relayParams RelayParams) {
 	relayHubAddress := flag.String("RelayHubAddress", "0x254dffcd3277c0b1660f6d42efbb754edababc2b", "RelayHub address")
 	stakeAmount := flag.Int64("StakeAmount", 1002, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
-	gasPricePercent := flag.Int64("GasPricePercent", 50, "Relay's gas price percentage per transaction. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
+	gasPricePercent := flag.Int64("GasPricePercent", 50, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
+	flag.BoolVar(&shortSleep, "ShortSleep", false, "Whether we wait after calls to blockchain or return (almost) immediately")
 
 	flag.Parse()
 
@@ -272,6 +275,7 @@ func parseCommandLine() (relayParams RelayParams) {
 
 	log.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
 	log.Println("Using workdir: " + *workdir)
+	log.Println("shortsleep? ", shortSleep)
 
 	return relayParams
 
@@ -280,7 +284,7 @@ func parseCommandLine() (relayParams RelayParams) {
 func configRelay(relayParams RelayParams) {
 	log.Println("Constructing relay server in url ", relayParams.Url)
 	privateKey := loadPrivateKey(KeystoreDir)
-	log.Println("Public key: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
+	log.Println("relay server address: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	relay = &librelay.RelayServer{OwnerAddress: relayParams.OwnerAddress, Fee: relayParams.Fee, Url: relayParams.Url, Port: relayParams.Port,
 		RelayHubAddress: relayParams.RelayHubAddress, StakeAmount: relayParams.StakeAmount,
 		GasLimit: relayParams.GasLimit, GasPricePercent: relayParams.GasPricePercent, PrivateKey: privateKey, UnstakeDelay: relayParams.UnstakeDelay, EthereumNodeURL: relayParams.EthereumNodeURL}
@@ -296,7 +300,7 @@ func refreshBlockchainView() {
 			log.Println(err)
 		}
 		ready.SetVal(false)
-		time.Sleep(15 * time.Second)
+		sleep(15*time.Second, shortSleep)
 	}
 
 	log.Println("Trying to get gasPrice from node...")
@@ -306,7 +310,7 @@ func refreshBlockchainView() {
 		}
 		ready.SetVal(false)
 		log.Println("Trying to get gasPrice from node again...")
-		time.Sleep(10 * time.Second)
+		sleep(10*time.Second, shortSleep)
 
 	}
 	gasPrice := relay.GasPrice()
@@ -323,7 +327,7 @@ func waitForOwnerActions() {
 		}
 		ready.SetVal(false)
 		log.Println("Waiting for stake...")
-		time.Sleep(5 * time.Second)
+		sleep(5*time.Second, shortSleep)
 	}
 
 	// wait for funding
@@ -335,7 +339,7 @@ func waitForOwnerActions() {
 	for ; err != nil || balance.Uint64() <= params.Ether; balance, err = relay.Balance() {
 		ready.SetVal(false)
 		log.Println("Server's balance too low. Waiting for funding...")
-		time.Sleep(10 * time.Second)
+		sleep(10*time.Second, shortSleep)
 	}
 	log.Println("Relay funded. Balance:", balance)
 }
@@ -346,7 +350,7 @@ func keepAlive() {
 	when, err := relay.WhenRegistered(relay.HubAddress())
 	if err != nil {
 		log.Println(err)
-	} else if time.Now().Unix()-when < 24*int64(time.Hour/time.Second) { // time.Duration is in nanosec - converting to sec like unix
+	} else if time.Now().Unix()-when < delayBetweenRegistrations {
 		log.Println("Relay registered lately. No need to reregister")
 		return
 	}
@@ -356,7 +360,7 @@ func keepAlive() {
 			log.Println(err)
 		}
 		log.Println("Trying to register again...")
-		time.Sleep(10 * time.Second)
+		sleep(1*time.Minute, shortSleep)
 	}
 	log.Println("Done registering")
 }
