@@ -24,7 +24,7 @@ const est_blocks_per_day = 7200
 abi_decoder.addABI(relayHubAbi)
 
 //default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
-const GASPRICE_PERCENT = 50
+const GASPRICE_PERCENT = 20
 
 
 /**

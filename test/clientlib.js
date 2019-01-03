@@ -18,7 +18,7 @@ const postRelayHubAddress = testutils.postRelayHubAddress;
 const util = require("util")
 const request = util.promisify(require("request"))
 
-const gasPricePercent = 50
+const gasPricePercent = 20
 var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPricePercent)/100
 contract('RelayClient', function (accounts) {
 
