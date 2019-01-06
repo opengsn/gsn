@@ -54,7 +54,7 @@ async function run() {
         process.exit(1)
     }
 
-    fundrelay(hubaddr, relay, web3.eth.accounts[fromaccount], 1e18, 1e18, 30)
+    fundrelay(hubaddr, relay, web3.eth.accounts[fromaccount], 1.1e18, 1.1e18, 30)
 
 }
 

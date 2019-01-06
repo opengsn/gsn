@@ -24,17 +24,6 @@
     }
   ],
   "version": "0.1.0",
-  "dependencies": {
-    "abi-decoder": "^1.2.0",
-    "es6-promisify": "^6.0.1",
-    "ethereumjs-tx": "^1.3.7",
-    "ethereumjs-util": "^6.0.0",
-    "ethereumjs-wallet": "^0.6.3",
-    "http-server": "^0.11.1",
-    "promisify": "0.0.3",
-    "truffle-hdwallet-provider": "^1.0.1",
-    "web3-utils": "^1.0.0-beta.36"
-  },
   "scripts": {
     "test": "make && run-with-testrpc -l 8000000 'truffle test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
@@ -50,7 +39,16 @@
     "run-with-testrpc": "^0.3.0",
     "truffle": "^4.1.14",
     "truffle-core": "^4.1.14",
-    "web3": "0.20.6"
+    "web3": "0.20.6",
+    "abi-decoder": "^1.2.0",
+    "es6-promisify": "^6.0.1",
+    "ethereumjs-tx": "^1.3.7",
+    "ethereumjs-util": "^6.0.0",
+    "ethereumjs-wallet": "^0.6.3",
+    "http-server": "^0.11.1",
+    "promisify": "0.0.3",
+    "truffle-hdwallet-provider": "^1.0.1",
+    "web3-utils": "^1.0.0-beta.36"
   },
   "main": "src/js/relayclient/relayclient.js",
   "description": "Tabookey Gasless Relay Framework"

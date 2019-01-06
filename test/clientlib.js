@@ -281,6 +281,7 @@ contract('RelayClient', function (accounts) {
     it("should use a given ephemeral key for signing", async function(){
         let rc = new RelayClient(web3)
         let ephemeralKeypair = rc.newEphemeralKeypair()
+        let fromAddr = ephemeralKeypair.address
         rc.useKeypairForSigning(ephemeralKeypair)
         var did_assert = false
         rc.sendViaRelay = function(relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress){
@@ -301,7 +302,7 @@ contract('RelayClient', function (accounts) {
         let encoded = sr.contract.emitMessage.getData("hello world");
         let to = sr.address;
         let options = {
-            from: gasLess,
+            from: fromAddr,
             to: to,
             txfee: 12,
             gas_limit: 1000000

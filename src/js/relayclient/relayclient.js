@@ -239,6 +239,9 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
                     options.gas_price ||        //user-supplied gas price
                     ( await promisify(web3.eth.getGasPrice)() ) * (pct+100)/100
 
+    //TODO: should add gas estimation for encodedFunctionCall (tricky, since its not a real transaction)
+  let gasLimit = this.config.force_gasLimit || options.gas_limit
+
   let blockNow = await promisify(web3.eth.getBlockNumber)()
   let blockDayAgo = Math.max(1, blockNow - est_blocks_per_day)
   let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo, gasPrice)
@@ -257,7 +260,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         encodedFunctionCall,
         options.txfee,
         gasPrice,
-        options.gas_limit,
+        gasLimit,
         nonce,
         relayHub.address,
         relayAddress);
@@ -276,7 +279,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         options.to,
         encodedFunctionCall,
         gasPrice,
-        options.gas_limit,
+        gasLimit,
         options.txfee,
         nonce,
         relayHub.address,
