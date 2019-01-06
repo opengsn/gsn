@@ -65,8 +65,6 @@ options.forEach(params => {
 
         if (params.relay) {
             it(params.title + "enable relay", async function () {
-                let res = await testutils.postRelayHubAddress(rhub.address, localhostOne);
-                assert.equal('"OK"', JSON.stringify(res))
                 rhub.depositFor(sr.address, {value: 1e17})
                 new RelayClient(web3, {
                     // verbose:true,

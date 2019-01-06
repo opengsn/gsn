@@ -21,8 +21,6 @@ import (
 	"time"
 )
 
-const DebugAPI = true
-
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
@@ -35,7 +33,6 @@ var stopKeepAlive chan bool
 var stopRefreshBlockchainView chan bool
 //var stopScanningBlockChain chan bool
 
-type RelayParams librelay.RelayServer
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -49,10 +46,6 @@ func main() {
 	http.HandleFunc("/getaddr", getEthAddrHandler)
 	//Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
 	//http.HandleFunc("/audit", assureRelayReady(auditRelaysHandler))
-
-	if DebugAPI { // we let the client dictate which RelayHub we use on the blockchain
-		http.HandleFunc("/setRelayHub", setHubHandler)
-	}
 
 	stopKeepAlive = schedule(keepAlive, 1*time.Minute, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*time.Minute, 0)
@@ -169,47 +162,6 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func setHubHandler(w http.ResponseWriter, r *http.Request) {
-
-	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
-
-	log.Println("setHubHandler Start")
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Println("Could not read request body", body, err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-	var request = &librelay.SetHubRequest{}
-	err = json.Unmarshal(body, request)
-	if err != nil {
-		log.Println("Invalid json", body, err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-	log.Println("RelayHubAddress", request.RelayHubAddress.String())
-	log.Println("Checking if already staked to this hub")
-
-	// as a workaround when setting a relayhub address in debug mode
-	stopKeepAlive <- true
-	stopRefreshBlockchainView <- true
-	relayServer := relay.(*librelay.RelayServer)
-	relayServer.RelayHubAddress = request.RelayHubAddress
-	//go refreshBlockchainView()
-	stopKeepAlive = schedule(keepAlive, 1*time.Minute, 0)
-	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*time.Minute, 0)
-
-	w.WriteHeader(http.StatusOK)
-	resp, err := json.Marshal("OK")
-	if err != nil {
-		log.Println(err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-	w.Write(resp)
-}
-
 func relayHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
@@ -247,7 +199,7 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func parseCommandLine() (relayParams RelayParams) {
+func parseCommandLine() (relayParams librelay.RelayParams) {
 	ownerAddress := flag.String("OwnerAddress", common.HexToAddress("0").Hex(), "Relay's owner address")
 	fee := flag.Int64("Fee", 11, "Relay's per transaction fee")
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
@@ -293,22 +245,34 @@ func parseCommandLine() (relayParams RelayParams) {
 
 }
 
-func configRelay(relayParams RelayParams) {
+func configRelay(relayParams librelay.RelayParams) {
 	log.Println("Constructing relay server in url ", relayParams.Url)
 	privateKey := loadPrivateKey(KeystoreDir)
 	log.Println("relay server address: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-	relay = &librelay.RelayServer{OwnerAddress: relayParams.OwnerAddress, Fee: relayParams.Fee, Url: relayParams.Url, Port: relayParams.Port,
-		RelayHubAddress: relayParams.RelayHubAddress, StakeAmount: relayParams.StakeAmount,
-		GasLimit: relayParams.GasLimit, GasPricePercent: relayParams.GasPricePercent, PrivateKey: privateKey, UnstakeDelay: relayParams.UnstakeDelay, EthereumNodeURL: relayParams.EthereumNodeURL}
+	client, err := librelay.NewEthClient(relayParams.EthereumNodeURL)
+	if err != nil {
+		log.Println("Could not connect to ethereum node", err)
+		return
+	}
+	relay, err = librelay.NewRelayServer(
+		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
+		relayParams.RelayHubAddress, relayParams.StakeAmount,
+		relayParams.GasLimit, relayParams.GasPricePercent,
+		privateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL,
+		client)
+	if err != nil {
+		log.Println("Could not create Relay Server", err)
+		return
+	}
 }
 
 // Wait for server to be staked & funded by owner, then try and register on RelayHub
 func refreshBlockchainView() {
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
-	when, err := relay.WhenRegistered(relay.HubAddress())
+	when, err := relay.RegistrationDate(relay.HubAddress())
 	log.Println("when registered:",when,"unix:",time.Unix(when,0))
-	for ; err != nil || when == 0; when, err = relay.WhenRegistered(relay.HubAddress()) {
+	for ; err != nil || when == 0; when, err = relay.RegistrationDate(relay.HubAddress()) {
 		if err != nil {
 			log.Println(err)
 		}
@@ -362,7 +326,7 @@ func waitForOwnerActions() {
 func keepAlive() {
 
 	waitForOwnerActions()
-	when, err := relay.WhenRegistered(relay.HubAddress())
+	when, err := relay.RegistrationDate(relay.HubAddress())
 	log.Println("when registered:",when,"unix:",time.Unix(when,0))
 	if err != nil {
 		log.Println(err)

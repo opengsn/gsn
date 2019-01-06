@@ -84,9 +84,7 @@ type IRelay interface {
 
 	IsStaked(hub common.Address) (staked bool, err error)
 
-	WhenRegistered(hub common.Address) (when int64, err error)
-
-	Withdraw()
+	RegistrationDate(hub common.Address) (when int64, err error)
 
 	CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error)
 
@@ -103,7 +101,21 @@ type IRelay interface {
 	ScanBlockChainToPenalize() (err error)
 }
 
-type RelayServer struct {
+type IClient interface {
+	bind.ContractBackend
+	ethereum.TransactionReader
+
+	//From: ChainReader
+	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
+	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
+
+	// From:  ChainStateReader, minus CodeAt
+	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	StorageAt(ctx context.Context, account common.Address, key common.Hash, blockNumber *big.Int) ([]byte, error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
+}
+
+type relayServer struct {
 	OwnerAddress    common.Address
 	Fee             *big.Int
 	Url             string
@@ -116,15 +128,59 @@ type RelayServer struct {
 	UnstakeDelay    *big.Int
 	EthereumNodeURL string
 	gasPrice        *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
+	Client			IClient
+	rhub 			*librelay.RelayHub
 }
 
-func (relay *RelayServer) Balance() (balance *big.Int, err error) {
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
+type RelayParams relayServer
+
+func NewEthClient(EthereumNodeURL string) (IClient, error) {
+	client := &TbkClient{}
+	var err error
+	client.Client, err = ethclient.Dial(EthereumNodeURL)
+	return client, err
+}
+
+func NewRelayServer(
+	OwnerAddress common.Address,
+	Fee *big.Int,
+	Url string,
+	Port string,
+	RelayHubAddress common.Address,
+	StakeAmount *big.Int,
+	GasLimit uint64,
+	GasPricePercent *big.Int,
+	PrivateKey *ecdsa.PrivateKey,
+	UnstakeDelay *big.Int,
+	EthereumNodeURL string,
+	Client IClient) (*relayServer, error) {
+
+	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
+
 	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
+		return nil, err
 	}
-	balance, err = client.BalanceAt(context.Background(), relay.Address(), nil)
+
+	relay := &relayServer{
+		OwnerAddress:    OwnerAddress,
+		Fee:             Fee,
+		Url:             Url,
+		Port:            Port,
+		RelayHubAddress: RelayHubAddress,
+		StakeAmount:     StakeAmount,
+		GasLimit:        GasLimit,
+		GasPricePercent: GasPricePercent,
+		PrivateKey:      PrivateKey,
+		UnstakeDelay:    UnstakeDelay,
+		EthereumNodeURL: EthereumNodeURL,
+		Client:          Client,
+		rhub:            rhub,
+	}
+	return relay, err
+}
+
+func (relay *relayServer) Balance() (balance *big.Int, err error) {
+	balance, err = relay.Client.BalanceAt(context.Background(), relay.Address(), nil)
 	if err != nil {
 		log.Println(err)
 		return
@@ -133,20 +189,15 @@ func (relay *RelayServer) Balance() (balance *big.Int, err error) {
 	return
 }
 
-func (relay *RelayServer) GasPrice() (big.Int) {
+func (relay *relayServer) GasPrice() (big.Int) {
 	if relay.gasPrice == nil {
 		return *big.NewInt(0)
 	}
 	return *relay.gasPrice
 }
 
-func (relay *RelayServer) RefreshGasPrice() (err error) {
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
-	gasPrice, err := client.SuggestGasPrice(context.Background())
+func (relay *relayServer) RefreshGasPrice() (err error) {
+	gasPrice, err := relay.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Println("SuggestGasPrice() failed ", err)
 		return
@@ -155,14 +206,8 @@ func (relay *RelayServer) RefreshGasPrice() (err error) {
 	return
 }
 
-func (relay *RelayServer) Stake() (err error) {
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
+func (relay *relayServer) Stake() (err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
 	if err != nil {
 		log.Println(err)
 		return
@@ -170,7 +215,7 @@ func (relay *RelayServer) Stake() (err error) {
 
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce(client)
+	nonce, err := relay.pollNonce()
 	if err != nil {
 		log.Println(err)
 		return
@@ -178,7 +223,7 @@ func (relay *RelayServer) Stake() (err error) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
 	log.Println("Stake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
-	tx, err := rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
+	tx, err := relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
 		//relay.replayUnconfirmedTxs(client)
@@ -191,7 +236,7 @@ func (relay *RelayServer) Stake() (err error) {
 		Start: 0,
 		End:   nil,
 	}
-	iter, err := rhub.FilterStaked(filterOpts)
+	iter, err := relay.rhub.FilterStaked(filterOpts)
 	if err != nil {
 		log.Println(err)
 		return
@@ -201,7 +246,7 @@ func (relay *RelayServer) Stake() (err error) {
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = rhub.FilterStaked(filterOpts)
+			iter, err = relay.rhub.FilterStaked(filterOpts)
 			if err != nil {
 				log.Println(err)
 				return
@@ -222,27 +267,17 @@ func (relay *RelayServer) Stake() (err error) {
 
 }
 
-func (relay *RelayServer) Unstake() (err error) {
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
+func (relay *relayServer) Unstake() (err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce(client)
+	nonce, err := relay.pollNonce()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	tx, err := rhub.Unstake(auth, relay.Address())
+	tx, err := relay.rhub.Unstake(auth, relay.Address())
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
@@ -255,7 +290,7 @@ func (relay *RelayServer) Unstake() (err error) {
 		Start: 0,
 		End:   nil,
 	}
-	iter, err := rhub.FilterUnstaked(filterOpts)
+	iter, err := relay.rhub.FilterUnstaked(filterOpts)
 	if err != nil {
 		log.Println(err)
 		return
@@ -266,7 +301,7 @@ func (relay *RelayServer) Unstake() (err error) {
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = rhub.FilterUnstaked(filterOpts)
+			iter, err = relay.rhub.FilterUnstaked(filterOpts)
 			if err != nil {
 				log.Println(err)
 				return
@@ -287,32 +322,23 @@ func (relay *RelayServer) Unstake() (err error) {
 
 }
 
-func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) {
-
-	client := &TbkClient{}
-	client.Client, err = ethclient.Dial(relay.EthereumNodeURL)
+func (relay *relayServer) RegisterRelay(stale_relay common.Address) (err error) {
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
 	}
 
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce(client.Client)
+	nonce, err := relay.pollNonce()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
-	tx, err := rhub.RegisterRelay(auth, relay.Fee, relay.Url, common.HexToAddress("0"))
-
+	tx, err := relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url, common.HexToAddress("0"))
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
@@ -328,7 +354,7 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		Start: 0,
 		End:   nil,
 	}
-	iter, err := rhub.FilterRelayAdded(filterOpts)
+	iter, err := relay.rhub.FilterRelayAdded(filterOpts)
 	if err != nil {
 		log.Println(err)
 		return
@@ -344,7 +370,7 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = rhub.FilterRelayAdded(filterOpts)
+			iter, err = relay.rhub.FilterRelayAdded(filterOpts)
 			if err != nil {
 				log.Println(err)
 				return
@@ -367,28 +393,18 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 	return nil
 }
 
-func (relay *RelayServer) UnregisterRelay() error {
+func (relay *relayServer) UnregisterRelay() error {
 	return relay.Unstake()
 }
 
-func (relay *RelayServer) IsStaked(hub common.Address) (staked bool, err error) {
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
+func (relay *relayServer) IsStaked(hub common.Address) (staked bool, err error) {
 	relayAddress := relay.Address()
-	rhub, err := librelay.NewRelayHub(hub, client)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
 		Pending: true,
 	}
 
-	stakeEntry, err := rhub.Stakes(callOpt, relayAddress)
+	stakeEntry, err := relay.rhub.Stakes(callOpt, relayAddress)
 	if err != nil {
 		log.Println(err)
 		return
@@ -404,25 +420,15 @@ func (relay *RelayServer) IsStaked(hub common.Address) (staked bool, err error) 
 	return
 }
 
-func (relay *RelayServer) WhenRegistered(hub common.Address) (when int64, err error) {
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
+func (relay *relayServer) RegistrationDate(hub common.Address) (when int64, err error) {
 	relayAddress := relay.Address()
 	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
 	log.Println("hub to check", hub.Hex())
-	rhub, err := librelay.NewRelayHub(hub, client)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
 		Pending: true,
 	}
-	relayEntry, err := rhub.Relays(callOpt, relayAddress)
+	relayEntry, err := relay.rhub.Relays(callOpt, relayAddress)
 	if err != nil {
 		log.Println(err)
 		return
@@ -432,19 +438,7 @@ func (relay *RelayServer) WhenRegistered(hub common.Address) (when int64, err er
 	return
 }
 
-// TODO
-func (relay *RelayServer) Withdraw() {
-
-}
-
-func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
-
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
-
+func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
 	// Check that the relayhub is the correct one
 	if bytes.Compare(relay.RelayHubAddress.Bytes(), request.RelayHubAddress.Bytes()) != 0 {
 		err = fmt.Errorf("Wrong hub address.\nRelay server's hub address: %s, request's hub address: %s\n", relay.RelayHubAddress.Hex(), request.RelayHubAddress.Hex())
@@ -493,11 +487,6 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	// can_relay returned true, so we can relay the tx
 
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 
 	relayAddress := relay.Address()
 
@@ -505,7 +494,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		From:    relayAddress,
 		Pending: true,
 	}
-	gasReserve, err := rhub.GasReserve(callOpt)
+	gasReserve, err := relay.rhub.GasReserve(callOpt)
 	if err != nil {
 		log.Println(err)
 		return
@@ -514,7 +503,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	auth.GasLimit = gasLimit.Add(&request.GasLimit, gasReserve).Add(gasLimit, gasReserve).Uint64()
 	auth.GasPrice = &request.GasPrice
 
-	to_balance, err := rhub.Balances(callOpt, request.To)
+	to_balance, err := relay.rhub.Balances(callOpt, request.To)
 	if err != nil {
 		log.Println(err)
 		return
@@ -523,13 +512,13 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce(client)
+	nonce, err := relay.pollNonce()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	signedTx, err = rhub.Relay(auth, request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
+	signedTx, err = relay.rhub.Relay(auth, request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
 		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
 	if err != nil {
 		log.Println(err)
@@ -543,7 +532,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	return
 }
 
-func (relay *RelayServer) Address() (relayAddress common.Address) {
+func (relay *relayServer) Address() (relayAddress common.Address) {
 	publicKey := relay.PrivateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
@@ -555,35 +544,30 @@ func (relay *RelayServer) Address() (relayAddress common.Address) {
 	return
 }
 
-func (relay *RelayServer) HubAddress() (common.Address) {
+func (relay *relayServer) HubAddress() (common.Address) {
 	return relay.RelayHubAddress
 }
 
-func (relay *RelayServer) GetUrl() (string) {
+func (relay *relayServer) GetUrl() (string) {
 	return relay.Url
 }
 
-func (relay *RelayServer) GetPort() (string) {
+func (relay *relayServer) GetPort() (string) {
 	return relay.Port
 }
 
 var maybePenalizable = make(map[common.Address]types.TxByNonce)
 var lastBlockScanned = big.NewInt(0)
 
-func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (err error) {
+func (relay *relayServer) AuditRelaysTransactions(signedTx *types.Transaction) (err error) {
 
 	log.Println("AuditRelaysTransactions start")
 	ctx := context.Background()
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
 	// probably due to ganache starting from earlier block than when eip155 introduced
 	signer := types.HomesteadSigner{} //types.NewEIP155Signer(signedTx.ChainId())
 
 	// check if @signedTx is already on the blockchain. If it is, return
-	tx, _, err := client.TransactionByHash(ctx, signedTx.Hash())
+	tx, _, err := relay.Client.TransactionByHash(ctx, signedTx.Hash())
 	if err == nil { // signedTx already on the blockchain
 		log.Println("tx already on the blockchain")
 		log.Println("tx ", tx)
@@ -600,7 +584,7 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 		log.Println(err)
 		return
 	}
-	isRelay, err := relay.validateRelay(client, otherRelay)
+	isRelay, err := relay.validateRelay(otherRelay)
 	if err != nil {
 		log.Println(err)
 		return
@@ -615,7 +599,7 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 	maybePenalizable[otherRelay] = append(maybePenalizable[otherRelay], signedTx)
 
 	// check if @signedTx.nonce <= otherRelay.nonce.
-	otherNonce, err := client.NonceAt(ctx, otherRelay, nil)
+	otherNonce, err := relay.Client.NonceAt(ctx, otherRelay, nil)
 	if err != nil {
 		log.Println(err)
 		return
@@ -623,7 +607,7 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 	log.Println("Before scanning, current account nonce, tx nonce", otherNonce, signedTx.Nonce())
 	//If it is, scan the blockchain for the other tx of the same nonce and penalize!
 	if signedTx.Nonce() <= otherNonce {
-		err = relay.scanBlockChainToPenalizeInternal(client, lastBlockScanned, nil)
+		err = relay.scanBlockChainToPenalizeInternal(lastBlockScanned, nil)
 		if err != nil {
 			log.Println("scanBlockChainToPenalizeInternal failed")
 			return
@@ -634,16 +618,11 @@ func (relay *RelayServer) AuditRelaysTransactions(signedTx *types.Transaction) (
 }
 
 // TODO
-func (relay *RelayServer) ScanBlockChainToPenalize() (err error) {
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
-	return relay.scanBlockChainToPenalizeInternal(client, lastBlockScanned, nil)
+func (relay *relayServer) ScanBlockChainToPenalize() (err error) {
+	return relay.scanBlockChainToPenalizeInternal(lastBlockScanned, nil)
 }
 
-func (relay *RelayServer) scanBlockChainToPenalizeInternal(client *ethclient.Client, startBlock, endBlock *big.Int) (err error) {
+func (relay *relayServer) scanBlockChainToPenalizeInternal(startBlock, endBlock *big.Int) (err error) {
 	log.Println("scanBlockChainToPenalizeInternal start")
 	signer := types.HomesteadSigner{} //types.NewEIP155Signer(signedTx.ChainId())
 	ctx := context.Background()
@@ -652,7 +631,7 @@ func (relay *RelayServer) scanBlockChainToPenalizeInternal(client *ethclient.Cli
 		log.Println("scanBlockChainToPenalizeInternal  loop start")
 		log.Println("address ", address.Hex())
 		// get All transactions of each address in maybePenalizable and cross check nonce of them
-		allTransactions, err := getTransactionsByAddress(client, address, startBlock, nil)
+		allTransactions, err := relay.getTransactionsByAddress(address, startBlock, nil)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -660,13 +639,13 @@ func (relay *RelayServer) scanBlockChainToPenalizeInternal(client *ethclient.Cli
 		log.Println("allTransactions len", len(allTransactions))
 		for _, tx1 := range txsToScan {
 			// check if @signedTx is already on the blockchain. If it is, continue to next
-			/*tx*/ _, _, err = client.TransactionByHash(ctx, signer.Hash(tx1))
+			/*tx*/ _, _, err = relay.Client.TransactionByHash(ctx, signer.Hash(tx1))
 			if err == nil { // tx1 already on the blockchain
 				continue
 			}
 			for _, tx2 := range allTransactions {
 				if tx1.Nonce() == tx2.Nonce() && bytes.Compare(signer.Hash(tx1).Bytes(), signer.Hash(tx2).Bytes()) != 0 {
-					err = relay.penalizeOtherRelay(client, tx1, tx2)
+					err = relay.penalizeOtherRelay(tx1, tx2)
 					if err != nil {
 						log.Println(err)
 						return err
@@ -680,9 +659,10 @@ func (relay *RelayServer) scanBlockChainToPenalizeInternal(client *ethclient.Cli
 	return nil
 }
 
-func getTransactionsByAddress(client *ethclient.Client, address common.Address, startBlock, endBlock *big.Int) (transactions types.Transactions, err error) {
+func (relay *relayServer) getTransactionsByAddress(address common.Address, startBlock, endBlock *big.Int) (transactions types.Transactions, err error) {
 	log.Println("getTransactionsByAddress start")
 	ctx := context.Background()
+	client := relay.Client
 	if endBlock == nil {
 		header, err := client.HeaderByNumber(ctx, nil)
 		if err != nil {
@@ -737,13 +717,8 @@ func getTransactionsByAddress(client *ethclient.Client, address common.Address, 
 	return
 }
 
-func (relay *RelayServer) penalizeOtherRelay(client *ethclient.Client, signedTx1, signedTx2 *types.Transaction) (err error) {
+func (relay *relayServer) penalizeOtherRelay(signedTx1, signedTx2 *types.Transaction) (err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 
 	ts := types.Transactions{signedTx1}
 	rawTxBytes1 := ts.GetRlp(0)
@@ -765,13 +740,13 @@ func (relay *RelayServer) penalizeOtherRelay(client *ethclient.Client, signedTx1
 
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce(client)
+	nonce, err := relay.pollNonce()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	tx, err := rhub.PenalizeRepeatedNonce(auth, rawTxBytes1, sig1, rawTxBytes2, sig2)
+	tx, err := relay.rhub.PenalizeRepeatedNonce(auth, rawTxBytes1, sig1, rawTxBytes2, sig2)
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
@@ -785,18 +760,13 @@ func (relay *RelayServer) penalizeOtherRelay(client *ethclient.Client, signedTx1
 
 }
 
-func (relay *RelayServer) validateRelay(client *ethclient.Client, otherRelay common.Address) (bool, error) {
-	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
-	if err != nil {
-		log.Println(err)
-		return false, err
-	}
+func (relay *relayServer) validateRelay(otherRelay common.Address) (bool, error) {
 
 	callOpt := &bind.CallOpts{
 		From:    relay.Address(),
 		Pending: true,
 	}
-	res, err := rhub.Stakes(callOpt, otherRelay)
+	res, err := relay.rhub.Stakes(callOpt, otherRelay)
 	if err != nil {
 		log.Println(err)
 		return false, err
@@ -807,7 +777,7 @@ func (relay *RelayServer) validateRelay(client *ethclient.Client, otherRelay com
 	return false, nil
 }
 
-func (relay *RelayServer) canRelay(encodedFunction string,
+func (relay *relayServer) canRelay(encodedFunction string,
 	signature []byte,
 	from common.Address,
 	to common.Address,
@@ -816,26 +786,15 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 	recipientNonce big.Int,
 	relayFee big.Int) (res uint32, err error) {
 
-	client, err := ethclient.Dial(relay.EthereumNodeURL)
-	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
-	}
-
 	relayAddress := relay.Address()
 
-	rhub, err := librelay.NewRelayHub(relay.RelayHubAddress, client)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
 		Pending: true,
 	}
 
 	log.Println("before CanRelay")
-	res, err = rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature)
+	res, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature)
 	log.Printf("after CanRelay: res=%d\n", res)
 	if err != nil {
 		log.Println(err)
@@ -844,15 +803,15 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 	return
 }
 
-func (relay *RelayServer) validateFee(relayFee big.Int) bool {
+func (relay *relayServer) validateFee(relayFee big.Int) bool {
 	return relayFee.Cmp(relay.Fee) >= 0
 
 }
 
-func (relay *RelayServer) pollNonce(client *ethclient.Client) (nonce uint64, err error) {
+func (relay *relayServer) pollNonce() (nonce uint64, err error) {
 	ctx := context.Background()
 	fromAddress := relay.Address()
-	nonce, err = client.PendingNonceAt(ctx, fromAddress)
+	nonce, err = relay.Client.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		log.Println(err)
 		return
@@ -869,11 +828,11 @@ func (relay *RelayServer) pollNonce(client *ethclient.Client) (nonce uint64, err
 	return
 }
 
-func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
+func (relay *relayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 	log.Println("replayUnconfirmedTxs start")
 	log.Println("unconfirmedTxs size", len(unconfirmedTxs))
 	ctx := context.Background()
-	nonce, err := client.PendingNonceAt(ctx, relay.Address())
+	nonce, err := relay.Client.PendingNonceAt(ctx, relay.Address())
 	if err != nil {
 		log.Println(err)
 		return
@@ -884,7 +843,7 @@ func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 	log.Println("unconfirmedTxs size after deletion", len(unconfirmedTxs))
 	for i, tx := range unconfirmedTxs {
 		log.Println("replaying tx nonce ", i)
-		err = client.SendTransaction(ctx, tx)
+		err = relay.Client.SendTransaction(ctx, tx)
 		if err != nil {
 			log.Println("tx ", i, ":", err)
 		}

@@ -150,18 +150,5 @@ module.exports = {
             params: [],
             id: new Date().getSeconds()
         });
-    },
-
-    postRelayHubAddress: function (relayHubAddress, relayUrl) {
-        return new Promise(function (resolve, reject) {
-            let callback = function (error, response) {
-                if (error) {
-                    reject(error);
-                    return
-                }
-                resolve(response);
-            }
-            new web3.providers.HttpProvider(relayUrl + "/setRelayHub").sendAsync({relayHubAddress: relayHubAddress}, callback);
-        })
     }
 }

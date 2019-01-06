@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -30,6 +31,19 @@ func (b *SyncBool) SetVal(val bool) {
 	b.val = val
 }
 
+func IsEmpty(name string) (bool) {
+	f, err := os.Open(name)
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1) // Or f.Readdir(1)
+	if err == io.EOF {
+		return true
+	}
+	return false // Either not empty or error, suits both cases
+}
 
 // Loads (creates if doesn't exist) private key from keystore file
 func loadPrivateKey(keystoreDir string) *ecdsa.PrivateKey {
@@ -43,7 +57,7 @@ func loadPrivateKey(keystoreDir string) *ecdsa.PrivateKey {
 	var account accounts.Account
 	var err error
 	log.Println("ks accounts len", len(ks.Accounts()))
-	if _, err = os.Stat(filepath.Join(keystoreDir, "")); os.IsNotExist(err) {
+	if _, err = os.Stat(filepath.Join(keystoreDir, "")); os.IsNotExist(err) || IsEmpty(keystoreDir) {
 		account, err = ks.NewAccount("")
 		if err != nil {
 			log.Fatal(err)
