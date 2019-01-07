@@ -182,20 +182,22 @@ RelayClient.prototype.broadcastRawTx = function (raw_tx, tx_hash) {
     var self = this
 
     self.web3.eth.sendRawTransaction(raw_tx, function (error, result) {
-        if (!error) {
-            console.log(JSON.stringify(result));
-            return
-        }
-        if (error.message.includes("the tx doesn't have the correct nonce")) {
-            self.web3.eth.getTransaction(tx_hash, function (err, tx) {
-                // console.log(tx);
-                if (tx === null) {
-                    console.error("Cheating relay!");
-                    // TODO: At this point, I do know relay cheated on my nonce. Can punish him for this.
-                }
-            });
+        //TODO: at this point both client and relay has sent the transaction to the blockchain.
+        // client should send the transaction to a SECONDARY relay, so it can wait and attempt
+        // to penalize original relay for cheating: returning one transaction to the client, and
+        // broadcasting another with the same nonce.
+        // see the EIP for description of the attack
+
+        if ( error ) {
+            //note that nonce-related errors at this point are VALID reponses: it means that
+            // the client confirms the relay didn't attempt to delay broadcasting the transaction.
+            // the only point is that different node versions return different error strings:
+            // ganache:  "the tx doesn't have the correct nonce"
+            // ropsten: "known transaction"
         } else {
-            console.error("Failed to retransmit relayed tx: " + error.message);
+            if ( result == tx_hash ) {
+                //transaction already on chain
+            }
         }
     });
 }
@@ -271,9 +273,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
     } else {
       signature = await getTransactionSignature(options.from, hash);
     }
-    console.log( "hash=",hash, "from=",options.from, "sig=",signature)
-    let rec = utils.getEcRecoverMeta(hash, signature );
-    console.log( "== recovered=", rec, rec==options.from ? "OK" : "error: signature error" )
+
     try {
       let validTransaction = await self.sendViaRelay(
         relayUrl,
