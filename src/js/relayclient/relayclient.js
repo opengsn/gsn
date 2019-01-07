@@ -207,7 +207,7 @@ RelayClient.prototype.broadcastRawTx = function (raw_tx, tx_hash) {
  */
 RelayClient.prototype.balanceOf = async function (target) {
     let relayRecipient = this.RelayRecipient.at(target)
-    let relayHubAddress = await promisify(relayRecipient.get_relay_hub.call)()
+    let relayHubAddress = await promisify(relayRecipient.get_hub_addr.call)()
     let relayHub = this.RelayHub.at(relayHubAddress)
 
     //note that the returned value is a promise too, returning BigNumber
@@ -224,7 +224,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   var self = this
   let relayRecipient = this.RelayRecipient.at(options.to)
 
-  let relayHubAddress = await promisify(relayRecipient.get_relay_hub.call)()
+  let relayHubAddress = await promisify(relayRecipient.get_hub_addr.call)()
 
   let relayHub = this.RelayHub.at(relayHubAddress)
 
@@ -271,6 +271,9 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
     } else {
       signature = await getTransactionSignature(options.from, hash);
     }
+    console.log( "hash=",hash, "from=",options.from, "sig=",signature)
+    let rec = utils.getEcRecoverMeta(hash, signature );
+    console.log( "== recovered=", rec, rec==options.from ? "OK" : "error: signature error" )
     try {
       let validTransaction = await self.sendViaRelay(
         relayUrl,

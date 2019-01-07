@@ -52,7 +52,8 @@ options.forEach(params => {
                 from = gasless
             } else {
                 from = accounts[0]
-                rhub = {address: "0x0"} //dummy relay hub. direct mode doesn't use it, but our SampleRecipient contract requires one.
+                //dummy relay hub. direct mode doesn't use it, but our SampleRecipient contract requires one.
+                rhub = await RelayHub.deployed()
             }
 
             sr = await SampleRecipient.new(rhub.address)

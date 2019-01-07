@@ -9,6 +9,10 @@ const RelayRecipient = web3.eth.contract(RelayRecipientApi)
 
 class ContractManager {
 
+    constructor() {
+        utils.checkNetwork(web3)
+    }
+
     log() {
         utils.log(Array.prototype.slice.call(arguments).join(" "))
     }
@@ -25,7 +29,7 @@ class ContractManager {
 
         let recipient = RelayRecipient.at(addr)
 
-        let hubaddr = await promisify(recipient.get_relay_hub)()
+        let hubaddr = await promisify(recipient.get_hub_addr)()
 
         if (!hubaddr || hubaddr === '0x')
             return undefined
@@ -41,6 +45,7 @@ class ContractManager {
 
         if (!hub) {
             this.log("ERROR: no hub (address not a RelayRecipient?)")
+            return
         }
 
         let r = await promisify(hub.balanceOf)(addr)

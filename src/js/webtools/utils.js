@@ -1,6 +1,21 @@
 
 module.exports = {
 
+    checkNetwork: function(web3) {
+
+        setTimeout(()=>{
+            ver = web3.version.network
+
+            web3.version.getNetwork((e,r)=>{
+                if ( r != ver ) {
+                    console.log("ERROR: Metamask version mismatch", r, "!=", ver)
+                    console.log("Probably Metamask didn't notice ganache restart. Switch network, and back")
+                }
+            })
+
+        }, 100)
+    },
+
     //dump log string into <div id='logpanel'> (or to console log, if no such panel)
     log: function () {
         let argstr = Array.prototype.slice.call(arguments).join(" ");
