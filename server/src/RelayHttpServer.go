@@ -14,6 +14,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -42,7 +43,7 @@ func main() {
 
 	configRelay(parseCommandLine())
 
-	server = &http.Server{Addr: ":8090", Handler: nil}
+	server = &http.Server{Addr: ":"+relay.GetPort(), Handler: nil}
 
 	http.HandleFunc("/relay", assureRelayReady(relayHandler))
 	http.HandleFunc("/getaddr", getEthAddrHandler)
@@ -57,8 +58,7 @@ func main() {
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*time.Minute, 0)
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
 
-	port := "8090"
-	log.Printf("RelayHttpServer started.Listening on port: %s\n", port)
+	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
 	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatalln(err)
@@ -250,7 +250,8 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 func parseCommandLine() (relayParams RelayParams) {
 	ownerAddress := flag.String("OwnerAddress", common.HexToAddress("0").Hex(), "Relay's owner address")
 	fee := flag.Int64("Fee", 11, "Relay's per transaction fee")
-	url := flag.String("Url", "http://localhost:8090", "Relay's owner address")
+	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
+	port := flag.String("Port", "", "Relay server's port")
 	relayHubAddress := flag.String("RelayHubAddress", "0x254dffcd3277c0b1660f6d42efbb754edababc2b", "RelayHub address")
 	stakeAmount := flag.Int64("StakeAmount", 1002, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
@@ -264,7 +265,17 @@ func parseCommandLine() (relayParams RelayParams) {
 
 	relayParams.OwnerAddress = common.HexToAddress(*ownerAddress)
 	relayParams.Fee = big.NewInt(*fee)
-	relayParams.Url = *url
+	relayParams.Url = *urlStr
+	u,err := url.Parse(*urlStr)
+	if err != nil {
+		log.Fatalln("Could not parse url")
+	}
+	if *port == "" && u.Port() != "" {
+		log.Println("Using default published port given in url:",*port)
+		*port = u.Port()
+	}
+
+	relayParams.Port = *port
 	relayParams.RelayHubAddress = common.HexToAddress(*relayHubAddress)
 	relayParams.StakeAmount = big.NewInt(*stakeAmount)
 	relayParams.GasLimit = *gasLimit
