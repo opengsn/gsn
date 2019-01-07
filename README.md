@@ -20,16 +20,21 @@ Its very simple to adapt an existing contract and apps to use the Relays
 For a full techincal description, see our [EIP draft](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1613.md)
 
 The client has an account (address and private key) just like any other ethereum account - except that it never has to have any money in it.
+
 It makes an off-chain request to a Relay Service, outside of the ethereum network.
+
 The relay transfers the request to the target contract (through a public RelayHub contract)
+
 The relay gets **compensated** by the target contract for its effort.
+
+The system is completely decentralized and trust-less: the client doesn't trust on the Relay Service, and the Relay service  
+doesn't trust neither the client nor the target contract, yet none can compromise the system.
 
 ## Do I need Metamask/Mist/Hardware wallet ?
 
 Since clients no longer carry ether, you're not *required* to use strong wallet - you can keep the client's private key
 is a local file (cookie). 
-By default, the client library will attempt to use an account known by your local web3.
-You can override this behaviour, by providing your own signing function configuration parameter.
+The client can use your local web3 account (e.g. MetaMask), or create a local private-key. 
 
 ## Is it safe?
 
@@ -78,12 +83,13 @@ open your browser to `http://localhost:8080/`
 
 Notes
 
-- The app was modified to give initial 10000 META for every account.
+- The MetaCoin app was modified to give initial 10000 META for every account.
+- It prompts you whether to use MetaMask account or "ephemeral" private key, saved as browser cookie.
 - Once you enter an amount and hit "transfer", a metamask "SIGN" dialog would appear.
 - After successful transaction, the amount of META tokens left is updated, to signify the transaction succeeded.
 - Restarting the `restart-relay.sh` script will kill ganache, so you must run `truffle migrate && truffle test` again
 	in the `webpack-box project`, to re-deploy the MetaCoin, and fund it with initial ether 
-	(remember: it's the contract that pays for transactions, not the webapp!)
+	(remember: it's the contract that pays for transactions, not the calling webapp!)
 - MetaMask gets confused after node restart, so switch to another network (e.g. mainnet) and back to localhost.
 
 
@@ -116,8 +122,9 @@ note that `npm test` above runs the entire suite: it compiles the server, then l
 
 A relay client can receive various options:
 
-- `relayHubAddress` - use a specific relay hub. Currently this option is required, since there's not yet a final relay hub deployed.
-- `relayUrl`, `relayAddress` - instead of searching for an available relay, you may specify a specific relay to use.
+- `force_gasLimit` - use specific gas limit for all transactions. if not set, the user must supply gas limit for each transaction.
+- `force_gasprice` - if not set, then the client will use `web3.eth.gasPrice` with the factor (below)
+- `gaspriceFactorPercent` - how much above default `gasPrice` to use. default is 20% which means we use gasPrice*1.2
 
 ### Contract modifications
 
@@ -125,33 +132,37 @@ In order to support relayed trasnactions, the contract must implement the `Relay
 
 Here's a basic contract, which accepts requests from known users.
 
-	contract MyContract is RelayRecipient {
-		constructor() {
-			// this is the only hub I trust to receive calls from
-			init_relay_hub(RelayHub(0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab));
-		}
+```javascript
+contract MyContract is RelayRecipient {
+    constructor() {
+        // this is the only hub I trust to receive calls from
+        init_relay_hub(RelayHub(0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab));
+    }
 
-	    mapping (address => bool) public my_users;
+    mapping (address => bool) public my_users;
 
-		// this method is called by the RelayHub, before relaying the transaction.
-		// the method should return zero if and only if the contract accepts this transaction, and is willing to pay
-		// the relay for its service.
-		// it can check the user, the relay or the actual function call data.
-		// note that when the RelayHub calls this method, its after it did validation of the relay and caller signatures.
-		function may_relay(address relay, address from, bytes /* transaction */) public view returns(uint32) {
+    // this method is called by the RelayHub, before relaying the transaction.
+    // the method should return zero if and only if the contract accepts this transaction, and is willing to pay
+    // the relay for its service.
+    // it can check the user, the relay or the actual function call data.
+    // note that when the RelayHub calls this method, its after it did validation of the relay and caller signatures.
+    function accept_relayed_call(address relay, address from, bytes encoded_function, uint gas_price, uint transaction_fee ) external view returns(uint32) {
 
-			// we simply trust all our known users.
-	        if ( !my_users[from] ) return 10;
-        	return 0;
-	    }
+        // we simply trust all our known users.
+        if ( !my_users[from] ) return 10;
+        return 0;
+    }
 
-	    // note that when receiving a request from a relay, the msg.sender is always a RelayHub.
-	    // You must change your contract to use get_sender() to get the real sender.
-	    // (its OK if someone calls this method directly: if no relay is involved, get_sender() returns msg.sender)
-	    function my_method() {
-	    	require ( my_users[ get_sender() ] );
-	    	...
-	    }
-	}
+    // This is a sample contract method. 
+    // note that when receiving a request from a relay, the msg.sender is always a RelayHub.
+    // You must change your contract to use get_sender() to get the real sender.
+    // (its OK if someone calls this method directly: if no relay is involved, get_sender() returns msg.sender)
+    function my_method() {
+        require ( my_users[ get_sender() ] );
+        ...
+    }
+}
+	
+```
 
-In the *contracts/recipients* there are several sample RelayRecipient implementations for general use-cases.
+In the [samples/contracts](samples/contracts) folder there are several sample RelayRecipient implementations for general use-cases.
