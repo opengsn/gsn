@@ -8,16 +8,16 @@ contract SampleRecipient is RelayRecipient {
     mapping (address => bool) public relays_whitelist;
 
     constructor(RelayHub rhub) public {
-        relay_hub = rhub;
+        init_relay_hub(rhub);
     }
 
     function deposit() public payable {
-        RelayHub(relay_hub).deposit.value(msg.value)();
+        get_relay_hub().deposit.value(msg.value)();
     }
 
     function withdraw() public {
-        uint balance = RelayHub(relay_hub).balances(address(this));
-        RelayHub(relay_hub).withdraw(balance);
+        uint balance = get_relay_hub().balances(address(this));
+        get_relay_hub().withdraw(balance);
     }
 
     event Reverting(string message);

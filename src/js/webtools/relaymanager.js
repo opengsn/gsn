@@ -8,6 +8,10 @@ const networkVersions = { 1: "Mainnet", 42: "Kovan", 3: "Ropsten", 4: "Rinkeby",
 
 class RelayManager {
 
+    constructor() {
+        utils.checkNetwork(web3)
+    }
+
     log() {
         utils.log(Array.prototype.slice.call(arguments).join(" "))
     }

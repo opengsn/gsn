@@ -12,29 +12,48 @@ import "./RelayHub.sol";
 
 contract RelayRecipient is RelayRecipientApi {
 
-    // DO NOT CHANGE - SHOULD ALWAYS BE FIRST MEMBER: This is the address to which we delegatecall() from proxy
-    address place_holder;
+    RelayHub private relay_hub; // The RelayHub singleton which is allowed to call us
 
-    address relay_hub; // The RelayHub singleton which is allowed to call us
-
-	function get_relay_hub() external view returns (address) {
-		return relay_hub;
+	function get_hub_addr() public view returns (address) {
+		return address(relay_hub);
 	}
 
-    function init_relay_hub(address _rhub) internal {
-        require(relay_hub == address(0), "init_relay_hub: rhub already set");
-        set_relay_hub_internal(_rhub);
+    /**
+     * initialize the relayhub.
+     * contracts usually call this method from the constructor (using a constract RelayHub, or receiving
+     * one in the constructor)
+     * This method might also be called by the owner, in order to use a new RelayHub - since the RelayHub
+     * itself is not an upgradable contract.
+     */
+    function init_relay_hub(RelayHub _rhub) internal {
+        require(relay_hub == RelayHub(0), "init_relay_hub: rhub already set");
+        set_relay_hub(_rhub);
     }
-
-    function set_relay_hub_internal(address _rhub) internal {
+    
+    function set_relay_hub(RelayHub _rhub) internal {
         // Normally called just once, during init_relay_hub.
         // Left as a separate internal function, in case a contract wishes to have its own update mechanism for RelayHub.
         relay_hub = _rhub;
+
+        //attempt a read method, just to validate the relay is a valid RelayHub contract.
+        get_recipient_balance();
+    }
+
+    function get_relay_hub() internal view returns (RelayHub) {
+        return relay_hub;
+    }
+
+    /**
+     * return the balance of this contract.
+     * Note that this method will revert on configuration error (invalid relay address)
+     */
+    function get_recipient_balance() public view returns (uint) {
+        return get_relay_hub().balanceOf(this);
     }
 
     function get_sender_from_data(address orig_sender, bytes msg_data) public view returns(address) {
         address sender = orig_sender;
-        if (orig_sender == relay_hub) {
+        if (orig_sender == get_hub_addr() ) {
             // At this point we know that the sender is a trusted RelayHub, so we trust that the last bytes of msg.data are the verified sender address.
             // extract sender address from the end of msg.data
             bytes memory from = new bytes(20);
@@ -53,7 +72,7 @@ contract RelayRecipient is RelayRecipientApi {
 
     function get_message_data() public view returns(bytes) {
         bytes memory orig_msg_data = msg.data;
-        if (msg.sender == relay_hub) {
+        if (msg.sender == get_hub_addr()) {
             // At this point we know that the sender is a trusted RelayHub, so we trust that the last bytes of msg.data are the verified sender address.
             // extract original message data from the start of msg.data
             orig_msg_data = new bytes(msg.data.length - 20);
