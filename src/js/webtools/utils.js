@@ -4,7 +4,7 @@ module.exports = {
     checkNetwork: function(web3) {
 
         setTimeout(()=>{
-            ver = web3.version.network
+            let ver = web3.version.network
 
             web3.version.getNetwork((e,r)=>{
                 if ( r != ver ) {
