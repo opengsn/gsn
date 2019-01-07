@@ -40,7 +40,7 @@ func main() {
 
 	configRelay(parseCommandLine())
 
-	server = &http.Server{Addr: ":"+relay.GetPort(), Handler: nil}
+	server = &http.Server{Addr: ":" + relay.GetPort(), Handler: nil}
 
 	http.HandleFunc("/relay", assureRelayReady(relayHandler))
 	http.HandleFunc("/getaddr", getEthAddrHandler)
@@ -223,12 +223,12 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.OwnerAddress = common.HexToAddress(*ownerAddress)
 	relayParams.Fee = big.NewInt(*fee)
 	relayParams.Url = *urlStr
-	u,err := url.Parse(*urlStr)
+	u, err := url.Parse(*urlStr)
 	if err != nil {
 		log.Fatalln("Could not parse url")
 	}
 	if *port == "" && u.Port() != "" {
-		log.Println("Using default published port given in url:",*port)
+		log.Println("Using default published port given in url:", *port)
 		*port = u.Port()
 	}
 
@@ -277,7 +277,7 @@ func refreshBlockchainView() {
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
 	when, err := relay.RegistrationDate()
-	log.Println("when registered:",when,"unix:",time.Unix(when,0))
+	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	for ; err != nil || when == 0; when, err = relay.RegistrationDate() {
 		if err != nil {
 			log.Println(err)
@@ -333,7 +333,7 @@ func keepAlive() {
 
 	waitForOwnerActions()
 	when, err := relay.RegistrationDate()
-	log.Println("when registered:",when,"unix:",time.Unix(when,0))
+	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	if err != nil {
 		log.Println(err)
 	} else if time.Now().Unix()-when < delayBetweenRegistrations {

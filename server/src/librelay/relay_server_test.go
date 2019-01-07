@@ -134,12 +134,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("could not 'AdjustTime': %v", err)
 	}
-	err = relay.sendStakeTransaction()
+	tx, err := relay.sendStakeTransaction()
 	if err != nil {
 		log.Fatalf("could not 'sendStakeTransaction': %v", err)
 	}
 	sim.Commit()
-	err = relay.awaitStakeTransactionMined()
+	err = relay.awaitStakeTransactionMined(tx)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -147,7 +147,7 @@ func TestMain(m *testing.M) {
 	auth := bind.NewKeyedTransactor(key)
 	auth.Value = big.NewInt(1000000000000)
 
-	tx, err := rhub.DepositFor(auth, sampleRecipient)
+	tx, err = rhub.DepositFor(auth, sampleRecipient)
 	sim.Commit()
 	if err != nil {
 		log.Fatalln(err)
@@ -187,12 +187,13 @@ func TestRegisterRelay(t *testing.T) {
 	duration := time.Since(time.Unix(50, 0))
 	err = sim.AdjustTime(duration)
 	sim.Commit()
-	ErrFail(relay.sendRegisterTransaction(staleRelayAddress), t)
+	tx, err := relay.sendRegisterTransaction(staleRelayAddress)
+	ErrFail(err, t)
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
 	sim.Commit()
-	ErrFail(relay.awaitRegisterTransactionMined(), t)
+	ErrFail(relay.awaitRegisterTransactionMined(tx), t)
 	when, err := relay.RegistrationDate()
 	if time.Now().Unix()-when > int64((1 * time.Minute).Seconds()) {
 		t.Error("Wrong registration time/date", time.Now().Unix(), when)

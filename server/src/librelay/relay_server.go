@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gen/librelay"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -16,11 +17,12 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 )
 
-const BlockTime = 20 * time.Second
+const TxReceiptTimeout = 60 * time.Second
 
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
@@ -100,13 +102,13 @@ type IRelay interface {
 
 	ScanBlockChainToPenalize() (err error)
 
-	sendStakeTransaction() (err error)
+	sendStakeTransaction() (tx *types.Transaction, err error)
 
-	awaitStakeTransactionMined() (err error)
+	awaitStakeTransactionMined(tx *types.Transaction) (err error)
 
-	sendRegisterTransaction(staleRelay common.Address) (err error)
+	sendRegisterTransaction(staleRelay common.Address) (tx *types.Transaction, err error)
 
-	awaitRegisterTransactionMined() (err error)
+	awaitRegisterTransactionMined(tx *types.Transaction) (err error)
 }
 
 type IClient interface {
@@ -218,14 +220,14 @@ func (relay *relayServer) RefreshGasPrice() (err error) {
 }
 
 func (relay *relayServer) Stake() (err error) {
-	err = relay.sendStakeTransaction()
+	tx, err := relay.sendStakeTransaction()
 	if err != nil {
 		return err
 	}
-	return relay.awaitStakeTransactionMined()
+	return relay.awaitStakeTransactionMined(tx)
 }
 
-func (relay *relayServer) sendStakeTransaction() (err error) {
+func (relay *relayServer) sendStakeTransaction() (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -237,7 +239,7 @@ func (relay *relayServer) sendStakeTransaction() (err error) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
 	log.Println("Stake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
-	tx, err := relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
+	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
 		//relay.replayUnconfirmedTxs(client)
@@ -249,36 +251,33 @@ func (relay *relayServer) sendStakeTransaction() (err error) {
 	return
 }
 
-func (relay *relayServer) awaitStakeTransactionMined() (err error) {
+func (relay *relayServer) awaitStakeTransactionMined(tx *types.Transaction) (err error) {
 
-	filterOpts := &bind.FilterOpts{
-		Start: 0,
-		End:   nil,
-	}
-	addresses := []common.Address{relay.Address()}
-	iter, err := relay.rhub.FilterStaked(filterOpts, addresses)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	start := time.Now()
-	for (iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < BlockTime {
-		if !iter.Next() {
-			iter, err = relay.rhub.FilterStaked(filterOpts, addresses)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}
+	var receipt *types.Receipt
+	for ; (receipt == nil || err != nil) && time.Since(start) < TxReceiptTimeout; receipt, err = relay.Client.TransactionReceipt(context.Background(), tx.Hash()) {
 		time.Sleep(500 * time.Millisecond)
 	}
-	if iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) {
-		return fmt.Errorf("Stake() probably failed: could not receive Staked() event for our relay")
+
+	if err != nil {
+		log.Println("Could not get tx receipt", err)
+		return
+	}
+	event := new(librelay.RelayHubStaked)
+	parsed, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
+	if err != nil {
+		return err
 	}
 
+	bound := bind.NewBoundContract(relay.RelayHubAddress, parsed, relay.Client, relay.Client, relay.Client)
+	bound.UnpackLog(event, "Staked", *receipt.Logs[0])
+	log.Println("Staked tx receipt", event.Stake, event.Relay.Hex())
+
+	if event == nil ||
+		(event.Stake.Cmp(relay.StakeAmount) != 0) ||
+		(bytes.Compare(event.Relay.Bytes(), relay.Address().Bytes()) != 0) {
+		return fmt.Errorf("Stake() probably failed: could not receive Staked() event for our relay")
+	}
 	log.Println("stake() tx finished")
 
 	return nil
@@ -317,7 +316,7 @@ func (relay *relayServer) Unstake() (err error) {
 
 	start := time.Now()
 	for (iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < BlockTime {
+		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < TxReceiptTimeout {
 		if !iter.Next() {
 			iter, err = relay.rhub.FilterUnstaked(filterOpts, addresses)
 			if err != nil {
@@ -341,14 +340,14 @@ func (relay *relayServer) Unstake() (err error) {
 }
 
 func (relay *relayServer) RegisterRelay(staleRelay common.Address) (err error) {
-	err = relay.sendRegisterTransaction(staleRelay)
+	tx, err := relay.sendRegisterTransaction(staleRelay)
 	if err != nil {
 		return err
 	}
-	return relay.awaitRegisterTransactionMined()
+	return relay.awaitRegisterTransactionMined(tx)
 }
 
-func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (err error) {
+func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -359,7 +358,7 @@ func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (er
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
-	tx, err := relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url, staleRelay)
+	tx, err = relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url, staleRelay)
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
@@ -371,41 +370,35 @@ func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (er
 	return
 }
 
-func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
-	filterOpts := &bind.FilterOpts{
-		Start: 0,
-		End:   nil,
+func (relay *relayServer) awaitRegisterTransactionMined(tx *types.Transaction) (err error) {
+
+	start := time.Now()
+	var receipt *types.Receipt
+	for ; (receipt == nil || err != nil) && time.Since(start) < TxReceiptTimeout; receipt, err = relay.Client.TransactionReceipt(context.Background(), tx.Hash()) {
+		time.Sleep(500 * time.Millisecond)
 	}
-	addresses := []common.Address{relay.Address()}
-	iter, err := relay.rhub.FilterRelayAdded(filterOpts, addresses, nil)
 	if err != nil {
-		log.Println(err)
+		log.Println("Could not get tx receipt", err)
 		return
 	}
 
-	start := time.Now()
-	for (iter.Event == nil ||
-		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
-		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
-		if !iter.Next() {
-			iter, err = relay.rhub.FilterRelayAdded(filterOpts, addresses, nil)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}
-		time.Sleep(500 * time.Millisecond)
+	event := new(librelay.RelayHubRelayAdded)
+	parsed, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
+	if err != nil {
+		return err
 	}
-	if iter.Event == nil ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
-		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
-		(iter.Event.Url != relay.Url) {
+
+	bound := bind.NewBoundContract(relay.RelayHubAddress, parsed, relay.Client, relay.Client, relay.Client)
+	bound.UnpackLog(event, "RelayAdded", *receipt.Logs[0])
+	log.Println("RelayAdded tx receipt", event.Stake, event.Relay.Hex(), event.Url, event.TransactionFee)
+
+	if event == nil ||
+		(bytes.Compare(event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
+		(event.TransactionFee.Cmp(relay.Fee) != 0) ||
+		(event.Stake.Cmp(relay.StakeAmount) < 0) ||
+	//(event.Stake.Cmp(relay.StakeAmount) != 0) ||
+	//(event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+		(event.Url != relay.Url) {
 		return fmt.Errorf("RegisterRelay() probably failed: could not receive RelayAdded() event for our relay")
 	}
 
