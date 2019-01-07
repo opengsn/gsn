@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -93,6 +94,10 @@ type IRelay interface {
 
 	HubAddress() (common.Address)
 
+	GetUrl() (string)
+
+	GetPort() (string)
+
 	AuditRelaysTransactions(signedTx *types.Transaction) (err error)
 
 	ScanBlockChainToPenalize() (err error)
@@ -102,7 +107,7 @@ type RelayServer struct {
 	OwnerAddress    common.Address
 	Fee             *big.Int
 	Url             string
-	Port            int
+	Port            string
 	RelayHubAddress common.Address
 	StakeAmount     *big.Int
 	GasLimit        uint64
@@ -146,7 +151,7 @@ func (relay *RelayServer) RefreshGasPrice() (err error) {
 		log.Println("SuggestGasPrice() failed ", err)
 		return
 	}
-	relay.gasPrice = gasPrice.Mul(big.NewInt(0).Add(relay.GasPricePercent,big.NewInt(100)), gasPrice).Div(gasPrice,big.NewInt(100))
+	relay.gasPrice = gasPrice.Mul(big.NewInt(0).Add(relay.GasPricePercent, big.NewInt(100)), gasPrice).Div(gasPrice, big.NewInt(100))
 	return
 }
 
@@ -305,8 +310,9 @@ func (relay *RelayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex())
+	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
 	tx, err := rhub.RegisterRelay(auth, relay.Fee, relay.Url, common.HexToAddress("0"))
+
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
@@ -475,10 +481,14 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 	if res != 0 {
-		err = fmt.Errorf("can_relay() view function returned error code=%d", res)
-		log.Println(err)
+		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
+			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
+			request.RelayFee.String(), "sig:", hexutil.Encode(request.Signature))
+		err = fmt.Errorf("can_relay() view function returned error code=%d\nparams:%s", res, errStr)
+		log.Println(err, errStr)
 		return
 	}
+
 	log.Println("canRelay() succeeded")
 	// can_relay returned true, so we can relay the tx
 
@@ -547,6 +557,14 @@ func (relay *RelayServer) Address() (relayAddress common.Address) {
 
 func (relay *RelayServer) HubAddress() (common.Address) {
 	return relay.RelayHubAddress
+}
+
+func (relay *RelayServer) GetUrl() (string) {
+	return relay.Url
+}
+
+func (relay *RelayServer) GetPort() (string) {
+	return relay.Port
 }
 
 var maybePenalizable = make(map[common.Address]types.TxByNonce)
