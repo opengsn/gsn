@@ -270,9 +270,9 @@ func configRelay(relayParams librelay.RelayParams) {
 func refreshBlockchainView() {
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
-	when, err := relay.RegistrationDate(relay.HubAddress())
+	when, err := relay.RegistrationDate()
 	log.Println("when registered:",when,"unix:",time.Unix(when,0))
-	for ; err != nil || when == 0; when, err = relay.RegistrationDate(relay.HubAddress()) {
+	for ; err != nil || when == 0; when, err = relay.RegistrationDate() {
 		if err != nil {
 			log.Println(err)
 		}
@@ -298,8 +298,8 @@ func refreshBlockchainView() {
 
 func waitForOwnerActions() {
 	log.Println("hub to check stake", relay.HubAddress().Hex())
-	staked, err := relay.IsStaked(relay.HubAddress())
-	for ; err != nil || !staked; staked, err = relay.IsStaked(relay.HubAddress()) {
+	staked, err := relay.IsStaked()
+	for ; err != nil || !staked; staked, err = relay.IsStaked() {
 		if err != nil {
 			log.Println(err)
 		}
@@ -326,7 +326,7 @@ func waitForOwnerActions() {
 func keepAlive() {
 
 	waitForOwnerActions()
-	when, err := relay.RegistrationDate(relay.HubAddress())
+	when, err := relay.RegistrationDate()
 	log.Println("when registered:",when,"unix:",time.Unix(when,0))
 	if err != nil {
 		log.Println(err)

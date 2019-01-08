@@ -78,13 +78,13 @@ type IRelay interface {
 
 	Unstake() (err error)
 
-	RegisterRelay(stale_relay common.Address) (err error)
+	RegisterRelay(staleRelay common.Address) (err error)
 
 	UnregisterRelay() (err error)
 
-	IsStaked(hub common.Address) (staked bool, err error)
+	IsStaked() (staked bool, err error)
 
-	RegistrationDate(hub common.Address) (when int64, err error)
+	RegistrationDate() (when int64, err error)
 
 	CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error)
 
@@ -99,6 +99,14 @@ type IRelay interface {
 	AuditRelaysTransactions(signedTx *types.Transaction) (err error)
 
 	ScanBlockChainToPenalize() (err error)
+
+	sendStakeTransaction() (err error)
+
+	awaitStakeTransactionMined() (err error)
+
+	sendRegisterTransaction(staleRelay common.Address) (err error)
+
+	awaitRegisterTransactionMined() (err error)
 }
 
 type IClient interface {
@@ -207,12 +215,15 @@ func (relay *relayServer) RefreshGasPrice() (err error) {
 }
 
 func (relay *relayServer) Stake() (err error) {
-	auth := bind.NewKeyedTransactor(relay.PrivateKey)
+	err = relay.sendStakeTransaction()
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
+	return relay.awaitStakeTransactionMined()
+}
 
+func (relay *relayServer) sendStakeTransaction() (err error) {
+	auth := bind.NewKeyedTransactor(relay.PrivateKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce()
@@ -231,6 +242,11 @@ func (relay *relayServer) Stake() (err error) {
 	}
 	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
+	log.Println("tx sent:", tx.Hash().Hex())
+	return
+}
+
+func (relay *relayServer) awaitStakeTransactionMined() (err error) {
 
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
@@ -262,7 +278,6 @@ func (relay *relayServer) Stake() (err error) {
 
 	log.Println("stake() tx finished")
 
-	log.Println("tx sent:", tx.Hash().Hex())
 	return nil
 
 }
@@ -322,12 +337,16 @@ func (relay *relayServer) Unstake() (err error) {
 
 }
 
-func (relay *relayServer) RegisterRelay(stale_relay common.Address) (err error) {
+func (relay *relayServer) RegisterRelay(staleRelay common.Address) (err error) {
+	err = relay.sendRegisterTransaction(staleRelay)
 	if err != nil {
-		log.Println("Could not connect to ethereum node", err)
-		return
+		return err
 	}
+	return relay.awaitRegisterTransactionMined()
+}
 
+
+func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -346,10 +365,11 @@ func (relay *relayServer) RegisterRelay(stale_relay common.Address) (err error) 
 	}
 	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	//ctx := context.Background()
-	//receipt,err := client.TransactionReceipt(ctx,tx.Hash())
-	//client.TransactionReceipt(ctx,types.HomesteadSigner{}.Hash(tx))
+	log.Println("tx sent:", tx.Hash().Hex())
+	return
+}
 
+func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
 		End:   nil,
@@ -359,7 +379,6 @@ func (relay *relayServer) RegisterRelay(stale_relay common.Address) (err error) 
 		log.Println(err)
 		return
 	}
-	log.Println("tx created:", tx.Hash().Hex())
 
 	start := time.Now()
 	for (iter.Event == nil ||
@@ -389,7 +408,6 @@ func (relay *relayServer) RegisterRelay(stale_relay common.Address) (err error) 
 	}
 
 	log.Println("RegisterRelay() finished")
-	log.Println("tx sent:", tx.Hash().Hex())
 	return nil
 }
 
@@ -397,7 +415,7 @@ func (relay *relayServer) UnregisterRelay() error {
 	return relay.Unstake()
 }
 
-func (relay *relayServer) IsStaked(hub common.Address) (staked bool, err error) {
+func (relay *relayServer) IsStaked() (staked bool, err error) {
 	relayAddress := relay.Address()
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
@@ -420,10 +438,9 @@ func (relay *relayServer) IsStaked(hub common.Address) (staked bool, err error) 
 	return
 }
 
-func (relay *relayServer) RegistrationDate(hub common.Address) (when int64, err error) {
+func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	relayAddress := relay.Address()
 	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
-	log.Println("hub to check", hub.Hex())
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
 		Pending: true,
@@ -795,11 +812,11 @@ func (relay *relayServer) canRelay(encodedFunction string,
 
 	log.Println("before CanRelay")
 	res, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature)
-	log.Printf("after CanRelay: res=%d\n", res)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	log.Printf("after CanRelay: res=%d\n", res)
 	return
 }
 
