@@ -13,7 +13,6 @@ let RelayHub = artifacts.require('RelayHub')
 
 let RelayClient = require('../src/js/relayclient/relayclient')
 
-const localhostOne = "http://localhost:8090"
 const gasPricePercent = 20
 var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPricePercent)/100
 

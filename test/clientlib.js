@@ -141,7 +141,6 @@ contract('RelayClient', function (accounts) {
 
     it.skip("should report a suspicious transaction to an auditor relay, which will penalize the double-signing relay", async function () {
         /******/
-        await postRelayHubAddress(rhub.address, localhostOne);
         await register_new_relay(rhub, 1000, 20, 30, "https://abcd.com", accounts[5]);
         /******/
 
