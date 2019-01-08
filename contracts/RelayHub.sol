@@ -215,7 +215,7 @@ contract RelayHub is RelayHubApi {
         RelayRecipient(to).post_relayed_call(msg.sender, from, transaction_orig, success, (gas_overhead+initial_gas-gasleft()), transaction_fee );
         // Relay transaction_fee is in %.  E.g. if transaction_fee=50, token payment will be equivalent to used_gas*(100+transaction_fee)*gas_price = used_gas*150*gas_price.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
-        emit TransactionRelayed(msg.sender, keccak256(transaction), from, success, charge);
+        emit TransactionRelayed(msg.sender, from, keccak256(transaction), success, charge);
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[stakes[msg.sender].owner] += charge;
