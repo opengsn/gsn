@@ -23,7 +23,7 @@
       "email": "alex@tabookey.com"
     }
   ],
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "test": "make && make test-server && run-with-testrpc -l 8000000 'truffle test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
@@ -50,6 +50,9 @@
     "truffle-hdwallet-provider": "^1.0.1",
     "web3-utils": "^1.0.0-beta.36"
   },
+  "files" : [
+	"src/", "contracts/",  "samples/", "webtools/"
+  ],
   "main": "src/js/relayclient/relayclient.js",
   "description": "Tabookey Gasless Relay Framework"
 }
