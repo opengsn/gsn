@@ -13,7 +13,6 @@ const localhostOne = "http://localhost:8090"
 
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
-const postRelayHubAddress = testutils.postRelayHubAddress;
 
 const util = require("util")
 const request = util.promisify(require("request"))
@@ -59,11 +58,6 @@ contract('RelayClient', function (accounts) {
         assert.equal(b2.minus(b1).toString(), added.toString())
 
     })
-
-    it("should send RelayHub address to server (in debug mode)", async function () {
-        let res = await testutils.postRelayHubAddress(rhub.address, localhostOne);
-        assert.equal("OK", res)
-    });
 
     it("should send transaction to a relay and receive a response", async function () {
         let encoded = sr.contract.emitMessage.getData("hello world");
@@ -147,7 +141,6 @@ contract('RelayClient', function (accounts) {
 
     it.skip("should report a suspicious transaction to an auditor relay, which will penalize the double-signing relay", async function () {
         /******/
-        await postRelayHubAddress(rhub.address, localhostOne);
         await register_new_relay(rhub, 1000, 20, 30, "https://abcd.com", accounts[5]);
         /******/
 

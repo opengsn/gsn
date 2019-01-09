@@ -13,7 +13,6 @@ let RelayHub = artifacts.require('RelayHub')
 
 let RelayClient = require('../src/js/relayclient/relayclient')
 
-const localhostOne = "http://localhost:8090"
 const gasPricePercent = 20
 var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPricePercent)/100
 
@@ -65,8 +64,6 @@ options.forEach(params => {
 
         if (params.relay) {
             it(params.title + "enable relay", async function () {
-                let res = await testutils.postRelayHubAddress(rhub.address, localhostOne);
-                assert.equal('"OK"', JSON.stringify(res))
                 rhub.depositFor(sr.address, {value: 1e17})
                 new RelayClient(web3, {
                     // verbose:true,

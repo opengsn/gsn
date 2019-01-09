@@ -3,7 +3,6 @@ const ServerHelper = require('../src/js/relayclient/ServerHelper');
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper');
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
-const postRelayHubAddress = testutils.postRelayHubAddress;
 const increaseTime = testutils.increaseTime;
 
 const RelayHub = artifacts.require("./RelayHub.sol");
@@ -23,7 +22,6 @@ contract('ServerHelper', function (accounts) {
         relayproc = await testutils.startRelay(rhub, {
             verbose: process.env.relaylog,
             stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
-        await postRelayHubAddress(rhub.address, localhostOne)
         serverHelper.setHub(RelayHub, rhub)
     })
 
@@ -32,7 +30,6 @@ contract('ServerHelper', function (accounts) {
     })
 
     // Note: a real relay server is not registered in this test.
-    // It should be registered already by the 'postRelayHubAddress' in 'before'
     it("should discover a relay from the relay contract", async function () {
         // unstake delay too low
         await register_new_relay(rhub, 1000, 2, 20, "https://abcd.com", accounts[7]);
