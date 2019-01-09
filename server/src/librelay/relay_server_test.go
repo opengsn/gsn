@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -135,7 +136,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 	log.Println("To.balance: ", to_balance)
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func TestRefreshGasPrice(t *testing.T) {
