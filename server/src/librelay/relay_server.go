@@ -252,17 +252,17 @@ func (relay *relayServer) awaitStakeTransactionMined() (err error) {
 		Start: 0,
 		End:   nil,
 	}
-	iter, err := relay.rhub.FilterStaked(filterOpts)
+	addresses := []common.Address{relay.Address()}
+	iter, err := relay.rhub.FilterStaked(filterOpts, addresses)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	start := time.Now()
 	for (iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0)) && time.Since(start) < BlockTime {
+		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = relay.rhub.FilterStaked(filterOpts)
+			iter, err = relay.rhub.FilterStaked(filterOpts,addresses)
 			if err != nil {
 				log.Println(err)
 				return
@@ -305,7 +305,8 @@ func (relay *relayServer) Unstake() (err error) {
 		Start: 0,
 		End:   nil,
 	}
-	iter, err := relay.rhub.FilterUnstaked(filterOpts)
+	addresses := []common.Address{relay.Address()}
+	iter, err := relay.rhub.FilterUnstaked(filterOpts,addresses)
 	if err != nil {
 		log.Println(err)
 		return
@@ -313,10 +314,9 @@ func (relay *relayServer) Unstake() (err error) {
 
 	start := time.Now()
 	for (iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0)) && time.Since(start) < BlockTime {
+		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = relay.rhub.FilterUnstaked(filterOpts)
+			iter, err = relay.rhub.FilterUnstaked(filterOpts,addresses)
 			if err != nil {
 				log.Println(err)
 				return
@@ -374,7 +374,8 @@ func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
 		Start: 0,
 		End:   nil,
 	}
-	iter, err := relay.rhub.FilterRelayAdded(filterOpts)
+	addresses := []common.Address{relay.Address()}
+	iter, err := relay.rhub.FilterRelayAdded(filterOpts,addresses)
 	if err != nil {
 		log.Println(err)
 		return
@@ -382,14 +383,13 @@ func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
 
 	start := time.Now()
 	for (iter.Event == nil ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
 	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
 	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = relay.rhub.FilterRelayAdded(filterOpts)
+			iter, err = relay.rhub.FilterRelayAdded(filterOpts,addresses)
 			if err != nil {
 				log.Println(err)
 				return
