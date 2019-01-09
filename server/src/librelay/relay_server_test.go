@@ -68,7 +68,7 @@ func NewRelay(relayHubAddress common.Address)  {
 	gasLimit := uint64(1000000)
 	gasPricePercent := big.NewInt(10)
 	url := ""
-	port := 8090
+	port := "8090"
 	privateKey := key
 	unstakeDelay := big.NewInt(0)
 	ethereumNodeUrl := ""
@@ -163,7 +163,6 @@ func TestRegisterRelay(t *testing.T)  {
 	err = sim.AdjustTime(duration)
 	sim.Commit()
 	ErrFail(relay.sendRegisterTransaction(staleRelayAddress), t)
-	println("DDD", duration)
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
@@ -179,7 +178,7 @@ func TestRegisterRelay_FailsToRemoveStaleRelay(t *testing.T) {
 	staleRelayAddress := common.HexToAddress("0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab")
 	err := relay.RegisterRelay(staleRelayAddress)
 	if err == nil || !strings.Contains(err.Error(), "failing transaction")  {
-		t.Error("")
+		t.Error(err)
 	}
 }
 
@@ -212,7 +211,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 	transactionRelayedEvent := new(librelay.RelayHubTransactionRelayed)
 	sampleRecipientEmitted := new(samplerec.SampleRecipientSampleRecipientEmitted)
 	ErrFail(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[2]), t)
-	var expectedGasUsage int64 = 1338766
+	var expectedGasUsage int64 = 1343287
 	if transactionRelayedEvent.Charge.Cmp(big.NewInt(expectedGasUsage)) != 0 {
 		t.Errorf("GasUsed was not what expected! expected: %d actual: %d", expectedGasUsage, transactionRelayedEvent.Charge)
 	}

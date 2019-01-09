@@ -357,7 +357,7 @@ func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (er
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
-	tx, err := relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url, common.HexToAddress("0"))
+	tx, err := relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url, staleRelay)
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
