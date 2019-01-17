@@ -25,7 +25,7 @@
   ],
   "version": "0.2.1",
   "scripts": {
-    "test": "make && make test-server && run-with-testrpc -l 8000000 'truffle test' ",
+    "test": "make && make test-server && run-with-testrpc -p 8544 -l 8000000 'truffle --network npmtest test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js &&http-server webtools/ -o",
     "lint": "eslint ./src ./test -f unix",

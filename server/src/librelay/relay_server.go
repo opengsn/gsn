@@ -375,7 +375,7 @@ func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
 		End:   nil,
 	}
 	addresses := []common.Address{relay.Address()}
-	iter, err := relay.rhub.FilterRelayAdded(filterOpts,addresses)
+	iter, err := relay.rhub.FilterRelayAdded(filterOpts,addresses,nil)
 	if err != nil {
 		log.Println(err)
 		return
@@ -389,7 +389,7 @@ func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
 	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = relay.rhub.FilterRelayAdded(filterOpts,addresses)
+			iter, err = relay.rhub.FilterRelayAdded(filterOpts,addresses,nil)
 			if err != nil {
 				log.Println(err)
 				return
