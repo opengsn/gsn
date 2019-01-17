@@ -211,10 +211,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 	transactionRelayedEvent := new(librelay.RelayHubTransactionRelayed)
 	sampleRecipientEmitted := new(samplerec.SampleRecipientSampleRecipientEmitted)
 	ErrFail(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[2]), t)
-	var expectedGasUsage int64 = 1343287
-	if transactionRelayedEvent.Charge.Cmp(big.NewInt(expectedGasUsage)) != 0 {
-		t.Errorf("GasUsed was not what expected! expected: %d actual: %d", expectedGasUsage, transactionRelayedEvent.Charge)
-	}
+
 	ErrFail(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[0]), t)
 	expectedMessage := "hello world"
 	if sampleRecipientEmitted.Message != expectedMessage {

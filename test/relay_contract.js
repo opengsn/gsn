@@ -449,13 +449,15 @@ contract("RelayHub", function (accounts) {
 
             let digest = await getTransactionHash(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
             let sig = await getTransactionSignature(accounts[0], digest)
+
+            assert.equal( 0, (await rhub.can_relay(accounts[0], from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig)).toNumber())
+
             let res = await rhub.relay(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: accounts[0],
                 gasPrice: gas_price,
                 gasLimit: gas_limit_any_value
             });
             relay_nonce++;
-
 
             let relay_owner_hub_balance_after = await rhub.balances(owner)
             let relay_balance_after = web3.eth.getBalance(accounts[0])
@@ -466,6 +468,16 @@ contract("RelayHub", function (accounts) {
             // Calculate the actual factor. Rounding is expected. 
             let revenue = relay_owner_hub_balance_after.minus(relay_owner_hub_balance_before)
             let expenses = relay_balance_before.minus(relay_balance_after)
+
+            if ( requested_fee==0 ) {
+                let cur_overhead = ( await rhub.gas_overhead() ).toNumber()
+                let gas_diff = ( expenses.toNumber()-revenue.toNumber() ) / gas_price
+                if ( gas_diff != 0 ) {
+                    console.log( "== zero-fee unmatched gas. RelayHub.gas_overhead should be: "+
+                        ( cur_overhead + gas_diff) + " (cur_overhead="+cur_overhead+")" )
+                }
+            }
+
             let received_coeff = revenue.dividedBy(expenses)
             // I don't know how does rounding work for BigNumber, but it seems to be broken to me
             if (received_coeff.lessThan(1))

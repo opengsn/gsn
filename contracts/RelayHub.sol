@@ -14,7 +14,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant low_ether = 1 ether;    // XXX TBD - relay still works, but owner should be notified to fund the relay soon.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant gas_overhead = 47135;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gas_overhead = 47627;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
@@ -67,7 +67,7 @@ contract RelayHub is RelayHubApi {
      * This ether will be used to repay relay calls into this contract.
      * Contract owner should monitor the balance of his contract, and make sure
      * to deposit more, otherwise the contract won't be able to receive relayed calls.
-     * Unused deposited
+     * Unused deposited can be withdrawn with `withdraw()`
      */
     function depositFor(address target) public payable {
         balances[target] += msg.value;
@@ -79,6 +79,21 @@ contract RelayHub is RelayHubApi {
         depositFor(msg.sender);
     }
 
+    /**
+     * withdraw funds.
+     * caller is either a relay owner, withdrawing collected transaction fees.
+     * or a RelayRecipient contract, withdrawing its deposit.
+     * note that while everyone can `depositFor()` a contract, only
+     * the contract itself can withdraw its funds.
+     */
+    function withdraw(uint amount) public {
+        require(balances[msg.sender] >= amount, "insufficient funds");
+        balances[msg.sender] -= amount;
+        msg.sender.transfer(amount);
+        emit Withdrawn(msg.sender, amount);
+    }
+
+    //check the deposit balance of a contract.
     function balanceOf(address target) external view returns (uint256) {
         return balances[target];
     }
@@ -87,17 +102,10 @@ contract RelayHub is RelayHubApi {
         return stakes[relay].stake;
     }
 
-    function ownerOf(address relayaddr) external view returns (address) {
-        return stakes[relayaddr].owner;
+    function ownerOf(address relay) external view returns (address) {
+        return stakes[relay].owner;
     }
 
-
-    function withdraw(uint amount) public {
-        require(balances[msg.sender] >= amount, "insufficient funds");
-        balances[msg.sender] -= amount;
-        msg.sender.transfer(amount);
-        emit Withdrawn(msg.sender, amount);
-    }
 
     function stake(address relay, uint unstake_delay) external payable {
         // Create or increase the stake and unstake_delay
@@ -134,16 +142,17 @@ contract RelayHub is RelayHubApi {
     }
 
     function register_relay(uint transaction_fee, string url, address optional_relay_removal) public lock_stake {
-        // Anyone with a stake can register a relay.  Apps choose relays by their transaction fee, stake size and unstake delay, optionally crossed against a blacklist.  Apps verify the relay's action in realtime.
-        if (msg.sender.balance < low_ether) {
-            emit NeedsFunding(msg.sender);
-        }
-        // Penalized relay cannot reregister
-        require(!stakes[msg.sender].removed, "Penalized relay cannot reregister");
-        relays[msg.sender] = Relay(now, transaction_fee);
-        emit RelayAdded(msg.sender, transaction_fee, stakes[msg.sender].stake, stakes[msg.sender].unstake_delay, url);
+        // Anyone with a stake can register a relay.  Apps choose relays by their transaction fee, stake size and unstake delay,
+        // optionally crossed against a blacklist.  Apps verify the relay's action in realtime.
 
-        // @optional_relay_removal is unrelated to registration, but incentivizes relays to help purging stale relays from the list.  Providing a stale relay will cause its removal, and offset the gas price of registration.
+        Stake storage relay_stake = stakes[msg.sender];
+        // Penalized relay cannot reregister
+        require(!relay_stake.removed, "Penalized relay cannot reregister");
+        relays[msg.sender] = Relay(now, transaction_fee);
+        emit RelayAdded(msg.sender, relay_stake.owner, transaction_fee, relay_stake.stake, relay_stake.unstake_delay, url);
+
+        // @optional_relay_removal is unrelated to registration, but incentivizes relays to help purging stale relays from the list.
+        // Providing a stale relay will cause its removal, and offset the gas price of registration.
         if (optional_relay_removal != address(0))
             remove_stale_relay(optional_relay_removal);
     }
@@ -194,28 +203,38 @@ contract RelayHub is RelayHubApi {
         return to.accept_relayed_call(relay, from, transaction, gas_price, transaction_fee); // Check to.accept_relayed_call, see if it agrees to accept the charges.
     }
 
-    function relay(address from, address to, bytes transaction_orig, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes sig) public {
+    /**
+     * relay a transaction.
+     * @param from the client originating the request.
+     * @param to the target RelayRecipient contract.
+     * @param encoded_function the function call to relay.
+     * @param transaction_fee fee (%) the relay takes over actual gas cost.
+     * @param gas_price gas price the client is willing to pay
+     * @param gas_limit limit the client want to put on its transaction
+     * @param transaction_fee fee (%) the relay takes over actual gas cost.
+     * @param nonce sender's nonce (in nonces[])
+     * @param sig client's signature over all params
+     */
+    function relay(address from, address to, bytes encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes sig) public {
         uint initial_gas = gasleft();
         require(relays[msg.sender].timestamp > 0, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
         relays[msg.sender].timestamp = now;
 
-        require(0 == can_relay(msg.sender, from, RelayRecipient(to), transaction_orig, transaction_fee, gas_price, gas_limit, nonce, sig), "can_relay failed");
-        if (msg.sender.balance < low_ether) {
-            emit NeedsFunding(msg.sender);
-        }
+        require(0 == can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, sig), "can_relay failed");
 
-        // // ensure that the last bytes of @transaction are the @from address.  Recipient will trust this reported sender when msg.sender is the known RelayHub.
-        bytes memory transaction = abi.encodePacked(transaction_orig,from);
+        // ensure that the last bytes of @transaction are the @from address.
+        // Recipient will trust this reported sender when msg.sender is the known RelayHub.
+        bytes memory transaction = abi.encodePacked(encoded_function,from);
 
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
         bool success = executeCallWithGas(gas_limit, to, 0, transaction); // transaction must end with @from at this point
         nonces[from]++;
-        RelayRecipient(to).post_relayed_call(msg.sender, from, transaction_orig, success, (gas_overhead+initial_gas-gasleft()), transaction_fee );
-        // Relay transaction_fee is in %.  E.g. if transaction_fee=50, token payment will be equivalent to used_gas*(100+transaction_fee)*gas_price = used_gas*150*gas_price.
+        RelayRecipient(to).post_relayed_call(msg.sender, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee );
+        // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
-        emit TransactionRelayed(msg.sender, from, keccak256(transaction), success, charge);
+        emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), success, charge);
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[stakes[msg.sender].owner] += charge;
@@ -281,15 +300,6 @@ contract RelayHub is RelayHubApi {
             out |= bytes32(b[offset + i] & 0xFF) >> (i * 8);
         }
         return out;
-    }
-
-    function addressToBytes(address a) pure public returns (bytes b){
-        assembly {
-            let m := mload(0x40)
-            mstore(add(m, 20), xor(0x140000000000000000000000000000000000000000, a))
-            mstore(0x40, add(m, 52))
-            b := m
-        }
     }
 
 }

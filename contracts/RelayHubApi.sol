@@ -4,15 +4,24 @@ contract  RelayHubApi {
 
     event Staked(address indexed relay, uint stake);
     event Unstaked(address indexed relay, uint stake);
-    /*
-    As per https://github.com/ethereum/go-ethereum/pull/16513; https://github.com/ethereum/go-ethereum/issues/15710
-    any abi fields with underscore are changed to camelCase by abigen, so in order to parse the correct fields with go
-    we change the field names to camelCase where we need them in go
-    */
-    event RelayAdded(address indexed relay, uint transactionFee, uint stake, uint unstakeDelay, string url);
+
+    /* RelayAdded is emitted whenever a relay [re-]registers with the RelayHub.
+     * filtering on these events (and filtering out RelayRemoved events) lets the client
+     * find which relays are currently registered.
+     */
+    event RelayAdded(address indexed relay, address indexed owner, uint transactionFee, uint stake, uint unstakeDelay, string url);
+
+    // emitted when a relay is removed
     event RelayRemoved(address indexed relay, uint unstake_time);
-    event NeedsFunding(address indexed relay);
-    event TransactionRelayed(address indexed relay, address indexed from, bytes32 hash, bool success, uint charge);
+
+    /**
+     * this events is emited whenever a transaction is relayed.
+     * notice that the actual function call on the target contract might be reverted - in that case, the "success"
+     * flag will be set to false.
+     * the client uses this event so it can report correctly transaction complete (or revert) to the application.
+     * Monitoring tools can use this event to detect liveliness of clients and relays.
+     */
+    event TransactionRelayed(address indexed relay, address indexed from, address indexed target, bytes32 hash, bool success, uint charge);
     event Deposited(address src, uint amount);
     event Withdrawn(address dest, uint amount);
     event Penalized(address indexed relay, address sender, uint amount);
