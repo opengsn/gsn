@@ -1,5 +1,7 @@
 /* globals web3 artifacts contract it before assert */
 
+const Big = require( 'big.js' )
+
 const SampleRecipient = artifacts.require("./SampleRecipient.sol");
 
 const testutils = require('./testutils')
@@ -8,7 +10,6 @@ const utils = require('../src/js/relayclient/utils')
 const register_new_relay = testutils.register_new_relay;
 const register_new_relay_with_privkey = testutils.register_new_relay_with_privkey;
 const increaseTime = testutils.increaseTime;
-const waitAllContractEventGet = utils.waitAllContractEventGet;
 const getTransactionSignature = utils.getTransactionSignature;
 const getTransactionHash = utils.getTransactionHash;
 const rlp = require('rlp');
@@ -19,6 +20,7 @@ const BigNumber = require('bignumber.js');
 
 const message = "hello world";
 
+const zeroAddr = "0".repeat(40)
 contract('SampleRecipient', function (accounts) {
     // TODO: account with no ether
     var expected_real_sender = accounts[0];
@@ -57,35 +59,35 @@ contract("RelayHub", function (accounts) {
     });
 
     var real_sender = accounts[0];
-    var one_ether = web3.toWei('1', 'ether');
+    var one_ether = web3.utils.toWei('1', 'ether');
 
     it("test_stake", async function () {
         let account = accounts[1];
         let zero_stake = await rhub.stakes(account)
-        let z = zero_stake.valueOf()[0].toNumber();
+        let z = zero_stake.valueOf()[0]
         // assert.equal(0, z);
 
-        let expected_stake = web3.toWei('1', 'ether');
+        let expected_stake = web3.utils.toWei('1', 'ether');
         await rhub.stake(account, 7, {value: expected_stake, from:account})
         let stake = await rhub.stakes(account, {from:account})
-        assert.equal(expected_stake, stake[0].toNumber()-z);
+        assert.equal(expected_stake, new Big(stake[0]).sub(z));
         assert.equal(7, stake[1]);
     });
 
     it("should allow owner to stake on behalf of the relay", async function () {
         let gasless_relay_address = "0x2Dd8C0665327A26D7655055B22c9b3bA596DfeD9"
-        let balance_of_gasless_before = web3.eth.getBalance(gasless_relay_address);
-        let balance_of_acc7_before = web3.eth.getBalance(accounts[7]);
-        let expected_stake = web3.toWei('0.5', 'ether')
+        let balance_of_gasless_before = await web3.eth.getBalance(gasless_relay_address);
+        let balance_of_acc7_before = await web3.eth.getBalance(accounts[7]);
+        let expected_stake = web3.utils.toWei('0.5', 'ether')
         let gasPrice = 1
         let res = await rhub.stake(gasless_relay_address, 7, {value: expected_stake, gasPrice: gasPrice, from: accounts[7]})
         let stake = await rhub.stakes(gasless_relay_address)
-        let balance_of_gasless_after = web3.eth.getBalance(gasless_relay_address);
-        let balance_of_acc7_after = web3.eth.getBalance(accounts[7]);
-        let expected_balance_after = balance_of_acc7_before.minus(expected_stake).minus(res.receipt.gasUsed * gasPrice)
+        let balance_of_gasless_after = await web3.eth.getBalance(gasless_relay_address);
+        let balance_of_acc7_after = await web3.eth.getBalance(accounts[7]);
+        let expected_balance_after = new Big(balance_of_acc7_before).sub(expected_stake).sub(res.receipt.gasUsed * gasPrice)
         assert.equal(balance_of_acc7_after.toString(), expected_balance_after.toString());
         assert.equal(balance_of_gasless_after.toString(), balance_of_gasless_before.toString());
-        assert.equal(expected_stake, stake[0].toNumber());
+        assert.equal(expected_stake, stake[0] );
     })
 
     it("test_register_relay", async function () {
@@ -96,7 +98,7 @@ contract("RelayHub", function (accounts) {
     });
 
     async function getTransaction(testContract) {
-        return testContract.contract.emitMessage.getData(message);
+        return testContract.contract.methods.emitMessage(message).encodeABI()
     }
 
     /**
@@ -107,9 +109,16 @@ contract("RelayHub", function (accounts) {
      * @param {*} error - returned by web3 from RPC call
      * @param {*} errorMessage - expected error message
      */
-    function isErrorMessageCorrect(error, errorMessage) {
+    function assertErrorMessageCorrect(error, errorMessage) {
         let blocktime_mode_error = "does not trigger a Solidity `revert` statement"
-        return error.message.includes(errorMessage) || error.message.includes(blocktime_mode_error)
+        if ( !error || !error.message ) {
+            console.log( "no error: ", error, "expected:", errorMessage)
+            assert.equals( errorMessage, error) //expected some error, got null
+        }
+        if ( error.message.includes(errorMessage) || error.message.includes(blocktime_mode_error) )
+            return true;
+        console.log( "invalid error message: "+error.message+"\n(expected: "+errorMessage+")")
+        assert.ok(false, "invalid error message: "+error.message+"\n(expected: "+errorMessage+")")
     }
 
     let from = real_sender;
@@ -146,22 +155,22 @@ contract("RelayHub", function (accounts) {
         var args_relayed = log_relayed.args;
         assert.equal("TransactionRelayed", log_relayed.event);
         assert.equal(true, args_relayed.success)
-        var logs_messages = await waitAllContractEventGet(sr.contract.SampleRecipientEmitted({}, {
+        var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
             fromBlock: startBlock,
             toBlock: 'latest'
-        }));
+        });
         assert.equal(1, logs_messages.length)
         let log_message = logs_messages[0];
-        var args_message = log_message.args;
+        var args_message = log_message.returnValues;
         assert.equal("SampleRecipientEmitted", log_message.event);
         assert.equal(message, args_message.message);
 
-        var postevent = await waitAllContractEventGet(sr.contract.SampleRecipientPostCall({}, {
+        var postevent = await sr.contract.getPastEvents('SampleRecipientPostCall', {
             fromBlock: startBlock,
             toBlock: 'latest'
-        }))
+        })
         assert.equal("SampleRecipientPostCall", postevent[0].event)
-        assert.notEqual(0, postevent[0].args.used_gas)
+        assert.notEqual(0, postevent[0].returnValues.used_gas)
 
     });
     it("should not accept relay requests from unknown addresses", async function () {
@@ -175,7 +184,7 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail();
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "Unknown relay"))
+            assertErrorMessageCorrect(error, "Unknown relay")
         }
     });
 
@@ -187,7 +196,7 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail();
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "Invalid gas price"))
+            assertErrorMessageCorrect(error, "Invalid gas price")
         }
     });
 
@@ -204,7 +213,7 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail("relay should fail");
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "can_relay failed"), "wrong error: "+error)
+            assertErrorMessageCorrect(error, "can_relay failed")
             let can_relay = await rhub.can_relay.call(accounts[0], from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
             assert.equal(3, can_relay.valueOf())
         }
@@ -220,7 +229,7 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail();
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "Not enough gasleft"));
+            assertErrorMessageCorrect(error, "Not enough gasleft");
         }
     });
 
@@ -233,16 +242,16 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail();
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "insufficient funds"))
+            assertErrorMessageCorrect(error, "insufficient funds")
         }
     });
 
     it("test_remove_relay_by_owner", async function () {
         try {
-            await rhub.remove_relay_by_owner(0)
+            await rhub.remove_relay_by_owner(zeroAddr)
             assert.fail()
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "not owner"))
+            assertErrorMessageCorrect(error, "not owner")
         }
 
         let res = await rhub.remove_relay_by_owner(accounts[0]);
@@ -252,12 +261,16 @@ contract("RelayHub", function (accounts) {
 
     it("test_unstake", async function () {
         let stake = await rhub.stakes.call(accounts[0]);
+
         let can_unstake = await rhub.can_unstake.call(accounts[0]);
+
         assert.equal(false, can_unstake)
-        await increaseTime(stake[1] / 2)
+        await increaseTime(stake.unstake_delay/2 )
+
         can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(false, can_unstake)
-        await increaseTime(stake[1] / 2)
+        await increaseTime(stake.unstake_delay/2 )
+
         can_unstake = await rhub.can_unstake.call(accounts[0]);
         assert.equal(true, can_unstake)
         await rhub.unstake(accounts[0]);
@@ -268,17 +281,17 @@ contract("RelayHub", function (accounts) {
     it("test_remove_stale_relay", async function () {
         await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0]);
         try {
-            await rhub.remove_stale_relay(0);
+            await rhub.remove_stale_relay(testutils.zeroAddr);
             assert.fail()
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "not a relay"))
+            assertErrorMessageCorrect(error, "not a relay")
         }
 
         try {
             await rhub.remove_stale_relay(accounts[0]);
             assert.fail()
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "not stale"))
+            assertErrorMessageCorrect(error, "not stale")
         }
 
         await increaseTime(4 * dayInSec);
@@ -286,7 +299,7 @@ contract("RelayHub", function (accounts) {
             await rhub.remove_stale_relay(accounts[0]);
             assert.fail()
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "not stale"))
+            assertErrorMessageCorrect(error, "not stale")
         }
 
         await increaseTime(1 * dayInSec + 1);
@@ -328,10 +341,10 @@ contract("RelayHub", function (accounts) {
         let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
         await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
         let stake = await rhub.stakes(address);
-        assert.equal(one_ether, stake[0].toNumber());
+        assert.equal(one_ether, stake[0]);
 
-        data1 = rhub.contract.relay.getData(1, 1, 1, 1, 1, 1, 1, 1);
-        data2 = rhub.contract.relay.getData(2, 2, 2, 2, 2, 2, 2, 2);
+        data1 = rhub.contract.methods.relay(testutils.zeroAddr, testutils.zeroAddr, "0x1", 1, 1, 1, 1, "0x1").encodeABI()
+        data2 = rhub.contract.methods.relay(testutils.zeroAddr, testutils.zeroAddr, "0x2", 2, 2, 2, 2, "0x2").encodeABI()
 
         transaction1 = new ethJsTx({
             nonce: nonce_any_value,
@@ -357,7 +370,7 @@ contract("RelayHub", function (accounts) {
         sig2 = signatureHex(transaction2);
 
         snitching_account = accounts[7];
-        let snitching_account_initial_balance = web3.eth.getBalance(snitching_account);
+        let snitching_account_initial_balance = await web3.eth.getBalance(snitching_account);
 
         let res = await rhub.penalize_repeated_nonce(unsignedTransaction1Encoded, sig1, unsignedTransaction2Encoded, sig2, {
             from: snitching_account,
@@ -365,31 +378,31 @@ contract("RelayHub", function (accounts) {
             gasLimit: gas_limit_any_value
         });
         assert.equal("Penalized", res.logs[0].event)
-        assert.equal(address, res.logs[0].args.relay)
+        assert.equal(address, res.logs[0].args.relay.toLowerCase())
         assert.equal(snitching_account, res.logs[0].args.sender)
         increaseTime(dayInSec)
         let res2 = await rhub.unstake(address,{from:snitching_account, gasPrice: gasPricePenalize,gasLimit: gas_limit_any_value})
 
-        let balance_of_acc7 = web3.eth.getBalance(snitching_account);
-        let expected_balance_after_penalize = snitching_account_initial_balance.plus(stake[0]).minus(res.receipt.gasUsed * gasPricePenalize).minus(res2.receipt.gasUsed * gasPricePenalize)
-        assert.equal(expected_balance_after_penalize.toString(), balance_of_acc7.toString());
+        let balance_of_acc7 = await web3.eth.getBalance(snitching_account);
+        let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]).sub(res.receipt.gasUsed * gasPricePenalize).sub(res2.receipt.gasUsed * gasPricePenalize)
+        assert.equal(expected_balance_after_penalize, balance_of_acc7);
     });
 
 
     it("should revert an attempt to penalize relay with two identical transactions", async function () {
         await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0]);
         let stake = await rhub.stakes(accounts[0]);
-        assert.equal(one_ether, stake[0].toNumber());
+        assert.equal(one_ether, stake[0]);
 
         try {
-            await rhub.penalize_repeated_nonce(unsignedTransaction1Encoded, sig1, unsignedTransaction1Encoded, sig1, {
+            await rhub.penalize_repeated_nonce(unsignedTransaction1Encoded ||"0x", sig1||"0x", unsignedTransaction1Encoded||"0x", sig1||"0x", {
                 from: snitching_account,
                 gasPrice: gasPricePenalize,
                 gasLimit: gas_limit_any_value
             });
             assert.fail()
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "tx.data is equal"))
+            assertErrorMessageCorrect(error, "tx.data is equal")
         }
     });
 
@@ -408,7 +421,7 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail()
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "Different nonce"))
+            assertErrorMessageCorrect(error, "Different nonce")
         }
     });
 
@@ -425,22 +438,22 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail()
         } catch (error) {
-            assert.equal(true, isErrorMessageCorrect(error, "Different signer"))
+            assertErrorMessageCorrect(error, "Different signer")
         }
     });
 
     [0, 1, 3, 5, 10, 50, 100, 200].forEach(requested_fee => {
         it("should compensate relay with requested fee of " + requested_fee + "%", async function () {
             let relay_recepient_balance_before = await rhub.balances(sr.address)
-            if (relay_recepient_balance_before.equals(0)){
+            if (relay_recepient_balance_before.toString() ==0 ){
                 let deposit = 100000000;
                 await sr.deposit({ value: deposit });
             }
             // This is required to initialize rhub's balances[acc[0]] value
-            // If it is not set, the transacion will cost 15'000 gas more then expected by 'gas_overhead'
+            // If it is not set, the transacion will cost 15,000 gas more than expected by 'gas_overhead'
             await rhub.deposit({ value: 1 })
             relay_recepient_balance_before = await rhub.balances(sr.address)
-            let relay_balance_before = web3.eth.getBalance(accounts[0]);
+            let relay_balance_before = new Big( await web3.eth.getBalance(accounts[0] ));
             let r = await rhub.stakes(accounts[0])
             let owner = r[3]
 
@@ -450,7 +463,7 @@ contract("RelayHub", function (accounts) {
             let digest = await getTransactionHash(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
             let sig = await getTransactionSignature(accounts[0], digest)
 
-            assert.equal( 0, (await rhub.can_relay(accounts[0], from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig)).toNumber())
+            assert.equal( 0, await rhub.can_relay(accounts[0], from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig) )
 
             let res = await rhub.relay(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: accounts[0],
@@ -460,25 +473,25 @@ contract("RelayHub", function (accounts) {
             relay_nonce++;
 
             let relay_owner_hub_balance_after = await rhub.balances(owner)
-            let relay_balance_after = web3.eth.getBalance(accounts[0])
+            let relay_balance_after = await web3.eth.getBalance(accounts[0])
 
             // What is the factor relay is expecting to get paid by. I.e. for 10% it is '1.1'; For 200% it is '3.0'
-            let requested_coeff = new BigNumber(requested_fee).dividedBy(100).plus(1).toPrecision(3, BigNumber.ROUND_HALF_UP)
+            let requested_coeff = new BigNumber( (requested_fee+100)/100 ).toPrecision(3, BigNumber.ROUND_HALF_UP)
 
             // Calculate the actual factor. Rounding is expected. 
-            let revenue = relay_owner_hub_balance_after.minus(relay_owner_hub_balance_before)
-            let expenses = relay_balance_before.minus(relay_balance_after)
+            let revenue = relay_owner_hub_balance_after.sub(relay_owner_hub_balance_before).toString()
+            let expenses = relay_balance_before.sub(relay_balance_after).toString()
 
             if ( requested_fee==0 ) {
-                let cur_overhead = ( await rhub.gas_overhead() ).toNumber()
-                let gas_diff = ( expenses.toNumber()-revenue.toNumber() ) / gas_price
+                let cur_overhead = await rhub.gas_overhead()
+                let gas_diff = ( expenses - revenue ) / gas_price
                 if ( gas_diff != 0 ) {
                     console.log( "== zero-fee unmatched gas. RelayHub.gas_overhead should be: "+
-                        ( cur_overhead + gas_diff) + " (cur_overhead="+cur_overhead+")" )
+                        ( parseInt(cur_overhead) + gas_diff) + " (cur_overhead="+cur_overhead+")" )
                 }
             }
 
-            let received_coeff = revenue.dividedBy(expenses)
+            let received_coeff = new BigNumber(revenue).div(expenses)
             // I don't know how does rounding work for BigNumber, but it seems to be broken to me
             if (received_coeff.lessThan(1))
             {
@@ -490,12 +503,12 @@ contract("RelayHub", function (accounts) {
             assert.equal(requested_coeff, received_coeff)
 
             // Check that relay did pay it's gas fee on itslef.
-            let expected_balance_after = relay_balance_before.minus(res.receipt.gasUsed * gas_price)
+            let expected_balance_after = relay_balance_before.sub(res.receipt.gasUsed * gas_price)
             assert.equal(expected_balance_after.toString(), relay_balance_after.toString())
 
             // Check that relay's revenue is deducted from recepient's stake.
             let relay_recepient_balance_after = await rhub.balances(sr.address)
-            let expected_recepient_balance = relay_recepient_balance_before.minus(revenue)
+            let expected_recepient_balance = relay_recepient_balance_before - revenue
             assert.equal(expected_recepient_balance.toString(), relay_recepient_balance_after.toString())
         });
     })

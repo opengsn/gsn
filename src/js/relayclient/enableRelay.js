@@ -82,12 +82,11 @@ function enableProviderRelay(provider, contractName, relayOptions) {
         console.log("enableContractRelay: hooking ", contractName)
 
     provider.send = relay_send(provider.send.bind(provider), relayOptions)
-    provider.sendAsync = relay_sendAsync(provider.sendAsync.bind(provider), relayOptions)
     provider.relayOptions = relayOptions
 }
 
 function relay_send(originalSend, relayOptions) {
-    return function (payload) {
+    return function (payload, callback) {
 
         // {
         //   "params": [
@@ -105,7 +104,7 @@ function relay_send(originalSend, relayOptions) {
         // }
         //
         if (payload.method != 'eth_sendTransaction')
-            return originalSend(payload)
+            return originalSend(payload, callback)
 
         if (relayOptions.verbose) {
             console.log("calling send" + JSON.stringify(payload))
@@ -113,33 +112,11 @@ function relay_send(originalSend, relayOptions) {
 
 
         if (relayOptions.runRelay)
-            return relayOptions.runRelay(payload)
-
-        console.log("MISSING: options.runRelay. using originalSend")
-        return originalSend(payload)
-    }
-}
-
-// wrap a `provider.sendAsync` function with behavior hooks
-// returns a function(payload, callback) to replace `provider.sendAsync`
-function relay_sendAsync(originalSendAsync, relayOptions) {
-    return function (payload, callback) {
-
-        if (payload.method != 'eth_sendTransaction')
-            return originalSendAsync(payload, function (error, result) {
-                callback(error, result);
-            });
-
-        if (relayOptions.verbose)
-            console.log("calling sendAsync" + JSON.stringify(payload))
-
-        if (relayOptions.runRelay)
             return relayOptions.runRelay(payload, callback)
 
         console.log("MISSING: options.runRelay. using originalSend")
-        return originalSendAsync(payload, function (error, result) {
-            callback(error, result);
-        });
-    };
+        return originalSend(payload, callback)
+    }
 }
+
 

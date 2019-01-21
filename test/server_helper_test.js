@@ -22,7 +22,7 @@ contract('ServerHelper', function (accounts) {
         relayproc = await testutils.startRelay(rhub, {
             verbose: process.env.relaylog,
             stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
-        serverHelper.setHub(RelayHub, rhub)
+        serverHelper.setHub(rhub)
     })
 
     after(async function () {
@@ -52,7 +52,7 @@ contract('ServerHelper', function (accounts) {
         await increaseTime(20 + 1);
         await rhub.unstake(accounts[2],{ from: accounts[2] });
 
-        serverHelper.setHub(RelayHub, rhub)
+        serverHelper.setHub(rhub)
         let pinger = await serverHelper.newActiveRelayPinger()
         let relay = await pinger.nextRelay()
         assert.equal(localhostOne, relay.relayUrl);

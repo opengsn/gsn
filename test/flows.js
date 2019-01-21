@@ -11,10 +11,7 @@ let SampleRecipient = artifacts.require('SampleRecipient')
 
 let RelayHub = artifacts.require('RelayHub')
 
-let RelayClient = require('../src/js/relayclient/relayclient')
-
-const gasPricePercent = 20
-var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPricePercent)/100
+let RelayProvider = require('../src/js/relayclient/RelayProvider')
 
 let options = [
     {title: "Direct-", relay: 0},
@@ -30,10 +27,15 @@ options.forEach(params => {
         let accounts = acc
         let gasless
         let relayproc
+        let gasPrice
+        let relay_client_config
 
         before(async () => {
-            gasless = await web3.personal.newAccount("password")
-            web3.personal.unlockAccount(gasless, "password")
+            const gasPricePercent = 20
+            gasPrice = ( await web3.eth.getGasPrice() ) * (100  + gasPricePercent)/100
+
+            gasless = await web3.eth.personal.newAccount("password")
+            web3.eth.personal.unlockAccount(gasless, "password")
 
             if (params.relay) {
                 // rhub = await RelayHub.deployed()
@@ -60,17 +62,30 @@ options.forEach(params => {
 
         after(async function () {
             await testutils.stopRelay(relayproc)
+            //disable relay, so it won't interfere with other tests..
+            if ( relay_client_config )
+                relay_client_config.enableRelay=false
         })
 
         if (params.relay) {
             it(params.title + "enable relay", async function () {
                 rhub.depositFor(sr.address, {value: 1e17})
-                new RelayClient(web3, {
+
+                relay_client_config = {
                     // verbose:true,
                     txfee: 12,
-                    force_gasPrice: gasPrice,			//override requested gas price
+                        force_gasPrice: gasPrice,			//override requested gas price
                     force_gasLimit: 100000		//override requested gas limit.
-                }).hook(SampleRecipient)
+                }
+                let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config )
+
+                // web3.setProvider(relayProvider)
+
+                //NOTE: in real application its enough to set the provider in web3.
+                // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
+                // so changing the global one is not enough...
+                SampleRecipient.web3.setProvider(relayProvider)
+
             })
         }
 
@@ -95,7 +110,7 @@ options.forEach(params => {
             }
 
             if (params.relay) {
-                assert.ok(ex == null, "should succeed sending gasless transaction through relay")
+                assert.ok(ex == null, "should succeed sending gasless transaction through relay. got: "+ex)
             } else {
                 assert.ok(ex.toString().indexOf("funds") > 0, "Expected Error with 'funds'. got: " + ex)
             }

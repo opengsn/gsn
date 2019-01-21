@@ -23,38 +23,42 @@
       "email": "alex@tabookey.com"
     }
   ],
-  "version": "0.2.1",
+  "version": "0.3.0",
   "scripts": {
-    "test": "make && make test-server && run-with-testrpc -p 8544 -l 8000000 'truffle --network npmtest test' ",
+    "test": "make test-server && run-with-testrpc -p 8544 -l 8000000 './node_modules/.bin/truffle --network npmtest test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js &&http-server webtools/ -o",
     "lint": "eslint ./src ./test -f unix",
     "web": "./restart-relay.sh web"
   },
-  "dependencies" : {
+  "dependencies": {
     "abi-decoder": "^1.2.0",
-    "es6-promisify": "^6.0.1",
-    "web3": "0.20.6",
-    "web3-utils": "^1.0.0-beta.36",
+    "big-js": "^3.1.3",
     "eth-crypto": "^1.2.7",
     "ethereumjs-tx": "^1.3.7",
     "ethereumjs-util": "^6.0.0",
-    "ethereumjs-wallet": "^0.6.3"
+    "ethereumjs-wallet": "^0.6.3",
+    "run-with-testrpc": "^0.3.0",
+    "solc": "^0.5.2",
+    "truffle": "^5.0.2",
+    "web3": "^1.0.0-beta.37",
+    "web3-utils": "^1.0.0-beta.36"
   },
   "devDependencies": {
     "browser-request": "^0.3.3",
-    "eslint": "^5.9.0",
+    "eslint": "^5.12.1",
     "ganache-cli": "^6.2.5",
-    "run-with-testrpc": "^0.3.0",
-    "truffle": "^4.1.14",
-    "truffle-core": "^4.1.14",
     "http-server": "^0.11.1",
     "promisify": "0.0.3",
+    "truffle-contract": "^4.0.2",
     "truffle-hdwallet-provider": "^1.0.1"
   },
-  "files" : [
-	"src/", "contracts/",  "samples/", "webtools/"
+  "files": [
+    "src/",
+    "contracts/",
+    "webtools/",
+    "samples/"
   ],
-  "main": "src/js/relayclient/relayclient.js",
+  "main": "src/js/relayclient/index.js",
   "description": "Tabookey Gasless Relay Framework"
 }

@@ -1,9 +1,11 @@
 /* globals web3 artifacts contract it before after assert */
 
 const RelayClient = require('../src/js/relayclient/relayclient');
+const RelayProvider = require('../src/js/relayclient/RelayProvider');
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require("./RelayHub.sol");
 const SampleRecipient = artifacts.require("./SampleRecipient.sol");
+
 const ethJsTx = require('ethereumjs-tx');
 const ethUtils = require('ethereumjs-util');
 
@@ -14,26 +16,31 @@ const localhostOne = "http://localhost:8090"
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
 
+const Big = require( 'big.js')
+
 const util = require("util")
 const request = util.promisify(require("request"))
 
-const gasPricePercent = 20
-var gasPrice = web3.eth.gasPrice.toNumber() * (100  + gasPricePercent)/100
 contract('RelayClient', function (accounts) {
 
     let rhub;
     let sr;
     let gasLess;
     let relayproc
+    let gasPrice
+    let relay_client_config
 
     before(async function () {
+        const gasPricePercent = 20
+        gasPrice = ( await web3.eth.getGasPrice() ) * (100  + gasPricePercent)/100
+
         rhub = await RelayHub.deployed()
         sr = await SampleRecipient.deployed()
 
-        await sr.deposit({value: web3.toWei('1', 'ether')});
+        await sr.deposit({value: web3.utils.toWei('1', 'ether')});
         // let known_deposit = await rhub.balances(sr.address);
         // assert.ok(known_deposit>= deposit, "deposited "+deposit+" but found only "+known_deposit);
-        gasLess = await web3.personal.newAccount("password")
+        gasLess = await web3.eth.personal.newAccount("password")
         console.log("gasLess = " + gasLess);
         console.log("starting relay")
 
@@ -44,23 +51,26 @@ contract('RelayClient', function (accounts) {
 
     after(async function () {
         await testutils.stopRelay(relayproc)
+        //disable relay, so it won't interfere with other tests..
+        relay_client_config.enableRelay=false
     })
 
     it("test balanceOf target contract", async () => {
 
         let relayclient = new RelayClient(web3)
         let b1 = await relayclient.balanceOf(sr.address)
-        console.log("balance before redeposit", b1.toNumber())
+        console.log("balance before redeposit", b1)
         let added = 200000
         await sr.deposit({ value: added });
-        let b2 = await relayclient.balanceOf(sr.address)
-        console.log("balance after redeposit", b2.toNumber())
-        assert.equal(b2.minus(b1).toString(), added.toString())
+        let b2 = new Big( await relayclient.balanceOf(sr.address) )
+        console.log("balance after redeposit", b2.toString())
+
+        assert.equal(b2.sub(b1), added)
 
     })
 
     it("should send transaction to a relay and receive a response", async function () {
-        let encoded = sr.contract.emitMessage.getData("hello world");
+        let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
         let to = sr.address;
         let options = {
             from: gasLess,
@@ -84,7 +94,7 @@ contract('RelayClient', function (accounts) {
         } while (res === null)
 
         //validate we've got the "SampleRecipientEmitted" event
-        let topic = web3.sha3('SampleRecipientEmitted(string,address,address,address)')
+        let topic = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address)')
         assert(res.logs.find(log => log.topics.includes(topic)))
 
         assert.equal("0x" + validTransaction.to.toString('hex'), rhub.address.toString().toLowerCase());
@@ -94,20 +104,22 @@ contract('RelayClient', function (accounts) {
 
     it("should relay transparently", async () => {
 
-        let relay_client_config = {
-            // relayUrl: localhostOne, 		//findrelay will find them for us..
-            // relayAddress: relayAddress,
+        relay_client_config = {
 
             txfee: 12,
             force_gasPrice: gasPrice,			//override requested gas price
             force_gasLimit: 4000029,		//override requested gas limit.
         }
-        let relayclient = new RelayClient(web3, relay_client_config);
 
-        relayclient.hook(SampleRecipient)
+        let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
+        // web3.setProvider(relayProvider)
 
-        let res = await sr.emitMessage("hello world", { from: gasLess })
+        //NOTE: in real application its enough to set the provider in web3.
+        // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
+        // so changing the global one is not enough...
+        SampleRecipient.web3.setProvider(relayProvider)
 
+        let res = await sr.emitMessage("hello world", {from: gasLess})
         assert.equal(res.logs[0].event, "SampleRecipientEmitted")
         assert.equal(res.logs[0].args.message, "hello world")
         assert.equal(res.logs[0].args.real_sender, gasLess)
@@ -123,7 +135,7 @@ contract('RelayClient', function (accounts) {
     // This test currently has no asserts. 'auditTransaction' returns no value.
     it.skip("should send a signed raw transaction from selected relay to backup relays - in case penalty will be needed", async function () {
         let tbk = new RelayClient(web3);
-        let data1 = rhub.contract.relay.getData(1, 1, 1, 1, 1, 1, 1, 1);
+        let data1 = rhub.contract.methods.relay(1, 1, 1, 1, 1, 1, 1, 1).encodeABI()
         let transaction = new ethJsTx({
             nonce: 2,
             gasPrice: gasPrice,
@@ -160,7 +172,7 @@ contract('RelayClient', function (accounts) {
         assert.equal("SampleRecipientEmitted", log.event);
 
         // Create another tx with the same nonce
-        let data2 = rhub.contract.relay.getData(1, 1, 1, 1, 1, 1, 1, 1);
+        let data2 = rhub.contract.methods.relay(1, 1, 1, 1, 1, 1, 1, 1).encodeABI()
         let transaction2 = new ethJsTx({
             nonce: reused_nonce - 1,
             gasPrice: 2,
@@ -245,7 +257,7 @@ contract('RelayClient', function (accounts) {
 
         let message = "hello world"
         let message_hex = "0b68656c6c6f20776f726c64"
-        let encoded = sr.contract.emitMessage.getData(message)
+        let encoded = sr.contract.methods.emitMessage(message).encodeABI()
 
         let options = {
             from: gasLess,
@@ -292,7 +304,7 @@ contract('RelayClient', function (accounts) {
             assert.equal(ephemeralKeypair.address, addr)
             did_assert = true
         }
-        let encoded = sr.contract.emitMessage.getData("hello world");
+        let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
         let to = sr.address;
         let options = {
             from: fromAddr,
