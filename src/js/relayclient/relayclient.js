@@ -1,4 +1,3 @@
-/* global web3 */
 const utils = require('./utils')
 const getTransactionSignature = utils.getTransactionSignature;
 const getTransactionSignatureWithKey = utils.getTransactionSignatureWithKey;
@@ -54,11 +53,11 @@ function RelayClient(web3, config) {
 }
 
 RelayClient.prototype.createRelayRecipient = function(addr) {
-    return new web3.eth.Contract(relayRecipientAbi, addr)
+    return new this.web3.eth.Contract(relayRecipientAbi, addr)
 }
 
 RelayClient.prototype.createRelayHub = function(addr) {
-    return new web3.eth.Contract(relayHubAbi, addr)
+    return new this.web3.eth.Contract(relayHubAbi, addr)
 }
 
 /**
@@ -249,12 +248,12 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
 
   let gasPrice = this.config.force_gasPrice ||  //forced gasprice
                     options.gas_price ||        //user-supplied gas price
-                    ( await web3.eth.getGasPrice() ) * (pct+100)/100
+                    ( await this.web3.eth.getGasPrice() ) * (pct+100)/100
 
     //TODO: should add gas estimation for encodedFunctionCall (tricky, since its not a real transaction)
   let gasLimit = this.config.force_gasLimit || options.gas_limit
 
-  let blockNow = await web3.eth.getBlockNumber()
+  let blockNow = await this.web3.eth.getBlockNumber()
   let blockDayAgo = Math.max(1, blockNow - est_blocks_per_day)
   let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo, gasPrice)
   for (;;) {
