@@ -12,11 +12,11 @@ RUN	apt-get install software-properties-common && \
 	rm -rf /var/lib/apt/lists/*
 
 #for some reason, npm install -g chokes. so we install them "locally", in the root folder.
-RUN npm install ganache-cli truffle
+#RUN npm install ganache-cli truffle
 
-#need to select which version we install: default is (right now) 0.5.1
-RUN curl -L -o /usr/local/bin/solc-4.24 https://github.com/ethereum/solidity/releases/download/v0.4.24/solc-static-linux && chmod a+rx /usr/local/bin/solc-4.24
-RUN ln -s /usr/local/bin/solc-4.24 /usr/local/bin/solc
+#need to select which version we install: default is (right now) 0.5.2
+RUN curl -L -o /usr/local/bin/solc-5.2 https://github.com/ethereum/solidity/releases/download/v0.5.2/solc-static-linux && chmod a+rx /usr/local/bin/solc-5.2
+RUN ln -s /usr/local/bin/solc-5.2 /usr/local/bin/solc
 #RUN apt-get install -y solc
 
 ENV PS1 "\e[31min-docker\e[0m \W \$ "

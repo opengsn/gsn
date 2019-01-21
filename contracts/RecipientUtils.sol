@@ -1,10 +1,10 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 contract RecipientUtils {
 
     //return the signature of a method.
     // (can also be done off-chain)
-    function sig(string methodSig) public pure returns (bytes4) {
+    function sig(string memory methodSig) public pure returns (bytes4) {
         return bytes4(keccak256(bytes(methodSig)));
     }
 
@@ -31,13 +31,13 @@ contract RecipientUtils {
      * dynamic param
      * https://solidity.readthedocs.io/en/develop/abi-spec.html#use-of-dynamic-types
      */
-    function getBytesParam(bytes memory msg_data, uint index) public pure returns (bytes ret)  {
+    function getBytesParam(bytes memory msg_data, uint index) public pure returns (bytes memory ret)  {
         uint ofs = getParam(msg_data,index)+4;
         uint len = extractUint(msg_data, ofs);
         ret = extractBytes(msg_data, ofs+32, len);
     }
 
-    function getStringParam(bytes memory msg_data, uint index) public pure returns (string) {
+    function getStringParam(bytes memory msg_data, uint index) public pure returns (string memory) {
         return string(getBytesParam(msg_data,index));
     }
 

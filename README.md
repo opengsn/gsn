@@ -106,17 +106,17 @@ note that `npm test` above runs the entire suite: it compiles the server, then l
 ### Client modifications.
 
 
-	RelayClient = require( 'relayclient')
-	relayclient = new RelayClient({})
+	tabookey = require( 'tabookey-gassless')
+    provider = new tabookey.RelayProvider(web3.currentProvider, {} }
+    web3.setProvider(provider) 
 
-	MyContract = web3.contract(...)
-	relayclient.hook(MyContract)
+	//from now on, any transaction through this web3 will go through a relay
+	
+	MyContract = new web3.eth.Contract(...)
 
-	//from now on, any request through this contract will go through a relay
 	myContract = MyContract.at('...')
 	myContract.someMethod()
 
-	//You can also hook web3 itself, so that any accessed contract will go through a relay.
 
 #### RelayClient options:
 
@@ -125,6 +125,9 @@ A relay client can receive various options:
 - `force_gasLimit` - use specific gas limit for all transactions. if not set, the user must supply gas limit for each transaction.
 - `force_gasprice` - if not set, then the client will use `web3.eth.gasPrice` with the factor (below)
 - `gaspriceFactorPercent` - how much above default `gasPrice` to use. default is 20% which means we use gasPrice*1.2
+- `minStake` - ignore relays with lower stake
+- `minDelay` - ignore relays with lower stake delay
+- `verbose` - show logs of client requests/responses
 
 ### Contract modifications
 
