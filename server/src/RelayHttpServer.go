@@ -62,6 +62,10 @@ func main() {
 // http.HandlerFunc wrapper to assure we have enough balance to operate, and server already has stake and registered
 func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
+		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+
 		if !ready.GetVal() {
 			err := fmt.Errorf("Relay not staked and registered yet")
 			log.Println(err)
