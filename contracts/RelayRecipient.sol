@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.5.0;
 
 // Contract that implements the relay recipient protocol.  Inherited by Gatekeeper, or any other relay recipient.
 //
@@ -48,10 +48,10 @@ contract RelayRecipient is RelayRecipientApi {
      * Note that this method will revert on configuration error (invalid relay address)
      */
     function get_recipient_balance() public view returns (uint) {
-        return get_relay_hub().balanceOf(this);
+        return get_relay_hub().balanceOf(address(this));
     }
 
-    function get_sender_from_data(address orig_sender, bytes msg_data) public view returns(address) {
+    function get_sender_from_data(address orig_sender, bytes memory msg_data) public view returns(address) {
         address sender = orig_sender;
         if (orig_sender == get_hub_addr() ) {
             // At this point we know that the sender is a trusted RelayHub, so we trust that the last bytes of msg.data are the verified sender address.
@@ -70,7 +70,7 @@ contract RelayRecipient is RelayRecipientApi {
         return get_sender_from_data(msg.sender, msg.data);
     }
 
-    function get_message_data() public view returns(bytes) {
+    function get_message_data() public view returns(bytes memory) {
         bytes memory orig_msg_data = msg.data;
         if (msg.sender == get_hub_addr()) {
             // At this point we know that the sender is a trusted RelayHub, so we trust that the last bytes of msg.data are the verified sender address.
@@ -97,7 +97,7 @@ contract RelayRecipient is RelayRecipientApi {
 	 *  @param gas_price - the gas price for this transaction
 	 *  @param transaction_fee - the relay compensation (in %) for this transaction
 	 */
-    function accept_relayed_call(address relay, address from, bytes encoded_function, uint gas_price, uint transaction_fee ) external view returns(uint32);
+    function accept_relayed_call(address relay, address from, bytes calldata encoded_function, uint gas_price, uint transaction_fee ) external view returns(uint32);
 
     /**
      * This method is called after the relayed call.
@@ -107,9 +107,9 @@ contract RelayRecipient is RelayRecipientApi {
      * - used_gas - gas used up to this point. Note that gas calculation (for the purpose of compensation
      *   to the relay) is done after this method returns.
      */
-    function post_relayed_call(address relay, address from, bytes encoded_function, bool success, uint used_gas, uint transaction_fee ) external;
+    function post_relayed_call(address relay, address from, bytes calldata encoded_function, bool success, uint used_gas, uint transaction_fee ) external;
 
-    function bytesToAddress(bytes b) private pure returns (address addr) {
+    function bytesToAddress(bytes memory b) private pure returns (address addr) {
         assembly {
             addr := mload(add(b,20))
         }

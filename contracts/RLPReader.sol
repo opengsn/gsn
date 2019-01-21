@@ -2,7 +2,7 @@
 * Taken from https://github.com/hamdiallam/Solidity-RLP
 */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.5.0;
 
 library RLPReader {
 
@@ -27,12 +27,12 @@ library RLPReader {
     * @return tuple (nonce,gas_price,gas_limit,to,value,data)
     */
 
-    function decode_transaction(bytes raw_transaction) public pure returns (uint, uint, uint, address, uint, bytes){
+    function decode_transaction(bytes memory raw_transaction) public pure returns (uint, uint, uint, address, uint, bytes memory){
         RLPReader.RLPItem[] memory values = raw_transaction.toRlpItem().toList(); // must convert to an rlpItem first!
         return (values[0].toUint(), values[1].toUint(), values[2].toUint(), values[3].toAddress(), values[4].toUint(), values[5].toBytes());
     }
 
-    function bytesToBytes32(bytes b, uint offset) private pure returns (bytes32) {
+    function bytesToBytes32(bytes memory b, uint offset) private pure returns (bytes32) {
         bytes32 out;
         for (uint i = 0; i < 32; i++) {
             out |= bytes32(b[offset + i] & 0xFF) >> (i * 8);
@@ -141,7 +141,7 @@ library RLPReader {
     }
     /** RLPItem conversions into data types **/
     // @returns raw rlp encoding in bytes
-    function toRlpBytes(RLPItem memory item) internal pure returns (bytes) {
+    function toRlpBytes(RLPItem memory item) internal pure returns (bytes memory) {
         bytes memory result = new bytes(item.len);
         uint ptr;
         assembly {
@@ -178,7 +178,7 @@ library RLPReader {
         return result;
     }
 
-    function toBytes(RLPItem memory item) internal pure returns (bytes) {
+    function toBytes(RLPItem memory item) internal pure returns (bytes memory) {
         uint offset = _payloadOffset(item.memPtr);
         uint len = item.len - offset;
         // data length

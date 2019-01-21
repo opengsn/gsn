@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.5.0;
 
 import "./RelayHubApi.sol";
 import "./RelayRecipient.sol";
@@ -14,7 +14,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant low_ether = 1 ether;    // XXX TBD - relay still works, but owner should be notified to fund the relay soon.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant public gas_overhead = 47627;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gas_overhead = 47382;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
@@ -141,7 +141,7 @@ contract RelayHub is RelayHubApi {
         emit Unstaked(relay, amount);
     }
 
-    function register_relay(uint transaction_fee, string url, address optional_relay_removal) public lock_stake {
+    function register_relay(uint transaction_fee, string memory url, address optional_relay_removal) public lock_stake {
         // Anyone with a stake can register a relay.  Apps choose relays by their transaction fee, stake size and unstake delay,
         // optionally crossed against a blacklist.  Apps verify the relay's action in realtime.
 
@@ -181,7 +181,7 @@ contract RelayHub is RelayHubApi {
         remove_relay_internal(relay);
     }
 
-    function check_sig(address signer, bytes32 hash, bytes sig) pure internal returns (bool) {
+    function check_sig(address signer, bytes32 hash, bytes memory sig) pure internal returns (bool) {
         // Check if @v,@r,@s are a valid signature of @signer for @hash
         return signer == ecrecover(hash, uint8(sig[0]), bytesToBytes32(sig,1), bytesToBytes32(sig,33));
     }
@@ -191,7 +191,7 @@ contract RelayHub is RelayHubApi {
 	// for contract-specific checks.
 	// returns "0" if the relay is valid. other values represent errors.
 	// values 1..10 are reserved for can_relay. other values can be used by accept_relayed_call of target contracts.
-    function can_relay(address relay, address from, RelayRecipient to, bytes transaction, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes sig) public view returns(uint32) {
+    function can_relay(address relay, address from, RelayRecipient to, bytes memory transaction, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory sig) public view returns(uint32) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, transaction, transaction_fee, gas_price, gas_limit, nonce, address(this));
         bytes32 hashed_message = keccak256(abi.encodePacked(packed, relay));
         bytes32 signed_message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashed_message));
@@ -215,7 +215,7 @@ contract RelayHub is RelayHubApi {
      * @param nonce sender's nonce (in nonces[])
      * @param sig client's signature over all params
      */
-    function relay(address from, address to, bytes encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes sig) public {
+    function relay(address from, address to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory sig) public {
         uint initial_gas = gasleft();
         require(relays[msg.sender].timestamp > 0, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
@@ -240,7 +240,7 @@ contract RelayHub is RelayHubApi {
         balances[stakes[msg.sender].owner] += charge;
     }
 
-    function executeCallWithGas(uint allowed_gas, address to, uint256 value, bytes data) internal returns (bool success) {
+    function executeCallWithGas(uint allowed_gas, address to, uint256 value, bytes memory data) internal returns (bool success) {
         assembly {
             success := call(allowed_gas, to, value, add(data, 0x20), mload(data), 0, 0)
         }
@@ -255,13 +255,13 @@ contract RelayHub is RelayHubApi {
         bytes data;
     }
 
-    function decode_transaction (bytes raw_transaction) private pure returns ( Transaction transaction) {
+    function decode_transaction (bytes memory raw_transaction) private pure returns ( Transaction memory transaction) {
         (transaction.nonce,transaction.gas_price,transaction.gas_limit,transaction.to, transaction.value, transaction.data) = RLPReader.decode_transaction(raw_transaction);
         return transaction;
 
     }
 
-    function penalize_repeated_nonce(bytes unsigned_tx1, bytes sig1 ,bytes unsigned_tx2, bytes sig2) public {
+    function penalize_repeated_nonce(bytes memory unsigned_tx1, bytes memory sig1 ,bytes memory unsigned_tx2, bytes memory sig2) public {
         // Can be called by anyone.  
         // If a relay attacked the system by signing multiple transactions with the same nonce (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
         // Check whether unsigned_tx1 != unsigned_tx2, that both are signed by the same address, and that unsigned_tx1.nonce == unsigned_tx2.nonce.  If all conditions are met, relay is considered an "offending relay".
@@ -294,7 +294,7 @@ contract RelayHub is RelayHubApi {
         remove_relay_by_owner(addr1);
     }
 
-    function bytesToBytes32(bytes b, uint offset) private pure returns (bytes32) {
+    function bytesToBytes32(bytes memory b, uint offset) private pure returns (bytes32) {
         bytes32 out;
         for (uint i = 0; i < 32; i++) {
             out |= bytes32(b[offset + i] & 0xFF) >> (i * 8);

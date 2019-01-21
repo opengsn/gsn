@@ -1,13 +1,12 @@
- /* global web3 artifacts assert */
+ /* global web3 assert */
 
 const child_process = require('child_process')
 const HttpWrapper = require( "../src/js/relayclient/HttpWrapper")
 const localhostOne = "http://localhost:8090"
-const RelayHub = artifacts.require("RelayHub");
 const ethUtils = require('ethereumjs-util');
 const ethJsTx = require('ethereumjs-tx');
-const addPastEvents = require( '../src/js/relayclient/addPastEvents' )
-addPastEvents(RelayHub)
+
+const zeroAddr = "0".repeat(40)
 
 module.exports = {
 
@@ -39,8 +38,6 @@ module.exports = {
         if ( process.env.relaylog )
             relaylog = (msg)=> msg.split("\n").forEach(line=>console.log("relay-"+proc.pid+"> "+line))
 
-        relaylog( "server started")
-
         await new Promise((resolve, reject) => {
 
             let lastresponse
@@ -64,18 +61,31 @@ module.exports = {
             proc.on('exit', doaListener.bind(proc))
         })
 
+        let res
         let http = new HttpWrapper(web3)
-        let res = await http.sendPromise(localhostOne+'/getaddr')
+        let count1=3
+        while (count1-- > 0 ) {
+            try {
+                res = await http.sendPromise(localhostOne + '/getaddr')
+                if ( res ) break
+            } catch(e) {
+                console.log( "startRelay getaddr error", e)
+            }
+            console.log("sleep before cont.")
+            await module.exports.sleep(1000)
+        }
+        assert.ok( res, "can't ping server")
         let relayServerAddress = res.RelayServerAddress
         console.log("Relay Server Address",relayServerAddress)
-        await web3.eth.sendTransaction({to:relayServerAddress, from:web3.eth.accounts[0], value:web3.toWei("2", "ether")})
+        await web3.eth.sendTransaction({to:relayServerAddress, from:options.relayOwner, value:web3.utils.toWei("2", "ether")})
         await rhub.stake(relayServerAddress, options.delay || 3600, {from: options.relayOwner, value: options.stake})
 
+        //now ping server until it "sees" the stake and funding, and gets "ready"
         res=""
         let count = 25
         while (count-- > 0) {
             res = await http.sendPromise(localhostOne+'/getaddr')
-            if ( res.Ready ) break;
+            if ( res && res.Ready ) break;
             await module.exports.sleep(1500)
         }
         assert.ok(res.Ready, "Timed out waiting for relay to get staked and registered")
@@ -94,17 +104,17 @@ module.exports = {
 
     register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
         await relayHub.stake(account, delay, {from: account, value: stake})
-        return await relayHub.register_relay(txFee, url, 0, {from: account})
+        return await relayHub.register_relay(txFee, url, zeroAddr, {from: account})
     },
 
     register_new_relay_with_privkey: async function (relayHub, stake, delay, txFee, url, account, web3, privKey) {
         let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
         await relayHub.stake(address, delay, {from: account, value: stake})
-        await web3.eth.sendTransaction({to: address, from: account, value: web3.toWei("1", "ether")})
-        let nonce = web3.eth.getTransactionCount(address)
-        // let stake_data = relayHub.contract.stake.getData(account, delay)
+        await web3.eth.sendTransaction({to: address, from: account, value: web3.utils.toWei("1", "ether")})
+        let nonce = await web3.eth.getTransactionCount(address)
+        // let stake_data = relayHub.contract.methods.stake(account, delay).encodeABI()
         // , {from: account, value: stake})
-        let register_data = relayHub.contract.register_relay.getData(txFee, url, 0)
+        let register_data = relayHub.contract.methods.register_relay(txFee, url, zeroAddr).encodeABI()
         //  {from: account})
         let validTransaction = new ethJsTx({
             nonce: nonce,
@@ -118,7 +128,7 @@ module.exports = {
         var raw_tx = '0x' + validTransaction.serialize().toString('hex');
 
         let promise = new Promise((resolve,reject) => {
-            web3.eth.sendRawTransaction(raw_tx, (err, res) => {
+            web3.eth.sendSignedTransaction(raw_tx, (err, res) => {
                 if (err) {
                     reject(err)
                 }
@@ -132,23 +142,35 @@ module.exports = {
     },
 
     increaseTime: function (time) {
-        web3.currentProvider.sendAsync({
-            jsonrpc: '2.0',
-            method: 'evm_increaseTime',
-            params: [time],
-            id: new Date().getSeconds()
-        }, (err) => {
-            if (!err) {
+        return new Promise( (resolve,reject)=> {
+            web3.currentProvider.send({
+                jsonrpc: '2.0',
+                method: 'evm_increaseTime',
+                params: [time],
+                id: new Date().getSeconds()
+            }, (err) => {
+                if (err) return reject(err)
                 module.exports.evmMine()
-            }
-        });
+                    .then(r=>resolve(r))
+                    .catch(e=>reject(e))
+
+            });
+        })
     },
     evmMine: function () {
-        web3.currentProvider.send({
-            jsonrpc: '2.0',
-            method: 'evm_mine',
-            params: [],
-            id: new Date().getSeconds()
-        });
-    }
+        return new Promise( (resolve,reject) => {
+            web3.currentProvider.send({
+                jsonrpc: '2.0',
+                method: 'evm_mine',
+                params: [],
+                id: new Date().getSeconds()
+            }, (e,r)=>{
+                if (e) reject(e)
+                else resolve(r)
+            });
+
+        })
+    },
+
+    zeroAddr
 }

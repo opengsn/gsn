@@ -1,5 +1,4 @@
 /* global web3 */
-const enableRelay = require('./enableRelay')
 const utils = require('./utils')
 const getTransactionSignature = utils.getTransactionSignature;
 const getTransactionSignatureWithKey = utils.getTransactionSignatureWithKey;
@@ -17,9 +16,10 @@ const abi_decoder = require('abi-decoder');
 const relayHubAbi = require('./RelayHubApi')
 const relayRecipientAbi = require('./RelayRecipientApi')
 
-const {promisify} = require("es6-promisify");
-
-const est_blocks_per_day = 7200
+//estimate how many blocks to look back.
+// TODO: we need to get a block 24hours ago... need better dynamic estimation
+const est_sec_per_block = 12
+const est_blocks_per_day = 24*3600/est_sec_per_block
 
 abi_decoder.addABI(relayHubAbi)
 
@@ -51,10 +51,14 @@ function RelayClient(web3, config) {
 
     this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend)
 
-    this.RelayRecipient = web3.eth.contract(relayRecipientAbi)
-    this.RelayHub = web3.eth.contract(relayHubAbi)
+}
 
-    //add missing "getPastEvents" in web3 v0.2..
+RelayClient.prototype.createRelayRecipient = function(addr) {
+    return new web3.eth.Contract(relayRecipientAbi, addr)
+}
+
+RelayClient.prototype.createRelayHub = function(addr) {
+    return new web3.eth.Contract(relayHubAbi, addr)
 }
 
 /**
@@ -154,7 +158,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
         console.error("validateRelayResponse " + error)
       }
 
-      if (typeof validTransaction === 'undefined' || validTransaction === null) {
+      if ( !validTransaction ) {
         reject("Failed to validate response")
         return
       }
@@ -181,12 +185,16 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
 RelayClient.prototype.broadcastRawTx = function (raw_tx, tx_hash) {
     var self = this
 
-    self.web3.eth.sendRawTransaction(raw_tx, function (error, result) {
+    self.web3.eth.sendSignedTransaction(raw_tx, function (error, result) {
         //TODO: at this point both client and relay has sent the transaction to the blockchain.
         // client should send the transaction to a SECONDARY relay, so it can wait and attempt
         // to penalize original relay for cheating: returning one transaction to the client, and
         // broadcasting another with the same nonce.
         // see the EIP for description of the attack
+
+        //don't display error for the known-good cases
+        if ( !(""+error).match(/the tx doesn't have the correct nonce|known transaction/) )
+            console.log( "broadcastTx: ",error||result)
 
         if ( error ) {
             //note that nonce-related errors at this point are VALID reponses: it means that
@@ -208,12 +216,14 @@ RelayClient.prototype.broadcastRawTx = function (raw_tx, tx_hash) {
  * (not strictly a client operation, but without a balance, the target contract can't accept calls)
  */
 RelayClient.prototype.balanceOf = async function (target) {
-    let relayRecipient = this.RelayRecipient.at(target)
-    let relayHubAddress = await promisify(relayRecipient.get_hub_addr.call)()
-    let relayHub = this.RelayHub.at(relayHubAddress)
+    let relayRecipient = this.createRelayRecipient(target)
+    let relayHubAddress
+
+    relayHubAddress = await relayRecipient.methods.get_hub_addr().call()
+    let relayHub = this.createRelayHub(relayHubAddress)
 
     //note that the returned value is a promise too, returning BigNumber
-    return relayHub.balanceOf(target)
+    return relayHub.methods.balanceOf(target).call()
 }
 
 /**
@@ -224,32 +234,32 @@ RelayClient.prototype.balanceOf = async function (target) {
 RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, options) {
 
   var self = this
-  let relayRecipient = this.RelayRecipient.at(options.to)
+  let relayRecipient = this.createRelayRecipient(options.to)
 
-  let relayHubAddress = await promisify(relayRecipient.get_hub_addr.call)()
+  let relayHubAddress = await relayRecipient.methods.get_hub_addr().call()
 
-  let relayHub = this.RelayHub.at(relayHubAddress)
+  let relayHub = this.createRelayHub(relayHubAddress)
 
-  var nonce = (await promisify(relayHub.get_nonce.call)(options.from)).toNumber()
+  var nonce = parseInt( await relayHub.methods.get_nonce(options.from).call() )
 
-  this.serverHelper.setHub(this.RelayHub, relayHub)
+  this.serverHelper.setHub(relayHub)
 
     //gas-price multiplicator: either default (10%) or configuration factor
   let pct = (this.config.gaspriceFactorPercent || GASPRICE_PERCENT)
 
   let gasPrice = this.config.force_gasPrice ||  //forced gasprice
                     options.gas_price ||        //user-supplied gas price
-                    ( await promisify(web3.eth.getGasPrice)() ) * (pct+100)/100
+                    ( await web3.eth.getGasPrice() ) * (pct+100)/100
 
     //TODO: should add gas estimation for encodedFunctionCall (tricky, since its not a real transaction)
   let gasLimit = this.config.force_gasLimit || options.gas_limit
 
-  let blockNow = await promisify(web3.eth.getBlockNumber)()
+  let blockNow = await web3.eth.getBlockNumber()
   let blockDayAgo = Math.max(1, blockNow - est_blocks_per_day)
   let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo, gasPrice)
   for (;;) {
     let activeRelay = await pinger.nextRelay()
-    if (activeRelay === null) {
+    if ( !activeRelay ) {
         throw new Error("No relay responded! " + pinger.relaysCount + " attempted, " + pinger.pingedRelays + " pinged")
     }
     let relayAddress = activeRelay.RelayServerAddress
@@ -264,7 +274,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         gasPrice,
         gasLimit,
         nonce,
-        relayHub.address,
+        relayHub._address,
         relayAddress);
 
     let signature
@@ -285,47 +295,37 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         gasLimit,
         options.txfee,
         nonce,
-        relayHub.address,
+        relayHub._address,
         relayAddress
       )
       return validTransaction
     }
     catch (error) {
-      console.log("relayTransaction", error)
+        console.log("relayTransaction: req:",JSON.stringify({ from:options.from,
+            to:options.to,
+            encodedFunctionCall,
+            txfee:options.txfee,
+            gasPrice,
+            gasLimit,
+            nonce,
+            relayhub:relayHub._address,
+            relayAddress
+        }).replace(/["{}]/g,"").replace(/,/g,"\n"))
+      console.log("relayTransaction:", (""+error).replace(/ (\w+:)/g, "\n$1 ") )
     }
   }
 }
 
-/**
- * Wraps all transactions methods in given contract object with Relay logic.
- * Note: does not return a copy, modifies a given instance
- * See {@link enableRelay}
- * @param {*} contract - a relay recepient contract
- */
-RelayClient.prototype.hook = function (contract) {
-    enableRelay(contract, {
-        verbose: this.config.verbose,
-        runRelay: this.runRelay.bind(this),
-        hookTransactionReceipt : hookTransactionReceipt
-    })
-}
-
-function hookTransactionReceipt(orig_getTransactionReceipt) {
-    return (hash, cb) => {
-        orig_getTransactionReceipt(hash, (err, res) => {
-            if (err == null) {
-                if ( res && res.logs ) {
-                    let logs = abi_decoder.decodeLogs(res.logs)
-                    let relayed = logs.find(e => e && e.name == 'TransactionRelayed')
-                    if (relayed && relayed.events.find(e => e.name == "success").value === false) {
-                        console.log("log=" + relayed + " changing status to zero")
-                        res.status = 0
-                    }
-                }
-            }
-            cb(err, res)
-        })
+RelayClient.prototype.fixTransactionReceiptResp = function (resp) {
+    if ( resp && resp.result && resp.result.logs) {
+        let logs = abi_decoder.decodeLogs(resp.result.logs)
+        let relayed = logs.find(e => e && e.name == 'TransactionRelayed')
+        if (relayed && relayed.events.find(e => e.name == "success").value === false) {
+            console.log("log=" + relayed + " changing status to zero")
+            resp.result.status = 0
+        }
     }
+    return resp
 }
 
 RelayClient.prototype.runRelay = function (payload, callback) {

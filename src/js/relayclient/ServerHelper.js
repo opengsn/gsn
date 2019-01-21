@@ -1,7 +1,5 @@
 
 
-const addPastEvents = require('./addPastEvents')
-
 class ActiveRelayPinger {
 
     // TODO: 'httpSend' should be on a network layer
@@ -84,15 +82,13 @@ class ActiveRelayPinger {
             (resolve, reject) =>
                 promises.forEach(
                     promise =>
-                        promise.then((res) =>
+                        promise.then((res) => {
                             resolve(res)
-                        )
-                            .catch(err => {
-                                // console.log(err)
-                                if (++numRejected === promises.length) {
-                                    reject("No response from any server.", err);
-                                }
-                            })
+                        }).catch(err => {
+                            if (++numRejected === promises.length) {
+                                reject("No response from any server.", err);
+                            }
+                        })
                 )
         );
     }
@@ -117,17 +113,15 @@ class ServerHelper {
 
     /**
      *
-     * @param {*} relayHubContract
      * @param {*} relayHubInstance
      */
-    setHub(relayHubContract, relayHubInstance) {
+    setHub(relayHubInstance) {
         if (this.relayHubInstance !== relayHubInstance){
             this.filteredRelays = []
         }
-        this.relayHubContract = relayHubContract
         this.relayHubInstance = relayHubInstance
-        addPastEvents(this.relayHubContract)
-        this.relayHubAddress = this.relayHubInstance.address
+
+        this.relayHubAddress = this.relayHubInstance._address
     }
 
     async newActiveRelayPinger(fromBlock, gasPrice ) {
@@ -152,19 +146,26 @@ class ServerHelper {
      */
     async fetchRelaysAdded() {
         let activeRelays = {}
-        let addedAndRemovedEvents = await this.relayHubContract.getPastEvents({ address: this.relayHubInstance.address, fromBlock: this.fromBlock || 1, topics: [["RelayAdded", "RelayRemoved"]] })
+        let fromBlock = this.fromBlock || 2;
+        let addedAndRemovedEvents = await this.relayHubInstance.getPastEvents("allEvents", { fromBlock: fromBlock,
+            // topics: [["RelayAdded", "RelayRemoved"]]
+        })
 
+        //TODO: better filter RelayAdded, RelayRemoved events: otherwise, we'll be scanning all TransactionRelayed too...
+        //since RelayAdded can't be called after RelayRemoved, its OK to scan first for add, and the remove all removed relays.
         for (var index in addedAndRemovedEvents) {
             let event = addedAndRemovedEvents[index]
             if (event.event === "RelayAdded") {
-                activeRelays[event.args.relay] = {
-                    relayUrl: event.args.url,
-                    transactionFee: event.args.transactionFee,
-                    stake: event.args.stake,
-                    unstakeDelay: event.args.unstakeDelay
+                let args = event.returnValues
+                activeRelays[args.relay] = {
+                    address: args.relay,
+                    relayUrl: args.url,
+                    transactionFee: args.transactionFee,
+                    stake: args.stake,
+                    unstakeDelay: args.unstakeDelay
                 }
             } else if (event.event === "RelayRemoved") {
-                delete activeRelays[event.args.relay]
+                delete activeRelays[event.returnValues.relay]
             }
         }
 

@@ -26,20 +26,35 @@ contractsToExtract.forEach( c=>{
 
 	hubApi = fs.readFileSync( contractFile, {encoding:'utf8'} )
 
-	result = solc.compile(hubApi,0)
-	if ( result.errors || ! result.contracts) {
+	let input = {
+		language: 'Solidity',
+		sources: {
+			contractFile: {
+				content: hubApi
+			}
+		},
+		settings: {
+			outputSelection: {
+				'*': {
+					'*': [ '*' ]
+				}
+			}
+		}
+	}
+	result = JSON.parse(solc.compile(JSON.stringify(input)))
+
+	if ( result.errors ) {
 		console.log( "ERROR: ", result )
 		process.exit(1)
 	}
 
-	abi = result.contracts[ ":"+c ].interface
+	abi = JSON.stringify(result.contracts.contractFile[ c ].abi)
 
 	if ( !abi )  {
 		console.log( "ERROR: failed to extract abi:", result)
 		process.exit(1);
 	} else {
 
-		// console.log( "src=",hubApi )
 		fs.writeFileSync( outAbiFile, "module.exports="+abi )
 		console.log( "written \""+outAbiFile+"\"" )
 	}
