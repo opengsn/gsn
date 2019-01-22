@@ -3,6 +3,7 @@ package librelay
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"gen/librelay"
 	"gen/samplerec"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -98,14 +100,31 @@ func TestMain(m *testing.M) {
 		log.Fatalf("could not deploy contract: %v", err)
 	}
 	parsed, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
-	RelayHubBin := strings.Replace(librelay.RelayHubBin, "__../contracts/RLPReader.sol:RLPReader__", rlpaddr.Hex()[2:], -1)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// linking RlpReader to RelayHub
+	rlpReaderPlaceHolder := "__$" + hexutil.Encode(crypto.Keccak256([]byte("../contracts/RLPReader.sol:RLPReader")))[2:36] + "$__"
+	RelayHubBin := strings.Replace(librelay.RelayHubBin, rlpReaderPlaceHolder, rlpaddr.Hex()[2:], -1)
+	if _,err = hex.DecodeString(RelayHubBin[2:]); err != nil {
+		log.Println("rlpReaderPlaceHolder",rlpReaderPlaceHolder)
+		log.Println("RelayHubBin",RelayHubBin)
+		log.Fatalln("Invalid hex: RelayHubBin",err)
+	}
 	rhaddr, _, boundHub, err = bind.DeployContract(auth, parsed, common.FromHex(RelayHubBin), sim)
 	if err != nil {
 		log.Fatalf("could not deploy contract: %v", err)
 	}
 	parsed, err = abi.JSON(strings.NewReader(samplerec.SampleRecipientABI))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	sampleRecipient, _, boundRecipient, err = bind.DeployContract(auth, parsed, common.FromHex(samplerec.SampleRecipientBin), sim, rhaddr)
 	rhub, err = librelay.NewRelayHub(rhaddr, sim)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	fmt.Printf("RelayHub: %s\nRLPreader: %s\nRecipient:%s\n", rhaddr.String(), rlpaddr.String(), sampleRecipient.String())
 	NewRelay(rhaddr)
 
@@ -113,6 +132,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("could not 'AdjustTime': %v", err)
 	}
 	err = relay.sendStakeTransaction()
+	if err != nil {
+		log.Fatalf("could not 'sendStakeTransaction': %v", err)
+	}
 	sim.Commit()
 	err = relay.awaitStakeTransactionMined()
 	if err != nil {
