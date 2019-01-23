@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity >=0.4.0 <0.6.0;
 
 // Contract that implements the relay recipient protocol.  Inherited by Gatekeeper, or any other relay recipient.
 //
@@ -97,7 +97,7 @@ contract RelayRecipient is RelayRecipientApi {
 	 *  @param gas_price - the gas price for this transaction
 	 *  @param transaction_fee - the relay compensation (in %) for this transaction
 	 */
-    function accept_relayed_call(address relay, address from, bytes calldata encoded_function, uint gas_price, uint transaction_fee ) external view returns(uint32);
+    function accept_relayed_call(address relay, address from, bytes memory encoded_function, uint gas_price, uint transaction_fee ) public view returns(uint32);
 
     /**
      * This method is called after the relayed call.
@@ -107,7 +107,7 @@ contract RelayRecipient is RelayRecipientApi {
      * - used_gas - gas used up to this point. Note that gas calculation (for the purpose of compensation
      *   to the relay) is done after this method returns.
      */
-    function post_relayed_call(address relay, address from, bytes calldata encoded_function, bool success, uint used_gas, uint transaction_fee ) external;
+    function post_relayed_call(address relay, address from, bytes memory encoded_function, bool success, uint used_gas, uint transaction_fee ) public;
 
     function bytesToAddress(bytes memory b) private pure returns (address addr) {
         assembly {
