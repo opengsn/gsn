@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 const Web3 = require('web3')
 
-
 const promisify = require("util").promisify
 
 const request = promisify(require("request"))
@@ -9,17 +8,17 @@ const request = promisify(require("request"))
 const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'))
 
 const relayhubapi = require( '../src/js/relayclient/RelayHubApi')
-const RelayHub = web3.eth.contract(relayhubapi)
+
 
 async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstake_delay ) {
-    let rhub = RelayHub.at(hubaddr)
+    let rhub = new web3.eth.Contract(relayhubapi, hubaddr)
 
-    let curstake = await promisify(rhub.stakeOf)(relayaddr);
+    let curstake = await rhub.methods.stakeOf(relayaddr).call();
     if ( curstake > 1e17 ) {
         console.log( "already has a stake of "+(curstake/1e18)+" eth. NOT adding more")
     } else {
         console.log( "staking ",stake)
-        console.log(await rhub.stake(relayaddr, unstake_delay, {value: stake, from:fromaddr}))
+        console.log( await rhub.methods.stake(relayaddr, unstake_delay).send({value: stake, from:fromaddr}))
     }
 
     let balance = await web3.eth.getBalance(relayaddr)
@@ -53,8 +52,8 @@ async function run() {
         console.log("stake amount is fixed on 1 eth, delay 30 seconds")
         process.exit(1)
     }
-
-    fundrelay(hubaddr, relay, web3.eth.accounts[fromaccount], 1.1e18, 1.1e18, 30)
+    let accounts = await web3.eth.getAccounts()
+    fundrelay(hubaddr, relay, accounts[fromaccount], 1.1e18, 1.1e18, 30)
 
 }
 
