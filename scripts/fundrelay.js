@@ -5,12 +5,10 @@ const promisify = require("util").promisify
 
 const request = promisify(require("request"))
 
-const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'))
-
 const relayhubapi = require( '../src/js/relayclient/RelayHubApi')
 
 
-async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstake_delay ) {
+async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstake_delay, web3) {
     let rhub = new web3.eth.Contract(relayhubapi, hubaddr)
 
     let curstake = await rhub.methods.stakeOf(relayaddr).call();
@@ -52,8 +50,13 @@ async function run() {
         console.log("stake amount is fixed on 1 eth, delay 30 seconds")
         process.exit(1)
     }
+
+    let ethNodeUrl = process.argv[5] || 'http://localhost:8545'
+    const web3 = new Web3(new Web3.providers.HttpProvider(ethNodeUrl))
+
     let accounts = await web3.eth.getAccounts()
-    fundrelay(hubaddr, relay, accounts[fromaccount], 1.1e18, 1.1e18, 30)
+
+    fundrelay(hubaddr, relay, accounts[fromaccount], 1.1e18, 1.1e18, 30, web3)
 
 }
 

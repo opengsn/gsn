@@ -40,12 +40,12 @@ ENVVARS="-e HOME=$HOME -e USER=$USER"
 
 if [ -t 1 ]; then TTY="-ti" ; else TTY="-i"; fi
 
-exited=
-function onexit() {
-    docker rm -f $DOCKNAME 
-}
+# exited=
+# function onexit() {
+#     docker rm -f $DOCKNAME 
+# }
 
-trap onexit EXIT
+# trap onexit EXIT
 
 docker run $DOCK_OPT -u $UID:$GID  \
 	--name $DOCKNAME \

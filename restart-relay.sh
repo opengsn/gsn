@@ -53,7 +53,7 @@ if ! pgrep  -f ganache > /dev/null ; then
 	exit 1
 fi
 
-hubaddr=`truffle migrate | tee /dev/stderr | grep "RelayHub:" | grep "0x.*" -o`
+hubaddr=`truffle migrate | tee /dev/stderr | grep -A 4 "RelayHub" | grep "contract address" | grep "0x.*" -o`
 
 if [ -z "$hubaddr" ]; then
 echo "FATAL: failed to detect RelayHub address"
