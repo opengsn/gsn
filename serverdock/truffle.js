@@ -1,0 +1,16 @@
+module.exports = {
+  networks: {
+    devUseHardcodedAddress: {
+      verbose: process.env.VERBOSE,
+        host: "host.docker.internal",
+        port: 8545,
+                  network_id: "*",
+                  gas:5000000,
+      gasPrice: 1000,
+      from: "0x8f337bf484b2fc75e4b0436645dcc226ee2ac531"
+      }
+  },
+  mocha: {
+      slow: 1000
+  }
+};

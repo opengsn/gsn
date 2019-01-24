@@ -2,7 +2,7 @@ FROM phusion/baseimage
 MAINTAINER "dror@tabookey.com"
 
 RUN curl -sL https://deb.nodesource.com/setup_8.x | bash -
-RUN	apt-get install software-properties-common && \
+RUN	apt-get install -y software-properties-common && \
 	add-apt-repository ppa:gophers/archive &&\
 	add-apt-repository -y ppa:ethereum/ethereum && \
 	apt-get update && \
