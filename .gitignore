@@ -7,3 +7,4 @@ tabookey-gasless-0.1.0.tgz
 /.vscode/settings.json
 /.idea/
 /server/pkg/darwin_amd64/
+/serverdock/version
