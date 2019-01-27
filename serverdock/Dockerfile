@@ -16,7 +16,7 @@ ADD ./RelayHttpServer /RelayHttpServer
 ADD ./start-relay.sh /start-relay.sh
 ADD ./fundrelay.js /scripts/fundrelay.js
 ADD ./truffle.js /truffle.js
-ADD ./Contracts /contracts
+ADD ./contracts /contracts
 ADD ./RelayHubApi.js ./src/js/relayclient/RelayHubApi.js
 ADD ./migrations /migrations
 ADD ./version /version
