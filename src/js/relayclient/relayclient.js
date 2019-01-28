@@ -132,7 +132,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       "gasPrice": gasprice,
       "gasLimit": gaslimit,
       "relayFee": relayFee,
-      "RecipientNonce": nonce,
+      "RecipientNonce": parseInt(nonce),
       "RelayHubAddress": relayHubAddress
     };
 
@@ -280,7 +280,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
     if (typeof self.ephemeralKeypair === "object" && self.ephemeralKeypair !== null) {
       signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash);
     } else {
-      signature = await getTransactionSignature(options.from, hash);
+      signature = await getTransactionSignature(this.web3, options.from, hash);
     }
 
     try {

@@ -40,6 +40,8 @@ contract('SampleRecipient', function (accounts) {
 const RelayHub = artifacts.require("./RelayHub.sol");
 contract("RelayHub", function (accounts) {
 
+    assert.ok( web3.version.toString().indexOf("1.0")>=0, "Must use web3>=1.0 (truffle 5)" )
+
     let rhub;
     let sr;
 
@@ -49,11 +51,13 @@ contract("RelayHub", function (accounts) {
     let gas_limit_any_value = 8000029
 
     before(async function () {
+
+
         rhub = await RelayHub.deployed();
         sr = await SampleRecipient.deployed()
         transaction = await getTransaction(sr);
         digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
-        sig = await getTransactionSignature(accounts[0], digest)
+        sig = await getTransactionSignature(web3, accounts[0], digest)
         let deposit = 100000000000;
         await sr.deposit({value: deposit});
     });
@@ -175,7 +179,7 @@ contract("RelayHub", function (accounts) {
     });
     it("should not accept relay requests from unknown addresses", async function () {
         digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
-        sig = await getTransactionSignature(accounts[0], digest)
+        sig = await getTransactionSignature( web3, accounts[0], digest)
         try {
             await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: accounts[6],
@@ -205,7 +209,7 @@ contract("RelayHub", function (accounts) {
         let relay_nonce = 0;
         await sr.set_blacklisted(from)
         let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
-        let sig = await getTransactionSignature(from, digest)
+        let sig = await getTransactionSignature( web3, from, digest)
         try {
             await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 gasPrice: gas_price,
@@ -461,7 +465,7 @@ contract("RelayHub", function (accounts) {
 
 
             let digest = await getTransactionHash(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, rhub.address, accounts[0]);
-            let sig = await getTransactionSignature(accounts[0], digest)
+            let sig = await getTransactionSignature( web3, accounts[0], digest)
 
             assert.equal( 0, await rhub.can_relay(accounts[0], from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig) )
 
