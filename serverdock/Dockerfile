@@ -9,7 +9,7 @@ RUN n stable
 
 RUN npm install -g ganache-cli truffle
 RUN npm install truffle-hdwallet-provider
-RUN npm install web3
+RUN npm install web3@1.0.0-beta.37
 
 
 ADD ./RelayHttpServer /RelayHttpServer
@@ -20,5 +20,6 @@ ADD ./contracts /contracts
 ADD ./RelayHubApi.js ./src/js/relayclient/RelayHubApi.js
 ADD ./migrations /migrations
 ADD ./version /version
+ADD ./start-relay-with-ganache.sh /start-relay-with-ganache.sh
 
 CMD "/start-relay.sh"
