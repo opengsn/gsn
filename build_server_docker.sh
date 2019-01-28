@@ -9,7 +9,8 @@ serverbuild=./build/serverdock
 mkdir $serverbuild
 
 cp ./build/dock-builD/server/bin/RelayHttpServer $serverbuild
-cp ./start-relay.sh $serverbuild
+cp ./serverdock/start-relay.sh $serverbuild
+cp ./serverdock/start-relay-with-ganache.sh $serverbuild
 cp ./scripts/fundrelay.js $serverbuild
 cp ./src/js/relayclient/RelayHubApi.js $serverbuild
 cp ./serverdock/truffle.js $serverbuild

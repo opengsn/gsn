@@ -29,6 +29,8 @@
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js &&http-server webtools/ -o",
     "lint": "eslint ./src ./test -f unix",
+    "gsn-dock-relay": "docker run --rm -t -p 8090:8090 tabookey/gsn-dev-server:v0.3",
+    "gsn-dock-relay-ganache": "docker run --rm -p 8090:8090 -p 8545:8545 -t tabookey/gsn-dev-server:v0.3.1 /start-relay-with-ganache.sh",
     "web": "./restart-relay.sh web"
   },
   "dependencies": {

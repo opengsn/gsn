@@ -37,7 +37,9 @@ async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstake_dela
 async function run() {
     let hubaddr = process.argv[2]
     let relay = process.argv[3]
+    let ethNodeUrl = process.argv[5] || 'http://localhost:8545'
 
+    console.log({relay, hubaddr, ethNodeUrl})
     if (relay.indexOf("http") == 0) {
         res = await request(relay+"/getaddr")
         relay = JSON.parse(res.body).RelayServerAddress
@@ -51,7 +53,6 @@ async function run() {
         process.exit(1)
     }
 
-    let ethNodeUrl = process.argv[5] || 'http://localhost:8545'
     const web3 = new Web3(new Web3.providers.HttpProvider(ethNodeUrl))
 
     let accounts = await web3.eth.getAccounts()
