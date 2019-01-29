@@ -59,7 +59,8 @@
     "src/",
     "contracts/",
     "webtools/",
-    "samples/"
+    "samples/",
+    "webtools.webpack.js"
   ],
   "main": "src/js/relayclient/index.js",
   "description": "Tabookey Gasless Relay Framework"
