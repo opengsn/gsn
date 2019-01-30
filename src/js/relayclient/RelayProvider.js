@@ -36,7 +36,8 @@ class RelayProvider {
             if (payload.method == 'eth_sendTransaction') {
                 if (this.relayOptions.verbose)
                     console.log("calling sendAsync" + JSON.stringify(payload))
-                return this.relayClient.runRelay(payload, callback)
+                this.relayClient.runRelay(payload, callback)
+                return
 
             } else if (payload.method == 'eth_getTransactionReceipt') {
                 if (this.relayOptions.verbose)
@@ -46,9 +47,11 @@ class RelayProvider {
                     else
                         callback(null, this.relayClient.fixTransactionReceiptResp(r))
                 })
+                return
             }
         }
-        return this.origProviderSend(payload, function (error, result) {
+
+        this.origProviderSend(payload, function (error, result) {
             callback(error, result);
         });
     }
