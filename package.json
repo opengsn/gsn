@@ -23,7 +23,7 @@
       "email": "alex@tabookey.com"
     }
   ],
-  "version": "0.3.0",
+  "version": "0.3.1",
   "scripts": {
     "test": "make test-server && run-with-testrpc -p 8544 -l 8000000 './node_modules/.bin/truffle --network npmtest test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
@@ -40,11 +40,8 @@
     "ethereumjs-tx": "^1.3.7",
     "ethereumjs-util": "^6.0.0",
     "ethereumjs-wallet": "^0.6.3",
-    "run-with-testrpc": "^0.3.0",
-    "solc": "^0.5.2",
-    "truffle": "^5.0.2",
-    "web3": "^1.0.0-beta.37",
-    "web3-utils": "^1.0.0-beta.36"
+    "web3": "1.0.0-beta.37",
+    "web3-utils": "^1.0.0-beta.37"
   },
   "devDependencies": {
     "browser-request": "^0.3.3",
@@ -52,6 +49,9 @@
     "ganache-cli": "^6.2.5",
     "http-server": "^0.11.1",
     "promisify": "0.0.3",
+    "run-with-testrpc": "^0.3.0",
+    "solc": "^0.5.2",
+    "truffle": "^5.0.2",
     "truffle-contract": "^4.0.2",
     "truffle-hdwallet-provider": "^1.0.1"
   },

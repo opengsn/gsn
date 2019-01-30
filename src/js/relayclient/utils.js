@@ -1,7 +1,6 @@
-/* global web3 */
 const ethUtils = require('ethereumjs-util');
 const EthCrypto = require('eth-crypto');
-
+const web3Utils = require('web3-utils')
 const relay_prefix = "rlx:"
 
 const zeroAddr = "0".repeat(40)
@@ -24,7 +23,7 @@ function padTo64(hex) {
 }
 
 function bytesToHex_noPrefix(bytes) {
-    let hex = removeHexPrefix(web3.utils.toHex(bytes))
+    let hex = removeHexPrefix(web3Utils.toHex(bytes))
     if (hex.length % 2 != 0) {
         hex = "0" + hex;
     }
@@ -35,39 +34,6 @@ module.exports = {
     register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
         await relayHub.stake(account, delay, {from: account, value: stake})
         return await relayHub.register_relay(txFee, url, zeroAddr, {from: account})
-    },
-
-    /**
-     * From: https://ethereum.stackexchange.com/a/52782
-     */
-    waitAllContractEventGet: function (myevent) {
-        return new Promise(function (resolve, reject) {
-            myevent.get(function (error, logs) {
-                if (error !== null) {
-                    reject(error);
-                } else {
-                    resolve(logs);
-                }
-            });
-        });
-    },
-
-    increaseTime: function (time) {
-        web3.currentProvider.sendAsync({
-            jsonrpc: '2.0',
-            method: 'evm_increaseTime',
-            params: [time],
-            id: new Date().getSeconds()
-        }, (err) => {
-            if (!err) {
-                web3.currentProvider.send({
-                    jsonrpc: '2.0',
-                    method: 'evm_mine',
-                    params: [],
-                    id: new Date().getSeconds()
-                });
-            }
-        });
     },
 
     getTransactionHash: function (from, to, tx, txfee, gas_price, gas_limit, nonce, relay_hub_address, relay_address) {
@@ -83,10 +49,10 @@ module.exports = {
             + toUint256_noPrefix(parseInt(nonce))
             + removeHexPrefix(relay_hub_address)
             + removeHexPrefix(relay_address)
-        return web3.utils.sha3('0x'+dataToHash )
+        return web3Utils.sha3('0x'+dataToHash )
     },
 
-    getTransactionSignature: async function (account, hash) {
+    getTransactionSignature: async function (web3, account, hash) {
 
         let sig_
         try {
@@ -116,20 +82,21 @@ module.exports = {
         let signature = ethUtils.fromRpcSig(sig_);
 
 
-        let sig = web3.utils.toHex(signature.v) + removeHexPrefix(web3.utils.bytesToHex(signature.r)) + removeHexPrefix(web3.utils.bytesToHex(signature.s));
+        let sig = web3Utils.toHex(signature.v) + removeHexPrefix(web3Utils.bytesToHex(signature.r)) + removeHexPrefix(web3Utils.bytesToHex(signature.s));
 
         return sig;
     },
 
     getTransactionSignatureWithKey: function(privKey, hash) {
         let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(hash), "hex")])
-        let signed = web3.utils.sha3("0x"+msg.toString('hex') );
+        let signed = web3Utils.sha3("0x"+msg.toString('hex') );
         let keyHex = "0x" + Buffer.from(privKey).toString('hex')
         const sig_ = EthCrypto.sign(keyHex, signed)
         let signature = ethUtils.fromRpcSig(sig_);
-        let sig = web3.utils.toHex(signature.v) + removeHexPrefix(web3.utils.bytesToHex(signature.r)) + removeHexPrefix(web3.utils.bytesToHex(signature.s));
+        let sig = web3Utils.toHex(signature.v) + removeHexPrefix(web3Utils.bytesToHex(signature.r)) + removeHexPrefix(web3Utils.bytesToHex(signature.s));
         return sig
     },
+
     getEcRecoverMeta: function(message, signature) {
         if (typeof signature === 'string'){
             let v = this.parseHexString(signature.substr(2,2))
@@ -142,7 +109,7 @@ module.exports = {
             }
         }
         let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(message), "hex")]);
-        let signed = web3.utils.sha3("0x"+msg.toString('hex'));
+        let signed = web3Utils.sha3("0x"+msg.toString('hex'));
         let buf_signed = Buffer.from(removeHexPrefix(signed), "hex");
         let signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(buf_signed, signature.v, signature.r, signature.s)));
         return signer;

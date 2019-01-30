@@ -22,6 +22,7 @@ class RelayProvider {
             console.log( "wrapping RelayProvider with another.. skipping previous one.")
             origProvider = origProvider.origProvider
         }
+        this.origProviderSend = ( this.origProvider['sendAsync'] || this.origProvider['send'] ) .bind(this.origProvider)
         this.relayClient = new RelayClient(new Web3(origProvider), relayOptions)
     }
 
@@ -40,17 +41,20 @@ class RelayProvider {
             } else if (payload.method == 'eth_getTransactionReceipt') {
                 if (this.relayOptions.verbose)
                     console.log("calling sendAsync" + JSON.stringify(payload))
-                let send = this.origProvider['sendAsync'] || this.origProvider['send']
-                send(payload, (e, r) => {
+                this.origProviderSend(payload, (e, r) => {
                     if (e) callback(e)
                     else
                         callback(null, this.relayClient.fixTransactionReceiptResp(r))
                 })
             }
         }
-        return this.origProvider.send(payload, function (error, result) {
+        return this.origProviderSend(payload, function (error, result) {
             callback(error, result);
         });
+    }
+
+    sendAsync(payload, callback) {
+        return this.send(payload, callback)
     }
 
     //hook method: skip relay if the "from" address appears in optins.skipSenders
