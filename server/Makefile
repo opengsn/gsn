@@ -24,7 +24,7 @@ go-get: $(GEN_FILE) $(ETHFILE)
 $(ETHFILE): Makefile
 	@echo "Downloading the ethereum library.  Might take a few minutes."
 	@if [ ! -d ${ETHDIR} ]; then \
-	  git clone ${ETHREPO} --single-branch --branch=v1.8.21 ${ETHDIR} ;\
+	  git clone ${ETHREPO} --depth=1 --branch=v1.8.21 ${ETHDIR} ;\
 	  go get -v -d ./...;\
 	fi 
 	touch $(ETHFILE)
