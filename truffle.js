@@ -1,8 +1,12 @@
 var HDWalletProvider = require("truffle-hdwallet-provider");
 var mnemonic = "digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six"
 
+const secret_mnemonic_file = "./secret_mnemonic"
 const fs=require('fs')
-let secret_mnemonic = fs.readFileSync( "./secret_mnemonic", {encoding:'utf8'} )
+let secret_mnemonic
+if (fs.existsSync(secret_mnemonic_file)) {
+  secret_mnemonic = fs.readFileSync(secret_mnemonic_file , {encoding:'utf8'})
+}
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // to customize your Truffle configuration!
