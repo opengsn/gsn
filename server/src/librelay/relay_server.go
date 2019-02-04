@@ -419,7 +419,7 @@ func (relay *relayServer) IsStaked() (staked bool, err error) {
 	relayAddress := relay.Address()
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 
 	stakeEntry, err := relay.rhub.Stakes(callOpt, relayAddress)
@@ -443,7 +443,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 	relayEntry, err := relay.rhub.Relays(callOpt, relayAddress)
 	if err != nil {
@@ -509,7 +509,7 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 	gasReserve, err := relay.rhub.GasReserve(callOpt)
 	if err != nil {
@@ -781,7 +781,7 @@ func (relay *relayServer) validateRelay(otherRelay common.Address) (bool, error)
 
 	callOpt := &bind.CallOpts{
 		From:    relay.Address(),
-		Pending: true,
+		Pending: false,
 	}
 	res, err := relay.rhub.Stakes(callOpt, otherRelay)
 	if err != nil {
@@ -807,7 +807,7 @@ func (relay *relayServer) canRelay(encodedFunction string,
 
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 
 	log.Println("before CanRelay")
