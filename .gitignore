@@ -8,3 +8,4 @@ tabookey-gasless-0.1.0.tgz
 /.idea/
 /server/pkg/darwin_amd64/
 /serverdock/version
+/secret_mnemonic
