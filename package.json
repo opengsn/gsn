@@ -1,6 +1,8 @@
 {
-  "license": "MIT",
+  "version": "0.3.2",
+  "description": "Tabookey Gasless Relay Framework",
   "name": "tabookey-gasless",
+  "license": "MIT",
   "repository": {
     "url": "https://github.com/tabookey-dev/tabookey-gasless",
     "type": "git"
@@ -23,7 +25,6 @@
       "email": "alex@tabookey.com"
     }
   ],
-  "version": "0.3.1",
   "scripts": {
     "test": "make test-server && run-with-testrpc -p 8544 -l 8000000 './node_modules/.bin/truffle --network npmtest test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
@@ -62,6 +63,5 @@
     "samples/",
     "webtools.webpack.js"
   ],
-  "main": "src/js/relayclient/index.js",
-  "description": "Tabookey Gasless Relay Framework"
+  "main": "src/js/relayclient/index.js"
 }
