@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
 	"log"
+	"math/big"
 )
 
 /* We hook ethclient since EstimateGas returns inaccurate estimation, due to state differences
@@ -24,4 +25,15 @@ func (tbkClient *TbkClient) EstimateGas(ctx context.Context, msg ethereum.CallMs
 	}
 	return gas,err
 
+}
+
+// SuggestGasPrice retrieves the currently suggested gas price to allow a timely
+// execution of a transaction.
+func (tbkClient *TbkClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	gasPrice,err := tbkClient.Client.SuggestGasPrice(ctx)
+	if (err == nil && gasPrice.Uint64() == 0) {
+		gasPrice = big.NewInt(params.GWei)
+		log.Println("New gasPrice is", gasPrice.Uint64())
+	}
+	return gasPrice,err
 }
