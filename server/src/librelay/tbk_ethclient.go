@@ -14,6 +14,8 @@ import (
 */
 type TbkClient struct {
 	*ethclient.Client
+
+	DefaultGasPrice int64
 }
 
 func (tbkClient *TbkClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
@@ -31,8 +33,8 @@ func (tbkClient *TbkClient) EstimateGas(ctx context.Context, msg ethereum.CallMs
 // execution of a transaction.
 func (tbkClient *TbkClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	gasPrice,err := tbkClient.Client.SuggestGasPrice(ctx)
-	if (err == nil && gasPrice.Uint64() == 0) {
-		gasPrice = big.NewInt(params.GWei)
+	if err == nil && gasPrice.Uint64() == 0 {
+		gasPrice = big.NewInt(tbkClient.DefaultGasPrice)//big.NewInt(params.GWei)
 		log.Println("New gasPrice is", gasPrice.Uint64())
 	}
 	return gasPrice,err
