@@ -15,11 +15,7 @@ const abi_decoder = require('abi-decoder');
 const relayHubAbi = require('./RelayHubApi')
 const relayRecipientAbi = require('./RelayRecipientApi')
 
-//estimate how many blocks to look back.
-// TODO: we need to get a block 24hours ago... need better dynamic estimation
-const est_sec_per_block = 12
-const est_blocks_per_day = 24*3600/est_sec_per_block
-
+const relay_lookup_limit_blocks = 6000
 abi_decoder.addABI(relayHubAbi)
 
 //default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
@@ -254,8 +250,8 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   let gasLimit = this.config.force_gasLimit || options.gas_limit
 
   let blockNow = await this.web3.eth.getBlockNumber()
-  let blockDayAgo = Math.max(1, blockNow - est_blocks_per_day)
-  let pinger = await this.serverHelper.newActiveRelayPinger(blockDayAgo, gasPrice)
+  let blockFrom = Math.max(1, blockNow - relay_lookup_limit_blocks)
+  let pinger = await this.serverHelper.newActiveRelayPinger(blockFrom, gasPrice)
   for (;;) {
     let activeRelay = await pinger.nextRelay()
     if ( !activeRelay ) {
