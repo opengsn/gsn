@@ -341,10 +341,12 @@ func keepAlive() {
 		return
 	}
 	log.Println("Registering relay...")
-	for err := relay.RegisterRelay(common.HexToAddress("0")); err != nil; err = relay.RegisterRelay(common.HexToAddress("0")) {
-		if err != nil {
-			log.Println(err)
+	for ;; {
+		err := relay.RegisterRelay()
+		if err == nil {
+			break;
 		}
+		log.Println(err)
 		log.Println("Trying to register again...")
 		sleep(1*time.Minute, shortSleep)
 	}

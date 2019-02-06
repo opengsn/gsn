@@ -294,39 +294,6 @@ contract("RelayHub", function (accounts) {
 
     let dayInSec = 24 * 60 * 60;
 
-    it("test_remove_stale_relay", async function () {
-        await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0]);
-        try {
-            await rhub.remove_stale_relay(testutils.zeroAddr);
-            assert.fail()
-        } catch (error) {
-            assertErrorMessageCorrect(error, "not a relay")
-        }
-
-        try {
-            await rhub.remove_stale_relay(accounts[0]);
-            assert.fail()
-        } catch (error) {
-            assertErrorMessageCorrect(error, "not stale")
-        }
-
-        await increaseTime(4 * dayInSec);
-        try {
-            await rhub.remove_stale_relay(accounts[0]);
-            assert.fail()
-        } catch (error) {
-            assertErrorMessageCorrect(error, "not stale")
-        }
-
-        await increaseTime(1 * dayInSec + 1);
-        let res = await rhub.remove_stale_relay(accounts[0])
-        assert.equal("RelayRemoved", res.logs[0].event)
-        await increaseTime(dayInSec + 1);
-        await rhub.unstake(accounts[0]);
-        let stake = await rhub.stakes(accounts[0]);
-        assert.equal(0, stake[0]);
-    });
-
     let nonce_any_value = 4;
     let gas_price_any_value = 4;
     let tx_value_any_value = 0;

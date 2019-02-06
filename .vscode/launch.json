@@ -18,6 +18,7 @@
         {
             "type": "node",
             "request": "launch",
+            "protocol": "inspector",
             "name": "Truffle Test",
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/node_modules/truffle-core/cli.js",

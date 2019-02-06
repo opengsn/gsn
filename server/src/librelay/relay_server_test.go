@@ -183,12 +183,11 @@ func TestRegisterRelay(t *testing.T) {
 		t.Error("Relay is not staked")
 	}
 	ErrFail(err, t)
-	staleRelayAddress := common.HexToAddress("0")
 	// TODO: Watch out for FLICKERING: attempt to AdjustTime ahead of machine clock will have no effect at all
 	duration := time.Since(time.Unix(50, 0))
 	err = sim.AdjustTime(duration)
 	sim.Commit()
-	tx, err := relay.sendRegisterTransaction(staleRelayAddress)
+	tx, err := relay.sendRegisterTransaction()
 	ErrFail(err, t)
 	if err != nil {
 		fmt.Println("ERROR", err)
@@ -202,14 +201,6 @@ func TestRegisterRelay(t *testing.T) {
 	return
 	if time.Now().Unix()-when > int64((1 * time.Minute).Seconds()) {
 		t.Error("Wrong registration time/date", time.Now().Unix(), when)
-	}
-}
-
-func TestRegisterRelay_FailsToRemoveStaleRelay(t *testing.T) {
-	staleRelayAddress := common.HexToAddress("0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab")
-	err := relay.RegisterRelay(staleRelayAddress)
-	if err == nil || !strings.Contains(err.Error(), "failing transaction") {
-		t.Error(err)
 	}
 }
 

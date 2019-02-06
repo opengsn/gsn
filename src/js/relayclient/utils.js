@@ -3,8 +3,6 @@ const EthCrypto = require('eth-crypto');
 const web3Utils = require('web3-utils')
 const relay_prefix = "rlx:"
 
-const zeroAddr = "0".repeat(40)
-
 function toUint256_noPrefix(int) {
     return removeHexPrefix(ethUtils.bufferToHex(ethUtils.setLengthLeft(int, 32)));
 }
@@ -33,7 +31,7 @@ function bytesToHex_noPrefix(bytes) {
 module.exports = {
     register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
         await relayHub.stake(account, delay, {from: account, value: stake})
-        return await relayHub.register_relay(txFee, url, zeroAddr, {from: account})
+        return await relayHub.register_relay(txFee, url, {from: account})
     },
 
     getTransactionHash: function (from, to, tx, txfee, gas_price, gas_limit, nonce, relay_hub_address, relay_address) {
