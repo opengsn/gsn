@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"log"
 	"math/big"
 	"os"
@@ -41,6 +42,7 @@ func (client *FakeClient) TransactionByHash(ctx context.Context, txHash common.H
 	log.Fatalf("could not deploy contract")
 	return &types.Transaction{}, false, nil
 }
+
 var auth *bind.TransactOpts
 var sim *FakeClient
 var relay IRelay
@@ -64,10 +66,11 @@ func NewSimBackend() {
 	sim.SimulatedBackend = backends.NewSimulatedBackend(alloc, uint64(10000000))
 }
 
-func NewRelay(relayHubAddress common.Address)  {
+func NewRelay(relayHubAddress common.Address) {
 	fee := big.NewInt(10)
 	stakeAmount := big.NewInt(100002)
 	gasLimit := uint64(1000000)
+	defaultGasPrice := int64(params.GWei)
 	gasPricePercent := big.NewInt(10)
 	url := ""
 	port := "8090"
@@ -77,7 +80,7 @@ func NewRelay(relayHubAddress common.Address)  {
 	var err error
 	relay, err = NewRelayServer(
 		common.Address{}, fee, url, port,
-		relayHubAddress, stakeAmount, gasLimit,
+		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
 		gasPricePercent, privateKey, unstakeDelay,
 		ethereumNodeUrl, sim)
 	if err != nil {
@@ -86,7 +89,7 @@ func NewRelay(relayHubAddress common.Address)  {
 	return
 }
 
-func ErrFail(err error, t *testing.T){
+func ErrFail(err error, t *testing.T) {
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -107,10 +110,10 @@ func TestMain(m *testing.M) {
 	// linking RlpReader to RelayHub
 	rlpReaderPlaceHolder := "__$" + hexutil.Encode(crypto.Keccak256([]byte("../contracts/RLPReader.sol:RLPReader")))[2:36] + "$__"
 	RelayHubBin := strings.Replace(librelay.RelayHubBin, rlpReaderPlaceHolder, rlpaddr.Hex()[2:], -1)
-	if _,err = hex.DecodeString(RelayHubBin[2:]); err != nil {
-		log.Println("rlpReaderPlaceHolder",rlpReaderPlaceHolder)
-		log.Println("RelayHubBin",RelayHubBin)
-		log.Fatalln("Invalid hex: RelayHubBin",err)
+	if _, err = hex.DecodeString(RelayHubBin[2:]); err != nil {
+		log.Println("rlpReaderPlaceHolder", rlpReaderPlaceHolder)
+		log.Println("RelayHubBin", RelayHubBin)
+		log.Fatalln("Invalid hex: RelayHubBin", err)
 	}
 	rhaddr, _, boundHub, err = bind.DeployContract(auth, parsed, common.FromHex(RelayHubBin), sim)
 	if err != nil {
@@ -173,7 +176,7 @@ func TestRefreshGasPrice(t *testing.T) {
 	}
 }
 
-func TestRegisterRelay(t *testing.T)  {
+func TestRegisterRelay(t *testing.T) {
 	staked, err := relay.IsStaked()
 	if !staked {
 		t.Error("Relay is not staked")
@@ -191,7 +194,7 @@ func TestRegisterRelay(t *testing.T)  {
 	sim.Commit()
 	ErrFail(relay.awaitRegisterTransactionMined(), t)
 	when, err := relay.RegistrationDate()
-	if time.Now().Unix() - when > int64((1 * time.Minute).Seconds()) {
+	if time.Now().Unix()-when > int64((1 * time.Minute).Seconds()) {
 		t.Error("Wrong registration time/date", time.Now().Unix(), when)
 	}
 }
@@ -199,25 +202,24 @@ func TestRegisterRelay(t *testing.T)  {
 func TestRegisterRelay_FailsToRemoveStaleRelay(t *testing.T) {
 	staleRelayAddress := common.HexToAddress("0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab")
 	err := relay.RegisterRelay(staleRelayAddress)
-	if err == nil || !strings.Contains(err.Error(), "failing transaction")  {
+	if err == nil || !strings.Contains(err.Error(), "failing transaction") {
 		t.Error(err)
 	}
 }
 
-
 func TestCreateRelayTransaction(t *testing.T) {
 	ErrFail(relay.RefreshGasPrice(), t)
-	txb:="0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
-	sig:="1cc9283cc494c533a92cc67fca991153a59cd91aa23b3e85e44a1cb0186e6ee6802768e88323da886ef50d6c419fe415fedac97b7e45e3cb0476b32d6b0096410f"
+	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
+	sig := "1cc9283cc494c533a92cc67fca991153a59cd91aa23b3e85e44a1cb0186e6ee6802768e88323da886ef50d6c419fe415fedac97b7e45e3cb0476b32d6b0096410f"
 	request := RelayTransactionRequest{
-		EncodedFunction:txb,
-		Signature: common.Hex2Bytes(sig),
-		From: crypto.PubkeyToAddress(key2.PublicKey),
-		To: sampleRecipient,
-		GasPrice: *big.NewInt(10),
-		GasLimit: *big.NewInt(1000000),
-		RecipientNonce: *big.NewInt(0),
-		RelayFee: *big.NewInt(10),
+		EncodedFunction: txb,
+		Signature:       common.Hex2Bytes(sig),
+		From:            crypto.PubkeyToAddress(key2.PublicKey),
+		To:              sampleRecipient,
+		GasPrice:        *big.NewInt(10),
+		GasLimit:        *big.NewInt(1000000),
+		RecipientNonce:  *big.NewInt(0),
+		RelayFee:        *big.NewInt(10),
 		RelayHubAddress: rhaddr,
 	}
 	signedTx, err := relay.CreateRelayTransaction(request)

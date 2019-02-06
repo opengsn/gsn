@@ -211,6 +211,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayHubAddress := flag.String("RelayHubAddress", "0x254dffcd3277c0b1660f6d42efbb754edababc2b", "RelayHub address")
 	stakeAmount := flag.Int64("StakeAmount", 1002, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
+	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
@@ -235,6 +236,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.RelayHubAddress = common.HexToAddress(*relayHubAddress)
 	relayParams.StakeAmount = big.NewInt(*stakeAmount)
 	relayParams.GasLimit = *gasLimit
+	relayParams.DefaultGasPrice = *defaultGasPrice
 	relayParams.GasPricePercent = big.NewInt(*gasPricePercent)
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
@@ -253,7 +255,7 @@ func configRelay(relayParams librelay.RelayParams) {
 	log.Println("Constructing relay server in url ", relayParams.Url)
 	privateKey := loadPrivateKey(KeystoreDir)
 	log.Println("relay server address: ", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
-	client, err := librelay.NewEthClient(relayParams.EthereumNodeURL)
+	client, err := librelay.NewEthClient(relayParams.EthereumNodeURL, relayParams.DefaultGasPrice)
 	if err != nil {
 		log.Println("Could not connect to ethereum node", err)
 		return
@@ -261,7 +263,7 @@ func configRelay(relayParams librelay.RelayParams) {
 	relay, err = librelay.NewRelayServer(
 		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
-		relayParams.GasLimit, relayParams.GasPricePercent,
+		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL,
 		client)
 	if err != nil {

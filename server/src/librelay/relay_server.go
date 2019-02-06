@@ -131,19 +131,20 @@ type relayServer struct {
 	RelayHubAddress common.Address
 	StakeAmount     *big.Int
 	GasLimit        uint64
+	DefaultGasPrice int64
 	GasPricePercent *big.Int
 	PrivateKey      *ecdsa.PrivateKey
 	UnstakeDelay    *big.Int
 	EthereumNodeURL string
 	gasPrice        *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
-	Client			IClient
-	rhub 			*librelay.RelayHub
+	Client          IClient
+	rhub            *librelay.RelayHub
 }
 
 type RelayParams relayServer
 
-func NewEthClient(EthereumNodeURL string) (IClient, error) {
-	client := &TbkClient{}
+func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
+	client := &TbkClient{DefaultGasPrice:defaultGasPrice}
 	var err error
 	client.Client, err = ethclient.Dial(EthereumNodeURL)
 	return client, err
@@ -157,6 +158,7 @@ func NewRelayServer(
 	RelayHubAddress common.Address,
 	StakeAmount *big.Int,
 	GasLimit uint64,
+	DefaultGasPrice int64,
 	GasPricePercent *big.Int,
 	PrivateKey *ecdsa.PrivateKey,
 	UnstakeDelay *big.Int,
@@ -177,6 +179,7 @@ func NewRelayServer(
 		RelayHubAddress: RelayHubAddress,
 		StakeAmount:     StakeAmount,
 		GasLimit:        GasLimit,
+		DefaultGasPrice: DefaultGasPrice,
 		GasPricePercent: GasPricePercent,
 		PrivateKey:      PrivateKey,
 		UnstakeDelay:    UnstakeDelay,
@@ -262,7 +265,7 @@ func (relay *relayServer) awaitStakeTransactionMined() (err error) {
 	for (iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = relay.rhub.FilterStaked(filterOpts,addresses)
+			iter, err = relay.rhub.FilterStaked(filterOpts, addresses)
 			if err != nil {
 				log.Println(err)
 				return
@@ -306,7 +309,7 @@ func (relay *relayServer) Unstake() (err error) {
 		End:   nil,
 	}
 	addresses := []common.Address{relay.Address()}
-	iter, err := relay.rhub.FilterUnstaked(filterOpts,addresses)
+	iter, err := relay.rhub.FilterUnstaked(filterOpts, addresses)
 	if err != nil {
 		log.Println(err)
 		return
@@ -316,7 +319,7 @@ func (relay *relayServer) Unstake() (err error) {
 	for (iter.Event == nil ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = relay.rhub.FilterUnstaked(filterOpts,addresses)
+			iter, err = relay.rhub.FilterUnstaked(filterOpts, addresses)
 			if err != nil {
 				log.Println(err)
 				return
@@ -344,7 +347,6 @@ func (relay *relayServer) RegisterRelay(staleRelay common.Address) (err error) {
 	}
 	return relay.awaitRegisterTransactionMined()
 }
-
 
 func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
@@ -375,7 +377,7 @@ func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
 		End:   nil,
 	}
 	addresses := []common.Address{relay.Address()}
-	iter, err := relay.rhub.FilterRelayAdded(filterOpts,addresses,nil)
+	iter, err := relay.rhub.FilterRelayAdded(filterOpts, addresses, nil)
 	if err != nil {
 		log.Println(err)
 		return
@@ -389,7 +391,7 @@ func (relay *relayServer) awaitRegisterTransactionMined() (err error) {
 	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url)) && time.Since(start) < BlockTime {
 		if !iter.Next() {
-			iter, err = relay.rhub.FilterRelayAdded(filterOpts,addresses,nil)
+			iter, err = relay.rhub.FilterRelayAdded(filterOpts, addresses, nil)
 			if err != nil {
 				log.Println(err)
 				return
@@ -419,7 +421,7 @@ func (relay *relayServer) IsStaked() (staked bool, err error) {
 	relayAddress := relay.Address()
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 
 	stakeEntry, err := relay.rhub.Stakes(callOpt, relayAddress)
@@ -443,7 +445,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 	relayEntry, err := relay.rhub.Relays(callOpt, relayAddress)
 	if err != nil {
@@ -509,7 +511,7 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 	gasReserve, err := relay.rhub.GasReserve(callOpt)
 	if err != nil {
@@ -781,7 +783,7 @@ func (relay *relayServer) validateRelay(otherRelay common.Address) (bool, error)
 
 	callOpt := &bind.CallOpts{
 		From:    relay.Address(),
-		Pending: true,
+		Pending: false,
 	}
 	res, err := relay.rhub.Stakes(callOpt, otherRelay)
 	if err != nil {
@@ -807,7 +809,7 @@ func (relay *relayServer) canRelay(encodedFunction string,
 
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
-		Pending: true,
+		Pending: false,
 	}
 
 	log.Println("before CanRelay")
