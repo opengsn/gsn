@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
@@ -25,7 +24,7 @@ var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
-var ready = &SyncBool{val: false, mutex: &sync.Mutex{}}
+var ready = false
 
 var relay librelay.IRelay
 var server *http.Server
@@ -66,7 +65,7 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-		if !ready.GetVal() {
+		if !ready {
 			err := fmt.Errorf("Relay not staked and registered yet")
 			log.Println(err)
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
@@ -152,7 +151,7 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
-		Ready:              ready.GetVal(),
+		Ready:              ready,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
 	if err != nil {
@@ -283,7 +282,7 @@ func refreshBlockchainView() {
 		if err != nil {
 			log.Println(err)
 		}
-		ready.SetVal(false)
+		ready = false
 		sleep(15*time.Second, shortSleep)
 	}
 
@@ -292,7 +291,7 @@ func refreshBlockchainView() {
 		if err != nil {
 			log.Println(err)
 		}
-		ready.SetVal(false)
+		ready = false
 		log.Println("Trying to get gasPrice from node again...")
 		sleep(10*time.Second, shortSleep)
 
@@ -300,7 +299,7 @@ func refreshBlockchainView() {
 	gasPrice := relay.GasPrice()
 	log.Println("GasPrice:", gasPrice.Uint64())
 
-	ready.SetVal(true)
+	ready = true
 }
 
 func waitForOwnerActions() {
@@ -310,7 +309,7 @@ func waitForOwnerActions() {
 		if err != nil {
 			log.Println(err)
 		}
-		ready.SetVal(false)
+		ready = false
 		log.Println("Waiting for stake...")
 		sleep(5*time.Second, shortSleep)
 	}
@@ -323,7 +322,7 @@ func waitForOwnerActions() {
 		return
 	}
 	for ; err != nil || balance.Uint64() <= params.Ether; balance, err = relay.Balance() {
-		ready.SetVal(false)
+		ready = false
 		log.Println("Server's balance too low. Waiting for funding...")
 		sleep(10*time.Second, shortSleep)
 	}

@@ -9,27 +9,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 )
-
-type SyncBool struct {
-	val   bool
-	mutex *sync.Mutex
-}
-
-func (b *SyncBool) GetVal() (val bool){
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	val = b.val
-	return
-}
-
-func (b *SyncBool) SetVal(val bool) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	b.val = val
-}
 
 func IsEmpty(name string) (bool) {
 	f, err := os.Open(name)
