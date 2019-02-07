@@ -30,6 +30,7 @@ class ActiveRelayPinger {
                         .map(relay => this.getRelayAddressPing(relay.relayUrl, this.gasPrice))
                 );
             } catch (e) {
+                console.log("One batch of relays failed, last error: ", e)
                 //none of the first `bulkSize` items matched. remove them, to continue with the next bulk.
                 this.remainingRelays = this.remainingRelays.slice(bulkSize)
             }
@@ -57,7 +58,7 @@ class ActiveRelayPinger {
                     return
                 }
                 if ( !body || !body.Ready || body.MinGasPrice > gasPrice ) {
-                    reject( body)
+                    reject("Relay not ready or proposed gas price too low " + JSON.stringify(body))
                     return
                 }
                 try {
@@ -86,7 +87,7 @@ class ActiveRelayPinger {
                             resolve(res)
                         }).catch(err => {
                             if (++numRejected === promises.length) {
-                                reject("No response from any server.", err);
+                                reject("No response matched filter from any server: " + err);
                             }
                         })
                 )
