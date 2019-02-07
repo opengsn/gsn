@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
@@ -25,7 +24,7 @@ var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
-var ready = &SyncBool{val: false, mutex: &sync.Mutex{}}
+var ready = false
 
 var relay librelay.IRelay
 var server *http.Server
@@ -40,7 +39,7 @@ func main() {
 
 	configRelay(parseCommandLine())
 
-	server = &http.Server{Addr: ":"+relay.GetPort(), Handler: nil}
+	server = &http.Server{Addr: ":" + relay.GetPort(), Handler: nil}
 
 	http.HandleFunc("/relay", assureRelayReady(relayHandler))
 	http.HandleFunc("/getaddr", getEthAddrHandler)
@@ -66,7 +65,7 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-		if !ready.GetVal() {
+		if !ready {
 			err := fmt.Errorf("Relay not staked and registered yet")
 			log.Println(err)
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
@@ -149,11 +148,10 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-	log.Println("Sending relayServer eth address")
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
-		Ready:              ready.GetVal(),
+		Ready:              ready,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
 	if err != nil {
@@ -214,6 +212,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
+	registrationBlockRate := flag.Uint64("RegistrationBlockRate", 5800, "Relay registeration rate (in blocks)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
 	flag.BoolVar(&shortSleep, "ShortSleep", false, "Whether we wait after calls to blockchain or return (almost) immediately")
@@ -223,12 +222,12 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.OwnerAddress = common.HexToAddress(*ownerAddress)
 	relayParams.Fee = big.NewInt(*fee)
 	relayParams.Url = *urlStr
-	u,err := url.Parse(*urlStr)
+	u, err := url.Parse(*urlStr)
 	if err != nil {
 		log.Fatalln("Could not parse url")
 	}
 	if *port == "" && u.Port() != "" {
-		log.Println("Using default published port given in url:",*port)
+		log.Println("Using default published port given in url:", *port)
 		*port = u.Port()
 	}
 
@@ -239,6 +238,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.DefaultGasPrice = *defaultGasPrice
 	relayParams.GasPricePercent = big.NewInt(*gasPricePercent)
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
+	relayParams.RegistrationBlockRate = *registrationBlockRate
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 
 	KeystoreDir = filepath.Join(*workdir, "keystore")
@@ -264,7 +264,7 @@ func configRelay(relayParams librelay.RelayParams) {
 		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
-		privateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL,
+		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
 		client)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
@@ -277,12 +277,12 @@ func refreshBlockchainView() {
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
 	when, err := relay.RegistrationDate()
-	log.Println("when registered:",when,"unix:",time.Unix(when,0))
+	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	for ; err != nil || when == 0; when, err = relay.RegistrationDate() {
 		if err != nil {
 			log.Println(err)
 		}
-		ready.SetVal(false)
+		ready = false
 		sleep(15*time.Second, shortSleep)
 	}
 
@@ -291,7 +291,7 @@ func refreshBlockchainView() {
 		if err != nil {
 			log.Println(err)
 		}
-		ready.SetVal(false)
+		ready = false
 		log.Println("Trying to get gasPrice from node again...")
 		sleep(10*time.Second, shortSleep)
 
@@ -299,7 +299,7 @@ func refreshBlockchainView() {
 	gasPrice := relay.GasPrice()
 	log.Println("GasPrice:", gasPrice.Uint64())
 
-	ready.SetVal(true)
+	ready = true
 }
 
 func waitForOwnerActions() {
@@ -309,7 +309,7 @@ func waitForOwnerActions() {
 		if err != nil {
 			log.Println(err)
 		}
-		ready.SetVal(false)
+		ready = false
 		log.Println("Waiting for stake...")
 		sleep(5*time.Second, shortSleep)
 	}
@@ -322,7 +322,7 @@ func waitForOwnerActions() {
 		return
 	}
 	for ; err != nil || balance.Uint64() <= params.Ether; balance, err = relay.Balance() {
-		ready.SetVal(false)
+		ready = false
 		log.Println("Server's balance too low. Waiting for funding...")
 		sleep(10*time.Second, shortSleep)
 	}
@@ -333,10 +333,10 @@ func keepAlive() {
 
 	waitForOwnerActions()
 	when, err := relay.RegistrationDate()
-	log.Println("when registered:",when,"unix:",time.Unix(when,0))
+	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	if err != nil {
 		log.Println(err)
-	} else if time.Now().Unix()-when < delayBetweenRegistrations {
+	} else if time.Now().Unix()- when < delayBetweenRegistrations {
 		log.Println("Relay registered lately. No need to reregister")
 		return
 	}

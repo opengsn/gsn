@@ -34,8 +34,8 @@ func (client *FakeClient) BlockByNumber(ctx context.Context, number *big.Int) (*
 }
 
 func (client *FakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
-	log.Fatalf("could not deploy contract")
-	return &types.Header{}, nil
+	//log.Fatalf("could not deploy contract")
+	return &types.Header{Time:big.NewInt(time.Now().Unix()),Number:big.NewInt(123123)}, nil
 }
 
 func (client *FakeClient) TransactionByHash(ctx context.Context, txHash common.Hash) (tx *types.Transaction, isPending bool, err error) {
@@ -76,12 +76,13 @@ func NewRelay(relayHubAddress common.Address) {
 	port := "8090"
 	privateKey := key
 	unstakeDelay := big.NewInt(0)
+	registrationBlockRate := uint64(5)
 	ethereumNodeUrl := ""
 	var err error
 	relay, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
-		gasPricePercent, privateKey, unstakeDelay,
+		gasPricePercent, privateKey, unstakeDelay, registrationBlockRate,
 		ethereumNodeUrl, sim)
 	if err != nil {
 		log.Fatalln("Relay was not created", err)
@@ -134,12 +135,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("could not 'AdjustTime': %v", err)
 	}
-	err = relay.sendStakeTransaction()
+	tx, err := relay.sendStakeTransaction()
 	if err != nil {
 		log.Fatalf("could not 'sendStakeTransaction': %v", err)
 	}
 	sim.Commit()
-	err = relay.awaitStakeTransactionMined()
+	err = relay.awaitTransactionMined(tx)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -147,7 +148,7 @@ func TestMain(m *testing.M) {
 	auth := bind.NewKeyedTransactor(key)
 	auth.Value = big.NewInt(1000000000000)
 
-	tx, err := rhub.DepositFor(auth, sampleRecipient)
+	tx, err = rhub.DepositFor(auth, sampleRecipient)
 	sim.Commit()
 	if err != nil {
 		log.Fatalln(err)
@@ -187,13 +188,18 @@ func TestRegisterRelay(t *testing.T) {
 	duration := time.Since(time.Unix(50, 0))
 	err = sim.AdjustTime(duration)
 	sim.Commit()
-	ErrFail(relay.sendRegisterTransaction(staleRelayAddress), t)
+	tx, err := relay.sendRegisterTransaction(staleRelayAddress)
+	ErrFail(err, t)
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
 	sim.Commit()
-	ErrFail(relay.awaitRegisterTransactionMined(), t)
+	ErrFail(relay.awaitTransactionMined(tx), t)
 	when, err := relay.RegistrationDate()
+	if err != nil {
+		fmt.Println("ERROR", err)
+	}
+	return
 	if time.Now().Unix()-when > int64((1 * time.Minute).Seconds()) {
 		t.Error("Wrong registration time/date", time.Now().Unix(), when)
 	}
