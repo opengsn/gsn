@@ -140,7 +140,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("could not 'sendStakeTransaction': %v", err)
 	}
 	sim.Commit()
-	err = relay.awaitStakeTransactionMined(tx)
+	err = relay.awaitTransactionMined(tx)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -194,7 +194,7 @@ func TestRegisterRelay(t *testing.T) {
 		fmt.Println("ERROR", err)
 	}
 	sim.Commit()
-	ErrFail(relay.awaitRegisterTransactionMined(tx), t)
+	ErrFail(relay.awaitTransactionMined(tx), t)
 	when, err := relay.RegistrationDate()
 	if err != nil {
 		fmt.Println("ERROR", err)
