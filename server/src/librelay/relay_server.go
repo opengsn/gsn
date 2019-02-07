@@ -102,6 +102,8 @@ type IRelay interface {
 	ScanBlockChainToPenalize() (err error)
 
 	sendStakeTransaction() (tx *types.Transaction, err error)
+	
+	sendUnstakeTransaction() (tx *types.Transaction, err error)
 
 	sendRegisterTransaction(staleRelay common.Address) (tx *types.Transaction, err error)
 
@@ -246,7 +248,7 @@ func (relay *relayServer) sendStakeTransaction() (tx *types.Transaction, err err
 	return
 }
 
-func (relay *relayServer) Unstake() (err error) {
+func (relay *relayServer) sendUnstakeTransaction() (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -256,48 +258,26 @@ func (relay *relayServer) Unstake() (err error) {
 		return
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	tx, err := relay.rhub.Unstake(auth, relay.Address())
+	auth.Value = relay.StakeAmount
+	log.Println("Unstake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
+	tx, err = relay.rhub.Unstake(auth, relay.Address())
 	if err != nil {
-		log.Println(err)
+		log.Println("rhub.Unstake() failed", relay.StakeAmount, relay.UnstakeDelay)
 		//relay.replayUnconfirmedTxs(client)
 		return
 	}
 	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-
-	filterOpts := &bind.FilterOpts{
-		Start: 0,
-		End:   nil,
-	}
-	addresses := []common.Address{relay.Address()}
-	iter, err := relay.rhub.FilterUnstaked(filterOpts, addresses)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	start := time.Now()
-	for (iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < EventTimeout {
-		if !iter.Next() {
-			iter, err = relay.rhub.FilterUnstaked(filterOpts, addresses)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	if iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) {
-		return fmt.Errorf("Unstake() probably failed: could not receive Unstaked() event for our relay")
-	}
-
-	log.Println("unstake() finished")
-
 	log.Println("tx sent:", tx.Hash().Hex())
-	return nil
+	return
+}
+
+func (relay *relayServer) Unstake() (err error) {
+	tx, err := relay.sendUnstakeTransaction()
+	if err != nil {
+		return err
+	}
+	return relay.awaitTransactionMined(tx)
 
 }
 
