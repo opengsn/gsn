@@ -1,5 +1,7 @@
+<head>
+    <title>Relay Owner Tool</title>
+</head>
 <body onload="onload()">
-
 <script src="tabookey-webtools.pack.js"> </script>
 <script>
     var RMgr
@@ -22,7 +24,8 @@ With this tool you can put funds into the relay, so it can serve requests:
     <li/> click "Check" to probe the relay, and check its current status
     <li/> Enter the required stake (minimum of 1 ether). Note that if the current stake is enough, it will not be changed.
     <li/> Enter enough Ether as gas for calls. Note that if the current balance is at least 50% of this level, it will not be changed.
-    <li/> click <b>Apply</b>, to validate that the relay has that level of fund and stake.
+    <li/> click <b>Apply</b>
+    <li/> Wait for Metamask confirmation, and <b>Check</b> again.
 </ol>
 In the future, this tool will also allow deploying new relays, and show statistics.<br>
 <br>
@@ -39,7 +42,7 @@ In the future, this tool will also allow deploying new relays, and show statisti
         <td>
             Stake level:<input id="stake" size="20" value="1" onchange="RMgr.saveForm(dataform)">
             time:<input id="staketime" size="20" value="30s" onchange="RMgr.saveForm(dataform)"><br>
-            Ether level:<input id="eth" size="20" value="1" onchange="RMgr.saveForm(dataform)"><br>
+            Ether level:<input id="eth" size="20" value="1.1" onchange="RMgr.saveForm(dataform)"><br>
         </td>
         <td>
             <input type="submit" value="Apply!" id="do-stake" onclick="RMgr.checkRelay(relayurl.value, eth.value, stake.value, staketime.value)">
