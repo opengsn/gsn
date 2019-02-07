@@ -23,6 +23,7 @@ import (
 )
 
 const TxReceiptTimeout = 60 * time.Second
+const EventTimeout = 5 * time.Second
 
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
@@ -126,27 +127,28 @@ type IClient interface {
 }
 
 type relayServer struct {
-	OwnerAddress    common.Address
-	Fee             *big.Int
-	Url             string
-	Port            string
-	RelayHubAddress common.Address
-	StakeAmount     *big.Int
-	GasLimit        uint64
-	DefaultGasPrice int64
-	GasPricePercent *big.Int
-	PrivateKey      *ecdsa.PrivateKey
-	UnstakeDelay    *big.Int
-	EthereumNodeURL string
-	gasPrice        *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
-	Client          IClient
-	rhub            *librelay.RelayHub
+	OwnerAddress          common.Address
+	Fee                   *big.Int
+	Url                   string
+	Port                  string
+	RelayHubAddress       common.Address
+	StakeAmount           *big.Int
+	GasLimit              uint64
+	DefaultGasPrice       int64
+	GasPricePercent       *big.Int
+	PrivateKey            *ecdsa.PrivateKey
+	UnstakeDelay          *big.Int
+	RegistrationBlockRate uint64
+	EthereumNodeURL       string
+	gasPrice              *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
+	Client                IClient
+	rhub                  *librelay.RelayHub
 }
 
 type RelayParams relayServer
 
 func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
-	client := &TbkClient{DefaultGasPrice:defaultGasPrice}
+	client := &TbkClient{DefaultGasPrice: defaultGasPrice}
 	var err error
 	client.Client, err = ethclient.Dial(EthereumNodeURL)
 	return client, err
@@ -164,6 +166,7 @@ func NewRelayServer(
 	GasPricePercent *big.Int,
 	PrivateKey *ecdsa.PrivateKey,
 	UnstakeDelay *big.Int,
+	RegistrationBlockRate uint64,
 	EthereumNodeURL string,
 	Client IClient) (*relayServer, error) {
 
@@ -174,31 +177,27 @@ func NewRelayServer(
 	}
 
 	relay := &relayServer{
-		OwnerAddress:    OwnerAddress,
-		Fee:             Fee,
-		Url:             Url,
-		Port:            Port,
-		RelayHubAddress: RelayHubAddress,
-		StakeAmount:     StakeAmount,
-		GasLimit:        GasLimit,
-		DefaultGasPrice: DefaultGasPrice,
-		GasPricePercent: GasPricePercent,
-		PrivateKey:      PrivateKey,
-		UnstakeDelay:    UnstakeDelay,
-		EthereumNodeURL: EthereumNodeURL,
-		Client:          Client,
-		rhub:            rhub,
+		OwnerAddress:          OwnerAddress,
+		Fee:                   Fee,
+		Url:                   Url,
+		Port:                  Port,
+		RelayHubAddress:       RelayHubAddress,
+		StakeAmount:           StakeAmount,
+		GasLimit:              GasLimit,
+		DefaultGasPrice:       DefaultGasPrice,
+		GasPricePercent:       GasPricePercent,
+		PrivateKey:            PrivateKey,
+		UnstakeDelay:          UnstakeDelay,
+		RegistrationBlockRate: RegistrationBlockRate,
+		EthereumNodeURL:       EthereumNodeURL,
+		Client:                Client,
+		rhub:                  rhub,
 	}
 	return relay, err
 }
 
 func (relay *relayServer) Balance() (balance *big.Int, err error) {
 	balance, err = relay.Client.BalanceAt(context.Background(), relay.Address(), nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	log.Println("relay server balance:", balance)
 	return
 }
 
@@ -316,7 +315,7 @@ func (relay *relayServer) Unstake() (err error) {
 
 	start := time.Now()
 	for (iter.Event == nil ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < TxReceiptTimeout {
+		(iter.Event.Stake.Cmp(relay.StakeAmount) != 0)) && time.Since(start) < EventTimeout {
 		if !iter.Next() {
 			iter, err = relay.rhub.FilterUnstaked(filterOpts, addresses)
 			if err != nil {
@@ -434,19 +433,58 @@ func (relay *relayServer) IsStaked() (staked bool, err error) {
 }
 
 func (relay *relayServer) RegistrationDate() (when int64, err error) {
-	relayAddress := relay.Address()
 	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
-	callOpt := &bind.CallOpts{
-		From:    relayAddress,
-		Pending: false,
+
+	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
+	if err != nil {
+		log.Fatalln(err)
+		return
 	}
-	relayEntry, err := relay.rhub.Relays(callOpt, relayAddress)
+	startBlock := uint64(0)
+	if lastBlockHeader.Number.Uint64() > relay.RegistrationBlockRate {
+		startBlock = lastBlockHeader.Number.Uint64() - relay.RegistrationBlockRate
+	}
+	filterOpts := &bind.FilterOpts{
+		Start: startBlock,
+		End:   nil,
+	}
+	iter, err := relay.rhub.FilterRelayAdded(filterOpts, []common.Address{relay.Address()}, nil)
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+
+	start := time.Now()
+	for (iter.Event == nil ||
+		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
+		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
+	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+		(iter.Event.Url != relay.Url)) && time.Since(start) < EventTimeout {
+		if !iter.Next() {
+			iter, err = relay.rhub.FilterRelayAdded(filterOpts, []common.Address{relay.Address()}, nil)
+			if err != nil {
+				log.Fatalln(err)
+				return
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if iter.Event == nil ||
+		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
+		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
+		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
+	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+		(iter.Event.Url != relay.Url) {
+		return 0, fmt.Errorf("Could not receive RelayAdded() events for our relay")
+	}
+	lastRegisteredHeader, err := relay.Client.HeaderByNumber(context.Background(), big.NewInt(int64(iter.Event.Raw.BlockNumber)))
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	when = relayEntry.Timestamp.Int64()
-
+	when = lastRegisteredHeader.Time.Int64()
 	return
 }
 
@@ -805,13 +843,12 @@ func (relay *relayServer) canRelay(encodedFunction string,
 		Pending: false,
 	}
 
-	log.Println("before CanRelay")
 	res, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	log.Printf("after CanRelay: res=%d\n", res)
+	log.Println("CanRelay returned", res)
 	return
 }
 

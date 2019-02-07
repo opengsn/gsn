@@ -149,7 +149,6 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-	log.Println("Sending relayServer eth address")
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
@@ -214,6 +213,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
+	registrationBlockRate := flag.Uint64("RegistrationBlockRate", 5800, "Relay registeration rate (in blocks)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
 	flag.BoolVar(&shortSleep, "ShortSleep", false, "Whether we wait after calls to blockchain or return (almost) immediately")
@@ -239,6 +239,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.DefaultGasPrice = *defaultGasPrice
 	relayParams.GasPricePercent = big.NewInt(*gasPricePercent)
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
+	relayParams.RegistrationBlockRate = *registrationBlockRate
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 
 	KeystoreDir = filepath.Join(*workdir, "keystore")
@@ -264,7 +265,7 @@ func configRelay(relayParams librelay.RelayParams) {
 		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
-		privateKey, relayParams.UnstakeDelay, relayParams.EthereumNodeURL,
+		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
 		client)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
@@ -336,7 +337,7 @@ func keepAlive() {
 	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	if err != nil {
 		log.Println(err)
-	} else if time.Now().Unix()-when < delayBetweenRegistrations {
+	} else if time.Now().Unix()- when < delayBetweenRegistrations {
 		log.Println("Relay registered lately. No need to reregister")
 		return
 	}

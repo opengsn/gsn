@@ -21,9 +21,7 @@ type TbkClient struct {
 func (tbkClient *TbkClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
 	gas,err := tbkClient.Client.EstimateGas(ctx,msg)
 	if (err == nil) {
-		log.Println("EstimateGas is", gas)
 		gas += 20000*params.Wei
-		log.Println("New EstimateGas is", gas)
 	}
 	return gas,err
 
