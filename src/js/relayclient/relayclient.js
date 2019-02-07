@@ -242,9 +242,15 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
     //gas-price multiplicator: either default (10%) or configuration factor
   let pct = (this.config.gaspriceFactorPercent || GASPRICE_PERCENT)
 
+  let network_gas_price = await this.web3.eth.getGasPrice()
+  // Sometimes, xDai netwiork returns '0'
+  if (!network_gas_price || network_gas_price == 0) {
+    network_gas_price = 1e9;
+  }
+
   let gasPrice = this.config.force_gasPrice ||  //forced gasprice
                     options.gas_price ||        //user-supplied gas price
-                    ( await this.web3.eth.getGasPrice() ) * (pct+100)/100
+                    ( network_gas_price ) * (pct+100)/100
 
     //TODO: should add gas estimation for encodedFunctionCall (tricky, since its not a real transaction)
   let gasLimit = this.config.force_gasLimit || options.gas_limit
@@ -393,6 +399,9 @@ RelayClient.prototype.newEphemeralKeypair = function(){
 }
 
 RelayClient.prototype.useKeypairForSigning = function(ephemeralKeypair){
+  if (ephemeralKeypair && (typeof ephemeralKeypair.privateKey) === 'string'){
+    ephemeralKeypair.privateKey = Buffer.from(removeHexPrefix(ephemeralKeypair.privateKey), "hex");
+  }
     this.ephemeralKeypair = ephemeralKeypair
 }
 
