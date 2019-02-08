@@ -37,7 +37,7 @@ contract('RelayClient', function (accounts) {
         rhub = await RelayHub.deployed()
         sr = await SampleRecipient.deployed()
 
-        await sr.deposit({value: web3.utils.toWei('1', 'ether')});
+        await sr.deposit({value: web3.utils.toWei('0.1', 'ether')});
         // let known_deposit = await rhub.balances(sr.address);
         // assert.ok(known_deposit>= deposit, "deposited "+deposit+" but found only "+known_deposit);
         gasLess = await web3.eth.personal.newAccount("password")
@@ -45,7 +45,7 @@ contract('RelayClient', function (accounts) {
         console.log("starting relay")
 
         relayproc = await testutils.startRelay(rhub, {
-            stake: 1e12, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
+            stake: 1e17, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
 
     });
 
