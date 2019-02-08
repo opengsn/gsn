@@ -8,7 +8,7 @@ contract RelayHub is RelayHubApi {
 
     // Anyone can call certain functions in this singleton and trigger relay processes.
 
-    uint constant minimum_stake = 1;    // XXX TBD
+    uint constant minimum_stake = 0.1 ether;    // XXX TBD
     uint constant minimum_unstake_delay = 0;    // XXX TBD
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
@@ -63,6 +63,7 @@ contract RelayHub is RelayHubApi {
      * Unused deposited can be withdrawn with `withdraw()`
      */
     function depositFor(address target) public payable {
+        require(msg.value <= minimum_stake, "deposit too big");
         balances[target] += msg.value;
         require (balances[target] >= msg.value);
         emit Deposited(target, msg.value);

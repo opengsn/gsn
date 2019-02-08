@@ -61,14 +61,14 @@ func NewSimBackend() {
 	key, _ = crypto.HexToECDSA("4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d")
 	key2, _ = crypto.HexToECDSA("6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1")
 	auth = bind.NewKeyedTransactor(key)
-	alloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(1337000000000000000)}
+	alloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(2337000000000000000)}
 	sim = &FakeClient{}
 	sim.SimulatedBackend = backends.NewSimulatedBackend(alloc, uint64(10000000))
 }
 
 func NewRelay(relayHubAddress common.Address) {
 	fee := big.NewInt(10)
-	stakeAmount := big.NewInt(100002)
+	stakeAmount := big.NewInt(1100000000000000000)
 	gasLimit := uint64(1000000)
 	defaultGasPrice := int64(params.GWei)
 	gasPricePercent := big.NewInt(10)
