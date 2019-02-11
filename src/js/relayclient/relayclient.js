@@ -296,7 +296,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
       signature = await getTransactionSignature(this.web3, options.from, hash);
     }
 
-    // max nonce is not signed, as contracts cannot access addresses' nonces. 
+    // max nonce is not signed, as contracts cannot access addresses' nonces.
     let allowed_relay_nonce_gap = this.config.allowed_relay_nonce_gap
     if (typeof allowed_relay_nonce_gap === "undefined"){
       allowed_relay_nonce_gap = 3
