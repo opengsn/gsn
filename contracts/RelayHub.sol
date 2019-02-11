@@ -148,6 +148,7 @@ contract RelayHub is RelayHubApi {
         Stake storage relay_stake = stakes[msg.sender];
         // Penalized relay cannot reregister
         require(!relay_stake.removed, "Penalized relay cannot reregister");
+        require(msg.sender == tx.origin, "Contracts cannot register as relays");
         relays[msg.sender] = Relay(now, transaction_fee);
         emit RelayAdded(msg.sender, relay_stake.owner, transaction_fee, relay_stake.stake, relay_stake.unstake_delay, url);
 

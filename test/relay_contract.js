@@ -3,6 +3,7 @@
 const Big = require( 'big.js' )
 
 const SampleRecipient = artifacts.require("./SampleRecipient.sol");
+const TestRecipientUtils = artifacts.require("./TestRecipientUtils.sol");
 
 const testutils = require('./testutils')
 const utils = require('../src/js/relayclient/utils')
@@ -94,7 +95,15 @@ contract("RelayHub", function (accounts) {
         assert.equal(expected_stake, stake[0] );
     })
 
-    it("test_register_relay", async function () {
+    it("Should allow externally owned addresses to register as relays", async function () {
+        let testutils = await TestRecipientUtils.new()
+        try {
+            await web3.eth.sendTransaction({from: accounts[0], to: testutils.address, value: 0.6e18})
+            await testutils.registerAsRelay(rhub.address, {value: 1e18});
+            assert.fail();
+        } catch (error) {
+            assertErrorMessageCorrect(error, "Contracts cannot register as relays")
+        }
         let res = await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0]);
         let log = res.logs[0]
         assert.equal("RelayAdded", log.event)
