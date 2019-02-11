@@ -170,6 +170,10 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
 	log.Println("Relay Handler Start")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
