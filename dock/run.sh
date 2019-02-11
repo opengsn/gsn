@@ -31,7 +31,7 @@ echo $USER:x:$UID:$UID:$USER:/:/bin/bash > $TMP_PASSWD
 
 FOLDERS=""
 for f in $folders ; do test -d $f && FOLDERS+=" -v $f:$f"; done
-FOLDERS+=" -v `pwd`/build/dock-build:`pwd`/build"
+FOLDERS+=" -v `pwd`/build/dock-builD:`pwd`/build"
 FOLDERS+=" -v `pwd`/build/dock-node_modules:`pwd`/node_modules"
 mkdir -p build/dock-builD
 ENVVARS="-e HOME=$HOME -e USER=$USER"
