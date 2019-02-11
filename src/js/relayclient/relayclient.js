@@ -115,7 +115,7 @@ RelayClient.prototype.validateRelayResponse = function (returned_tx, address_rel
  * Performs a '/relay' HTTP request to the given url
  * @returns a Promise that resolves to an instance of {@link EthereumTx} signed by a relay
  */
-RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress) {
+RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, recipientNonce, relayHubAddress, relayAddress, relayMaxNonce) {
   var self = this
 
   return new Promise(function (resolve, reject) {
@@ -128,7 +128,8 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       "gasPrice": gasprice,
       "gasLimit": gaslimit,
       "relayFee": relayFee,
-      "RecipientNonce": parseInt(nonce),
+      "RecipientNonce": parseInt(recipientNonce),
+      "RelayMaxNonce": parseInt(relayMaxNonce),
       "RelayHubAddress": relayHubAddress
     };
 
@@ -147,7 +148,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       try {
         validTransaction = self.validateRelayResponse(
           body, relayAddress, from, to, encodedFunction,
-          relayFee, gasprice, gaslimit, nonce, relayHubAddress, relayAddress, signature);
+          relayFee, gasprice, gaslimit, recipientNonce, relayHubAddress, relayAddress, signature);
       }
       catch (error) {
         console.error("validateRelayResponse " + error)
@@ -155,6 +156,13 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
 
       if ( !validTransaction ) {
         reject("Failed to validate response")
+        return
+      }
+      let receivedNonce = validTransaction.nonce.readUIntBE(0,validTransaction.nonce.byteLength)
+      if (receivedNonce > relayMaxNonce) {
+        // TODO: need to validate that client retries the same request and doesn't double-spend. 
+        // Note that this transaction is totally valid from the EVM's point of view
+        reject("Relay used a tx nonce higher than requested. Requested " + relayMaxNonce + " got " + receivedNonce)
         return
       }
 
@@ -258,10 +266,13 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   let blockNow = await this.web3.eth.getBlockNumber()
   let blockFrom = Math.max(1, blockNow - relay_lookup_limit_blocks)
   let pinger = await this.serverHelper.newActiveRelayPinger(blockFrom, gasPrice)
+  let errors = []
   for (;;) {
     let activeRelay = await pinger.nextRelay()
     if ( !activeRelay ) {
-        throw new Error("No relay responded! " + pinger.relaysCount + " attempted, " + pinger.pingedRelays + " pinged")
+        let error = new Error("No relay responded! " + pinger.relaysCount + " attempted, " + pinger.pingedRelays + " pinged")
+        error.otherErrors = errors
+        throw error
     }
     let relayAddress = activeRelay.RelayServerAddress
     let relayUrl = activeRelay.relayUrl
@@ -285,6 +296,13 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
       signature = await getTransactionSignature(this.web3, options.from, hash);
     }
 
+    // max nonce is not signed, as contracts cannot access addresses' nonces. 
+    let allowed_relay_nonce_gap = this.config.allowed_relay_nonce_gap
+    if (typeof allowed_relay_nonce_gap === "undefined"){
+      allowed_relay_nonce_gap = 3
+    }
+    let relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowed_relay_nonce_gap
+
     try {
       let validTransaction = await self.sendViaRelay(
         relayUrl,
@@ -297,11 +315,13 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         options.txfee,
         nonce,
         relayHub._address,
-        relayAddress
+        relayAddress,
+        relayMaxNonce
       )
       return validTransaction
     }
     catch (error) {
+        errors.push(error)
         console.log("relayTransaction: req:",JSON.stringify({ from:options.from,
             to:options.to,
             encodedFunctionCall,
