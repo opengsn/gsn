@@ -73,7 +73,6 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// wait for funding
-		log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 		balance, err := relay.Balance()
 		if err != nil {
 			log.Println(err)
@@ -86,6 +85,8 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 			return
 		}
+		log.Println("Relay balance:", balance.Uint64())
+
 		gasPrice := relay.GasPrice()
 		if gasPrice.Uint64() == 0 {
 			err = fmt.Errorf("Waiting for gasPrice...")
@@ -166,9 +167,6 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 
 func relayHandler(w http.ResponseWriter, r *http.Request) {
 
-	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
-
 	log.Println("Relay Handler Start")
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusOK)
@@ -188,7 +186,6 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 		return
 	}
-	log.Println("RelayHubAddress", request.RelayHubAddress.String())
 	signedTx, err := relay.CreateRelayTransaction(*request)
 	if err != nil {
 		log.Println("Failed to relay")
@@ -307,7 +304,6 @@ func refreshBlockchainView() {
 }
 
 func waitForOwnerActions() {
-	log.Println("hub to check stake", relay.HubAddress().Hex())
 	staked, err := relay.IsStaked()
 	for ; err != nil || !staked; staked, err = relay.IsStaked() {
 		if err != nil {
@@ -319,7 +315,6 @@ func waitForOwnerActions() {
 	}
 
 	// wait for funding
-	log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 	balance, err := relay.Balance()
 	if err != nil {
 		log.Println(err)
