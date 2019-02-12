@@ -105,7 +105,7 @@ type IRelay interface {
 	ScanBlockChainToPenalize() (err error)
 
 	sendStakeTransaction() (tx *types.Transaction, err error)
-	
+
 	sendUnstakeTransaction() (tx *types.Transaction, err error)
 
 	sendRegisterTransaction() (tx *types.Transaction, err error)
@@ -238,7 +238,6 @@ func (relay *relayServer) sendStakeTransaction() (tx *types.Transaction, err err
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
-	log.Println("Stake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
 	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
@@ -247,7 +246,7 @@ func (relay *relayServer) sendStakeTransaction() (tx *types.Transaction, err err
 	}
 	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	log.Println("tx sent:", tx.Hash().Hex())
+	log.Println("Stake() tx sent:", tx.Hash().Hex())
 	return
 }
 
@@ -262,7 +261,6 @@ func (relay *relayServer) sendUnstakeTransaction() (tx *types.Transaction, err e
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
-	log.Println("Unstake() starting. RelayHub address ", relay.RelayHubAddress.Hex())
 	tx, err = relay.rhub.Unstake(auth, relay.Address())
 	if err != nil {
 		log.Println("rhub.Unstake() failed", relay.StakeAmount, relay.UnstakeDelay)
@@ -271,7 +269,7 @@ func (relay *relayServer) sendUnstakeTransaction() (tx *types.Transaction, err e
 	}
 	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	log.Println("tx sent:", tx.Hash().Hex())
+	log.Println("Unstake() tx sent:", tx.Hash().Hex())
 	return
 }
 
@@ -311,7 +309,7 @@ func (relay *relayServer) sendRegisterTransaction() (tx *types.Transaction, err 
 	}
 	//unconfirmedTxs[lastNonce] = tx
 	lastNonce++
-	log.Println("tx sent:", tx.Hash().Hex())
+	log.Println("RegisterRelay() tx sent:", tx.Hash().Hex())
 	return
 }
 
@@ -350,19 +348,18 @@ func (relay *relayServer) IsStaked() (staked bool, err error) {
 		log.Println(err)
 		return
 	}
-	log.Println("Stake:", stakeEntry.Stake.String())
 	staked = (stakeEntry.Stake.Cmp(big.NewInt(0)) != 0)
 
 	if staked && (relay.OwnerAddress.Hex() == common.HexToAddress("0").Hex()) {
 		log.Println("Got staked for the first time, setting owner")
 		relay.OwnerAddress = stakeEntry.Owner
 		log.Println("Owner is", relay.OwnerAddress.Hex())
+		log.Println("Stake:", stakeEntry.Stake.String())
 	}
 	return
 }
 
 func (relay *relayServer) RegistrationDate() (when int64, err error) {
-	log.Println("relay.RelayHubAddress", relay.RelayHubAddress.Hex())
 
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
@@ -445,7 +442,6 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	log.Println("Checking if canRelay()...")
 	// check can_relay view function to see if we'll get paid for relaying this tx
 	res, err := relay.canRelay(request.EncodedFunction,
 		request.Signature,
@@ -468,7 +464,6 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	log.Println("canRelay() succeeded")
 	// can_relay returned true, so we can relay the tx
 
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
@@ -804,7 +799,7 @@ func (relay *relayServer) canRelay(encodedFunction string,
 		log.Println(err)
 		return
 	}
-	log.Println("CanRelay returned", res)
+
 	return
 }
 
@@ -822,14 +817,14 @@ func (relay *relayServer) pollNonce() (nonce uint64, err error) {
 		return
 	}
 
-	log.Println("Nonce is", nonce)
+	//log.Println("Nonce is", nonce)
 
 	if lastNonce <= nonce {
 		lastNonce = nonce
 	} else {
 		nonce = lastNonce
 	}
-	log.Println("lastNonce is", lastNonce)
+	//log.Println("lastNonce is", lastNonce)
 	return
 }
 
