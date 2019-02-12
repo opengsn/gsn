@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+const VERSION = "0.3.0"
+
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
@@ -35,7 +37,7 @@ var stopRefreshBlockchainView chan bool
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("RelayHttpServer starting")
+	log.Println("RelayHttpServer starting. version:",VERSION)
 
 	configRelay(parseCommandLine())
 
