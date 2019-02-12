@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gen/librelay"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -16,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 )
@@ -486,12 +488,33 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 	auth.GasLimit = gasLimit.Add(&request.GasLimit, gasReserve).Add(gasLimit, gasReserve).Uint64()
 	auth.GasPrice = &request.GasPrice
 
-	to_balance, err := relay.rhub.Balances(callOpt, request.To)
+	toBalance, err := relay.rhub.Balances(callOpt, request.To)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	log.Println("To.balance: ", to_balance)
+
+	hubAbi, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
+	if err != nil {
+		return
+	}
+	input, err := hubAbi.Pack("relay", request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
+		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	gasEstimate, err := relay.Client.EstimateGas(context.Background(), ethereum.CallMsg{
+		To:   &request.To,
+		From: request.From,
+		Data: input,
+	})
+	maxCharge := request.GasPrice.Uint64() * gasEstimate * (100 + relay.GasPricePercent.Uint64()) / 100
+	if toBalance.Uint64() < maxCharge {
+		err = fmt.Errorf("Recipient balance too low: %d, gasEstimate*fee: %d", toBalance,maxCharge)
+		log.Println(err)
+		return
+	}
 
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
