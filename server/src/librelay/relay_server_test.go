@@ -43,6 +43,10 @@ func (client *FakeClient) TransactionByHash(ctx context.Context, txHash common.H
 	return &types.Transaction{}, false, nil
 }
 
+func (client *FakeClient) NetworkID(ctx context.Context) (*big.Int, error) {
+	return big.NewInt(0xdead),nil
+}
+
 var auth *bind.TransactOpts
 var sim *FakeClient
 var relay IRelay

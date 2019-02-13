@@ -90,6 +90,10 @@ type IRelay interface {
 
 	RegistrationDate() (when int64, err error)
 
+	IsRemoved() (removed bool, err error)
+
+	SendBalanceToOwner() (err error)
+
 	CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error)
 
 	Address() (relayAddress common.Address)
@@ -116,6 +120,8 @@ type IRelay interface {
 type IClient interface {
 	bind.ContractBackend
 	ethereum.TransactionReader
+
+	NetworkID(ctx context.Context) (*big.Int, error)
 
 	//From: ChainReader
 	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
@@ -413,6 +419,75 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	when = lastRegisteredHeader.Time.Int64()
 	return
 }
+
+	func (relay *relayServer) IsRemoved() (removed bool, err error) {
+		filterOpts := &bind.FilterOpts{
+			Start: 0,
+			End:   nil,
+		}
+		iter, err := relay.rhub.FilterRelayRemoved(filterOpts, []common.Address{relay.Address()})
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if iter.Event == nil && !iter.Next() {
+			return
+		}
+		return true,nil
+	}
+
+	func (relay *relayServer) SendBalanceToOwner() (err error) {
+		balance,err := relay.Client.BalanceAt(context.Background(),relay.Address(), nil)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if balance.Uint64() == 0 {
+			log.Println("balance is 0")
+			return
+		}
+		log.Println("Sending",balance,"wei to owner address", relay.OwnerAddress.Hex())
+
+		nonceMutex.Lock()
+		defer nonceMutex.Unlock()
+		nonce, err := relay.pollNonce()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		gasLimit := uint64(21000)                // in units
+		gasPrice, err := relay.Client.SuggestGasPrice(context.Background())
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		var data []byte
+		tx := types.NewTransaction(nonce, relay.OwnerAddress, balance, gasLimit, gasPrice, data)
+
+		chainID, err := relay.Client.NetworkID(context.Background())
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), relay.PrivateKey)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		err = relay.Client.SendTransaction(context.Background(), signedTx)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		log.Printf("tx sent: %s", signedTx.Hash().Hex())
+
+		return relay.awaitTransactionMined(signedTx)
+	}
 
 func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
 	// Check that the relayhub is the correct one

@@ -50,6 +50,7 @@ func main() {
 
 	stopKeepAlive = schedule(keepAlive, 1*time.Minute, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*time.Minute, 0)
+	schedule(shutdownOnRelayRemoved,1*time.Minute,0)
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
 
 	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
@@ -352,6 +353,25 @@ func keepAlive() {
 		sleep(1*time.Minute, shortSleep)
 	}
 	log.Println("Done registering")
+}
+
+func shutdownOnRelayRemoved() {
+	removed,err := relay.IsRemoved()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if removed {
+		server.Close()
+		for ;;{
+			err = relay.SendBalanceToOwner()
+			if err == nil {
+				break
+			}
+			sleep(5*time.Second,shortSleep)
+		}
+	}
+
 }
 
 func scanBlockChainToPenalize() {
