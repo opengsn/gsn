@@ -1,5 +1,5 @@
 {
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Tabookey Gasless Relay Framework",
   "name": "tabookey-gasless",
   "license": "MIT",
@@ -25,13 +25,16 @@
       "email": "alex@tabookey.com"
     }
   ],
+  "bin": {
+    "gsn-stat": "./scripts/gsn-stat.js",
+    "gsn-dock-relay": "./scripts/gsn-dock-relay",
+    "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache"
+  },
   "scripts": {
     "test": "make test-server && run-with-testrpc -p 8544 -l 8000000 './node_modules/.bin/truffle --network npmtest test' ",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
-    "webtools": "webpack-cli --config ./webtools.webpack.js &&http-server webtools/ -o",
+    "webtools": "webpack-cli --config ./webtools.webpack.js && http-server webtools/ -o",
     "lint": "eslint ./src ./test -f unix",
-    "gsn-dock-relay": "docker run --rm -t -p 8090:8090 tabookey/gsn-dev-server:v0.3",
-    "gsn-dock-relay-ganache": "docker run --rm -p 8090:8090 -p 8545:8545 -t tabookey/gsn-dev-server:v0.3.1 /start-relay-with-ganache.sh",
     "web": "./restart-relay.sh web"
   },
   "dependencies": {
@@ -42,6 +45,7 @@
     "ethereumjs-util": "^6.0.0",
     "ethereumjs-wallet": "^0.6.3",
     "openzeppelin-solidity": "^2.1.2",
+    "request-promise": "^4.2.2",
     "web3": "1.0.0-beta.37",
     "web3-utils": "^1.0.0-beta.37"
   },
@@ -62,6 +66,7 @@
     "contracts/",
     "webtools/",
     "samples/",
+    "scripts/gsn*",
     "webtools.webpack.js"
   ],
   "main": "src/js/relayclient/index.js"
