@@ -20,13 +20,14 @@ import (
 	"time"
 )
 
-const VERSION = "0.3.0"
+const VERSION = "0.3.1"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
 var ready = false
+var removed = true
 
 var relay librelay.IRelay
 var server *http.Server
@@ -34,10 +35,9 @@ var stopKeepAlive chan bool
 var stopRefreshBlockchainView chan bool
 //var stopScanningBlockChain chan bool
 
-
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("RelayHttpServer starting. version:",VERSION)
+	log.Println("RelayHttpServer starting. version:", VERSION)
 
 	configRelay(parseCommandLine())
 
@@ -48,13 +48,27 @@ func main() {
 	//Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
 	//http.HandleFunc("/audit", assureRelayReady(auditRelaysHandler))
 
-	stopKeepAlive = schedule(keepAlive, 1*time.Minute, 0)
-	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*time.Minute, 0)
-	schedule(shutdownOnRelayRemoved,1*time.Minute,0)
+	timeUnit :=  time.Minute
+	if shortSleep {
+		timeUnit = time.Second
+	}
+	stopKeepAlive = schedule(keepAlive, 1*timeUnit, 0)
+	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
+	schedule(shutdownOnRelayRemoved, 1*timeUnit, 0)
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
 
 	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
 	err := server.ListenAndServe()
+	if removed {
+		log.Println("Relay removed. Sending balance back to owner")
+		for ; ; {
+			err = relay.SendBalanceToOwner()
+			if err == nil {
+				break
+			}
+			sleep(5*time.Second, shortSleep)
+		}
+	}
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -338,7 +352,7 @@ func keepAlive() {
 	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	if err != nil {
 		log.Println(err)
-	} else if time.Now().Unix()- when < delayBetweenRegistrations {
+	} else if time.Now().Unix()-when < delayBetweenRegistrations {
 		log.Println("Relay registered lately. No need to reregister")
 		return
 	}
@@ -356,20 +370,13 @@ func keepAlive() {
 }
 
 func shutdownOnRelayRemoved() {
-	removed,err := relay.IsRemoved()
+	removed, err := relay.IsRemoved()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	if removed {
 		server.Close()
-		for ;;{
-			err = relay.SendBalanceToOwner()
-			if err == nil {
-				break
-			}
-			sleep(5*time.Second,shortSleep)
-		}
 	}
 
 }
