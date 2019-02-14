@@ -51,8 +51,6 @@ contract('RelayClient', function (accounts) {
 
     after(async function () {
         await testutils.stopRelay(relayproc)
-        //disable relay, so it won't interfere with other tests..
-        relay_client_config.enableRelay=false
     })
 
     it("test balanceOf target contract", async () => {
@@ -81,7 +79,8 @@ contract('RelayClient', function (accounts) {
         let relay_client_config = {
             relayUrl: localhostOne,
             relayAddress: relayAddress,
-            allowed_relay_nonce_gap: 0
+            allowed_relay_nonce_gap: 0,
+            verbose: true
         }
 
         let tbk = new RelayClient(web3, relay_client_config);
@@ -115,7 +114,8 @@ contract('RelayClient', function (accounts) {
         let relay_client_config = {
             relayUrl: localhostOne,
             relayAddress: relayAddress,
-            allowed_relay_nonce_gap: -1
+            allowed_relay_nonce_gap: -1,
+            verbose: true
         }
         let tbk = new RelayClient(web3, relay_client_config);
         let orig_send = tbk.httpSend.send
@@ -146,6 +146,7 @@ contract('RelayClient', function (accounts) {
             txfee: 12,
             force_gasPrice: gasPrice,			//override requested gas price
             force_gasLimit: 4000029,		//override requested gas limit.
+            verbose: true
         }
 
         let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
