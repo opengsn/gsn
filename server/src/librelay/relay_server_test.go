@@ -35,7 +35,7 @@ func (client *FakeClient) BlockByNumber(ctx context.Context, number *big.Int) (*
 
 func (client *FakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
 	//log.Fatalf("could not deploy contract")
-	return &types.Header{Time:big.NewInt(time.Now().Unix()),Number:big.NewInt(123123)}, nil
+	return &types.Header{Time:big.NewInt(time.Now().Unix()),Number:big.NewInt(0)}, nil
 }
 
 func (client *FakeClient) TransactionByHash(ctx context.Context, txHash common.Hash) (tx *types.Transaction, isPending bool, err error) {
@@ -139,7 +139,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("could not 'AdjustTime': %v", err)
 	}
-	tx, err := relay.sendStakeTransaction()
+	tx, err := relay.sendStakeTransaction(key)
 	if err != nil {
 		log.Fatalf("could not 'sendStakeTransaction': %v", err)
 	}
@@ -166,7 +166,10 @@ func TestMain(m *testing.M) {
 		return
 	}
 	log.Println("To.balance: ", to_balance)
-	os.Exit(m.Run())
+
+	exitStatus := m.Run()
+	defer os.Exit(exitStatus)
+
 }
 
 func TestRefreshGasPrice(t *testing.T) {
@@ -202,7 +205,6 @@ func TestRegisterRelay(t *testing.T) {
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
-	return
 	if time.Now().Unix()-when > int64((1 * time.Minute).Seconds()) {
 		t.Error("Wrong registration time/date", time.Now().Unix(), when)
 	}
