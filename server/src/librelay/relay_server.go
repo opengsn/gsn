@@ -78,13 +78,13 @@ type IRelay interface {
 
 	RefreshGasPrice() (err error)
 
-	Stake() (err error)
+	Stake(ownerKey *ecdsa.PrivateKey) (err error)
 
-	Unstake() (err error)
+	Unstake(ownerKey *ecdsa.PrivateKey) (err error)
 
 	RegisterRelay() (err error)
 
-	UnregisterRelay() (err error)
+	RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error)
 
 	IsStaked() (staked bool, err error)
 
@@ -108,11 +108,13 @@ type IRelay interface {
 
 	ScanBlockChainToPenalize() (err error)
 
-	sendStakeTransaction() (tx *types.Transaction, err error)
+	sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
 
-	sendUnstakeTransaction() (tx *types.Transaction, err error)
+	sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
 
 	sendRegisterTransaction() (tx *types.Transaction, err error)
+
+	sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
 
 	awaitTransactionMined(tx *types.Transaction) (err error)
 }
@@ -225,16 +227,16 @@ func (relay *relayServer) RefreshGasPrice() (err error) {
 	return
 }
 
-func (relay *relayServer) Stake() (err error) {
-	tx, err := relay.sendStakeTransaction()
+func (relay *relayServer) Stake(ownerKey *ecdsa.PrivateKey) (err error) {
+	tx, err := relay.sendStakeTransaction(ownerKey)
 	if err != nil {
 		return err
 	}
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) sendStakeTransaction() (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(relay.PrivateKey)
+func (relay *relayServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+	auth := bind.NewKeyedTransactor(ownerKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce()
@@ -256,8 +258,8 @@ func (relay *relayServer) sendStakeTransaction() (tx *types.Transaction, err err
 	return
 }
 
-func (relay *relayServer) sendUnstakeTransaction() (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(relay.PrivateKey)
+func (relay *relayServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+	auth := bind.NewKeyedTransactor(ownerKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
 	nonce, err := relay.pollNonce()
@@ -279,8 +281,8 @@ func (relay *relayServer) sendUnstakeTransaction() (tx *types.Transaction, err e
 	return
 }
 
-func (relay *relayServer) Unstake() (err error) {
-	tx, err := relay.sendUnstakeTransaction()
+func (relay *relayServer) Unstake(ownerKey *ecdsa.PrivateKey) (err error) {
+	tx, err := relay.sendUnstakeTransaction(ownerKey)
 	if err != nil {
 		return err
 	}
@@ -338,8 +340,35 @@ func (relay *relayServer) awaitTransactionMined(tx *types.Transaction) (err erro
 	return nil
 }
 
-func (relay *relayServer) UnregisterRelay() error {
-	return relay.Unstake()
+func (relay *relayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
+	tx, err := relay.sendRemoveTransaction(ownerKey)
+	if err != nil {
+		return err
+	}
+	return relay.awaitTransactionMined(tx)
+}
+
+func (relay *relayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+	auth := bind.NewKeyedTransactor(ownerKey)
+	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
+	nonce, err := relay.pollNonce()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	auth.Nonce = big.NewInt(int64(nonce))
+	log.Println("RemoveRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
+	tx, err = relay.rhub.RemoveRelayByOwner(auth, relay.Address())
+	if err != nil {
+		log.Println(err)
+		//relay.replayUnconfirmedTxs(client)
+		return
+	}
+	//unconfirmedTxs[lastNonce] = tx
+	lastNonce++
+	log.Println("RemoveRelay() tx sent:", tx.Hash().Hex())
+	return
 }
 
 func (relay *relayServer) IsStaked() (staked bool, err error) {
