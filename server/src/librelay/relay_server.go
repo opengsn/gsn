@@ -485,15 +485,16 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 			return
 		}
 
+		var data []byte
 		gasLimit := uint64(21000)                // in units
 		gasPrice, err := relay.Client.SuggestGasPrice(context.Background())
 		if err != nil {
 			log.Println(err)
 			return
 		}
-
-		var data []byte
-		tx := types.NewTransaction(nonce, relay.OwnerAddress, balance, gasLimit, gasPrice, data)
+		cost := gasPrice.Uint64()*gasLimit
+		value := big.NewInt(int64(balance.Uint64() - cost))
+		tx := types.NewTransaction(nonce, relay.OwnerAddress, value, gasLimit, gasPrice, data)
 
 		chainID, err := relay.Client.NetworkID(context.Background())
 		if err != nil {

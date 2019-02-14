@@ -15,6 +15,7 @@ const localhostOne = "http://localhost:8090"
 
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
+const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect;
 
 const Big = require( 'big.js')
 
@@ -26,9 +27,10 @@ contract('RelayClient', function (accounts) {
     let rhub;
     let sr;
     let gasLess;
-    let relayproc
-    let gasPrice
-    let relay_client_config
+    let relayproc;
+    let gasPrice;
+    let relay_client_config;
+    let relayOwner = accounts[0];
 
     before(async function () {
         const gasPricePercent = 20
@@ -45,7 +47,7 @@ contract('RelayClient', function (accounts) {
         console.log("starting relay")
 
         relayproc = await testutils.startRelay(rhub, {
-            stake: 1e17, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
+            stake: 1e17, delay: 3600, txfee: 12, url: "asd", relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
 
     });
 
@@ -354,4 +356,34 @@ contract('RelayClient', function (accounts) {
         await rc.relayTransaction(encoded, options)
         assert.equal(true, did_assert)
     })
+
+    it("should send relay balance to owner after removed", async function () {
+
+        let res = await request(localhostOne+'/getaddr');
+        let relayServerAddress = JSON.parse(res.body).RelayServerAddress;
+        let zeroAddr = "0".repeat(40);
+        try {
+            await rhub.remove_relay_by_owner(zeroAddr);
+            assert.fail();
+        } catch (error) {
+            assertErrorMessageCorrect(error, "not owner");
+        }
+        let beforeOwnerBalance = await web3.eth.getBalance(relayOwner);
+        res = await rhub.remove_relay_by_owner(relayServerAddress, {from:relayOwner});
+        assert.equal("RelayRemoved", res.logs[0].event);
+        assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase());
+
+        let i = 0;
+        let relayBalance = await web3.eth.getBalance(relayServerAddress);
+        while (relayBalance != 0 && i < 20) {
+            await testutils.sleep(200);
+            relayBalance = await web3.eth.getBalance(relayServerAddress);
+            i++
+        }
+        assert.equal(relayBalance,0)
+        let afterOwnerBalance = await web3.eth.getBalance(relayOwner);
+        assert.equal(true,parseInt(afterOwnerBalance)  > parseInt(beforeOwnerBalance))
+
+    });
+
 });
