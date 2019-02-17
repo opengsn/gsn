@@ -22,7 +22,7 @@ if ( !network ) {
 let hubaddr = process.argv[3]
 
 web3 = new Web3(new Web3.providers.HttpProvider(network))
-RelayHub = require( __dirname+'/../build/contracts/RelayHub.json')
+RelayHubAbi = require( "../src/js/relayclient/RelayHubApi" )
 
 let owners={}
 function owner(h) {
@@ -82,8 +82,9 @@ async function run() {
     }
 
     console.log( "hub balance (deposits, stakes)=", (await web3.eth.getBalance(hubaddr))/1e18 )
-
-    r = new web3.eth.Contract(RelayHub.abi, hubaddr)
+    console.log( "hub address", hubaddr)
+	console.log( "gas price: ",(await web3.eth.getGasPrice()) )
+    r = new web3.eth.Contract(RelayHubAbi, hubaddr)
 
     res = await r.getPastEvents('RelayAdded', {fromBlock})
 
