@@ -2,7 +2,7 @@ pragma solidity >=0.4.0 <0.6.0;
 
 import "./RelayHub.sol";
 import "./RelayRecipient.sol";
-import "./Ownable.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 contract SampleRecipient is RelayRecipient, Ownable {
 

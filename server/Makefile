@@ -37,7 +37,7 @@ $(GEN_FILE): ../contracts/RelayHub.sol ../contracts/RelayHubApi.sol
 
 $(GEN_FILE_REC): ../contracts/SampleRecipient.sol
 	mkdir -p $(buildpath)/src/gen/samplerec
-	abigen --sol $< --pkg samplerec  --out $@
+	abigen --solc ../scripts/solc-abigen-wrapper.sh --sol $< --pkg samplerec  --out $@
 
 test: server
 	go test -v -count=1 librelay
