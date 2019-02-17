@@ -95,7 +95,7 @@ contract("RelayHub", function (accounts) {
         assert.equal(expected_stake, stake[0] );
     })
 
-    it("Should allow externally owned addresses to register as relays", async function () {
+    it("should forbid contracts-owned addresses to register as relays", async function(){
         let testutils = await TestRecipientUtils.new()
         try {
             await web3.eth.sendTransaction({from: accounts[0], to: testutils.address, value: 0.6e18})
@@ -104,6 +104,9 @@ contract("RelayHub", function (accounts) {
         } catch (error) {
             assertErrorMessageCorrect(error, "Contracts cannot register as relays")
         }
+    })
+
+    it("should allow externally owned addresses to register as relays", async function () {
         let res = await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0]);
         let log = res.logs[0]
         assert.equal("RelayAdded", log.event)
