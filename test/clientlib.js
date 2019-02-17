@@ -80,7 +80,8 @@ contract('RelayClient', function (accounts) {
         }
         let relay_client_config = {
             relayUrl: localhostOne,
-            relayAddress: relayAddress
+            relayAddress: relayAddress,
+            allowed_relay_nonce_gap: 0
         }
 
         let tbk = new RelayClient(web3, relay_client_config);
@@ -101,6 +102,42 @@ contract('RelayClient', function (accounts) {
         assert.equal(parseInt(validTransaction.gasPrice.toString('hex'), 16), gasPrice);
 
     });
+
+    it("should consider a transaction with a relay tx nonce higher than expected as invalid", async function () {
+        let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
+        let to = sr.address;
+        let options = {
+            from: gasLess,
+            to: to,
+            txfee: 12,
+            gas_limit: 1000000
+        }
+        let relay_client_config = {
+            relayUrl: localhostOne,
+            relayAddress: relayAddress,
+            allowed_relay_nonce_gap: -1
+        }
+        let tbk = new RelayClient(web3, relay_client_config);
+        let orig_send = tbk.httpSend.send
+        tbk.httpSend.send = function(url, jsonRequestData, callback){
+            if (url.includes("/relay")) {
+                // Otherwise, server will return an error if asked to sign with a low nonce.
+                jsonRequestData.RelayMaxNonce = 1000000
+            }
+            orig_send.bind(tbk.httpSend)(url, jsonRequestData, callback)
+        }
+        try {
+            await tbk.relayTransaction(encoded, options);
+            assert.fail()
+        }
+        catch(error) {
+            if (error.toString().includes("Assertion")) {
+                throw error
+            }
+            assert.equal(true, error.otherErrors[0].includes("Relay used a tx nonce higher than requested"))
+        }
+    });
+
 
     it("should relay transparently", async () => {
 
@@ -248,8 +285,8 @@ contract('RelayClient', function (accounts) {
         let res = await request(localhostOne+'/getaddr')
         let relayServerAddress = JSON.parse(res.body).RelayServerAddress
         let filteredRelays = [
-            { relayUrl: "localhost1", RelayServerAddress: "0x1" },
-            { relayUrl: "localhost2", RelayServerAddress: "0x2" },
+            { relayUrl: "localhost1", RelayServerAddress: "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1" },
+            { relayUrl: "localhost2", RelayServerAddress: "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1" },
             { relayUrl: localhostOne, RelayServerAddress: relayServerAddress }
         ]
 

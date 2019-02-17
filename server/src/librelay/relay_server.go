@@ -35,6 +35,7 @@ type RelayTransactionRequest struct {
 	GasPrice        big.Int
 	GasLimit        big.Int
 	RecipientNonce  big.Int
+	RelayMaxNonce   big.Int
 	RelayFee        big.Int
 	RelayHubAddress common.Address
 }
@@ -433,6 +434,12 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 	if relay.gasPrice == nil || relay.gasPrice.Cmp(&request.GasPrice) > 0 {
 		err = fmt.Errorf("Unacceptable gasPrice")
 		log.Println(err)
+		return
+	}
+
+	if request.RelayMaxNonce.Cmp(big.NewInt(int64(lastNonce))) < 0 {
+		err = fmt.Errorf("Unacceptable RelayMaxNonce")
+		log.Println(err, request.RelayMaxNonce)
 		return
 	}
 

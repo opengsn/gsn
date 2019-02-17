@@ -225,6 +225,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 		GasPrice:        *big.NewInt(10),
 		GasLimit:        *big.NewInt(1000000),
 		RecipientNonce:  *big.NewInt(0),
+		RelayMaxNonce:   *big.NewInt(1000000),
 		RelayFee:        *big.NewInt(10),
 		RelayHubAddress: rhaddr,
 	}
