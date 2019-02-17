@@ -272,7 +272,7 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
 
   let gasPrice = this.config.force_gasPrice ||  //forced gasprice
                     options.gas_price ||        //user-supplied gas price
-                    ( network_gas_price ) * (pct+100)/100
+                    Math.round(( network_gas_price ) * (pct+100)/100 )
 
     //TODO: should add gas estimation for encodedFunctionCall (tricky, since its not a real transaction)
   let gasLimit = this.config.force_gasLimit || options.gas_limit
