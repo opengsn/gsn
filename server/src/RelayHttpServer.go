@@ -27,7 +27,7 @@ var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Durati
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
 var ready = false
-var removed = true
+var removed = false
 
 var relay librelay.IRelay
 var server *http.Server
@@ -161,7 +161,7 @@ func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
+func getEthAddrHandler(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
@@ -228,7 +228,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	stakeAmount := flag.Int64("StakeAmount", 10000000000000000, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
-	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
+	gasPricePercent := flag.Int64("GasPricePercent", 70, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	registrationBlockRate := flag.Uint64("RegistrationBlockRate", 5800, "Relay registeration rate (in blocks)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
@@ -370,7 +370,8 @@ func keepAlive() {
 }
 
 func shutdownOnRelayRemoved() {
-	removed, err := relay.IsRemoved()
+	var err error
+	removed, err = relay.IsRemoved()
 	if err != nil {
 		log.Println(err)
 		return
