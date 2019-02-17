@@ -380,7 +380,7 @@ contract('RelayClient', function (accounts) {
             relayBalance = await web3.eth.getBalance(relayServerAddress);
             i++
         }
-        assert.equal(relayBalance,0)
+        assert.equal(0,relayBalance)
         let afterOwnerBalance = await web3.eth.getBalance(relayOwner);
         assert.equal(true,parseInt(afterOwnerBalance)  > parseInt(beforeOwnerBalance))
 
