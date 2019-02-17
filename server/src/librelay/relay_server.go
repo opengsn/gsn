@@ -237,14 +237,6 @@ func (relay *relayServer) Stake(ownerKey *ecdsa.PrivateKey) (err error) {
 
 func (relay *relayServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(ownerKey)
-	nonceMutex.Lock()
-	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
 	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
 	if err != nil {
@@ -260,14 +252,6 @@ func (relay *relayServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *
 
 func (relay *relayServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(ownerKey)
-	nonceMutex.Lock()
-	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = relay.StakeAmount
 	tx, err = relay.rhub.Unstake(auth, relay.Address())
 	if err != nil {
@@ -350,14 +334,6 @@ func (relay *relayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
 
 func (relay *relayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(ownerKey)
-	nonceMutex.Lock()
-	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
 	log.Println("RemoveRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
 	tx, err = relay.rhub.RemoveRelayByOwner(auth, relay.Address())
 	if err != nil {
