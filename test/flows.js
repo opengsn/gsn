@@ -73,7 +73,7 @@ options.forEach(params => {
                     txfee: 12,
                         force_gasPrice: gasPrice,			//override requested gas price
                     force_gasLimit: 100000,		//override requested gas limit.
-                    verbose: true
+                    verbose: false
                 }
                 let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config )
 
