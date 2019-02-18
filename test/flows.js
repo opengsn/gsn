@@ -69,12 +69,12 @@ options.forEach(params => {
                 rhub.depositFor(sr.address, {value: 1e17})
 
                 relay_client_config = {
-                    // verbose:true,
-                    txfee: 12,
-                        force_gasPrice: gasPrice,			//override requested gas price
+                    txfee: 60,
+                    force_gasPrice: gasPrice,	//override requested gas price
                     force_gasLimit: 100000,		//override requested gas limit.
-                    verbose: true
+                    verbose: process.env.DEBUG
                 }
+                console.error( {relay_client_config})
                 let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config )
 
                 // web3.setProvider(relayProvider)

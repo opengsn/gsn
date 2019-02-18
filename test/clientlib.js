@@ -80,7 +80,7 @@ contract('RelayClient', function (accounts) {
             relayUrl: localhostOne,
             relayAddress: relayAddress,
             allowed_relay_nonce_gap: 0,
-            verbose: true
+            verbose: process.env.DEBUG
         }
 
         let tbk = new RelayClient(web3, relay_client_config);
@@ -146,7 +146,7 @@ contract('RelayClient', function (accounts) {
             txfee: 12,
             force_gasPrice: gasPrice,			//override requested gas price
             force_gasLimit: 4000029,		//override requested gas limit.
-            verbose: true
+            verbose: process.env.DEBUG
         }
 
         let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
