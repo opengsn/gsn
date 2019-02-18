@@ -23,7 +23,6 @@ import (
 )
 
 const TxReceiptTimeout = 60 * time.Second
-const EventTimeout = 5 * time.Second
 
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
@@ -392,23 +391,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 		return
 	}
 
-	start := time.Now()
-	for (iter.Event == nil ||
-		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
-		(iter.Event.Url != relay.Url)) && time.Since(start) < EventTimeout {
-		if !iter.Next() {
-			iter, err = relay.rhub.FilterRelayAdded(filterOpts, []common.Address{relay.Address()}, nil)
-			if err != nil {
-				log.Fatalln(err)
-				return
-			}
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	if iter.Event == nil ||
+	if (iter.Event == nil && !iter.Next()) ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
