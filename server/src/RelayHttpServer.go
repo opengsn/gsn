@@ -20,11 +20,14 @@ import (
 	"time"
 )
 
+const VERSION = "0.3.5"
+
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
 var ready = false
+var removed = false
 
 var relay librelay.IRelay
 var server *http.Server
@@ -32,10 +35,9 @@ var stopKeepAlive chan bool
 var stopRefreshBlockchainView chan bool
 //var stopScanningBlockChain chan bool
 
-
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("RelayHttpServer starting")
+	log.Println("RelayHttpServer starting. version:", VERSION)
 
 	configRelay(parseCommandLine())
 
@@ -46,8 +48,13 @@ func main() {
 	//Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
 	//http.HandleFunc("/audit", assureRelayReady(auditRelaysHandler))
 
-	stopKeepAlive = schedule(keepAlive, 1*time.Minute, 0)
-	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*time.Minute, 0)
+	timeUnit := time.Minute
+	if shortSleep {
+		timeUnit = 100*time.Millisecond
+	}
+	stopKeepAlive = schedule(keepAlive, 1*timeUnit, 0)
+	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
+	schedule(shutdownOnRelayRemoved, 1*timeUnit, 0)
 	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
 
 	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
@@ -65,7 +72,7 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-		if !ready {
+		if !shouldHandleRelayRequests() {
 			err := fmt.Errorf("Relay not staked and registered yet")
 			log.Println(err)
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
@@ -73,7 +80,6 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// wait for funding
-		log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 		balance, err := relay.Balance()
 		if err != nil {
 			log.Println(err)
@@ -86,6 +92,8 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 			return
 		}
+		log.Println("Relay balance:", balance.Uint64())
+
 		gasPrice := relay.GasPrice()
 		if gasPrice.Uint64() == 0 {
 			err = fmt.Errorf("Waiting for gasPrice...")
@@ -143,7 +151,7 @@ func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
+func getEthAddrHandler(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
@@ -151,7 +159,8 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
-		Ready:              ready,
+		Ready:              shouldHandleRelayRequests(),
+		Version:            VERSION,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
 	if err != nil {
@@ -166,10 +175,11 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 
 func relayHandler(w http.ResponseWriter, r *http.Request) {
 
-	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
-
 	log.Println("Relay Handler Start")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
@@ -184,7 +194,6 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 		return
 	}
-	log.Println("RelayHubAddress", request.RelayHubAddress.String())
 	signedTx, err := relay.CreateRelayTransaction(*request)
 	if err != nil {
 		log.Println("Failed to relay")
@@ -210,7 +219,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	stakeAmount := flag.Int64("StakeAmount", 10000000000000000, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
-	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
+	gasPricePercent := flag.Int64("GasPricePercent", 70, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	registrationBlockRate := flag.Uint64("RegistrationBlockRate", 5800, "Relay registeration rate (in blocks)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
@@ -274,6 +283,10 @@ func configRelay(relayParams librelay.RelayParams) {
 
 // Wait for server to be staked & funded by owner, then try and register on RelayHub
 func refreshBlockchainView() {
+	if removed {
+		log.Println("Relay removed. No need to wait for owner actions")
+		return
+	}
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
 	when, err := relay.RegistrationDate()
@@ -303,7 +316,10 @@ func refreshBlockchainView() {
 }
 
 func waitForOwnerActions() {
-	log.Println("hub to check stake", relay.HubAddress().Hex())
+	if removed {
+		log.Println("Relay removed. No need to wait for owner actions")
+		return
+	}
 	staked, err := relay.IsStaked()
 	for ; err != nil || !staked; staked, err = relay.IsStaked() {
 		if err != nil {
@@ -315,7 +331,6 @@ func waitForOwnerActions() {
 	}
 
 	// wait for funding
-	log.Println("Checking relay server's ether balance at", relay.Address().Hex())
 	balance, err := relay.Balance()
 	if err != nil {
 		log.Println(err)
@@ -330,18 +345,21 @@ func waitForOwnerActions() {
 }
 
 func keepAlive() {
-
+	if removed {
+		log.Println("Relay removed. No need to reregister")
+		return
+	}
 	waitForOwnerActions()
 	when, err := relay.RegistrationDate()
 	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	if err != nil {
 		log.Println(err)
-	} else if time.Now().Unix()- when < delayBetweenRegistrations {
+	} else if time.Now().Unix()-when < delayBetweenRegistrations {
 		log.Println("Relay registered lately. No need to reregister")
 		return
 	}
 	log.Println("Registering relay...")
-	for ;; {
+	for ; ; {
 		err := relay.RegisterRelay()
 		if err == nil {
 			break;
@@ -351,6 +369,32 @@ func keepAlive() {
 		sleep(1*time.Minute, shortSleep)
 	}
 	log.Println("Done registering")
+}
+
+func shutdownOnRelayRemoved() {
+	var err error
+	removed, err = relay.IsRemoved()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if removed {
+		log.Println("Relay removed. Sending balance back to owner")
+		sleep(2*time.Minute, shortSleep)
+		for ; ; {
+			err = relay.SendBalanceToOwner()
+			if err == nil {
+				break
+			}
+			sleep(5*time.Second, shortSleep)
+		}
+		server.Close()
+	}
+
+}
+
+func shouldHandleRelayRequests() (bool){
+	return ready && !removed
 }
 
 func scanBlockChainToPenalize() {

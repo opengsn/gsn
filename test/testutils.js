@@ -1,7 +1,7 @@
- /* global web3 assert */
+/* global web3 assert */
 
 const child_process = require('child_process')
-const HttpWrapper = require( "../src/js/relayclient/HttpWrapper")
+const HttpWrapper = require("../src/js/relayclient/HttpWrapper")
 const localhostOne = "http://localhost:8090"
 const ethUtils = require('ethereumjs-util');
 const ethJsTx = require('ethereumjs-tx');
@@ -21,9 +21,9 @@ module.exports = {
 
         options = options || {}
         let args = []
-        args.push( "-Workdir", "./build/server" )
-        args.push( "-ShortSleep" )
-        if ( rhub ) {
+        args.push("-Workdir", "./build/server")
+        args.push("-ShortSleep")
+        if (rhub) {
             args.push("-RelayHubAddress", rhub.address)
         }
         if (options.EthereumNodeUrl) {
@@ -34,9 +34,10 @@ module.exports = {
         }
         let proc = child_process.spawn(server, args)
 
-        let relaylog=function(){}
-        if ( process.env.relaylog )
-            relaylog = (msg)=> msg.split("\n").forEach(line=>console.log("relay-"+proc.pid+"> "+line))
+        let relaylog = function () {
+        }
+        if (process.env.relaylog)
+            relaylog = (msg) => msg.split("\n").forEach(line => console.log("relay-" + proc.pid + "> " + line))
 
         await new Promise((resolve, reject) => {
 
@@ -54,7 +55,7 @@ module.exports = {
             proc.stderr.on('data', listener)
             let doaListener = (code) => {
                 if (!this.alreadystarted) {
-                    relaylog("died before init code="+code)
+                    relaylog("died before init code=" + code)
                     reject(lastresponse)
                 }
             };
@@ -63,29 +64,33 @@ module.exports = {
 
         let res
         let http = new HttpWrapper(web3)
-        let count1=3
-        while (count1-- > 0 ) {
+        let count1 = 3
+        while (count1-- > 0) {
             try {
                 res = await http.sendPromise(localhostOne + '/getaddr')
-                if ( res ) break
-            } catch(e) {
-                console.log( "startRelay getaddr error", e)
+                if (res) break
+            } catch (e) {
+                console.log("startRelay getaddr error", e)
             }
             console.log("sleep before cont.")
             await module.exports.sleep(1000)
         }
-        assert.ok( res, "can't ping server")
+        assert.ok(res, "can't ping server")
         let relayServerAddress = res.RelayServerAddress
-        console.log("Relay Server Address",relayServerAddress)
-        await web3.eth.sendTransaction({to:relayServerAddress, from:options.relayOwner, value:web3.utils.toWei("2", "ether")})
+        console.log("Relay Server Address", relayServerAddress)
+        await web3.eth.sendTransaction({
+            to: relayServerAddress,
+            from: options.relayOwner,
+            value: web3.utils.toWei("2", "ether")
+        })
         await rhub.stake(relayServerAddress, options.delay || 3600, {from: options.relayOwner, value: options.stake})
 
         //now ping server until it "sees" the stake and funding, and gets "ready"
-        res=""
+        res = ""
         let count = 25
         while (count-- > 0) {
-            res = await http.sendPromise(localhostOne+'/getaddr')
-            if ( res && res.Ready ) break;
+            res = await http.sendPromise(localhostOne + '/getaddr')
+            if (res && res.Ready) break;
             await module.exports.sleep(1500)
         }
         assert.ok(res.Ready, "Timed out waiting for relay to get staked and registered")
@@ -94,7 +99,7 @@ module.exports = {
 
     },
     sleep: function (ms) {
-     return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise(resolve => setTimeout(resolve, ms));
     },
 
     stopRelay: function (proc) {
@@ -127,7 +132,7 @@ module.exports = {
         validTransaction.sign(privKey)
         var raw_tx = '0x' + validTransaction.serialize().toString('hex');
 
-        let promise = new Promise((resolve,reject) => {
+        let promise = new Promise((resolve, reject) => {
             web3.eth.sendSignedTransaction(raw_tx, (err, res) => {
                 if (err) {
                     reject(err)
@@ -142,7 +147,7 @@ module.exports = {
     },
 
     increaseTime: function (time) {
-        return new Promise( (resolve,reject)=> {
+        return new Promise((resolve, reject) => {
             web3.currentProvider.send({
                 jsonrpc: '2.0',
                 method: 'evm_increaseTime',
@@ -151,25 +156,45 @@ module.exports = {
             }, (err) => {
                 if (err) return reject(err)
                 module.exports.evmMine()
-                    .then(r=>resolve(r))
-                    .catch(e=>reject(e))
+                    .then(r => resolve(r))
+                    .catch(e => reject(e))
 
             });
         })
     },
     evmMine: function () {
-        return new Promise( (resolve,reject) => {
+        return new Promise((resolve, reject) => {
             web3.currentProvider.send({
                 jsonrpc: '2.0',
                 method: 'evm_mine',
                 params: [],
                 id: new Date().getSeconds()
-            }, (e,r)=>{
+            }, (e, r) => {
                 if (e) reject(e)
                 else resolve(r)
             });
 
         })
+    },
+
+    /**
+     * If ganache is run without '-b' parameter, reverted transaction return
+     * error message instantly. Otherwise, revert will only occur once 'evm_mine'
+     * is executed, and the error will be generated by truffle.
+     *
+     * @param {*} error - returned by web3 from RPC call
+     * @param {*} errorMessage - expected error message
+     */
+    assertErrorMessageCorrect: function (error, errorMessage) {
+        let blocktime_mode_error = "does not trigger a Solidity `revert` statement"
+        if (!error || !error.message) {
+            console.log("no error: ", error, "expected:", errorMessage)
+            assert.equals(errorMessage, error) //expected some error, got null
+        }
+        if (error.message.includes(errorMessage) || error.message.includes(blocktime_mode_error))
+            return true;
+        console.log("invalid error message: " + error.message + "\n(expected: " + errorMessage + ")")
+        assert.ok(false, "invalid error message: " + error.message + "\n(expected: " + errorMessage + ")")
     },
 
     zeroAddr
