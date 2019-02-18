@@ -44,7 +44,7 @@ function RelayClient(web3, config) {
     this.web3 = web3
     this.httpSend = new HttpWrapper(this.web3)
 
-    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend)
+    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend, this.config.verbose)
 
 }
 
@@ -97,11 +97,15 @@ RelayClient.prototype.validateRelayResponse = function (returned_tx, address_rel
         from, to, transaction_orig, transaction_fee, gas_price, gas_limit, nonce, relay_hub_address, relay_address);
 
     if (returned_tx_params_hash === transaction_orig_params_hash && address_relay === signer) {
+        if (this.config.verbose){
+          console.log("validateRelayResponse - valid transaction response")
+        }
         tx.v = tx_v;
         tx.r = tx_r;
         tx.s = tx_s;
         return tx;
     } else {
+        console.error("validateRelayResponse - invalid response!")
         var i;
         for (i = 0; i < 7; i++) {
             console.log(request_decoded_params[i])
@@ -115,7 +119,7 @@ RelayClient.prototype.validateRelayResponse = function (returned_tx, address_rel
  * Performs a '/relay' HTTP request to the given url
  * @returns a Promise that resolves to an instance of {@link EthereumTx} signed by a relay
  */
-RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress) {
+RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, recipientNonce, relayHubAddress, relayAddress, relayMaxNonce) {
   var self = this
 
   return new Promise(function (resolve, reject) {
@@ -128,7 +132,8 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       "gasPrice": gasprice,
       "gasLimit": gaslimit,
       "relayFee": relayFee,
-      "RecipientNonce": parseInt(nonce),
+      "RecipientNonce": parseInt(recipientNonce),
+      "RelayMaxNonce": parseInt(relayMaxNonce),
       "RelayHubAddress": relayHubAddress
     };
 
@@ -147,7 +152,7 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       try {
         validTransaction = self.validateRelayResponse(
           body, relayAddress, from, to, encodedFunction,
-          relayFee, gasprice, gaslimit, nonce, relayHubAddress, relayAddress, signature);
+          relayFee, gasprice, gaslimit, recipientNonce, relayHubAddress, relayAddress, signature);
       }
       catch (error) {
         console.error("validateRelayResponse " + error)
@@ -157,12 +162,29 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
         reject("Failed to validate response")
         return
       }
+      let receivedNonce = validTransaction.nonce.readUIntBE(0,validTransaction.nonce.byteLength)
+      if (receivedNonce > relayMaxNonce) {
+        // TODO: need to validate that client retries the same request and doesn't double-spend. 
+        // Note that this transaction is totally valid from the EVM's point of view
+        reject("Relay used a tx nonce higher than requested. Requested " + relayMaxNonce + " got " + receivedNonce)
+        return
+      }
 
       var raw_tx = '0x' + validTransaction.serialize().toString('hex');
       let txHash = "0x" + validTransaction.hash(true).toString('hex')
       console.log("txHash= " + txHash);
       self.broadcastRawTx(raw_tx, txHash);
       resolve(validTransaction);
+    }
+
+    if (self.config.verbose) {
+      let replacer = (key, value) => {
+        if (key === "signature")
+          return signature;
+        else
+          return value
+      }
+      console.log("sendViaRelay to URL: " + relayUrl + " " + JSON.stringify(jsonRequestData, replacer))
     }
     self.httpSend.send(relayUrl + "/relay", jsonRequestData, callback)
   });
@@ -258,10 +280,13 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
   let blockNow = await this.web3.eth.getBlockNumber()
   let blockFrom = Math.max(1, blockNow - relay_lookup_limit_blocks)
   let pinger = await this.serverHelper.newActiveRelayPinger(blockFrom, gasPrice)
+  let errors = []
   for (;;) {
     let activeRelay = await pinger.nextRelay()
     if ( !activeRelay ) {
-        throw new Error("No relay responded! " + pinger.relaysCount + " attempted, " + pinger.pingedRelays + " pinged")
+        let error = new Error("No relay responded! " + pinger.relaysCount + " attempted, " + pinger.pingedRelays + " pinged")
+        error.otherErrors = errors
+        throw error
     }
     let relayAddress = activeRelay.RelayServerAddress
     let relayUrl = activeRelay.relayUrl
@@ -285,6 +310,24 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
       signature = await getTransactionSignature(this.web3, options.from, hash);
     }
 
+    if (self.config.verbose) {
+      console.log("relayTransaction hash: ", hash, "from: ", options.from, "sig: ", signature)
+      let rec = utils.getEcRecoverMeta(hash, signature)
+      if (rec.toLowerCase() == options.from.toLowerCase()) {
+        console.log("relayTransaction recovered:", rec, "signature is correct")
+      }
+      else {
+        console.error("relayTransaction recovered:", rec, "signature error")
+      }
+    }
+
+    // max nonce is not signed, as contracts cannot access addresses' nonces. 
+    let allowed_relay_nonce_gap = this.config.allowed_relay_nonce_gap
+    if (typeof allowed_relay_nonce_gap === "undefined"){
+      allowed_relay_nonce_gap = 3
+    }
+    let relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowed_relay_nonce_gap
+
     try {
       let validTransaction = await self.sendViaRelay(
         relayUrl,
@@ -297,11 +340,13 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
         options.txfee,
         nonce,
         relayHub._address,
-        relayAddress
+        relayAddress,
+        relayMaxNonce
       )
       return validTransaction
     }
     catch (error) {
+        errors.push(error)
         console.log("relayTransaction: req:",JSON.stringify({ from:options.from,
             to:options.to,
             encodedFunctionCall,

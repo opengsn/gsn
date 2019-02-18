@@ -2,8 +2,9 @@ pragma solidity >=0.4.0 <0.6.0;
 
 import "./RelayHub.sol";
 import "./RelayRecipient.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-contract SampleRecipient is RelayRecipient {
+contract SampleRecipient is RelayRecipient, Ownable {
 
     mapping (address => bool) public relays_whitelist;
 
@@ -15,9 +16,10 @@ contract SampleRecipient is RelayRecipient {
         get_relay_hub().deposit.value(msg.value)();
     }
 
-    function withdraw() public {
+    function withdraw() public onlyOwner {
         uint balance = get_relay_hub().balances(address(this));
         get_relay_hub().withdraw(balance);
+        msg.sender.transfer(balance);
     }
 
     event Reverting(string message);

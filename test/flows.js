@@ -41,7 +41,7 @@ options.forEach(params => {
                 // rhub = await RelayHub.deployed()
                 rhub = await RelayHub.new()
                 relayproc = await testutils.startRelay(rhub, {
-                    stake: 1e12,
+                    stake: 1e17,
                     delay: 3600,
                     txfee: 12,
                     url: "asd",
@@ -62,9 +62,6 @@ options.forEach(params => {
 
         after(async function () {
             await testutils.stopRelay(relayproc)
-            //disable relay, so it won't interfere with other tests..
-            if ( relay_client_config )
-                relay_client_config.enableRelay=false
         })
 
         if (params.relay) {
@@ -75,7 +72,8 @@ options.forEach(params => {
                     // verbose:true,
                     txfee: 12,
                         force_gasPrice: gasPrice,			//override requested gas price
-                    force_gasLimit: 100000		//override requested gas limit.
+                    force_gasLimit: 100000,		//override requested gas limit.
+                    verbose: true
                 }
                 let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config )
 

@@ -61,14 +61,14 @@ func NewSimBackend() {
 	key, _ = crypto.HexToECDSA("4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d")
 	key2, _ = crypto.HexToECDSA("6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1")
 	auth = bind.NewKeyedTransactor(key)
-	alloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(1337000000000000000)}
+	alloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(2337000000000000000)}
 	sim = &FakeClient{}
 	sim.SimulatedBackend = backends.NewSimulatedBackend(alloc, uint64(10000000))
 }
 
 func NewRelay(relayHubAddress common.Address) {
 	fee := big.NewInt(10)
-	stakeAmount := big.NewInt(100002)
+	stakeAmount := big.NewInt(1100000000000000000)
 	gasLimit := uint64(1000000)
 	defaultGasPrice := int64(params.GWei)
 	gasPricePercent := big.NewInt(10)
@@ -183,12 +183,11 @@ func TestRegisterRelay(t *testing.T) {
 		t.Error("Relay is not staked")
 	}
 	ErrFail(err, t)
-	staleRelayAddress := common.HexToAddress("0")
 	// TODO: Watch out for FLICKERING: attempt to AdjustTime ahead of machine clock will have no effect at all
 	duration := time.Since(time.Unix(50, 0))
 	err = sim.AdjustTime(duration)
 	sim.Commit()
-	tx, err := relay.sendRegisterTransaction(staleRelayAddress)
+	tx, err := relay.sendRegisterTransaction()
 	ErrFail(err, t)
 	if err != nil {
 		fmt.Println("ERROR", err)
@@ -205,14 +204,6 @@ func TestRegisterRelay(t *testing.T) {
 	}
 }
 
-func TestRegisterRelay_FailsToRemoveStaleRelay(t *testing.T) {
-	staleRelayAddress := common.HexToAddress("0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab")
-	err := relay.RegisterRelay(staleRelayAddress)
-	if err == nil || !strings.Contains(err.Error(), "failing transaction") {
-		t.Error(err)
-	}
-}
-
 func TestCreateRelayTransaction(t *testing.T) {
 	ErrFail(relay.RefreshGasPrice(), t)
 	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
@@ -225,6 +216,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 		GasPrice:        *big.NewInt(10),
 		GasLimit:        *big.NewInt(1000000),
 		RecipientNonce:  *big.NewInt(0),
+		RelayMaxNonce:   *big.NewInt(1000000),
 		RelayFee:        *big.NewInt(10),
 		RelayHubAddress: rhaddr,
 	}

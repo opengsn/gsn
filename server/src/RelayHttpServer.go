@@ -207,7 +207,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
 	port := flag.String("Port", "", "Relay server's port")
 	relayHubAddress := flag.String("RelayHubAddress", "0x254dffcd3277c0b1660f6d42efbb754edababc2b", "RelayHub address")
-	stakeAmount := flag.Int64("StakeAmount", 1002, "Relay's stake (in wei)")
+	stakeAmount := flag.Int64("StakeAmount", 10000000000000000, "Relay's stake (in wei)")
 	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
@@ -341,10 +341,12 @@ func keepAlive() {
 		return
 	}
 	log.Println("Registering relay...")
-	for err := relay.RegisterRelay(common.HexToAddress("0")); err != nil; err = relay.RegisterRelay(common.HexToAddress("0")) {
-		if err != nil {
-			log.Println(err)
+	for ;; {
+		err := relay.RegisterRelay()
+		if err == nil {
+			break;
 		}
+		log.Println(err)
 		log.Println("Trying to register again...")
 		sleep(1*time.Minute, shortSleep)
 	}

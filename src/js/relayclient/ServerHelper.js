@@ -3,12 +3,13 @@
 class ActiveRelayPinger {
 
     // TODO: 'httpSend' should be on a network layer
-    constructor(filteredRelays, httpSend, gasPrice) {
+    constructor(filteredRelays, httpSend, gasPrice, verbose) {
         this.remainingRelays = filteredRelays.slice()
         this.httpSend = httpSend
         this.pingedRelays = 0
         this.relaysCount = filteredRelays.length
         this.gasPrice = gasPrice
+        this.verbose = verbose
     }
 
     /**
@@ -24,11 +25,17 @@ class ActiveRelayPinger {
         for ( ;!firstRelayToRespond && this.remainingRelays.length ; ) {
             let bulkSize = Math.min( 3, this.remainingRelays.length)
             try {
+                let slice = this.remainingRelays.slice(0, bulkSize)
+                if (this.verbose){
+                    console.log("nextRelay: will initiate race between " + JSON.stringify(slice))
+                }
                 firstRelayToRespond = await this.raceToSuccess(
-                    this.remainingRelays
-                        .slice(0, bulkSize)
+                    slice
                         .map(relay => this.getRelayAddressPing(relay.relayUrl, this.gasPrice))
                 );
+                if (this.verbose){
+                    console.log("race finished with a champion: " + firstRelayToRespond.relayUrl)
+                }
             } catch (e) {
                 console.log("One batch of relays failed, last error: ", e)
                 //none of the first `bulkSize` items matched. remove them, to continue with the next bulk.
@@ -69,6 +76,9 @@ class ActiveRelayPinger {
                     reject(err);
                 }
             }
+            if (self.verbose){
+                console.log("getRelayAddressPing URL: " + relayUrl)
+            }
             self.httpSend.send(relayUrl + "/getaddr", {}, callback)
         });
     }
@@ -101,11 +111,13 @@ class ServerHelper {
      * @param {*} minStake
      * @param {*} minDelay
      * @param {*} httpSend
+     * @param {*} verbose
      */
-    constructor(minStake, minDelay, httpSend) {
+    constructor(minStake, minDelay, httpSend, verbose) {
         this.minStake = minStake
         this.minDelay = minDelay
         this.httpSend = httpSend
+        this.verbose = verbose
 
         this.filteredRelays = []
         this.isInitialized = false
@@ -134,11 +146,11 @@ class ServerHelper {
             this.fromBlock = fromBlock
             await this.fetchRelaysAdded()
         }
-        return this.createActiveRelayPinger(this.filteredRelays, this.httpSend, gasPrice)
+        return this.createActiveRelayPinger(this.filteredRelays, this.httpSend, gasPrice, this.verbose)
     }
 
-    createActiveRelayPinger(filteredRelays, httpSend, gasPrice) {
-        return new ActiveRelayPinger(filteredRelays, httpSend, gasPrice)
+    createActiveRelayPinger(filteredRelays, httpSend, gasPrice, verbose) {
+        return new ActiveRelayPinger(filteredRelays, httpSend, gasPrice, verbose)
     }
 
     /**
@@ -152,6 +164,9 @@ class ServerHelper {
             // topics: [["RelayAdded", "RelayRemoved"]]
         })
 
+        if (this.verbose){
+            console.log("fetchRelaysAdded: found " + addedAndRemovedEvents.length + " events")
+        }
         //TODO: better filter RelayAdded, RelayRemoved events: otherwise, we'll be scanning all TransactionRelayed too...
         //since RelayAdded can't be called after RelayRemoved, its OK to scan first for add, and the remove all removed relays.
         for (var index in addedAndRemovedEvents) {
@@ -187,9 +202,13 @@ class ServerHelper {
             throw new Error("no valid relays. orig relays=" + JSON.stringify(origRelays))
         }
 
+        if (this.verbose){
+            console.log("fetchRelaysAdded: after filtering have " + size + " active relays")
+        }
+
         filteredRelays = filteredRelays.sort((a, b) => {
             return a.txFee - b.txFee
-        }).slice(0, size)
+        })
 
         this.filteredRelays = filteredRelays
         this.isInitialized = true

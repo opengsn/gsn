@@ -8,22 +8,13 @@ contract RelayHub is RelayHubApi {
 
     // Anyone can call certain functions in this singleton and trigger relay processes.
 
-    uint constant timeout = 5 days; // XXX TBD
-    uint constant minimum_stake = 1;    // XXX TBD
+    uint constant minimum_stake = 0.1 ether;    // XXX TBD
     uint constant minimum_unstake_delay = 0;    // XXX TBD
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
-    uint constant low_ether = 1 ether;    // XXX TBD - relay still works, but owner should be notified to fund the relay soon.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
     uint constant public gas_overhead = 47382;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
-
-    struct Relay {
-        uint timestamp;
-        uint transaction_fee;
-    }
-
-    mapping (address => Relay) public relays;
 
     struct Stake {
         uint stake;             // Size of the stake
@@ -31,6 +22,8 @@ contract RelayHub is RelayHubApi {
         uint unstake_time;      // When is the stake released.  Non-zero means that the relay has been removed and is waiting for unstake.
         address owner;
         bool removed;
+        bool registered;
+        uint transaction_fee;
     }
 
     mapping (address => Stake) public stakes;
@@ -70,6 +63,7 @@ contract RelayHub is RelayHubApi {
      * Unused deposited can be withdrawn with `withdraw()`
      */
     function depositFor(address target) public payable {
+        require(msg.value <= minimum_stake, "deposit too big");
         balances[target] += msg.value;
         require (balances[target] >= msg.value);
         emit Deposited(target, msg.value);
@@ -120,17 +114,12 @@ contract RelayHub is RelayHubApi {
     }
 
     function can_unstake(address relay) public view returns(bool) {
-        // Only owner can unstake
-        if (stakes[relay].owner != msg.sender) {
-            return false;
-        }
-        if (relays[relay].timestamp != 0 || stakes[relay].unstake_time == 0)  // Relay still registered so unstake time hasn't been set
-            return false;
-        return stakes[relay].unstake_time <= now;  // Finished the unstaking delay period?
+        return stakes[relay].unstake_time > 0 && stakes[relay].unstake_time <= now;  // Finished the unstaking delay period?
     }
 
     modifier unstake_allowed(address relay) {
         require(can_unstake(relay));
+        require(stakes[relay].owner == msg.sender);
         _;
     }
 
@@ -141,44 +130,29 @@ contract RelayHub is RelayHubApi {
         emit Unstaked(relay, amount);
     }
 
-    function register_relay(uint transaction_fee, string memory url, address optional_relay_removal) public lock_stake {
+    function register_relay(uint transaction_fee, string memory url) public lock_stake {
         // Anyone with a stake can register a relay.  Apps choose relays by their transaction fee, stake size and unstake delay,
         // optionally crossed against a blacklist.  Apps verify the relay's action in realtime.
 
         Stake storage relay_stake = stakes[msg.sender];
         // Penalized relay cannot reregister
         require(!relay_stake.removed, "Penalized relay cannot reregister");
-        relays[msg.sender] = Relay(now, transaction_fee);
+        require(msg.sender == tx.origin, "Contracts cannot register as relays");
+        stakes[msg.sender].registered = true;
+        stakes[msg.sender].transaction_fee = transaction_fee;
         emit RelayAdded(msg.sender, relay_stake.owner, transaction_fee, relay_stake.stake, relay_stake.unstake_delay, url);
-
-        // @optional_relay_removal is unrelated to registration, but incentivizes relays to help purging stale relays from the list.
-        // Providing a stale relay will cause its removal, and offset the gas price of registration.
-        if (optional_relay_removal != address(0))
-            remove_stale_relay(optional_relay_removal);
     }
 
-    function remove_relay_internal(address relay) internal {
-        delete relays[relay];
+    function remove_relay_by_owner(address relay) public relay_owner(relay) {
         stakes[relay].unstake_time = stakes[relay].unstake_delay + now;   // Start the unstake counter
+        stakes[msg.sender].registered = false;
         stakes[relay].removed = true;
         emit RelayRemoved(relay, stakes[relay].unstake_time);
-    }
-
-    function remove_stale_relay(address relay) public { // Trustless, assumed to be called by anyone willing to pay for the gas.  Verifies staleness.  Normally called by relays to keep the list current.
-        require(relays[relay].timestamp != 0, "not a relay");  // Relay exists?
-        require(relays[relay].timestamp + timeout < now, "not stale");  // Did relay send a keeplive recently?
-        // Anyone can remove a stale relay.
-        remove_relay_internal(relay);
     }
 
     modifier relay_owner(address relay) {
         require(stakes[relay].owner == msg.sender, "not owner");
         _;
-    }
-
-    function remove_relay_by_owner(address relay) public relay_owner(relay) {
-        // The relay's owner can remove it at any time, to start the unstake countdown.
-        remove_relay_internal(relay);
     }
 
     function check_sig(address signer, bytes32 hash, bytes memory sig) pure internal returns (bool) {
@@ -217,9 +191,8 @@ contract RelayHub is RelayHubApi {
      */
     function relay(address from, address to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory sig) public {
         uint initial_gas = gasleft();
-        require(relays[msg.sender].timestamp > 0, "Unknown relay");  // Must be from a known relay
+        require(stakes[msg.sender].registered, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
-        relays[msg.sender].timestamp = now;
 
         require(0 == can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, sig), "can_relay failed");
 

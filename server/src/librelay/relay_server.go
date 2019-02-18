@@ -35,6 +35,7 @@ type RelayTransactionRequest struct {
 	GasPrice        big.Int
 	GasLimit        big.Int
 	RecipientNonce  big.Int
+	RelayMaxNonce   big.Int
 	RelayFee        big.Int
 	RelayHubAddress common.Address
 }
@@ -79,7 +80,7 @@ type IRelay interface {
 
 	Unstake() (err error)
 
-	RegisterRelay(staleRelay common.Address) (err error)
+	RegisterRelay() (err error)
 
 	UnregisterRelay() (err error)
 
@@ -105,7 +106,7 @@ type IRelay interface {
 	
 	sendUnstakeTransaction() (tx *types.Transaction, err error)
 
-	sendRegisterTransaction(staleRelay common.Address) (tx *types.Transaction, err error)
+	sendRegisterTransaction() (tx *types.Transaction, err error)
 
 	awaitTransactionMined(tx *types.Transaction) (err error)
 }
@@ -281,15 +282,15 @@ func (relay *relayServer) Unstake() (err error) {
 
 }
 
-func (relay *relayServer) RegisterRelay(staleRelay common.Address) (err error) {
-	tx, err := relay.sendRegisterTransaction(staleRelay)
+func (relay *relayServer) RegisterRelay() (err error) {
+	tx, err := relay.sendRegisterTransaction()
 	if err != nil {
 		return err
 	}
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (tx *types.Transaction, err error) {
+func (relay *relayServer) sendRegisterTransaction() (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(relay.PrivateKey)
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -300,7 +301,7 @@ func (relay *relayServer) sendRegisterTransaction(staleRelay common.Address) (tx
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
-	tx, err = relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url, staleRelay)
+	tx, err = relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url)
 	if err != nil {
 		log.Println(err)
 		//relay.replayUnconfirmedTxs(client)
@@ -433,6 +434,12 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 	if relay.gasPrice == nil || relay.gasPrice.Cmp(&request.GasPrice) > 0 {
 		err = fmt.Errorf("Unacceptable gasPrice")
 		log.Println(err)
+		return
+	}
+
+	if request.RelayMaxNonce.Cmp(big.NewInt(int64(lastNonce))) < 0 {
+		err = fmt.Errorf("Unacceptable RelayMaxNonce")
+		log.Println(err, request.RelayMaxNonce)
 		return
 	}
 
