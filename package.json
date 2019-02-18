@@ -35,6 +35,8 @@
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js && http-server webtools/ -o",
     "lint": "eslint ./src ./test -f unix",
+    "gsn-dock-relay": "./scripts/gsn-dock-relay",
+    "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache",
     "web": "./restart-relay.sh web"
   },
   "dependencies": {
