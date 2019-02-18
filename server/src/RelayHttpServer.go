@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.3.1"
+const VERSION = "0.3.2"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
@@ -48,7 +48,7 @@ func main() {
 	//Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
 	//http.HandleFunc("/audit", assureRelayReady(auditRelaysHandler))
 
-	timeUnit :=  time.Minute
+	timeUnit := time.Minute
 	if shortSleep {
 		timeUnit = time.Second
 	}
@@ -170,6 +170,7 @@ func getEthAddrHandler(w http.ResponseWriter, _ *http.Request) {
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
 		Ready:              ready,
+		Version:            VERSION,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
 	if err != nil {
@@ -357,7 +358,7 @@ func keepAlive() {
 		return
 	}
 	log.Println("Registering relay...")
-	for ;; {
+	for ; ; {
 		err := relay.RegisterRelay()
 		if err == nil {
 			break;

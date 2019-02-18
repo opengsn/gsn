@@ -54,6 +54,7 @@ type GetEthAddrResponse struct {
 	RelayServerAddress common.Address
 	MinGasPrice        big.Int
 	Ready              bool
+	Version            string
 }
 
 type RelayTransactionResponse struct {
@@ -425,75 +426,75 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	return
 }
 
-	func (relay *relayServer) IsRemoved() (removed bool, err error) {
-		filterOpts := &bind.FilterOpts{
-			Start: 0,
-			End:   nil,
-		}
-		iter, err := relay.rhub.FilterRelayRemoved(filterOpts, []common.Address{relay.Address()})
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		if iter.Event == nil && !iter.Next() {
-			return
-		}
-		return true,nil
+func (relay *relayServer) IsRemoved() (removed bool, err error) {
+	filterOpts := &bind.FilterOpts{
+		Start: 0,
+		End:   nil,
+	}
+	iter, err := relay.rhub.FilterRelayRemoved(filterOpts, []common.Address{relay.Address()})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if iter.Event == nil && !iter.Next() {
+		return
+	}
+	return true, nil
+}
+
+func (relay *relayServer) SendBalanceToOwner() (err error) {
+	balance, err := relay.Client.BalanceAt(context.Background(), relay.Address(), nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if balance.Uint64() == 0 {
+		log.Println("balance is 0")
+		return
+	}
+	log.Println("Sending", balance, "wei to owner address", relay.OwnerAddress.Hex())
+
+	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
+	nonce, err := relay.pollNonce()
+	if err != nil {
+		log.Println(err)
+		return
 	}
 
-	func (relay *relayServer) SendBalanceToOwner() (err error) {
-		balance,err := relay.Client.BalanceAt(context.Background(),relay.Address(), nil)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		if balance.Uint64() == 0 {
-			log.Println("balance is 0")
-			return
-		}
-		log.Println("Sending",balance,"wei to owner address", relay.OwnerAddress.Hex())
-
-		nonceMutex.Lock()
-		defer nonceMutex.Unlock()
-		nonce, err := relay.pollNonce()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		var data []byte
-		gasLimit := uint64(21000)                // in units
-		gasPrice, err := relay.Client.SuggestGasPrice(context.Background())
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		cost := gasPrice.Uint64()*gasLimit
-		value := big.NewInt(int64(balance.Uint64() - cost))
-		tx := types.NewTransaction(nonce, relay.OwnerAddress, value, gasLimit, gasPrice, data)
-
-		chainID, err := relay.Client.NetworkID(context.Background())
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), relay.PrivateKey)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		err = relay.Client.SendTransaction(context.Background(), signedTx)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		log.Printf("tx sent: %s", signedTx.Hash().Hex())
-
-		return relay.awaitTransactionMined(signedTx)
+	var data []byte
+	gasLimit := uint64(21000) // in units
+	gasPrice, err := relay.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		log.Println(err)
+		return
 	}
+	cost := gasPrice.Uint64() * gasLimit
+	value := big.NewInt(int64(balance.Uint64() - cost))
+	tx := types.NewTransaction(nonce, relay.OwnerAddress, value, gasLimit, gasPrice, data)
+
+	chainID, err := relay.Client.NetworkID(context.Background())
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), relay.PrivateKey)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	err = relay.Client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Printf("tx sent: %s", signedTx.Hash().Hex())
+
+	return relay.awaitTransactionMined(signedTx)
+}
 
 func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
 	// Check that the relayhub is the correct one
@@ -587,7 +588,7 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 	})
 	maxCharge := request.GasPrice.Uint64() * gasEstimate * (100 + relay.GasPricePercent.Uint64()) / 100
 	if toBalance.Uint64() < maxCharge {
-		err = fmt.Errorf("Recipient balance too low: %d, gasEstimate*fee: %d", toBalance,maxCharge)
+		err = fmt.Errorf("Recipient balance too low: %d, gasEstimate*fee: %d", toBalance, maxCharge)
 		log.Println(err)
 		return
 	}
