@@ -44,7 +44,7 @@ function RelayClient(web3, config) {
     this.web3 = web3
     this.httpSend = new HttpWrapper(this.web3)
 
-    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend)
+    this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend, this.config.verbose)
 
 }
 
@@ -97,11 +97,15 @@ RelayClient.prototype.validateRelayResponse = function (returned_tx, address_rel
         from, to, transaction_orig, transaction_fee, gas_price, gas_limit, nonce, relay_hub_address, relay_address);
 
     if (returned_tx_params_hash === transaction_orig_params_hash && address_relay === signer) {
+        if (this.config.verbose){
+          console.log("validateRelayResponse - valid transaction response")
+        }
         tx.v = tx_v;
         tx.r = tx_r;
         tx.s = tx_s;
         return tx;
     } else {
+        console.error("validateRelayResponse - invalid response!")
         var i;
         for (i = 0; i < 7; i++) {
             console.log(request_decoded_params[i])
@@ -171,6 +175,16 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       console.log("txHash= " + txHash);
       self.broadcastRawTx(raw_tx, txHash);
       resolve(validTransaction);
+    }
+
+    if (self.config.verbose) {
+      let replacer = (key, value) => {
+        if (key === "signature")
+          return signature;
+        else
+          return value
+      }
+      console.log("sendViaRelay to URL: " + relayUrl + " " + JSON.stringify(jsonRequestData, replacer))
     }
     self.httpSend.send(relayUrl + "/relay", jsonRequestData, callback)
   });
@@ -294,6 +308,17 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
       signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash);
     } else {
       signature = await getTransactionSignature(this.web3, options.from, hash);
+    }
+
+    if (self.config.verbose) {
+      console.log("relayTransaction hash: ", hash, "from: ", options.from, "sig: ", signature)
+      let rec = utils.getEcRecoverMeta(hash, signature)
+      if (rec.toLowerCase() == options.from.toLowerCase()) {
+        console.log("relayTransaction recovered:", rec, "signature is correct")
+      }
+      else {
+        console.error("relayTransaction recovered:", rec, "signature error")
+      }
     }
 
     // max nonce is not signed, as contracts cannot access addresses' nonces. 

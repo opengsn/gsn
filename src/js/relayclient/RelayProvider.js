@@ -13,7 +13,7 @@ class RelayProvider {
      */
     constructor(origProvider, relayOptions) {
         relayOptions = relayOptions || {}
-        relayOptions.relayEnabled = true
+        relayOptions.isRelayEnabled = true
         this.relayOptions = relayOptions
         this.origProvider = origProvider
 
@@ -26,8 +26,8 @@ class RelayProvider {
         this.relayClient = new RelayClient(new Web3(origProvider), relayOptions)
     }
 
-    enable(on) {
-        this.relayOptions.relayEnabled = on
+    enable(isRelayEnabled) {
+        this.relayOptions.isRelayEnabled = isRelayEnabled
     }
 
     send(payload, callback) {
@@ -62,7 +62,7 @@ class RelayProvider {
 
     //hook method: skip relay if the "from" address appears in optins.skipSenders
     skipRelay(payload) {
-        return !this.relayOptions.relayEnabled ||
+        return !this.relayOptions.isRelayEnabled ||
             this.relayOptions.skipSenders && this.relayOptions.skipSenders[payload.params.from]
     }
 }
