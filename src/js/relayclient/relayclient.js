@@ -105,12 +105,8 @@ RelayClient.prototype.validateRelayResponse = function (returned_tx, address_rel
         tx.s = tx_s;
         return tx;
     } else {
-        console.error("validateRelayResponse - invalid response!")
-        var i;
-        for (i = 0; i < 7; i++) {
-            console.log(request_decoded_params[i])
-        }
-        console.log(returned_tx, address_relay, from, to, transaction_orig, transaction_fee, gas_price, gas_limit, nonce, sig, signer)
+        console.error("validateRelayResponse: req", JSON.stringify(request_decoded_params))
+        console.error("validateRelayResponse: rsp", {returned_tx, address_relay, from, to, transaction_orig, transaction_fee, gas_price, gas_limit, nonce, sig, signer})
     }
 }
 
@@ -141,6 +137,9 @@ RelayClient.prototype.sendViaRelay = function (relayUrl, signature, from, to, en
       if (error) {
         reject(error);
         return
+      }
+      if ( self.config.verbose ) {
+          console.log("sendViaRelay resp=", body)
       }
 
       if (!body || !body.nonce ) {
@@ -347,17 +346,19 @@ RelayClient.prototype.relayTransaction = async function (encodedFunctionCall, op
     }
     catch (error) {
         errors.push(error)
-        console.log("relayTransaction: req:",JSON.stringify({ from:options.from,
-            to:options.to,
-            encodedFunctionCall,
-            txfee:options.txfee,
-            gasPrice,
-            gasLimit,
-            nonce,
-            relayhub:relayHub._address,
-            relayAddress
-        }).replace(/["{}]/g,"").replace(/,/g,"\n"))
-      console.log("relayTransaction:", (""+error).replace(/ (\w+:)/g, "\n$1 ") )
+        if (self.config.verbose)
+            console.log("relayTransaction: req:", {
+                from: options.from,
+                to: options.to,
+                encodedFunctionCall,
+                txfee: options.txfee,
+                gasPrice,
+                gasLimit,
+                nonce,
+                relayhub: relayHub._address,
+                relayAddress
+            })
+        console.log("relayTransaction:", ("" + error).replace(/ (\w+:)/g, "\n$1 "))
     }
   }
 }
@@ -367,7 +368,7 @@ RelayClient.prototype.fixTransactionReceiptResp = function (resp) {
         let logs = abi_decoder.decodeLogs(resp.result.logs)
         let relayed = logs.find(e => e && e.name == 'TransactionRelayed')
         if (relayed && relayed.events.find(e => e.name == "success").value === false) {
-            console.log("log=" + relayed + " changing status to zero")
+            console.log("reverted relayed transaction. changing status to zero")
             resp.result.status = 0
         }
     }
@@ -392,9 +393,6 @@ RelayClient.prototype.runRelay = function (payload, callback) {
 
     this.relayTransaction(params.data, relayOptions)
         .then(validTransaction => {
-
-            if (relayClientOptions.verbose)
-                console.log("RR response: ", payload.id, validTransaction)
 
             var hash = "0x" + validTransaction.hash(true).toString('hex')
             callback(null, {jsonrpc: '2.0', id: payload.id, result: hash})
