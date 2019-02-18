@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.3.3"
+const VERSION = "0.3.4"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
@@ -59,16 +59,6 @@ func main() {
 
 	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
 	err := server.ListenAndServe()
-	if removed {
-		log.Println("Relay removed. Sending balance back to owner")
-		for ; ; {
-			err = relay.SendBalanceToOwner()
-			if err == nil {
-				break
-			}
-			sleep(5*time.Second, shortSleep)
-		}
-	}
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -82,7 +72,7 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
 		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
-		if !ready {
+		if !shouldHandleRelayRequests() {
 			err := fmt.Errorf("Relay not staked and registered yet")
 			log.Println(err)
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
@@ -169,7 +159,7 @@ func getEthAddrHandler(w http.ResponseWriter, _ *http.Request) {
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
-		Ready:              ready,
+		Ready:              shouldHandleRelayRequests(),
 		Version:            VERSION,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
@@ -293,6 +283,10 @@ func configRelay(relayParams librelay.RelayParams) {
 
 // Wait for server to be staked & funded by owner, then try and register on RelayHub
 func refreshBlockchainView() {
+	if removed {
+		log.Println("Relay removed. No need to wait for owner actions")
+		return
+	}
 	waitForOwnerActions()
 	log.Println("Waiting for registration...")
 	when, err := relay.RegistrationDate()
@@ -322,6 +316,10 @@ func refreshBlockchainView() {
 }
 
 func waitForOwnerActions() {
+	if removed {
+		log.Println("Relay removed. No need to wait for owner actions")
+		return
+	}
 	staked, err := relay.IsStaked()
 	for ; err != nil || !staked; staked, err = relay.IsStaked() {
 		if err != nil {
@@ -347,7 +345,10 @@ func waitForOwnerActions() {
 }
 
 func keepAlive() {
-
+	if removed {
+		log.Println("Relay removed. No need to reregister")
+		return
+	}
 	waitForOwnerActions()
 	when, err := relay.RegistrationDate()
 	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
@@ -378,9 +379,22 @@ func shutdownOnRelayRemoved() {
 		return
 	}
 	if removed {
+		log.Println("Relay removed. Sending balance back to owner")
+		sleep(2*time.Minute, shortSleep)
+		for ; ; {
+			err = relay.SendBalanceToOwner()
+			if err == nil {
+				break
+			}
+			sleep(5*time.Second, shortSleep)
+		}
 		server.Close()
 	}
 
+}
+
+func shouldHandleRelayRequests() (bool){
+	return ready && !removed
 }
 
 func scanBlockChainToPenalize() {

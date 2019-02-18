@@ -30,7 +30,7 @@ contract('RelayClient', function (accounts) {
     let relayproc;
     let gasPrice;
     let relay_client_config;
-    let relayOwner = accounts[0];
+    let relayOwner = accounts[1];
 
     before(async function () {
         const gasPricePercent = 20
@@ -82,7 +82,7 @@ contract('RelayClient', function (accounts) {
             relayUrl: localhostOne,
             relayAddress: relayAddress,
             allowed_relay_nonce_gap: 0,
-            verbose: true
+            verbose: false
         }
 
         let tbk = new RelayClient(web3, relay_client_config);
@@ -117,7 +117,7 @@ contract('RelayClient', function (accounts) {
             relayUrl: localhostOne,
             relayAddress: relayAddress,
             allowed_relay_nonce_gap: -1,
-            verbose: true
+            verbose: false
         }
         let tbk = new RelayClient(web3, relay_client_config);
         let orig_send = tbk.httpSend.send
@@ -148,7 +148,7 @@ contract('RelayClient', function (accounts) {
             txfee: 12,
             force_gasPrice: gasPrice,			//override requested gas price
             force_gasLimit: 4000029,		//override requested gas limit.
-            verbose: true
+            verbose: false
         }
 
         let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
