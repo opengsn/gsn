@@ -19,7 +19,10 @@ if ( !network ) {
     process.exit(1)
 }
 
-let blockHistoryCount=8000 || process.env['N']
+let BLOCK_HISTORY_COUNT= process.env.N || 6000
+
+let GETADDR_TIMEOUT = (process.env.T || 1)*1000
+
 let hubaddr = process.argv[3]
 
 web3 = new Web3(new Web3.providers.HttpProvider(network))
@@ -41,11 +44,9 @@ function same(a,b) {
 async function run() {
 	console.log( "network: ", network )
 
-    b = await web3.eth.getBlock('latest')
-    // now = new Date(b.timestamp*1000)
-	// console.log( "Current block #", b.number, now )
+    curBlockNumber = await web3.eth.getBlockNumber()
 
-    fromBlock=Math.max(1,b.number-blockHistoryCount)
+    fromBlock=Math.max(1,curBlockNumber-BLOCK_HISTORY_COUNT)
 
     if ( !hubaddr ) {
         //all relayed messages in the past time period.
@@ -79,7 +80,7 @@ async function run() {
     console.log( "hub balance (deposits, stakes)=", (await hubBalanceAsync)/1e18 )
     console.log( "hub address", hubaddr)
     console.log( "gas price: ",(await gasPriceAsync) )
-    console.log( "current block: ", b.number )
+    console.log( "current block: ", curBlockNumber )
 
 
     res = await pastEventsAsync
@@ -91,7 +92,7 @@ async function run() {
 
         let r = e.returnValues
 
-        waiters.push(rp({url: r.url + '/getaddr', timeout:1000, json:true}).then(ret => { 
+        waiters.push(rp({url: r.url + '/getaddr', timeout:GETADDR_TIMEOUT, json:true}).then(ret => { 
 		relays[r.relay].status = !same(r.relay,ret.RelayServerAddress) ? "addr-mismatch @"+e.blockNumber //            ret.RelayServerAddress
             : ret.Ready ? "Ready" : "pending"}
 	).catch( err=> relays[r.relay].status = err.error && err.error.code ? err.error.code : err.message || err.toString() ))
