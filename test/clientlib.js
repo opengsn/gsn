@@ -359,17 +359,10 @@ contract('RelayClient', function (accounts) {
 
     it("should send relay balance to owner after removed", async function () {
 
-        let res = await request(localhostOne+'/getaddr');
-        let relayServerAddress = JSON.parse(res.body).RelayServerAddress;
-        let zeroAddr = "0".repeat(40);
-        try {
-            await rhub.remove_relay_by_owner(zeroAddr);
-            assert.fail();
-        } catch (error) {
-            assertErrorMessageCorrect(error, "not owner");
-        }
+        let response = await request(localhostOne+'/getaddr');
+        let relayServerAddress = JSON.parse(response.body).RelayServerAddress;
         let beforeOwnerBalance = await web3.eth.getBalance(relayOwner);
-        res = await rhub.remove_relay_by_owner(relayServerAddress, {from:relayOwner});
+        let res = await rhub.remove_relay_by_owner(relayServerAddress, {from:relayOwner});
         assert.equal("RelayRemoved", res.logs[0].event);
         assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase());
 
