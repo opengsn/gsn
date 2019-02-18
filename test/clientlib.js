@@ -15,7 +15,6 @@ const localhostOne = "http://localhost:8090"
 
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
-const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect;
 
 const Big = require( 'big.js')
 
