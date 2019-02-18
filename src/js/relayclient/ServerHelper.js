@@ -27,7 +27,7 @@ class ActiveRelayPinger {
             try {
                 let slice = this.remainingRelays.slice(0, bulkSize)
                 if (this.verbose){
-                    console.log("nextRelay: will initiate race between " + JSON.stringify(slice))
+                    console.log("nextRelay: find fastest relay from: " + JSON.stringify(slice))
                 }
                 firstRelayToRespond = await this.raceToSuccess(
                     slice
