@@ -49,9 +49,9 @@ class RelayManager {
         // this.log( "checkRelay: url="+relayurl, 'bal='+newBalance, 'stake='+newStake, 'del='+newDelay)
         let httpget
         try {
-            httpget = await utils.httpreq(relayurl + "/getaddr");
+            httpget = await utils.httpreq(relayurl.replace(/\/?\s*$/, "/getaddr"));
         } catch (e) {
-            this.log("failed to connect to: " + relayurl + ": " + e)
+            this.log("failed to connect to: " + relayurl + ": " + JSON.stringify(e))
             return
         }
         let resp = JSON.parse(httpget.response)
