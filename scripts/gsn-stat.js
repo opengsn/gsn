@@ -19,6 +19,7 @@ if ( !network ) {
     process.exit(1)
 }
 
+let blockHistoryCount=8000 || process.env['N']
 let hubaddr = process.argv[3]
 
 web3 = new Web3(new Web3.providers.HttpProvider(network))
@@ -32,21 +33,9 @@ function owner(h) {
 }
 
 
-/* incomplete:
-   fast calculation of block time.
-    assuming block rate over a period of time is steady.
-    do "triangulation" on blocktime of blocks at 1000 gaps.
-    assume current block is on this slope.
- */
-let pastblock
-async function getBlockTime(n) {
-    n1=n-n%1000
-    n2=n1+1000
-
-    if ( ! pastblock || (n-pastblock) > 5000 ) {
-        pastblock = await web3.eth.getBlock(n-1000)
-    }
-    return Date( (n-pastblock.number) )
+function same(a,b) {
+	
+	return a.toUpperCase() == b.toUpperCase()
 }
 
 async function run() {
@@ -56,7 +45,7 @@ async function run() {
     // now = new Date(b.timestamp*1000)
 	// console.log( "Current block #", b.number, now )
 
-    fromBlock=Math.max(1,b.number-8000)
+    fromBlock=Math.max(1,b.number-blockHistoryCount)
 
     if ( !hubaddr ) {
         //all relayed messages in the past time period.
@@ -81,12 +70,19 @@ async function run() {
         // however, we need to format them for our contract
     }
 
-    console.log( "hub balance (deposits, stakes)=", (await web3.eth.getBalance(hubaddr))/1e18 )
-    console.log( "hub address", hubaddr)
-	console.log( "gas price: ",(await web3.eth.getGasPrice()) )
-    r = new web3.eth.Contract(RelayHubAbi, hubaddr)
 
-    res = await r.getPastEvents('RelayAdded', {fromBlock})
+    let hubBalanceAsync = web3.eth.getBalance(hubaddr);
+    let gasPriceAsync = web3.eth.getGasPrice();
+    r = new web3.eth.Contract(RelayHubAbi, hubaddr)
+    let pastEventsAsync = r.getPastEvents('RelayAdded', {fromBlock});
+
+    console.log( "hub balance (deposits, stakes)=", (await hubBalanceAsync)/1e18 )
+    console.log( "hub address", hubaddr)
+    console.log( "gas price: ",(await gasPriceAsync) )
+    console.log( "current block: ", b.number )
+
+
+    res = await pastEventsAsync
 
 
     relays={}
@@ -95,16 +91,19 @@ async function run() {
 
         let r = e.returnValues
 
-        waiters.push(rp({url: r.url + '/getaddr'}).then(ret => relays[r.relay].status = JSON.parse(ret).Ready ? "Ready" : "pending"))
+        waiters.push(rp({url: r.url + '/getaddr', timeout:1000, json:true}).then(ret => { 
+		relays[r.relay].status = !same(r.relay,ret.RelayServerAddress) ? "addr-mismatch @"+e.blockNumber //            ret.RelayServerAddress
+            : ret.Ready ? "Ready" : "pending"}
+	).catch( err=> relays[r.relay].status = err.error && err.error.code ? err.error.code : err.message || err.toString() ))
         waiters.push(web3.eth.getBalance(r.relay).then(bal => relays[r.relay].bal = bal / 1e18))
 
         let aowner = owner(r.owner);
         // console.log( e.blockNumber, e.event, r.url, aowner )
-        relays[r.relay] = {url: r.url, owner: aowner, txfee:r.transactionFee, status: "no answer"}
+        relays[r.relay] = {addr:r.relay, url: r.url, owner: aowner, txfee:r.transactionFee, status: "no answer"}
     })
     await Promise.all(waiters)
     console.log( "\n# Relays:")
-    Object.values(relays).sort((a,b)=>a.owner>b.owner).forEach(r=> console.log( "-",r.url, "\t"+r.owner, "\t"+r.status, "\ttxfee:"+r.txfee+"%","\tbal", r.bal))
+    Object.values(relays).sort((a,b)=>a.owner>b.owner).forEach(r=> console.log( "-",r.addr.slice(2,10),r.url, "\t"+r.owner, "\ttxfee:"+r.txfee+"%","\tbal", r.bal, "\t"+r.status))
 
     console.log( "\n# Owners:")
     Object.keys(owners).forEach(k=>{
