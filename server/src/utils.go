@@ -90,7 +90,7 @@ func schedule(job func(), delay time.Duration, when time.Duration) chan bool {
 
 func sleep(duration time.Duration, shortSleep bool) {
 	if shortSleep {
-		time.Sleep(time.Second)
+		time.Sleep(100*time.Millisecond)
 	}else {
 		time.Sleep(duration)
 	}

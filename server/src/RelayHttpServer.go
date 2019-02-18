@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.3.4"
+const VERSION = "0.3.5"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
@@ -50,7 +50,7 @@ func main() {
 
 	timeUnit := time.Minute
 	if shortSleep {
-		timeUnit = time.Second
+		timeUnit = 100*time.Millisecond
 	}
 	stopKeepAlive = schedule(keepAlive, 1*timeUnit, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
