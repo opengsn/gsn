@@ -1,6 +1,6 @@
 /* globals web3 artifacts contract it before after assert */
 
-const RelayClient = require('../src/js/relayclient/relayclient');
+const RelayClient = require('../src/js/relayclient/RelayClient');
 const RelayProvider = require('../src/js/relayclient/RelayProvider');
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require("./RelayHub.sol");
