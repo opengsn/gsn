@@ -96,13 +96,13 @@ contract("RelayHub", function (accounts) {
     it("test_stake", async function () {
         let ownerAccount = accounts[1];
         let relayAccount = await web3.eth.personal.newAccount("password")
-        let zero_stake = await rhub.stakes(ownerAccount)
+        let zero_stake = await rhub.relays(ownerAccount)
         let z = zero_stake.valueOf()[0]
         // assert.equal(0, z);
 
         let expected_stake = web3.utils.toWei('1', 'ether');
         await rhub.stake(relayAccount, 7, {value: expected_stake, from: ownerAccount})
-        let stake = await rhub.stakes(relayAccount)
+        let stake = await rhub.relays(relayAccount)
         assert.equal(expected_stake, new Big(stake[0]).sub(z));
         assert.equal(7, stake[1]);
     });
@@ -130,7 +130,7 @@ contract("RelayHub", function (accounts) {
         let expected_stake = web3.utils.toWei('0.5', 'ether')
         let gasPrice = 1
         let res = await rhub.stake(gasless_relay_address, 7, {value: expected_stake, gasPrice: gasPrice, from: accounts[7]})
-        let stake = await rhub.stakes(gasless_relay_address)
+        let stake = await rhub.relays(gasless_relay_address)
         let balance_of_gasless_after = await web3.eth.getBalance(gasless_relay_address);
         let balance_of_acc7_after = await web3.eth.getBalance(accounts[7]);
         let expected_balance_after = new Big(balance_of_acc7_before).sub(expected_stake).sub(res.receipt.gasUsed * gasPrice)
@@ -314,7 +314,7 @@ contract("RelayHub", function (accounts) {
     });
 
     it("should allow the owner to unstake unregistered relay's stake", async function () {
-        let stake = await rhub.stakes.call(relayAccount);
+        let stake = await rhub.relays.call(relayAccount);
         assert.equal(false, stake.stake == 0);
         let can_unstake = await rhub.can_unstake.call(relayAccount);
 
@@ -329,9 +329,18 @@ contract("RelayHub", function (accounts) {
         assert.equal(true, can_unstake)
         await rhub.unstake(relayAccount);
 
-        let stakeAfter = await rhub.stakes.call(relayAccount);
+        let stakeAfter = await rhub.relays.call(relayAccount);
         assert.equal(0, stakeAfter.stake)
     });
+
+    it("should not allow non-owners to unsake");
+
+    it("should not allow owners to unsake if still registered");
+
+    it("should not allow a state to downgrade (possibly a few tests needed)")
+
+    it("should allow to penalize a removed relay")
+    it("should not allow to penalize an already penalized relay")
 
     let dayInSec = 24 * 60 * 60;
 
@@ -364,7 +373,7 @@ contract("RelayHub", function (accounts) {
     it("should penalize relay for signing two distinct transactions with the same nonce", async function () {
         let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
         await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
-        let stake = await rhub.stakes(address);
+        let stake = await rhub.relays(address);
         assert.equal(one_ether, stake[0]);
 
         data1 = rhub.contract.methods.relay(testutils.zeroAddr, testutils.zeroAddr, "0x1", 1, 1, 1, 1, "0x1").encodeABI()
@@ -465,8 +474,17 @@ contract("RelayHub", function (accounts) {
     [0, 1, 3, 5, 10, 50, 100, 200].forEach(requested_fee => {
         it("should compensate relay with requested fee of " + requested_fee + "%", async function () {
             /* Now this is stupid... :-( */
-            if(requested_fee === 0) {
-                await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", relayAccount, accounts[0]);
+            if (requested_fee === 0) {
+                // Relay was removed in some previous test, unless skipped
+                try {
+                    await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", relayAccount, accounts[0]);
+                }
+                catch (e) { 
+                    console.log(e) 
+                }
+                // This is required to initialize rhub's balances[acc[0]] value
+                // If it is not set, the transacion will cost 15,000 gas more than expected by 'gas_overhead'
+                await rhub.depositFor(accounts[0], { value: 1 })
             }
             /**/
             let relay_recipient_balance_before = await rhub.balances(sr.address)
@@ -474,12 +492,9 @@ contract("RelayHub", function (accounts) {
                 let deposit = 100000000;
                 await sr.deposit({ value: deposit });
             }
-            // This is required to initialize rhub's balances[acc[0]] value
-            // If it is not set, the transacion will cost 15,000 gas more than expected by 'gas_overhead'
-            await rhub.deposit({ value: 1 })
             relay_recipient_balance_before = await rhub.balances(sr.address)
             let relay_balance_before = new Big( await web3.eth.getBalance(relayAccount));
-            let r = await rhub.stakes(relayAccount)
+            let r = await rhub.relays(relayAccount)
             let owner = r[3]
 
             let relay_owner_hub_balance_before = await rhub.balances(owner)
