@@ -107,20 +107,17 @@ module.exports = {
     },
 
 
-    register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
-        await relayHub.stake(account, delay, {from: account, value: stake})
-        return await relayHub.register_relay(txFee, url, {from: account})
+    register_new_relay: async function (relayHub, stake, delay, txFee, url, relayAccount, ownerAccount) {
+        await relayHub.stake(relayAccount, delay, {from: ownerAccount, value: stake})
+        return await relayHub.register_relay(txFee, url, {from: relayAccount})
     },
 
-    register_new_relay_with_privkey: async function (relayHub, stake, delay, txFee, url, account, web3, privKey) {
+    register_new_relay_with_privkey: async function (relayHub, stake, delay, txFee, url, ownerAccount, web3, privKey) {
         let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
-        await relayHub.stake(address, delay, {from: account, value: stake})
-        await web3.eth.sendTransaction({to: address, from: account, value: web3.utils.toWei("1", "ether")})
+        await relayHub.stake(address, delay, {from: ownerAccount, value: stake})
+        await web3.eth.sendTransaction({to: address, from: ownerAccount, value: web3.utils.toWei("1", "ether")})
         let nonce = await web3.eth.getTransactionCount(address)
-        // let stake_data = relayHub.contract.methods.stake(account, delay).encodeABI()
-        // , {from: account, value: stake})
         let register_data = relayHub.contract.methods.register_relay(txFee, url).encodeABI()
-        //  {from: account})
         let validTransaction = new ethJsTx({
             nonce: nonce,
             gasPrice: 1,

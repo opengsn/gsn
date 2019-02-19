@@ -32,25 +32,25 @@ contract('ServerHelper', function (accounts) {
     // Note: a real relay server is not registered in this test.
     it("should discover a relay from the relay contract", async function () {
         // unstake delay too low
-        await register_new_relay(rhub, 2e17, 2, 20, "https://abcd.com", accounts[7]);
+        await register_new_relay(rhub, 2e17, 2, 20, "https://abcd.com", accounts[7], accounts[0]);
         // unregistered
-        await register_new_relay(rhub, 2e17, 20, 2, "https://abcd.com", accounts[2]);
+        await register_new_relay(rhub, 2e17, 20, 2, "https://abcd.com", accounts[2], accounts[0]);
         // stake too low
-        await register_new_relay(rhub, 1e17, 20, 20, "https://abcd.com", accounts[3]);
+        await register_new_relay(rhub, 1e17, 20, 20, "https://abcd.com", accounts[3], accounts[0]);
 
         // Added, removed, added again - go figure.
         // 2 x will not ping
-        await register_new_relay(rhub, 2e17, 20, 15, "https://abcd.com", accounts[4]);
-        await rhub.remove_relay_by_owner(accounts[4], { from: accounts[4] });
+        await register_new_relay(rhub, 2e17, 20, 15, "https://abcd.com", accounts[4], accounts[0]);
+        await rhub.remove_relay_by_owner(accounts[4], { from: accounts[0] });
         await increaseTime(20 + 1);
-        await rhub.unstake(accounts[4],{ from: accounts[4] });
-        await register_new_relay(rhub, 2e17, 20, 15, "go_resolve_this_address", accounts[4]);
+        await rhub.unstake(accounts[4],{ from: accounts[0] });
+        await register_new_relay(rhub, 2e17, 20, 15, "go_resolve_this_address", accounts[4], accounts[0]);
 
-        await register_new_relay(rhub, 2e17, 20, 30, "https://abcd.com", accounts[5]);
+        await register_new_relay(rhub, 2e17, 20, 30, "https://abcd.com", accounts[5], accounts[0]);
 
-        await rhub.remove_relay_by_owner(accounts[2], { from: accounts[2] });
+        await rhub.remove_relay_by_owner(accounts[2], { from: accounts[0] });
         await increaseTime(20 + 1);
-        await rhub.unstake(accounts[2],{ from: accounts[2] });
+        await rhub.unstake(accounts[2],{ from: accounts[0] });
 
         serverHelper.setHub(rhub)
         let pinger = await serverHelper.newActiveRelayPinger()

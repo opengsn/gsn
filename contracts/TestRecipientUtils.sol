@@ -11,7 +11,6 @@ contract TestRecipientUtils is RecipientUtils {
     }
 
     function registerAsRelay(RelayHub relayhub) public payable {
-        relayhub.stake.value(msg.value)(address(this), 1);
         relayhub.register_relay(10, "string memory url");
     }
     function() external payable {}

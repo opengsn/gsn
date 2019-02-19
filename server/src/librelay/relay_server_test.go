@@ -35,7 +35,7 @@ func (client *FakeClient) BlockByNumber(ctx context.Context, number *big.Int) (*
 
 func (client *FakeClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
 	//log.Fatalf("could not deploy contract")
-	return &types.Header{Time:big.NewInt(time.Now().Unix()),Number:big.NewInt(0)}, nil
+	return &types.Header{Time: big.NewInt(time.Now().Unix()), Number: big.NewInt(0)}, nil
 }
 
 func (client *FakeClient) TransactionByHash(ctx context.Context, txHash common.Hash) (tx *types.Transaction, isPending bool, err error) {
@@ -44,14 +44,15 @@ func (client *FakeClient) TransactionByHash(ctx context.Context, txHash common.H
 }
 
 func (client *FakeClient) NetworkID(ctx context.Context) (*big.Int, error) {
-	return big.NewInt(0xdead),nil
+	return big.NewInt(0xdead), nil
 }
 
 var auth *bind.TransactOpts
 var sim *FakeClient
 var relay IRelay
-var key *ecdsa.PrivateKey
-var key2 *ecdsa.PrivateKey
+var relayKey1 *ecdsa.PrivateKey
+var gaslessKey2 *ecdsa.PrivateKey
+var ownerKey3 *ecdsa.PrivateKey
 var rhub *librelay.RelayHub
 
 var sampleRecipient common.Address
@@ -62,10 +63,12 @@ var boundRecipient *bind.BoundContract
 
 func NewSimBackend() {
 	alloc := make(core.GenesisAlloc)
-	key, _ = crypto.HexToECDSA("4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d")
-	key2, _ = crypto.HexToECDSA("6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1")
-	auth = bind.NewKeyedTransactor(key)
-	alloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(2337000000000000000)}
+	relayKey1, _ = crypto.HexToECDSA("4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d")
+	gaslessKey2, _ = crypto.HexToECDSA("6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1")
+	ownerKey3, _ = crypto.HexToECDSA("6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c")
+	auth = bind.NewKeyedTransactor(relayKey1)
+	alloc[crypto.PubkeyToAddress(relayKey1.PublicKey)] = core.GenesisAccount{Balance: big.NewInt(2337000000000000000)}
+	alloc[crypto.PubkeyToAddress(ownerKey3.PublicKey)] = core.GenesisAccount{Balance: big.NewInt(2337000000000000000)}
 	sim = &FakeClient{}
 	sim.SimulatedBackend = backends.NewSimulatedBackend(alloc, uint64(10000000))
 }
@@ -78,7 +81,6 @@ func NewRelay(relayHubAddress common.Address) {
 	gasPricePercent := big.NewInt(10)
 	url := ""
 	port := "8090"
-	privateKey := key
 	unstakeDelay := big.NewInt(0)
 	registrationBlockRate := uint64(5)
 	ethereumNodeUrl := ""
@@ -86,7 +88,7 @@ func NewRelay(relayHubAddress common.Address) {
 	relay, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
-		gasPricePercent, privateKey, unstakeDelay, registrationBlockRate,
+		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,
 		ethereumNodeUrl, sim)
 	if err != nil {
 		log.Fatalln("Relay was not created", err)
@@ -139,7 +141,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("could not 'AdjustTime': %v", err)
 	}
-	tx, err := relay.sendStakeTransaction(key)
+	tx, err := relay.sendStakeTransaction(ownerKey3)
 	if err != nil {
 		log.Fatalf("could not 'sendStakeTransaction': %v", err)
 	}
@@ -149,7 +151,7 @@ func TestMain(m *testing.M) {
 		log.Fatalln(err)
 	}
 
-	auth := bind.NewKeyedTransactor(key)
+	auth := bind.NewKeyedTransactor(ownerKey3)
 	auth.Value = big.NewInt(1000000000000)
 
 	tx, err = rhub.DepositFor(auth, sampleRecipient)
@@ -217,7 +219,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 	request := RelayTransactionRequest{
 		EncodedFunction: txb,
 		Signature:       common.Hex2Bytes(sig),
-		From:            crypto.PubkeyToAddress(key2.PublicKey),
+		From:            crypto.PubkeyToAddress(gaslessKey2.PublicKey),
 		To:              sampleRecipient,
 		GasPrice:        *big.NewInt(10),
 		GasLimit:        *big.NewInt(1000000),
