@@ -117,9 +117,8 @@ contract RelayHub is RelayHubApi {
         require(can_unstake(relay), "can_unstake failed");
         require(relays[relay].owner == msg.sender, "not owner");
         uint amount = relays[relay].stake;
-        // TODO: this is a known reentrancy vulnerability. 
-        msg.sender.transfer(relays[relay].stake);
         delete relays[relay];
+        msg.sender.transfer(amount);
         emit Unstaked(relay, amount);
     }
 
