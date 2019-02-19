@@ -1,5 +1,5 @@
 const Web3 = require( 'web3')
-const RelayClient = require('./relayclient')
+const RelayClient = require('./RelayClient')
 
 class RelayProvider {
 

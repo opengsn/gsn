@@ -316,15 +316,14 @@ contract('RelayClient', function (accounts) {
     })
 
     it("should create a new ephemeral keypair", async function(){
-        let rc = new RelayClient(web3)
-        let keypair = rc.newEphemeralKeypair()
+        let keypair = RelayClient.newEphemeralKeypair()
         let address = "0x" + ethUtils.privateToAddress(keypair.privateKey).toString('hex')
         assert.equal(address, keypair.address)
     })
 
     it("should use a given ephemeral key for signing", async function(){
         let rc = new RelayClient(web3)
-        let ephemeralKeypair = rc.newEphemeralKeypair()
+        let ephemeralKeypair = RelayClient.newEphemeralKeypair()
         let fromAddr = ephemeralKeypair.address
         rc.useKeypairForSigning(ephemeralKeypair)
         var did_assert = false
