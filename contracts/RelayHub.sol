@@ -194,7 +194,8 @@ contract RelayHub is RelayHubApi {
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
         bool success = executeCallWithGas(gas_limit, to, 0, transaction); // transaction must end with @from at this point
         nonces[from]++;
-        RelayRecipient(to).post_relayed_call(msg.sender, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee );
+        transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector,msg.sender, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
+        executeCallWithGas( gasleft(), to, 0, transaction);
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
         emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), success, charge);
