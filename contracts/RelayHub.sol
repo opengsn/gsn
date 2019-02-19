@@ -104,6 +104,7 @@ contract RelayHub is RelayHubApi {
     function stake(address relay, uint unstake_delay) external payable {
         // Create or increase the stake and unstake_delay
         require(stakes[relay].owner == address(0) || stakes[relay].owner == msg.sender, "not owner");
+        require(msg.sender != relay, "relay cannot stake for itself");
         stakes[relay].owner = msg.sender;
         stakes[relay].stake += msg.value;
         // Make sure that the relay doesn't decrease his delay if already registered

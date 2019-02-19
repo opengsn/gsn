@@ -241,11 +241,8 @@ func (relay *relayServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *
 	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
 	if err != nil {
 		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
-		//relay.replayUnconfirmedTxs(client)
 		return
 	}
-	//unconfirmedTxs[lastNonce] = tx
-	lastNonce++
 	log.Println("Stake() tx sent:", tx.Hash().Hex())
 	return
 }
@@ -256,11 +253,8 @@ func (relay *relayServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx
 	tx, err = relay.rhub.Unstake(auth, relay.Address())
 	if err != nil {
 		log.Println("rhub.Unstake() failed", relay.StakeAmount, relay.UnstakeDelay)
-		//relay.replayUnconfirmedTxs(client)
 		return
 	}
-	//unconfirmedTxs[lastNonce] = tx
-	lastNonce++
 	log.Println("Unstake() tx sent:", tx.Hash().Hex())
 	return
 }
@@ -338,11 +332,8 @@ func (relay *relayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx 
 	tx, err = relay.rhub.RemoveRelayByOwner(auth, relay.Address())
 	if err != nil {
 		log.Println(err)
-		//relay.replayUnconfirmedTxs(client)
 		return
 	}
-	//unconfirmedTxs[lastNonce] = tx
-	lastNonce++
 	log.Println("RemoveRelay() tx sent:", tx.Hash().Hex())
 	return
 }
