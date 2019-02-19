@@ -345,7 +345,7 @@ func (relay *relayServer) IsStaked() (staked bool, err error) {
 		Pending: false,
 	}
 
-	stakeEntry, err := relay.rhub.Stakes(callOpt, relayAddress)
+	stakeEntry, err := relay.rhub.Relays(callOpt, relayAddress)
 	if err != nil {
 		log.Println(err)
 		return
@@ -823,7 +823,7 @@ func (relay *relayServer) validateRelay(otherRelay common.Address) (bool, error)
 		From:    relay.Address(),
 		Pending: false,
 	}
-	res, err := relay.rhub.Stakes(callOpt, otherRelay)
+	res, err := relay.rhub.Relays(callOpt, otherRelay)
 	if err != nil {
 		log.Println(err)
 		return false, err

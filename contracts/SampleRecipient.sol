@@ -13,7 +13,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     }
 
     function deposit() public payable {
-        get_relay_hub().deposit.value(msg.value)();
+        get_relay_hub().depositFor.value(msg.value)(address(this));
     }
 
     function withdraw() public onlyOwner {
