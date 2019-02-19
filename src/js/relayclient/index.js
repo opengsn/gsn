@@ -1,5 +1,5 @@
 let RelayProvider = require( './RelayProvider')
-let RelayClient = require('./relayclient')
+let RelayClient = require('./RelayClient')
 
 module.exports = {
     RelayProvider,
