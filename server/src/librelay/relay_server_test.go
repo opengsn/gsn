@@ -28,6 +28,10 @@ type FakeClient struct {
 	*backends.SimulatedBackend
 }
 
+type TestServer struct {
+	*relayServer
+}
+
 func (client *FakeClient) BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error) {
 	log.Fatalf("could not deploy contract")
 	return &types.Block{}, nil
@@ -47,9 +51,52 @@ func (client *FakeClient) NetworkID(ctx context.Context) (*big.Int, error) {
 	return big.NewInt(0xdead), nil
 }
 
+func (relay *TestServer) Stake(ownerKey *ecdsa.PrivateKey) (err error) {
+	tx, err := relay.sendStakeTransaction(ownerKey)
+	if err != nil {
+		return err
+	}
+	return relay.awaitTransactionMined(tx)
+}
+
+func (relay *TestServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+	auth := bind.NewKeyedTransactor(ownerKey)
+	auth.Value = relay.StakeAmount
+	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
+	if err != nil {
+		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
+		return
+	}
+	log.Println("Stake() tx sent:", tx.Hash().Hex())
+	return
+}
+
+func (relay *TestServer) Unstake(ownerKey *ecdsa.PrivateKey) (err error) {
+	tx, err := relay.sendUnstakeTransaction(ownerKey)
+	if err != nil {
+		return err
+	}
+	return relay.awaitTransactionMined(tx)
+
+}
+
+func (relay *TestServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+	auth := bind.NewKeyedTransactor(ownerKey)
+	auth.Value = relay.StakeAmount
+	tx, err = relay.rhub.Unstake(auth, relay.Address())
+	if err != nil {
+		log.Println("rhub.Unstake() failed", relay.StakeAmount, relay.UnstakeDelay)
+		return
+	}
+	log.Println("Unstake() tx sent:", tx.Hash().Hex())
+	return
+}
+
+
+
 var auth *bind.TransactOpts
 var sim *FakeClient
-var relay IRelay
+var relay TestServer
 var relayKey1 *ecdsa.PrivateKey
 var gaslessKey2 *ecdsa.PrivateKey
 var ownerKey3 *ecdsa.PrivateKey
@@ -85,7 +132,7 @@ func NewRelay(relayHubAddress common.Address) {
 	registrationBlockRate := uint64(5)
 	ethereumNodeUrl := ""
 	var err error
-	relay, err = NewRelayServer(
+	relay.relayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
 		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,

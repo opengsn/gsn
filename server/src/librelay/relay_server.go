@@ -78,13 +78,7 @@ type IRelay interface {
 
 	RefreshGasPrice() (err error)
 
-	Stake(ownerKey *ecdsa.PrivateKey) (err error)
-
-	Unstake(ownerKey *ecdsa.PrivateKey) (err error)
-
 	RegisterRelay() (err error)
-
-	RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error)
 
 	IsStaked() (staked bool, err error)
 
@@ -108,13 +102,7 @@ type IRelay interface {
 
 	ScanBlockChainToPenalize() (err error)
 
-	sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
-
-	sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
-
 	sendRegisterTransaction() (tx *types.Transaction, err error)
-
-	sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
 
 	awaitTransactionMined(tx *types.Transaction) (err error)
 }
@@ -225,47 +213,6 @@ func (relay *relayServer) RefreshGasPrice() (err error) {
 	}
 	relay.gasPrice = gasPrice.Mul(big.NewInt(0).Add(relay.GasPricePercent, big.NewInt(100)), gasPrice).Div(gasPrice, big.NewInt(100))
 	return
-}
-
-func (relay *relayServer) Stake(ownerKey *ecdsa.PrivateKey) (err error) {
-	tx, err := relay.sendStakeTransaction(ownerKey)
-	if err != nil {
-		return err
-	}
-	return relay.awaitTransactionMined(tx)
-}
-
-func (relay *relayServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(ownerKey)
-	auth.Value = relay.StakeAmount
-	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
-	if err != nil {
-		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
-		return
-	}
-	log.Println("Stake() tx sent:", tx.Hash().Hex())
-	return
-}
-
-func (relay *relayServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(ownerKey)
-	auth.Value = relay.StakeAmount
-	tx, err = relay.rhub.Unstake(auth, relay.Address())
-	if err != nil {
-		log.Println("rhub.Unstake() failed", relay.StakeAmount, relay.UnstakeDelay)
-		return
-	}
-	log.Println("Unstake() tx sent:", tx.Hash().Hex())
-	return
-}
-
-func (relay *relayServer) Unstake(ownerKey *ecdsa.PrivateKey) (err error) {
-	tx, err := relay.sendUnstakeTransaction(ownerKey)
-	if err != nil {
-		return err
-	}
-	return relay.awaitTransactionMined(tx)
-
 }
 
 func (relay *relayServer) RegisterRelay() (err error) {
