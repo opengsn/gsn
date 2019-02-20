@@ -189,22 +189,17 @@ contract RelayHub is RelayHubApi {
 
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
-        bool success = executeCallWithGas(gas_limit, to, 0, transaction); // transaction must end with @from at this point
+        bool success;
+        (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
         nonces[from]++;
         transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector,msg.sender, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
-        executeCallWithGas( gasleft(), to, 0, transaction);
+        to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
         emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), success, charge);
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
-    }
-
-    function executeCallWithGas(uint allowed_gas, address to, uint256 value, bytes memory data) internal returns (bool success) {
-        assembly {
-            success := call(allowed_gas, to, value, add(data, 0x20), mload(data), 0, 0)
-        }
     }
 
     struct Transaction {
