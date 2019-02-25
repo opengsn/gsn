@@ -93,7 +93,7 @@ Notes
 - MetaMask gets confused after node restart, so switch to another network (e.g. mainnet) and back to localhost.
 
 
-### Compoments:
+### Components:
 
 - **RelayHub** - master contract on the blockchain, to manage all relays, and help clients find them.
 - **RelayServer** - a relay service daemon, running as a geth module or standalone HTTP service.  Advertises itself (through the RelayHub) and waits for client requests.
