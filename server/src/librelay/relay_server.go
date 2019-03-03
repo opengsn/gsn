@@ -363,7 +363,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return
 	}
 	startBlock := uint64(0)
@@ -376,7 +376,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	}
 	iter, err := relay.rhub.FilterRelayAdded(filterOpts, []common.Address{relay.Address()}, nil)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return
 	}
 
@@ -390,7 +390,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 		if !iter.Next() {
 			iter, err = relay.rhub.FilterRelayAdded(filterOpts, []common.Address{relay.Address()}, nil)
 			if err != nil {
-				log.Fatalln(err)
+				log.Println(err)
 				return
 			}
 		}
@@ -512,7 +512,7 @@ func (relay *relayServer) Address() (relayAddress common.Address) {
 	publicKey := relay.PrivateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		log.Fatalln(
+		log.Println(
 			"error casting public key to ECDSA")
 		return
 	}
