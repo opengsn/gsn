@@ -93,8 +93,9 @@ async function run() {
         let r = e.returnValues
 
         waiters.push(rp({url: r.url + '/getaddr', timeout:GETADDR_TIMEOUT, json:true}).then(ret => { 
+		version = ret.Version || ""
 		relays[r.relay].status = !same(r.relay,ret.RelayServerAddress) ? "addr-mismatch @"+e.blockNumber //            ret.RelayServerAddress
-            : ret.Ready ? "Ready" : "pending"}
+            : ret.Ready ? "Ready "+version : "pending "+version }
 	).catch( err=> relays[r.relay].status = err.error && err.error.code ? err.error.code : err.message || err.toString() ))
         waiters.push(web3.eth.getBalance(r.relay).then(bal => relays[r.relay].bal = bal / 1e18))
 
