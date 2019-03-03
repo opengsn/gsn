@@ -70,7 +70,8 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+		w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+		w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, POST, OPTIONS"}
 
 		if !shouldHandleRelayRequests() {
 			err := fmt.Errorf("Relay not staked and registered yet")
@@ -110,7 +111,8 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+	w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+	w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, POST, OPTIONS"}
 
 	log.Println("auditRelaysHandler Start")
 	body, err := ioutil.ReadAll(r.Body)
@@ -154,7 +156,8 @@ func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 func getEthAddrHandler(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+	w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+	w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, OPTIONS"}
 
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
