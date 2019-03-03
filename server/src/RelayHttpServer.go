@@ -20,6 +20,7 @@ import (
 	"time"
 )
 
+const VERSION = "0.3.1"
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
@@ -35,7 +36,7 @@ var stopRefreshBlockchainView chan bool
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("RelayHttpServer starting")
+	log.Println("RelayHttpServer starting. version:", VERSION)
 
 	configRelay(parseCommandLine())
 
@@ -63,7 +64,8 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+		w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+		w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, POST, OPTIONS"}
 
 		if !ready {
 			err := fmt.Errorf("Relay not staked and registered yet")
@@ -102,7 +104,8 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+	w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+	w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, POST, OPTIONS"}
 
 	log.Println("auditRelaysHandler Start")
 	body, err := ioutil.ReadAll(r.Body)
@@ -146,12 +149,14 @@ func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
 func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+	w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+	w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, OPTIONS"}
 
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
 		MinGasPrice:        relay.GasPrice(),
 		Ready:              ready,
+		Version:            VERSION,
 	}
 	resp, err := json.Marshal(getEthAddrResponse)
 	if err != nil {
@@ -166,10 +171,12 @@ func getEthAddrHandler(w http.ResponseWriter, r *http.Request) {
 
 func relayHandler(w http.ResponseWriter, r *http.Request) {
 
-	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
 
 	log.Println("Relay Handler Start")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
