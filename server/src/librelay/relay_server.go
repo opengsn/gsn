@@ -51,6 +51,7 @@ type GetEthAddrResponse struct {
 	RelayServerAddress common.Address
 	MinGasPrice        big.Int
 	Ready              bool
+	Version            string  
 }
 
 type RelayTransactionResponse struct {
