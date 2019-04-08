@@ -10,7 +10,7 @@ folders="`pwd` /Users /home"
 #folder_maps="build node_modules"
 
 #absolute prefix, where following folders are placed.
-DOCKPREFIX=~/build/$DOCKANE-folders/
+DOCKPREFIX=~/build/$DOCKNAME-folders/
 mkdir -p $DOCKPREFIX
 
 #following folders are mapped under DOCKPREFIX, so they are kept on the host, but separate from
