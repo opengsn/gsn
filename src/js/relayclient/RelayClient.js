@@ -42,7 +42,7 @@ class RelayClient {
         // TODO: require sign() or privKey
         this.config = config || {};
         this.web3 = web3;
-        this.httpSend = new HttpWrapper(this.web3);
+        this.httpSend = new HttpWrapper();
         this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend, this.config.verbose)
     }
 

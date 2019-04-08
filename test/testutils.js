@@ -63,7 +63,7 @@ module.exports = {
         })
 
         let res
-        let http = new HttpWrapper(web3)
+        let http = new HttpWrapper()
         let count1 = 3
         while (count1-- > 0) {
             try {
