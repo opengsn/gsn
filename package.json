@@ -31,7 +31,9 @@
     "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache"
   },
   "scripts": {
-    "test": "make test-server && run-with-testrpc -p 8544 -l 8000000 './node_modules/.bin/truffle --network npmtest test' ",
+    "test": "npm run test-server && npm run test-js",
+    "test-server": "make test-server",
+    "test-js": "run-with-testrpc -p 8544 -l 8000000 './node_modules/.bin/truffle --network npmtest test'",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js && http-server webtools/ -o",
     "lint": "eslint ./src ./test -f unix",
