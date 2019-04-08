@@ -18,6 +18,9 @@ const relayRecipientAbi = require('./RelayRecipientApi');
 const relay_lookup_limit_blocks = 6000;
 abi_decoder.addABI(relayHubAbi);
 
+// default timeout (in ms) for http requests
+const DEFAULT_HTTP_TIMEOUT = 10000;
+
 //default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
 const GASPRICE_PERCENT = 20;
 
@@ -42,7 +45,7 @@ class RelayClient {
         // TODO: require sign() or privKey
         this.config = config || {};
         this.web3 = web3;
-        this.httpSend = new HttpWrapper();
+        this.httpSend = new HttpWrapper({ timeout: this.config.httpTimeout || DEFAULT_HTTP_TIMEOUT });
         this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend, this.config.verbose)
     }
 
