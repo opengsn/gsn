@@ -1,4 +1,4 @@
-
+const BN = require('web3').utils.toBN;
 
 class ActiveRelayPinger {
 
@@ -112,12 +112,12 @@ class ServerHelper {
         this.verbose = verbose
         
         this.relayFilter = relayFilter || ((relay) => (
-            (!minDelay || relay.unstakeDelay >= minDelay) &&
-            (!minStake || relay.stake >= minStake)
+            (!minDelay || BN(relay.unstakeDelay).gte(BN(minDelay))) &&
+            (!minStake || BN(relay.stake).gte(BN(minStake)))
         ));
 
         this.relayComparator = relayComparator || ((r1, r2) => (
-            r1.txFee - r2.txFee
+            BN(r1.transactionFee).cmp(BN(r2.transactionFee))
         ));
 
         this.filteredRelays = []
@@ -134,8 +134,6 @@ class ServerHelper {
             this.filteredRelays = []
         }
         this.relayHubInstance = relayHubInstance
-
-        this.relayHubAddress = this.relayHubInstance._address
     }
 
     async newActiveRelayPinger(fromBlock, gasPrice ) {
@@ -198,7 +196,8 @@ class ServerHelper {
         }
 
         this.filteredRelays = filteredRelays;
-        this.isInitialized = true
+        this.isInitialized = true;
+        return filteredRelays;
     }
 }
 
