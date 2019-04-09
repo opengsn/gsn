@@ -46,7 +46,7 @@ class RelayClient {
         this.config = config || {};
         this.web3 = web3;
         this.httpSend = new HttpWrapper({ timeout: this.config.httpTimeout || DEFAULT_HTTP_TIMEOUT });
-        this.serverHelper = this.config.serverHelper || new ServerHelper(this.config.minStake || 0, this.config.minDelay || 0, this.httpSend, this.config.verbose)
+        this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.config);
     }
 
     createRelayRecipient(addr) {

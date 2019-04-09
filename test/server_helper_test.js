@@ -13,7 +13,7 @@ const gasPricePercent = 20
 contract('ServerHelper', function (accounts) {
     let minStake = 1.5e17
     let minDelay = 10
-    var serverHelper = new ServerHelper(minStake, minDelay, new HttpWrapper(), true)
+    var serverHelper = new ServerHelper(new HttpWrapper(), { minStake, minDelay, verbose: true })
     let rhub
     let relayproc
 
