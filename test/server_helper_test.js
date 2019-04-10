@@ -1,8 +1,5 @@
-const assert = require('chai')
-  .use(require('chai-as-promised'))
-  .assert;
-
-/* global web3 contract it assert before after artifacts */
+/* global web3 contract it before after artifacts describe beforeEach afterEach */
+const assert = require('chai').use(require('chai-as-promised')).assert;
 const ServerHelper = require('../src/js/relayclient/ServerHelper');
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper');
 const testutils = require('./testutils')
@@ -141,13 +138,13 @@ contract('ServerHelper', function (accounts) {
             { relay: '7', transactionFee: 1e7 },
         ].map(relay => ({ 
             event: 'RelayAdded', 
-            returnValues: { 
+            returnValues: Object.assign({}, { 
                 transactionFee: 1e10, 
                 relayUrl: `url-${relay.relay}`, 
                 stake: 2e17, 
-                unstakeDelay: 100, 
-                ...relay 
-            }}));
+                unstakeDelay: 100
+            }, relay)
+        }));
 
         beforeEach('set mock relay hub', function () {
             this.originalRelayHub = serverHelper.relayHubInstance;
