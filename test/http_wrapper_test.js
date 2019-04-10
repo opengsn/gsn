@@ -1,10 +1,6 @@
-const assert = require('chai')
-  .use(require('chai-as-promised'))
-  .assert;
-
-/* global describe web3 require assert it */
+/* global describe web3 require it */
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
-const Web3 = require('web3')
+const assert = require('chai').use(require('chai-as-promised')).assert;
 
 describe("HttpWrapper", () => {
     it("connect to node, get version", async () => {
