@@ -132,8 +132,8 @@ contract('ServerHelper', function (accounts) {
             { relay: '1' },
             { relay: '2' },
             { relay: '3' },
-            { relay: '4', unstakeDelay: 5 },
-            { relay: '5', stake: 1e17, transactionFee: 1e5 },
+            { relay: '4', unstakeDelay: 5 }, // dropped out by default, below minDelay
+            { relay: '5', stake: 1e17, transactionFee: 1e5 }, // dropped out by default, below minStake
             { relay: '6', stake: 3e17, transactionFee: 1e9 },
             { relay: '7', transactionFee: 1e7 },
         ].map(relay => ({ 
@@ -157,11 +157,15 @@ contract('ServerHelper', function (accounts) {
         });
 
         it("should use default strategy for filtering and sorting relays", async function() {
+            // 4 & 5 are dropped out due low unstakeDelay and stake
+            // 7 & 6 go first due to lower transaction fee (1e7 and 1e9, vs 1e10 of the rest)
             const relays = await serverHelper.fetchRelaysAdded();
             assert.deepEqual(relays.map(r => r.address), ['7', '6', '1', '2', '3']);
         });
 
         it("should not filter relays if minimum values not set", async function() {
+            // 4 & 5 are not filtered out since no restrictions on minimum delay or stake are set
+            // 5, 7 & 6 go first due to lower transaction fee (1e5, 1e7, and 1e9, vs 1e10 of the rest)
             const customServerHelper = new ServerHelper(httpWrapper, { });
             customServerHelper.setHub(this.mockRelayHub);
             const relays = await customServerHelper.fetchRelaysAdded();
@@ -169,6 +173,8 @@ contract('ServerHelper', function (accounts) {
         });
 
         it("should use custom strategy for filtering and sorting relays", async function() {
+            // 1, 2, 3, & 4 are filtered out due to the custom strategy of filtering by address (only > 4)
+            // 6, 7 & 5 are sorted based on stake (3e17, 2e17 & 1e17 respectively)
             const customServerHelper = new ServerHelper(httpWrapper, {
                 relayFilter: (relay) => (relay.address > '4'),
                 relayComparator: (r1, r2) => (r2.stake - r1.stake)
