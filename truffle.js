@@ -44,5 +44,10 @@ module.exports = {
   },
   mocha: {
       slow: 1000
+  },
+  compilers: {
+    solc: {
+      version: "0.5.5",
+    },
   }
 };
