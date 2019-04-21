@@ -21,7 +21,7 @@
             "protocol": "inspector",
             "name": "Truffle Test",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/node_modules/truffle-core/cli.js",
+            "program": "${workspaceFolder}/node_modules/truffle/build/cli.bundled.js",
             "args": [
                 "test"
             ]

@@ -9,6 +9,7 @@ pragma solidity >=0.4.0 <0.6.0;
 
 import "./RelayRecipientApi.sol";
 import "./RelayHub.sol";
+import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
 contract RelayRecipient is RelayRecipientApi {
 
@@ -56,12 +57,7 @@ contract RelayRecipient is RelayRecipientApi {
         if (orig_sender == get_hub_addr() ) {
             // At this point we know that the sender is a trusted RelayHub, so we trust that the last bytes of msg.data are the verified sender address.
             // extract sender address from the end of msg.data
-            bytes memory from = new bytes(20);
-            for (uint256 i = 0; i < from.length; i++)
-            {
-                from[i] = msg_data[msg_data.length - from.length + i];
-            }
-            sender = bytesToAddress(from);
+            sender = LibBytes.readAddress(msg_data, msg_data.length - 20);
         }
         return sender;
     }
@@ -108,11 +104,5 @@ contract RelayRecipient is RelayRecipientApi {
      *   to the relay) is done after this method returns.
      */
     function post_relayed_call(address relay, address from, bytes memory encoded_function, bool success, uint used_gas, uint transaction_fee ) public;
-
-    function bytesToAddress(bytes memory b) private pure returns (address addr) {
-        assembly {
-            addr := mload(add(b,20))
-        }
-    }
 }
 
