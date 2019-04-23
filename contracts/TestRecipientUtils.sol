@@ -3,7 +3,7 @@ pragma solidity >=0.4.0 <0.6.0;
 import './RecipientUtils.sol';
 import './RelayHub.sol';
 
-contract TestRecipientUtils is RecipientUtils {
+contract TestRecipientUtils {
 
     event Unused();
     function testFunc(uint , string memory, uint , bytes memory ) public {

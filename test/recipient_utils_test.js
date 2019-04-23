@@ -1,33 +1,35 @@
 /*global artifacts describe before it assert */
 const TestRecipientUtils=artifacts.require( 'TestRecipientUtils.sol' )
+const RecipientUtils=artifacts.require( 'RecipientUtils.sol' )
 
 
 describe( 'RecipientUtils', async() => {
-	var b
+	var testForUtils, recipientUtils;
 	before(async ()=> {
-		b = await TestRecipientUtils.new()
+		recipientUtils = await RecipientUtils.new()
+		testForUtils = await TestRecipientUtils.new()
 	})
 
     it( "test sig", async() =>{
-        let data = b.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
+        let data = testForUtils.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
         let sig = data.slice(0,10)
-        let s = await b.sig("testFunc(uint256,string,uint256,bytes)")
+        let s = await recipientUtils.sig("testFunc(uint256,string,uint256,bytes)")
         assert.equal( sig, s )
     })
 
     it( "test getMethodSig", async() =>{
-        let data = b.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
-        let s = await b.sig("testFunc(uint256,string,uint256,bytes)")
-        assert.equal( s, await b.getMethodSig(data) )
+        let data = testForUtils.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
+        let s = await recipientUtils.sig("testFunc(uint256,string,uint256,bytes)")
+        assert.equal( s, await recipientUtils.getMethodSig(data) )
     })
 
     it( "test params", async() =>{
-        let data = b.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
+        let data = testForUtils.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
 
-        assert.equal( 1, await b.getParam(data,0) )
-        assert.equal( "hello", await b.getStringParam(data,1) )
-        assert.equal( 2, await b.getParam(data,2) )
-        assert.equal( "0xdeadface", await b.getBytesParam(data,3) )
+        assert.equal( 1, await recipientUtils.getParam(data,0) )
+        assert.equal( "hello", await recipientUtils.getStringParam(data,1) )
+        assert.equal( 2, await recipientUtils.getParam(data,2) )
+        assert.equal( "0xdeadface", await recipientUtils.getBytesParam(data,3) )
     })
 
 

@@ -1,6 +1,6 @@
 pragma solidity >=0.4.0 <0.6.0;
 
-contract RecipientUtils {
+library RecipientUtils {
 
     //return the signature of a method.
     // (can also be done off-chain)
