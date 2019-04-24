@@ -3,7 +3,7 @@ jobs: # a collection of steps
   build: # runs not using Workflows must have a `build` job as entry point
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: tabookey/eth-tools:solc-5.2a # solc5.2, NO truffle/ganache (npm-install'ed locally)A
+      - image: tabookey/eth-tools:solc-5.5 # solc5.5, NO truffle/ganache (npm-install'ed locally)A
 
     steps: # a collection of executable commands
       - checkout # special step to check out source code to working directory
