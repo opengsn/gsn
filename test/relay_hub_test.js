@@ -383,7 +383,7 @@ contract("RelayHub", function (accounts) {
             nonce: nonce_any_value,
             gasPrice: gas_price_any_value,
             gasLimit: gas_limit_any_value,
-            to: sr.address,
+            to: rhub.address,
             value: tx_value_any_value,
             data: data1
         })
@@ -391,7 +391,7 @@ contract("RelayHub", function (accounts) {
             nonce: nonce_any_value,
             gasPrice: gas_price_any_value,
             gasLimit: gas_limit_any_value,
-            to: sr.address,
+            to: rhub.address,
             value: tx_value_any_value,
             data: data2
         })
@@ -414,13 +414,87 @@ contract("RelayHub", function (accounts) {
         assert.equal(address, res.logs[0].args.relay.toLowerCase())
         assert.equal(snitching_account, res.logs[0].args.sender)
         increaseTime(dayInSec)
+        await claim_snitch_reward(address, snitching_account_initial_balance, stake, res)
+    });
+    /**
+     * 
+     * @param {*} address - relay that will be penalized
+     * @param {*} snitching_account_initial_balance 
+     * @param {*} stake - relay's initial stake
+     * @param {*} res - receipt on the 'penalize' request
+     */
+    let claim_snitch_reward = async function(address, snitching_account_initial_balance, stake, res) {
         let res2 = await rhub.unstake(address,{from:snitching_account, gasPrice: gasPricePenalize,gasLimit: gas_limit_any_value})
 
         let balance_of_acc7 = await web3.eth.getBalance(snitching_account);
         let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]).sub(res.receipt.gasUsed * gasPricePenalize).sub(res2.receipt.gasUsed * gasPricePenalize)
         assert.equal(expected_balance_after_penalize, balance_of_acc7);
+    }
+
+    let asyncForEach = async function (array, callback) {
+        for (let index = 0; index < array.length; index++) {
+          await callback(array[index], index, array);
+        }
+    }
+
+    it("should penalize relay for calling any non-RelayHub address or a method not whitelisted inside hub", async function () {
+        // A call to a method that is not whitelisted for the relay to use
+        let data1 = rhub.contract.methods.remove_relay_by_owner(testutils.zeroAddr).encodeABI()
+        let data2 = sr.contract.methods.emitMessage("Hello SampleRecipient!").encodeABI()
+        let illegalTransactions = [{
+            data: data1,
+            destination: rhub.address
+        },
+        {
+            data: data2,
+            destination: sr.address
+        }]
+        await asyncForEach(illegalTransactions, async function (tx) {
+            console.log("will try: " + tx.data.slice(0, 10) + " " + tx.destination)
+            await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
+            let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
+            let stake = await rhub.relays(address);
+            assert.equal(one_ether, stake[0]);
+
+            let illegalTransaction = new ethJsTx({
+                nonce: nonce_any_value,
+                gasPrice: gas_price_any_value,
+                gasLimit: gas_limit_any_value,
+                to: tx.destination,
+                value: tx_value_any_value,
+                data: tx.data
+            })
+
+            let snitching_account_initial_balance = await web3.eth.getBalance(snitching_account);
+
+            let unsignedillegalTransactionEncoded = encodeRLP(illegalTransaction)
+            illegalTransaction.sign(privKey);
+            let sig = signatureHex(illegalTransaction);
+            let res = await rhub.penalize_illegal_transaction(unsignedillegalTransactionEncoded, sig, {
+                from: snitching_account,
+                gasPrice: gasPricePenalize,
+                gasLimit: gas_limit_any_value
+            });
+
+            assert.equal("Penalized", res.logs[0].event)
+            increaseTime(dayInSec)
+            await claim_snitch_reward(address, snitching_account_initial_balance, stake, res)
+        });
     });
 
+    it("should revert an attempt to penalize relay with an allowed transaction ", async function () {
+        try {
+            await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
+            await rhub.penalize_illegal_transaction(unsignedTransaction1Encoded, sig1, {
+                from: snitching_account,
+                gasPrice: gasPricePenalize,
+                gasLimit: gas_limit_any_value
+            });
+            assert.fail()
+        } catch (error) {
+            assertErrorMessageCorrect(error, "Legal relay transaction")
+        }
+    });
 
     it("should revert an attempt to penalize relay with two identical transactions", async function () {
         try {

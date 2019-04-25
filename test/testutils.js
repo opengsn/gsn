@@ -140,7 +140,7 @@ module.exports = {
             })
         })
         let res = await promise
-        console.log(res)
+        console.log("register_new_relay_with_privkey", res)
     },
 
     increaseTime: function (time) {
