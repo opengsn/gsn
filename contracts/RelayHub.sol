@@ -2,7 +2,7 @@ pragma solidity >=0.4.0 <0.6.0;
 
 import "./RelayHubApi.sol";
 import "./RelayRecipient.sol";
-import "./RecipientUtils.sol";
+import "./GsnUtils.sol";
 import "./RLPReader.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 

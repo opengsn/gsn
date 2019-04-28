@@ -1,6 +1,6 @@
 pragma solidity >=0.4.0 <0.6.0;
 
-import './RecipientUtils.sol';
+import './GsnUtils.sol';
 import './RelayHub.sol';
 
 contract TestRecipientUtils {
@@ -15,20 +15,20 @@ contract TestRecipientUtils {
     }
     function() external payable {}
 
-    /****** these methods are internal in 'RecipientUtils' and cannot be accessed from JS *******/
+    /****** these methods are internal in 'GsnUtils' and cannot be accessed from JS *******/
 
     function getParam(bytes memory msg_data, uint index) public pure returns (uint) {
-        return RecipientUtils.getParam(msg_data, index);
+        return GsnUtils.getParam(msg_data, index);
     }
 
     function getMethodSig(bytes memory msg_data) public pure returns (bytes4) {
-        return RecipientUtils.getMethodSig(msg_data);
+        return GsnUtils.getMethodSig(msg_data);
     }
     
     function getBytesParam(bytes memory msg_data, uint index) public pure returns (bytes memory ret)  {
-        return RecipientUtils.getBytesParam(msg_data, index);
+        return GsnUtils.getBytesParam(msg_data, index);
     }
     function getStringParam(bytes memory msg_data, uint index) public pure returns (string memory) {
-        return RecipientUtils.getStringParam(msg_data, index);
+        return GsnUtils.getStringParam(msg_data, index);
     }
 }

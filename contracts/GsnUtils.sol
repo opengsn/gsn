@@ -2,7 +2,7 @@ pragma solidity >=0.4.0 <0.6.0;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
-library RecipientUtils {
+library GsnUtils {
 
     /**
      * extract method sig from encoded function call

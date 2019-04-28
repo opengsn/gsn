@@ -2,7 +2,7 @@
 const TestRecipientUtils=artifacts.require( 'TestRecipientUtils.sol' )
 
 
-describe( 'RecipientUtils', async() => {
+describe('GsnUtils', async() => {
 	var testForUtils;
 	before(async ()=> {
 		testForUtils = await TestRecipientUtils.new()
