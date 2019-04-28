@@ -8,16 +8,9 @@ describe( 'RecipientUtils', async() => {
 		testForUtils = await TestRecipientUtils.new()
 	})
 
-    it( "test sig", async() =>{
-        let data = testForUtils.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
-        let sig = data.slice(0,10)
-        let s = await testForUtils.sig("testFunc(uint256,string,uint256,bytes)")
-        assert.equal( sig, s )
-    })
-
     it( "test getMethodSig", async() =>{
         let data = testForUtils.contract.methods.testFunc(1,"hello", 2, "0xdeadface").encodeABI()
-        let s = await testForUtils.sig("testFunc(uint256,string,uint256,bytes)")
+        let s =  data.slice(0,10)
         assert.equal( s, await testForUtils.getMethodSig(data) )
     })
 

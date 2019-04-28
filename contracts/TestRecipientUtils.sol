@@ -16,9 +16,6 @@ contract TestRecipientUtils {
     function() external payable {}
 
     /****** these methods are internal in 'RecipientUtils' and cannot be accessed from JS *******/
-    function sig(string memory methodSig) public pure returns (bytes4) {
-        return RecipientUtils.sig(methodSig);
-    }
 
     function getParam(bytes memory msg_data, uint index) public pure returns (uint) {
         return RecipientUtils.getParam(msg_data, index);

@@ -1,18 +1,14 @@
 pragma solidity >=0.4.0 <0.6.0;
 
-library RecipientUtils {
+import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
-    //return the signature of a method.
-    // (can also be done off-chain)
-    function sig(string memory methodSig) internal pure returns (bytes4) {
-        return bytes4(keccak256(bytes(methodSig)));
-    }
+library RecipientUtils {
 
     /**
      * extract method sig from encoded function call
      */
     function getMethodSig(bytes memory msg_data) internal pure returns (bytes4) {
-        return bytes4(bytes32(extractUint(msg_data, 0)));
+        return bytes4(bytes32(LibBytes.readUint256(msg_data, 0)));
     }
 
     /**
@@ -22,7 +18,7 @@ library RecipientUtils {
      * the return value should be casted to the right type.
      */
     function getParam(bytes memory msg_data, uint index) internal pure returns (uint) {
-        return extractUint(msg_data, 4 + index * 32);
+        return LibBytes.readUint256(msg_data, 4 + index * 32);
     }
 
     /**
@@ -33,35 +29,11 @@ library RecipientUtils {
      */
     function getBytesParam(bytes memory msg_data, uint index) internal pure returns (bytes memory ret)  {
         uint ofs = getParam(msg_data,index)+4;
-        uint len = extractUint(msg_data, ofs);
-        ret = extractBytes(msg_data, ofs+32, len);
+        uint len = LibBytes.readUint256(msg_data, ofs);
+        ret = LibBytes.slice(msg_data, ofs+32, ofs+32+len);
     }
 
     function getStringParam(bytes memory msg_data, uint index) internal pure returns (string memory) {
         return string(getBytesParam(msg_data,index));
-    }
-
-
-    /**
-     * extract bytes32 block from a memory source.
-     * if offset is too large, then pad result with zeros.
-     * @param source a block of memory to extract from.
-     * @param ofs offset to start.
-     */
-    function extractUint(bytes memory source, uint ofs) internal pure returns (uint result) {
-        assembly {
-            result := mload(add(ofs, add(source, 32)))
-        }
-    }
-
-    //extracts bytes from a memory block
-    function extractBytes(bytes memory source, uint ofs, uint len) internal pure returns (bytes memory ret) {
-        //TODO: check overflows (not really needed. it will exhaust gas on overflows)
-        require( ofs+len <= source.length, "asdasd");
-        //TODO: assembly?
-        ret = new bytes(len);
-        for ( uint i=0; i<len; i++ ) {
-            ret[i] = source[i+ofs];
-        }
     }
 }
