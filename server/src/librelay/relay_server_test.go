@@ -109,10 +109,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("could not deploy contract: %v", err)
 	}
+	/* No need to deploy it anymore
 	tbkUtils, _, _, err := librelay.DeployRecipientUtils(auth, sim)
 	if err != nil {
 		log.Fatalf("could not deploy contract: %v", err)
 	}
+	*/
 	parsed, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
 	if err != nil {
 		log.Fatalln(err)
@@ -121,8 +123,6 @@ func TestMain(m *testing.M) {
 
 	// linking RlpReader to RelayHub
 	RelayHubBin := resolveLibrary("../contracts/RLPReader.sol:RLPReader", rlpaddr, librelay.RelayHubBin)
-	// linking RecipientUtils to RelayHub
-	RelayHubBin = resolveLibrary("../contracts/RecipientUtils.sol:RecipientUtils", tbkUtils, RelayHubBin)
 
 	if _, err = hex.DecodeString(RelayHubBin[2:]); err != nil {
 		log.Println("RelayHubBin", RelayHubBin)
@@ -233,7 +233,9 @@ func TestRegisterRelay(t *testing.T) {
 func TestCreateRelayTransaction(t *testing.T) {
 	ErrFail(relay.RefreshGasPrice(), t)
 	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
-	sig := "1b168afc361ea8ff90d33c849c1b38eca9a49eb13b6c7a1483a3a063380ea037c460f80f04b14b20eb102f150b45148eb8ba4636eb2c14e47e69be54560daefea8"
+	// if you need to deploy another contract some day, this will be the signature
+	// sig := "1b168afc361ea8ff90d33c849c1b38eca9a49eb13b6c7a1483a3a063380ea037c460f80f04b14b20eb102f150b45148eb8ba4636eb2c14e47e69be54560daefea8"
+	sig := "1cc9283cc494c533a92cc67fca991153a59cd91aa23b3e85e44a1cb0186e6ee6802768e88323da886ef50d6c419fe415fedac97b7e45e3cb0476b32d6b0096410f"
 	addressGasless := crypto.PubkeyToAddress(gaslessKey2.PublicKey)
 	request := RelayTransactionRequest{
 		EncodedFunction: txb,

@@ -7,8 +7,8 @@ var RecipientUtils = artifacts.require("./RecipientUtils.sol");
 module.exports = function(deployer) {
 	deployer.deploy(RLPReader);
 	deployer.link(RLPReader, RelayHub);
-	deployer.deploy(RecipientUtils);
-	deployer.link(RecipientUtils, RelayHub);
+	// deployer.deploy(RecipientUtils);
+	// deployer.link(RecipientUtils, RelayHub);
 	deployer.deploy(RelayHub).then(function() {
 		return deployer.deploy(SampleRecipient, RelayHub.address);
 	});
