@@ -4,9 +4,17 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"gen/librelay"
 	"gen/samplerec"
+	"log"
+	"math/big"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
@@ -16,12 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
-	"log"
-	"math/big"
-	"os"
-	"strings"
-	"testing"
-	"time"
 )
 
 type FakeClient struct {
@@ -131,12 +133,13 @@ func NewRelay(relayHubAddress common.Address) {
 	unstakeDelay := big.NewInt(0)
 	registrationBlockRate := uint64(5)
 	ethereumNodeUrl := ""
+	txStore := NewMemoryTxStore()
 	var err error
 	relay.relayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
 		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,
-		ethereumNodeUrl, sim)
+		ethereumNodeUrl, sim, txStore)
 	if err != nil {
 		log.Fatalln("Relay was not created", err)
 	}
@@ -222,6 +225,7 @@ func TestMain(m *testing.M) {
 	}
 	log.Println("To.balance: ", to_balance)
 
+	flag.Parse()
 	exitStatus := m.Run()
 	defer os.Exit(exitStatus)
 

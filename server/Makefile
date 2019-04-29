@@ -9,6 +9,7 @@ server: $(server_exe)
 ETHDIR=./src/github.com/ethereum/go-ethereum
 ETHFILE=${ETHDIR}/Makefile
 ETHREPO="https://github.com/ethereum/go-ethereum.git"
+ETHVERSION=v1.8.21
 
 GEN_FILE=$(buildpath)/src/gen/librelay/relay_hub_sol.go 
 GEN_FILE_REC=$(buildpath)/src/gen/samplerec/sample_rec_sol.go 
@@ -24,7 +25,7 @@ go-get: $(GEN_FILE) $(ETHFILE)
 $(ETHFILE): Makefile
 	@echo "Downloading the ethereum library.  Might take a few minutes."
 	@if [ ! -d ${ETHDIR} ]; then \
-	  git clone ${ETHREPO} --depth=1 --branch=v1.8.21 ${ETHDIR} ;\
+	  git clone ${ETHREPO} --depth=1 --branch=${ETHVERSION} ${ETHDIR} ;\
 	  go get -v -d ./...;\
 	fi 
 	touch $(ETHFILE)

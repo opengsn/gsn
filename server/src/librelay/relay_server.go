@@ -137,6 +137,7 @@ type relayServer struct {
 	gasPrice              *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
 	Client                IClient
 	ChainID               *big.Int
+	TxStore               ITxStore
 	rhub                  *librelay.RelayHub
 }
 
@@ -163,7 +164,8 @@ func NewRelayServer(
 	UnstakeDelay *big.Int,
 	RegistrationBlockRate uint64,
 	EthereumNodeURL string,
-	Client IClient) (*relayServer, error) {
+	Client IClient,
+	TxStore ITxStore) (*relayServer, error) {
 
 	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
 
@@ -192,6 +194,7 @@ func NewRelayServer(
 		EthereumNodeURL:       EthereumNodeURL,
 		Client:                Client,
 		ChainID:               chainId,
+		TxStore:               TxStore,
 		rhub:                  rhub,
 	}
 	return relay, err
@@ -550,8 +553,15 @@ func (relay *relayServer) sendPlainTransaction(desc string, to common.Address, v
 		return
 	}
 
-	lastNonce++
 	log.Println(desc, "tx sent:", signedTx.Hash().Hex())
+	lastNonce++
+
+	err = relay.TxStore.SaveTransaction(signedTx)
+	if err != nil {
+		log.Println(desc, "error saving tx:", err)
+		return
+	}
+
 	return
 }
 
@@ -571,9 +581,49 @@ func (relay *relayServer) sendDataTransaction(desc string, f func(*bind.Transact
 		log.Println(desc, "error sending tx:", err)
 		return
 	}
-	lastNonce++
 
 	log.Println(desc, "tx sent:", tx.Hash().Hex())
+	lastNonce++
+
+	// TODO: Monitor for tx mined
+	err = relay.TxStore.SaveTransaction(tx)
+	if err != nil {
+		log.Println(desc, "error saving tx:", err)
+		return
+	}
+
+	return
+}
+
+const maxGasPrice = 100e9
+const retryGasPricePercentageIncrease = 20
+
+func (relay *relayServer) resendTransaction(tx *types.Transaction) (newtx *types.Transaction, err error) {
+	// Calculate new gas price as a % increase over the previous one
+	newGasPrice := big.NewInt(retryGasPricePercentageIncrease)
+	newGasPrice.Mul(newGasPrice, tx.GasPrice())
+	newGasPrice.Div(newGasPrice, big.NewInt(100))
+
+	// Sanity check to ensure we are not burning all our balance in gas fees
+	if newGasPrice.Cmp(big.NewInt(maxGasPrice)) > 0 {
+		log.Println("Capping gas price to max value of", maxGasPrice)
+		newGasPrice.SetUint64(maxGasPrice)
+	}
+
+	// Resend transaction with exactly the same values except for gas price
+	newtx = types.NewTransaction(tx.Nonce(), *tx.To(), tx.Value(), tx.Gas(), newGasPrice, tx.Data())
+	signedTx, err := types.SignTx(newtx, types.NewEIP155Signer(relay.ChainID), relay.PrivateKey)
+	if err != nil {
+		log.Println("ResendTransaction: error signing tx", err)
+		return
+	}
+
+	err = relay.Client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		log.Println("ResendTransaction: error sending tx", err)
+		return
+	}
+
 	return
 }
 
@@ -613,6 +663,90 @@ func (relay *relayServer) pollNonce() (nonce uint64, err error) {
 	}
 	//log.Println("lastNonce is", lastNonce)
 	return
+}
+
+const confirmationsNeeded = 12
+const pendingTransactionTimeout = 5 * 60 // 5 minutes
+
+func (relay *relayServer) UpdateUnconfirmedTransactions() (err error) {
+	// Load unconfirmed transactions from store, and bail if there are none
+	tx, err := relay.TxStore.GetFirstTransaction()
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving first transaction from local store", err)
+		return
+	}
+
+	if tx == nil {
+		return
+	}
+
+	// Get latest block number in the network
+	ctx := context.Background()
+	latest, err := relay.Client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving last block number", err)
+		return
+	}
+
+	// Get nonce at confirmationsNeeded blocks ago
+	var confirmedBlock big.Int
+	confirmedBlock.Sub(latest.Number, big.NewInt(confirmationsNeeded))
+	nonce, err := relay.Client.NonceAt(ctx, relay.Address(), &confirmedBlock)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address(), "on block", confirmedBlock.Uint64(), err)
+		return
+	}
+
+	// Clear out all confirmed transactions (ie txs with nonce less than or equal to the account nonce at confirmationsNeeded blocks ago)
+	err = relay.TxStore.RemoveTransactionsUptoNonce(nonce)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error deleting confirmed transactions", err)
+		return
+	}
+
+	// Get first unconfirmed transaction
+	tx, err = relay.TxStore.GetFirstTransaction()
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving unconfirmed transaction from local store", err)
+		return
+	}
+
+	if tx == nil {
+		return
+	}
+
+	// Check if the tx was mined by comparing its nonce against the latest one
+	nonce, err = relay.Client.NonceAt(ctx, relay.Address(), nil)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address(), err)
+		return
+	}
+
+	if tx.Nonce() <= nonce {
+		log.Println("UpdateUnconfirmedTransactions: awaiting confirmations for next mined transaction", nonce, tx.Hash())
+		return nil
+	}
+
+	// If the tx is still pending, check how long ago we sent it, and resend it if needed
+	if time.Now().Unix()-tx.Timestamp < pendingTransactionTimeout {
+		log.Println("UpdateUnconfirmedTransactions: awaiting next transaction to be mined", nonce, tx.Hash())
+		return
+	}
+
+	newtx, err := relay.resendTransaction(tx.Transaction)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error resending transaction", tx.Hash(), err)
+		return err
+	}
+
+	// TODO: Increase timetamp of subsequent txs
+	err = relay.TxStore.UpdateTransactionByNonce(newtx)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error updating transaction in local store", newtx.Hash(), err)
+		return err
+	}
+
+	return nil
 }
 
 func (relay *relayServer) replayUnconfirmedTxs(client *ethclient.Client) {

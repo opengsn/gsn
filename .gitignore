@@ -3,9 +3,11 @@
 /node_modules/
 /server/src/github.com/ethereum/go-ethereum/
 /metacoin/
-tabookey-gasless-0.1.0.tgz
+tabookey-gasless-*.tgz
 /.vscode/settings.json
 /.idea/
 /server/pkg/darwin_amd64/
+/server/pkg/linux_amd64/
+/server/bin/
 /serverdock/version
 /secret_mnemonic
