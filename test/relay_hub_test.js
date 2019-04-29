@@ -264,7 +264,7 @@ contract("RelayHub", function (accounts) {
         });
         assert.equal("TransactionFailed", res.logs[0].event)
         let can_relay = await rhub.can_relay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
-        assert.equal(3, can_relay.valueOf().toString())
+        assert.equal(11, can_relay.valueOf().toString())
     });
 
     it("should not accept relay requests if gas limit is too low for a relayed transaction", async function () {

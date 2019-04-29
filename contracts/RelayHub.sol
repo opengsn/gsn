@@ -161,19 +161,18 @@ contract RelayHub is RelayHubApi {
         if (nonces[from] != nonce)
             return 2;   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
-        return to.accept_relayed_call(relay, from, encoded_function, gas_price, transaction_fee, approval); // Check to.accept_relayed_call, see if it agrees to accept the charges.
-//        bytes memory transaction = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee);
-//        bool success;
-//        bytes memory ret;
-//        (success, ret) =  address(to).call(transaction);
-//        if (!success){
-//            return 3;
-//        }
-//        uint32 accept;
-//        assembly {
-//            accept := and(mload(add(0x20, ret)), 0xffffffff)
-//        }
-//        return accept;
+        bytes memory transaction = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee, approval);
+        bool success;
+        bytes memory ret;
+        (success, ret) =  address(to).staticcall(transaction);
+        if (!success){
+            return 3;
+        }
+        uint32 accept;
+        assembly {
+            accept := and(mload(add(0x20, ret)), 0xffffffff)
+        }
+        return accept;
     }
 
     /**
