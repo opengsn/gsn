@@ -33,7 +33,7 @@ gen-file: $(GEN_FILE) Makefile
 
 $(GEN_FILE): ../contracts/RelayHub.sol ../contracts/RelayHubApi.sol 
 	mkdir -p $(buildpath)/src/gen/librelay
-	abigen --sol $< --pkg librelay  --out $@
+	abigen --solc ../scripts/solc-abigen-wrapper.sh --sol $< --pkg librelay  --out $@
 
 $(GEN_FILE_REC): ../contracts/SampleRecipient.sol
 	mkdir -p $(buildpath)/src/gen/samplerec

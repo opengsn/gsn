@@ -42,6 +42,7 @@
     "web": "./restart-relay.sh web"
   },
   "dependencies": {
+    "@0x/contracts-utils": "3.1.1",
     "abi-decoder": "^1.2.0",
     "axios": "^0.18.0",
     "big-js": "^3.1.3",

@@ -2,7 +2,9 @@ pragma solidity >=0.4.0 <0.6.0;
 
 import "./RelayHubApi.sol";
 import "./RelayRecipient.sol";
+import "./GsnUtils.sol";
 import "./RLPReader.sol";
+import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
 contract RelayHub is RelayHubApi {
 
@@ -147,7 +149,7 @@ contract RelayHub is RelayHubApi {
 
     function check_sig(address signer, bytes32 hash, bytes memory sig) pure internal returns (bool) {
         // Check if @v,@r,@s are a valid signature of @signer for @hash
-        return signer == ecrecover(hash, uint8(sig[0]), bytesToBytes32(sig,1), bytesToBytes32(sig,33));
+        return signer == ecrecover(hash, uint8(sig[0]), LibBytes.readBytes32(sig,1), LibBytes.readBytes32(sig,33));
     }
 
 	//check if the Hub can accept this relayed operation.
@@ -235,10 +237,10 @@ contract RelayHub is RelayHubApi {
         Transaction memory decoded_tx2 = decode_transaction(unsigned_tx2);
 
         bytes32 hash1 = keccak256(abi.encodePacked(unsigned_tx1));
-        address addr1 = ecrecover(hash1, uint8(sig1[0]), bytesToBytes32(sig1,1), bytesToBytes32(sig1,33));
+        address addr1 = ecrecover(hash1, uint8(sig1[0]), LibBytes.readBytes32(sig1,1), LibBytes.readBytes32(sig1,33));
 
         bytes32 hash2 = keccak256(abi.encodePacked(unsigned_tx2));
-        address addr2 = ecrecover(hash2, uint8(sig2[0]), bytesToBytes32(sig2,1), bytesToBytes32(sig2,33));
+        address addr2 = ecrecover(hash2, uint8(sig2[0]), LibBytes.readBytes32(sig2,1), LibBytes.readBytes32(sig2,33));
 
         //checking that the same nonce is used in both transaction, with both signed by the same address and the actual data is different
         // note: we compare the hash of the data to save gas over iterating both byte arrays
@@ -257,13 +259,4 @@ contract RelayHub is RelayHubApi {
         emit Penalized(addr1, msg.sender, amount);
         remove_relay_by_owner(addr1);
     }
-
-    function bytesToBytes32(bytes memory b, uint offset) private pure returns (bytes32) {
-        bytes32 out;
-        for (uint i = 0; i < 32; i++) {
-            out |= bytes32(b[offset + i] & 0xFF) >> (i * 8);
-        }
-        return out;
-    }
-
 }
