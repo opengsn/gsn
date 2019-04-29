@@ -258,6 +258,8 @@ contract RelayHub is RelayHubApi {
         // any transactions other than 'relay' and 'register_relay'. They have no legitimate
         // reasons to do that, so this behaviour is too suspicious to be left unattended.
         // It is enforced by penalizing the relay for a transaction that we consider illegal.
+        // Note: If you add  another valid function call to RelayHub, you must add a selector
+        // of the function you would like to declare as legal!
 
         Transaction memory decoded_tx1 = decode_transaction(unsigned_tx1);
         if (decoded_tx1.to == address(this)){
