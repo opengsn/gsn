@@ -147,29 +147,21 @@ contract RelayHub is RelayHubApi {
         emit RelayRemoved(relay, relays[relay].unstake_time);
     }
 
-    function check_sig(address signer, bytes32 hash, bytes memory sig) pure internal returns (bool) {
-        // Check if @v,@r,@s are a valid signature of @signer for @hash
-        uint8 v = uint8(sig[0]);
-        bytes32 r = LibBytes.readBytes32(sig,1);
-        bytes32 s = LibBytes.readBytes32(sig,33);
-        return signer == ecrecover(hash, v, r, s);
-    }
-
 	//check if the Hub can accept this relayed operation.
 	// it validates the caller's signature and nonce, and then delegates to the destination's accept_relayed_call
 	// for contract-specific checks.
 	// returns "0" if the relay is valid. other values represent errors.
 	// values 1..10 are reserved for can_relay. other values can be used by accept_relayed_call of target contracts.
-    function can_relay(address relay, address from, RelayRecipient to, bytes memory transaction, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory sig) public view returns(uint32) {
+    function can_relay(address relay, address from, RelayRecipient to, bytes memory transaction, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory approval) public view returns(uint32) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, transaction, transaction_fee, gas_price, gas_limit, nonce, address(this));
         bytes32 hashed_message = keccak256(abi.encodePacked(packed, relay));
         bytes32 signed_message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashed_message));
-        if (!check_sig(from, signed_message,  sig))  // Verify the sender's signature on the transaction
+        if (!GsnUtils.checkSig(from, signed_message,  approval))  // Verify the sender's signature on the transaction
             return 1;   // @from hasn't signed the transaction properly
         if (nonces[from] != nonce)
             return 2;   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
-        return to.accept_relayed_call(relay, from, transaction, gas_price, transaction_fee); // Check to.accept_relayed_call, see if it agrees to accept the charges.
+        return to.accept_relayed_call(relay, from, transaction, gas_price, transaction_fee, approval); // Check to.accept_relayed_call, see if it agrees to accept the charges.
     }
 
     /**
@@ -182,14 +174,14 @@ contract RelayHub is RelayHubApi {
      * @param gas_limit limit the client want to put on its transaction
      * @param transaction_fee fee (%) the relay takes over actual gas cost.
      * @param nonce sender's nonce (in nonces[])
-     * @param sig client's signature over all params
+     * @param approval client's signature over all params (first 65 bytes). The remainder is dapp-specific data.
      */
-    function relay(address from, address to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory sig) public {
+    function relay(address from, address to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory approval) public {
         uint initial_gas = gasleft();
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
 
-        require(0 == can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, sig), "can_relay failed");
+        require(0 == can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval), "can_relay failed");
 
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.

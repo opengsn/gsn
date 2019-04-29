@@ -292,6 +292,7 @@ class RelayClient {
         let blockFrom = Math.max(1, blockNow - relay_lookup_limit_blocks);
         let pinger = await this.serverHelper.newActiveRelayPinger(blockFrom, gasPrice);
         let errors = [];
+        let approval = "";
         for (; ;) {
             let activeRelay = await pinger.nextRelay();
             if (!activeRelay) {
@@ -320,6 +321,20 @@ class RelayClient {
             } else {
                 signature = await getTransactionSignature(this.web3, options.from, hash);
             }
+
+            if (typeof options.approveFunction === "function"){
+                approval = await options.approveFunction(
+                    options.from,
+                    options.to,
+                    encodedFunctionCall,
+                    options.txfee,
+                    gasPrice,
+                    gasLimit,
+                    nonce,
+                    relayHub._address,
+                    relayAddress)
+            }
+            signature += approval
 
             if (self.config.verbose) {
                 console.log("relayTransaction hash: ", hash, "from: ", options.from, "sig: ", signature);
