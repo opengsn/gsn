@@ -62,7 +62,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
         // extract owner sig from all approval bytes
         bytes memory ownerSig = LibBytes.slice(approval, 65, 130);
-        if (!GsnUtils.checkSig(owner(), keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256("I approve"))), ownerSig)) {
+        if (!GsnUtils.checkSig(owner(), keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked("I approve", from)))), ownerSig)) {
             return 4;
         }
 

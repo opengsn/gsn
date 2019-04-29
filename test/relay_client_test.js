@@ -68,13 +68,14 @@ contract('RelayClient', function (accounts) {
 
     })
 
-    var func = async function (/*from, to, tx, txfee, gas_price, gas_limit, nonce, relay_hub_address, relay_address*/) {
-        let sign = await utils.getTransactionSignature(web3, accounts[0], web3.utils.sha3("I approve"));
+    var func = async function ({from/*, to, tx, txfee, gas_price, gas_limit, nonce, relay_hub_address, relay_address*/}) {
+        let toSign = web3.utils.sha3("0x" + Buffer.from("I approve").toString("hex") + utils.removeHexPrefix(from));
+        let sign = await utils.getTransactionSignature(web3, accounts[0], toSign);
         return sign.slice(2);
     }
     var arr = [null, func]
     arr.forEach(approveFunction => {
-        it("should send transaction to a relay and receive a response (approveFunction=" + typeof approveFunction + ")", async function () {
+        it("should send transaction to a relay and receive a response (" + ((( typeof approveFunction == 'function' ) ? "with" : "without") + " approveFunction)"), async function () {
             let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
             let to = sr.address;
             let options = {

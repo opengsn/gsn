@@ -92,7 +92,7 @@ contract RelayRecipient is RelayRecipientApi {
 	 * 			the contract may check the method-id for valid methods
 	 *  @param gas_price - the gas price for this transaction
 	 *  @param transaction_fee - the relay compensation (in %) for this transaction
-	 *  @param approval - first 65 bytes are reserved for the sender's signature, and the rest is
+	 *  @param approval - first 65 bytes are checked by the RelayHub and reserved for the sender's signature, and the rest is
      *           available for dapps in their specific use-cases
 	 */
     function accept_relayed_call(address relay, address from, bytes memory encoded_function, uint gas_price, uint transaction_fee, bytes memory approval) public view returns(uint32);
