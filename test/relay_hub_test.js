@@ -257,18 +257,14 @@ contract("RelayHub", function (accounts) {
         await sr.set_blacklisted(from)
         let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
         let sig = await getTransactionSignature(web3, from, digest)
-        try {
-            await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
-                from: relayAccount,
-                gasPrice: gas_price,
-                gasLimit: gas_limit_any_value
-            });
-            assert.fail("relay should fail");
-        } catch (error) {
-            assertErrorMessageCorrect(error, "can_relay failed")
-            let can_relay = await rhub.can_relay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
-            assert.equal(3, can_relay.valueOf().toString())
-        }
+        let res = await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+            from: relayAccount,
+            gasPrice: gas_price,
+            gasLimit: gas_limit_any_value
+        });
+        assert.equal("TransactionFailed", res.logs[0].event)
+        let can_relay = await rhub.can_relay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
+        assert.equal(3, can_relay.valueOf().toString())
     });
 
     it("should not accept relay requests if gas limit is too low for a relayed transaction", async function () {
