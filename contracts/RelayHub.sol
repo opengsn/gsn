@@ -14,7 +14,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_unstake_delay = 0;    // XXX TBD
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant public gas_overhead = 47382;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gas_overhead = 47586;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
@@ -152,8 +152,8 @@ contract RelayHub is RelayHubApi {
 	// for contract-specific checks.
 	// returns "0" if the relay is valid. other values represent errors.
 	// values 1..10 are reserved for can_relay. other values can be used by accept_relayed_call of target contracts.
-    function can_relay(address relay, address from, RelayRecipient to, bytes memory transaction, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory approval) public view returns(uint32) {
-        bytes memory packed = abi.encodePacked("rlx:", from, to, transaction, transaction_fee, gas_price, gas_limit, nonce, address(this));
+    function can_relay(address relay, address from, RelayRecipient to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory approval) public view returns(uint32) {
+        bytes memory packed = abi.encodePacked("rlx:", from, to, encoded_function, transaction_fee, gas_price, gas_limit, nonce, address(this));
         bytes32 hashed_message = keccak256(abi.encodePacked(packed, relay));
         bytes32 signed_message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashed_message));
         if (!GsnUtils.checkSig(from, signed_message,  approval))  // Verify the sender's signature on the transaction
@@ -161,7 +161,19 @@ contract RelayHub is RelayHubApi {
         if (nonces[from] != nonce)
             return 2;   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
-        return to.accept_relayed_call(relay, from, transaction, gas_price, transaction_fee, approval); // Check to.accept_relayed_call, see if it agrees to accept the charges.
+        return to.accept_relayed_call(relay, from, encoded_function, gas_price, transaction_fee, approval); // Check to.accept_relayed_call, see if it agrees to accept the charges.
+//        bytes memory transaction = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee);
+//        bool success;
+//        bytes memory ret;
+//        (success, ret) =  address(to).call(transaction);
+//        if (!success){
+//            return 3;
+//        }
+//        uint32 accept;
+//        assembly {
+//            accept := and(mload(add(0x20, ret)), 0xffffffff)
+//        }
+//        return accept;
     }
 
     /**
@@ -181,25 +193,56 @@ contract RelayHub is RelayHubApi {
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
 
-        require(0 == can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval), "can_relay failed");
+//        require(0 == can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval), "can_relay failed");
+        uint32 can_relay_result = can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval);
+        if (can_relay_result != 0) {
+            emit TransactionFailed(msg.sender, from, to, can_relay_result);
+            return;
+        }
 
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.
-        bytes memory transaction = abi.encodePacked(encoded_function,from);
+//        bytes memory transaction = abi.encodePacked(encoded_function,from);
 
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
         bool success;
-        (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
-        nonces[from]++;
-        transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector,msg.sender, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
-        to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
+        bool success_post;
+//        (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
+//        nonces[from]++;
+//        transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector, msg.sender, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
+//        (success_post, ) =to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
+        bytes memory ret;
+        (success_post,ret) = address(this).call(abi.encodeWithSelector(this.recipient_calls.selector,from,to,msg.sender,encoded_function,transaction_fee,gas_limit,initial_gas));
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
-        emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), success, charge);
+        if (!success_post){
+            emit PostRelayedFailed(msg.sender, from, to, keccak256(encoded_function), success_post, charge);
+        }else{
+            success = LibBytes.readUint256(ret,0) != 0;
+            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), success, charge);
+        }
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
+    }
+
+    function recipient_calls(address from, address to, address relay_addr, bytes calldata encoded_function, uint transaction_fee, uint gas_limit, uint initial_gas) external returns (bool) {
+        require(msg.sender == address(this), "Only RelayHub should call this function");
+
+        // ensure that the last bytes of @transaction are the @from address.
+        // Recipient will trust this reported sender when msg.sender is the known RelayHub.
+        bool success;
+        bool success_post;
+        bytes memory transaction = abi.encodePacked(encoded_function,from);
+
+        (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
+        nonces[from]++;
+        transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector, relay_addr, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
+        (success_post, ) = to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
+        require(success_post, "post_relayed_call reverted - reverting the relayed transaction");
+        return success;
+
     }
 
     struct Transaction {
