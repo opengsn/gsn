@@ -36,4 +36,12 @@ library GsnUtils {
     function getStringParam(bytes memory msg_data, uint index) internal pure returns (string memory) {
         return string(getBytesParam(msg_data,index));
     }
+
+    function checkSig(address signer, bytes32 hash, bytes memory sig) pure internal returns (bool) {
+        // Check if @v,@r,@s are a valid signature of @signer for @hash
+        uint8 v = uint8(sig[0]);
+        bytes32 r = LibBytes.readBytes32(sig,1);
+        bytes32 s = LibBytes.readBytes32(sig,33);
+        return signer == ecrecover(hash, v, r, s);
+    }
 }

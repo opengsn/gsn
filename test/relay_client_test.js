@@ -68,40 +68,51 @@ contract('RelayClient', function (accounts) {
 
     })
 
-    it("should send transaction to a relay and receive a response", async function () {
-        let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
-        let to = sr.address;
-        let options = {
-            from: gasLess,
-            to: to,
-            txfee: 12,
-            gas_limit: 1000000
-        }
-        let relay_client_config = {
-            relayUrl: localhostOne,
-            relayAddress: relayAddress,
-            allowed_relay_nonce_gap: 0,
-            verbose: process.env.DEBUG
-        }
+    var func = async function ({from/*, to, tx, txfee, gas_price, gas_limit, nonce, relay_hub_address, relay_address*/}) {
+        let toSign = web3.utils.sha3("0x" + Buffer.from("I approve").toString("hex") + utils.removeHexPrefix(from));
+        let sign = await utils.getTransactionSignature(web3, accounts[0], toSign);
+        return sign.slice(2);
+    }
+    var arr = [null, func]
+    arr.forEach(approveFunction => {
+        it("should send transaction to a relay and receive a response (" + ((( typeof approveFunction == 'function' ) ? "with" : "without") + " approveFunction)"), async function () {
+            let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
+            let to = sr.address;
+            let options = {
+                approveFunction: approveFunction,
+                from: gasLess,
+                to: to,
+                txfee: 12,
+                gas_limit: 1000000
+            }
+            let relay_client_config = {
+                relayUrl: localhostOne,
+                relayAddress: relayAddress,
+                allowed_relay_nonce_gap: 0,
+                verbose: process.env.DEBUG
+            }
 
-        let tbk = new RelayClient(web3, relay_client_config);
+            let tbk = new RelayClient(web3, relay_client_config);
 
-        let validTransaction = await tbk.relayTransaction(encoded, options);
-        let txhash = "0x" + validTransaction.hash(true).toString('hex');
-        let res
-        do {
-            res = await web3.eth.getTransactionReceipt(txhash)
-            await testutils.sleep(500)
-        } while (res === null)
+            let validTransaction = await tbk.relayTransaction(encoded, options);
+            let txhash = "0x" + validTransaction.hash(true).toString('hex');
+            let res
+            do {
+                res = await web3.eth.getTransactionReceipt(txhash)
+                await testutils.sleep(500)
+            } while (res === null)
 
-        //validate we've got the "SampleRecipientEmitted" event
-        let topic = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address)')
-        assert(res.logs.find(log => log.topics.includes(topic)))
+            //validate we've got the "SampleRecipientEmitted" event
+            let topic = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address)')
+            assert(res.logs.find(log => log.topics.includes(topic)))
 
-        assert.equal("0x" + validTransaction.to.toString('hex'), rhub.address.toString().toLowerCase());
-        assert.equal(parseInt(validTransaction.gasPrice.toString('hex'), 16), gasPrice);
+            assert.equal("0x" + validTransaction.to.toString('hex'), rhub.address.toString().toLowerCase());
+            assert.equal(parseInt(validTransaction.gasPrice.toString('hex'), 16), gasPrice);
 
+        })
     });
+
+    it("should consider a transaction with an incorrect approval as invalid")
 
     it("should consider a transaction with a relay tx nonce higher than expected as invalid", async function () {
         let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()

@@ -321,6 +321,21 @@ class RelayClient {
                 signature = await getTransactionSignature(this.web3, options.from, hash);
             }
 
+            if (typeof options.approveFunction === "function") {
+                let approval = await options.approveFunction({
+                    from: options.from,
+                    to: options.to,
+                    encodedFunctionCall: encodedFunctionCall,
+                    txfee: options.txfee,
+                    gas_price: gasPrice,
+                    gas_limit: gasLimit,
+                    nonce: nonce,
+                    relay_hub_address: relayHub._address,
+                    relay_address: relayAddress
+                })
+                signature += approval
+            }
+
             if (self.config.verbose) {
                 console.log("relayTransaction hash: ", hash, "from: ", options.from, "sig: ", signature);
                 let rec = utils.getEcRecoverMeta(hash, signature);
