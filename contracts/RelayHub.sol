@@ -19,6 +19,8 @@ contract RelayHub is RelayHubApi {
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
     enum State {UNKNOWN, STAKED, REGISTERED, REMOVED, PENALIZED}
+    // status flags for TransactionRelayed() event
+    enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PostRelayedFailed}
 
     struct Relay {
         uint stake;             // Size of the stake
@@ -192,10 +194,9 @@ contract RelayHub is RelayHubApi {
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
 
-//        require(0 == can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval), "can_relay failed");
         uint32 can_relay_result = can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval);
         if (can_relay_result != 0) {
-            emit TransactionFailed(msg.sender, from, to, can_relay_result);
+            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(RelayCallStatus.CanRelayFailed), 0);
             return;
         }
 
@@ -205,17 +206,18 @@ contract RelayHub is RelayHubApi {
 
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
-        bool success;
         bool success_post;
         bytes memory ret;
         (success_post,ret) = address(this).call(abi.encodeWithSelector(this.recipient_calls.selector,from,to,msg.sender,encoded_function,transaction_fee,gas_limit,initial_gas));
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
         if (!success_post){
-            emit PostRelayedFailed(msg.sender, from, to, keccak256(encoded_function), success_post, charge);
+            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(RelayCallStatus.PostRelayedFailed), charge);
         }else{
-            success = LibBytes.readUint256(ret,0) != 0;
-            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), success, charge);
+            RelayCallStatus status = RelayCallStatus.OK;
+            if (LibBytes.readUint256(ret,0) == 0)
+                status = RelayCallStatus.RelayedCallFailed;
+            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(status), charge);
         }
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
@@ -237,7 +239,6 @@ contract RelayHub is RelayHubApi {
         (success_post, ) = to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
         require(success_post, "post_relayed_call reverted - reverting the relayed transaction");
         return success;
-
     }
 
     struct Transaction {
