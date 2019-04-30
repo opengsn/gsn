@@ -204,7 +204,7 @@ contract("RelayHub", function (accounts) {
         var log_relayed = result.logs[0];
         var args_relayed = log_relayed.args;
         assert.equal("TransactionRelayed", log_relayed.event);
-        assert.equal(true, args_relayed.success)
+        assert.equal(0, args_relayed.status.toNumber())
         var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
             fromBlock: startBlock,
             toBlock: 'latest'
@@ -262,7 +262,9 @@ contract("RelayHub", function (accounts) {
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
         });
-        assert.equal("TransactionFailed", res.logs[0].event)
+        assert.equal(res.logs[0].event, "TransactionRelayed")
+        let can_relay_failed = 1;
+        assert.equal(res.logs[0].args.status,can_relay_failed)
         let can_relay = await rhub.can_relay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
         assert.equal(11, can_relay.valueOf().toString())
     });
