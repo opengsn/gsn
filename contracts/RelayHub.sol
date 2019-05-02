@@ -163,10 +163,10 @@ contract RelayHub is RelayHubApi {
         if (nonces[from] != nonce)
             return 2;   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
-        bytes memory transaction = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee, approval);
+        bytes memory accept_relayed_call_raw_tx = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee, approval);
         bool success;
         bytes memory ret;
-        (success, ret) =  address(to).staticcall(transaction);
+        (success, ret) =  address(to).staticcall(accept_relayed_call_raw_tx);
         if (!success){
             return 3;
         }
@@ -202,7 +202,6 @@ contract RelayHub is RelayHubApi {
 
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.
-//        bytes memory transaction = abi.encodePacked(encoded_function,from);
 
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
@@ -229,9 +228,9 @@ contract RelayHub is RelayHubApi {
 
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.
+        bytes memory transaction = abi.encodePacked(encoded_function,from);
         bool success;
         bool success_post;
-        bytes memory transaction = abi.encodePacked(encoded_function,from);
 
         (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
         nonces[from]++;
