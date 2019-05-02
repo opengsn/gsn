@@ -84,7 +84,7 @@ contract RelayRecipient is RelayRecipientApi {
 	 * Contract must inherit and re-implement this method.
 	 *  @return "0" if the the contract is willing to accept the charges from this sender, for this function call.
 	 *  	any other value is a failure. actual value is for diagnostics only.
-	 *   values below 10 are reserved by can_relay
+	 *** Note :values below 10 are reserved by can_relay
 	 *  @param relay the relay that attempts to relay this function call.
 	 * 			the contract may restrict some encoded functions to specific known relays.
 	 *  @param from the sender (signer) of this function call.

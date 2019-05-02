@@ -208,6 +208,7 @@ contract RelayHub is RelayHubApi {
         bool success_post;
         bytes memory ret;
         (success_post,ret) = address(this).call(abi.encodeWithSelector(this.recipient_calls.selector,from,to,msg.sender,encoded_function,transaction_fee,gas_limit,initial_gas));
+        nonces[from]++;
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
         if (!success_post){
@@ -231,12 +232,12 @@ contract RelayHub is RelayHubApi {
         bytes memory transaction = abi.encodePacked(encoded_function,from);
         bool success;
         bool success_post;
-
+        uint balance_before = balances[to];
         (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
-        nonces[from]++;
         transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector, relay_addr, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
         (success_post, ) = to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
         require(success_post, "post_relayed_call reverted - reverting the relayed transaction");
+        require(balance_before <= balances[to], "Moving funds during relayed transaction disallowed");
         return success;
     }
 
