@@ -226,7 +226,7 @@ func configRelay(relayParams librelay.RelayParams) {
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
-		client)
+		client, librelay.NewMemoryTxStore(nil), nil)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
 		return

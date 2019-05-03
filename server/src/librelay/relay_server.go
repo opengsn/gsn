@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"code.cloudfoundry.org/clock"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -99,6 +101,8 @@ type IRelay interface {
 
 	GetPort() string
 
+	UpdateUnconfirmedTransactions() (err error)
+
 	sendRegisterTransaction() (tx *types.Transaction, err error)
 
 	awaitTransactionMined(tx *types.Transaction) (err error)
@@ -139,6 +143,7 @@ type relayServer struct {
 	ChainID               *big.Int
 	TxStore               ITxStore
 	rhub                  *librelay.RelayHub
+	clock                 clock.Clock
 }
 
 type RelayParams relayServer
@@ -165,10 +170,10 @@ func NewRelayServer(
 	RegistrationBlockRate uint64,
 	EthereumNodeURL string,
 	Client IClient,
-	TxStore ITxStore) (*relayServer, error) {
+	TxStore ITxStore,
+	clk clock.Clock) (*relayServer, error) {
 
 	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
-
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +181,10 @@ func NewRelayServer(
 	chainId, err := Client.NetworkID(context.Background())
 	if err != nil {
 		return nil, err
+	}
+
+	if clk == nil {
+		clk = clock.NewClock()
 	}
 
 	relay := &relayServer{
@@ -196,6 +205,7 @@ func NewRelayServer(
 		ChainID:               chainId,
 		TxStore:               TxStore,
 		rhub:                  rhub,
+		clock:                 clk,
 	}
 	return relay, err
 }
@@ -693,7 +703,7 @@ func (relay *relayServer) UpdateUnconfirmedTransactions() (err error) {
 	confirmedBlock.Sub(latest.Number, big.NewInt(confirmationsNeeded))
 	nonce, err := relay.Client.NonceAt(ctx, relay.Address(), &confirmedBlock)
 	if err != nil {
-		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address(), "on block", confirmedBlock.Uint64(), err)
+		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address().Hex(), "on block", confirmedBlock.Uint64(), err)
 		return
 	}
 
@@ -718,31 +728,31 @@ func (relay *relayServer) UpdateUnconfirmedTransactions() (err error) {
 	// Check if the tx was mined by comparing its nonce against the latest one
 	nonce, err = relay.Client.NonceAt(ctx, relay.Address(), nil)
 	if err != nil {
-		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address(), err)
+		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address().Hex(), err)
 		return
 	}
 
 	if tx.Nonce() <= nonce {
-		log.Println("UpdateUnconfirmedTransactions: awaiting confirmations for next mined transaction", nonce, tx.Hash())
+		log.Println("UpdateUnconfirmedTransactions: awaiting confirmations for next mined transaction", nonce, tx.Hash().Hex())
 		return nil
 	}
 
 	// If the tx is still pending, check how long ago we sent it, and resend it if needed
-	if time.Now().Unix()-tx.Timestamp < pendingTransactionTimeout {
-		log.Println("UpdateUnconfirmedTransactions: awaiting next transaction to be mined", nonce, tx.Hash())
+	if relay.clock.Now().Unix()-tx.Timestamp < pendingTransactionTimeout {
+		log.Println("UpdateUnconfirmedTransactions: awaiting transaction to be mined", nonce, tx.Hash().Hex())
 		return
 	}
 
 	newtx, err := relay.resendTransaction(tx.Transaction)
 	if err != nil {
-		log.Println("UpdateUnconfirmedTransactions: error resending transaction", tx.Hash(), err)
+		log.Println("UpdateUnconfirmedTransactions: error resending transaction", tx.Hash().Hex(), err)
 		return err
 	}
 
-	// TODO: Increase timetamp of subsequent txs
+	// TODO: Increase timetamp of subsequent txs?
 	err = relay.TxStore.UpdateTransactionByNonce(newtx)
 	if err != nil {
-		log.Println("UpdateUnconfirmedTransactions: error updating transaction in local store", newtx.Hash(), err)
+		log.Println("UpdateUnconfirmedTransactions: error updating transaction in local store", newtx.Hash().Hex(), err)
 		return err
 	}
 

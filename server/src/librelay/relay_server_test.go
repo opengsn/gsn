@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"code.cloudfoundry.org/clock/fakeclock"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
@@ -103,6 +105,7 @@ var relayKey1 *ecdsa.PrivateKey
 var gaslessKey2 *ecdsa.PrivateKey
 var ownerKey3 *ecdsa.PrivateKey
 var rhub *librelay.RelayHub
+var clk *fakeclock.FakeClock
 
 var sampleRecipient common.Address
 var rhaddr common.Address
@@ -133,13 +136,14 @@ func NewRelay(relayHubAddress common.Address) {
 	unstakeDelay := big.NewInt(0)
 	registrationBlockRate := uint64(5)
 	ethereumNodeUrl := ""
-	txStore := NewMemoryTxStore()
+	clk = fakeclock.NewFakeClock(time.Now())
+	txStore := NewMemoryTxStore(clk)
 	var err error
 	relay.relayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
 		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,
-		ethereumNodeUrl, sim, txStore)
+		ethereumNodeUrl, sim, txStore, clk)
 	if err != nil {
 		log.Fatalln("Relay was not created", err)
 	}

@@ -4,7 +4,8 @@ import (
 	"container/list"
 	"fmt"
 	"sync"
-	"time"
+
+	"code.cloudfoundry.org/clock"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -24,12 +25,18 @@ type ITxStore interface {
 type MemoryTxStore struct {
 	transactions *list.List
 	mutex        *sync.Mutex
+	clock        clock.Clock
 }
 
-func NewMemoryTxStore() *MemoryTxStore {
+func NewMemoryTxStore(clk clock.Clock) *MemoryTxStore {
+	if clk == nil {
+		clk = clock.NewClock()
+	}
+
 	return &MemoryTxStore{
 		transactions: list.New(),
 		mutex:        &sync.Mutex{},
+		clock:        clk,
 	}
 }
 
@@ -47,7 +54,7 @@ func (store *MemoryTxStore) SaveTransaction(tx *types.Transaction) (err error) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	timedtx := &TimestampedTransaction{tx, time.Now().Unix()}
+	timedtx := &TimestampedTransaction{tx, store.clock.Now().Unix()}
 	for e := store.transactions.Front(); e != nil; e = e.Next() {
 		if e.Value.(*TimestampedTransaction).Nonce() > tx.Nonce() {
 			store.transactions.InsertBefore(timedtx, e)
@@ -64,7 +71,7 @@ func (store *MemoryTxStore) UpdateTransactionByNonce(tx *types.Transaction) (err
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	timedtx := &TimestampedTransaction{tx, time.Now().Unix()}
+	timedtx := &TimestampedTransaction{tx, store.clock.Now().Unix()}
 	for e := store.transactions.Front(); e != nil; e = e.Next() {
 		if e.Value.(*TimestampedTransaction).Nonce() == tx.Nonce() {
 			e.Value = timedtx
