@@ -15,6 +15,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
     uint constant public gas_overhead = 47586;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint accept_relayed_call_max_gas = 50000;
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
@@ -164,15 +165,20 @@ contract RelayHub is RelayHubApi {
             return 2;   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
         bytes memory accept_relayed_call_raw_tx = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee, approval);
+        return handle_accept_relay_call(to,accept_relayed_call_raw_tx);
+    }
+
+    function handle_accept_relay_call(RelayRecipient to, bytes memory accept_relayed_call_raw_tx) private view returns (uint32){
         bool success;
-        bytes memory ret;
-        (success, ret) =  address(to).staticcall(accept_relayed_call_raw_tx);
-        if (!success){
-            return 3;
-        }
-        uint32 accept;
+        uint32 accept = 3;
         assembly {
-            accept := and(mload(add(0x20, ret)), 0xffffffff)
+            let ptr := mload(0x40)
+            let accept_relayed_call_max_gas := sload(accept_relayed_call_max_gas_slot)
+            success := staticcall(accept_relayed_call_max_gas, to, add(accept_relayed_call_raw_tx, 0x20), mload(accept_relayed_call_raw_tx), ptr, 0x20)
+            accept := and(mload(ptr),0xffffffff)
+        }
+        if (!success){
+            return 4;
         }
         return accept;
     }
