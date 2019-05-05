@@ -85,9 +85,14 @@ module.exports = {
         return sig;
     },
 
-    getTransactionSignatureWithKey: function(privKey, hash) {
-        let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(hash), "hex")])
-        let signed = web3Utils.sha3("0x"+msg.toString('hex') );
+    getTransactionSignatureWithKey: function(privKey, hash, withPrefix=true) {
+        let signed
+        if (withPrefix){
+            let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(hash), "hex")])
+            signed = web3Utils.sha3("0x"+msg.toString('hex') )
+        }
+        else
+            signed = hash
         let keyHex = "0x" + Buffer.from(privKey).toString('hex')
         const sig_ = EthCrypto.sign(keyHex, signed)
         let signature = ethUtils.fromRpcSig(sig_);

@@ -468,8 +468,9 @@ contract("RelayHub", function (accounts) {
             let snitching_account_initial_balance = await web3.eth.getBalance(snitching_account);
 
             let unsignedillegalTransactionEncoded = encodeRLP(illegalTransaction)
-            illegalTransaction.sign(privKey);
-            let sig = signatureHex(illegalTransaction);
+            let hash = "0x" + illegalTransaction.hash(false).toString('hex')
+            let sig = utils.getTransactionSignatureWithKey(privKey,hash,false)
+            assert.equal(sig.length, 132);
             let res = await rhub.penalize_illegal_transaction(unsignedillegalTransactionEncoded, sig, {
                 from: snitching_account,
                 gasPrice: gasPricePenalize,
