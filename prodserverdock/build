@@ -5,7 +5,8 @@ DIR=../build/dockrelay
 rm -rf $DIR
 mkdir $DIR
 cp -a * $DIR
-cp ../build/dock-builD/server/bin/* $DIR/relay/bin
+mkdir -p $DIR/relay/bin
+cp ../build/dock-builD/server/bin/* $DIR/relay/bin/
 cd $DIR
 docker build -t tabookey/dockrelay .
 

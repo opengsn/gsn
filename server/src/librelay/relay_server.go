@@ -78,13 +78,7 @@ type IRelay interface {
 
 	RefreshGasPrice() (err error)
 
-	Stake(ownerKey *ecdsa.PrivateKey) (err error)
-
-	Unstake(ownerKey *ecdsa.PrivateKey) (err error)
-
 	RegisterRelay() (err error)
-
-	RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error)
 
 	IsStaked() (staked bool, err error)
 
@@ -104,17 +98,7 @@ type IRelay interface {
 
 	GetPort() (string)
 
-	AuditRelaysTransactions(signedTx *types.Transaction) (err error)
-
-	ScanBlockChainToPenalize() (err error)
-
-	sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
-
-	sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
-
 	sendRegisterTransaction() (tx *types.Transaction, err error)
-
-	sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error)
 
 	awaitTransactionMined(tx *types.Transaction) (err error)
 }
@@ -227,47 +211,6 @@ func (relay *relayServer) RefreshGasPrice() (err error) {
 	return
 }
 
-func (relay *relayServer) Stake(ownerKey *ecdsa.PrivateKey) (err error) {
-	tx, err := relay.sendStakeTransaction(ownerKey)
-	if err != nil {
-		return err
-	}
-	return relay.awaitTransactionMined(tx)
-}
-
-func (relay *relayServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(ownerKey)
-	auth.Value = relay.StakeAmount
-	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
-	if err != nil {
-		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
-		return
-	}
-	log.Println("Stake() tx sent:", tx.Hash().Hex())
-	return
-}
-
-func (relay *relayServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(ownerKey)
-	auth.Value = relay.StakeAmount
-	tx, err = relay.rhub.Unstake(auth, relay.Address())
-	if err != nil {
-		log.Println("rhub.Unstake() failed", relay.StakeAmount, relay.UnstakeDelay)
-		return
-	}
-	log.Println("Unstake() tx sent:", tx.Hash().Hex())
-	return
-}
-
-func (relay *relayServer) Unstake(ownerKey *ecdsa.PrivateKey) (err error) {
-	tx, err := relay.sendUnstakeTransaction(ownerKey)
-	if err != nil {
-		return err
-	}
-	return relay.awaitTransactionMined(tx)
-
-}
-
 func (relay *relayServer) RegisterRelay() (err error) {
 	tx, err := relay.sendRegisterTransaction()
 	if err != nil {
@@ -365,7 +308,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return
 	}
 	startBlock := uint64(0)
@@ -378,7 +321,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	}
 	iter, err := relay.rhub.FilterRelayAdded(filterOpts, []common.Address{relay.Address()}, nil)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return
 	}
 
@@ -593,7 +536,7 @@ func (relay *relayServer) Address() (relayAddress common.Address) {
 	publicKey := relay.PrivateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		log.Fatalln(
+		log.Println(
 			"error casting public key to ECDSA")
 		return
 	}
@@ -611,227 +554,6 @@ func (relay *relayServer) GetUrl() (string) {
 
 func (relay *relayServer) GetPort() (string) {
 	return relay.Port
-}
-
-var maybePenalizable = make(map[common.Address]types.TxByNonce)
-var lastBlockScanned = big.NewInt(0)
-
-func (relay *relayServer) AuditRelaysTransactions(signedTx *types.Transaction) (err error) {
-
-	log.Println("AuditRelaysTransactions start")
-	ctx := context.Background()
-	// probably due to ganache starting from earlier block than when eip155 introduced
-	signer := types.HomesteadSigner{} //types.NewEIP155Signer(signedTx.ChainId())
-
-	// check if @signedTx is already on the blockchain. If it is, return
-	tx, _, err := relay.Client.TransactionByHash(ctx, signedTx.Hash())
-	if err == nil { // signedTx already on the blockchain
-		log.Println("tx already on the blockchain")
-		log.Println("tx ", tx)
-		return
-	} else if err != ethereum.NotFound { //found unsigned transaction... should never get here
-		log.Println(err)
-		return
-	} // TODO: sanity check that tx == signedTx. their hash is equal according to signer.Hash()...
-	// tx not found on the blockchain, maybe punishable...
-
-	// check if @signedTx is from a known relay on relayhub. If it isn't, return.
-	otherRelay, err := signer.Sender(signedTx)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	isRelay, err := relay.validateRelay(otherRelay)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if !isRelay { // not a relay
-		log.Println("Not a known relay on this relay hub", relay.RelayHubAddress.Hex())
-		return
-	}
-	log.Println("After validate")
-
-	// keep the tx in memory for future scan
-	maybePenalizable[otherRelay] = append(maybePenalizable[otherRelay], signedTx)
-
-	// check if @signedTx.nonce <= otherRelay.nonce.
-	otherNonce, err := relay.Client.NonceAt(ctx, otherRelay, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	log.Println("Before scanning, current account nonce, tx nonce", otherNonce, signedTx.Nonce())
-	//If it is, scan the blockchain for the other tx of the same nonce and penalize!
-	if signedTx.Nonce() <= otherNonce {
-		err = relay.scanBlockChainToPenalizeInternal(lastBlockScanned, nil)
-		if err != nil {
-			log.Println("scanBlockChainToPenalizeInternal failed")
-			return
-		}
-	}
-	log.Println("AuditRelaysTransactions end")
-	return nil
-}
-
-// TODO
-func (relay *relayServer) ScanBlockChainToPenalize() (err error) {
-	return relay.scanBlockChainToPenalizeInternal(lastBlockScanned, nil)
-}
-
-func (relay *relayServer) scanBlockChainToPenalizeInternal(startBlock, endBlock *big.Int) (err error) {
-	log.Println("scanBlockChainToPenalizeInternal start")
-	signer := types.HomesteadSigner{} //types.NewEIP155Signer(signedTx.ChainId())
-	ctx := context.Background()
-	// iterate over maybePenalizable
-	for address, txsToScan := range maybePenalizable {
-		log.Println("scanBlockChainToPenalizeInternal  loop start")
-		log.Println("address ", address.Hex())
-		// get All transactions of each address in maybePenalizable and cross check nonce of them
-		allTransactions, err := relay.getTransactionsByAddress(address, startBlock, nil)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		log.Println("allTransactions len", len(allTransactions))
-		for _, tx1 := range txsToScan {
-			// check if @signedTx is already on the blockchain. If it is, continue to next
-			/*tx*/ _, _, err = relay.Client.TransactionByHash(ctx, signer.Hash(tx1))
-			if err == nil { // tx1 already on the blockchain
-				continue
-			}
-			for _, tx2 := range allTransactions {
-				if tx1.Nonce() == tx2.Nonce() && bytes.Compare(signer.Hash(tx1).Bytes(), signer.Hash(tx2).Bytes()) != 0 {
-					err = relay.penalizeOtherRelay(tx1, tx2)
-					if err != nil {
-						log.Println(err)
-						return err
-					}
-
-				}
-			}
-		}
-		delete(maybePenalizable, address)
-	}
-	return nil
-}
-
-func (relay *relayServer) getTransactionsByAddress(address common.Address, startBlock, endBlock *big.Int) (transactions types.Transactions, err error) {
-	log.Println("getTransactionsByAddress start")
-	ctx := context.Background()
-	client := relay.Client
-	if endBlock == nil {
-		header, err := client.HeaderByNumber(ctx, nil)
-		if err != nil {
-			log.Println(err)
-			return nil, err
-		}
-		endBlock = header.Number
-	}
-	nonce, err := client.NonceAt(ctx, address, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	transactions = make(types.Transactions, 0, nonce)
-	one := big.NewInt(1)
-	log.Println("startBlock ", startBlock.Uint64(), "endBlock ", endBlock.Uint64())
-	for bi := startBlock; bi.Cmp(endBlock) < 0; bi.Add(bi, one) {
-
-		// TODO: this is a bug in ganache that returns a malformed serialized json to BlockByNumber/BlockByHash
-
-		//header, err := client.HeaderByNumber(ctx, bi)
-		//if err != nil {
-		//	log.Println("client.HeaderByNumber failed, bi",bi.Uint64())
-		//	log.Println(err)
-		//	continue
-		//}
-		//block, err := client.BlockByHash(context.Background(), header.Hash())
-		block, err := client.BlockByNumber(context.Background(), bi)
-		if err != nil {
-			log.Println("bi", bi.Uint64())
-			log.Println(err)
-			continue
-		}
-		//signer := types.HomesteadSigner{} //types.NewEIP155Signer(signedTx.ChainId())
-		log.Println("block.Transactions() len", len(block.Transactions()))
-		log.Println("bi.Cmp(endBlock) < 0", bi.Cmp(endBlock) < 0)
-		for _, tx := range block.Transactions() {
-			txMsg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()))
-			if err != nil {
-				log.Println(err)
-				return nil, err
-			}
-			if txMsg.From().Hex() == address.Hex() {
-				transactions = append(transactions, tx)
-			}
-		}
-
-	}
-	// advancing the last scanned block to save some effort
-	lastBlockScanned = endBlock
-	log.Println("getTransactionsByAddress start")
-	return
-}
-
-func (relay *relayServer) penalizeOtherRelay(signedTx1, signedTx2 *types.Transaction) (err error) {
-	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-
-	ts := types.Transactions{signedTx1}
-	rawTxBytes1 := ts.GetRlp(0)
-	vsig1, rsig1, ssig1 := signedTx1.RawSignatureValues()
-	sig1 := make([]byte, 65)
-	copy(sig1[32-len(rsig1.Bytes()):32], rsig1.Bytes())
-	copy(sig1[64-len(ssig1.Bytes()):64], ssig1.Bytes())
-	sig1[64] = byte(vsig1.Uint64() - 27)
-	//log.Println("signedTx sig",hexutil.Encode(sig1))
-
-	ts = types.Transactions{signedTx2}
-	rawTxBytes2 := ts.GetRlp(0)
-	vsig2, rsig2, ssig2 := signedTx1.RawSignatureValues()
-	sig2 := make([]byte, 65)
-	copy(sig2[32-len(rsig2.Bytes()):32], rsig2.Bytes())
-	copy(sig2[64-len(ssig2.Bytes()):64], ssig2.Bytes())
-	sig2[64] = byte(vsig2.Uint64() - 27)
-	//log.Println("signedTx sig",hexutil.Encode(sig2))
-
-	nonceMutex.Lock()
-	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
-	tx, err := relay.rhub.PenalizeRepeatedNonce(auth, rawTxBytes1, sig1, rawTxBytes2, sig2)
-	if err != nil {
-		log.Println(err)
-		//relay.replayUnconfirmedTxs(client)
-		return err
-	}
-	//unconfirmedTxs[lastNonce] = tx
-	lastNonce++
-
-	log.Println("tx sent:", tx.Hash().Hex())
-	return nil
-
-}
-
-func (relay *relayServer) validateRelay(otherRelay common.Address) (bool, error) {
-
-	callOpt := &bind.CallOpts{
-		From:    relay.Address(),
-		Pending: false,
-	}
-	res, err := relay.rhub.Relays(callOpt, otherRelay)
-	if err != nil {
-		log.Println(err)
-		return false, err
-	}
-	if res.Stake.Cmp(big.NewInt(0)) > 0 {
-		return true, nil
-	}
-	return false, nil
 }
 
 func (relay *relayServer) canRelay(encodedFunction string,

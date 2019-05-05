@@ -5,10 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
 	"io/ioutil"
 	"librelay"
 	"log"
@@ -33,7 +31,6 @@ var relay librelay.IRelay
 var server *http.Server
 var stopKeepAlive chan bool
 var stopRefreshBlockchainView chan bool
-//var stopScanningBlockChain chan bool
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -45,8 +42,6 @@ func main() {
 
 	http.HandleFunc("/relay", assureRelayReady(relayHandler))
 	http.HandleFunc("/getaddr", getEthAddrHandler)
-	//Unused for now. TODO: handle eth_BlockByNumber/eth_BlockByHash manually, since the go client can't parse malformed answer from ganache-cli
-	//http.HandleFunc("/audit", assureRelayReady(auditRelaysHandler))
 
 	timeUnit := time.Minute
 	if shortSleep {
@@ -55,7 +50,6 @@ func main() {
 	stopKeepAlive = schedule(keepAlive, 1*timeUnit, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
 	schedule(shutdownOnRelayRemoved, 1*timeUnit, 0)
-	//stopScanningBlockChain = schedule(scanBlockChainToPenalize, 1*time.Hour)
 
 	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
 	err := server.ListenAndServe()
@@ -70,7 +64,8 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-		w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+		w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+		w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, POST, OPTIONS"}
 
 		if !shouldHandleRelayRequests() {
 			err := fmt.Errorf("Relay not staked and registered yet")
@@ -107,54 +102,11 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 
 }
 
-func auditRelaysHandler(w http.ResponseWriter, r *http.Request) {
-
-	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
-
-	log.Println("auditRelaysHandler Start")
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Println("Could not read request body", body, err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-	var request = &librelay.AuditRelaysRequest{}
-	var signedTx = &types.Transaction{}
-	err = json.Unmarshal(body, &request)
-	if err != nil {
-		log.Println("Invalid json", body, err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-	log.Println("request.SignedTxHex", request.SignedTx)
-	err = rlp.DecodeBytes(common.Hex2Bytes(request.SignedTx[2:]), signedTx)
-	if err != nil {
-		log.Println("Failed to rlp.decode", err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-
-	err = relay.AuditRelaysTransactions(signedTx)
-	if err != nil {
-		log.Println("AuditRelaysTransactions() failed")
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-	log.Println("auditRelaysHandler end")
-	resp, err := json.Marshal("OK")
-	if err != nil {
-		log.Println(err)
-		w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
-		return
-	}
-	w.Write(resp)
-}
-
 func getEthAddrHandler(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"*"}
+	w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+	w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, OPTIONS"}
 
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
@@ -395,13 +347,4 @@ func shutdownOnRelayRemoved() {
 
 func shouldHandleRelayRequests() (bool){
 	return ready && !removed
-}
-
-func scanBlockChainToPenalize() {
-	log.Println("scanBlockChainToPenalize start...")
-	err := relay.ScanBlockChainToPenalize()
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Done scanBlockChainToPenalize")
 }
