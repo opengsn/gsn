@@ -339,6 +339,8 @@ contract("RelayHub", function (accounts) {
 
     it("should allow to penalize a removed relay")
     it("should not allow to penalize an already penalized relay")
+    it("should revert an attempt to withdraw deposit during relayed transaction")
+    it("should revert an attempt to use more than allowed gas for accept_relayed_call(50000)")
 
     let dayInSec = 24 * 60 * 60;
 
