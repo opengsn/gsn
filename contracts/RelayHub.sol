@@ -22,6 +22,7 @@ contract RelayHub is RelayHubApi {
     enum State {UNKNOWN, STAKED, REGISTERED, REMOVED, PENALIZED}
     // status flags for TransactionRelayed() event
     enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PostRelayedFailed}
+    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallUnkownError, AcceptRelayedCallReverted}
 
     struct Relay {
         uint stake;             // Size of the stake
@@ -160,9 +161,9 @@ contract RelayHub is RelayHubApi {
         bytes32 hashed_message = keccak256(abi.encodePacked(packed, relay));
         bytes32 signed_message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashed_message));
         if (!GsnUtils.checkSig(from, signed_message,  approval))  // Verify the sender's signature on the transaction
-            return 1;   // @from hasn't signed the transaction properly
+            return uint32(CanRelayStatus.WrongSignature);   // @from hasn't signed the transaction properly
         if (nonces[from] != nonce)
-            return 2;   // Not a current transaction.  May be a replay attempt.
+            return uint32(CanRelayStatus.WrongNonce);   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
         bytes memory accept_relayed_call_raw_tx = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee, approval);
         return handle_accept_relay_call(to,accept_relayed_call_raw_tx);
@@ -170,7 +171,7 @@ contract RelayHub is RelayHubApi {
 
     function handle_accept_relay_call(RelayRecipient to, bytes memory accept_relayed_call_raw_tx) private view returns (uint32){
         bool success;
-        uint32 accept = 3;
+        uint32 accept = uint32(CanRelayStatus.AcceptRelayedCallUnkownError);
         assembly {
             let ptr := mload(0x40)
             let accept_relayed_call_max_gas := sload(accept_relayed_call_max_gas_slot)
@@ -178,7 +179,7 @@ contract RelayHub is RelayHubApi {
             accept := and(mload(ptr),0xffffffff)
         }
         if (!success){
-            return 4;
+            return uint32(CanRelayStatus.AcceptRelayedCallReverted);
         }
         return accept;
     }
