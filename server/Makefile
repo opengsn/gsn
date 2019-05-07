@@ -24,7 +24,7 @@ go-get: $(GEN_FILE) $(ETHFILE)
 	go get -v code.cloudfoundry.org/clock
 
 $(ETHFILE): Makefile
-	@echo "Downloading the ethereum library.  Might take a few minutes."
+	@echo "Downloading the ethereum library. Might take a few minutes."
 	@if [ ! -d ${ETHDIR} ]; then \
 	  git clone ${ETHREPO} --depth=1 --branch=${ETHVERSION} ${ETHDIR} ;\
 	  go get -v -d ./...;\
@@ -42,4 +42,4 @@ $(GEN_FILE_REC): ../contracts/SampleRecipient.sol
 	abigen --solc ../scripts/solc-abigen-wrapper.sh --sol $< --pkg samplerec  --out $@
 
 test: server
-	go test -v -count=1 librelay
+	@scripts/test.sh

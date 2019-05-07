@@ -60,7 +60,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "eslint": "^5.12.1",
-    "ganache-cli": "^6.2.5",
+    "ganache-cli": "^6.4.3",
     "http-server": "^0.11.1",
     "promisify": "0.0.3",
     "run-with-testrpc": "^0.3.0",
