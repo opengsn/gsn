@@ -14,7 +14,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_unstake_delay = 0;    // XXX TBD
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant public gas_overhead = 47586;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gas_overhead = 47396;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
     uint accept_relayed_call_max_gas = 50000;
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
@@ -213,17 +213,17 @@ contract RelayHub is RelayHubApi {
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
         bool success_post;
-        bytes memory ret;
+        bytes memory ret = new bytes(32);
         (success_post,ret) = address(this).call(abi.encodeWithSelector(this.recipient_calls.selector,from,to,msg.sender,encoded_function,transaction_fee,gas_limit,initial_gas));
         nonces[from]++;
+        RelayCallStatus status = RelayCallStatus.OK;
+        if (LibBytes.readUint256(ret,0) == 0)
+            status = RelayCallStatus.RelayedCallFailed;
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
         if (!success_post){
             emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(RelayCallStatus.PostRelayedFailed), charge);
         }else{
-            RelayCallStatus status = RelayCallStatus.OK;
-            if (LibBytes.readUint256(ret,0) == 0)
-                status = RelayCallStatus.RelayedCallFailed;
             emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(status), charge);
         }
         require(balances[to] >= charge, "insufficient funds");
