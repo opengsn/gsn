@@ -20,6 +20,7 @@ type ITxStore interface {
 	SaveTransaction(tx *types.Transaction) (err error)
 	UpdateTransactionByNonce(tx *types.Transaction) (err error)
 	RemoveTransactionsUptoNonce(nonce uint64) (err error)
+	Clear() (err error)
 }
 
 type MemoryTxStore struct {
@@ -91,5 +92,14 @@ func (store *MemoryTxStore) RemoveTransactionsUptoNonce(nonce uint64) (err error
 		store.transactions.Remove(e)
 	}
 
+	return
+}
+
+// Clear removes all transactions stored
+func (store *MemoryTxStore) Clear() (err error) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+
+	store.transactions = list.New()
 	return
 }

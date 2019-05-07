@@ -124,7 +124,7 @@ type IClient interface {
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 }
 
-type relayServer struct {
+type RelayServer struct {
 	OwnerAddress          common.Address
 	Fee                   *big.Int
 	Url                   string
@@ -146,7 +146,7 @@ type relayServer struct {
 	clock                 clock.Clock
 }
 
-type RelayParams relayServer
+type RelayParams RelayServer
 
 func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
 	client := &TbkClient{DefaultGasPrice: defaultGasPrice}
@@ -171,7 +171,7 @@ func NewRelayServer(
 	EthereumNodeURL string,
 	Client IClient,
 	TxStore ITxStore,
-	clk clock.Clock) (*relayServer, error) {
+	clk clock.Clock) (*RelayServer, error) {
 
 	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
 	if err != nil {
@@ -187,7 +187,7 @@ func NewRelayServer(
 		clk = clock.NewClock()
 	}
 
-	relay := &relayServer{
+	relay := &RelayServer{
 		OwnerAddress:          OwnerAddress,
 		Fee:                   Fee,
 		Url:                   Url,
@@ -210,19 +210,19 @@ func NewRelayServer(
 	return relay, err
 }
 
-func (relay *relayServer) Balance() (balance *big.Int, err error) {
+func (relay *RelayServer) Balance() (balance *big.Int, err error) {
 	balance, err = relay.Client.BalanceAt(context.Background(), relay.Address(), nil)
 	return
 }
 
-func (relay *relayServer) GasPrice() big.Int {
+func (relay *RelayServer) GasPrice() big.Int {
 	if relay.gasPrice == nil {
 		return *big.NewInt(0)
 	}
 	return *relay.gasPrice
 }
 
-func (relay *relayServer) RefreshGasPrice() (err error) {
+func (relay *RelayServer) RefreshGasPrice() (err error) {
 	gasPrice, err := relay.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Println("SuggestGasPrice() failed ", err)
@@ -232,7 +232,7 @@ func (relay *relayServer) RefreshGasPrice() (err error) {
 	return
 }
 
-func (relay *relayServer) RegisterRelay() (err error) {
+func (relay *RelayServer) RegisterRelay() (err error) {
 	tx, err := relay.sendRegisterTransaction()
 	if err != nil {
 		return err
@@ -240,7 +240,7 @@ func (relay *relayServer) RegisterRelay() (err error) {
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) sendRegisterTransaction() (tx *types.Transaction, err error) {
+func (relay *RelayServer) sendRegisterTransaction() (tx *types.Transaction, err error) {
 	desc := fmt.Sprintf("RegisterRelay(address=%s, url=%s)", relay.RelayHubAddress.Hex(), relay.Url)
 	tx, err = relay.sendDataTransaction(desc, func(auth *bind.TransactOpts) (*types.Transaction, error) {
 		return relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url)
@@ -248,7 +248,7 @@ func (relay *relayServer) sendRegisterTransaction() (tx *types.Transaction, err 
 	return
 }
 
-func (relay *relayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
+func (relay *RelayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
 	tx, err := relay.sendRemoveTransaction(ownerKey)
 	if err != nil {
 		return err
@@ -256,7 +256,7 @@ func (relay *relayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+func (relay *RelayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(ownerKey)
 	desc := fmt.Sprintf("RemoveRelayByOwner(address=%s)", relay.Address())
 	log.Println(desc, "tx sending")
@@ -270,7 +270,7 @@ func (relay *relayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx 
 	return
 }
 
-func (relay *relayServer) IsStaked() (staked bool, err error) {
+func (relay *RelayServer) IsStaked() (staked bool, err error) {
 	relayAddress := relay.Address()
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
@@ -293,7 +293,7 @@ func (relay *relayServer) IsStaked() (staked bool, err error) {
 	return
 }
 
-func (relay *relayServer) RegistrationDate() (when int64, err error) {
+func (relay *RelayServer) RegistrationDate() (when int64, err error) {
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		log.Println(err)
@@ -331,7 +331,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	return
 }
 
-func (relay *relayServer) IsRemoved() (removed bool, err error) {
+func (relay *RelayServer) IsRemoved() (removed bool, err error) {
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
 		End:   nil,
@@ -347,7 +347,7 @@ func (relay *relayServer) IsRemoved() (removed bool, err error) {
 	return true, nil
 }
 
-func (relay *relayServer) SendBalanceToOwner() (err error) {
+func (relay *RelayServer) SendBalanceToOwner() (err error) {
 	balance, err := relay.Client.BalanceAt(context.Background(), relay.Address(), nil)
 	if err != nil {
 		log.Println(err)
@@ -380,7 +380,7 @@ func (relay *relayServer) SendBalanceToOwner() (err error) {
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
+func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
 	// Check that the relayhub is the correct one
 	if bytes.Compare(relay.RelayHubAddress.Bytes(), request.RelayHubAddress.Bytes()) != 0 {
 		err = fmt.Errorf("Wrong hub address.\nRelay server's hub address: %s, request's hub address: %s\n", relay.RelayHubAddress.Hex(), request.RelayHubAddress.Hex())
@@ -417,14 +417,16 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 		request.GasLimit,
 		request.RecipientNonce,
 		request.RelayFee)
+
 	if err != nil {
 		log.Println("can_relay failed in server", err)
 		return
 	}
+
 	if res != 0 {
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
 			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
-			request.RelayFee.String(), "sig:", hexutil.Encode(request.Signature))
+			request.RelayFee.String(), "Sig:", hexutil.Encode(request.Signature))
 		err = fmt.Errorf("can_relay() view function returned error code=%d\nparams:%s", res, errStr)
 		log.Println(err, errStr)
 		return
@@ -485,7 +487,7 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 	return
 }
 
-func (relay *relayServer) Address() (relayAddress common.Address) {
+func (relay *RelayServer) Address() (relayAddress common.Address) {
 	publicKey := relay.PrivateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
@@ -497,19 +499,19 @@ func (relay *relayServer) Address() (relayAddress common.Address) {
 	return
 }
 
-func (relay *relayServer) HubAddress() common.Address {
+func (relay *RelayServer) HubAddress() common.Address {
 	return relay.RelayHubAddress
 }
 
-func (relay *relayServer) GetUrl() string {
+func (relay *RelayServer) GetUrl() string {
 	return relay.Url
 }
 
-func (relay *relayServer) GetPort() string {
+func (relay *RelayServer) GetPort() string {
 	return relay.Port
 }
 
-func (relay *relayServer) canRelay(encodedFunction string,
+func (relay *RelayServer) canRelay(encodedFunction string,
 	signature []byte,
 	from common.Address,
 	to common.Address,
@@ -534,11 +536,11 @@ func (relay *relayServer) canRelay(encodedFunction string,
 	return
 }
 
-func (relay *relayServer) validateFee(relayFee big.Int) bool {
+func (relay *RelayServer) validateFee(relayFee big.Int) bool {
 	return relayFee.Cmp(relay.Fee) >= 0
 }
 
-func (relay *relayServer) sendPlainTransaction(desc string, to common.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) (signedTx *types.Transaction, err error) {
+func (relay *RelayServer) sendPlainTransaction(desc string, to common.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) (signedTx *types.Transaction, err error) {
 	log.Println(desc, "tx sending")
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -575,7 +577,7 @@ func (relay *relayServer) sendPlainTransaction(desc string, to common.Address, v
 	return
 }
 
-func (relay *relayServer) sendDataTransaction(desc string, f func(*bind.TransactOpts) (*types.Transaction, error)) (tx *types.Transaction, err error) {
+func (relay *RelayServer) sendDataTransaction(desc string, f func(*bind.TransactOpts) (*types.Transaction, error)) (tx *types.Transaction, err error) {
 	log.Println(desc, "tx sending")
 	nonceMutex.Lock()
 	defer nonceMutex.Unlock()
@@ -608,9 +610,9 @@ func (relay *relayServer) sendDataTransaction(desc string, f func(*bind.Transact
 const maxGasPrice = 100e9
 const retryGasPricePercentageIncrease = 20
 
-func (relay *relayServer) resendTransaction(tx *types.Transaction) (newtx *types.Transaction, err error) {
+func (relay *RelayServer) resendTransaction(tx *types.Transaction) (signedTx *types.Transaction, err error) {
 	// Calculate new gas price as a % increase over the previous one
-	newGasPrice := big.NewInt(retryGasPricePercentageIncrease)
+	newGasPrice := big.NewInt(100 + retryGasPricePercentageIncrease)
 	newGasPrice.Mul(newGasPrice, tx.GasPrice())
 	newGasPrice.Div(newGasPrice, big.NewInt(100))
 
@@ -621,8 +623,8 @@ func (relay *relayServer) resendTransaction(tx *types.Transaction) (newtx *types
 	}
 
 	// Resend transaction with exactly the same values except for gas price
-	newtx = types.NewTransaction(tx.Nonce(), *tx.To(), tx.Value(), tx.Gas(), newGasPrice, tx.Data())
-	signedTx, err := types.SignTx(newtx, types.NewEIP155Signer(relay.ChainID), relay.PrivateKey)
+	newTx := types.NewTransaction(tx.Nonce(), *tx.To(), tx.Value(), tx.Gas(), newGasPrice, tx.Data())
+	signedTx, err = types.SignTx(newTx, types.NewEIP155Signer(relay.ChainID), relay.PrivateKey)
 	if err != nil {
 		log.Println("ResendTransaction: error signing tx", err)
 		return
@@ -637,7 +639,7 @@ func (relay *relayServer) resendTransaction(tx *types.Transaction) (newtx *types
 	return
 }
 
-func (relay *relayServer) awaitTransactionMined(tx *types.Transaction) (err error) {
+func (relay *RelayServer) awaitTransactionMined(tx *types.Transaction) (err error) {
 	start := time.Now()
 	var receipt *types.Receipt
 	for ; (receipt == nil || err != nil) && time.Since(start) < TxReceiptTimeout; receipt, err = relay.Client.TransactionReceipt(context.Background(), tx.Hash()) {
@@ -655,7 +657,7 @@ func (relay *relayServer) awaitTransactionMined(tx *types.Transaction) (err erro
 	return nil
 }
 
-func (relay *relayServer) pollNonce() (nonce uint64, err error) {
+func (relay *RelayServer) pollNonce() (nonce uint64, err error) {
 	ctx := context.Background()
 	fromAddress := relay.Address()
 	nonce, err = relay.Client.PendingNonceAt(ctx, fromAddress)
@@ -678,7 +680,7 @@ func (relay *relayServer) pollNonce() (nonce uint64, err error) {
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 // 5 minutes
 
-func (relay *relayServer) UpdateUnconfirmedTransactions() (err error) {
+func (relay *RelayServer) UpdateUnconfirmedTransactions() (err error) {
 	// Load unconfirmed transactions from store, and bail if there are none
 	tx, err := relay.TxStore.GetFirstTransaction()
 	if err != nil {
@@ -732,8 +734,8 @@ func (relay *relayServer) UpdateUnconfirmedTransactions() (err error) {
 		return
 	}
 
-	if tx.Nonce() <= nonce {
-		log.Println("UpdateUnconfirmedTransactions: awaiting confirmations for next mined transaction", nonce, tx.Hash().Hex())
+	if tx.Nonce() < nonce {
+		log.Println("UpdateUnconfirmedTransactions: awaiting confirmations for next mined transaction", nonce, tx.Nonce(), tx.Hash().Hex())
 		return nil
 	}
 
@@ -748,6 +750,7 @@ func (relay *relayServer) UpdateUnconfirmedTransactions() (err error) {
 		log.Println("UpdateUnconfirmedTransactions: error resending transaction", tx.Hash().Hex(), err)
 		return err
 	}
+	log.Println("UpdateUnconfirmedTransactions: resent transaction", tx.Nonce(), tx.Hash().Hex(), "as", newtx.Hash().Hex())
 
 	// TODO: Increase timetamp of subsequent txs?
 	err = relay.TxStore.UpdateTransactionByNonce(newtx)
@@ -759,7 +762,7 @@ func (relay *relayServer) UpdateUnconfirmedTransactions() (err error) {
 	return nil
 }
 
-func (relay *relayServer) replayUnconfirmedTxs(client *ethclient.Client) {
+func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 	log.Println("replayUnconfirmedTxs start")
 	log.Println("unconfirmedTxs size", len(unconfirmedTxs))
 	ctx := context.Background()

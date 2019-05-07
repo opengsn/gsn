@@ -17,6 +17,7 @@ import (
 
 	"code.cloudfoundry.org/clock/fakeclock"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -52,6 +53,26 @@ func (client *TestClient) AdjustTime(seconds uint64) error {
 
 func (client *TestClient) Commit() error {
 	return client.RPC.Call(nil, "evm_mine")
+}
+
+func (client *TestClient) MineBlocks(n uint64) error {
+	for ; n > 0; n-- {
+		err := client.RPC.Call(nil, "evm_mine")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (client *TestClient) Snapshot() (uint64, error) {
+	var result hexutil.Uint64
+	err := client.RPC.Call(&result, "evm_snapshot")
+	return uint64(result), err
+}
+
+func (client *TestClient) Revert(id uint64) error {
+	return client.RPC.Call(nil, "evm_revert", id)
 }
 
 type TestServer struct {
@@ -132,6 +153,7 @@ func InitTestClient(url string) {
 	if err != nil {
 		log.Fatalf("Could not connect to local ganache: %v", err)
 	}
+	client.Commit()
 }
 
 func NewRelay(relayHubAddress common.Address) {
@@ -295,6 +317,17 @@ func TestRegisterRelay(t *testing.T) {
 	}
 }
 
+func printSignature(txb string, txFee int64, gasPrice int64, gasLimit int64, relayMaxNonce int64, recipientNonce int64) {
+	fmt.Println("ganache-cli -d")
+	fmt.Println("npx truffle console --network development")
+	fmt.Println("const utils = require('../src/js/relayclient/utils')")
+	fmt.Printf(
+		"let hash = utils.getTransactionHash('%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v')\n",
+		crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), sampleRecipient.Hex(), txb, txFee, gasPrice, gasLimit, recipientNonce, rhaddr.Hex(), relay.Address().Hex(),
+	)
+	fmt.Printf("utils.getTransactionSignature(web3, '0xffcf8fdee72ac11b5c542428b35eef5769c409f0', hash)\n")
+}
+
 func TestCreateRelayTransaction(t *testing.T) {
 	ErrFail(relay.RefreshGasPrice(), t)
 	addressGasless := crypto.PubkeyToAddress(gaslessKey2.PublicKey)
@@ -304,15 +337,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 	gasLimit := int64(1000000)
 	relayMaxNonce := int64(1000000)
 	recipientNonce := int64(0)
-	// Uncomment the following to regenerate the signature below
-	// fmt.Println("ganache-cli -d")
-	// fmt.Println("npx truffle console --network development")
-	// fmt.Println("const utils = require('../src/js/relayclient/utils')")
-	// fmt.Printf(
-	// 	"let hash = utils.getTransactionHash('%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v')\n",
-	// 	crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), sampleRecipient.Hex(), txb, txFee, gasPrice, gasLimit, recipientNonce, rhaddr.Hex(), relay.Address().Hex(),
-	// )
-	// fmt.Printf("utils.getTransactionSignature(web3, '0xffcf8fdee72ac11b5c542428b35eef5769c409f0', hash)\n")
+	printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, recipientNonce)
 	sig := "0x1cc33268c3d5d937380f73e17b5f6e165b8a9be3f94805d2cb9a8120834684f5d538a4a0dd49d7b632b4d99fb0adc3344f914a4e865240da6f9bca86458d60406c"
 	if sig[:2] == "0x" {
 		sig = sig[2:]
@@ -334,6 +359,82 @@ func TestCreateRelayTransaction(t *testing.T) {
 	ErrFailWithDesc(err, t, "Creating relay transaction")
 	client.Commit()
 	receipt, _ := client.TransactionReceipt(context.Background(), signedTx.Hash())
+	logsLen := len(receipt.Logs)
+	expectedLogs := 3
+	if logsLen != expectedLogs {
+		t.Errorf("Incorrect logs len: expected %d, actual: %d", expectedLogs, logsLen)
+	}
+	transactionRelayedEvent := new(librelay.RelayHubTransactionRelayed)
+	sampleRecipientEmitted := new(samplerec.SampleRecipientSampleRecipientEmitted)
+	ErrFailWithDesc(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[2]), t, "Unpacking transaction relayed")
+
+	ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[0]), t, "Unpacking sample recipient emitted")
+	expectedMessage := "hello world"
+	if sampleRecipientEmitted.Message != expectedMessage {
+		t.Errorf("Message was not what expected! expected: %s actual: %s", expectedMessage, sampleRecipientEmitted.Message)
+	}
+}
+
+func TestResendRelayTransaction(t *testing.T) {
+	ErrFail(relay.RefreshGasPrice(), t)
+	ErrFail(relay.TxStore.Clear(), t)
+
+	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
+	txFee := int64(10)
+	gasPrice := int64(2000)
+	gasLimit := int64(1000000)
+	relayMaxNonce := int64(1000000)
+	recipientNonce := int64(1)
+	printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, recipientNonce)
+	sig := "0x1b8bd923286fbcbd1a630f632f10fc98153d708a443781ca5eb0bc9f2db48b61f45ae2e9c21a8eaa73af41abfd62bf42a89ecfc7944c5864d411c7e4748bb43950"
+	if sig[:2] == "0x" {
+		sig = sig[2:]
+	}
+
+	request := RelayTransactionRequest{
+		EncodedFunction: txb,
+		Signature:       common.Hex2Bytes(sig),
+		From:            crypto.PubkeyToAddress(gaslessKey2.PublicKey),
+		To:              sampleRecipient,
+		GasPrice:        *big.NewInt(gasPrice),
+		GasLimit:        *big.NewInt(gasLimit),
+		RecipientNonce:  *big.NewInt(recipientNonce),
+		RelayMaxNonce:   *big.NewInt(relayMaxNonce),
+		RelayFee:        *big.NewInt(txFee),
+		RelayHubAddress: rhaddr,
+	}
+
+	// Send a transaction via the relay, but then revert to a previous snapshot
+	snapshotID, err := client.Snapshot()
+	ErrFailWithDesc(err, t, "Creating snapshot")
+
+	signedTx, err := relay.CreateRelayTransaction(request)
+	ErrFailWithDesc(err, t, "Creating relay transaction")
+
+	err = client.Revert(snapshotID)
+	ErrFailWithDesc(err, t, "Restoring snapshot")
+
+	receipt, err := client.TransactionReceipt(context.Background(), signedTx.Hash())
+	if err != ethereum.NotFound {
+		t.Error("Transaction should not have been found", err)
+	}
+
+	// Should not do anything, as not enough time has passed
+	clk.IncrementBySeconds(1 * 60)
+	err = relay.UpdateUnconfirmedTransactions()
+	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
+
+	// Advance time
+	clk.IncrementBySeconds(6 * 60)
+	ErrFailWithDesc(relay.UpdateUnconfirmedTransactions(), t, "Updating unconfirmed transactions")
+
+	loadedTx, err := relay.TxStore.GetFirstTransaction()
+	ErrFailWithDesc(err, t, "Fetching first transaction from store")
+	client.MineBlocks(2)
+	time.Sleep(time.Second)
+	receipt, err = client.TransactionReceipt(context.Background(), loadedTx.Hash())
+	ErrFailWithDesc(err, t, fmt.Sprint("Retrieving tx receipt ", loadedTx.Hash().Hex()))
+
 	logsLen := len(receipt.Logs)
 	expectedLogs := 3
 	if logsLen != expectedLogs {
