@@ -14,13 +14,15 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_unstake_delay = 0;    // XXX TBD
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant public gas_overhead = 47586;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gas_overhead = 47396;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint accept_relayed_call_max_gas = 50000;
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
     enum State {UNKNOWN, STAKED, REGISTERED, REMOVED, PENALIZED}
     // status flags for TransactionRelayed() event
     enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PostRelayedFailed}
+    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallUnkownError, AcceptRelayedCallReverted}
 
     struct Relay {
         uint stake;             // Size of the stake
@@ -159,20 +161,25 @@ contract RelayHub is RelayHubApi {
         bytes32 hashed_message = keccak256(abi.encodePacked(packed, relay));
         bytes32 signed_message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashed_message));
         if (!GsnUtils.checkSig(from, signed_message,  approval))  // Verify the sender's signature on the transaction
-            return 1;   // @from hasn't signed the transaction properly
+            return uint32(CanRelayStatus.WrongSignature);   // @from hasn't signed the transaction properly
         if (nonces[from] != nonce)
-            return 2;   // Not a current transaction.  May be a replay attempt.
+            return uint32(CanRelayStatus.WrongNonce);   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
         bytes memory accept_relayed_call_raw_tx = abi.encodeWithSelector(to.accept_relayed_call.selector, relay, from, encoded_function, gas_price, transaction_fee, approval);
+        return handle_accept_relay_call(to,accept_relayed_call_raw_tx);
+    }
+
+    function handle_accept_relay_call(RelayRecipient to, bytes memory accept_relayed_call_raw_tx) private view returns (uint32){
         bool success;
-        bytes memory ret;
-        (success, ret) =  address(to).staticcall(accept_relayed_call_raw_tx);
-        if (!success){
-            return 3;
-        }
-        uint32 accept;
+        uint32 accept = uint32(CanRelayStatus.AcceptRelayedCallUnkownError);
         assembly {
-            accept := and(mload(add(0x20, ret)), 0xffffffff)
+            let ptr := mload(0x40)
+            let accept_relayed_call_max_gas := sload(accept_relayed_call_max_gas_slot)
+            success := staticcall(accept_relayed_call_max_gas, to, add(accept_relayed_call_raw_tx, 0x20), mload(accept_relayed_call_raw_tx), ptr, 0x20)
+            accept := and(mload(ptr),0xffffffff)
+        }
+        if (!success){
+            return uint32(CanRelayStatus.AcceptRelayedCallReverted);
         }
         return accept;
     }
@@ -206,16 +213,17 @@ contract RelayHub is RelayHubApi {
         // gas_reserve must be high enough to complete relay()'s post-call execution.
         require(safe_sub(initial_gas,gas_limit) >= gas_reserve, "Not enough gasleft()");
         bool success_post;
-        bytes memory ret;
+        bytes memory ret = new bytes(32);
         (success_post,ret) = address(this).call(abi.encodeWithSelector(this.recipient_calls.selector,from,to,msg.sender,encoded_function,transaction_fee,gas_limit,initial_gas));
+        nonces[from]++;
+        RelayCallStatus status = RelayCallStatus.OK;
+        if (LibBytes.readUint256(ret,0) == 0)
+            status = RelayCallStatus.RelayedCallFailed;
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
         if (!success_post){
             emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(RelayCallStatus.PostRelayedFailed), charge);
         }else{
-            RelayCallStatus status = RelayCallStatus.OK;
-            if (LibBytes.readUint256(ret,0) == 0)
-                status = RelayCallStatus.RelayedCallFailed;
             emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(status), charge);
         }
         require(balances[to] >= charge, "insufficient funds");
@@ -231,12 +239,12 @@ contract RelayHub is RelayHubApi {
         bytes memory transaction = abi.encodePacked(encoded_function,from);
         bool success;
         bool success_post;
-
+        uint balance_before = balances[to];
         (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
-        nonces[from]++;
         transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector, relay_addr, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
         (success_post, ) = to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
         require(success_post, "post_relayed_call reverted - reverting the relayed transaction");
+        require(balance_before <= balances[to], "Moving funds during relayed transaction disallowed");
         return success;
     }
 
