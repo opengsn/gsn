@@ -14,3 +14,4 @@ cd .. && \
   ./scripts/run-ganache ${TESTPORT} > ganache.pid
 
 go test -v -count=1 librelay
+go test -v -count=1 librelay/txstore

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"gen/librelay"
 	"gen/samplerec"
+	"librelay/test"
+	"librelay/txstore"
 	"log"
 	"math/big"
 	"os"
@@ -167,7 +169,7 @@ func NewRelay(relayHubAddress common.Address) {
 	unstakeDelay := big.NewInt(0)
 	registrationBlockRate := uint64(5)
 	clk = fakeclock.NewFakeClock(time.Now())
-	txStore := NewMemoryTxStore(clk)
+	txStore := txstore.NewMemoryTxStore(clk)
 	var err error
 	relay.RelayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
@@ -178,20 +180,6 @@ func NewRelay(relayHubAddress common.Address) {
 		log.Fatalln("Relay was not created", err)
 	}
 	return
-}
-
-func ErrFail(err error, t *testing.T) {
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-}
-
-func ErrFailWithDesc(err error, t *testing.T, desc string) {
-	if err != nil {
-		t.Error(desc, err)
-		t.FailNow()
-	}
 }
 
 func TestMain(m *testing.M) {
@@ -281,7 +269,7 @@ func resolveLibrary(path string, address common.Address, relayHubBinUnresolved s
 
 func TestRefreshGasPrice(t *testing.T) {
 	gasPriceBefore := relay.GasPrice()
-	ErrFail(relay.RefreshGasPrice(), t)
+	test.ErrFail(relay.RefreshGasPrice(), t)
 	gasPriceAfter := relay.GasPrice()
 	if gasPriceBefore.Cmp(big.NewInt(0)) != 0 {
 		t.Error()
@@ -297,17 +285,17 @@ func TestRegisterRelay(t *testing.T) {
 	if !staked {
 		t.Error("Relay is not staked")
 	}
-	ErrFail(err, t)
+	test.ErrFail(err, t)
 	// TODO: Watch out for FLICKERING: attempt to AdjustTime ahead of machine clock will have no effect at all
 	err = client.AdjustTime(50)
 	client.Commit()
 	tx, err := relay.sendRegisterTransaction()
-	ErrFail(err, t)
+	test.ErrFail(err, t)
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
 	client.Commit()
-	ErrFail(relay.awaitTransactionMined(tx), t)
+	test.ErrFail(relay.awaitTransactionMined(tx), t)
 	when, err := relay.RegistrationDate()
 	if err != nil {
 		fmt.Println("ERROR", err)
@@ -329,7 +317,7 @@ func printSignature(txb string, txFee int64, gasPrice int64, gasLimit int64, rel
 }
 
 func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature string) (request RelayTransactionRequest) {
-	ErrFail(relay.RefreshGasPrice(), t)
+	test.ErrFail(relay.RefreshGasPrice(), t)
 	addressGasless := crypto.PubkeyToAddress(gaslessKey2.PublicKey)
 	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
 	txFee := int64(10)
@@ -359,7 +347,7 @@ func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature st
 
 func assertTransactionRelayed(t *testing.T, txHash common.Hash) (receipt *types.Receipt) {
 	receipt, err := client.TransactionReceipt(context.Background(), txHash)
-	ErrFailWithDesc(err, t, fmt.Sprint("Fetching transaction receipt for hash ", txHash.Hex()))
+	test.ErrFailWithDesc(err, t, fmt.Sprint("Fetching transaction receipt for hash ", txHash.Hex()))
 	logsLen := len(receipt.Logs)
 	expectedLogs := 3
 	if logsLen != expectedLogs {
@@ -367,9 +355,9 @@ func assertTransactionRelayed(t *testing.T, txHash common.Hash) (receipt *types.
 	}
 	transactionRelayedEvent := new(librelay.RelayHubTransactionRelayed)
 	sampleRecipientEmitted := new(samplerec.SampleRecipientSampleRecipientEmitted)
-	ErrFailWithDesc(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[2]), t, "Unpacking transaction relayed")
+	test.ErrFailWithDesc(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[2]), t, "Unpacking transaction relayed")
 
-	ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[0]), t, "Unpacking sample recipient emitted")
+	test.ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[0]), t, "Unpacking sample recipient emitted")
 	expectedMessage := "hello world"
 	if sampleRecipientEmitted.Message != expectedMessage {
 		t.Errorf("Message was not what expected! expected: %s actual: %s", expectedMessage, sampleRecipientEmitted.Message)
@@ -386,7 +374,7 @@ func assertRelayNonce(t *testing.T, expected uint64) {
 
 func assertNoTransactionResent(t *testing.T, relay *RelayServer) {
 	noTx, err := relay.UpdateUnconfirmedTransactions()
-	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
+	test.ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
 	if noTx != nil {
 		t.Errorf("Expected no tx to be resent upon updating unconfirmed txs, but %v with nonce %v was resent", noTx.Hash().Hex(), noTx.Nonce())
 	}
@@ -395,22 +383,22 @@ func assertNoTransactionResent(t *testing.T, relay *RelayServer) {
 func TestCreateRelayTransaction(t *testing.T) {
 	request := newRelayTransactionRequest(t, 0, "0x1cc33268c3d5d937380f73e17b5f6e165b8a9be3f94805d2cb9a8120834684f5d538a4a0dd49d7b632b4d99fb0adc3344f914a4e865240da6f9bca86458d60406c")
 	signedTx, err := relay.CreateRelayTransaction(request)
-	ErrFailWithDesc(err, t, "Creating relay transaction")
+	test.ErrFailWithDesc(err, t, "Creating relay transaction")
 	client.Commit()
 	assertTransactionRelayed(t, signedTx.Hash())
 }
 
 func TestResendRelayTransaction(t *testing.T) {
-	ErrFail(relay.TxStore.Clear(), t)
+	test.ErrFail(relay.TxStore.Clear(), t)
 	request := newRelayTransactionRequest(t, 1, "0x1b8bd923286fbcbd1a630f632f10fc98153d708a443781ca5eb0bc9f2db48b61f45ae2e9c21a8eaa73af41abfd62bf42a89ecfc7944c5864d411c7e4748bb43950")
 
 	// Send a transaction via the relay, but then revert to a previous snapshot
 	snapshotID, err := client.Snapshot()
-	ErrFailWithDesc(err, t, "Creating snapshot")
+	test.ErrFailWithDesc(err, t, "Creating snapshot")
 	signedTx, err := relay.CreateRelayTransaction(request)
-	ErrFailWithDesc(err, t, "Creating relay transaction")
+	test.ErrFailWithDesc(err, t, "Creating relay transaction")
 	err = client.Revert(snapshotID)
-	ErrFailWithDesc(err, t, "Restoring snapshot")
+	test.ErrFailWithDesc(err, t, "Restoring snapshot")
 
 	// Ensure tx is removed by the revert
 	_, err = client.TransactionReceipt(context.Background(), signedTx.Hash())
@@ -433,7 +421,7 @@ func TestResendRelayTransaction(t *testing.T) {
 	// Advance time
 	clk.IncrementBySeconds(6 * 60)
 	newTx, err := relay.UpdateUnconfirmedTransactions()
-	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
+	test.ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
 
 	// Check transaction was now sent with increased gas price
 	client.MineBlocks(2)
@@ -452,24 +440,24 @@ func TestResendRelayTransaction(t *testing.T) {
 }
 
 func TestMultipleRelayTransactions(t *testing.T) {
-	ErrFail(relay.TxStore.Clear(), t)
+	test.ErrFail(relay.TxStore.Clear(), t)
 	request1 := newRelayTransactionRequest(t, 2, "0x1c6504e620f8603ff7b37419edede05568dfc7fc0e8aad4b669cf5c7241f4fe82f07a35c64cbad911e4cd8c9b4eb41b00c8db6f529bc3881bc4f3a7b0721bebf29")
 	request2 := newRelayTransactionRequest(t, 3, "0x1c290b257a7aecb4d78c5687ff7c1e2b857c73d9d9e5166a0b511a46120deef43a4a0df53d1682efa4dafd44e0d17248ae7df7fb828d6e8aa12e859cb112725ba2")
 	request3 := newRelayTransactionRequest(t, 4, "0x1b8a0b8f5f1a659dd261c5a1946316e12f1b347c785207a3c17f332316ed3177a06c332d5681e9d60b13bc8486db08c0dfd5d97667d54337041217e915630e30c7")
 
 	// Send 3 transactions, separated by 1 min each, and revert the last 2
 	signedTx1, err := relay.CreateRelayTransaction(request1)
-	ErrFailWithDesc(err, t, "Creating relay transaction 1")
+	test.ErrFailWithDesc(err, t, "Creating relay transaction 1")
 	clk.IncrementBySeconds(60)
 	snapshotID, err := client.Snapshot()
-	ErrFailWithDesc(err, t, "Creating snapshot")
+	test.ErrFailWithDesc(err, t, "Creating snapshot")
 	_, err = relay.CreateRelayTransaction(request2)
-	ErrFailWithDesc(err, t, "Creating relay transaction 2")
+	test.ErrFailWithDesc(err, t, "Creating relay transaction 2")
 	clk.IncrementBySeconds(60)
 	signedTx3, err := relay.CreateRelayTransaction(request3)
-	ErrFailWithDesc(err, t, "Creating relay transaction 3")
+	test.ErrFailWithDesc(err, t, "Creating relay transaction 3")
 	err = client.Revert(snapshotID)
-	ErrFailWithDesc(err, t, "Restoring snapshot")
+	test.ErrFailWithDesc(err, t, "Restoring snapshot")
 	nonce, err := client.NonceAt(context.Background(), relay.Address(), nil)
 
 	// Check tx1 went fine
@@ -483,12 +471,12 @@ func TestMultipleRelayTransactions(t *testing.T) {
 	// Mine a bunch of blocks, so tx1 is confirmed and tx2 is resent
 	client.MineBlocks(12)
 	newTx2, err := relay.UpdateUnconfirmedTransactions()
-	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
+	test.ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
 	assertRelayNonce(t, nonce+1)
 	assertTransactionRelayed(t, newTx2.Hash())
 
 	// Reinject tx3 into the chain as if it were mined once tx2 goes through
-	ErrFailWithDesc(client.SendTransaction(context.Background(), signedTx3), t, "Resending tx3")
+	test.ErrFailWithDesc(client.SendTransaction(context.Background(), signedTx3), t, "Resending tx3")
 	assertTransactionRelayed(t, signedTx3.Hash())
 
 	// Check that tx3 does not get resent, even after time passes or blocks get mined, and that store is empty

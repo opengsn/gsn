@@ -1,4 +1,4 @@
-package librelay
+package txstore
 
 import (
 	"container/list"
@@ -9,19 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
-
-type TimestampedTransaction struct {
-	*types.Transaction
-	Timestamp int64
-}
-
-type ITxStore interface {
-	GetFirstTransaction() (tx *TimestampedTransaction, err error)
-	SaveTransaction(tx *types.Transaction) (err error)
-	UpdateTransactionByNonce(tx *types.Transaction) (err error)
-	RemoveTransactionsLessThanNonce(nonce uint64) (err error)
-	Clear() (err error)
-}
 
 type MemoryTxStore struct {
 	transactions *list.List
@@ -39,6 +26,17 @@ func NewMemoryTxStore(clk clock.Clock) *MemoryTxStore {
 		mutex:        &sync.Mutex{},
 		clock:        clk,
 	}
+}
+
+// ListTransactions returns all transactions on the store, useful for testing
+func (store *MemoryTxStore) ListTransactions() (txs []*TimestampedTransaction, err error) {
+	txs = make([]*TimestampedTransaction, 0, 20)
+
+	for e := store.transactions.Front(); e != nil; e = e.Next() {
+		txs = append(txs, e.Value.(*TimestampedTransaction))
+	}
+
+	return
 }
 
 // GetFirstTransaction returns transaction with lowest nonce

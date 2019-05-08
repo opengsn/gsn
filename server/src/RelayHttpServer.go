@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"io/ioutil"
 	"librelay"
+	"librelay/txstore"
 	"log"
 	"math/big"
 	"net/http"
@@ -226,7 +227,7 @@ func configRelay(relayParams librelay.RelayParams) {
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
-		client, librelay.NewMemoryTxStore(nil), nil)
+		client, txstore.NewMemoryTxStore(nil), nil)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
 		return

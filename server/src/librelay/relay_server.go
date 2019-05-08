@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gen/librelay"
+	"librelay/txstore"
 	"log"
 	"math/big"
 	"strings"
@@ -141,7 +142,7 @@ type RelayServer struct {
 	gasPrice              *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
 	Client                IClient
 	ChainID               *big.Int
-	TxStore               ITxStore
+	TxStore               txstore.ITxStore
 	rhub                  *librelay.RelayHub
 	clock                 clock.Clock
 }
@@ -170,7 +171,7 @@ func NewRelayServer(
 	RegistrationBlockRate uint64,
 	EthereumNodeURL string,
 	Client IClient,
-	TxStore ITxStore,
+	TxStore txstore.ITxStore,
 	clk clock.Clock) (*RelayServer, error) {
 
 	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
