@@ -1,7 +1,7 @@
 pragma solidity >=0.4.0 <0.6.0;
 
 import "./GsnUtils.sol";
-import "./RelayHub.sol";
+import "./RelayHubApi.sol";
 import "./RelayRecipient.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
@@ -9,7 +9,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     mapping (address => bool) public relays_whitelist;
 
-    constructor(RelayHub rhub) public {
+    constructor(RelayHubApi rhub) public {
         init_relay_hub(rhub);
     }
 
@@ -18,7 +18,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     }
 
     function withdraw() public onlyOwner {
-        uint balance = get_relay_hub().balances(address(this));
+        uint balance = get_relay_hub().balanceOf(address(this));
         get_relay_hub().withdraw(balance);
         msg.sender.transfer(balance);
     }
@@ -53,7 +53,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
         // May be protected by a user_credits map managed by a captcha-protected web app or association with a google account.
         if ( relays_whitelist[relay] ) return 0;
         if (from == blacklisted) return 11;
-        
+
         // this is an example of how the dapp can provide an offchain approval to a transaction
         if (approval.length == 65){
             // No owner signature given - proceed as usual (for existing tests)
