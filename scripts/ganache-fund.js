@@ -18,7 +18,7 @@ web3.eth.getAccounts().then((accounts) => {
 	let from = accounts[acct];
 	for (let to of destaddrs.split(',')) {
 		web3.eth.getBalance(to).then(res => {
-			if (res >= value) {
+			if (web3.utils.toBN(res).cmp(web3.utils.toBN(value)) > 0) {
 				console.log("Account is already funded", to)
 				return
 			}

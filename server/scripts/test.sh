@@ -11,7 +11,6 @@ onexit() {
 }
 
 cd .. && \
-  ./scripts/run-ganache ${TESTPORT} > ganache.pid && \
-  URL=http://localhost:${TESTPORT} ./scripts/ganache-fund.js 2.337 ${TESTADDRS}
+  ./scripts/run-ganache ${TESTPORT} > ganache.pid
 
 go test -v -count=1 librelay
