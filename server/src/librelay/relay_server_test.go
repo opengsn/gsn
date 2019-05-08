@@ -76,7 +76,7 @@ func (client *TestClient) Revert(id uint64) error {
 }
 
 type TestServer struct {
-	*relayServer
+	*RelayServer
 }
 
 func (relay *TestServer) Stake(ownerKey *ecdsa.PrivateKey) (err error) {
@@ -169,7 +169,7 @@ func NewRelay(relayHubAddress common.Address) {
 	clk = fakeclock.NewFakeClock(time.Now())
 	txStore := NewMemoryTxStore(clk)
 	var err error
-	relay.relayServer, err = NewRelayServer(
+	relay.RelayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
 		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,
@@ -328,7 +328,7 @@ func printSignature(txb string, txFee int64, gasPrice int64, gasLimit int64, rel
 	fmt.Printf("utils.getTransactionSignature(web3, '0xffcf8fdee72ac11b5c542428b35eef5769c409f0', hash)\n")
 }
 
-func TestCreateRelayTransaction(t *testing.T) {
+func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature string) (request RelayTransactionRequest) {
 	ErrFail(relay.RefreshGasPrice(), t)
 	addressGasless := crypto.PubkeyToAddress(gaslessKey2.PublicKey)
 	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
@@ -336,16 +336,16 @@ func TestCreateRelayTransaction(t *testing.T) {
 	gasPrice := int64(2000)
 	gasLimit := int64(1000000)
 	relayMaxNonce := int64(1000000)
-	recipientNonce := int64(0)
-	printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, recipientNonce)
-	sig := "0x1cc33268c3d5d937380f73e17b5f6e165b8a9be3f94805d2cb9a8120834684f5d538a4a0dd49d7b632b4d99fb0adc3344f914a4e865240da6f9bca86458d60406c"
-	if sig[:2] == "0x" {
-		sig = sig[2:]
+	if signature[:2] == "0x" {
+		signature = signature[2:]
 	}
 
-	request := RelayTransactionRequest{
+	// Uncomment the following line to print the commands to generate the signature that needs to be injected
+	// printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, recipientNonce)
+
+	return RelayTransactionRequest{
 		EncodedFunction: txb,
-		Signature:       common.Hex2Bytes(sig),
+		Signature:       common.Hex2Bytes(signature),
 		From:            addressGasless,
 		To:              sampleRecipient,
 		GasPrice:        *big.NewInt(gasPrice),
@@ -355,10 +355,11 @@ func TestCreateRelayTransaction(t *testing.T) {
 		RelayFee:        *big.NewInt(txFee),
 		RelayHubAddress: rhaddr,
 	}
-	signedTx, err := relay.CreateRelayTransaction(request)
-	ErrFailWithDesc(err, t, "Creating relay transaction")
-	client.Commit()
-	receipt, _ := client.TransactionReceipt(context.Background(), signedTx.Hash())
+}
+
+func assertTransactionRelayed(t *testing.T, txHash common.Hash) (receipt *types.Receipt) {
+	receipt, err := client.TransactionReceipt(context.Background(), txHash)
+	ErrFailWithDesc(err, t, fmt.Sprint("Fetching transaction receipt for hash ", txHash.Hex()))
 	logsLen := len(receipt.Logs)
 	expectedLogs := 3
 	if logsLen != expectedLogs {
@@ -373,80 +374,130 @@ func TestCreateRelayTransaction(t *testing.T) {
 	if sampleRecipientEmitted.Message != expectedMessage {
 		t.Errorf("Message was not what expected! expected: %s actual: %s", expectedMessage, sampleRecipientEmitted.Message)
 	}
+	return receipt
+}
+
+func assertRelayNonce(t *testing.T, expected uint64) {
+	nonce, err := client.NonceAt(context.Background(), relay.Address(), nil)
+	if nonce != expected || err != nil {
+		t.Errorf("Relay nonce is %v but expected %v (error %v)", nonce, expected, err)
+	}
+}
+
+func assertNoTransactionResent(t *testing.T, relay *RelayServer) {
+	noTx, err := relay.UpdateUnconfirmedTransactions()
+	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
+	if noTx != nil {
+		t.Errorf("Expected no tx to be resent upon updating unconfirmed txs, but %v with nonce %v was resent", noTx.Hash().Hex(), noTx.Nonce())
+	}
+}
+
+func TestCreateRelayTransaction(t *testing.T) {
+	request := newRelayTransactionRequest(t, 0, "0x1cc33268c3d5d937380f73e17b5f6e165b8a9be3f94805d2cb9a8120834684f5d538a4a0dd49d7b632b4d99fb0adc3344f914a4e865240da6f9bca86458d60406c")
+	signedTx, err := relay.CreateRelayTransaction(request)
+	ErrFailWithDesc(err, t, "Creating relay transaction")
+	client.Commit()
+	assertTransactionRelayed(t, signedTx.Hash())
 }
 
 func TestResendRelayTransaction(t *testing.T) {
-	ErrFail(relay.RefreshGasPrice(), t)
 	ErrFail(relay.TxStore.Clear(), t)
-
-	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
-	txFee := int64(10)
-	gasPrice := int64(2000)
-	gasLimit := int64(1000000)
-	relayMaxNonce := int64(1000000)
-	recipientNonce := int64(1)
-	printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, recipientNonce)
-	sig := "0x1b8bd923286fbcbd1a630f632f10fc98153d708a443781ca5eb0bc9f2db48b61f45ae2e9c21a8eaa73af41abfd62bf42a89ecfc7944c5864d411c7e4748bb43950"
-	if sig[:2] == "0x" {
-		sig = sig[2:]
-	}
-
-	request := RelayTransactionRequest{
-		EncodedFunction: txb,
-		Signature:       common.Hex2Bytes(sig),
-		From:            crypto.PubkeyToAddress(gaslessKey2.PublicKey),
-		To:              sampleRecipient,
-		GasPrice:        *big.NewInt(gasPrice),
-		GasLimit:        *big.NewInt(gasLimit),
-		RecipientNonce:  *big.NewInt(recipientNonce),
-		RelayMaxNonce:   *big.NewInt(relayMaxNonce),
-		RelayFee:        *big.NewInt(txFee),
-		RelayHubAddress: rhaddr,
-	}
+	request := newRelayTransactionRequest(t, 1, "0x1b8bd923286fbcbd1a630f632f10fc98153d708a443781ca5eb0bc9f2db48b61f45ae2e9c21a8eaa73af41abfd62bf42a89ecfc7944c5864d411c7e4748bb43950")
 
 	// Send a transaction via the relay, but then revert to a previous snapshot
 	snapshotID, err := client.Snapshot()
 	ErrFailWithDesc(err, t, "Creating snapshot")
-
 	signedTx, err := relay.CreateRelayTransaction(request)
 	ErrFailWithDesc(err, t, "Creating relay transaction")
-
 	err = client.Revert(snapshotID)
 	ErrFailWithDesc(err, t, "Restoring snapshot")
 
-	receipt, err := client.TransactionReceipt(context.Background(), signedTx.Hash())
+	// Ensure tx is removed by the revert
+	_, err = client.TransactionReceipt(context.Background(), signedTx.Hash())
 	if err != ethereum.NotFound {
-		t.Error("Transaction should not have been found", err)
+		t.Errorf("Transaction %v should not have been found (error %v)", signedTx.Hash().Hex(), err)
 	}
 
 	// Should not do anything, as not enough time has passed
 	clk.IncrementBySeconds(1 * 60)
-	err = relay.UpdateUnconfirmedTransactions()
-	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
+	assertNoTransactionResent(t, relay.RelayServer)
+	sameTx, err := relay.TxStore.GetFirstTransaction()
+	if sameTx.Hash() != signedTx.Hash() {
+		t.Errorf("Transaction should not have been resent if less than 5 minutes passed: original tx %v but loaded from store was %v", signedTx.Hash().Hex(), sameTx.Hash().Hex())
+	}
+	_, err = client.TransactionReceipt(context.Background(), sameTx.Hash())
+	if err != ethereum.NotFound {
+		t.Errorf("Transaction %v should not have been found (error %v)", sameTx.Hash().Hex(), err)
+	}
 
 	// Advance time
 	clk.IncrementBySeconds(6 * 60)
-	ErrFailWithDesc(relay.UpdateUnconfirmedTransactions(), t, "Updating unconfirmed transactions")
+	newTx, err := relay.UpdateUnconfirmedTransactions()
+	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
 
-	loadedTx, err := relay.TxStore.GetFirstTransaction()
-	ErrFailWithDesc(err, t, "Fetching first transaction from store")
+	// Check transaction was now sent with increased gas price
 	client.MineBlocks(2)
-	time.Sleep(time.Second)
-	receipt, err = client.TransactionReceipt(context.Background(), loadedTx.Hash())
-	ErrFailWithDesc(err, t, fmt.Sprint("Retrieving tx receipt ", loadedTx.Hash().Hex()))
-
-	logsLen := len(receipt.Logs)
-	expectedLogs := 3
-	if logsLen != expectedLogs {
-		t.Errorf("Incorrect logs len: expected %d, actual: %d", expectedLogs, logsLen)
+	assertTransactionRelayed(t, newTx.Hash())
+	if newTx.GasPrice().Int64() != 2400 {
+		t.Errorf("Gas price of resent transaction is incorrect: expected %v but was %v", 2400, newTx.GasPrice().Int64())
 	}
-	transactionRelayedEvent := new(librelay.RelayHubTransactionRelayed)
-	sampleRecipientEmitted := new(samplerec.SampleRecipientSampleRecipientEmitted)
-	ErrFailWithDesc(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[2]), t, "Unpacking transaction relayed")
 
-	ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[0]), t, "Unpacking sample recipient emitted")
-	expectedMessage := "hello world"
-	if sampleRecipientEmitted.Message != expectedMessage {
-		t.Errorf("Message was not what expected! expected: %s actual: %s", expectedMessage, sampleRecipientEmitted.Message)
+	// Check the tx is removed from the store after enough blocks
+	client.MineBlocks(12)
+	assertNoTransactionResent(t, relay.RelayServer)
+	missingTx, err := relay.TxStore.GetFirstTransaction()
+	if missingTx != nil || err != nil {
+		t.Errorf("Transaction %v was not removed from store after 12 confirmations (error %v)", missingTx.Hash().Hex(), err)
+	}
+}
+
+func TestMultipleRelayTransactions(t *testing.T) {
+	ErrFail(relay.TxStore.Clear(), t)
+	request1 := newRelayTransactionRequest(t, 2, "0x1c6504e620f8603ff7b37419edede05568dfc7fc0e8aad4b669cf5c7241f4fe82f07a35c64cbad911e4cd8c9b4eb41b00c8db6f529bc3881bc4f3a7b0721bebf29")
+	request2 := newRelayTransactionRequest(t, 3, "0x1c290b257a7aecb4d78c5687ff7c1e2b857c73d9d9e5166a0b511a46120deef43a4a0df53d1682efa4dafd44e0d17248ae7df7fb828d6e8aa12e859cb112725ba2")
+	request3 := newRelayTransactionRequest(t, 4, "0x1b8a0b8f5f1a659dd261c5a1946316e12f1b347c785207a3c17f332316ed3177a06c332d5681e9d60b13bc8486db08c0dfd5d97667d54337041217e915630e30c7")
+
+	// Send 3 transactions, separated by 1 min each, and revert the last 2
+	signedTx1, err := relay.CreateRelayTransaction(request1)
+	ErrFailWithDesc(err, t, "Creating relay transaction 1")
+	clk.IncrementBySeconds(60)
+	snapshotID, err := client.Snapshot()
+	ErrFailWithDesc(err, t, "Creating snapshot")
+	_, err = relay.CreateRelayTransaction(request2)
+	ErrFailWithDesc(err, t, "Creating relay transaction 2")
+	clk.IncrementBySeconds(60)
+	signedTx3, err := relay.CreateRelayTransaction(request3)
+	ErrFailWithDesc(err, t, "Creating relay transaction 3")
+	err = client.Revert(snapshotID)
+	ErrFailWithDesc(err, t, "Restoring snapshot")
+	nonce, err := client.NonceAt(context.Background(), relay.Address(), nil)
+
+	// Check tx1 went fine
+	assertTransactionRelayed(t, signedTx1.Hash())
+
+	// After 5 minutes, tx2 is not resent because tx1 is still unconfirmed
+	clk.IncrementBySeconds(60 * 5)
+	assertNoTransactionResent(t, relay.RelayServer)
+	assertRelayNonce(t, nonce)
+
+	// Mine a bunch of blocks, so tx1 is confirmed and tx2 is resent
+	client.MineBlocks(12)
+	newTx2, err := relay.UpdateUnconfirmedTransactions()
+	ErrFailWithDesc(err, t, "Updating unconfirmed transactions")
+	assertRelayNonce(t, nonce+1)
+	assertTransactionRelayed(t, newTx2.Hash())
+
+	// Reinject tx3 into the chain as if it were mined once tx2 goes through
+	ErrFailWithDesc(client.SendTransaction(context.Background(), signedTx3), t, "Resending tx3")
+	assertTransactionRelayed(t, signedTx3.Hash())
+
+	// Check that tx3 does not get resent, even after time passes or blocks get mined, and that store is empty
+	assertNoTransactionResent(t, relay.RelayServer)
+	clk.IncrementBySeconds(300)
+	client.MineBlocks(12)
+	assertNoTransactionResent(t, relay.RelayServer)
+	noTx, err := relay.TxStore.GetFirstTransaction()
+	if noTx != nil || err != nil {
+		t.Errorf("Expected tx store to be empty but found %v (error %v)", noTx, err)
 	}
 }

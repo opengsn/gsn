@@ -19,7 +19,7 @@ type ITxStore interface {
 	GetFirstTransaction() (tx *TimestampedTransaction, err error)
 	SaveTransaction(tx *types.Transaction) (err error)
 	UpdateTransactionByNonce(tx *types.Transaction) (err error)
-	RemoveTransactionsUptoNonce(nonce uint64) (err error)
+	RemoveTransactionsLessThanNonce(nonce uint64) (err error)
 	Clear() (err error)
 }
 
@@ -83,12 +83,12 @@ func (store *MemoryTxStore) UpdateTransactionByNonce(tx *types.Transaction) (err
 	return fmt.Errorf("Could not find transaction with nonce %d", tx.Nonce())
 }
 
-// RemoveTransactionsUptoNonce removes all transactions with nonce values up to the specified value inclusive
-func (store *MemoryTxStore) RemoveTransactionsUptoNonce(nonce uint64) (err error) {
+// RemoveTransactionsLessThanNonce removes all transactions with nonce values up to the specified value inclusive
+func (store *MemoryTxStore) RemoveTransactionsLessThanNonce(nonce uint64) (err error) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	for e := store.transactions.Front(); e != nil && e.Value.(*TimestampedTransaction).Nonce() <= nonce; e = store.transactions.Front() {
+	for e := store.transactions.Front(); e != nil && e.Value.(*TimestampedTransaction).Nonce() < nonce; e = store.transactions.Front() {
 		store.transactions.Remove(e)
 	}
 

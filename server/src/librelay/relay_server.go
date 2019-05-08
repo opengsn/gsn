@@ -101,7 +101,7 @@ type IRelay interface {
 
 	GetPort() string
 
-	UpdateUnconfirmedTransactions() (err error)
+	UpdateUnconfirmedTransactions() (newTx *types.Transaction, err error)
 
 	sendRegisterTransaction() (tx *types.Transaction, err error)
 
@@ -594,7 +594,7 @@ func (relay *RelayServer) sendDataTransaction(desc string, f func(*bind.Transact
 		return
 	}
 
-	log.Println(desc, "tx sent:", tx.Hash().Hex())
+	log.Printf("%v tx sent: %v (%v)\n", desc, tx.Hash().Hex(), tx.Nonce())
 	lastNonce++
 
 	// TODO: Monitor for tx mined
@@ -680,7 +680,7 @@ func (relay *RelayServer) pollNonce() (nonce uint64, err error) {
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 // 5 minutes
 
-func (relay *RelayServer) UpdateUnconfirmedTransactions() (err error) {
+func (relay *RelayServer) UpdateUnconfirmedTransactions() (newTx *types.Transaction, err error) {
 	// Load unconfirmed transactions from store, and bail if there are none
 	tx, err := relay.TxStore.GetFirstTransaction()
 	if err != nil {
@@ -709,8 +709,8 @@ func (relay *RelayServer) UpdateUnconfirmedTransactions() (err error) {
 		return
 	}
 
-	// Clear out all confirmed transactions (ie txs with nonce less than or equal to the account nonce at confirmationsNeeded blocks ago)
-	err = relay.TxStore.RemoveTransactionsUptoNonce(nonce)
+	// Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
+	err = relay.TxStore.RemoveTransactionsLessThanNonce(nonce)
 	if err != nil {
 		log.Println("UpdateUnconfirmedTransactions: error deleting confirmed transactions", err)
 		return
@@ -736,7 +736,7 @@ func (relay *RelayServer) UpdateUnconfirmedTransactions() (err error) {
 
 	if tx.Nonce() < nonce {
 		log.Println("UpdateUnconfirmedTransactions: awaiting confirmations for next mined transaction", nonce, tx.Nonce(), tx.Hash().Hex())
-		return nil
+		return nil, nil
 	}
 
 	// If the tx is still pending, check how long ago we sent it, and resend it if needed
@@ -748,7 +748,7 @@ func (relay *RelayServer) UpdateUnconfirmedTransactions() (err error) {
 	newtx, err := relay.resendTransaction(tx.Transaction)
 	if err != nil {
 		log.Println("UpdateUnconfirmedTransactions: error resending transaction", tx.Hash().Hex(), err)
-		return err
+		return nil, err
 	}
 	log.Println("UpdateUnconfirmedTransactions: resent transaction", tx.Nonce(), tx.Hash().Hex(), "as", newtx.Hash().Hex())
 
@@ -756,10 +756,10 @@ func (relay *RelayServer) UpdateUnconfirmedTransactions() (err error) {
 	err = relay.TxStore.UpdateTransactionByNonce(newtx)
 	if err != nil {
 		log.Println("UpdateUnconfirmedTransactions: error updating transaction in local store", newtx.Hash().Hex(), err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return newtx, nil
 }
 
 func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
