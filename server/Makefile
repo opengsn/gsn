@@ -21,7 +21,7 @@ $(server_exe): $(GEN_FILE) $(GEN_FILE_REC) go-get $(ETHFILE) $() $(shell find . 
 	strip $(server_exe)
 
 go-get: $(GEN_FILE) $(ETHFILE)
-	go get -v code.cloudfoundry.org/clock
+	go get -v code.cloudfoundry.org/clock github.com/syndtr/goleveldb/leveldb
 
 $(ETHFILE): Makefile
 	@echo "Downloading the ethereum library. Might take a few minutes."

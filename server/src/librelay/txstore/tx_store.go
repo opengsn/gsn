@@ -16,4 +16,5 @@ type ITxStore interface {
 	UpdateTransactionByNonce(tx *types.Transaction) (err error)
 	RemoveTransactionsLessThanNonce(nonce uint64) (err error)
 	Clear() (err error)
+	Close() (err error)
 }

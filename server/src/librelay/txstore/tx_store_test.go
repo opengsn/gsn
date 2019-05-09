@@ -1,9 +1,9 @@
 package txstore
 
 import (
-	"fmt"
 	"math/big"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -16,10 +16,7 @@ import (
 )
 
 func newTx(nonce uint64) (tx *types.Transaction) {
-	address, err := common.NewMixedcaseAddressFromString("ffcf8fdee72ac11b5c542428b35eef5769c409f0")
-	if err != nil {
-		fmt.Println("BOO", err)
-	}
+	address, _ := common.NewMixedcaseAddressFromString("ffcf8fdee72ac11b5c542428b35eef5769c409f0")
 	gas := uint64(rand.Int63n(1e9))
 	return types.NewTransaction(nonce, address.Address(), big.NewInt(10), gas, big.NewInt(2000), nil)
 }
@@ -28,7 +25,7 @@ func testStore(t *testing.T, store ITxStore, clk *fakeclock.FakeClock) {
 	t.Run("GetFirstTransaction returns nil", func(t *testing.T) {
 		tx, err := store.GetFirstTransaction()
 		if tx != nil || err != nil {
-			t.Fail()
+			t.Errorf("Transaction should be nil but was %v (error %v)", tx, err)
 		}
 	})
 
@@ -109,4 +106,40 @@ func TestMemoryStore(t *testing.T) {
 	clk := fakeclock.NewFakeClock(time.Now())
 	store := NewMemoryTxStore(clk)
 	testStore(t, store, clk)
+}
+
+func TestLevelDbStore(t *testing.T) {
+	os.RemoveAll("test.db")
+	clk := fakeclock.NewFakeClock(time.Now())
+	store, err := NewLevelDbTxStore("test.db", clk)
+	defer cleanupDb(store)
+	test.ErrFail(err, t)
+	testStore(t, store, clk)
+}
+
+func TestTransactionEncode(t *testing.T) {
+	timestamp := time.Now().Unix()
+	tx := TimestampedTransaction{newTx(10), timestamp}
+	bytes, err := tx.Encode()
+	test.ErrFailWithDesc(err, t, "Error encoding transaction")
+	decodedTx, err := DecodeTimestampedTransaction(bytes)
+	test.ErrFailWithDesc(err, t, "Error decoding transaction")
+
+	if decodedTx.Nonce() != tx.Nonce() {
+		t.Errorf("Incorrect nonce %v, expected %v", decodedTx.Nonce(), tx.Nonce())
+	}
+	if decodedTx.Hash() != tx.Hash() {
+		t.Errorf("Incorrect hash %v, expected %v", decodedTx.Hash().Hex(), tx.Hash().Hex())
+	}
+	if decodedTx.Timestamp != tx.Timestamp {
+		t.Errorf("Incorrect timestamp %v, expected %v", decodedTx.Timestamp, tx.Timestamp)
+	}
+	if decodedTx.To().Hex() != tx.To().Hex() {
+		t.Errorf("Incorrect recipient %v, expected %v", decodedTx.To().Hex(), tx.To().Hex())
+	}
+}
+
+func cleanupDb(store *LevelDbTxStore) {
+	store.Close()
+	os.RemoveAll("test.db")
 }

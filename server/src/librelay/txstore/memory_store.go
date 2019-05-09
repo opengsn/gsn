@@ -101,3 +101,7 @@ func (store *MemoryTxStore) Clear() (err error) {
 	store.transactions = list.New()
 	return
 }
+
+func (store *MemoryTxStore) Close() (err error) {
+	return nil
+}
