@@ -32,6 +32,7 @@ var relay librelay.IRelay
 var server *http.Server
 var stopKeepAlive chan bool
 var stopRefreshBlockchainView chan bool
+var stopUpdatingPendingTxs chan bool
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -46,10 +47,11 @@ func main() {
 
 	timeUnit := time.Minute
 	if shortSleep {
-		timeUnit = 100*time.Millisecond
+		timeUnit = 100 * time.Millisecond
 	}
 	stopKeepAlive = schedule(keepAlive, 1*timeUnit, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
+	stopUpdatingPendingTxs = schedule(updatePendingTxs, 1*timeUnit, 0)
 	schedule(shutdownOnRelayRemoved, 1*timeUnit, 0)
 
 	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
@@ -64,9 +66,9 @@ func main() {
 func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-		w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
-		w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, POST, OPTIONS"}
+		w.Header()["Access-Control-Allow-Origin"] = []string{"*"}
+		w.Header()["Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+		w.Header()["Access-Control-Allow-Methods"] = []string{"GET, POST, OPTIONS"}
 
 		if !shouldHandleRelayRequests() {
 			err := fmt.Errorf("Relay not staked and registered yet")
@@ -105,9 +107,9 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 
 func getEthAddrHandler(w http.ResponseWriter, _ *http.Request) {
 
-	w.Header()[ "Access-Control-Allow-Origin"] = []string{"*"}
-	w.Header()[ "Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
-	w.Header()[ "Access-Control-Allow-Methods"] = []string{"GET, OPTIONS"}
+	w.Header()["Access-Control-Allow-Origin"] = []string{"*"}
+	w.Header()["Access-Control-Allow-Headers"] = []string{"Content-Type, Authorization, Content-Length, X-Requested-With"}
+	w.Header()["Access-Control-Allow-Methods"] = []string{"GET, OPTIONS"}
 
 	getEthAddrResponse := &librelay.GetEthAddrResponse{
 		RelayServerAddress: relay.Address(),
@@ -202,6 +204,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
 	relayParams.RegistrationBlockRate = *registrationBlockRate
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
+	relayParams.DBFile = filepath.Join(*workdir, "db")
 
 	KeystoreDir = filepath.Join(*workdir, "keystore")
 
@@ -222,12 +225,17 @@ func configRelay(relayParams librelay.RelayParams) {
 		log.Println("Could not connect to ethereum node", err)
 		return
 	}
+	txStore, err := txstore.NewLevelDbTxStore(relayParams.DBFile, nil)
+	if err != nil {
+		log.Println("Could not create local transactions database", err)
+		return
+	}
 	relay, err = librelay.NewRelayServer(
 		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
-		client, txstore.NewMemoryTxStore(nil), nil)
+		client, txStore, nil)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
 		return
@@ -266,6 +274,20 @@ func refreshBlockchainView() {
 	log.Println("GasPrice:", gasPrice.Uint64())
 
 	ready = true
+}
+
+func updatePendingTxs() {
+	if removed {
+		log.Println("Relay removed. No need to wait for owner actions")
+		return
+	}
+	waitForOwnerActions()
+
+	log.Println("Updating unconfirmed txs...")
+	_, err := relay.UpdateUnconfirmedTransactions()
+	if err != nil {
+		log.Println("Error updating unconfirmed txs", err)
+	}
 }
 
 func waitForOwnerActions() {
@@ -312,10 +334,10 @@ func keepAlive() {
 		return
 	}
 	log.Println("Registering relay...")
-	for ; ; {
+	for {
 		err := relay.RegisterRelay()
 		if err == nil {
-			break;
+			break
 		}
 		log.Println(err)
 		log.Println("Trying to register again...")
@@ -334,7 +356,7 @@ func shutdownOnRelayRemoved() {
 	if removed {
 		log.Println("Relay removed. Sending balance back to owner")
 		sleep(2*time.Minute, shortSleep)
-		for ; ; {
+		for {
 			err = relay.SendBalanceToOwner()
 			if err == nil {
 				break
@@ -346,6 +368,6 @@ func shutdownOnRelayRemoved() {
 
 }
 
-func shouldHandleRelayRequests() (bool){
+func shouldHandleRelayRequests() bool {
 	return ready && !removed
 }

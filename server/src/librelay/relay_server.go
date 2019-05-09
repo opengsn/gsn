@@ -104,6 +104,8 @@ type IRelay interface {
 
 	UpdateUnconfirmedTransactions() (newTx *types.Transaction, err error)
 
+	Close() (err error)
+
 	sendRegisterTransaction() (tx *types.Transaction, err error)
 
 	awaitTransactionMined(tx *types.Transaction) (err error)
@@ -147,7 +149,10 @@ type RelayServer struct {
 	clock                 clock.Clock
 }
 
-type RelayParams RelayServer
+type RelayParams struct {
+	RelayServer
+	DBFile string
+}
 
 func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
 	client := &TbkClient{DefaultGasPrice: defaultGasPrice}
@@ -784,4 +789,8 @@ func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 		}
 	}
 	log.Println("replayUnconfirmedTxs end")
+}
+
+func (relay *RelayServer) Close() (err error) {
+	return relay.TxStore.Close()
 }

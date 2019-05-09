@@ -16,7 +16,7 @@ async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstake_dela
         console.log( "already has a stake of "+(curstake/1e18)+" eth. NOT adding more")
     } else {
         console.log( "staking ",stake)
-        console.log( await rhub.methods.stake(relayaddr, unstake_delay).send({value: stake, from:fromaddr}))
+        console.log( await rhub.methods.stake(relayaddr, unstake_delay).send({value: stake, from:fromaddr, gas: 1e6}))
     }
 
     let balance = await web3.eth.getBalance(relayaddr)
@@ -24,7 +24,7 @@ async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstake_dela
         console.log( "already has a balance of "+(stake/1e18)+" eth. NOT adding more")
     } else {
         ret = await new Promise((resolve,reject)=> {
-            web3.eth.sendTransaction({from: fromaddr, to: relayaddr,value:fund}, (e, r) => {
+            web3.eth.sendTransaction({from: fromaddr, to: relayaddr,value:fund, gas: 1e6}, (e, r) => {
                 if (e) reject(e)
                 else resolve(r)
             })
