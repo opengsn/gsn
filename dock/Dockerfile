@@ -9,6 +9,7 @@ RUN	apt-get install -y software-properties-common && \
 	apt-get install -y git nodejs && \
 	apt-get install -y golang-1.10-go && \
 	apt-get install -y ethereum  && \
+	apt-get install -y netcat && \
 	rm -rf /var/lib/apt/lists/*
 
 #for some reason, npm install -g chokes. so we install them "locally", in the root folder.
