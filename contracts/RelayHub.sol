@@ -169,7 +169,7 @@ contract RelayHub is RelayHubApi {
         return handle_accept_relay_call(to,accept_relayed_call_raw_tx);
     }
 
-    function handle_accept_relay_call(RelayRecipient to, bytes memory accept_relayed_call_raw_tx) private view returns (uint32){
+    function handle_accept_relay_call(RelayRecipientApi to, bytes memory accept_relayed_call_raw_tx) private view returns (uint32){
         bool success;
         uint32 accept = uint32(CanRelayStatus.AcceptRelayedCallUnkownError);
         assembly {
