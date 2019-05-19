@@ -21,7 +21,7 @@ contract  RelayHubApi {
      * the client uses this event so it can report correctly transaction complete (or revert) to the application.
      * Monitoring tools can use this event to detect liveliness of clients and relays.
      */
-    event TransactionRelayed(address indexed relay, address indexed from, address indexed to, bytes32 hash, uint status, uint charge);
+    event TransactionRelayed(address indexed relay, address indexed from, address indexed to,       uint status, uint charge);
     event Deposited(address src, uint amount);
     event Withdrawn(address dest, uint amount);
     event Penalized(address indexed relay, address sender, uint amount);

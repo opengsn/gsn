@@ -14,7 +14,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimum_unstake_delay = 0;    // XXX TBD
     uint constant minimum_relay_balance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gas_reserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant public gas_overhead = 47396;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gas_overhead = 47051;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
     uint accept_relayed_call_max_gas = 50000;
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
@@ -200,10 +200,9 @@ contract RelayHub is RelayHubApi {
         uint initial_gas = gasleft();
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
-
         uint32 can_relay_result = can_relay(msg.sender, from, RelayRecipientApi(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval);
         if (can_relay_result != 0) {
-            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(RelayCallStatus.CanRelayFailed), 0);
+            emit TransactionRelayed(msg.sender, from, to, uint(RelayCallStatus.CanRelayFailed), 0);
             return;
         }
 
@@ -222,14 +221,18 @@ contract RelayHub is RelayHubApi {
         // Relay transaction_fee is in %.  E.g. if transaction_fee=40, payment will be 1.4*used_gas.
         uint charge = (gas_overhead+initial_gas-gasleft())*gas_price*(100+transaction_fee)/100;
         if (!success_post){
-            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(RelayCallStatus.PostRelayedFailed), charge);
+            emit TransactionRelayed(msg.sender, from, to, uint(RelayCallStatus.PostRelayedFailed), charge);
         }else{
-            emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(status), charge);
+             emit TransactionRelayed(msg.sender, from, to, uint(status), charge);
         }
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
     }
+
+//    function emitTransactionRelayed(address sender, address from, address to, bytes memory encodedFunction, uint status, uint charge) internal {
+//        emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction,0), status, charge);
+//    }
 
     function recipient_calls(address from, address to, address relay_addr, bytes calldata encoded_function, uint transaction_fee, uint gas_limit, uint initial_gas) external returns (bool) {
         require(msg.sender == address(this), "Only RelayHub should call this function");
