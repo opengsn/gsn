@@ -68,7 +68,7 @@ contract('RelayClient', function (accounts) {
 
     })
 
-    var func = async function ({from/*, to, tx, txfee, gas_price, gas_limit, nonce, relay_hub_address, relay_address*/}) {
+    var func = async function ({from/*, to, tx, txfee, gasPrice, gasLimit, nonce, relay_hub_address, relay_address*/}) {
         let toSign = web3.utils.sha3("0x" + Buffer.from("I approve").toString("hex") + utils.removeHexPrefix(from));
         let sign = await utils.getTransactionSignature(web3, accounts[0], toSign);
         return sign.slice(2);
@@ -172,13 +172,13 @@ contract('RelayClient', function (accounts) {
         let res = await sr.emitMessage("hello world", {from: gasLess})
         assert.equal(res.logs[0].event, "SampleRecipientEmitted")
         assert.equal(res.logs[0].args.message, "hello world")
-        assert.equal(res.logs[0].args.real_sender, gasLess)
-        assert.equal(res.logs[0].args.msg_sender.toLowerCase(), rhub.address.toLowerCase())
+        assert.equal(res.logs[0].args.realSender, gasLess)
+        assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
         res = await sr.emitMessage("hello again", { from: accounts[3] })
         assert.equal(res.logs[0].event, "SampleRecipientEmitted")
         assert.equal(res.logs[0].args.message, "hello again")
 
-        assert.equal(res.logs[0].args.real_sender, accounts[3])
+        assert.equal(res.logs[0].args.realSender, accounts[3])
 
     })
 
@@ -371,7 +371,7 @@ contract('RelayClient', function (accounts) {
         let response = await request(localhostOne+'/getaddr');
         let relayServerAddress = JSON.parse(response.body).RelayServerAddress;
         let beforeOwnerBalance = await web3.eth.getBalance(relayOwner);
-        let res = await rhub.remove_relay_by_owner(relayServerAddress, {from:relayOwner});
+        let res = await rhub.removeRelayByOwner(relayServerAddress, {from:relayOwner});
         assert.equal("RelayRemoved", res.logs[0].event);
         assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase());
 

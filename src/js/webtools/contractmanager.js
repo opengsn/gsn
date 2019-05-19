@@ -29,7 +29,7 @@ class ContractManager {
 
         let recipient = RelayRecipient.at(addr)
 
-        let hubaddr = await promisify(recipient.get_hub_addr)()
+        let hubaddr = await promisify(recipient.getHubAddr)()
 
         if (!hubaddr || hubaddr === '0x')
             return undefined

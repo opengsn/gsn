@@ -31,7 +31,7 @@ function bytesToHex_noPrefix(bytes) {
 module.exports = {
     register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
         await relayHub.stake(account, delay, {from: account, value: stake})
-        return await relayHub.register_relay(txFee, url, {from: account})
+        return await relayHub.registerRelay(txFee, url, {from: account})
     },
 
     getTransactionHash: function (from, to, tx, txfee, gas_price, gas_limit, nonce, relay_hub_address, relay_address) {

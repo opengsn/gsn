@@ -414,7 +414,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	// check can_relay view function to see if we'll get paid for relaying this tx
+	// check canRelay view function to see if we'll get paid for relaying this tx
 	res, err := relay.canRelay(request.EncodedFunction,
 		request.Signature,
 		request.From,
@@ -425,7 +425,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		request.RelayFee)
 
 	if err != nil {
-		log.Println("can_relay failed in server", err)
+		log.Println("canRelay failed in server", err)
 		return
 	}
 
@@ -433,12 +433,12 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
 			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
 			request.RelayFee.String(), "Sig:", hexutil.Encode(request.Signature))
-		err = fmt.Errorf("can_relay() view function returned error code=%d\nparams:%s", res, errStr)
+		err = fmt.Errorf("canRelay() view function returned error code=%d\nparams:%s", res, errStr)
 		log.Println(err, errStr)
 		return
 	}
 
-	// can_relay returned true, so we can relay the tx
+	// canRelay returned true, so we can relay the tx
 	relayAddress := relay.Address()
 
 	callOpt := &bind.CallOpts{

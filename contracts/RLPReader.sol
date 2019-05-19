@@ -23,21 +23,13 @@ library RLPReader {
 
     // helper function to decode rlp encoded  ethereum transaction
     /*
-    * @param raw_transaction RLP encoded ethereum transaction
-    * @return tuple (nonce,gas_price,gas_limit,to,value,data)
+    * @param rawTransaction RLP encoded ethereum transaction
+    * @return tuple (nonce,gasPrice,gasLimit,to,value,data)
     */
 
-    function decode_transaction(bytes memory raw_transaction) public pure returns (uint, uint, uint, address, uint, bytes memory){
-        RLPReader.RLPItem[] memory values = raw_transaction.toRlpItem().toList(); // must convert to an rlpItem first!
+    function decodeTransaction(bytes memory rawTransaction) public pure returns (uint, uint, uint, address, uint, bytes memory){
+        RLPReader.RLPItem[] memory values = rawTransaction.toRlpItem().toList(); // must convert to an rlpItem first!
         return (values[0].toUint(), values[1].toUint(), values[2].toUint(), values[3].toAddress(), values[4].toUint(), values[5].toBytes());
-    }
-
-    function bytesToBytes32(bytes memory b, uint offset) private pure returns (bytes32) {
-        bytes32 out;
-        for (uint i = 0; i < 32; i++) {
-            out |= bytes32(b[offset + i] & 0xFF) >> (i * 8);
-        }
-        return out;
     }
 
     /*

@@ -109,7 +109,7 @@ module.exports = {
 
     register_new_relay: async function (relayHub, stake, delay, txFee, url, relayAccount, ownerAccount) {
         await relayHub.stake(relayAccount, delay, {from: ownerAccount, value: stake})
-        return await relayHub.register_relay(txFee, url, {from: relayAccount})
+        return await relayHub.registerRelay(txFee, url, {from: relayAccount})
     },
 
     register_new_relay_with_privkey: async function (relayHub, stake, delay, txFee, url, ownerAccount, web3, privKey) {
@@ -117,7 +117,7 @@ module.exports = {
         await relayHub.stake(address, delay, {from: ownerAccount, value: stake})
         await web3.eth.sendTransaction({to: address, from: ownerAccount, value: web3.utils.toWei("1", "ether")})
         let nonce = await web3.eth.getTransactionCount(address)
-        let register_data = relayHub.contract.methods.register_relay(txFee, url).encodeABI()
+        let register_data = relayHub.contract.methods.registerRelay(txFee, url).encodeABI()
         let validTransaction = new ethJsTx({
             nonce: nonce,
             gasPrice: 1,
