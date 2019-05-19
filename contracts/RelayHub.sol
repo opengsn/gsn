@@ -1,7 +1,7 @@
 pragma solidity >=0.4.0 <0.6.0;
 
 import "./RelayHubApi.sol";
-import "./RelayRecipient.sol";
+import "./RelayRecipientApi.sol";
 import "./GsnUtils.sol";
 import "./RLPReader.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
@@ -74,7 +74,7 @@ contract RelayHub is RelayHubApi {
     /**
      * withdraw funds.
      * caller is either a relay owner, withdrawing collected transaction fees.
-     * or a RelayRecipient contract, withdrawing its deposit.
+     * or a RelayRecipientApi contract, withdrawing its deposit.
      * note that while everyone can `depositFor()` a contract, only
      * the contract itself can withdraw its funds.
      */
@@ -156,7 +156,7 @@ contract RelayHub is RelayHubApi {
 	// for contract-specific checks.
 	// returns "0" if the relay is valid. other values represent errors.
 	// values 1..10 are reserved for can_relay. other values can be used by accept_relayed_call of target contracts.
-    function can_relay(address relay, address from, RelayRecipient to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory approval) public view returns(uint32) {
+    function can_relay(address relay, address from, RelayRecipientApi to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory approval) public view returns(uint32) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, encoded_function, transaction_fee, gas_price, gas_limit, nonce, address(this));
         bytes32 hashed_message = keccak256(abi.encodePacked(packed, relay));
         bytes32 signed_message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashed_message));
@@ -169,7 +169,7 @@ contract RelayHub is RelayHubApi {
         return handle_accept_relay_call(to,accept_relayed_call_raw_tx);
     }
 
-    function handle_accept_relay_call(RelayRecipient to, bytes memory accept_relayed_call_raw_tx) private view returns (uint32){
+    function handle_accept_relay_call(RelayRecipientApi to, bytes memory accept_relayed_call_raw_tx) private view returns (uint32){
         bool success;
         uint32 accept = uint32(CanRelayStatus.AcceptRelayedCallUnkownError);
         assembly {
@@ -187,7 +187,7 @@ contract RelayHub is RelayHubApi {
     /**
      * relay a transaction.
      * @param from the client originating the request.
-     * @param to the target RelayRecipient contract.
+     * @param to the target RelayRecipientApi contract.
      * @param encoded_function the function call to relay.
      * @param transaction_fee fee (%) the relay takes over actual gas cost.
      * @param gas_price gas price the client is willing to pay
@@ -201,7 +201,7 @@ contract RelayHub is RelayHubApi {
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gas_price <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
 
-        uint32 can_relay_result = can_relay(msg.sender, from, RelayRecipient(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval);
+        uint32 can_relay_result = can_relay(msg.sender, from, RelayRecipientApi(to), encoded_function, transaction_fee, gas_price, gas_limit, nonce, approval);
         if (can_relay_result != 0) {
             emit TransactionRelayed(msg.sender, from, to, keccak256(encoded_function), uint(RelayCallStatus.CanRelayFailed), 0);
             return;
@@ -241,7 +241,7 @@ contract RelayHub is RelayHubApi {
         bool success_post;
         uint balance_before = balances[to];
         (success, ) = to.call.gas(gas_limit)(transaction); // transaction must end with @from at this point
-        transaction = abi.encodeWithSelector(RelayRecipient(to).post_relayed_call.selector, relay_addr, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
+        transaction = abi.encodeWithSelector(RelayRecipientApi(to).post_relayed_call.selector, relay_addr, from, encoded_function, success, (gas_overhead+initial_gas-gasleft()), transaction_fee);
         (success_post, ) = to.call.gas((gas_overhead+initial_gas-gasleft()))(transaction);
         require(success_post, "post_relayed_call reverted - reverting the relayed transaction");
         require(balance_before <= balances[to], "Moving funds during relayed transaction disallowed");
@@ -264,7 +264,7 @@ contract RelayHub is RelayHubApi {
     }
 
     function penalize_repeated_nonce(bytes memory unsigned_tx1, bytes memory sig1 ,bytes memory unsigned_tx2, bytes memory sig2) public {
-        // Can be called by anyone.  
+        // Can be called by anyone.
         // If a relay attacked the system by signing multiple transactions with the same nonce (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
         // Check whether unsigned_tx1 != unsigned_tx2, that both are signed by the same address, and that unsigned_tx1.nonce == unsigned_tx2.nonce.  If all conditions are met, relay is considered an "offending relay".
         // The offending relay will be unregistered immediately, its stake will be forfeited and given to the address who reported it (msg.sender), thus incentivizing anyone to report offending relays.

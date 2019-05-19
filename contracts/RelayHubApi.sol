@@ -28,12 +28,15 @@ contract  RelayHubApi {
 
     function get_nonce(address from) view external returns (uint);
     function relay(address from, address to, bytes memory encoded_function, uint transaction_fee, uint gas_price, uint gas_limit, uint nonce, bytes memory approval) public;
-    
+
     function depositFor(address target) public payable;
     function balanceOf(address target) external view returns (uint256);
 
     function stake(address relayaddr, uint unstake_delay) external payable;
     function stakeOf(address relayaddr) external view returns (uint256);
     function ownerOf(address relayaddr) external view returns (address);
+
+    function unstake(address _relay) public;
+    function withdraw(uint amount) public;
 }
 
