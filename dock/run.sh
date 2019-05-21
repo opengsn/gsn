@@ -34,6 +34,9 @@ for f in $folders ; do test -d $f && FOLDERS+=" -v $f:$f"; done
 FOLDERS+=" -v `pwd`/build/dock-builD:`pwd`/build"
 FOLDERS+=" -v `pwd`/build/dock-node_modules:`pwd`/node_modules"
 mkdir -p build/dock-builD
+mkdir -p build/dock-node_modules
+cp node_modules/openzeppelin-solidity build/dock-node_modules -a
+cp node_modules/@0x build/dock-node_modules -a
 ENVVARS="-e HOME=$HOME -e USER=$USER"
 
 #echo "foldermaps=$FOLDER_MAPS"
