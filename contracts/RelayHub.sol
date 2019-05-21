@@ -15,7 +15,7 @@ contract RelayHub is RelayHubApi {
     uint constant minimumUnstakeDelay = 0;    // XXX TBD
     uint constant minimumRelayBalance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gasReserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant public gasOverhead = 46899;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gasOverhead = 47445;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
     uint acceptRelayedCallMaxGas = 50000;
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
@@ -194,7 +194,7 @@ contract RelayHub is RelayHubApi {
         require(gasPrice <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
         uint canRelayResult = canRelay(msg.sender, from, RelayRecipientApi(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
         if (canRelayResult != 0) {
-            emit TransactionRelayed(msg.sender, from, to, uint(RelayCallStatus.CanRelayFailed), 0);
+            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.CanRelayFailed), 0);
             return;
         }
 
@@ -213,13 +213,18 @@ contract RelayHub is RelayHubApi {
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
         uint charge = (gasOverhead + initialGas -gasleft())* gasPrice *(100+ transactionFee)/100;
         if (!successPost){
-            emit TransactionRelayed(msg.sender, from, to, uint(RelayCallStatus.PostRelayedFailed), charge);
+            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.PostRelayedFailed), charge);
         }else{
-             emit TransactionRelayed(msg.sender, from, to, uint(status), charge);
+            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(status), charge);
         }
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
+    }
+
+    // Bypassing "stack too deep"... in relay()
+    function emitTransactionRelayed(address sender, address from, address to, bytes memory encodedFunction, uint status, uint charge) internal {
+        emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction,0), status, charge);
     }
 
     function recipientCalls(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {

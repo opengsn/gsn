@@ -210,6 +210,7 @@ contract("RelayHub", function (accounts) {
         var log_relayed = result.logs[0];
         var args_relayed = log_relayed.args;
         assert.equal("TransactionRelayed", log_relayed.event);
+        assert.equal(args_relayed.selector, sr.contract.methods.emitMessage(message).encodeABI().slice(0,10));
         assert.equal(0, args_relayed.status.toNumber())
         var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
             fromBlock: startBlock,
