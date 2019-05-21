@@ -7,6 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"gen/librelay"
+	"librelay/txstore"
+	"log"
+	"math/big"
+	"strings"
+	"sync"
+	"time"
+
+	"code.cloudfoundry.org/clock"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -15,11 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"log"
-	"math/big"
-	"strings"
-	"sync"
-	"time"
 )
 
 const TxReceiptTimeout = 60 * time.Second
@@ -74,7 +78,7 @@ func (response *RelayTransactionResponse) MarshalJSON() ([]byte, error) {
 type IRelay interface {
 	Balance() (balance *big.Int, err error)
 
-	GasPrice() (big.Int)
+	GasPrice() big.Int
 
 	RefreshGasPrice() (err error)
 
@@ -92,11 +96,15 @@ type IRelay interface {
 
 	Address() (relayAddress common.Address)
 
-	HubAddress() (common.Address)
+	HubAddress() common.Address
 
-	GetUrl() (string)
+	GetUrl() string
 
-	GetPort() (string)
+	GetPort() string
+
+	UpdateUnconfirmedTransactions() (newTx *types.Transaction, err error)
+
+	Close() (err error)
 
 	sendRegisterTransaction() (tx *types.Transaction, err error)
 
@@ -119,7 +127,7 @@ type IClient interface {
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 }
 
-type relayServer struct {
+type RelayServer struct {
 	OwnerAddress          common.Address
 	Fee                   *big.Int
 	Url                   string
@@ -135,10 +143,16 @@ type relayServer struct {
 	EthereumNodeURL       string
 	gasPrice              *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
 	Client                IClient
+	ChainID               *big.Int
+	TxStore               txstore.ITxStore
 	rhub                  *librelay.RelayHub
+	clock                 clock.Clock
 }
 
-type RelayParams relayServer
+type RelayParams struct {
+	RelayServer
+	DBFile string
+}
 
 func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
 	client := &TbkClient{DefaultGasPrice: defaultGasPrice}
@@ -161,15 +175,25 @@ func NewRelayServer(
 	UnstakeDelay *big.Int,
 	RegistrationBlockRate uint64,
 	EthereumNodeURL string,
-	Client IClient) (*relayServer, error) {
+	Client IClient,
+	TxStore txstore.ITxStore,
+	clk clock.Clock) (*RelayServer, error) {
 
 	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
-
 	if err != nil {
 		return nil, err
 	}
 
-	relay := &relayServer{
+	chainId, err := Client.NetworkID(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	if clk == nil {
+		clk = clock.NewClock()
+	}
+
+	relay := &RelayServer{
 		OwnerAddress:          OwnerAddress,
 		Fee:                   Fee,
 		Url:                   Url,
@@ -184,24 +208,27 @@ func NewRelayServer(
 		RegistrationBlockRate: RegistrationBlockRate,
 		EthereumNodeURL:       EthereumNodeURL,
 		Client:                Client,
+		ChainID:               chainId,
+		TxStore:               TxStore,
 		rhub:                  rhub,
+		clock:                 clk,
 	}
 	return relay, err
 }
 
-func (relay *relayServer) Balance() (balance *big.Int, err error) {
+func (relay *RelayServer) Balance() (balance *big.Int, err error) {
 	balance, err = relay.Client.BalanceAt(context.Background(), relay.Address(), nil)
 	return
 }
 
-func (relay *relayServer) GasPrice() (big.Int) {
+func (relay *RelayServer) GasPrice() big.Int {
 	if relay.gasPrice == nil {
 		return *big.NewInt(0)
 	}
 	return *relay.gasPrice
 }
 
-func (relay *relayServer) RefreshGasPrice() (err error) {
+func (relay *RelayServer) RefreshGasPrice() (err error) {
 	gasPrice, err := relay.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Println("SuggestGasPrice() failed ", err)
@@ -211,7 +238,7 @@ func (relay *relayServer) RefreshGasPrice() (err error) {
 	return
 }
 
-func (relay *relayServer) RegisterRelay() (err error) {
+func (relay *RelayServer) RegisterRelay() (err error) {
 	tx, err := relay.sendRegisterTransaction()
 	if err != nil {
 		return err
@@ -219,49 +246,15 @@ func (relay *relayServer) RegisterRelay() (err error) {
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) sendRegisterTransaction() (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-	nonceMutex.Lock()
-	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
-	log.Println("RegisterRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
-	tx, err = relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url)
-	if err != nil {
-		log.Println(err)
-		//relay.replayUnconfirmedTxs(client)
-		return
-	}
-	//unconfirmedTxs[lastNonce] = tx
-	lastNonce++
-	log.Println("RegisterRelay() tx sent:", tx.Hash().Hex())
+func (relay *RelayServer) sendRegisterTransaction() (tx *types.Transaction, err error) {
+	desc := fmt.Sprintf("RegisterRelay(address=%s, url=%s)", relay.RelayHubAddress.Hex(), relay.Url)
+	tx, err = relay.sendDataTransaction(desc, func(auth *bind.TransactOpts) (*types.Transaction, error) {
+		return relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url)
+	})
 	return
 }
 
-func (relay *relayServer) awaitTransactionMined(tx *types.Transaction) (err error) {
-
-	start := time.Now()
-	var receipt *types.Receipt
-	for ; (receipt == nil || err != nil) && time.Since(start) < TxReceiptTimeout; receipt, err = relay.Client.TransactionReceipt(context.Background(), tx.Hash()) {
-		time.Sleep(500 * time.Millisecond)
-	}
-	if err != nil {
-		log.Println("Could not get tx receipt", err)
-		return
-	}
-	if receipt.Status != 1 {
-		log.Println("tx failed: tx receipt status", receipt.Status)
-		return
-	}
-
-	return nil
-}
-
-func (relay *relayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
+func (relay *RelayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
 	tx, err := relay.sendRemoveTransaction(ownerKey)
 	if err != nil {
 		return err
@@ -269,19 +262,21 @@ func (relay *relayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+func (relay *RelayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(ownerKey)
-	log.Println("RemoveRelay() starting. RelayHub address ", relay.RelayHubAddress.Hex(), "Relay Url", relay.Url)
+	desc := fmt.Sprintf("RemoveRelayByOwner(address=%s)", relay.Address())
+	log.Println(desc, "tx sending")
+
 	tx, err = relay.rhub.RemoveRelayByOwner(auth, relay.Address())
 	if err != nil {
-		log.Println(err)
+		log.Println(desc, "error sending tx:", err)
 		return
 	}
-	log.Println("RemoveRelay() tx sent:", tx.Hash().Hex())
+	log.Println(desc, "tx sent:", tx.Hash().Hex())
 	return
 }
 
-func (relay *relayServer) IsStaked() (staked bool, err error) {
+func (relay *RelayServer) IsStaked() (staked bool, err error) {
 	relayAddress := relay.Address()
 	callOpt := &bind.CallOpts{
 		From:    relayAddress,
@@ -304,8 +299,7 @@ func (relay *relayServer) IsStaked() (staked bool, err error) {
 	return
 }
 
-func (relay *relayServer) RegistrationDate() (when int64, err error) {
-
+func (relay *RelayServer) RegistrationDate() (when int64, err error) {
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		log.Println(err)
@@ -329,8 +323,8 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+		//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+		//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url) {
 		return 0, fmt.Errorf("Could not receive RelayAdded() events for our relay")
 	}
@@ -343,7 +337,7 @@ func (relay *relayServer) RegistrationDate() (when int64, err error) {
 	return
 }
 
-func (relay *relayServer) IsRemoved() (removed bool, err error) {
+func (relay *RelayServer) IsRemoved() (removed bool, err error) {
 	filterOpts := &bind.FilterOpts{
 		Start: 0,
 		End:   nil,
@@ -359,25 +353,17 @@ func (relay *relayServer) IsRemoved() (removed bool, err error) {
 	return true, nil
 }
 
-func (relay *relayServer) SendBalanceToOwner() (err error) {
+func (relay *RelayServer) SendBalanceToOwner() (err error) {
 	balance, err := relay.Client.BalanceAt(context.Background(), relay.Address(), nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	if balance.Uint64() == 0 {
-		log.Println("balance is 0")
+		log.Println("SendBalanceToOwner: balance is 0")
 		return
 	}
 	log.Println("Sending", balance, "wei to owner address", relay.OwnerAddress.Hex())
-
-	nonceMutex.Lock()
-	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce()
-	if err != nil {
-		log.Println(err)
-		return
-	}
 
 	var data []byte
 	gasLimit := uint64(21000) // in units
@@ -388,32 +374,19 @@ func (relay *relayServer) SendBalanceToOwner() (err error) {
 	}
 	cost := gasPrice.Uint64() * gasLimit
 	value := big.NewInt(int64(balance.Uint64() - cost))
-	tx := types.NewTransaction(nonce, relay.OwnerAddress, value, gasLimit, gasPrice, data)
 
-	chainID, err := relay.Client.NetworkID(context.Background())
+	tx, err := relay.sendPlainTransaction(
+		fmt.Sprintf("SendBalanceToOwner(to=%s)", relay.OwnerAddress.Hex()),
+		relay.OwnerAddress, value, gasLimit, gasPrice, data,
+	)
+
 	if err != nil {
-		log.Println(err)
 		return
 	}
-
-	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), relay.PrivateKey)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	err = relay.Client.SendTransaction(context.Background(), signedTx)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	log.Printf("tx sent: %s", signedTx.Hash().Hex())
-
-	return relay.awaitTransactionMined(signedTx)
+	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
+func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest) (signedTx *types.Transaction, err error) {
 	// Check that the relayhub is the correct one
 	if bytes.Compare(relay.RelayHubAddress.Bytes(), request.RelayHubAddress.Bytes()) != 0 {
 		err = fmt.Errorf("Wrong hub address.\nRelay server's hub address: %s, request's hub address: %s\n", relay.RelayHubAddress.Hex(), request.RelayHubAddress.Hex())
@@ -450,23 +423,22 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 		request.GasLimit,
 		request.RecipientNonce,
 		request.RelayFee)
+
 	if err != nil {
 		log.Println("can_relay failed in server", err)
 		return
 	}
+
 	if res != 0 {
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
 			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
-			request.RelayFee.String(), "sig:", hexutil.Encode(request.Signature))
+			request.RelayFee.String(), "Sig:", hexutil.Encode(request.Signature))
 		err = fmt.Errorf("can_relay() view function returned error code=%d\nparams:%s", res, errStr)
 		log.Println(err, errStr)
 		return
 	}
 
 	// can_relay returned true, so we can relay the tx
-
-	auth := bind.NewKeyedTransactor(relay.PrivateKey)
-
 	relayAddress := relay.Address()
 
 	callOpt := &bind.CallOpts{
@@ -479,8 +451,6 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 	gasLimit := big.NewInt(0)
-	auth.GasLimit = gasLimit.Add(&request.GasLimit, gasReserve).Add(gasLimit, gasReserve).Uint64()
-	auth.GasPrice = &request.GasPrice
 
 	toBalance, err := relay.rhub.Balances(callOpt, request.To)
 	if err != nil {
@@ -510,29 +480,20 @@ func (relay *relayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	nonceMutex.Lock()
-	defer nonceMutex.Unlock()
-	nonce, err := relay.pollNonce()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
-	signedTx, err = relay.rhub.Relay(auth, request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
-		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
-	if err != nil {
-		log.Println(err)
-		//relay.replayUnconfirmedTxs(client)
-		return
-	}
-	//unconfirmedTxs[lastNonce] = signedTx
-	lastNonce++
+	signedTx, err = relay.sendDataTransaction(
+		fmt.Sprintf("Relay(from=%s, to=%s)", request.From.Hex(), request.To.Hex()),
+		func(auth *bind.TransactOpts) (*types.Transaction, error) {
+			auth.GasLimit = gasLimit.Add(&request.GasLimit, gasReserve).Add(gasLimit, gasReserve).Uint64()
+			auth.GasPrice = &request.GasPrice
+			return relay.rhub.Relay(auth, request.From, request.To,
+				common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
+				&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
+		})
 
-	log.Println("tx sent:", signedTx.Hash().Hex())
 	return
 }
 
-func (relay *relayServer) Address() (relayAddress common.Address) {
+func (relay *RelayServer) Address() (relayAddress common.Address) {
 	publicKey := relay.PrivateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
@@ -544,19 +505,19 @@ func (relay *relayServer) Address() (relayAddress common.Address) {
 	return
 }
 
-func (relay *relayServer) HubAddress() (common.Address) {
+func (relay *RelayServer) HubAddress() common.Address {
 	return relay.RelayHubAddress
 }
 
-func (relay *relayServer) GetUrl() (string) {
+func (relay *RelayServer) GetUrl() string {
 	return relay.Url
 }
 
-func (relay *relayServer) GetPort() (string) {
+func (relay *RelayServer) GetPort() string {
 	return relay.Port
 }
 
-func (relay *relayServer) canRelay(encodedFunction string,
+func (relay *RelayServer) canRelay(encodedFunction string,
 	signature []byte,
 	from common.Address,
 	to common.Address,
@@ -581,12 +542,128 @@ func (relay *relayServer) canRelay(encodedFunction string,
 	return
 }
 
-func (relay *relayServer) validateFee(relayFee big.Int) bool {
+func (relay *RelayServer) validateFee(relayFee big.Int) bool {
 	return relayFee.Cmp(relay.Fee) >= 0
-
 }
 
-func (relay *relayServer) pollNonce() (nonce uint64, err error) {
+func (relay *RelayServer) sendPlainTransaction(desc string, to common.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) (signedTx *types.Transaction, err error) {
+	log.Println(desc, "tx sending")
+	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
+
+	nonce, err := relay.pollNonce()
+	if err != nil {
+		log.Println(desc, "error polling nonce:", err)
+		return
+	}
+
+	tx := types.NewTransaction(nonce, to, value, gasLimit, gasPrice, data)
+
+	signedTx, err = types.SignTx(tx, types.NewEIP155Signer(relay.ChainID), relay.PrivateKey)
+	if err != nil {
+		log.Println(desc, "error signing tx:", err)
+		return
+	}
+
+	err = relay.Client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		log.Println(desc, "error sending tx:", err)
+		return
+	}
+
+	log.Println(desc, "tx sent:", signedTx.Hash().Hex())
+	lastNonce++
+
+	err = relay.TxStore.SaveTransaction(signedTx)
+	if err != nil {
+		log.Println(desc, "error saving tx:", err)
+		return
+	}
+
+	return
+}
+
+func (relay *RelayServer) sendDataTransaction(desc string, f func(*bind.TransactOpts) (*types.Transaction, error)) (tx *types.Transaction, err error) {
+	log.Println(desc, "tx sending")
+	nonceMutex.Lock()
+	defer nonceMutex.Unlock()
+	auth := bind.NewKeyedTransactor(relay.PrivateKey)
+	nonce, err := relay.pollNonce()
+	if err != nil {
+		log.Println(desc, "error polling nonce:", err)
+		return
+	}
+	auth.Nonce = big.NewInt(int64(nonce))
+	tx, err = f(auth)
+	if err != nil {
+		log.Println(desc, "error sending tx:", err)
+		return
+	}
+
+	log.Printf("%v tx sent: %v (%v)\n", desc, tx.Hash().Hex(), tx.Nonce())
+	lastNonce++
+
+	// TODO: Monitor for tx mined
+	err = relay.TxStore.SaveTransaction(tx)
+	if err != nil {
+		log.Println(desc, "error saving tx:", err)
+		return
+	}
+
+	return
+}
+
+const maxGasPrice = 100e9
+const retryGasPricePercentageIncrease = 20
+
+func (relay *RelayServer) resendTransaction(tx *types.Transaction) (signedTx *types.Transaction, err error) {
+	// Calculate new gas price as a % increase over the previous one
+	newGasPrice := big.NewInt(100 + retryGasPricePercentageIncrease)
+	newGasPrice.Mul(newGasPrice, tx.GasPrice())
+	newGasPrice.Div(newGasPrice, big.NewInt(100))
+
+	// Sanity check to ensure we are not burning all our balance in gas fees
+	if newGasPrice.Cmp(big.NewInt(maxGasPrice)) > 0 {
+		log.Println("Capping gas price to max value of", maxGasPrice)
+		newGasPrice.SetUint64(maxGasPrice)
+	}
+
+	// Resend transaction with exactly the same values except for gas price
+	newTx := types.NewTransaction(tx.Nonce(), *tx.To(), tx.Value(), tx.Gas(), newGasPrice, tx.Data())
+	signedTx, err = types.SignTx(newTx, types.NewEIP155Signer(relay.ChainID), relay.PrivateKey)
+	if err != nil {
+		log.Println("ResendTransaction: error signing tx", err)
+		return
+	}
+
+	err = relay.Client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		log.Println("ResendTransaction: error sending tx", err)
+		return
+	}
+
+	return
+}
+
+func (relay *RelayServer) awaitTransactionMined(tx *types.Transaction) (err error) {
+	start := time.Now()
+	var receipt *types.Receipt
+	for ; (receipt == nil || err != nil) && time.Since(start) < TxReceiptTimeout; receipt, err = relay.Client.TransactionReceipt(context.Background(), tx.Hash()) {
+		time.Sleep(500 * time.Millisecond)
+	}
+	if err != nil {
+		log.Println("Could not get tx receipt", err)
+		return
+	}
+	if receipt.Status != 1 {
+		log.Println("tx failed: tx receipt status", receipt.Status)
+		return
+	}
+
+	return nil
+}
+
+func (relay *RelayServer) pollNonce() (nonce uint64, err error) {
 	ctx := context.Background()
 	fromAddress := relay.Address()
 	nonce, err = relay.Client.PendingNonceAt(ctx, fromAddress)
@@ -606,7 +683,92 @@ func (relay *relayServer) pollNonce() (nonce uint64, err error) {
 	return
 }
 
-func (relay *relayServer) replayUnconfirmedTxs(client *ethclient.Client) {
+const confirmationsNeeded = 12
+const pendingTransactionTimeout = 5 * 60 // 5 minutes
+
+func (relay *RelayServer) UpdateUnconfirmedTransactions() (newTx *types.Transaction, err error) {
+	// Load unconfirmed transactions from store, and bail if there are none
+	tx, err := relay.TxStore.GetFirstTransaction()
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving first transaction from local store", err)
+		return
+	}
+
+	if tx == nil {
+		return
+	}
+
+	// Get latest block number in the network
+	ctx := context.Background()
+	latest, err := relay.Client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving last block number", err)
+		return
+	}
+
+	// Get nonce at confirmationsNeeded blocks ago
+	var confirmedBlock big.Int
+	confirmedBlock.Sub(latest.Number, big.NewInt(confirmationsNeeded))
+	nonce, err := relay.Client.NonceAt(ctx, relay.Address(), &confirmedBlock)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address().Hex(), "on block", confirmedBlock.Uint64(), err)
+		return
+	}
+
+	// Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
+	err = relay.TxStore.RemoveTransactionsLessThanNonce(nonce)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error deleting confirmed transactions", err)
+		return
+	}
+
+	// Get first unconfirmed transaction
+	tx, err = relay.TxStore.GetFirstTransaction()
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving unconfirmed transaction from local store", err)
+		return
+	}
+
+	if tx == nil {
+		return
+	}
+
+	// Check if the tx was mined by comparing its nonce against the latest one
+	nonce, err = relay.Client.NonceAt(ctx, relay.Address(), nil)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error retrieving nonce for", relay.Address().Hex(), err)
+		return
+	}
+
+	if tx.Nonce() < nonce {
+		log.Println("UpdateUnconfirmedTransactions: awaiting confirmations for next mined transaction", nonce, tx.Nonce(), tx.Hash().Hex())
+		return nil, nil
+	}
+
+	// If the tx is still pending, check how long ago we sent it, and resend it if needed
+	if relay.clock.Now().Unix()-tx.Timestamp < pendingTransactionTimeout {
+		log.Println("UpdateUnconfirmedTransactions: awaiting transaction to be mined", nonce, tx.Hash().Hex())
+		return
+	}
+
+	newtx, err := relay.resendTransaction(tx.Transaction)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error resending transaction", tx.Hash().Hex(), err)
+		return nil, err
+	}
+	log.Println("UpdateUnconfirmedTransactions: resent transaction", tx.Nonce(), tx.Hash().Hex(), "as", newtx.Hash().Hex())
+
+	// TODO: Increase timetamp of subsequent txs?
+	err = relay.TxStore.UpdateTransactionByNonce(newtx)
+	if err != nil {
+		log.Println("UpdateUnconfirmedTransactions: error updating transaction in local store", newtx.Hash().Hex(), err)
+		return nil, err
+	}
+
+	return newtx, nil
+}
+
+func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 	log.Println("replayUnconfirmedTxs start")
 	log.Println("unconfirmedTxs size", len(unconfirmedTxs))
 	ctx := context.Background()
@@ -627,4 +789,8 @@ func (relay *relayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 		}
 	}
 	log.Println("replayUnconfirmedTxs end")
+}
+
+func (relay *RelayServer) Close() (err error) {
+	return relay.TxStore.Close()
 }
