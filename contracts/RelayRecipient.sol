@@ -84,7 +84,7 @@ contract RelayRecipient is RelayRecipientApi {
     *  @param gasPrice - the gas price for this transaction
     *  @param transactionFee - the relay compensation (in %) for this transaction
     */
-    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns(uint32);
+    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns(uint);
     /** the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
     * - usedGas - gas used up to this point. Note that gas calculation (for the purpose of compensation
     */

@@ -29,7 +29,7 @@ contract AnonUsersRecipient is RelayRecipient {
     }
     /**
      */
-    function acceptRelayedCall(address /*relay*/, address /*from*/, bytes functionCall, uint /*gasPrice*/, uint /*transactionFee*/ ) external view returns(uint32) {
+    function acceptRelayedCall(address /*relay*/, address /*from*/, bytes functionCall, uint /*gasPrice*/, uint /*transactionFee*/ ) external view returns(uint) {
 
         //validate this is a method call we accept:
         for ( uint i=0; i< methodSig.length; i++ ) {

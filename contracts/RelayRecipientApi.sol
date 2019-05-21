@@ -28,7 +28,7 @@ contract RelayRecipientApi {
      *  @param approval - first 65 bytes are checked by the RelayHub and reserved for the sender's signature, and the rest is
      *           available for dapps in their specific use-cases
      */
-    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns (uint32);
+    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns (uint);
 
     /**
      * This method is called after the relayed call.

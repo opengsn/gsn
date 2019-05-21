@@ -429,7 +429,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	if res != 0 {
+	if res.Uint64() != 0 {
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
 			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
 			request.RelayFee.String(), "Sig:", hexutil.Encode(request.Signature))
@@ -529,7 +529,7 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 	gasPrice big.Int,
 	gasLimit big.Int,
 	recipientNonce big.Int,
-	relayFee big.Int) (res uint32, err error) {
+	relayFee big.Int) (res *big.Int, err error) {
 
 	relayAddress := relay.Address()
 

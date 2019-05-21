@@ -41,7 +41,7 @@ contract TokenRecipient is RelayRecipient {
      *  Later, the RelayHub calls it again, to validate the transaction on-chain, and thus perform
      *  the actual payment.
      */
-    function acceptRelayedCall(address /*relay*/, address from, bytes /* transaction */) public view returns(uint32) {
+    function acceptRelayedCall(address /*relay*/, address from, bytes /* transaction */) public view returns(uint) {
 
         //user doesn't have enough tokens. reject request.
         if ( mytoken.balanceOf(from)< txPrice)

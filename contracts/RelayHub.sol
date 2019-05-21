@@ -146,30 +146,30 @@ contract RelayHub is RelayHubApi {
 	// for contract-specific checks.
 	// returns "0" if the relay is valid. other values represent errors.
 	// values 1..10 are reserved for canRelay. other values can be used by acceptRelayedCall of target contracts.
-    function canRelay(address relay, address from, RelayRecipientApi to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public view returns(uint32) {
+    function canRelay(address relay, address from, RelayRecipientApi to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public view returns(uint) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
         bytes32 signedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashedMessage));
         if (!GsnUtils.checkSig(from, signedMessage,  approval))  // Verify the sender's signature on the transaction
-            return uint32(CanRelayStatus.WrongSignature);   // @from hasn't signed the transaction properly
+            return uint(CanRelayStatus.WrongSignature);   // @from hasn't signed the transaction properly
         if (nonces[from] != nonce)
-            return uint32(CanRelayStatus.WrongNonce);   // Not a current transaction.  May be a replay attempt.
+            return uint(CanRelayStatus.WrongNonce);   // Not a current transaction.  May be a replay attempt.
         // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
         bytes memory acceptRelayedCallRawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector, relay, from, encodedFunction, gasPrice, transactionFee, approval);
         return handleAcceptRelayCall(to, acceptRelayedCallRawTx);
     }
 
-    function handleAcceptRelayCall(RelayRecipientApi to, bytes memory acceptRelayedCallRawTx) private view returns (uint32){
+    function handleAcceptRelayCall(RelayRecipientApi to, bytes memory acceptRelayedCallRawTx) private view returns (uint){
         bool success;
-        uint32 accept = uint32(CanRelayStatus.AcceptRelayedCallUnkownError);
+        uint accept = uint(CanRelayStatus.AcceptRelayedCallUnkownError);
         assembly {
             let ptr := mload(0x40)
             let acceptRelayedCallMaxGas := sload(acceptRelayedCallMaxGas_slot)
             success := staticcall(acceptRelayedCallMaxGas, to, add(acceptRelayedCallRawTx, 0x20), mload(acceptRelayedCallRawTx), ptr, 0x20)
-            accept := and(mload(ptr),0xffffffff)
+            accept := mload(ptr)
         }
         if (!success){
-            return uint32(CanRelayStatus.AcceptRelayedCallReverted);
+            return uint(CanRelayStatus.AcceptRelayedCallReverted);
         }
         return accept;
     }
@@ -190,7 +190,7 @@ contract RelayHub is RelayHubApi {
         uint initialGas = gasleft();
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gasPrice <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
-        uint32 canRelayResult = canRelay(msg.sender, from, RelayRecipientApi(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
+        uint canRelayResult = canRelay(msg.sender, from, RelayRecipientApi(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
         if (canRelayResult != 0) {
             emit TransactionRelayed(msg.sender, from, to, uint(RelayCallStatus.CanRelayFailed), 0);
             return;
