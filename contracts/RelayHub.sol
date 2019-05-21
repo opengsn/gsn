@@ -37,6 +37,8 @@ contract RelayHub is RelayHubApi {
     mapping (address => Relay) public relays;
     mapping (address => uint) public balances;
 
+    string public version = "1.0.0.0";
+
     function validateStake(address relay) private view {
         require(relays[relay].state == State.STAKED || relays[relay].state == State.REGISTERED, "wrong state for stake");
         require(relays[relay].stake >= minimumStake, "stake lower than minimum");

@@ -93,6 +93,12 @@ contract("RelayHub", function (accounts) {
     var real_sender = accounts[0];
     var one_ether = web3.utils.toWei('1', 'ether');
 
+    it("should retrieve version number", async function () {
+        let version = await rhub.version();
+        assert.equal(version, "1.0.0.0");
+
+    });
+
     it("test_stake", async function () {
         let ownerAccount = accounts[1];
         let relayAccount = await web3.eth.personal.newAccount("password")
