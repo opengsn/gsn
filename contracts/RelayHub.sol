@@ -16,7 +16,7 @@ contract RelayHub is IRelayHub {
     uint constant minimumRelayBalance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
     uint constant public gasReserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relayCall().
     uint constant public gasOverhead = 47445;  // the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
-    uint acceptRelayedCallMaxGas = 50000;
+    uint public acceptRelayedCallMaxGas = 50000;
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
