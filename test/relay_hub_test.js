@@ -309,6 +309,27 @@ contract("RelayHub", function (accounts) {
         }
     });
 
+
+    it("should not allow non-owners to remove relay", async function () {
+        try {
+            await rhub.removeRelayByOwner(relayAccount, {from: accounts[2]});
+            assert.fail()
+        } catch (error) {
+            assertErrorMessageCorrect(error, "not owner")
+        }
+    });
+
+    it("should not allow owners to unstake if still registered", async function () {
+        let canUnstake = await rhub.canUnstake.call(relayAccount);
+        assert.equal(canUnstake, false);
+        try {
+            await rhub.unstake(relayAccount);
+            assert.fail()
+        } catch (error) {
+            assertErrorMessageCorrect(error, "canUnstake failed")
+        }
+    });
+
     it("should allow the owner to remove his relay", async function () {
         try {
             await rhub.removeRelayByOwner(zeroAddr)
@@ -322,36 +343,50 @@ contract("RelayHub", function (accounts) {
         assert.equal(relayAccount, res.logs[0].args.relay);
     });
 
-    it("should allow the owner to unstake unregistered relay's stake", async function () {
+    it("should not allow the owner to unstake unregistered relay's stake before time", async function () {
         let relay = await rhub.relays.call(relayAccount);
         assert.equal(false, relay.stake == 0);
         let canUnstake = await rhub.canUnstake.call(relayAccount);
 
         assert.equal(false, canUnstake)
-        await increaseTime(relay.unstakeDelay/2 )
+        await increaseTime(relay.unstakeDelay / 2)
 
         canUnstake = await rhub.canUnstake.call(relayAccount);
         assert.equal(false, canUnstake)
-        await increaseTime(relay.unstakeDelay/2 )
+        try {
+            await rhub.unstake(relayAccount);
+            assert.fail()
+        } catch (error) {
+            assertErrorMessageCorrect(error, "canUnstake failed")
+        }
+        await increaseTime(relay.unstakeDelay / 2)
+    });
 
+    it("should not allow non-owners to unstake", async function () {
         canUnstake = await rhub.canUnstake.call(relayAccount);
         assert.equal(true, canUnstake)
+
+        try {
+            await rhub.unstake(relayAccount, {from: accounts[2]});
+            assert.fail()
+        } catch (error) {
+            assertErrorMessageCorrect(error, "not owner")
+        }
+    });
+
+    it("should allow the owner to unstake unregistered relay's stake", async function () {
+        let canUnstake = await rhub.canUnstake.call(relayAccount);
+        assert.equal(true, canUnstake);
         await rhub.unstake(relayAccount);
 
         let stakeAfter = await rhub.relays.call(relayAccount);
         assert.equal(0, stakeAfter.stake)
     });
 
-    it("should not allow non-owners to unsake");
-
-    it("should not allow owners to unsake if still registered");
-
     it("should not allow a state to downgrade (possibly a few tests needed)")
 
     it("should allow to penalize a removed relay")
     it("should not allow to penalize an already penalized relay")
-
-    it("should revert an attempt to use more than allowed gas for accept_relayed_call(50000)")
 
     let dayInSec = 24 * 60 * 60;
 
@@ -672,7 +707,7 @@ contract("RelayHub", function (accounts) {
 
     });
 
-    it("should revert an attempt to use more than allowed gas for accept_relayed_call(50000)", async function () {
+    it("should revert an attempt to use more than allowed gas for acceptRelayedCall(50000)", async function () {
 
         let AcceptRelayedCallReverted = 4;
         let overspendAcceptGas = await sr.overspendAcceptGas();
