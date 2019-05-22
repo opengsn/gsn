@@ -9,6 +9,12 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     mapping (address => bool) public relaysWhitelist;
 
+    // Testing RelayHub: withdrawing a recipient's deposit is prohibited during relayed call
+    bool public withdrawDuringRelayedCall;
+
+    // Testing RelayHub: Looping to spend more than acceptRelayedCallMaxGas (50000)
+    bool public overspendAcceptGas;
+
     constructor(IRelayHub rhub) public {
         initRelayHub(rhub);
     }
@@ -24,16 +30,29 @@ contract SampleRecipient is RelayRecipient, Ownable {
     }
 
     event Reverting(string message);
+
     function testRevert() public {
-        require( address(this) == address(0), "always fail" );
-        emit Reverting("if you see this revert failed..." );
+        require(address(this) == address(0), "always fail");
+        emit Reverting("if you see this revert failed...");
     }
 
+    function setWithdrawDuringRelayedCall(bool val) public{
+        withdrawDuringRelayedCall = val;
+    }
 
-    function () external payable {}
+    function setOverspendAcceptGas(bool val) public{
+        overspendAcceptGas = val;
+    }
+
+    function() external payable {}
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin);
+
     function emitMessage(string memory message) public {
+        if (withdrawDuringRelayedCall) {
+            uint balance = getRelayHub().balanceOf(address(this));
+            getRelayHub().withdraw(balance);
+        }
         emit SampleRecipientEmitted(message, getSender(), msg.sender, tx.origin);
     }
 
@@ -51,11 +70,18 @@ contract SampleRecipient is RelayRecipient, Ownable {
         // The factory accepts relayed transactions from anyone, so we whitelist our own relays to prevent abuse.
         // This protection only makes sense for contracts accepting anonymous calls, and therefore not used by Gatekeeper or Multisig.
         // May be protected by a user_credits map managed by a captcha-protected web app or association with a google account.
+
+        if (overspendAcceptGas){
+            bool success;
+            bytes memory ret = new bytes(32);
+            (success,ret) = address(this).staticcall(abi.encodeWithSelector(this.infiniteLoop.selector));
+        }
+
         if ( relaysWhitelist[relay] ) return 0;
         if (from == blacklisted) return 11;
         
         // this is an example of how the dapp can provide an offchain approval to a transaction
-        if (approval.length == 65){
+        if (approval.length == 65) {
             // No owner signature given - proceed as usual (for existing tests)
             return 0;
         }
@@ -66,7 +92,14 @@ contract SampleRecipient is RelayRecipient, Ownable {
             return 12;
         }
 
-		return 0;
+        return 0;
+    }
+
+    function infiniteLoop() pure external{
+        uint i = 0;
+        while (true) {
+            i++;
+        }
     }
 
     event SampleRecipientPostCall(uint usedGas );
