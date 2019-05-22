@@ -201,7 +201,7 @@ contract("RelayHub", function (accounts) {
 
         let startBlock=web3.eth.blockNumber
 
-        let result = await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+        let result = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
             from: relayAccount,
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
@@ -234,7 +234,7 @@ contract("RelayHub", function (accounts) {
         digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
         sig = await getTransactionSignature( web3, accounts[0], digest)
         try {
-            await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+            await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: accounts[6],
                 gasPrice: gas_price,
                 gasLimit: gas_limit_any_value
@@ -247,7 +247,7 @@ contract("RelayHub", function (accounts) {
 
     it("should not accept relay requests with gas price lower then user specified", async function () {
         try {
-            await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+            await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: relayAccount,
                 gasPrice: gas_price - 1,
                 gasLimit: gas_limit_any_value
@@ -264,7 +264,7 @@ contract("RelayHub", function (accounts) {
         await sr.setBlacklisted(from)
         let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
         let sig = await getTransactionSignature(web3, from, digest)
-        let res = await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+        let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
             from: relayAccount,
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
@@ -280,7 +280,7 @@ contract("RelayHub", function (accounts) {
         // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
         let gas_reserve = 99999;
         try {
-            await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+            await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: relayAccount,
                 gasPrice: gas_price,
                 gas: gas_limit + gas_reserve
@@ -294,7 +294,7 @@ contract("RelayHub", function (accounts) {
     it("should not accept relay requests if destination recipient doesn't have a balance to pay for it", async function () {
         await sr.withdraw();
         try {
-            await rhub.relay(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+            await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: relayAccount,
                 gasPrice: gas_price,
                 gasLimit: gas_limit_any_value
@@ -383,8 +383,8 @@ contract("RelayHub", function (accounts) {
         let stake = await rhub.relays(address);
         assert.equal(one_ether, stake[0]);
 
-        data1 = rhub.contract.methods.relay(testutils.zeroAddr, testutils.zeroAddr, "0x1", 1, 1, 1, 1, "0x1").encodeABI()
-        data2 = rhub.contract.methods.relay(testutils.zeroAddr, testutils.zeroAddr, "0x2", 2, 2, 2, 2, "0x2").encodeABI()
+        data1 = rhub.contract.methods.relayCall(testutils.zeroAddr, testutils.zeroAddr, "0x1", 1, 1, 1, 1, "0x1").encodeABI()
+        data2 = rhub.contract.methods.relayCall(testutils.zeroAddr, testutils.zeroAddr, "0x2", 2, 2, 2, 2, "0x2").encodeABI()
 
         transaction1 = new ethJsTx({
             nonce: nonce_any_value,
@@ -587,7 +587,7 @@ contract("RelayHub", function (accounts) {
 
             assert.equal(0, await rhub.canRelay(relayAccount, from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig) )
 
-            let res = await rhub.relay(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig, {
+            let res = await rhub.relayCall(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: relayAccount,
                 gasPrice: gas_price,
                 gasLimit: gas_limit_any_value

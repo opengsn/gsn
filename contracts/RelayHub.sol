@@ -14,8 +14,8 @@ contract RelayHub is RelayHubApi {
     uint constant minimumStake = 0.1 ether;    // XXX TBD
     uint constant minimumUnstakeDelay = 0;    // XXX TBD
     uint constant minimumRelayBalance = 0.5 ether;  // XXX TBD - can't register/refresh below this amount.
-    uint constant public gasReserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relay().
-    uint constant public gasOverhead = 47445;  // the total gas overhead of relay(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    uint constant public gasReserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relayCall().
+    uint constant public gasOverhead = 47445;  // the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft(). Assume that relay has non-zero balance (costs 15'000 more otherwise).
     uint acceptRelayedCallMaxGas = 50000;
 
     mapping (address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
@@ -188,7 +188,7 @@ contract RelayHub is RelayHubApi {
      * @param nonce sender's nonce (in nonces[])
      * @param approval client's signature over all params (first 65 bytes). The remainder is dapp-specific data.
      */
-    function relay(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public {
+    function relayCall(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public {
         uint initialGas = gasleft();
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gasPrice <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
@@ -201,7 +201,7 @@ contract RelayHub is RelayHubApi {
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.
 
-        // gasReserve must be high enough to complete relay()'s post-call execution.
+        // gasReserve must be high enough to complete relayCall()'s post-call execution.
         require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
         bool successPost;
         bytes memory ret = new bytes(32);
@@ -222,7 +222,7 @@ contract RelayHub is RelayHubApi {
         balances[relays[msg.sender].owner] += charge;
     }
 
-    // Bypassing "stack too deep"... in relay()
+    // Bypassing "stack too deep"... in relayCall()
     function emitTransactionRelayed(address sender, address from, address to, bytes memory encodedFunction, uint status, uint charge) internal {
         emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction,0), status, charge);
     }
@@ -294,7 +294,7 @@ contract RelayHub is RelayHubApi {
         Transaction memory decodedTx1 = decodeTransaction(unsignedTx1);
         if (decodedTx1.to == address(this)){
             bytes4 selector = GsnUtils.getMethodSig(decodedTx1.data);
-            require (selector != this.relay.selector && selector != this.registerRelay.selector, "Legal relay transaction");
+            require (selector != this.relayCall.selector && selector != this.registerRelay.selector, "Legal relay transaction");
         }
         bytes32 hash = keccak256(abi.encodePacked(unsignedTx1));
         address addr = ecrecover(hash, uint8(sig1[0]), LibBytes.readBytes32(sig1,1), LibBytes.readBytes32(sig1,33));

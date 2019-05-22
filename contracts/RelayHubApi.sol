@@ -28,7 +28,7 @@ contract RelayHubApi {
 
     function getNonce(address from) view external returns (uint);
 
-    function relay(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public;
+    function relayCall(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public;
 
     function depositFor(address target) public payable;
 

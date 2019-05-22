@@ -462,7 +462,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	if err != nil {
 		return
 	}
-	input, err := hubAbi.Pack("relay", request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
+	input, err := hubAbi.Pack("relayCall", request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
 		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
 	if err != nil {
 		log.Println(err)
@@ -483,14 +483,14 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		log.Println(err)
 		return
 	}
-	log.Println("Estimated max charge of relyed tx:",maxCharge)
+	log.Println("Estimated max charge of relayed tx:",maxCharge)
 
 	signedTx, err = relay.sendDataTransaction(
 		fmt.Sprintf("Relay(from=%s, to=%s)", request.From.Hex(), request.To.Hex()),
 		func(auth *bind.TransactOpts) (*types.Transaction, error) {
 			auth.GasLimit = gasLimit.Add(&request.GasLimit, gasReserve).Add(gasLimit, gasReserve).Uint64()
 			auth.GasPrice = &request.GasPrice
-			return relay.rhub.Relay(auth, request.From, request.To,
+			return relay.rhub.RelayCall(auth, request.From, request.To,
 				common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
 				&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
 		})
