@@ -3,35 +3,35 @@ pragma solidity >=0.4.0 <0.6.0;
 // Contract that implements the relay recipient protocol.  Inherited by Gatekeeper, or any other relay recipient.
 //
 // The recipient contract is responsible to:
-// * pass a trusted RelayHubApi singleton to the constructor.
+// * pass a trusted IRelayHub singleton to the constructor.
 // * Implement acceptRelayedCall, which acts as a whitelist/blacklist of senders.  It is advised that the recipient's owner will be able to update that list to remove abusers.
 // * In every function that cares about the sender, use "address sender = getSender()" instead of msg.sender.  It'll return msg.sender for non-relayed transactions, or the real sender in case of relayed transactions.
 
-import "./RelayRecipientApi.sol";
-import "./RelayHubApi.sol";
+import "./IRelayRecipient.sol";
+import "./IRelayHub.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
-contract RelayRecipient is RelayRecipientApi {
+contract RelayRecipient is IRelayRecipient {
 
-    RelayHubApi private relayHub; // The RelayHubApi singleton which is allowed to call us
+    IRelayHub private relayHub; // The IRelayHub singleton which is allowed to call us
 
 	function getHubAddr() public view returns (address) {
 		return address(relayHub);
 	}
 
     /**
-     * initialize the RelayHubApi.
-     * contracts usually call this method from the constructor (using a constract RelayHubApi, or receiving
+     * initialize the IRelayHub.
+     * contracts usually call this method from the constructor (using a constract IRelayHub, or receiving
      * one in the constructor)
-     * This method might also be called by the owner, in order to use a new RelayHubApi - since the RelayHubApi
+     * This method might also be called by the owner, in order to use a new IRelayHub - since the IRelayHub
      * itself is not an upgradable contract.
      */
-    function initRelayHub(RelayHubApi _rhub) internal {
-        require(relayHub == RelayHubApi(0), "initRelayHub: rhub already set");
+    function initRelayHub(IRelayHub _rhub) internal {
+        require(relayHub == IRelayHub(0), "initRelayHub: rhub already set");
         setRelayHub(_rhub);
     }
     
-    function setRelayHub(RelayHubApi _rhub) internal {
+    function setRelayHub(IRelayHub _rhub) internal {
         // Normally called just once, during initRelayHub.
         // Left as a separate internal function, in case a contract wishes to have its own update mechanism for RelayHub.
         relayHub = _rhub;
@@ -40,7 +40,7 @@ contract RelayRecipient is RelayRecipientApi {
         getRecipientBalance();
     }
 
-    function getRelayHub() internal view returns (RelayHubApi) {
+    function getRelayHub() internal view returns (IRelayHub) {
         return relayHub;
     }
 
@@ -55,7 +55,7 @@ contract RelayRecipient is RelayRecipientApi {
     function getSenderFromData(address origSender, bytes memory msgData) public view returns(address) {
         address sender = origSender;
         if (origSender == getHubAddr() ) {
-            // At this point we know that the sender is a trusted RelayHubApi, so we trust that the last bytes of msg.data are the verified sender address.
+            // At this point we know that the sender is a trusted IRelayHub, so we trust that the last bytes of msg.data are the verified sender address.
             // extract sender address from the end of msg.data
             sender = LibBytes.readAddress(msgData, msgData.length - 20);
         }
@@ -69,7 +69,7 @@ contract RelayRecipient is RelayRecipientApi {
     function getMessageData() public view returns(bytes memory) {
         bytes memory origMsgData = msg.data;
         if (msg.sender == getHubAddr()) {
-            // At this point we know that the sender is a trusted RelayHubApi, so we trust that the last bytes of msg.data are the verified sender address.
+            // At this point we know that the sender is a trusted IRelayHub, so we trust that the last bytes of msg.data are the verified sender address.
             // extract original message data from the start of msg.data
             origMsgData = new bytes(msg.data.length - 20);
             for (uint256 i = 0; i < origMsgData.length; i++)

@@ -6,7 +6,7 @@ fs=require('fs')
 contractsFolder ="contracts"
 outAbiFolder = "src/js/relayclient"
 
-contractsToExtract =[ "RelayHubApi", "RelayRecipientApi" ]
+contractsToExtract =[ "IRelayHub", "IRelayRecipient" ]
 
 contractsToExtract.forEach( c=>{
 

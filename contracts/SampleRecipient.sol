@@ -1,7 +1,7 @@
 pragma solidity >=0.4.0 <0.6.0;
 
 import "./GsnUtils.sol";
-import "./RelayHubApi.sol";
+import "./IRelayHub.sol";
 import "./RelayRecipient.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
@@ -9,7 +9,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     mapping (address => bool) public relaysWhitelist;
 
-    constructor(RelayHubApi rhub) public {
+    constructor(IRelayHub rhub) public {
         initRelayHub(rhub);
     }
 

@@ -1,6 +1,6 @@
 pragma solidity >=0.4.0 <0.6.0;
 
-contract RelayRecipientApi {
+contract IRelayRecipient {
 
     /**
      * return the relayHub of this contract.

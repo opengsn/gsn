@@ -26,7 +26,7 @@ let GETADDR_TIMEOUT = (process.env.T || 1)*1000
 let hubaddr = process.argv[3]
 
 web3 = new Web3(new Web3.providers.HttpProvider(network))
-RelayHubAbi = require( "../src/js/relayclient/RelayHubApi" )
+RelayHubAbi = require( "../src/js/relayclient/IRelayHub" )
 
 let owners={}
 function owner(h) {

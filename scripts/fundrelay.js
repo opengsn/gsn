@@ -5,11 +5,11 @@ const promisify = require("util").promisify
 
 const request = promisify(require("request"))
 
-const relayhubapi = require( '../src/js/relayclient/RelayHubApi')
+const irelayhub = require( '../src/js/relayclient/IRelayHub')
 
 
 async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstakeDelay, web3) {
-    let rhub = new web3.eth.Contract(relayhubapi, hubaddr)
+    let rhub = new web3.eth.Contract(irelayhub, hubaddr)
 
     let curstake = await rhub.methods.stakeOf(relayaddr).call();
     if ( curstake > 1e17 ) {

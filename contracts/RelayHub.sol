@@ -1,13 +1,13 @@
 pragma solidity >=0.4.0 <0.6.0;
 
-import "./RelayHubApi.sol";
-import "./RelayRecipientApi.sol";
+import "./IRelayHub.sol";
+import "./IRelayRecipient.sol";
 import "./GsnUtils.sol";
 import "./RLPReader.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-contract RelayHub is RelayHubApi {
+contract RelayHub is IRelayHub {
 
     // Anyone can call certain functions in this singleton and trigger relay processes.
 
@@ -66,7 +66,7 @@ contract RelayHub is RelayHubApi {
     /**
      * withdraw funds.
      * caller is either a relay owner, withdrawing collected transaction fees.
-     * or a RelayRecipientApi contract, withdrawing its deposit.
+     * or a IRelayRecipient contract, withdrawing its deposit.
      * note that while everyone can `depositFor()` a contract, only
      * the contract itself can withdraw its funds.
      */
@@ -148,7 +148,7 @@ contract RelayHub is RelayHubApi {
 	// for contract-specific checks.
 	// returns "0" if the relay is valid. other values represent errors.
 	// values 1..10 are reserved for canRelay. other values can be used by acceptRelayedCall of target contracts.
-    function canRelay(address relay, address from, RelayRecipientApi to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public view returns(uint) {
+    function canRelay(address relay, address from, IRelayRecipient to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public view returns(uint) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
         bytes32 signedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashedMessage));
@@ -161,7 +161,7 @@ contract RelayHub is RelayHubApi {
         return handleAcceptRelayCall(to, acceptRelayedCallRawTx);
     }
 
-    function handleAcceptRelayCall(RelayRecipientApi to, bytes memory acceptRelayedCallRawTx) private view returns (uint){
+    function handleAcceptRelayCall(IRelayRecipient to, bytes memory acceptRelayedCallRawTx) private view returns (uint){
         bool success;
         uint accept = uint(CanRelayStatus.AcceptRelayedCallUnkownError);
         assembly {
@@ -179,7 +179,7 @@ contract RelayHub is RelayHubApi {
     /**
      * relay a transaction.
      * @param from the client originating the request.
-     * @param to the target RelayRecipientApi contract.
+     * @param to the target IRelayRecipient contract.
      * @param encodedFunction the function call to relay.
      * @param transactionFee fee (%) the relay takes over actual gas cost.
      * @param gasPrice gas price the client is willing to pay
@@ -192,7 +192,7 @@ contract RelayHub is RelayHubApi {
         uint initialGas = gasleft();
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");  // Must be from a known relay
         require(gasPrice <= tx.gasprice, "Invalid gas price");      // Relay must use the gas price set by the signer
-        uint canRelayResult = canRelay(msg.sender, from, RelayRecipientApi(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
+        uint canRelayResult = canRelay(msg.sender, from, IRelayRecipient(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
         if (canRelayResult != 0) {
             emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.CanRelayFailed), 0);
             return;
@@ -237,7 +237,7 @@ contract RelayHub is RelayHubApi {
         bool successPost;
         uint balanceBefore = balances[to];
         (success, ) = to.call.gas(gasLimit)(transaction); // transaction must end with @from at this point
-        transaction = abi.encodeWithSelector(RelayRecipientApi(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas -gasleft()), transactionFee);
+        transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas -gasleft()), transactionFee);
         (successPost, ) = to.call.gas((gasOverhead + initialGas -gasleft()))(transaction);
         require(successPost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");

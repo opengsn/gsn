@@ -12,8 +12,8 @@ const ethWallet = require('ethereumjs-wallet');
 const ethJsTx = require('ethereumjs-tx');
 const abi_decoder = require('abi-decoder');
 
-const relayHubAbi = require('./RelayHubApi');
-const relayRecipientAbi = require('./RelayRecipientApi');
+const relayHubAbi = require('./IRelayHub');
+const relayRecipientAbi = require('./IRelayRecipient');
 
 const relay_lookup_limit_blocks = 6000;
 abi_decoder.addABI(relayHubAbi);

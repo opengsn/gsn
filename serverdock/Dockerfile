@@ -19,7 +19,7 @@ ADD ./start-relay.sh /start-relay.sh
 ADD ./fundrelay.js /scripts/fundrelay.js
 ADD ./truffle.js /truffle.js
 ADD ./contracts /contracts
-ADD ./RelayHubApi.js ./src/js/relayclient/RelayHubApi.js
+ADD ./IRelayHub.js ./src/js/relayclient/IRelayHub.js
 ADD ./migrations /migrations
 ADD ./version /version
 ADD ./start-relay-with-ganache.sh /start-relay-with-ganache.sh

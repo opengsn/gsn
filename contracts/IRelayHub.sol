@@ -1,6 +1,6 @@
 pragma solidity >=0.4.0 <0.6.0;
 
-contract RelayHubApi {
+contract IRelayHub {
 
     event Staked(address indexed relay, uint stake);
     event Unstaked(address indexed relay, uint stake);

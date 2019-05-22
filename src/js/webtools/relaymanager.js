@@ -1,9 +1,9 @@
 /* global web3 */
 const utils = require('./utils')
 const promisify = utils.promisify
-const RelayHubApi = require('../relayclient/RelayHubApi')
+const IRelayHub = require('../relayclient/IRelayHub')
 
-const RelayHub = web3.eth.contract(RelayHubApi)
+const RelayHub = web3.eth.contract(IRelayHub)
 const networkVersions = { 1: "Mainnet", 42: "Kovan", 3: "Ropsten", 4: "Rinkeby", 100: "xdai mainnet", 1337 : "Local-geth" }
 
 class RelayManager {
