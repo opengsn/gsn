@@ -15,9 +15,9 @@ contract RelayRecipient is IRelayRecipient {
 
     IRelayHub private relayHub; // The IRelayHub singleton which is allowed to call us
 
-	function getHubAddr() public view returns (address) {
-		return address(relayHub);
-	}
+    function getHubAddr() public view returns (address) {
+        return address(relayHub);
+    }
 
     /**
      * initialize the IRelayHub.
@@ -30,7 +30,7 @@ contract RelayRecipient is IRelayRecipient {
         require(relayHub == IRelayHub(0), "initRelayHub: rhub already set");
         setRelayHub(_rhub);
     }
-    
+
     function setRelayHub(IRelayHub _rhub) internal {
         // Normally called just once, during initRelayHub.
         // Left as a separate internal function, in case a contract wishes to have its own update mechanism for RelayHub.
@@ -52,9 +52,9 @@ contract RelayRecipient is IRelayRecipient {
         return getRelayHub().balanceOf(address(this));
     }
 
-    function getSenderFromData(address origSender, bytes memory msgData) public view returns(address) {
+    function getSenderFromData(address origSender, bytes memory msgData) public view returns (address) {
         address sender = origSender;
-        if (origSender == getHubAddr() ) {
+        if (origSender == getHubAddr()) {
             // At this point we know that the sender is a trusted IRelayHub, so we trust that the last bytes of msg.data are the verified sender address.
             // extract sender address from the end of msg.data
             sender = LibBytes.readAddress(msgData, msgData.length - 20);
@@ -62,11 +62,11 @@ contract RelayRecipient is IRelayRecipient {
         return sender;
     }
 
-    function getSender() public view returns(address) {
+    function getSender() public view returns (address) {
         return getSenderFromData(msg.sender, msg.data);
     }
 
-    function getMessageData() public view returns(bytes memory) {
+    function getMessageData() public view returns (bytes memory) {
         bytes memory origMsgData = msg.data;
         if (msg.sender == getHubAddr()) {
             // At this point we know that the sender is a trusted IRelayHub, so we trust that the last bytes of msg.data are the verified sender address.
@@ -84,10 +84,10 @@ contract RelayRecipient is IRelayRecipient {
     *  @param gasPrice - the gas price for this transaction
     *  @param transactionFee - the relay compensation (in %) for this transaction
     */
-    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns(uint);
+    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns (uint);
     /** the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
     * - usedGas - gas used up to this point. Note that gas calculation (for the purpose of compensation
     */
-function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee) public;
+    function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee) public;
 }
 

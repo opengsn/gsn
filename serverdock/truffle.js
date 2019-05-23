@@ -5,8 +5,6 @@ module.exports = {
         host: "host.docker.internal",
         port: 8545,
         network_id: "*",
-        //gas:8000000,
-        //gasPrice: 10,
         from: "0x8f337bf484b2fc75e4b0436645dcc226ee2ac531"
       },
       devUseHardcodedAddressLocal: {
@@ -14,8 +12,6 @@ module.exports = {
         host: "127.0.0.1",
         port: 8545,
         network_id: "*",
-        //gas:8000000,
-        //gasPrice: 10,
         from: "0x8f337bf484b2fc75e4b0436645dcc226ee2ac531"
       }
   },
