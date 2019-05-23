@@ -311,7 +311,7 @@ func waitForOwnerActions() {
 		log.Println(err)
 		return
 	}
-	for ; err != nil || balance.Uint64() <= params.Ether; balance, err = relay.Balance() {
+	for ; err != nil || balance.Uint64() <= 0.1*params.Ether; balance, err = relay.Balance() {
 		ready = false
 		log.Println("Server's balance too low. Waiting for funding...")
 		sleep(10*time.Second, shortSleep)
