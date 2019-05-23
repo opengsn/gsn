@@ -2,6 +2,9 @@
 
 rm -rf ./build
 
+mkdir -p build/dock-node_modules
+cp node_modules/openzeppelin-solidity build/dock-node_modules -a
+cp node_modules/@0x build/dock-node_modules -a
 ./dock/run.sh sh -c 'make build-server'
 
 serverbuild=./build/serverdock
