@@ -63,7 +63,11 @@ Install node pakcages:
 
 	npm install
 
-Compile and run tests:
+
+
+Compile and run tests: (For Docker users)
+
+	./dock/run.sh npm install
 
 	./dock/run.sh npm test
 
