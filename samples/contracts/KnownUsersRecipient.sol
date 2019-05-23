@@ -28,42 +28,42 @@ contract KnownUsersRecipient is RelayRecipient {
      * create this KnownUsersRecipient
      * @param _rhub - the relay hub we're connected to.
      */
-    constructor(RelayHub _rhub, address[] _initial_admins) public {
-		init_relay_hub(_rhub);
-        for ( uint i=0; i<_initial_admins.length; i++ ) {
-            admins[_initial_admins[i]] = true;
+    constructor(RelayHub _rhub, address[] _initialAdmins) public {
+		initRelayHub(_rhub);
+        for ( uint i=0; i< _initialAdmins.length; i++ ) {
+            admins[_initialAdmins[i]] = true;
         }
     }
 
     //mark methods accessible only by admins.
-    // NOTE: get_sender() returns the real sender originating a call, whether it is via a relay
+    // NOTE: getSender() returns the real sender originating a call, whether it is via a relay
     // or called directly (by a real ethereum account, which pays for the call)
-    modifier requireAdmin() { require(isAdmin(get_sender())); _; }
+    modifier requireAdmin() { require(isAdmin(getSender())); _; }
 
     //mark methods accessible only by registered users.
-    // NOTE: get_sender() returns the real sender originating a call, whether it is via a relay
+    // NOTE: getSender() returns the real sender originating a call, whether it is via a relay
     // or called directly (by a real ethereum account, which pays for the call)
-    modifier requireUser() { require(isUser(get_sender())); _; }
+    modifier requireUser() { require(isUser(getSender())); _; }
 
-    function change_admin(address _admin, bool add) public requireAdmin() {
+    function changeAdmin(address _admin, bool add) public requireAdmin() {
         admins[_admin] = add;
     }
 
-    function change_user(address _user, bool add) public requireAdmin() {
+    function changeUser(address _user, bool add) public requireAdmin() {
         users[_user] = add;
     }
 
     /**
      * validate caller is an admin or a user.
      */
-    function accept_relayed_call(address /*relay*/, address from, bytes /* encoded_function */) public view returns(uint32) {
+    function acceptRelayedCall(address /*relay*/, address from, bytes /* encodedFunction */) public view returns(uint) {
 
         if ( isUser(from) || isAdmin(from) ) return 0;
 
         return 10;
     }
 
-    function post_relayed_call(address /*relay*/, address /*from*/, bytes /*encoded_function*/, bool /*success*/, uint /*used_gas*/, uint /*transaction_fee*/ ) external {
+    function postRelayedCall(address /*relay*/, address /*from*/, bytes /*encodedFunction*/, bool /*success*/, uint /*usedGas*/, uint /*transactionFee*/ ) external {
     }
 
 }

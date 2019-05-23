@@ -414,7 +414,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	// check can_relay view function to see if we'll get paid for relaying this tx
+	// check canRelay view function to see if we'll get paid for relaying this tx
 	res, err := relay.canRelay(request.EncodedFunction,
 		request.Signature,
 		request.From,
@@ -425,20 +425,20 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		request.RelayFee)
 
 	if err != nil {
-		log.Println("can_relay failed in server", err)
+		log.Println("canRelay failed in server", err)
 		return
 	}
 
-	if res != 0 {
+	if res.Uint64() != 0 {
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
 			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
 			request.RelayFee.String(), "Sig:", hexutil.Encode(request.Signature))
-		err = fmt.Errorf("can_relay() view function returned error code=%d\nparams:%s", res, errStr)
+		err = fmt.Errorf("canRelay() view function returned error code=%d\nparams:%s", res, errStr)
 		log.Println(err, errStr)
 		return
 	}
 
-	// can_relay returned true, so we can relay the tx
+	// canRelay returned true, so we can relay the tx
 	relayAddress := relay.Address()
 
 	callOpt := &bind.CallOpts{
@@ -462,7 +462,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	if err != nil {
 		return
 	}
-	input, err := hubAbi.Pack("relay", request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
+	input, err := hubAbi.Pack("relayCall", request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
 		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
 	if err != nil {
 		log.Println(err)
@@ -473,19 +473,24 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		From: request.From,
 		Data: input,
 	})
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	maxCharge := request.GasPrice.Uint64() * gasEstimate * (100 + relay.GasPricePercent.Uint64()) / 100
 	if toBalance.Uint64() < maxCharge {
 		err = fmt.Errorf("Recipient balance too low: %d, gasEstimate*fee: %d", toBalance, maxCharge)
 		log.Println(err)
 		return
 	}
+	log.Println("Estimated max charge of relayed tx:",maxCharge)
 
 	signedTx, err = relay.sendDataTransaction(
 		fmt.Sprintf("Relay(from=%s, to=%s)", request.From.Hex(), request.To.Hex()),
 		func(auth *bind.TransactOpts) (*types.Transaction, error) {
 			auth.GasLimit = gasLimit.Add(&request.GasLimit, gasReserve).Add(gasLimit, gasReserve).Uint64()
 			auth.GasPrice = &request.GasPrice
-			return relay.rhub.Relay(auth, request.From, request.To,
+			return relay.rhub.RelayCall(auth, request.From, request.To,
 				common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
 				&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
 		})
@@ -524,7 +529,7 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 	gasPrice big.Int,
 	gasLimit big.Int,
 	recipientNonce big.Int,
-	relayFee big.Int) (res uint32, err error) {
+	relayFee big.Int) (res *big.Int, err error) {
 
 	relayAddress := relay.Address()
 

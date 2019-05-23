@@ -15,22 +15,22 @@ import "../RelayRecipient.sol";
  */
 contract TokenRecipient is RelayRecipient {
 
-    address token_holder;
+    address tokenHolder;
     ERC20Interface mytoken;
-    uint tx_price;
+    uint txPrice;
 
     /**
      * create this TokenRecipient
      * @param _rhub - the relay hub we're connected to.
-     * @param _token_holder - account that will receive all tokens we collect from users.
+     * @param _tokenHolder - account that will receive all tokens we collect from users.
      * @param _token - the ERC20 token to use.
-     * @param _tx_price - amount of tokens to take for each request.
+     * @param _txPrice - amount of tokens to take for each request.
      */
-    constructor(RelayHub _rhub, address _token_holder, ERC20Interface _token, uint _tx_price) public {
-		init_relay_hub(_rhub);
+    constructor(RelayHub _rhub, address _tokenHolder, ERC20Interface _token, uint _txPrice) public {
+		initRelayHub(_rhub);
         mytoken  = _token;
-        tx_price = _tx_price;
-        token_holder = _token_holder;
+        txPrice = _txPrice;
+        tokenHolder = _tokenHolder;
     }
 
     /**
@@ -41,21 +41,21 @@ contract TokenRecipient is RelayRecipient {
      *  Later, the RelayHub calls it again, to validate the transaction on-chain, and thus perform
      *  the actual payment.
      */
-    function accept_relayed_call(address /*relay*/, address from, bytes /* transaction */) public view returns(uint32) {
+    function acceptRelayedCall(address /*relay*/, address from, bytes /* transaction */) public view returns(uint) {
 
         //user doesn't have enough tokens. reject request.
-        if ( mytoken.balanceOf(from)<tx_price ) 
+        if ( mytoken.balanceOf(from)< txPrice)
             return 10;
         return 0;
     }
 
-    function post_relayed_call(address /*relay*/, address from, bytes /*encoded_function*/, bool /*success*/, uint /*used_gas*/, uint /*transaction_fee*/ ) external {
+    function postRelayedCall(address /*relay*/, address from, bytes /*encodedFunction*/, bool /*success*/, uint /*usedGas*/, uint /*transactionFee*/ ) external {
 
         //failed to charge the user for tokens.
         // (note that the user (or the token contract itself) must approve this 
         // contract to call transferFrom()).
-        // this transfer shouldn't fail, as we checked the balance in accept_relayed_call(), above.
-        require( mytoken.transferFrom(from, token_holder, tx_price) );
+        // this transfer shouldn't fail, as we checked the balance in acceptRelayedCall(), above.
+        require( mytoken.transferFrom(from, tokenHolder, txPrice) );
     }
 
 }

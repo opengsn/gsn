@@ -12,8 +12,8 @@ const ethWallet = require('ethereumjs-wallet');
 const ethJsTx = require('ethereumjs-tx');
 const abi_decoder = require('abi-decoder');
 
-const relayHubAbi = require('./RelayHubApi');
-const relayRecipientAbi = require('./RelayRecipientApi');
+const relayHubAbi = require('./IRelayHub');
+const relayRecipientAbi = require('./IRelayRecipient');
 
 const relay_lookup_limit_blocks = 6000;
 abi_decoder.addABI(relayHubAbi);
@@ -247,7 +247,7 @@ class RelayClient {
         let relayRecipient = this.createRelayRecipient(target);
         let relayHubAddress;
 
-        relayHubAddress = await relayRecipient.methods.get_hub_addr().call();
+        relayHubAddress = await relayRecipient.methods.getHubAddr().call();
         let relayHub = this.createRelayHub(relayHubAddress);
 
         //note that the returned value is a promise too, returning BigNumber
@@ -264,11 +264,11 @@ class RelayClient {
         var self = this;
         let relayRecipient = this.createRelayRecipient(options.to);
 
-        let relayHubAddress = await relayRecipient.methods.get_hub_addr().call();
+        let relayHubAddress = await relayRecipient.methods.getHubAddr().call();
 
         let relayHub = this.createRelayHub(relayHubAddress);
 
-        var nonce = parseInt(await relayHub.methods.get_nonce(options.from).call());
+        var nonce = parseInt(await relayHub.methods.getNonce(options.from).call());
 
         this.serverHelper.setHub(relayHub);
 

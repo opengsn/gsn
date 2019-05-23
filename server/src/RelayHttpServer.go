@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.3.5"
+const VERSION = "0.4.0"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
@@ -311,7 +311,7 @@ func waitForOwnerActions() {
 		log.Println(err)
 		return
 	}
-	for ; err != nil || balance.Uint64() <= params.Ether; balance, err = relay.Balance() {
+	for ; err != nil || balance.Uint64() <= 0.1*params.Ether; balance, err = relay.Balance() {
 		ready = false
 		log.Println("Server's balance too low. Waiting for funding...")
 		sleep(10*time.Second, shortSleep)

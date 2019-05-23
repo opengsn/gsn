@@ -1,11 +1,11 @@
 /* global web3 */
 const utils = require('./utils')
 const promisify = utils.promisify
-const RelayHubApi = require('../relayclient/RelayHubApi')
-const RelayRecipientApi = require('../relayclient/RelayRecipientApi')
+const IRelayHub = require('../relayclient/IRelayHub')
+const IRelayRecipient = require('../relayclient/IRelayRecipient')
 
-const RelayHub = web3.eth.contract(RelayHubApi)
-const RelayRecipient = web3.eth.contract(RelayRecipientApi)
+const RelayHub = web3.eth.contract(IRelayHub)
+const RelayRecipient = web3.eth.contract(IRelayRecipient)
 
 class ContractManager {
 
@@ -29,7 +29,7 @@ class ContractManager {
 
         let recipient = RelayRecipient.at(addr)
 
-        let hubaddr = await promisify(recipient.get_hub_addr)()
+        let hubaddr = await promisify(recipient.getHubAddr)()
 
         if (!hubaddr || hubaddr === '0x')
             return undefined

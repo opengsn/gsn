@@ -33,7 +33,7 @@ $(ETHFILE): Makefile
 
 gen-file: $(GEN_FILE) Makefile
 
-$(GEN_FILE): ../contracts/RelayHub.sol ../contracts/RelayHubApi.sol 
+$(GEN_FILE): ../contracts/RelayHub.sol ../contracts/IRelayHub.sol
 	mkdir -p $(buildpath)/src/gen/librelay
 	abigen --solc ../scripts/solc-abigen-wrapper.sh --sol $< --pkg librelay  --out $@
 

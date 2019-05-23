@@ -7,8 +7,8 @@ library GsnUtils {
     /**
      * extract method sig from encoded function call
      */
-    function getMethodSig(bytes memory msg_data) internal pure returns (bytes4) {
-        return bytes4(bytes32(LibBytes.readUint256(msg_data, 0)));
+    function getMethodSig(bytes memory msgData) internal pure returns (bytes4) {
+        return bytes4(bytes32(LibBytes.readUint256(msgData, 0)));
     }
 
     /**
@@ -17,8 +17,8 @@ library GsnUtils {
      * note that the type of the parameter must be static.
      * the return value should be casted to the right type.
      */
-    function getParam(bytes memory msg_data, uint index) internal pure returns (uint) {
-        return LibBytes.readUint256(msg_data, 4 + index * 32);
+    function getParam(bytes memory msgData, uint index) internal pure returns (uint) {
+        return LibBytes.readUint256(msgData, 4 + index * 32);
     }
 
     /**
@@ -27,14 +27,14 @@ library GsnUtils {
      * dynamic param
      * https://solidity.readthedocs.io/en/develop/abi-spec.html#use-of-dynamic-types
      */
-    function getBytesParam(bytes memory msg_data, uint index) internal pure returns (bytes memory ret)  {
-        uint ofs = getParam(msg_data,index)+4;
-        uint len = LibBytes.readUint256(msg_data, ofs);
-        ret = LibBytes.slice(msg_data, ofs+32, ofs+32+len);
+    function getBytesParam(bytes memory msgData, uint index) internal pure returns (bytes memory ret)  {
+        uint ofs = getParam(msgData,index)+4;
+        uint len = LibBytes.readUint256(msgData, ofs);
+        ret = LibBytes.slice(msgData, ofs+32, ofs+32+len);
     }
 
-    function getStringParam(bytes memory msg_data, uint index) internal pure returns (string memory) {
-        return string(getBytesParam(msg_data,index));
+    function getStringParam(bytes memory msgData, uint index) internal pure returns (string memory) {
+        return string(getBytesParam(msgData,index));
     }
 
     function checkSig(address signer, bytes32 hash, bytes memory sig) pure internal returns (bool) {

@@ -5,18 +5,18 @@ const promisify = require("util").promisify
 
 const request = promisify(require("request"))
 
-const relayhubapi = require( '../src/js/relayclient/RelayHubApi')
+const irelayhub = require( '../src/js/relayclient/IRelayHub')
 
 
-async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstake_delay, web3) {
-    let rhub = new web3.eth.Contract(relayhubapi, hubaddr)
+async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstakeDelay, web3) {
+    let rhub = new web3.eth.Contract(irelayhub, hubaddr)
 
     let curstake = await rhub.methods.stakeOf(relayaddr).call();
     if ( curstake > 1e17 ) {
         console.log( "already has a stake of "+(curstake/1e18)+" eth. NOT adding more")
     } else {
         console.log( "staking ",stake)
-        console.log( await rhub.methods.stake(relayaddr, unstake_delay).send({value: stake, from:fromaddr, gas: 1e6}))
+        console.log( await rhub.methods.stake(relayaddr, unstakeDelay).send({value: stake, from:fromaddr, gas:8000000}))
     }
 
     let balance = await web3.eth.getBalance(relayaddr)
