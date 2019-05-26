@@ -363,7 +363,7 @@ contract("RelayHub", function (accounts) {
     });
 
     it("should not allow non-owners to unstake", async function () {
-        canUnstake = await rhub.canUnstake.call(relayAccount);
+        let canUnstake = await rhub.canUnstake.call(relayAccount);
         assert.equal(true, canUnstake)
 
         try {
@@ -412,10 +412,6 @@ contract("RelayHub", function (accounts) {
         return "0x" + rlp.encode(transaction.raw.slice(0, 6)).toString("hex")
     }
 
-    function signatureHex(transaction) {
-        return "0x" + Buffer.concat([transaction.v, transaction.r, transaction.s]).toString('hex');
-    }
-
     it("should penalize relay for signing two distinct transactions with the same nonce", async function () {
         let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
         await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
@@ -443,10 +439,12 @@ contract("RelayHub", function (accounts) {
         })
         unsignedTransaction1Encoded = encodeRLP(transaction1)
         unsignedTransaction2Encoded = encodeRLP(transaction2)
-        transaction1.sign(privKey);
-        transaction2.sign(privKey);
-        sig1 = signatureHex(transaction1);
-        sig2 = signatureHex(transaction2);
+        let hash1 = "0x" + transaction1.hash(false).toString('hex')
+        sig1 = utils.getTransactionSignatureWithKey(privKey,hash1,false)
+        assert.equal(sig1.length, 132);
+        let hash2 = "0x" + transaction2.hash(false).toString('hex')
+        sig2 = utils.getTransactionSignatureWithKey(privKey,hash2,false)
+        assert.equal(sig2.length, 132);
 
         snitching_account = accounts[7];
         let snitching_account_initial_balance = await web3.eth.getBalance(snitching_account);
@@ -565,8 +563,11 @@ contract("RelayHub", function (accounts) {
         transaction2_nextNonce.nonce = nonce_any_value + 1;
 
         let unsignedTransaction2Encoded_nextNonce = encodeRLP(transaction2_nextNonce)
-        transaction2_nextNonce.sign(privKey);
-        let sig2_nextNonce = signatureHex(transaction2_nextNonce);
+        let hash = "0x" + transaction2_nextNonce.hash(false).toString('hex')
+        let sig2_nextNonce = utils.getTransactionSignatureWithKey(privKey, hash, false)
+        assert.equal(sig2_nextNonce.length, 132);
+
+
         try {
             await rhub.penalizeRepeatedNonce(unsignedTransaction1Encoded, sig1, unsignedTransaction2Encoded_nextNonce, sig2_nextNonce, {
                 from: snitching_account,
@@ -582,8 +583,10 @@ contract("RelayHub", function (accounts) {
     it("should revert an attempt to penalize relay with two transactions from different relays", async function () {
         await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[6], accounts[0]);
         let privKeySix = Buffer.from("e485d098507f54e7733a205420dfddbe58db035fa577fc294ebd14db90767a52", "hex");
-        transaction2.sign(privKeySix);
-        let sig2_fromAccountSix = signatureHex(transaction2);
+        let hash = "0x" + transaction2.hash(false).toString('hex')
+        let sig2_fromAccountSix = utils.getTransactionSignatureWithKey(privKeySix,hash,false)
+        assert.equal(sig2_fromAccountSix.length, 132);
+
         try {
             await rhub.penalizeRepeatedNonce(unsignedTransaction1Encoded, sig1, unsignedTransaction2Encoded, sig2_fromAccountSix, {
                 from: snitching_account,
