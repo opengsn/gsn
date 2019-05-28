@@ -11,9 +11,9 @@ contract RelayHub is IRelayHub {
 
     // Anyone can call certain functions in this singleton and trigger relay processes.
 
-    uint constant minimumStake = 0.1 ether;
-    uint constant minimumUnstakeDelay = 0;
-    uint constant minimumRelayBalance = 0.1 ether;  // can't register/refresh below this amount.
+    uint constant public minimumStake = 0.1 ether;
+    uint constant public minimumUnstakeDelay = 0;
+    uint constant public minimumRelayBalance = 0.1 ether;  // can't register/refresh below this amount.
     uint constant public gasReserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relayCall().
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
@@ -238,10 +238,10 @@ contract RelayHub is IRelayHub {
     }
 
     function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
-        /*  This function can only be called by RelayHub.
-            In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
-            It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
-        */
+        // This function can only be called by RelayHub.
+        // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
+        // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
+
         require(msg.sender == address(this), "Only RelayHub should call this function");
 
         // ensure that the last bytes of @transaction are the @from address.
@@ -253,6 +253,7 @@ contract RelayHub is IRelayHub {
         (success,) = to.call.gas(gasLimit)(transaction);
         // transaction must end with @from at this point
         transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee);
+        // Call it with .gas to make sure we have enough gasleft() to finish the transaction even if it reverts
         (successPost,) = to.call.gas((gasleft() - 2 * gasOverhead))(transaction);
         require(successPost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");
