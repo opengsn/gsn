@@ -205,7 +205,7 @@ contract RelayHub is IRelayHub {
         // Relay must use the gas price set by the signer
         uint canRelayResult = canRelay(msg.sender, from, IRelayRecipient(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
         if (canRelayResult != 0) {
-            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.CanRelayFailed), 0);
+            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.CanRelayFailed), canRelayResult);
             return;
         }
 
@@ -216,7 +216,7 @@ contract RelayHub is IRelayHub {
         require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
         bool successPost;
         bytes memory ret = new bytes(32);
-        (successPost, ret) = address(this).call(abi.encodeWithSelector(this.recipientCalls.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
+        (successPost, ret) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
         nonces[from]++;
         RelayCallStatus status = RelayCallStatus.OK;
         if (LibBytes.readUint256(ret, 0) == 0)
@@ -238,7 +238,11 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction, 0), status, charge);
     }
 
-    function recipientCalls(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
+    function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
+        /*  This function can only be called by RelayHub.
+            In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
+            It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
+        */
         require(msg.sender == address(this), "Only RelayHub should call this function");
 
         // ensure that the last bytes of @transaction are the @from address.
