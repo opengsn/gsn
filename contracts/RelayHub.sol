@@ -19,7 +19,7 @@ contract RelayHub is IRelayHub {
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
-    uint constant public gasOverhead = 47446;
+    uint constant public gasOverhead = 47422;
     uint public acceptRelayedCallMaxGas = 50000;
 
     mapping(address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
@@ -221,13 +221,12 @@ contract RelayHub is IRelayHub {
         RelayCallStatus status = RelayCallStatus.OK;
         if (LibBytes.readUint256(ret, 0) == 0)
             status = RelayCallStatus.RelayedCallFailed;
+        if (!successPost) {
+            status = RelayCallStatus.PostRelayedFailed;
+        }
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
         uint charge = (gasOverhead + initialGas - gasleft()) * gasPrice * (100 + transactionFee) / 100;
-        if (!successPost) {
-            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.PostRelayedFailed), charge);
-        } else {
-            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(status), charge);
-        }
+        emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(status), charge);
         require(balances[to] >= charge, "insufficient funds");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
