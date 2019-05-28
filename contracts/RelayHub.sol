@@ -250,7 +250,7 @@ contract RelayHub is IRelayHub {
         (success,) = to.call.gas(gasLimit)(transaction);
         // transaction must end with @from at this point
         transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee);
-        (successPost,) = to.call.gas((gasOverhead + initialGas - gasleft()))(transaction);
+        (successPost,) = to.call.gas((gasleft() - 2 * gasOverhead))(transaction);
         require(successPost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");
         return success;
