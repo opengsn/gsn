@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gen/librelay"
 	"gen/samplerec"
+	"librelay/reputationstore"
 	"librelay/test"
 	"librelay/txstore"
 	"log"
@@ -122,6 +123,28 @@ func (relay *TestServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx 
 	return
 }
 
+func (relay *TestServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
+	tx, err := relay.sendRemoveTransaction(ownerKey)
+	if err != nil {
+		return err
+	}
+	return relay.awaitTransactionMined(tx)
+}
+
+func (relay *TestServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+	auth := bind.NewKeyedTransactor(ownerKey)
+	desc := fmt.Sprintf("RemoveRelayByOwner(address=%s)", relay.Address())
+	log.Println(desc, "tx sending")
+
+	tx, err = relay.rhub.RemoveRelayByOwner(auth, relay.Address())
+	if err != nil {
+		log.Println(desc, "error sending tx:", err)
+		return
+	}
+	log.Println(desc, "tx sent:", tx.Hash().Hex())
+	return
+}
+
 var auth *bind.TransactOpts
 var relay TestServer
 var client *TestClient
@@ -170,16 +193,24 @@ func NewRelay(relayHubAddress common.Address) {
 	registrationBlockRate := uint64(5)
 	clk = fakeclock.NewFakeClock(time.Now())
 	txStore := txstore.NewMemoryTxStore(clk)
-	var err error
+	repStore, err := reputationstore.NewReputationDbStore("reputation_test_db", nil)
+	if err != nil {
+		log.Fatalln(" Test reputation store was not created", err)
+	}
 	relay.RelayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
 		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,
-		ethereumNodeURL, client, txStore, clk)
+		ethereumNodeURL, client, txStore, repStore, clk)
 	if err != nil {
 		log.Fatalln("Relay was not created", err)
 	}
 	return
+}
+
+func cleanupDb(store reputationstore.IReputationStore) {
+	store.Close()
+	os.RemoveAll("reputation_test_db")
 }
 
 func TestMain(m *testing.M) {
@@ -258,6 +289,7 @@ func TestMain(m *testing.M) {
 	fmt.Println("-----------------------------------------------------")
 	flag.Parse()
 	exitStatus := m.Run()
+	cleanupDb(relay.ReputationStore)
 	defer os.Exit(exitStatus)
 }
 

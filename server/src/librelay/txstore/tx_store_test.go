@@ -111,7 +111,7 @@ func TestMemoryStore(t *testing.T) {
 func TestLevelDbStore(t *testing.T) {
 	os.RemoveAll("test.db")
 	clk := fakeclock.NewFakeClock(time.Now())
-	store, err := NewLevelDbTxStore("test.db", clk)
+	store, err := NewLevelDbTxStore("txstore_test_db", clk)
 	defer cleanupDb(store)
 	test.ErrFail(err, t)
 	testStore(t, store, clk)
@@ -141,5 +141,5 @@ func TestTransactionEncode(t *testing.T) {
 
 func cleanupDb(store *LevelDbTxStore) {
 	store.Close()
-	os.RemoveAll("test.db")
+	os.RemoveAll("txstore_test_db")
 }

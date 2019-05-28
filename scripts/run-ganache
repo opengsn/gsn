@@ -15,7 +15,7 @@ ganache_running() {
 }
 
 start_ganache() {
-  node_modules/.bin/ganache-cli --networkId 4447 -g 1000 -p $ganache_port -d > /dev/null &
+  npx ganache-cli --networkId 4447 -g 1000 -p $ganache_port -d > /dev/null &
   ganache_pid=$!
   echo $ganache_pid
 
@@ -31,4 +31,4 @@ else
   start_ganache
 fi
 
-echo `node_modules/.bin/ganache-cli --version` >&2
+echo `npx ganache-cli --version` >&2

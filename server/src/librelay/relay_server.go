@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gen/librelay"
+	"librelay/reputationstore"
 	"librelay/txstore"
 	"log"
 	"math/big"
@@ -24,13 +25,17 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 const TxReceiptTimeout = 60 * time.Second
 
+// Currently we give a recipient a grace of -0.1 ether, as the default reputation is (totalGain - totalLoss) from a recipient.
+// This can & probably should be changed according to use case.
+const ReputationThreshold = - params.Ether / 10
+
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
-var unconfirmedTxs = make(map[uint64]*types.Transaction)
 
 type RelayTransactionRequest struct {
 	EncodedFunction string
@@ -145,13 +150,15 @@ type RelayServer struct {
 	Client                IClient
 	ChainID               *big.Int
 	TxStore               txstore.ITxStore
+	ReputationStore       reputationstore.IReputationStore
 	rhub                  *librelay.RelayHub
 	clock                 clock.Clock
 }
 
 type RelayParams struct {
 	RelayServer
-	DBFile string
+	DBFile           string
+	ReputationDBFile string
 }
 
 func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
@@ -177,6 +184,7 @@ func NewRelayServer(
 	EthereumNodeURL string,
 	Client IClient,
 	TxStore txstore.ITxStore,
+	ReputationStore reputationstore.IReputationStore,
 	clk clock.Clock) (*RelayServer, error) {
 
 	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
@@ -210,6 +218,7 @@ func NewRelayServer(
 		Client:                Client,
 		ChainID:               chainId,
 		TxStore:               TxStore,
+		ReputationStore:       ReputationStore,
 		rhub:                  rhub,
 		clock:                 clk,
 	}
@@ -251,28 +260,6 @@ func (relay *RelayServer) sendRegisterTransaction() (tx *types.Transaction, err 
 	tx, err = relay.sendDataTransaction(desc, func(auth *bind.TransactOpts) (*types.Transaction, error) {
 		return relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url)
 	})
-	return
-}
-
-func (relay *RelayServer) RemoveRelay(ownerKey *ecdsa.PrivateKey) (err error) {
-	tx, err := relay.sendRemoveTransaction(ownerKey)
-	if err != nil {
-		return err
-	}
-	return relay.awaitTransactionMined(tx)
-}
-
-func (relay *RelayServer) sendRemoveTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
-	auth := bind.NewKeyedTransactor(ownerKey)
-	desc := fmt.Sprintf("RemoveRelayByOwner(address=%s)", relay.Address())
-	log.Println(desc, "tx sending")
-
-	tx, err = relay.rhub.RemoveRelayByOwner(auth, relay.Address())
-	if err != nil {
-		log.Println(desc, "error sending tx:", err)
-		return
-	}
-	log.Println(desc, "tx sent:", tx.Hash().Hex())
 	return
 }
 
@@ -323,8 +310,8 @@ func (relay *RelayServer) RegistrationDate() (when int64, err error) {
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
 		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-		//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
+	//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
+	//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url) {
 		return 0, fmt.Errorf("Could not receive RelayAdded() events for our relay")
 	}
@@ -411,6 +398,16 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	if request.RelayMaxNonce.Cmp(big.NewInt(int64(lastNonce))) < 0 {
 		err = fmt.Errorf("Unacceptable RelayMaxNonce")
 		log.Println(err, request.RelayMaxNonce)
+		return
+	}
+
+	// Check that the recipient reputation is not too low to serve it
+	reputationScore, err := relay.ReputationStore.GetScore(&request.To)
+	if err != nil {
+		log.Println("Error in retrieving recipient's reputation from database:", err)
+		log.Println("Ignoring recipient's reputation...")
+	} else if reputationScore.Cmp(big.NewInt(ReputationThreshold)) <= 0 {
+		log.Printf("Reputation of %s too low: %d", request.To.Hex(), reputationScore.Int64())
 		return
 	}
 
@@ -507,7 +504,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	gasLimit.Add(gasLimit, gasReserve)
 	gasLimit.Add(gasLimit, acceptRelayedCallMaxGas)
 	gasLimit.Add(gasLimit, postRelayedCallMaxGas)
-	log.Println("Estimated max charge of relayed tx:",maxCharge, "GasLimit of relayed tx:",gasLimit)
+	log.Println("Estimated max charge of relayed tx:", maxCharge, "GasLimit of relayed tx:",gasLimit)
 
 	signedTx, err = relay.sendDataTransaction(
 		fmt.Sprintf("Relay(from=%s, to=%s)", request.From.Hex(), request.To.Hex()),
@@ -518,7 +515,51 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 				common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
 				&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature)
 		})
+	if err != nil {
+		log.Println("Error sending relayed transaction:", err)
+		log.Printf("Recipient balance too low: %d, gasEstimate*fee: %d", toBalance, maxCharge)
+	} else {
+		go relay.awaitAndUpdateRecipientReputation(signedTx)
+	}
 
+	return
+}
+
+func (relay *RelayServer) awaitAndUpdateRecipientReputation(tx *types.Transaction) (err error) {
+	defer func() { //catch or finally
+		if err := recover(); err != nil { //catch
+			log.Println("awaitAndUpdateRecipientReputation Exception:", err)
+		}
+	}()
+
+	receipt, err := relay.awaitTransactionMinedWithReceipt(tx)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	parsed, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	transactionRelayedEvent := new(librelay.RelayHubTransactionRelayed)
+	boundhub := bind.NewBoundContract(relay.HubAddress(), parsed, nil, nil, nil)
+	err = boundhub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[len(receipt.Logs)-1])
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	var diff *big.Int
+	if (transactionRelayedEvent.Status.Uint64() != 1) { // RelayCallStatus.CanRelayFailed == 1
+		diff = transactionRelayedEvent.ChargeOrCanRelayStatus
+	} else {
+		diff = tx.Cost()
+	}
+	err = relay.ReputationStore.UpdateReputation(tx.To(), transactionRelayedEvent.Status.Uint64() != 1, diff)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	return
 }
 
@@ -692,6 +733,23 @@ func (relay *RelayServer) awaitTransactionMined(tx *types.Transaction) (err erro
 	return nil
 }
 
+func (relay *RelayServer) awaitTransactionMinedWithReceipt(tx *types.Transaction) (receipt *types.Receipt, err error) {
+	start := time.Now()
+	for ; (receipt == nil || err != nil) && time.Since(start) < TxReceiptTimeout; receipt, err = relay.Client.TransactionReceipt(context.Background(), tx.Hash()) {
+		time.Sleep(500 * time.Millisecond)
+	}
+	if err != nil {
+		log.Println("Could not get tx receipt", err)
+		return
+	}
+	if receipt.Status != 1 {
+		log.Println("tx failed: tx receipt status", receipt.Status)
+		return
+	}
+
+	return
+}
+
 func (relay *RelayServer) pollNonce() (nonce uint64, err error) {
 	ctx := context.Background()
 	fromAddress := relay.Address()
@@ -797,29 +855,10 @@ func (relay *RelayServer) UpdateUnconfirmedTransactions() (newTx *types.Transact
 	return newtx, nil
 }
 
-func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
-	log.Println("replayUnconfirmedTxs start")
-	log.Println("unconfirmedTxs size", len(unconfirmedTxs))
-	ctx := context.Background()
-	nonce, err := relay.Client.PendingNonceAt(ctx, relay.Address())
+func (relay *RelayServer) Close() (err error) {
+	err = relay.TxStore.Close()
 	if err != nil {
-		log.Println(err)
 		return
 	}
-	for i := uint64(0); i < nonce; i++ {
-		delete(unconfirmedTxs, i)
-	}
-	log.Println("unconfirmedTxs size after deletion", len(unconfirmedTxs))
-	for i, tx := range unconfirmedTxs {
-		log.Println("replaying tx nonce ", i)
-		err = relay.Client.SendTransaction(ctx, tx)
-		if err != nil {
-			log.Println("tx ", i, ":", err)
-		}
-	}
-	log.Println("replayUnconfirmedTxs end")
-}
-
-func (relay *RelayServer) Close() (err error) {
-	return relay.TxStore.Close()
+	return relay.ReputationStore.Close()
 }

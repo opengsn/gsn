@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"io/ioutil"
 	"librelay"
+	"librelay/reputationstore"
 	"librelay/txstore"
 	"log"
 	"math/big"
@@ -19,7 +20,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.4.0"
+const VERSION = "0.4.1"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
@@ -205,6 +206,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.RegistrationBlockRate = *registrationBlockRate
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 	relayParams.DBFile = filepath.Join(*workdir, "db")
+	relayParams.ReputationDBFile = filepath.Join(*workdir, "reputation_db")
 
 	KeystoreDir = filepath.Join(*workdir, "keystore")
 
@@ -230,12 +232,17 @@ func configRelay(relayParams librelay.RelayParams) {
 		log.Println("Could not create local transactions database", err)
 		return
 	}
+	reputationStore, err := reputationstore.NewReputationDbStore(relayParams.ReputationDBFile, nil)
+	if err != nil {
+		log.Println("Could not create local recipient (dapp) reputation database", err)
+		return
+	}
 	relay, err = librelay.NewRelayServer(
 		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
-		client, txStore, nil)
+		client, txStore, reputationStore, nil)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
 		return
