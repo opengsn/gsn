@@ -107,23 +107,51 @@ class ActiveRelayPinger {
 
 class ServerHelper {
 
-    constructor(httpSend, { verbose, minStake, minDelay, relayFilter, relayComparator }) {
+    constructor(httpSend, { verbose,
+                minStake, minDelay, //params for relayFilter: filter out this relay if unstakeDelay or stake are too low.
+                calculateRelayScore, //function: return relay score, higher the better. default uses transactionFee and some randomness
+                relayFilter,        //function: return false to filter out a relay. default uses minStake, minDelay
+                addScoreRandomness,  //function: return Math.random (0..1), to fairly distribute among relays with same score.
+                                     // (used by test to REMOVE the randomness, and make the test deterministic.
+            }) {
+
         this.httpSend = httpSend
         this.verbose = verbose
-        
+
+        this.addScoreRandomness = addScoreRandomness || Math.random
+
+        this.calculateRelayScore = calculateRelayScore || this.defaultCalculateRelayScore
+
+        //default filter: either calculateRelayScore didn't set "score" field,
+        // or if unstakeDelay is below min, or if stake is below min.
         this.relayFilter = relayFilter || ((relay) => (
+            relay.score != null &&
             (!minDelay || BN(relay.unstakeDelay).gte(BN(minDelay))) &&
             (!minStake || BN(relay.stake).gte(BN(minStake)))
-        ));
-
-        this.relayComparator = relayComparator || ((r1, r2) => (
-            BN(r1.transactionFee).cmp(BN(r2.transactionFee))
         ));
 
         this.filteredRelays = []
         this.isInitialized = false
         this.ActiveRelayPinger = ActiveRelayPinger
     }
+
+    defaultCalculateRelayScore(relay)  {
+        //basic score is trasnaction fee (which is %)
+        //higher the better.
+        let score = 1000-relay.transactionFee
+
+        return score;
+    }
+
+    //compare relay scores.
+    // if they are the same, use addScoreRandomness to shuffle them..
+    compareRelayScores(r1, r2) {
+        let diff = r2.score - r1.score
+        if ( diff )
+            return diff
+        return this.addScoreRandomness()-0.5
+    }
+
 
     /**
      *
@@ -172,20 +200,22 @@ class ServerHelper {
             let event = addedAndRemovedEvents[index]
             if (event.event === "RelayAdded") {
                 let args = event.returnValues
-                activeRelays[args.relay] = {
+                let relay = {
                     address: args.relay,
                     relayUrl: args.url,
                     transactionFee: args.transactionFee,
                     stake: args.stake,
                     unstakeDelay: args.unstakeDelay
                 }
+                relay.score = this.calculateRelayScore(relay) + this.addScoreRandomness()
+                activeRelays[args.relay] =relay
             } else if (event.event === "RelayRemoved") {
                 delete activeRelays[event.returnValues.relay]
             }
         }
 
         const origRelays = Object.values(activeRelays)
-        const filteredRelays = origRelays.filter(this.relayFilter).sort(this.relayComparator);
+        const filteredRelays = origRelays.filter(this.relayFilter).sort(this.compareRelayScores.bind(this));
 
         if (filteredRelays.length == 0) {
             throw new Error("no valid relays. orig relays=" + JSON.stringify(origRelays))
