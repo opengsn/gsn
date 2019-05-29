@@ -13,13 +13,13 @@ const gasPricePercent = 20
 
 //ServerHelper adds "noise" to shuffle requests with the same score.
 // this will prevent this randomness, to make tests deterministic.
-addScoreRandomness = ()=>0
+const noRandomness= ()=>0
 
 contract('ServerHelper', function (accounts) {
     let minStake = 1.5e17
     let minDelay = 10
     let httpWrapper = new HttpWrapper()
-    let serverHelper = new ServerHelper(httpWrapper, { minStake, minDelay, verbose: false, addScoreRandomness })
+    let serverHelper = new ServerHelper(httpWrapper, {}, { minStake, minDelay, verbose: false, addScoreRandomness : noRandomness})
     let rhub
     let relayproc
 
@@ -144,7 +144,7 @@ contract('ServerHelper', function (accounts) {
             event: 'RelayAdded', 
             returnValues: Object.assign({}, { 
                 transactionFee: 1e10, 
-                relayUrl: `url-${relay.relay}`, 
+                url: `url-${relay.relay}`,
                 stake: 2e17, 
                 unstakeDelay: 100
             }, relay)
@@ -170,7 +170,7 @@ contract('ServerHelper', function (accounts) {
         it("should not filter relays if minimum values not set", async function() {
             // 4 & 5 are not filtered out since no restrictions on minimum delay or stake are set
             // 5, 7 & 6 go first due to lower transaction fee (1e5, 1e7, and 1e9, vs 1e10 of the rest)
-            const customServerHelper = new ServerHelper(httpWrapper, { addScoreRandomness });
+            const customServerHelper = new ServerHelper(httpWrapper, {}, { addScoreRandomness : noRandomness});
             customServerHelper.setHub(this.mockRelayHub);
             const relays = await customServerHelper.fetchRelaysAdded();
             assert.deepEqual(relays.map(r => r.address), ['5', '7', '6', '1', '2', '3', '4']);
@@ -179,15 +179,16 @@ contract('ServerHelper', function (accounts) {
         it("should use custom strategy for filtering and sorting relays", async function() {
             // 1, 2, 3, & 4 are filtered out due to the custom strategy of filtering by address (only > 4)
             // 6, 7 & 5 are sorted based on stake (3e17, 2e17 & 1e17 respectively)
-            const customServerHelper = new ServerHelper(httpWrapper, {
+            const customServerHelper = new ServerHelper(httpWrapper, {}, {
                 relayFilter: (relay) => (relay.address > '4'),
                 calculateRelayScore: (r) => r.stake,
-                addScoreRandomness
+                addScoreRandomness: noRandomness
             });
             customServerHelper.setHub(this.mockRelayHub);
             const relays = await customServerHelper.fetchRelaysAdded();
             assert.deepEqual(relays.map(r => r.address), ['6', '7', '5']);
         });
+
         it("should use randomness to shuffle results with same score", async function() {
 
             var seed = 2;
@@ -197,9 +198,9 @@ contract('ServerHelper', function (accounts) {
             }
 
             //no randomness: should return them all in order
-            const customServerHelper = new ServerHelper(httpWrapper, {
+            const customServerHelper = new ServerHelper(httpWrapper, {}, {
                 calculateRelayScore: (r) => r.address > '4' ? 2 : 1,  //2 score levels
-                addScoreRandomness
+                addScoreRandomness: noRandomness
             });
             customServerHelper.setHub(this.mockRelayHub);
             let relays = await customServerHelper.fetchRelaysAdded();
@@ -208,7 +209,37 @@ contract('ServerHelper', function (accounts) {
             //added randomness: should be shuffled
             customServerHelper.addScoreRandomness = myRandom
             relays = await customServerHelper.fetchRelaysAdded();
-            assert.deepEqual(relays.map(r => r.address), [ '6', '5', '7', '3', '1', '4', '2' ] )
+            assert.deepEqual(relays.map(r => r.address), [ '6', '7', '5', '4', '2', '1', '3' ] )
         });
+
+        it("should down-score failed relays", async function() {
+
+            let failedRelays={}
+
+            const customServerHelper = new ServerHelper(httpWrapper, failedRelays, {
+                addScoreRandomness: noRandomness
+            });
+            
+            customServerHelper.setHub(this.mockRelayHub);
+
+            let relays = await customServerHelper.fetchRelaysAdded();
+            assert.deepEqual(relays.map(r => r.address),  [ '5', '7', '6', '1', '2', '3', '4' ] )
+
+            //recently failed. should be at the end of the list
+            failedRelays["url-2"]={ lastError : new Date().getTime()-60 }
+
+            relays = await customServerHelper.fetchRelaysAdded();
+            assert.deepEqual(relays.map(r => r.address),  [ '5', '7', '6', '1', '3', '4', '2' ] )
+
+            //failed a long time ago. should return to its normal place (and removed from failed list)
+            failedRelays["url-2"]={ lastError : new Date().getTime()-1000*3600 }
+            relays = await customServerHelper.fetchRelaysAdded();
+            assert.deepEqual(relays.map(r => r.address),  [ '5', '7', '6', '1', '2', '3', '4' ] )
+
+            assert.deepEqual(failedRelays, {})
+
+        });
+
+
     });
 })

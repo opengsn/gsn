@@ -332,6 +332,7 @@ contract('RelayClient', function (accounts) {
         assert.equal(address, keypair.address)
     })
 
+
     it("should use a given ephemeral key for signing", async function(){
         let rc = new RelayClient(web3)
         let ephemeralKeypair = RelayClient.newEphemeralKeypair()
@@ -365,6 +366,36 @@ contract('RelayClient', function (accounts) {
         await rc.relayTransaction(encoded, options)
         assert.equal(true, did_assert)
     })
+
+    it("should add relay to failedRelay dict in case of http timeout", async function(){
+        let rc = new RelayClient(web3, {httpTimeout: 100})
+        let ephemeralKeypair = RelayClient.newEphemeralKeypair()
+        let fromAddr = ephemeralKeypair.address
+        rc.useKeypairForSigning(ephemeralKeypair)
+
+        rc.origSendViaRelay = rc.sendViaRelay
+        rc.sendViaRelay = function(relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress){
+            return this.origSendViaRelay.bind(this)(
+                "http://1.2.3.4:5678", signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress);
+        }
+
+        let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
+        let to = sr.address;
+        let options = {
+            from: fromAddr,
+            to: to,
+            txfee: 12,
+            gas_limit: 1000000
+        }
+
+        try {
+            await rc.relayTransaction(encoded, options)
+            assert.fail("relayTransaction should throw..")
+        } catch (ignored) {
+            assert.isTrue( rc.failedRelays["http://1.2.3.4:5678"] != undefined )
+        }
+    })
+
 
     it("should send relay balance to owner after removed", async function () {
 

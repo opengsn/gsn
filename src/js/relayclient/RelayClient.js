@@ -49,10 +49,15 @@ class RelayClient {
      */
     constructor(web3, config) {
         // TODO: require sign() or privKey
-        this.config = config || {};
+        //fill in defaults:
+        this.config = Object.assign( {
+            httpTimeout : DEFAULT_HTTP_TIMEOUT
+        }, config )
+
         this.web3 = web3;
-        this.httpSend = new HttpWrapper({ timeout: this.config.httpTimeout || DEFAULT_HTTP_TIMEOUT });
-        this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.config);
+        this.httpSend = new HttpWrapper({ timeout: this.config.httpTimeout });
+        this.failedRelays = {}
+        this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.failedRelays, this.config);
     }
 
     createRelayRecipient(addr) {
@@ -154,6 +159,13 @@ class RelayClient {
 
             let callback = async function (error, body) {
                 if (error) {
+                    if ( error.error && error.error.indexOf("timeout")!= -1 ) {
+                        self.failedRelays[relayUrl] = {
+                            lastError : new Date().getTime(),
+                            address : relayAddress,
+                            url : relayUrl
+                        }
+                    }
                     reject(error);
                     return
                 }
