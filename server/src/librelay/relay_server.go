@@ -450,7 +450,21 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		log.Println(err)
 		return
 	}
-	gasLimit := big.NewInt(0)
+	gasOverhead, err := relay.rhub.GasOverhead(callOpt)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	acceptRelayedCallMaxGas, err := relay.rhub.AcceptRelayedCallMaxGas(callOpt)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	postRelayedCallMaxGas, err := relay.rhub.PostRelayedCallMaxGas(callOpt)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	toBalance, err := relay.rhub.Balances(callOpt, request.To)
 	if err != nil {
@@ -483,12 +497,22 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		log.Println(err)
 		return
 	}
-	log.Println("Estimated max charge of relayed tx:",maxCharge)
+	// Maximum gasLimit of relayed tx consists of:
+	// 1. request.GasLimit - user request gasLimit for the relayed function call
+	// 2. gasOverhead - Gas cost of all relayCall() instructions before first gasleft() and last gasleft()
+	// 3. gasReserve - Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
+	// 4. acceptRelayedCallMaxGas & postRelayedCallMaxGas - max gas cost of recipient calls acceptRelayedCall() & postRelayedCall()
+	gasLimit := big.NewInt(0)
+	gasLimit.Add(&request.GasLimit, gasOverhead)
+	gasLimit.Add(gasLimit, gasReserve)
+	gasLimit.Add(gasLimit, acceptRelayedCallMaxGas)
+	gasLimit.Add(gasLimit, postRelayedCallMaxGas)
+	log.Println("Estimated max charge of relayed tx:",maxCharge, "GasLimit of relayed tx:",gasLimit)
 
 	signedTx, err = relay.sendDataTransaction(
 		fmt.Sprintf("Relay(from=%s, to=%s)", request.From.Hex(), request.To.Hex()),
 		func(auth *bind.TransactOpts) (*types.Transaction, error) {
-			auth.GasLimit = gasLimit.Add(&request.GasLimit, gasReserve).Add(gasLimit, gasReserve).Uint64()
+			auth.GasLimit = gasLimit.Uint64()
 			auth.GasPrice = &request.GasPrice
 			return relay.rhub.RelayCall(auth, request.From, request.To,
 				common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,

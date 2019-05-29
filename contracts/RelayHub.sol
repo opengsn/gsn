@@ -22,6 +22,7 @@ contract RelayHub is IRelayHub {
     */
     uint constant public gasOverhead = 47422;
     uint public acceptRelayedCallMaxGas = 50000;
+    uint public postRelayedCallMaxGas = 100000;
 
     mapping(address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
@@ -200,7 +201,6 @@ contract RelayHub is IRelayHub {
      */
     function relayCall(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public {
         uint initialGas = gasleft();
-//        require(balances[to] >= gasPrice * (gasLimit + gasOverhead + gasReserve), "Recipient balance too low");
         require(balances[to] >= gasPrice * initialGas, "Recipient balance too low");
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");
         // Must be from a known relay
@@ -257,7 +257,7 @@ contract RelayHub is IRelayHub {
         // transaction must end with @from at this point
         transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee);
         // Call it with .gas to make sure we have enough gasleft() to finish the transaction even if it reverts
-        (successPost,) = to.call.gas((gasleft() - gasOverhead - gasReserve))(transaction);
+        (successPost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
         require(successPost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");
         return success;
