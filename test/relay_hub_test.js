@@ -113,12 +113,12 @@ contract("RelayHub", function (accounts) {
         assert.equal(7, stake[1]);
     });
 
-    it("should allow anyone to deposit for a recipient contract, but not more than 'minimumStake'", async function() {
+    it("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function() {
         let sample = await SampleRecipient.deployed()
         let depositBefore = await rhub.balances.call(sample.address)
         let deposit = new Big("1000000000000000")
         try {
-            await rhub.depositFor(sample.address, {from: accounts[0], value: new Big(one_ether).times(2)})
+            await rhub.depositFor(sample.address, {from: accounts[0], value: new Big(one_ether).times(3)})
             assert.fail()
         } catch (error) {
             assertErrorMessageCorrect(error, "deposit too big")
@@ -305,7 +305,7 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail();
         } catch (error) {
-            assertErrorMessageCorrect(error, "insufficient funds")
+            assertErrorMessageCorrect(error, "Recipient balance too low")
         }
     });
 
