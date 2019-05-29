@@ -11,3 +11,7 @@ tabookey-gasless-*.tgz
 /server/bin/
 /serverdock/version
 /secret_mnemonic
+/coverage.json
+/coverage/
+/bin/
+/coverageEnv/

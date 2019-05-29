@@ -6,7 +6,7 @@ var RLPReader= artifacts.require("./RLPReader.sol");
 module.exports = function(deployer) {
 	deployer.deploy(RLPReader);
 	deployer.link(RLPReader, RelayHub);
-	deployer.deploy(RelayHub).then(function() {
+	deployer.deploy(RelayHub, {gas: 100000000}).then(function() {
 		return deployer.deploy(SampleRecipient, RelayHub.address);
 	});
 	deployer.link(RelayHub, RelayRecipient);

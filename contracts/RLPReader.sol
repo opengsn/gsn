@@ -91,10 +91,12 @@ library RLPReader {
         assembly {
             byte0 := byte(0, mload(memPtr))
         }
-        if (byte0 < STRING_SHORT_START)
+        if (byte0 < STRING_SHORT_START) {
             return 1;
-        else if (byte0 < STRING_LONG_START)
+        }
+        else if (byte0 < STRING_LONG_START) {
             return byte0 - STRING_SHORT_START + 1;
+        }
         else if (byte0 < LIST_SHORT_START) {
             assembly {
                 let byteLen := sub(byte0, 0xb7) // # of bytes the actual length is
@@ -122,14 +124,18 @@ library RLPReader {
         assembly {
             byte0 := byte(0, mload(memPtr))
         }
-        if (byte0 < STRING_SHORT_START)
+        if (byte0 < STRING_SHORT_START) {
             return 0;
-        else if (byte0 < STRING_LONG_START || (byte0 >= LIST_SHORT_START && byte0 < LIST_LONG_START))
+        }
+        else if (byte0 < STRING_LONG_START || (byte0 >= LIST_SHORT_START && byte0 < LIST_LONG_START)) {
             return 1;
-        else if (byte0 < LIST_SHORT_START)  // being explicit
+        }
+        else if (byte0 < LIST_SHORT_START) { // being explicit
             return byte0 - (STRING_LONG_START - 1) + 1;
-        else
+        }
+        else {
             return byte0 - (LIST_LONG_START - 1) + 1;
+        }
     }
     /** RLPItem conversions into data types **/
     // @returns raw rlp encoding in bytes
