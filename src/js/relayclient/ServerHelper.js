@@ -1,5 +1,9 @@
 const BN = require('web3').utils.toBN;
 
+//relays are "down-scored" in case they timed out a request.
+// they are "forgiven" after this timeout.
+const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 60*30
+
 class ActiveRelayPinger {
 
     // TODO: 'httpSend' should be on a network layer
@@ -107,8 +111,11 @@ class ActiveRelayPinger {
 
 class ServerHelper {
 
-    constructor(httpSend, { verbose,
+    constructor( httpSend, failedRelays,
+            {
+                verbose,
                 minStake, minDelay, //params for relayFilter: filter out this relay if unstakeDelay or stake are too low.
+                relayTimeoutGrace,  //ignore score drop of a relay after this time (seconds)
                 calculateRelayScore, //function: return relay score, higher the better. default uses transactionFee and some randomness
                 relayFilter,        //function: return false to filter out a relay. default uses minStake, minDelay
                 addScoreRandomness,  //function: return Math.random (0..1), to fairly distribute among relays with same score.
@@ -117,10 +124,12 @@ class ServerHelper {
 
         this.httpSend = httpSend
         this.verbose = verbose
+        this.failedRelays = failedRelays
+        this.relayTimeoutGrace = relayTimeoutGrace || DEFAULT_RELAY_TIMEOUT_GRACE_SEC
 
         this.addScoreRandomness = addScoreRandomness || Math.random
 
-        this.calculateRelayScore = calculateRelayScore || this.defaultCalculateRelayScore
+        this.calculateRelayScore = calculateRelayScore || this.defaultCalculateRelayScore.bind(this)
 
         //default filter: either calculateRelayScore didn't set "score" field,
         // or if unstakeDelay is below min, or if stake is below min.
@@ -139,6 +148,15 @@ class ServerHelper {
         //basic score is trasnaction fee (which is %)
         //higher the better.
         let score = 1000-relay.transactionFee
+
+        let failedRelay = this.failedRelays[relay.relayUrl]
+        if ( failedRelay ) {
+            const elapsed = (new Date().getTime() - failedRelay.lastError)/1000
+            if ( elapsed < this.relayTimeoutGrace )
+                score -= 10   //relay failed to answer lately. demote.
+            else
+                delete this.failedRelays[relay.relayUrl]
+        }
 
         return score;
     }
@@ -207,7 +225,7 @@ class ServerHelper {
                     stake: args.stake,
                     unstakeDelay: args.unstakeDelay
                 }
-                relay.score = this.calculateRelayScore(relay) + this.addScoreRandomness()
+                relay.score = this.calculateRelayScore(relay)
                 activeRelays[args.relay] =relay
             } else if (event.event === "RelayRemoved") {
                 delete activeRelays[event.returnValues.relay]
