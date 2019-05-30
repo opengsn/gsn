@@ -172,9 +172,12 @@ class RelayClient {
                 if (self.config.verbose) {
                     console.log("sendViaRelay resp=", body)
                 }
-
+                if (body && body.error) {
+                    reject(body.error);
+                    return
+                }
                 if (!body || !body.nonce) {
-                    reject("Empty body received from server.");
+                    reject("Empty body received from server, or neither 'error' nor 'nonce' fields present.");
                     return
                 }
 
