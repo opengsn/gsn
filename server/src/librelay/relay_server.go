@@ -499,7 +499,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 	// Maximum gasLimit of relayed tx consists of:
 	// 1. request.GasLimit - user request gasLimit for the relayed function call
-	// 2. gasOverhead - Gas cost of all relayCall() instructions before first gasleft() and last gasleft()
+	// 2. gasOverhead - Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
 	// 3. gasReserve - Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
 	// 4. acceptRelayedCallMaxGas & postRelayedCallMaxGas - max gas cost of recipient calls acceptRelayedCall() & postRelayedCall()
 	gasLimit := big.NewInt(0)
