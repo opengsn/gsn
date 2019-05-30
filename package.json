@@ -33,7 +33,7 @@
   "scripts": {
     "test": "npm run test-server && npm run test-js",
     "test-server": "make test-server",
-    "test-js": "run-with-testrpc -p 8544 -l 120000000 './node_modules/.bin/truffle --network npmtest test'",
+    "test-js": "run-with-testrpc -p 8544 -l 8000000 './node_modules/.bin/truffle --network npmtest test'",
     "coverage": "cp parser.js node_modules/solidity-parser-sc/build/parser.js && ./node_modules/.bin/solidity-coverage",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js && http-server webtools/ -o",

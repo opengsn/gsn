@@ -1,6 +1,6 @@
 module.exports = {
 	compileCommand: "cp ../truffle-coverage.js ./truffle.js && truffle compile",
-	testCommand: "cp ../truffle-coverage.js ./truffle.js && truffle test",
+	testCommand: "cp ../truffle-coverage.js ./truffle.js && perl -pi -e 's/7000000/1e8/' migrations/2_deploy_contracts.js && truffle test",
 	deepSkip: true,
 	skipFiles: [
 	  'metacoin/contracts/ConvertLib.sol',
