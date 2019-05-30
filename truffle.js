@@ -15,11 +15,7 @@ module.exports = {
 		verbose: process.env.VERBOSE,
   		host: "127.0.0.1",
   		port: 8545,
-                network_id: "*",
-                //gas: 8000000,  
-                gas:5000000,
-		gasPrice: 1000,
-
+                network_id: "*"
     },
     npmtest: { //used from "npm test". see pakcage.json 
 		verbose: process.env.VERBOSE,

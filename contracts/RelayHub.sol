@@ -171,7 +171,7 @@ contract RelayHub is IRelayHub {
 
     function handleAcceptRelayCall(IRelayRecipient to, bytes memory acceptRelayedCallRawTx) private view returns (uint){
         bool success;
-        uint accept = uint(CanRelayStatus.AcceptRelayedCallUnknownError);
+        uint accept;
         assembly {
             let ptr := mload(0x40)
             let acceptRelayedCallMaxGas := sload(acceptRelayedCallMaxGas_slot)
