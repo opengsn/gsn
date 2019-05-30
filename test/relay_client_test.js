@@ -112,7 +112,33 @@ contract('RelayClient', function (accounts) {
         })
     });
 
-    it("should consider a transaction with an incorrect approval as invalid")
+    it("should consider a transaction with an incorrect approval as invalid", async function () {
+        const expected_error = 13
+        let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
+        let to = sr.address;
+        let options = {
+            approveFunction: ()=>{ return "aaaa6ad4b4fab03bb2feaea2d54c690206e40036e4baa930760e72479da0cc5575779f9db9ef801e144b5e6af48542107f2f094649334b030e2bb44f054429b451"},
+            from: gasLess,
+            to: to,
+            txfee: 12,
+            gas_limit: 1000000
+        }
+        let relay_client_config = {
+            relayUrl: localhostOne,
+            relayAddress: relayAddress,
+            allowed_relay_nonce_gap: 0,
+            verbose: process.env.DEBUG
+        }
+
+        let tbk = new RelayClient(web3, relay_client_config);
+        try {
+            await tbk.relayTransaction(encoded, options);
+            assert.fail()
+        }
+        catch (error){
+            assert.equal(true, error.otherErrors[0].includes("canRelay() view function returned error code=" + expected_error))
+        }
+    });
 
     it("should consider a transaction with a relay tx nonce higher than expected as invalid", async function () {
         let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
