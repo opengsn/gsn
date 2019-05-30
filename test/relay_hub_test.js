@@ -360,6 +360,8 @@ contract("RelayHub", function (accounts) {
             assertErrorMessageCorrect(error, "canUnstake failed")
         }
         await increaseTime(relay.unstakeDelay / 2)
+        canUnstake = await rhub.canUnstake.call(relayAccount);
+        assert.equal(canUnstake, true)
     });
 
     it("should not allow non-owners to unstake", async function () {
@@ -681,32 +683,34 @@ contract("RelayHub", function (accounts) {
     })
 
     it("should revert relayed call on an attempt to withdraw deposit during relayed transaction", async function () {
-
         let withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall();
         assert.equal(withdrawDuringRelayedCall, false);
-        await sr.setWithdrawDuringRelayedCall(true);
-        withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall();
-        assert.equal(withdrawDuringRelayedCall, true);
+        try {
+            await sr.setWithdrawDuringRelayedCall(true);
+            withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall();
+            assert.equal(withdrawDuringRelayedCall, true);
 
-        let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
-        let sig = await getTransactionSignature(web3, from, digest);
+            let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
+            let sig = await getTransactionSignature(web3, from, digest);
 
-        assert.equal(0, await rhub.canRelay(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig));
+            assert.equal(0, await rhub.canRelay(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig));
 
-        let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
-            from: relayAccount,
-            gasPrice: gas_price,
-            gasLimit: gas_limit_any_value
-        });
-        relay_nonce++;
-        let PostRelayedFailed = 3;
-        assert.equal("TransactionRelayed", res.logs[0].event);
-        assert.equal(PostRelayedFailed, res.logs[0].args.status);
+            let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+                from: relayAccount,
+                gasPrice: gas_price,
+                gasLimit: gas_limit_any_value
+            });
+            relay_nonce++;
+            let PostRelayedFailed = 3;
+            assert.equal("TransactionRelayed", res.logs[0].event);
+            assert.equal(PostRelayedFailed, res.logs[0].args.status);
+        } finally {
+            // returning state to previous one
+            await sr.setWithdrawDuringRelayedCall(false);
+            withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall();
+            assert.equal(withdrawDuringRelayedCall, false);
+        }
 
-        // returning state to previous one
-        await sr.setWithdrawDuringRelayedCall(false);
-        withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall();
-        assert.equal(withdrawDuringRelayedCall, false);
 
     });
 
@@ -714,30 +718,34 @@ contract("RelayHub", function (accounts) {
 
         let AcceptRelayedCallReverted = 4;
         let overspendAcceptGas = await sr.overspendAcceptGas();
-        assert.equal(overspendAcceptGas, false);
-        await sr.setOverspendAcceptGas(true);
-        overspendAcceptGas = await sr.overspendAcceptGas();
-        assert.equal(overspendAcceptGas, true);
+        try {
 
-        let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
-        let sig = await getTransactionSignature(web3, from, digest);
+            assert.equal(overspendAcceptGas, false);
+            await sr.setOverspendAcceptGas(true);
+            overspendAcceptGas = await sr.overspendAcceptGas();
+            assert.equal(overspendAcceptGas, true);
 
-        assert.equal(AcceptRelayedCallReverted, await rhub.canRelay(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig));
+            let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
+            let sig = await getTransactionSignature(web3, from, digest);
 
-        let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
-            from: relayAccount,
-            gasPrice: gas_price,
-            gasLimit: gas_limit_any_value
-        });
-        relay_nonce++;
-        let CanRelayFailed = 1;
-        assert.equal("TransactionRelayed", res.logs[0].event);
-        assert.equal(CanRelayFailed, res.logs[0].args.status);
+            assert.equal(AcceptRelayedCallReverted, await rhub.canRelay(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig));
 
-        // returning state to previous one
-        await sr.setOverspendAcceptGas(false);
-        overspendAcceptGas = await sr.overspendAcceptGas();
-        assert.equal(overspendAcceptGas, false);
+            let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+                from: relayAccount,
+                gasPrice: gas_price,
+                gasLimit: gas_limit_any_value
+            });
+            relay_nonce++;
+            let CanRelayFailed = 1;
+            assert.equal("TransactionRelayed", res.logs[0].event);
+            assert.equal(CanRelayFailed, res.logs[0].args.status);
+        } finally {
+            // returning state to previous one
+            await sr.setOverspendAcceptGas(false);
+            overspendAcceptGas = await sr.overspendAcceptGas();
+            assert.equal(overspendAcceptGas, false);
+        }
+
 
     });
 

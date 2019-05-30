@@ -228,7 +228,7 @@ contract RelayHub is IRelayHub {
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
         uint charge = (gasOverhead + initialGas - gasleft()) * gasPrice * (100 + transactionFee) / 100;
         emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(status), charge);
-        // We already checked at the beginning that the recipient has enough balance. This is more
+        // We already checked at the beginning that the recipient has enough balance. This is more of a sanity check/safeMath before we substract from balance
         require(balances[to] >= charge, "Should not get here");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
