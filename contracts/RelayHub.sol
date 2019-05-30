@@ -27,9 +27,6 @@ contract RelayHub is IRelayHub {
     mapping(address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
     enum State {UNKNOWN, STAKED, REGISTERED, REMOVED, PENALIZED}
-    // status flags for TransactionRelayed() event
-    enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PostRelayedFailed}
-    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallUnknownError, AcceptRelayedCallReverted}
 
     struct Relay {
         uint stake;             // Size of the stake
@@ -43,7 +40,7 @@ contract RelayHub is IRelayHub {
     mapping(address => Relay) public relays;
     mapping(address => uint) public balances;
 
-    string public version = "1.0.0.0";
+    string public version = "1.0.0";
 
     function validateStake(address relay) private view {
         require(relays[relay].state == State.STAKED || relays[relay].state == State.REGISTERED, "wrong state for stake");

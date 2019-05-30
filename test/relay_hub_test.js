@@ -95,7 +95,7 @@ contract("RelayHub", function (accounts) {
 
     it("should retrieve version number", async function () {
         let version = await rhub.version();
-        assert.equal(version, "1.0.0.0");
+        assert.equal(version, "1.0.0");
 
     });
 
