@@ -87,6 +87,7 @@ contract RelayRecipient is IRelayRecipient {
     function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns (uint);
     /** the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
     * - usedGas - gas used up to this point. Note that gas calculation (for the purpose of compensation
+    * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction.
     */
     function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee) public;
 }

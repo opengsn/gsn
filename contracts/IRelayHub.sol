@@ -15,13 +15,15 @@ contract IRelayHub {
     event RelayRemoved(address indexed relay, uint unstakeTime);
 
     /**
-     * this events is emited whenever a transaction is relayed.
+     * this events is emitted whenever a transaction is relayed.
      * notice that the actual function call on the target contract might be reverted - in that case, the "success"
      * flag will be set to false.
      * the client uses this event so it can report correctly transaction complete (or revert) to the application.
      * Monitoring tools can use this event to detect liveliness of clients and relays.
+     * Field chargeOrCanRelayStatus is the charge deducted from recipient's balance that is paid to the relay except for one case: when canRelay() failed.
+     * Whenever canRelay() failed, TransactionRelayed emits its status instead of charge, as the recipient is never charged anyway at that point.  
      */
-    event TransactionRelayed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint status, uint charge);
+    event TransactionRelayed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint status, uint chargeOrCanRelayStatus);
     event Deposited(address src, uint amount);
     event Withdrawn(address dest, uint amount);
     event Penalized(address indexed relay, address sender, uint amount);

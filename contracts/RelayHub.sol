@@ -11,23 +11,25 @@ contract RelayHub is IRelayHub {
 
     // Anyone can call certain functions in this singleton and trigger relay processes.
 
-    uint constant minimumStake = 0.1 ether;
-    uint constant minimumUnstakeDelay = 0;
-    uint constant minimumRelayBalance = 0.1 ether;  // can't register/refresh below this amount.
-    uint constant public gasReserve = 99999; // XXX TBD - calculate how much reserve we actually need, to complete the post-call part of relayCall().
+    uint constant public minimumStake = 0.1 ether;
+    uint constant public maximumDeposit = 2 ether;
+    uint constant public minimumUnstakeDelay = 0;
+    uint constant public minimumRelayBalance = 0.1 ether;  // can't register/refresh below this amount.
+    uint constant public gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
-    uint constant public gasOverhead = 47446;
+    uint constant public gasOverhead = 47422;
     uint public acceptRelayedCallMaxGas = 50000;
+    uint public postRelayedCallMaxGas = 100000;
 
     mapping(address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
     enum State {UNKNOWN, STAKED, REGISTERED, REMOVED, PENALIZED}
     // status flags for TransactionRelayed() event
     enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PostRelayedFailed}
-    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallUnkownError, AcceptRelayedCallReverted}
+    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallUnknownError, AcceptRelayedCallReverted}
 
     struct Relay {
         uint stake;             // Size of the stake
@@ -61,7 +63,7 @@ contract RelayHub is IRelayHub {
      * Unused deposited can be withdrawn with `withdraw()`
      */
     function depositFor(address target) public payable {
-        require(msg.value <= minimumStake, "deposit too big");
+        require(msg.value <= maximumDeposit, "deposit too big");
         balances[target] += msg.value;
         require(balances[target] >= msg.value);
         emit Deposited(target, msg.value);
@@ -172,7 +174,7 @@ contract RelayHub is IRelayHub {
 
     function handleAcceptRelayCall(IRelayRecipient to, bytes memory acceptRelayedCallRawTx) private view returns (uint){
         bool success;
-        uint accept = uint(CanRelayStatus.AcceptRelayedCallUnkownError);
+        uint accept = uint(CanRelayStatus.AcceptRelayedCallUnknownError);
         assembly {
             let ptr := mload(0x40)
             let acceptRelayedCallMaxGas := sload(acceptRelayedCallMaxGas_slot)
@@ -199,36 +201,35 @@ contract RelayHub is IRelayHub {
      */
     function relayCall(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public {
         uint initialGas = gasleft();
+        require(balances[to] >= gasPrice * initialGas, "Recipient balance too low");
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");
         // Must be from a known relay
         require(gasPrice <= tx.gasprice, "Invalid gas price");
         // Relay must use the gas price set by the signer
         uint canRelayResult = canRelay(msg.sender, from, IRelayRecipient(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
         if (canRelayResult != 0) {
-            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.CanRelayFailed), 0);
+            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.CanRelayFailed), canRelayResult);
             return;
         }
-
-        // ensure that the last bytes of @transaction are the @from address.
-        // Recipient will trust this reported sender when msg.sender is the known RelayHub.
 
         // gasReserve must be high enough to complete relayCall()'s post-call execution.
         require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
         bool successPost;
         bytes memory ret = new bytes(32);
-        (successPost, ret) = address(this).call(abi.encodeWithSelector(this.recipientCalls.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
+        (successPost, ret) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
+        // We should advance the nonce here, as once we get to this point, the recipient pays for the transaction whether if the relayed call is reverted or not.
         nonces[from]++;
         RelayCallStatus status = RelayCallStatus.OK;
-        if (LibBytes.readUint256(ret, 0) == 0)
+        if (!successPost) {
+            status = RelayCallStatus.PostRelayedFailed;
+        } else if (LibBytes.readUint256(ret, 0) == 0) {
             status = RelayCallStatus.RelayedCallFailed;
+        }
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
         uint charge = (gasOverhead + initialGas - gasleft()) * gasPrice * (100 + transactionFee) / 100;
-        if (!successPost) {
-            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(RelayCallStatus.PostRelayedFailed), charge);
-        } else {
-            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(status), charge);
-        }
-        require(balances[to] >= charge, "insufficient funds");
+        emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint(status), charge);
+        // We already checked at the beginning that the recipient has enough balance. This is more
+        require(balances[to] >= charge, "Should not get here");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
     }
@@ -238,7 +239,11 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction, 0), status, charge);
     }
 
-    function recipientCalls(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
+    function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
+        // This function can only be called by RelayHub.
+        // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
+        // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
+
         require(msg.sender == address(this), "Only RelayHub should call this function");
 
         // ensure that the last bytes of @transaction are the @from address.
@@ -250,7 +255,8 @@ contract RelayHub is IRelayHub {
         (success,) = to.call.gas(gasLimit)(transaction);
         // transaction must end with @from at this point
         transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee);
-        (successPost,) = to.call.gas((gasOverhead + initialGas - gasleft()))(transaction);
+        // Call it with .gas to make sure we have enough gasleft() to finish the transaction even if it reverts
+        (successPost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
         require(successPost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");
         return success;
