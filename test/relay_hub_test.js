@@ -31,8 +31,8 @@ contract('SampleRecipient', function (accounts) {
     it("should emit message with msgSender and realSender", async function () {
         let sample = await SampleRecipient.deployed()
         let result = await sample.emitMessage(message);
-        var log = result.logs[0];
-        var args = log.args;
+        let log = result.logs[0];
+        let args = log.args;
         assert.equal("SampleRecipientEmitted", log.event);
         assert.equal(args.message, message);
         assert.equal(accounts[0], args.msgSender);
@@ -113,7 +113,7 @@ contract("RelayHub", function (accounts) {
         assert.equal(7, stake[1]);
     });
 
-    it("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function() {
+    it("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function () {
         let sample = await SampleRecipient.deployed()
         let depositBefore = await rhub.balances.call(sample.address)
         let deposit = new Big("1000000000000000")
@@ -193,9 +193,23 @@ contract("RelayHub", function (accounts) {
     /**
      * Depends on 'test_register_relay'
      */
-    it("test canRelay", async function () {
+    it("should get '0' (Success Code) from 'canRelay' for a valid transaction", async function () {
         let canRelay = await rhub.canRelay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
         assert.equal(0, canRelay.valueOf());
+    });
+
+    it("should get '1' (Wrong Signature) from 'canRelay' for a transaction with a wrong signature", async function () {
+        let wrongSig = "0xaaaa6ad4b4fab03bb2feaea2d54c690206e40036e4baa930760e72479da0cc5575779f9db9ef801e144b5e6af48542107f2f094649334b030e2bb44f054429b451"
+        let canRelay = await rhub.canRelay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, wrongSig);
+        assert.equal(1, canRelay.valueOf());
+    });
+
+    it("should get '2' (Wrong Nonce) from 'canRelay' for a transaction with a wrong nonce", async function () {
+        let wrongNonce = 777;
+        let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, wrongNonce, rhub.address, relayAccount);
+        let sig = await getTransactionSignature(web3, accounts[0], digest)
+        let canRelay = await rhub.canRelay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, wrongNonce, sig);
+        assert.equal(2, canRelay.valueOf());
     });
 
     // TODO: gasPrice change flow. As discussed, in case the Relay decides to ACCELERATE mining of tx he ALREADY signed,
@@ -214,7 +228,7 @@ contract("RelayHub", function (accounts) {
         var log_relayed = result.logs[0];
         var args_relayed = log_relayed.args;
         assert.equal("TransactionRelayed", log_relayed.event);
-        assert.equal(args_relayed.selector, sr.contract.methods.emitMessage(message).encodeABI().slice(0,10));
+        assert.equal(args_relayed.selector, sr.contract.methods.emitMessage(message).encodeABI().slice(0, 10));
         assert.equal(0, args_relayed.status.toNumber())
         var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
             fromBlock: startBlock,
@@ -275,7 +289,7 @@ contract("RelayHub", function (accounts) {
         });
         assert.equal(res.logs[0].event, "TransactionRelayed")
         let canRelayFailed = 1;
-        assert.equal(res.logs[0].args.status,canRelayFailed)
+        assert.equal(res.logs[0].args.status, canRelayFailed)
         let canRelay = await rhub.canRelay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
         assert.equal(11, canRelay.valueOf().toString())
     });
@@ -442,10 +456,10 @@ contract("RelayHub", function (accounts) {
         unsignedTransaction1Encoded = encodeRLP(transaction1)
         unsignedTransaction2Encoded = encodeRLP(transaction2)
         let hash1 = "0x" + transaction1.hash(false).toString('hex')
-        sig1 = utils.getTransactionSignatureWithKey(privKey,hash1,false)
+        sig1 = utils.getTransactionSignatureWithKey(privKey, hash1, false)
         assert.equal(sig1.length, 132);
         let hash2 = "0x" + transaction2.hash(false).toString('hex')
-        sig2 = utils.getTransactionSignatureWithKey(privKey,hash2,false)
+        sig2 = utils.getTransactionSignatureWithKey(privKey, hash2, false)
         assert.equal(sig2.length, 132);
 
         snitching_account = accounts[7];
@@ -549,7 +563,7 @@ contract("RelayHub", function (accounts) {
 
     it("should revert an attempt to penalize relay with two identical transactions", async function () {
         try {
-            await rhub.penalizeRepeatedNonce(unsignedTransaction1Encoded ||"0x", sig1||"0x", unsignedTransaction1Encoded||"0x", sig1||"0x", {
+            await rhub.penalizeRepeatedNonce(unsignedTransaction1Encoded || "0x", sig1 || "0x", unsignedTransaction1Encoded || "0x", sig1 || "0x", {
                 from: snitching_account,
                 gasPrice: gasPricePenalize,
                 gasLimit: gas_limit_any_value
@@ -586,7 +600,7 @@ contract("RelayHub", function (accounts) {
         await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[6], accounts[0]);
         let privKeySix = Buffer.from("e485d098507f54e7733a205420dfddbe58db035fa577fc294ebd14db90767a52", "hex");
         let hash = "0x" + transaction2.hash(false).toString('hex')
-        let sig2_fromAccountSix = utils.getTransactionSignatureWithKey(privKeySix,hash,false)
+        let sig2_fromAccountSix = utils.getTransactionSignatureWithKey(privKeySix, hash, false)
         assert.equal(sig2_fromAccountSix.length, 132);
 
         try {
@@ -608,8 +622,7 @@ contract("RelayHub", function (accounts) {
                 // Relay was removed in some previous test, unless skipped
                 try {
                     await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", relayAccount, accounts[0]);
-                }
-                catch (e) {
+                } catch (e) {
                     console.log(e)
                 }
                 // This is required to initialize rhub's balances[acc[0]] value
@@ -633,7 +646,7 @@ contract("RelayHub", function (accounts) {
             let digest = await getTransactionHash(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
             let sig = await getTransactionSignature(web3, from, digest)
 
-            assert.equal(0, await rhub.canRelay(relayAccount, from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig) )
+            assert.equal(0, await rhub.canRelay(relayAccount, from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig))
 
             let res = await rhub.relayCall(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, sig, {
                 from: relayAccount,
@@ -656,7 +669,7 @@ contract("RelayHub", function (accounts) {
                 let cur_overhead = await rhub.gasOverhead()
                 let gas_diff = (expenses - revenue) / gas_price
                 if (gas_diff != 0) {
-                    console.log( "== zero-fee unmatched gas. RelayHub.gasOverhead should be: "+
+                    console.log("== zero-fee unmatched gas. RelayHub.gasOverhead should be: " +
                         (parseInt(cur_overhead) + gas_diff) + " (cur_overhead=" + cur_overhead + ")")
                 }
             }
@@ -665,8 +678,7 @@ contract("RelayHub", function (accounts) {
             // I don't know how does rounding work for BigNumber, but it seems to be broken to me
             if (received_coeff.lessThan(1)) {
                 received_coeff = received_coeff.toPrecision(2, BigNumber.ROUND_HALF_UP)
-            }
-            else {
+            } else {
                 received_coeff = received_coeff.toPrecision(3, BigNumber.ROUND_HALF_UP)
             }
             assert.equal(requested_coeff, received_coeff)
@@ -716,7 +728,7 @@ contract("RelayHub", function (accounts) {
 
     it("should revert an attempt to use more than allowed gas for acceptRelayedCall(50000)", async function () {
 
-        let AcceptRelayedCallReverted = 4;
+        let AcceptRelayedCallReverted = 3;
         let overspendAcceptGas = await sr.overspendAcceptGas();
         try {
 
@@ -735,7 +747,6 @@ contract("RelayHub", function (accounts) {
                 gasPrice: gas_price,
                 gasLimit: gas_limit_any_value
             });
-            relay_nonce++;
             let CanRelayFailed = 1;
             assert.equal("TransactionRelayed", res.logs[0].event);
             assert.equal(CanRelayFailed, res.logs[0].args.status);
@@ -747,6 +758,48 @@ contract("RelayHub", function (accounts) {
         }
 
 
+    });
+
+    it("should revert the 'relayedCall' if 'postRelayedCall' reverts", async function () {
+
+        let PostRelayedCallReverted = 3;
+        let revertPostRelayCall = await sr.revertPostRelayCall();
+        try {
+
+            assert.equal(revertPostRelayCall, false);
+            await sr.setRevertPostRelayCall(true);
+
+            revertPostRelayCall = await sr.revertPostRelayCall();
+            assert.equal(revertPostRelayCall, true);
+
+            let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
+            let sig = await getTransactionSignature(web3, from, digest);
+
+            let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+                from: relayAccount,
+                gasPrice: gas_price,
+                gasLimit: gas_limit_any_value
+            });
+
+            let startBlock = web3.eth.blockNumber
+            // There should not be an event emitted, which means the result of 'relayCall' was indeed reverted
+            var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
+                fromBlock: startBlock,
+                toBlock: 'latest'
+            });
+            assert.equal(0, logs_messages.length)
+
+            relay_nonce++;
+
+            assert.equal("TransactionRelayed", res.logs[0].event);
+            assert.equal(PostRelayedCallReverted, res.logs[0].args.status);
+            assert.equal(1, res.logs.length);
+        } finally {
+            // returning state to previous one
+            await sr.setRevertPostRelayCall(false);
+            revertPostRelayCall = await sr.revertPostRelayCall();
+            assert.equal(revertPostRelayCall, false);
+        }
     });
 
 });

@@ -15,6 +15,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
     // Testing RelayHub: Looping to spend more than acceptRelayedCallMaxGas (50000)
     bool public overspendAcceptGas;
 
+    bool public revertPostRelayCall;
+
+    bool public rejectAcceptRelayCall;
+
     constructor(IRelayHub rhub) public {
         initRelayHub(rhub);
     }
@@ -42,6 +46,14 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     function setOverspendAcceptGas(bool val) public{
         overspendAcceptGas = val;
+    }
+
+    function setRevertPostRelayCall(bool val) public{
+        revertPostRelayCall = val;
+    }
+
+    function setRejectAcceptRelayCall(bool val) public{
+        rejectAcceptRelayCall = val;
     }
 
     function() external payable {}
@@ -79,6 +91,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
         if ( relaysWhitelist[relay] ) return 0;
         if (from == blacklisted) return 11;
+        if ( rejectAcceptRelayCall ) return 12;
         
         // this is an example of how the dapp can provide an offchain approval to a transaction
         if (approval.length == 65) {
@@ -107,6 +120,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
     function postRelayedCall(address /*relay*/ , address /*from*/, bytes memory /*encodedFunction*/, bool /*success*/, uint usedGas, uint transactionFee) public {
 
         emit SampleRecipientPostCall(usedGas * tx.gasprice * (transactionFee +100)/100);
+
+        if (revertPostRelayCall){
+            revert("You asked me to revert, remember?");
+        }
     }
 
 }

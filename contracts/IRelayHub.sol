@@ -4,7 +4,7 @@ contract IRelayHub {
 
     // status flags for TransactionRelayed() event
     enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PostRelayedFailed}
-    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallUnknownError, AcceptRelayedCallReverted}
+    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallReverted}
 
     event Staked(address indexed relay, uint stake);
     event Unstaked(address indexed relay, uint stake);
