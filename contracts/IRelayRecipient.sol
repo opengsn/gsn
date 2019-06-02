@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0 <0.6.0;
+pragma solidity ^0.5.5;
 
 contract IRelayRecipient {
 
@@ -15,9 +15,13 @@ contract IRelayRecipient {
     function getRecipientBalance() public view returns (uint);
 
     /*
+     * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
+     * This method is not called directly, by through RelayHub.canRelay()
+     *
      *  @return "0" if the the contract is willing to accept the charges from this sender, for this function call.
      *      any other value is a failure. actual value is for diagnostics only.
-     *** Note :values below 10 are reserved by canRelay
+     *      ** Note: values below 10 are reserved by canRelay
+
      *  @param relay the relay that attempts to relay this function call.
      *          the contract may restrict some encoded functions to specific known relays.
      *  @param from the sender (signer) of this function call.
@@ -30,13 +34,17 @@ contract IRelayRecipient {
      */
     function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns (uint);
 
-    /**
-     * This method is called after the relayed call.
+    /** this method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
      * the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
-     * - success - true if the relayed call succeeded, false if it reverted
-     * - usedGas - gas used up to this point. Note that gas calculation (for the purpose of compensation
-     *   to the relay) is done after this method returns.
+     *
+     * @param success - true if the relayed call succeeded, false if it reverted
+     * @param usedGas - gas used up to this point. The recipient may use this information to perform local booking and
+     *   charge the sender for this call (e.g. in tokens).
+     *   Note that the relay's compensation will also include gas used by postRelayedCall itself.
+     *
+     * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
+     * (that is, the relay will still get compensated)
      */
     function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee) public;
 }

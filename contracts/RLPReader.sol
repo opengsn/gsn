@@ -2,7 +2,7 @@
 * Taken from https://github.com/hamdiallam/Solidity-RLP
 */
 
-pragma solidity >=0.4.0 <0.6.0;
+pragma solidity ^0.5.5;
 
 library RLPReader {
 

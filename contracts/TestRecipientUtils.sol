@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0 <0.6.0;
+pragma solidity ^0.5.5;
 
 import './GsnUtils.sol';
 import './RelayHub.sol';

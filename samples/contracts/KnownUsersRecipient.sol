@@ -29,7 +29,7 @@ contract KnownUsersRecipient is RelayRecipient {
      * @param _rhub - the relay hub we're connected to.
      */
     constructor(RelayHub _rhub, address[] _initialAdmins) public {
-		initRelayHub(_rhub);
+		setRelayHub(_rhub);
         for ( uint i=0; i< _initialAdmins.length; i++ ) {
             admins[_initialAdmins[i]] = true;
         }
