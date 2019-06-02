@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0 <0.6.0;
+pragma solidity ^0.5.5;
 
 contract IRelayHub {
 
@@ -36,17 +36,48 @@ contract IRelayHub {
 
     function relayCall(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public;
 
+    /**
+     * deposit ether for a contract.
+     * This ether will be used to repay relay calls into this contract.
+     * Contract owner should monitor the balance of his contract, and make sure
+     * to deposit more, otherwise the contract won't be able to receive relayed calls.
+     * Unused deposited can be withdrawn with `withdraw()`
+     */
     function depositFor(address target) public payable;
 
     function balanceOf(address target) external view returns (uint256);
 
+    /**
+     * add stake for the given relay.
+     * The caller of this method is the relay owner.
+     * the value of this method is added to the current stake of this relay.
+     *
+     * @param relayaddr the relay to add stake for.
+     * @param unstakeDelay - the minimum time before the owner can unstake this relay. This number can be increased,
+     *          but neven decreased for a given relay.
+     */
     function stake(address relayaddr, uint unstakeDelay) external payable;
 
     function stakeOf(address relayaddr) external view returns (uint256);
 
     function ownerOf(address relayaddr) external view returns (address);
 
+    /**
+     * move the relay's stake (after its unstakeDelay) to the owner.
+     * must be called by the relay's owner
+     */
     function unstake(address _relay) public;
+
+    /**
+     * withdraw funds.
+     * caller is either a relay owner, withdrawing collected transaction fees.
+     * or a IRelayRecipient contract, withdrawing its deposit.
+     * note that while everyone can `depositFor()` a contract, only
+     * the contract itself can withdraw its funds.
+     *
+     * So in order to be able to withdraw its own deposited funds, a contract MUST call this method
+     * (from an owner-only method)
+     */
     function withdraw(uint amount) public;
 }
 

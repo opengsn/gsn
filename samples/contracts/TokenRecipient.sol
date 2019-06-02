@@ -27,7 +27,7 @@ contract TokenRecipient is RelayRecipient {
      * @param _txPrice - amount of tokens to take for each request.
      */
     constructor(RelayHub _rhub, address _tokenHolder, ERC20Interface _token, uint _txPrice) public {
-		initRelayHub(_rhub);
+		setRelayHub(_rhub);
         mytoken  = _token;
         txPrice = _txPrice;
         tokenHolder = _tokenHolder;

@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0 <0.6.0;
+pragma solidity ^0.5.5;
 
 import "./IRelayHub.sol";
 import "./IRelayRecipient.sol";
@@ -16,6 +16,7 @@ contract RelayHub is IRelayHub {
     uint constant public minimumUnstakeDelay = 0;
     uint constant public minimumRelayBalance = 0.1 ether;  // can't register/refresh below this amount.
     uint constant public gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
+
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
@@ -143,7 +144,7 @@ contract RelayHub is IRelayHub {
         require(relays[relay].owner == msg.sender, "not owner");
         relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
         // Start the unstake counter
-        if (relays[relay].state != State.PENALIZED) {
+        if (relays[relay].state != State.PENALIZED && relays[relay].state != State.REMOVED) {
             relays[relay].state = State.REMOVED;
         }
         emit RelayRemoved(relay, relays[relay].unstakeTime);
@@ -154,17 +155,21 @@ contract RelayHub is IRelayHub {
     // for contract-specific checks.
     // returns "0" if the relay is valid. other values represent errors.
     // values 1..10 are reserved for canRelay. other values can be used by acceptRelayedCall of target contracts.
+    // possible errors (defined in CanRelayStatus enum):
+    // - WrongSignature - not signed by sender.
+    // - WrongNonce - sender's nonce doesn't match
+    // - AcceptRelayedCallReverted - recipient's acceptRelayedCall didn't return a value, but reverted.
+
     function canRelay(address relay, address from, IRelayRecipient to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public view returns (uint) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
         bytes32 signedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashedMessage));
         if (!GsnUtils.checkSig(from, signedMessage, approval))  // Verify the sender's signature on the transaction
             return uint(CanRelayStatus.WrongSignature);
-        // @from hasn't signed the transaction properly
-        if (nonces[from] != nonce)
+
+        if (nonces[from] != nonce)   // Not a current transaction.  May be a replay attempt.
             return uint(CanRelayStatus.WrongNonce);
-        // Not a current transaction.  May be a replay attempt.
-        // XXX check @to's balance, roughly estimate if it has enough balance to pay the transaction fee.  It's the relay's responsibility to verify, but check here too.
+
         bytes memory acceptRelayedCallRawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector, relay, from, encodedFunction, gasPrice, transactionFee, approval);
         return handleAcceptRelayCall(to, acceptRelayedCallRawTx);
     }

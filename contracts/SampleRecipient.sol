@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0 <0.6.0;
+pragma solidity ^0.5.5;
 
 import "./GsnUtils.sol";
 import "./IRelayHub.sol";
@@ -20,7 +20,8 @@ contract SampleRecipient is RelayRecipient, Ownable {
     bool public rejectAcceptRelayCall;
 
     constructor(IRelayHub rhub) public {
-        initRelayHub(rhub);
+
+        setRelayHub(rhub);
     }
 
     function deposit() public payable {

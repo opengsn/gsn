@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0 <0.6.0;
+pragma solidity ^0.5.5;
 
 // Contract that implements the relay recipient protocol.  Inherited by Gatekeeper, or any other relay recipient.
 //
@@ -20,20 +20,13 @@ contract RelayRecipient is IRelayRecipient {
     }
 
     /**
-     * initialize the IRelayHub.
-     * contracts usually call this method from the constructor (using a constract IRelayHub, or receiving
-     * one in the constructor)
-     * This method might also be called by the owner, in order to use a new IRelayHub - since the IRelayHub
-     * itself is not an upgradable contract.
+     * Initialize the RelayHub of this contract.
+     * Must be called at least once (e.g. from the constructor), so that the contract can accept relayed calls.
+     * For ownable contracts, there should be a method to update the RelayHub, in case a new hub is deployed (since
+     * the RelayHub itself is not upgradeable)
+     * Otherwise, the contract might be locked on a dead hub, with no relays.
      */
-    function initRelayHub(IRelayHub _rhub) internal {
-        require(relayHub == IRelayHub(0), "initRelayHub: rhub already set");
-        setRelayHub(_rhub);
-    }
-
     function setRelayHub(IRelayHub _rhub) internal {
-        // Normally called just once, during initRelayHub.
-        // Left as a separate internal function, in case a contract wishes to have its own update mechanism for RelayHub.
         relayHub = _rhub;
 
         //attempt a read method, just to validate the relay is a valid RelayHub contract.
@@ -62,6 +55,12 @@ contract RelayRecipient is IRelayRecipient {
         return sender;
     }
 
+    /**
+     * return the sender of this call.
+     * if the call came through the valid RelayHub, return the original sender.
+     * otherwise, return `msg.sender`
+     * should be used in the contract anywhere instead of msg.sender
+     */
     function getSender() public view returns (address) {
         return getSenderFromData(msg.sender, msg.data);
     }
@@ -79,16 +78,5 @@ contract RelayRecipient is IRelayRecipient {
         }
         return origMsgData;
     }
-    /*** Note :values below 10 are reserved by canRelay
-    *  @param encodedFunction the encoded function call (without any ethereum signature).
-    *  @param gasPrice - the gas price for this transaction
-    *  @param transactionFee - the relay compensation (in %) for this transaction
-    */
-    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns (uint);
-    /** the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
-    * - usedGas - gas used up to this point. Note that gas calculation (for the purpose of compensation
-    * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction.
-    */
-    function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee) public;
 }
 
