@@ -115,8 +115,10 @@ contract("RelayHub", function (accounts) {
         let stake = await rhub.relays(relayAccount)
         assert.equal(expected_stake, new Big(stake[0]).sub(z));
         assert.equal(7, stake[1]);
-    });
 
+        assert.equal(expected_stake, await rhub.stakeOf(relayAccount));
+        assert.equal(ownerAccount, await rhub.ownerOf(relayAccount));
+    })
     it("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function () {
         let sample = await SampleRecipient.deployed()
         let depositBefore = await rhub.balances.call(sample.address)
@@ -223,12 +225,17 @@ contract("RelayHub", function (accounts) {
 
         let startBlock = web3.eth.blockNumber
 
+        assert.equal(relay_nonce, await rhub.getNonce(from) )
+
         let result = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
             from: relayAccount,
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
         });
         relay_nonce++;
+
+        assert.equal(relay_nonce, await rhub.getNonce(from) )
+
         var log_relayed = result.logs[0];
         var args_relayed = log_relayed.args;
         assert.equal("TransactionRelayed", log_relayed.event);
@@ -620,9 +627,9 @@ contract("RelayHub", function (accounts) {
     });
 
     [0, 1, 3, 5, 10, 50, 100, 200].forEach(requested_fee => {
-        it("should compensate relay with requested fee of " + requested_fee + "%", async function () {
         //avoid duplicate coverage checks. they do the same, and take a lot of time:
         if ( requested_fee>0 && process.env.MODE=='coverage' ) return
+        it("should compensate relay with requested fee of " + requested_fee + "%", async function () {
             /* Now this is stupid... :-( */
             if (requested_fee === 0) {
                 // Relay was removed in some previous test, unless skipped
