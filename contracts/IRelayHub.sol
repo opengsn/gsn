@@ -3,7 +3,7 @@ pragma solidity ^0.5.5;
 contract IRelayHub {
 
     // status flags for TransactionRelayed() event
-    enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PostRelayedFailed}
+    enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PreOrPostRelayedFailed}
     enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallReverted}
 
     event Staked(address indexed relay, uint stake);

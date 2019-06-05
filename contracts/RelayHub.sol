@@ -24,6 +24,7 @@ contract RelayHub is IRelayHub {
     uint constant public gasOverhead = 47422;
     uint public acceptRelayedCallMaxGas = 50000;
     uint public postRelayedCallMaxGas = 100000;
+    uint public preRelayedCallMaxGas = 100000;
 
     mapping(address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
@@ -219,14 +220,14 @@ contract RelayHub is IRelayHub {
 
         // gasReserve must be high enough to complete relayCall()'s post-call execution.
         require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
-        bool successPost;
+        bool successPrePost;
         bytes memory ret = new bytes(32);
-        (successPost, ret) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
+        (successPrePost, ret) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
         // We should advance the nonce here, as once we get to this point, the recipient pays for the transaction whether if the relayed call is reverted or not.
         nonces[from]++;
         RelayCallStatus status = RelayCallStatus.OK;
-        if (!successPost) {
-            status = RelayCallStatus.PostRelayedFailed;
+        if (!successPrePost) {
+            status = RelayCallStatus.PreOrPostRelayedFailed;
         } else if (LibBytes.readUint256(ret, 0) == 0) {
             status = RelayCallStatus.RelayedCallFailed;
         }
@@ -246,23 +247,27 @@ contract RelayHub is IRelayHub {
 
     function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
         // This function can only be called by RelayHub.
-        // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
+        // In order to Revert the client's relayedCall if preRelayedCall/postRelayedCall reverts, we wrap them in one function.
         // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
 
         require(msg.sender == address(this), "Only RelayHub should call this function");
 
+        bool successPrePost;
+        bytes memory transaction = abi.encodeWithSelector(IRelayRecipient(to).preRelayedCall.selector, relayAddr, from, encodedFunction, (gasOverhead + initialGas - gasleft()), transactionFee);
+        (successPrePost,) = to.call.gas(preRelayedCallMaxGas)(transaction);
+        require(successPrePost, "preRelayedCall reverted - reverting the relayed transaction");
+
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.
-        bytes memory transaction = abi.encodePacked(encodedFunction, from);
+        transaction = abi.encodePacked(encodedFunction, from);
         bool success;
-        bool successPost;
         uint balanceBefore = balances[to];
         (success,) = to.call.gas(gasLimit)(transaction);
         // transaction must end with @from at this point
         transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee);
         // Call it with .gas to make sure we have enough gasleft() to finish the transaction even if it reverts
-        (successPost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
-        require(successPost, "postRelayedCall reverted - reverting the relayed transaction");
+        (successPrePost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
+        require(successPrePost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");
         return success;
     }

@@ -460,6 +460,11 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		log.Println(err)
 		return
 	}
+	preRelayedCallMaxGas, err := relay.rhub.PreRelayedCallMaxGas(callOpt)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	postRelayedCallMaxGas, err := relay.rhub.PostRelayedCallMaxGas(callOpt)
 	if err != nil {
 		log.Println(err)
@@ -501,12 +506,13 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	// 1. request.GasLimit - user request gasLimit for the relayed function call
 	// 2. gasOverhead - Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
 	// 3. gasReserve - Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
-	// 4. acceptRelayedCallMaxGas & postRelayedCallMaxGas - max gas cost of recipient calls acceptRelayedCall() & postRelayedCall()
+	// 4. acceptRelayedCallMaxGas, postRelayedCallMaxGas, preRelayedCallMaxGas - max gas cost of recipient calls acceptRelayedCall(), postRelayedCall() preRelayedCall()
 	gasLimit := big.NewInt(0)
 	gasLimit.Add(&request.GasLimit, gasOverhead)
 	gasLimit.Add(gasLimit, gasReserve)
 	gasLimit.Add(gasLimit, acceptRelayedCallMaxGas)
 	gasLimit.Add(gasLimit, postRelayedCallMaxGas)
+	gasLimit.Add(gasLimit, preRelayedCallMaxGas)
 	log.Println("Estimated max charge of relayed tx:",maxCharge, "GasLimit of relayed tx:",gasLimit)
 
 	signedTx, err = relay.sendDataTransaction(

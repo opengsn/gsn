@@ -16,6 +16,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     bool public overspendAcceptGas;
 
     bool public revertPostRelayCall;
+    bool public revertPreRelayCall;
 
     bool public rejectAcceptRelayCall;
 
@@ -47,6 +48,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     function setOverspendAcceptGas(bool val) public{
         overspendAcceptGas = val;
+    }
+
+    function setRevertPreRelayCall(bool val) public{
+        revertPreRelayCall = val;
     }
 
     function setRevertPostRelayCall(bool val) public{
@@ -93,7 +98,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
         if ( relaysWhitelist[relay] ) return 0;
         if (from == blacklisted) return 11;
         if ( rejectAcceptRelayCall ) return 12;
-        
+
         // this is an example of how the dapp can provide an offchain approval to a transaction
         if (approval.length == 65) {
             // No owner signature given - proceed as usual (for existing tests)
@@ -113,6 +118,17 @@ contract SampleRecipient is RelayRecipient, Ownable {
         uint i = 0;
         while (true) {
             i++;
+        }
+    }
+
+    event SampleRecipientPreCall(uint usedGas );
+
+    function preRelayedCall(address /*relay*/, address /*from*/, bytes memory /*encodedFunction*/, uint usedGas, uint transactionFee) public {
+
+        emit SampleRecipientPreCall(usedGas * tx.gasprice * (transactionFee +100)/100);
+
+        if (revertPreRelayCall){
+            revert("You asked me to revert, remember?");
         }
     }
 

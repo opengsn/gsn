@@ -16,7 +16,7 @@ contract IRelayRecipient {
 
     /*
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
-     * This method is not called directly, by through RelayHub.canRelay()
+     * Note: Accepting this call means paying for the tx whether the relayed call reverted or not.
      *
      *  @return "0" if the the contract is willing to accept the charges from this sender, for this function call.
      *      any other value is a failure. actual value is for diagnostics only.
@@ -34,6 +34,19 @@ contract IRelayRecipient {
      */
     function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory approval) public view returns (uint);
 
+    /** this method is called before the actual relayed function call.
+     * It may be used to charge the caller before (in conjuction with refunding him later in postRelayedCall for example).
+     * the method is given all parameters of acceptRelayedCall and actual used gas.
+     *
+     * @param usedGas - gas used up to this point. The recipient may use this information to perform local booking and
+     *   charge the sender for this call (e.g. in tokens).
+     *   Note that the relay's compensation will also include gas used by preRelayedCall itself.
+     *
+     * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
+     * (that is, the relay will still get compensated)
+     */
+    function preRelayedCall(address relay, address from, bytes memory encodedFunction, uint usedGas, uint transactionFee) public;
+
     /** this method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
      * the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
@@ -47,4 +60,5 @@ contract IRelayRecipient {
      * (that is, the relay will still get compensated)
      */
     function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee) public;
+
 }

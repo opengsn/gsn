@@ -196,15 +196,15 @@ contract('RelayClient', function (accounts) {
         SampleRecipient.web3.setProvider(relayProvider)
 
         let res = await sr.emitMessage("hello world", {from: gasLess})
-        assert.equal(res.logs[0].event, "SampleRecipientEmitted")
-        assert.equal(res.logs[0].args.message, "hello world")
-        assert.equal(res.logs[0].args.realSender, gasLess)
-        assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
+        assert.equal(res.logs[1].event, "SampleRecipientEmitted")
+        assert.equal(res.logs[1].args.message, "hello world")
+        assert.equal(res.logs[1].args.realSender, gasLess)
+        assert.equal(res.logs[1].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
         res = await sr.emitMessage("hello again", { from: accounts[3] })
-        assert.equal(res.logs[0].event, "SampleRecipientEmitted")
-        assert.equal(res.logs[0].args.message, "hello again")
+        assert.equal(res.logs[1].event, "SampleRecipientEmitted")
+        assert.equal(res.logs[1].args.message, "hello again")
 
-        assert.equal(res.logs[0].args.realSender, accounts[3])
+        assert.equal(res.logs[1].args.realSender, accounts[3])
 
     })
 
