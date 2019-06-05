@@ -55,25 +55,25 @@ The relays network is a free market, where relays compete based on transaction f
 
 Prerequisites:
 
--	node, npm
+-	node, yarn
 - 	truffle
 -	docker
 
 Install node pakcages:
 
-	npm install
+	yarn
 
 
 
 Compile and run tests: (For Docker users)
 
-	./dock/run.sh npm install
+	./dock/run.sh yarn
 
-	./dock/run.sh npm test
+	./dock/run.sh yarn test
 
 The above is a docker wrapper, containing build prerequisites (`go`, `abigen`, `solc`). If you have them installed, you can run instead:
 
-	npm test
+	yarn test
 
 ### Running a web client
 
@@ -105,7 +105,7 @@ Notes
 	Provides APIs to find a good relay, and to send transactions through it.
 	The library hooks the local web3, so that any loaded contract API will go through the relay.
 
-note that `npm test` above runs the entire suite: it compiles the server, then launches *ganache-cli* node, deploys the needed component and starts the relay server. then it launches truffle test to run the client tests against the relay server and the contracts on the blockchain.
+note that `yarn test` above runs the entire suite: it compiles the server, then launches *ganache-cli* node, deploys the needed component and starts the relay server. then it launches truffle test to run the client tests against the relay server and the contracts on the blockchain.
 
 ### Client modifications.
 

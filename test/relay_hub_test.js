@@ -28,6 +28,8 @@ contract('SampleRecipient', function (accounts) {
     // TODO: account with no ether
     var expected_real_sender = accounts[0];
 
+    global.saveCoverageAtEnd(this)
+
     it("should emit message with msgSender and realSender", async function () {
         let sample = await SampleRecipient.deployed()
         let result = await sample.emitMessage(message);
@@ -66,6 +68,8 @@ contract('SampleRecipient', function (accounts) {
 
 const RelayHub = artifacts.require("./RelayHub.sol");
 contract("RelayHub", function (accounts) {
+
+    global.saveCoverageAtEnd(this)
 
     assert.ok(web3.version.toString().indexOf("1.0") >= 0, "Must use web3>=1.0 (truffle 5)")
 
@@ -617,6 +621,8 @@ contract("RelayHub", function (accounts) {
 
     [0, 1, 3, 5, 10, 50, 100, 200].forEach(requested_fee => {
         it("should compensate relay with requested fee of " + requested_fee + "%", async function () {
+        //avoid duplicate coverage checks. they do the same, and take a lot of time:
+        if ( requested_fee>0 && process.env.MODE=='coverage' ) return
             /* Now this is stupid... :-( */
             if (requested_fee === 0) {
                 // Relay was removed in some previous test, unless skipped

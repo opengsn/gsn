@@ -7,22 +7,29 @@ let secret_mnemonic
 if (fs.existsSync(secret_mnemonic_file)) {
   secret_mnemonic = fs.readFileSync(secret_mnemonic_file , {encoding:'utf8'})
 }
+
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // to customize your Truffle configuration!
   networks: {
+
     development: {
-		verbose: process.env.VERBOSE,
+      provider: undefined,
+     	verbose: process.env.VERBOSE,
   		host: "127.0.0.1",
   		port: 8545,
-                network_id: "*"
+      network_id: "*"
+    },
+    coverage: { //coverage/trace provider. note that it currently can't run extrnal-process relay.
+	     provider : require( './coverage-prov.js' ),
+	     verbose: process.env.VERBOSE,
+       network_id: "*"
     },
     npmtest: { //used from "npm test". see pakcage.json 
-		verbose: process.env.VERBOSE,
+		  verbose: process.env.VERBOSE,
   		host: "127.0.0.1",
   		port: 8544,
-                network_id: "*",
-
+      network_id: "*",
     },
     ropsten: {
       provider: function() {
