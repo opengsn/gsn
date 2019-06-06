@@ -142,8 +142,11 @@ contract RelayHub is IRelayHub {
 
     function removeRelayByOwner(address relay) public {
         require(relays[relay].owner == msg.sender, "not owner");
-        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
+        require(relays[relay].unstakeTime == 0, "already removed");
+
         // Start the unstake counter
+        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
+
         if (relays[relay].state != State.PENALIZED && relays[relay].state != State.REMOVED) {
             relays[relay].state = State.REMOVED;
         }
