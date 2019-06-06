@@ -38,6 +38,10 @@ contract IRelayRecipient {
      * It may be used to charge the caller before (in conjuction with refunding him later in postRelayedCall for example).
      * the method is given all parameters of acceptRelayedCall and actual used gas.
      *
+     *
+     *** NOTICE: if this method modifies the contract's state, it must be protected with access control i.e. require msg.sender == getHubAddr()
+     *
+     *
      * @param usedGas - gas used up to this point. The recipient may use this information to perform local booking and
      *   charge the sender for this call (e.g. in tokens).
      *   Note that the relay's compensation will also include gas used by preRelayedCall itself.
@@ -50,6 +54,10 @@ contract IRelayRecipient {
     /** this method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
      * the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
+     *
+     *
+     *** NOTICE: if this method modifies the contract's state, it must be protected with access control i.e. require msg.sender == getHubAddr()
+     *
      *
      * @param success - true if the relayed call succeeded, false if it reverted
      * @param usedGas - gas used up to this point. The recipient may use this information to perform local booking and
