@@ -256,7 +256,8 @@ contract("RelayHub", function (accounts) {
             toBlock: 'latest'
         })
         assert.equal("SampleRecipientPostCall", postevent[0].event)
-        assert.notEqual(0, postevent[0].returnValues.used_gas)
+        assert.equal(123456, postevent[0].returnValues.preRetVal)
+        assert.notEqual(0, postevent[0].returnValues.usedGas)
 
     });
     it("should not accept relay requests from unknown addresses", async function () {

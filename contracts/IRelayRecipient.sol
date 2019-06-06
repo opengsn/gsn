@@ -45,7 +45,7 @@ contract IRelayRecipient {
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
      */
-    function preRelayedCall(address relay, address from, bytes memory encodedFunction, uint usedGas, uint transactionFee) public;
+    function preRelayedCall(address relay, address from, bytes memory encodedFunction, uint usedGas, uint transactionFee) public returns (bytes32);
 
     /** this method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
@@ -54,11 +54,11 @@ contract IRelayRecipient {
      * @param success - true if the relayed call succeeded, false if it reverted
      * @param usedGas - gas used up to this point. The recipient may use this information to perform local booking and
      *   charge the sender for this call (e.g. in tokens).
-     *   Note that the relay's compensation will also include gas used by postRelayedCall itself.
+     * @param preRetVal - preRelayedCall() return value passed back to the recipient
      *
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
      */
-    function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee) public;
+    function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee, bytes32 preRetVal) public;
 
 }

@@ -123,20 +123,21 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     event SampleRecipientPreCall(uint usedGas );
 
-    function preRelayedCall(address /*relay*/, address /*from*/, bytes memory /*encodedFunction*/, uint usedGas, uint transactionFee) public {
+    function preRelayedCall(address /*relay*/, address /*from*/, bytes memory /*encodedFunction*/, uint usedGas, uint transactionFee) public returns (bytes32) {
 
         emit SampleRecipientPreCall(usedGas * tx.gasprice * (transactionFee +100)/100);
 
         if (revertPreRelayCall){
             revert("You asked me to revert, remember?");
         }
+        return bytes32(uint(123456));
     }
 
-    event SampleRecipientPostCall(uint usedGas );
+    event SampleRecipientPostCall(uint usedGas, bytes32 preRetVal);
 
-    function postRelayedCall(address /*relay*/ , address /*from*/, bytes memory /*encodedFunction*/, bool /*success*/, uint usedGas, uint transactionFee) public {
+    function postRelayedCall(address /*relay*/ , address /*from*/, bytes memory /*encodedFunction*/, bool /*success*/, uint usedGas, uint transactionFee, bytes32 preRetVal) public {
 
-        emit SampleRecipientPostCall(usedGas * tx.gasprice * (transactionFee +100)/100);
+        emit SampleRecipientPostCall(usedGas * tx.gasprice * (transactionFee +100)/100, preRetVal);
 
         if (revertPostRelayCall){
             revert("You asked me to revert, remember?");

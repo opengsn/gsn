@@ -349,15 +349,19 @@ func assertTransactionRelayed(t *testing.T, txHash common.Hash) (receipt *types.
 	receipt, err := client.TransactionReceipt(context.Background(), txHash)
 	test.ErrFailWithDesc(err, t, fmt.Sprint("Fetching transaction receipt for hash ", txHash.Hex()))
 	logsLen := len(receipt.Logs)
-	expectedLogs := 3
+	expectedLogs := 4
 	if logsLen != expectedLogs {
 		t.Errorf("Incorrect logs len: expected %d, actual: %d", expectedLogs, logsLen)
 	}
 	transactionRelayedEvent := new(librelay.RelayHubTransactionRelayed)
 	sampleRecipientEmitted := new(samplerec.SampleRecipientSampleRecipientEmitted)
-	test.ErrFailWithDesc(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[2]), t, "Unpacking transaction relayed")
+	preRelayedEmitted := new(samplerec.SampleRecipientSampleRecipientPreCall)
+	postRelayedEmitted := new(samplerec.SampleRecipientSampleRecipientPostCall)
+	test.ErrFailWithDesc(boundRecipient.UnpackLog(preRelayedEmitted, "SampleRecipientPreCall", *receipt.Logs[0]), t, "Unpacking SampleRecipientPreCall")
+	test.ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[1]), t, "Unpacking sample recipient emitted")
+	test.ErrFailWithDesc(boundRecipient.UnpackLog(postRelayedEmitted, "SampleRecipientPostCall", *receipt.Logs[2]), t, "Unpacking SampleRecipientPostCall")
+	test.ErrFailWithDesc(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[3]), t, "Unpacking transaction relayed")
 
-	test.ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[0]), t, "Unpacking sample recipient emitted")
 	expectedMessage := "hello world"
 	if sampleRecipientEmitted.Message != expectedMessage {
 		t.Errorf("Message was not what expected! expected: %s actual: %s", expectedMessage, sampleRecipientEmitted.Message)

@@ -247,15 +247,16 @@ contract RelayHub is IRelayHub {
 
     function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
         // This function can only be called by RelayHub.
-        // In order to Revert the client's relayedCall if preRelayedCall/postRelayedCall reverts, we wrap them in one function.
+        // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
         // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
 
         require(msg.sender == address(this), "Only RelayHub should call this function");
 
         bool successPrePost;
+        bytes memory ret;
         bytes memory transaction = abi.encodeWithSelector(IRelayRecipient(to).preRelayedCall.selector, relayAddr, from, encodedFunction, (gasOverhead + initialGas - gasleft()), transactionFee);
-        (successPrePost,) = to.call.gas(preRelayedCallMaxGas)(transaction);
-        require(successPrePost, "preRelayedCall reverted - reverting the relayed transaction");
+        (successPrePost,ret) = to.call.gas(preRelayedCallMaxGas)(transaction);
+        require(successPrePost, "preRelayedCall reverted - Not calling the relayed transaction");
 
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.
@@ -264,7 +265,7 @@ contract RelayHub is IRelayHub {
         uint balanceBefore = balances[to];
         (success,) = to.call.gas(gasLimit)(transaction);
         // transaction must end with @from at this point
-        transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee);
+        transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee, LibBytes.readBytes32(ret,0));
         // Call it with .gas to make sure we have enough gasleft() to finish the transaction even if it reverts
         (successPrePost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
         require(successPrePost, "postRelayedCall reverted - reverting the relayed transaction");
