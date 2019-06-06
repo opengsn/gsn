@@ -329,7 +329,12 @@ contract RelayHub is IRelayHub {
         require(relays[addr1].stake > 0, "Unstaked relay");
         // Checking that the relay wasn't penalized yet
         require(relays[addr1].state != State.PENALIZED, "Relay already penalized");
-        // compensating the sender with the stake of the relay
+
+        // compensating the sender with HALF the stake of the relay (the other half is burned)
+        uint toBurn = SafeMath.div(relays[addr1].stake,2);
+        address(0).transfer(toBurn);
+        relays[addr1].stake = SafeMath.sub(relays[addr1].stake, toBurn);
+
         uint amount = relays[addr1].stake;
         // move ownership of relay
         relays[addr1].owner = msg.sender;
