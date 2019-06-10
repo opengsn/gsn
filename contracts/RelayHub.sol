@@ -227,7 +227,9 @@ contract RelayHub is IRelayHub {
         nonces[from]++;
         RelayCallStatus status = RelayCallStatus.OK;
         if (!successPrePost) {
-            status = RelayCallStatus.PreOrPostRelayedFailed;
+            status = RelayCallStatus.PostRelayedFailed;
+        } else if (LibBytes.readUint256(relayedCallSuccess, 0) == 2) {
+            status = RelayCallStatus.PreRelayedFailed;
         } else if (LibBytes.readUint256(relayedCallSuccess, 0) == 0) {
             status = RelayCallStatus.RelayedCallFailed;
         }
@@ -245,7 +247,7 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction, 0), status, charge);
     }
 
-    function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
+    function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (uint) {
         // This function can only be called by RelayHub.
         // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
         // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
@@ -256,6 +258,9 @@ contract RelayHub is IRelayHub {
         bytes memory preRetVal;
         bytes memory transaction = abi.encodeWithSelector(IRelayRecipient(to).preRelayedCall.selector, relayAddr, from, encodedFunction, (gasOverhead + initialGas - gasleft()), transactionFee);
         (successPrePost,preRetVal) = to.call.gas(preRelayedCallMaxGas)(transaction);
+        if (!successPrePost) {
+            return 2;
+        }
         require(successPrePost, "preRelayedCall reverted - Not calling the relayed transaction");
 
         // ensure that the last bytes of @transaction are the @from address.
@@ -270,7 +275,8 @@ contract RelayHub is IRelayHub {
         (successPrePost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
         require(successPrePost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");
-        return success;
+
+        return success ? 1 : 0;
     }
 
     struct Transaction {

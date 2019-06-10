@@ -727,7 +727,7 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
             relay_nonce++;
-            let PostRelayedFailed = 3;
+            let PostRelayedFailed = 4;
             assert.equal("TransactionRelayed", res.logs[0].event);
             assert.equal(PostRelayedFailed, res.logs[0].args.status);
         } finally {
@@ -774,7 +774,7 @@ contract("RelayHub", function (accounts) {
 
     });
 
-    it("should revert the 'relayedCall' if 'preRelayedCall' reverts", async function () {
+    it("should not execute the 'relayedCall' if 'preRelayedCall' reverts", async function () {
 
         let PreRelayedCallReverted = 3;
         let revertPreRelayCall = await sr.revertPreRelayCall();
@@ -818,7 +818,7 @@ contract("RelayHub", function (accounts) {
 
     it("should revert the 'relayedCall' if 'postRelayedCall' reverts", async function () {
 
-        let PostRelayedCallReverted = 3;
+        let PostRelayedCallReverted = 4;
         let revertPostRelayCall = await sr.revertPostRelayCall();
         try {
 
