@@ -168,11 +168,16 @@ contract RelayHub is IRelayHub {
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
         bytes32 signedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashedMessage));
-        if (!GsnUtils.checkSig(from, signedMessage, approval))  // Verify the sender's signature on the transaction
-            return uint(CanRelayStatus.WrongSignature);
 
-        if (nonces[from] != nonce)   // Not a current transaction.  May be a replay attempt.
+        // Verify the sender's signature on the transaction
+        if (!GsnUtils.checkSig(from, signedMessage, approval)) {
+            return uint(CanRelayStatus.WrongSignature);
+        }
+
+        if (nonces[from] != nonce) {
+            // Not a current transaction.  May be a replay attempt.
             return uint(CanRelayStatus.WrongNonce);
+        }
 
         bytes memory acceptRelayedCallRawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector, relay, from, encodedFunction, gasPrice, transactionFee, approval);
         return handleAcceptRelayCall(to, acceptRelayedCallRawTx);
