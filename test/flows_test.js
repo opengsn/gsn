@@ -90,12 +90,16 @@ options.forEach(params => {
 
         it(params.title + "send normal transaction", async () => {
 
+            let logIndex = params.relay ? 1:0
+
             console.log("running emitMessage (should succeed")
             let res = await sr.emitMessage("hello", {from: from})
-            assert.equal("hello", res.logs[0].args.message)
+            assert.equal("hello", res.logs[0+logIndex].args.message)
         })
 
         it(params.title + "send gasless tranasaction", async () => {
+
+            let logIndex = params.relay ? 1:0
 
             console.log("gasless=" + gasless)
 
@@ -103,7 +107,7 @@ options.forEach(params => {
             let ex
             try {
                 let res = await sr.emitMessage("hello, from gasless", {from: gasless})
-                console.log("res after gasless emit:", res.logs[0].args.message)
+                console.log("res after gasless emit:", res.logs[logIndex].args.message)
             } catch (e) {
                 ex = e
             }

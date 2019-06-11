@@ -24,6 +24,7 @@ contract RelayHub is IRelayHub {
     uint constant public gasOverhead = 47422;
     uint public acceptRelayedCallMaxGas = 50000;
     uint public postRelayedCallMaxGas = 100000;
+    uint public preRelayedCallMaxGas = 100000;
 
     mapping(address => uint) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
@@ -219,15 +220,17 @@ contract RelayHub is IRelayHub {
 
         // gasReserve must be high enough to complete relayCall()'s post-call execution.
         require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
-        bool successPost;
-        bytes memory ret = new bytes(32);
-        (successPost, ret) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
+        bool successPrePost;
+        bytes memory relayedCallSuccess = new bytes(32);
+        (successPrePost, relayedCallSuccess) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, to, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
         // We should advance the nonce here, as once we get to this point, the recipient pays for the transaction whether if the relayed call is reverted or not.
         nonces[from]++;
         RelayCallStatus status = RelayCallStatus.OK;
-        if (!successPost) {
+        if (!successPrePost) {
             status = RelayCallStatus.PostRelayedFailed;
-        } else if (LibBytes.readUint256(ret, 0) == 0) {
+        } else if (LibBytes.readUint256(relayedCallSuccess, 0) == 2) {
+            status = RelayCallStatus.PreRelayedFailed;
+        } else if (LibBytes.readUint256(relayedCallSuccess, 0) == 0) {
             status = RelayCallStatus.RelayedCallFailed;
         }
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
@@ -244,27 +247,35 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction, 0), status, charge);
     }
 
-    function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (bool) {
+    function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint transactionFee, uint gasLimit, uint initialGas) external returns (uint) {
         // This function can only be called by RelayHub.
         // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
         // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
 
         require(msg.sender == address(this), "Only RelayHub should call this function");
 
+        bool successPrePost;
+        bytes memory preRetVal;
+        bytes memory transaction = abi.encodeWithSelector(IRelayRecipient(to).preRelayedCall.selector, relayAddr, from, encodedFunction, transactionFee);
+        (successPrePost,preRetVal) = to.call.gas(preRelayedCallMaxGas)(transaction);
+        if (!successPrePost) {
+            return 2;
+        }
+
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.
-        bytes memory transaction = abi.encodePacked(encodedFunction, from);
+        transaction = abi.encodePacked(encodedFunction, from);
         bool success;
-        bool successPost;
         uint balanceBefore = balances[to];
         (success,) = to.call.gas(gasLimit)(transaction);
         // transaction must end with @from at this point
-        transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee);
+        transaction = abi.encodeWithSelector(IRelayRecipient(to).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee, LibBytes.readBytes32(preRetVal,0));
         // Call it with .gas to make sure we have enough gasleft() to finish the transaction even if it reverts
-        (successPost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
-        require(successPost, "postRelayedCall reverted - reverting the relayed transaction");
+        (successPrePost,) = to.call.gas(postRelayedCallMaxGas)(transaction);
+        require(successPrePost, "postRelayedCall reverted - reverting the relayed transaction");
         require(balanceBefore <= balances[to], "Moving funds during relayed transaction disallowed");
-        return success;
+
+        return success ? 1 : 0;
     }
 
     struct Transaction {

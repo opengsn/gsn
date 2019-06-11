@@ -16,6 +16,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     bool public overspendAcceptGas;
 
     bool public revertPostRelayCall;
+    bool public revertPreRelayCall;
 
     bool public rejectAcceptRelayCall;
 
@@ -47,6 +48,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     function setOverspendAcceptGas(bool val) public{
         overspendAcceptGas = val;
+    }
+
+    function setRevertPreRelayCall(bool val) public{
+        revertPreRelayCall = val;
     }
 
     function setRevertPostRelayCall(bool val) public{
@@ -93,7 +98,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
         if ( relaysWhitelist[relay] ) return 0;
         if (from == blacklisted) return 11;
         if ( rejectAcceptRelayCall ) return 12;
-        
+
         // this is an example of how the dapp can provide an offchain approval to a transaction
         if (approval.length == 65) {
             // No owner signature given - proceed as usual (for existing tests)
@@ -116,11 +121,23 @@ contract SampleRecipient is RelayRecipient, Ownable {
         }
     }
 
-    event SampleRecipientPostCall(uint usedGas );
+    event SampleRecipientPreCall();
 
-    function postRelayedCall(address /*relay*/ , address /*from*/, bytes memory /*encodedFunction*/, bool /*success*/, uint usedGas, uint transactionFee) public {
+    function preRelayedCall(address /*relay*/, address /*from*/, bytes memory /*encodedFunction*/, uint /*transactionFee*/) public returns (bytes32) {
 
-        emit SampleRecipientPostCall(usedGas * tx.gasprice * (transactionFee +100)/100);
+        emit SampleRecipientPreCall();
+
+        if (revertPreRelayCall){
+            revert("You asked me to revert, remember?");
+        }
+        return bytes32(uint(123456));
+    }
+
+    event SampleRecipientPostCall(uint usedGas, bytes32 preRetVal);
+
+    function postRelayedCall(address /*relay*/ , address /*from*/, bytes memory /*encodedFunction*/, bool /*success*/, uint usedGas, uint transactionFee, bytes32 preRetVal) public {
+
+        emit SampleRecipientPostCall(usedGas * tx.gasprice * (transactionFee +100)/100, preRetVal);
 
         if (revertPostRelayCall){
             revert("You asked me to revert, remember?");

@@ -256,7 +256,8 @@ contract("RelayHub", function (accounts) {
             toBlock: 'latest'
         })
         assert.equal("SampleRecipientPostCall", postevent[0].event)
-        assert.notEqual(0, postevent[0].returnValues.used_gas)
+        assert.equal(123456, postevent[0].returnValues.preRetVal)
+        assert.notEqual(0, postevent[0].returnValues.usedGas)
 
     });
     it("should not accept relay requests from unknown addresses", async function () {
@@ -726,7 +727,7 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
             relay_nonce++;
-            let PostRelayedFailed = 3;
+            let PostRelayedFailed = 4;
             assert.equal("TransactionRelayed", res.logs[0].event);
             assert.equal(PostRelayedFailed, res.logs[0].args.status);
         } finally {
@@ -773,9 +774,51 @@ contract("RelayHub", function (accounts) {
 
     });
 
+    it("should not execute the 'relayedCall' if 'preRelayedCall' reverts", async function () {
+
+        let PreRelayedCallReverted = 3;
+        let revertPreRelayCall = await sr.revertPreRelayCall();
+        try {
+
+            assert.equal(revertPreRelayCall, false);
+            await sr.setRevertPreRelayCall(true);
+
+            revertPreRelayCall = await sr.revertPreRelayCall();
+            assert.equal(revertPreRelayCall, true);
+
+            let digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
+            let sig = await getTransactionSignature(web3, from, digest);
+
+            let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+                from: relayAccount,
+                gasPrice: gas_price,
+                gasLimit: gas_limit_any_value
+            });
+
+            let startBlock = web3.eth.blockNumber
+            // There should not be an event emitted, which means the result of 'relayCall' was indeed reverted
+            var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
+                fromBlock: startBlock,
+                toBlock: 'latest'
+            });
+            assert.equal(0, logs_messages.length)
+
+            relay_nonce++;
+
+            assert.equal("TransactionRelayed", res.logs[0].event);
+            assert.equal(PreRelayedCallReverted, res.logs[0].args.status);
+            assert.equal(1, res.logs.length);
+        } finally {
+            // returning state to previous one
+            await sr.setRevertPreRelayCall(false);
+            revertPreRelayCall = await sr.revertPreRelayCall();
+            assert.equal(revertPreRelayCall, false);
+        }
+    });
+
     it("should revert the 'relayedCall' if 'postRelayedCall' reverts", async function () {
 
-        let PostRelayedCallReverted = 3;
+        let PostRelayedCallReverted = 4;
         let revertPostRelayCall = await sr.revertPostRelayCall();
         try {
 
