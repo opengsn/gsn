@@ -256,12 +256,11 @@ contract RelayHub is IRelayHub {
 
         bool successPrePost;
         bytes memory preRetVal;
-        bytes memory transaction = abi.encodeWithSelector(IRelayRecipient(to).preRelayedCall.selector, relayAddr, from, encodedFunction, (gasOverhead + initialGas - gasleft()), transactionFee);
+        bytes memory transaction = abi.encodeWithSelector(IRelayRecipient(to).preRelayedCall.selector, relayAddr, from, encodedFunction, transactionFee);
         (successPrePost,preRetVal) = to.call.gas(preRelayedCallMaxGas)(transaction);
         if (!successPrePost) {
             return 2;
         }
-        require(successPrePost, "preRelayedCall reverted - Not calling the relayed transaction");
 
         // ensure that the last bytes of @transaction are the @from address.
         // Recipient will trust this reported sender when msg.sender is the known RelayHub.

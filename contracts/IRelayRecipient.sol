@@ -42,14 +42,10 @@ contract IRelayRecipient {
      *** NOTICE: if this method modifies the contract's state, it must be protected with access control i.e. require msg.sender == getHubAddr()
      *
      *
-     * @param usedGas - gas used up to this point. The recipient may use this information to perform local booking and
-     *   charge the sender for this call (e.g. in tokens).
-     *   Note that the relay's compensation will also include gas used by preRelayedCall itself.
-     *
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
      */
-    function preRelayedCall(address relay, address from, bytes memory encodedFunction, uint usedGas, uint transactionFee) public returns (bytes32);
+    function preRelayedCall(address relay, address from, bytes memory encodedFunction, uint transactionFee) public returns (bytes32);
 
     /** this method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
