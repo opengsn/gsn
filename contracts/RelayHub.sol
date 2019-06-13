@@ -255,12 +255,12 @@ contract RelayHub is IRelayHub {
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
         uint256 charge = getChargedAmount(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
 
-        emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(status), charge); 
-
         // We already checked at the beginning that the recipient has enough balance. This is more of a sanity check/safeMath before we substract from balance
         require(balances[recipient] >= charge, "Should not get here");
         balances[recipient] -= charge;
         balances[relays[msg.sender].owner] += charge;
+
+        emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(status), charge); 
     }
 
     function getChargedAmount(uint256 gas, uint256 gasPrice, uint256 fee) private pure returns (uint256) {
