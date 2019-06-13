@@ -22,9 +22,9 @@ contract RelayHub is IRelayHub {
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
     uint256 constant public gasOverhead = 47422;
-    uint256 public acceptRelayedCallMaxGas = 50000;
-    uint256 public postRelayedCallMaxGas = 100000;
-    uint256 public preRelayedCallMaxGas = 100000;
+    uint256 constant public acceptRelayedCallMaxGas = 50000;
+    uint256 constant public postRelayedCallMaxGas = 100000;
+    uint256 constant public preRelayedCallMaxGas = 100000;
 
     mapping(address => uint256) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
