@@ -234,7 +234,7 @@ contract RelayHub is IRelayHub {
         // Relay must use the gas price set by the signer
         uint256 canRelayResult = canRelay(msg.sender, from, IRelayRecipient(to), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
         if (canRelayResult != 0) {
-            emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint256(RelayCallStatus.CanRelayFailed), canRelayResult);
+            emit TransactionRelayed(msg.sender, from, to, abi.decode(encodedFunction, (bytes4)), uint256(RelayCallStatus.CanRelayFailed), canRelayResult);
             return;
         }
 
@@ -255,16 +255,11 @@ contract RelayHub is IRelayHub {
         }
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
         uint256 charge = (gasOverhead + initialGas - gasleft()) * gasPrice * (100 + transactionFee) / 100;
-        emitTransactionRelayed(msg.sender, from, to, encodedFunction, uint256(status), charge);
+        emit TransactionRelayed(msg.sender, from, to, abi.decode(encodedFunction, (bytes4)), uint256(status), charge);
         // We already checked at the beginning that the recipient has enough balance. This is more of a sanity check/safeMath before we substract from balance
         require(balances[to] >= charge, "Should not get here");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
-    }
-
-    // Bypassing "stack too deep"... in relayCall()
-    function emitTransactionRelayed(address sender, address from, address to, bytes memory encodedFunction, uint256 status, uint256 charge) internal {
-        emit TransactionRelayed(sender, from, to, LibBytes.readBytes4(encodedFunction, 0), status, charge);
     }
 
     function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint256 transactionFee, uint256 gasLimit, uint256 initialGas) external returns (uint256) {
