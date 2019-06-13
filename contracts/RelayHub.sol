@@ -154,16 +154,16 @@ contract RelayHub is IRelayHub {
         emit RelayRemoved(relay, relays[relay].unstakeTime);
     }
 
-    //check if the Hub can accept this relayed operation.
-    // it validates the caller's signature and nonce, and then delegates to the destination's acceptRelayedCall
-    // for contract-specific checks.
-    // returns "0" if the relay is valid. other values represent errors.
-    // values 1..10 are reserved for canRelay. other values can be used by acceptRelayedCall of target contracts.
-    // possible errors (defined in CanRelayStatus enum):
-    // - WrongSignature - not signed by sender.
-    // - WrongNonce - sender's nonce doesn't match
-    // - AcceptRelayedCallReverted - recipient's acceptRelayedCall didn't return a value, but reverted.
-
+    /**
+     * @notice Check if the Hub can accept a relayed operation. First the caller's signature and nonce are validated. If
+     * valid, the recipient's acceptRelayedCall function is queried for recipient-specific checks.
+     *
+     * @return
+     * - Zero if and only if the transaction can be relayed.
+     * - Non-zero values up to 10 correspond to the values of CanRelayStatus enum. Refer to the enum definition for
+     * documentation.
+     * - Non-zero values greater than 10 are recipient-specific values.
+     */
     function canRelay(address relay, address from, IRelayRecipient to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public view returns (uint256) {
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
@@ -174,28 +174,43 @@ contract RelayHub is IRelayHub {
             return uint256(CanRelayStatus.WrongSignature);
         }
 
+        // Verify the transaction is not being repalyed
         if (nonces[from] != nonce) {
-            // Not a current transaction.  May be a replay attempt.
             return uint256(CanRelayStatus.WrongNonce);
         }
 
-        bytes memory acceptRelayedCallRawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector, relay, from, encodedFunction, gasPrice, transactionFee, approval);
-        return handleAcceptRelayCall(to, acceptRelayedCallRawTx);
-    }
+        bytes memory rawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
+            relay, from, encodedFunction, gasPrice, transactionFee, approval);
 
-    function handleAcceptRelayCall(IRelayRecipient to, bytes memory acceptRelayedCallRawTx) private view returns (uint256){
-        bool success;
-        uint256 accept;
-        assembly {
-            let ptr := mload(0x40)
-            let acceptRelayedCallMaxGas := sload(acceptRelayedCallMaxGas_slot)
-            success := staticcall(acceptRelayedCallMaxGas, to, add(acceptRelayedCallRawTx, 0x20), mload(acceptRelayedCallRawTx), ptr, 0x20)
-            accept := mload(ptr)
-        }
+        (bool success, uint256 accept) = staticCallWithMaxGas(address(to), acceptRelayedCallMaxGas, rawTx);
+
         if (!success) {
             return uint256(CanRelayStatus.AcceptRelayedCallReverted);
+        } else {
+            // This can be either CanRelayStatus.OK, or a value outside of the enum range.
+            return accept;
         }
-        return accept;
+    }
+
+    // Due to a bug in Solidity v0.5.9 (https://github.com/ethereum/solidity/issues/6901) we need to implement this in
+    // assembly.
+    //
+    // Once the bug is fixed, uses of this function can be replaced by:
+    // (bool success, uint256 checkResult) = to.staticcall.gas(acceptRelayedCallMaxGas)(data);
+    function staticCallWithMaxGas(address to, uint256 maxGas, bytes memory data) private view returns (bool, uint256) {
+        bool success;
+        uint256 result;
+
+        assembly {
+            let dataSize := mload(data)
+            let dataPtr := add(data, 32)
+
+            // The 32-byte result is placed memory position 0 (scratch space)
+            success := staticcall(maxGas, to, dataPtr, dataSize, 0, 32)
+            result := mload(0)
+        }
+
+        return (success, result);
     }
 
     /**
