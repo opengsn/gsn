@@ -245,10 +245,10 @@ contract RelayHub is IRelayHub {
             return;
         }
 
-        (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, recipient, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
-
-        // We should advance the nonce here, as once we get to this point, the recipient pays for the transaction whether if the relayed call is reverted or not.
+        // The sender's nonce is advanced to prevent transaction replays.
         nonces[from]++;
+
+        (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, recipient, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
 
         RelayCallStatus status = abi.decode(relayCallStatus, (RelayCallStatus));
 
