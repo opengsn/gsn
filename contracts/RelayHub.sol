@@ -226,7 +226,8 @@ contract RelayHub is IRelayHub {
     }
 
     /**
-     * relay a transaction.
+     * @notice Relay a transaction.
+     *
      * @param from the client originating the request.
      * @param recipient the target IRelayRecipient contract.
      * @param encodedFunction the function call to relay.
