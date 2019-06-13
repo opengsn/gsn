@@ -2,7 +2,9 @@ FROM phusion/baseimage
 MAINTAINER "dror@tabookey.com"
 
 RUN curl -sL https://deb.nodesource.com/setup_8.x | bash -
-RUN	apt-get install -y software-properties-common && \
+
+RUN	apt-get update && \
+	apt-get install -y software-properties-common && \
 	add-apt-repository ppa:gophers/archive &&\
 	add-apt-repository -y ppa:ethereum/ethereum && \
 	apt-get update && \
@@ -12,8 +14,12 @@ RUN	apt-get install -y software-properties-common && \
 	apt-get install -y netcat && \
 	rm -rf /var/lib/apt/lists/*
 
-#for some reason, npm install -g chokes. so we install them "locally", in the root folder.
-#RUN npm install ganache-cli truffle
+
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+
+RUN apt-get update && \
+	apt-get install --no-install-recommends yarn
 
 #need to select which version we install: default is (right now) 0.5.5
 RUN curl -L -o /usr/local/bin/solc-5.5 https://github.com/ethereum/solidity/releases/download/v0.5.5/solc-static-linux && chmod a+rx /usr/local/bin/solc-5.5
