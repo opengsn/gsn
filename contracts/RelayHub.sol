@@ -160,7 +160,7 @@ contract RelayHub is IRelayHub {
      *
      * @return
      * - Zero if and only if the transaction can be relayed.
-     * - Non-zero values up to 10 correspond to the values of CanRelayStatus enum. Refer to the enum definition for
+     * - Non-zero values up to 10 correspond to the values of PreconditionCheck enum. Refer to the enum definition for
      * documentation.
      * - Non-zero values greater than 10 are recipient-specific values.
      */
@@ -171,12 +171,12 @@ contract RelayHub is IRelayHub {
 
         // Verify the sender's signature on the transaction
         if (!GsnUtils.checkSig(from, signedMessage, approval)) {
-            return uint256(CanRelayStatus.WrongSignature);
+            return uint256(PreconditionCheck.WrongSignature);
         }
 
         // Verify the transaction is not being repalyed
         if (nonces[from] != nonce) {
-            return uint256(CanRelayStatus.WrongNonce);
+            return uint256(PreconditionCheck.WrongNonce);
         }
 
         bytes memory rawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
@@ -185,9 +185,9 @@ contract RelayHub is IRelayHub {
         (bool success, uint256 accept) = staticCallWithMaxGas(address(to), acceptRelayedCallMaxGas, rawTx);
 
         if (!success) {
-            return uint256(CanRelayStatus.AcceptRelayedCallReverted);
+            return uint256(PreconditionCheck.AcceptRelayedCallReverted);
         } else {
-            // This can be either CanRelayStatus.OK, or a value outside of the enum range.
+            // This can be either PreconditionCheck.OK, or a value outside of the enum range.
             return accept;
         }
     }
@@ -238,10 +238,10 @@ contract RelayHub is IRelayHub {
 
         require(gasPrice * initialGas <= balances[recipient], "Recipient balance too low");
 
-        uint256 canRelayResult = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
+        uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
 
-        if (canRelayResult != 0) {
-            emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(RelayCallStatus.CanRelayFailed), canRelayResult);
+        if (preconditionCheck != uint256(PreconditionCheck.OK)) {
+            emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
             return;
         }
 

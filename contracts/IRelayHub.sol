@@ -4,7 +4,14 @@ contract IRelayHub {
 
     // status flags for TransactionRelayed() event
     enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
-    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallReverted}
+
+    // Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
+    enum PreconditionCheck {
+        OK,                         // All checks passed, the call can be relayed
+        WrongSignature,             // The transaction to relay is not signed by requested sender
+        WrongNonce,                 // The provided nonce has already been used by the sender
+        AcceptRelayedCallReverted   // The recipient rejected this call via acceptRelayedCall
+    }
 
     event Staked(address indexed relay, uint256 stake);
     event Unstaked(address indexed relay, uint256 stake);
