@@ -245,21 +245,12 @@ contract RelayHub is IRelayHub {
         // gasReserve must be high enough to complete relayCall()'s post-call execution.
         require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
 
-        bool successPrePost;
-        bytes memory relayedCallSuccess = new bytes(32);
-        (successPrePost, relayedCallSuccess) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, recipient, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
+        (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, recipient, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
 
         // We should advance the nonce here, as once we get to this point, the recipient pays for the transaction whether if the relayed call is reverted or not.
         nonces[from]++;
 
-        RelayCallStatus status = RelayCallStatus.OK;
-        if (!successPrePost) {
-            status = RelayCallStatus.PostRelayedFailed;
-        } else if (LibBytes.readUint256(relayedCallSuccess, 0) == 2) {
-            status = RelayCallStatus.PreRelayedFailed;
-        } else if (LibBytes.readUint256(relayedCallSuccess, 0) == 0) {
-            status = RelayCallStatus.RelayedCallFailed;
-        }
+        RelayCallStatus status = abi.decode(relayCallStatus, (RelayCallStatus));
 
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
         uint256 charge = getChargedAmount(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
@@ -279,37 +270,72 @@ contract RelayHub is IRelayHub {
         return (gas * gasPrice * (100 + fee)) / 100;
     }
 
-    function recipientCallsAtomic(address from, address recipient, address relayAddr, bytes calldata encodedFunction, uint256 transactionFee, uint256 gasLimit, uint256 initialGas) external returns (uint256) {
+    function recipientCallsAtomic(address from, address recipient, address relayAddr, bytes calldata encodedFunction, uint256 transactionFee, uint256 gasLimit, uint256 initialGas) external returns (RelayCallStatus) {
         // This function can only be called by RelayHub.
         // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
         // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
 
         require(msg.sender == address(this), "Only RelayHub should call this function");
 
-        bool successPrePost;
-        bytes memory preRetVal;
-        bytes memory transaction = abi.encodeWithSelector(IRelayRecipient(recipient).preRelayedCall.selector, relayAddr, from, encodedFunction, transactionFee);
-        (successPrePost,preRetVal) = recipient.call.gas(preRelayedCallMaxGas)(transaction);
-        if (!successPrePost) {
-            return 2;
+        // First preRelayedCall is executed.
+        // It is the recipient's responsability to ensure, in acceptRelayedCall, that this call will not revert.
+        bytes32 preReturnValue;
+        {
+            // Note: we open a new block to avoid growing the stack too much.
+            bytes memory data = abi.encodeWithSelector(
+                IRelayRecipient(recipient).preRelayedCall.selector,
+                relayAddr, from, encodedFunction, transactionFee
+            );
+
+            (bool success, bytes memory retData) = recipient.call.gas(preRelayedCallMaxGas)(data);
+
+            if (!success) {
+                revertWithStatus(RelayCallStatus.PreRelayedFailed);
+            }
+
+            preReturnValue = abi.decode(retData, (bytes32));
         }
 
         uint256 balanceBefore = balances[recipient];
 
-        // ensure that the last bytes of @transaction are the @from address.
-        // Recipient will trust this reported sender when msg.sender is the known RelayHub.
-        transaction = abi.encodePacked(encodedFunction, from);
-        bool success;
-        (success,) = recipient.call.gas(gasLimit)(transaction);
+        // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
+        (bool relayedCallSuccess,) = recipient.call.gas(gasLimit)(abi.encodePacked(encodedFunction, from));
 
-        transaction = abi.encodeWithSelector(IRelayRecipient(recipient).postRelayedCall.selector, relayAddr, from, encodedFunction, success, (gasOverhead + initialGas - gasleft()), transactionFee, LibBytes.readBytes32(preRetVal,0));
-        // Call it with .gas to make sure we have enough gasleft() to finish the transaction even if it reverts
-        (successPrePost,) = recipient.call.gas(postRelayedCallMaxGas)(transaction);
+        uint256 gasUsed = gasOverhead + initialGas - gasleft();
 
-        require(successPrePost, "postRelayedCall reverted - reverting the relayed transaction");
-        require(balanceBefore <= balances[recipient], "Moving funds during relayed transaction disallowed");
+        // Finally, postRelayedCall is executed, with the relayedCall execution's status.
+        {
+            bytes memory data = abi.encodeWithSelector(
+                IRelayRecipient(recipient).postRelayedCall.selector,
+                relayAddr, from, encodedFunction, relayedCallSuccess, gasUsed, transactionFee, preReturnValue
+            );
 
-        return success ? 1 : 0;
+            (bool successPost,) = recipient.call.gas(postRelayedCallMaxGas)(data);
+
+            if (!successPost) {
+                revertWithStatus(RelayCallStatus.PostRelayedFailed);
+            }
+        }
+
+        if (balances[recipient] < balanceBefore) {
+            revertWithStatus(RelayCallStatus.PostRelayedFailed);
+        }
+
+        return relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed;
+    }
+
+    /**
+     * @dev Reverts the transaction with returndata set to the ABI encoding of the status argument.
+     */
+    function revertWithStatus(RelayCallStatus status) private pure {
+        bytes memory data = abi.encode(status);
+
+        assembly {
+            let dataSize := mload(data)
+            let dataPtr := add(data, 32)
+
+            revert(dataPtr, dataSize)
+        }
     }
 
     struct Transaction {
