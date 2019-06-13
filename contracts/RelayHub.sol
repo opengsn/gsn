@@ -164,7 +164,19 @@ contract RelayHub is IRelayHub {
      * documentation.
      * - Non-zero values greater than 10 are recipient-specific values.
      */
-    function canRelay(address relay, address from, IRelayRecipient to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public view returns (uint256) {
+    function canRelay(
+        address relay,
+        address from,
+        IRelayRecipient to,
+        bytes memory encodedFunction,
+        uint256 transactionFee,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 nonce,
+        bytes memory approval
+    )
+        public view returns (uint256)
+    {
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
         bytes32 signedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashedMessage));
@@ -225,7 +237,18 @@ contract RelayHub is IRelayHub {
      * @param nonce sender's nonce (in nonces[])
      * @param approval client's signature over all params (first 65 bytes). The remainder is dapp-specific data.
      */
-    function relayCall(address from, address recipient, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public {
+    function relayCall(
+        address from,
+        address recipient,
+        bytes memory encodedFunction,
+        uint256 transactionFee,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 nonce,
+        bytes memory approval
+    )
+        public
+    {
         uint256 initialGas = gasleft();
         // Must be from a known relay
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");
@@ -270,7 +293,18 @@ contract RelayHub is IRelayHub {
         return (gas * gasPrice * (100 + fee)) / 100;
     }
 
-    function recipientCallsAtomic(address from, address recipient, address relayAddr, bytes calldata encodedFunction, uint256 transactionFee, uint256 gasLimit, uint256 initialGas) external returns (RelayCallStatus) {
+    function recipientCallsAtomic(
+        address from,
+        address recipient,
+        address relayAddr,
+        bytes calldata encodedFunction,
+        uint256 transactionFee,
+        uint256 gasLimit,
+        uint256 initialGas
+    )
+        external
+        returns (RelayCallStatus)
+    {
         // This function can only be called by RelayHub.
         // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
         // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
