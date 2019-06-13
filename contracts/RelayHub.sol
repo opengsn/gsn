@@ -254,12 +254,19 @@ contract RelayHub is IRelayHub {
             status = RelayCallStatus.RelayedCallFailed;
         }
         // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
-        uint256 charge = (gasOverhead + initialGas - gasleft()) * gasPrice * (100 + transactionFee) / 100;
+        uint256 charge = getChargedAmount(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
         emit TransactionRelayed(msg.sender, from, to, abi.decode(encodedFunction, (bytes4)), uint256(status), charge);
         // We already checked at the beginning that the recipient has enough balance. This is more of a sanity check/safeMath before we substract from balance
         require(balances[to] >= charge, "Should not get here");
         balances[to] -= charge;
         balances[relays[msg.sender].owner] += charge;
+    }
+
+    function getChargedAmount(uint256 gas, uint256 gasPrice, uint256 fee) private pure returns (uint256) {
+        // The fee is expressed as a percentage. E.g. a value of 40 stands for a
+        // 40% fee, so the recipient will be charged for 1.4 times the spent
+        // amount.
+        return (gas * gasPrice * (100 + fee)) / 100;
     }
 
     function recipientCallsAtomic(address from, address to, address relayAddr, bytes calldata encodedFunction, uint256 transactionFee, uint256 gasLimit, uint256 initialGas) external returns (uint256) {
