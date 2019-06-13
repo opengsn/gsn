@@ -227,13 +227,16 @@ contract RelayHub is IRelayHub {
      */
     function relayCall(address from, address recipient, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public {
         uint256 initialGas = gasleft();
-        require(balances[recipient] >= gasPrice * initialGas, "Recipient balance too low");
-
         // Must be from a known relay
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");
 
         // Relay must use the gas price set by the signer
         require(gasPrice <= tx.gasprice, "Invalid gas price");
+
+        // gasReserve must be high enough to complete relayCall()'s post-call execution.
+        require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
+
+        require(gasPrice * initialGas <= balances[recipient], "Recipient balance too low");
 
         uint256 canRelayResult = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
 
@@ -241,9 +244,6 @@ contract RelayHub is IRelayHub {
             emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(RelayCallStatus.CanRelayFailed), canRelayResult);
             return;
         }
-
-        // gasReserve must be high enough to complete relayCall()'s post-call execution.
-        require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
 
         (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, recipient, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
 
