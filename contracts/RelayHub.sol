@@ -250,17 +250,27 @@ contract RelayHub is IRelayHub {
         public
     {
         uint256 initialGas = gasleft();
-        // Must be from a known relay
+
+        // Initial soundness checks - the relay must make sure these pass, or it will pay for a reverted transaction.
+
+        // The relay must be registered
         require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");
 
-        // Relay must use the gas price set by the signer
+        // A relay may use a higher gas price than the one requested by the signer (to e.g. get the transaction in a
+        // block faster), but it must not be lower. The recipient will be charged for the requested gas price, not the
+        // one used in the transaction.
         require(gasPrice <= tx.gasprice, "Invalid gas price");
 
-        // gasReserve must be high enough to complete relayCall()'s post-call execution.
+        // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
+        // run out of gas later in this function.
         require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
 
+        // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
+        // for the maximum possible charge.
         require(gasPrice * initialGas <= balances[recipient], "Recipient balance too low");
 
+        // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed), and
+        // that the recpient will accept to be charged by it.
         uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
 
         if (preconditionCheck != uint256(PreconditionCheck.OK)) {
@@ -268,22 +278,28 @@ contract RelayHub is IRelayHub {
             return;
         }
 
+        // From this point on, this transaction will not revert nor run out of gas, and the recipient will be charged
+        // for the gas spent.
+
         // The sender's nonce is advanced to prevent transaction replays.
         nonces[from]++;
 
+        // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
+        // errors in the recipient. In either case (revert or regular execution) the return data encodes the
+        // RelayCallStatus value.
         (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, recipient, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
-
         RelayCallStatus status = abi.decode(relayCallStatus, (RelayCallStatus));
 
-        // Relay transactionFee is in %.  E.g. if transactionFee=40, payment will be 1.4*usedGas.
+        // Regardless of the outcome of the relayed transaction, the recipient is now charged.
         uint256 charge = getChargedAmount(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
 
-        // We already checked at the beginning that the recipient has enough balance. This is more of a sanity check/safeMath before we substract from balance
+        // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
+        // a sanity check to prevent overflows in case of bugs.msg.sender
         require(balances[recipient] >= charge, "Should not get here");
         balances[recipient] -= charge;
         balances[relays[msg.sender].owner] += charge;
 
-        emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(status), charge); 
+        emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(status), charge);
     }
 
     function getChargedAmount(uint256 gas, uint256 gasPrice, uint256 fee) private pure returns (uint256) {
@@ -305,11 +321,12 @@ contract RelayHub is IRelayHub {
         external
         returns (RelayCallStatus)
     {
-        // This function can only be called by RelayHub.
-        // In order to Revert the client's relayedCall if postRelayedCall reverts, we wrap them in one function.
-        // It is external in order to catch the revert status without reverting the relayCall(), so we can still charge the recipient afterwards.
-
+        // This external function can only be called by RelayHub itself, creating an internal transaction. Calls to the
+        // recipient (preRelayedCall, the relayedCall, and postRelayedCall) are called from inside this transaction.
         require(msg.sender == address(this), "Only RelayHub should call this function");
+
+        // If either pre or post reverts, the whole internal transaction will be reverted, reverting all side effects on
+        // the recipient. The recipient will still be charged for the used gas by the relay.
 
         // First preRelayedCall is executed.
         // It is the recipient's responsability to ensure, in acceptRelayedCall, that this call will not revert.
@@ -330,10 +347,14 @@ contract RelayHub is IRelayHub {
             preReturnValue = abi.decode(retData, (bytes32));
         }
 
+        // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
+        // post state to ensure this doesn't happen.
         uint256 balanceBefore = balances[recipient];
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (bool relayedCallSuccess,) = recipient.call.gas(gasLimit)(abi.encodePacked(encodedFunction, from));
+
+        // Even if the relayed call fails, execution continues
 
         uint256 gasUsed = gasOverhead + initialGas - gasleft();
 
