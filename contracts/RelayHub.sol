@@ -6,8 +6,11 @@ import "./GsnUtils.sol";
 import "./RLPReader.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 contract RelayHub is IRelayHub {
+    using ECDSA for bytes32;
+
     // Anyone can call certain functions in this singleton and trigger relay processes.
 
     uint256 constant public minimumStake = 0.1 ether;
@@ -178,12 +181,11 @@ contract RelayHub is IRelayHub {
     )
         public view returns (uint256)
     {
+        // Verify the sender's signature on the transaction
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
-        bytes32 signedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashedMessage));
 
-        // Verify the sender's signature on the transaction
-        if (!GsnUtils.checkSig(from, signedMessage, approval)) {
+        if (hashedMessage.toEthSignedMessageHash().recover(approval) != from) {
             return uint256(PreconditionCheck.WrongSignature);
         }
 
@@ -402,11 +404,8 @@ contract RelayHub is IRelayHub {
         Transaction memory decodedTx1 = decodeTransaction(unsignedTx1);
         Transaction memory decodedTx2 = decodeTransaction(unsignedTx2);
 
-        bytes32 hash1 = keccak256(abi.encodePacked(unsignedTx1));
-        address addr1 = ecrecover(hash1, uint8(sig1[0]), LibBytes.readBytes32(sig1, 1), LibBytes.readBytes32(sig1, 33));
-
-        bytes32 hash2 = keccak256(abi.encodePacked(unsignedTx2));
-        address addr2 = ecrecover(hash2, uint8(sig2[0]), LibBytes.readBytes32(sig2, 1), LibBytes.readBytes32(sig2, 33));
+        address addr1 = keccak256(abi.encodePacked(unsignedTx1)).recover(sig1);
+        address addr2 = keccak256(abi.encodePacked(unsignedTx2)).recover(sig2);
 
         //checking that the same nonce is used in both transaction, with both signed by the same address and the actual data is different
         // note: we compare the hash of the data to save gas over iterating both byte arrays
@@ -429,8 +428,8 @@ contract RelayHub is IRelayHub {
             bytes4 selector = GsnUtils.getMethodSig(decodedTx1.data);
             require(selector != this.relayCall.selector && selector != this.registerRelay.selector, "Legal relay transaction");
         }
-        bytes32 hash = keccak256(abi.encodePacked(unsignedTx1));
-        address addr = ecrecover(hash, uint8(sig1[0]), LibBytes.readBytes32(sig1, 1), LibBytes.readBytes32(sig1, 33));
+
+        address addr = keccak256(abi.encodePacked(unsignedTx1)).recover(sig1);
         penalizeInternal(addr);
     }
 
