@@ -1,7 +1,7 @@
 pragma solidity ^0.5.5;
 
 import './GsnUtils.sol';
-import './RelayHub.sol';
+import './IRelayHub.sol';
 
 contract TestRecipientUtils {
 
@@ -10,7 +10,7 @@ contract TestRecipientUtils {
         emit Unused();  //just to avoid warnings..
     }
 
-    function registerAsRelay(RelayHub relayhub) public payable {
+    function registerAsRelay(IRelayHub relayhub) public payable {
         relayhub.registerRelay(10, "string memory url");
     }
     function() external payable {}
@@ -24,7 +24,7 @@ contract TestRecipientUtils {
     function getMethodSig(bytes memory msgData) public pure returns (bytes4) {
         return GsnUtils.getMethodSig(msgData);
     }
-    
+
     function getBytesParam(bytes memory msgData, uint index) public pure returns (bytes memory ret)  {
         return GsnUtils.getBytesParam(msgData, index);
     }

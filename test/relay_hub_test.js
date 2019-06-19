@@ -536,7 +536,8 @@ contract("RelayHub", function (accounts) {
 
         let balance_of_acc7 = await web3.eth.getBalance(snitching_account);
         let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]/2).sub(res.receipt.gasUsed * gasPricePenalize).sub(res2.receipt.gasUsed * gasPricePenalize)
-        assert.equal(expected_balance_after_penalize, balance_of_acc7);
+
+        assert(expected_balance_after_penalize.eq(new Big(balance_of_acc7)));
     }
 
     let asyncForEach = async function (array, callback) {
