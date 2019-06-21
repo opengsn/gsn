@@ -201,8 +201,15 @@ contract RelayHub is IRelayHub {
         if (!success) {
             return uint256(PreconditionCheck.AcceptRelayedCallReverted);
         } else {
-            // This can be either PreconditionCheck.OK, or a value outside of the enum range.
-            return abi.decode(returndata, (uint256));
+            uint256 accept = abi.decode(returndata, (uint256));
+
+            // This can be either PreconditionCheck.OK or a custom error code
+            if ((accept == 0) || (accept > 10)) {
+                return accept;
+            } else {
+                // Error codes [1-10] are reserved to RelayHub
+                return uint256(PreconditionCheck.InvalidRecipientStatusCode);
+            }
         }
     }
 
