@@ -275,7 +275,7 @@ contract RelayHub is IRelayHub {
         uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
 
         if (preconditionCheck != uint256(PreconditionCheck.OK)) {
-            emit TransactionRelayed(msg.sender, from, recipient, abi.decode(encodedFunction, (bytes4)), uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
+            emit TransactionRelayed(msg.sender, from, recipient, LibBytes.readBytes4(encodedFunction, 0), uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
             return;
         }
 
