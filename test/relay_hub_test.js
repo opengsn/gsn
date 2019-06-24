@@ -221,9 +221,9 @@ contract("RelayHub", function (accounts) {
     // TODO: gasPrice change flow. As discussed, in case the Relay decides to ACCELERATE mining of tx he ALREADY signed,
     // Relay is allowed to retry the SAME tx with a higher gasPrice without being Penalized.
     // Need to create test for such flow.
-    it("test_perform_relay_send_message", async function () {
+    it("should perform the relayed 'send message' method call transaction ", async function () {
 
-        let startBlock = web3.eth.blockNumber
+        let startBlock = await web3.eth.getBlockNumber()
 
         assert.equal(relay_nonce, await rhub.getNonce(from) )
 
@@ -260,6 +260,40 @@ contract("RelayHub", function (accounts) {
         assert.notEqual(0, postevent[0].returnValues.usedGas)
 
     });
+
+    it("should perform the relayed method call with no parameters ", async function () {
+        await testutils.evmMine()
+        let startBlock = await web3.eth.getBlockNumber()
+        let transacionNoParams = sr.contract.methods.emitMessageNoParams().encodeABI()
+        let digest = await getTransactionHash(from, to, transacionNoParams, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
+        let sig = await getTransactionSignature(web3, accounts[0], digest)
+
+        let logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
+            fromBlock: startBlock,
+            toBlock: 'latest'
+        });
+        assert.equal(0, logs_messages.length)
+        let result = await rhub.relayCall(from, to, transacionNoParams, transaction_fee, gas_price, gas_limit, relay_nonce, sig, {
+            from: relayAccount,
+            gasPrice: gas_price,
+            gasLimit: gas_limit_any_value
+        });
+        relay_nonce++;
+        var log_relayed = result.logs[0];
+        var args_relayed = log_relayed.args;
+        assert.equal("TransactionRelayed", log_relayed.event);        
+        assert.equal(0, args_relayed.status.toNumber());
+        logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
+            fromBlock: startBlock,
+            toBlock: 'latest'
+        });
+        assert.equal(1, logs_messages.length)
+        let log_message = logs_messages[0];
+        var args_message = log_message.returnValues;
+        assert.equal("SampleRecipientEmitted", log_message.event);
+        assert.equal("Method with no parameters", args_message.message);
+    });
+
     it("should not accept relay requests from unknown addresses", async function () {
         digest = await getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
         sig = await getTransactionSignature(web3, accounts[0], digest)
@@ -795,7 +829,7 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
 
-            let startBlock = web3.eth.blockNumber
+            let startBlock = await web3.eth.getBlockNumber()
             // There should not be an event emitted, which means the result of 'relayCall' was indeed reverted
             var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
                 fromBlock: startBlock,
@@ -837,7 +871,7 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
 
-            let startBlock = web3.eth.blockNumber
+            let startBlock = await web3.eth.getBlockNumber()
             // There should not be an event emitted, which means the result of 'relayCall' was indeed reverted
             var logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
                 fromBlock: startBlock,

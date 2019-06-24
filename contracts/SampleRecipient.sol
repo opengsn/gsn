@@ -74,6 +74,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
         emit SampleRecipientEmitted(message, getSender(), msg.sender, tx.origin);
     }
 
+    function emitMessageNoParams() public {
+        emit SampleRecipientEmitted("Method with no parameters", getSender(), msg.sender, tx.origin);
+    }
+
     function setRelay(address relay, bool on) public {
         relaysWhitelist[relay] = on;
     }
