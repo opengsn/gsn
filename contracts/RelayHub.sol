@@ -459,19 +459,18 @@ contract RelayHub is IRelayHub {
             (relays[relay].state == RelayState.Removed), "Unstaked relay");
 
         // Half of the stake is burned (sent to address 0)
-        uint256 toBurn = SafeMath.div(relays[relay].stake, 2);
+        uint256 totalStake = relays[relay].stake;
+        uint256 toBurn = SafeMath.div(totalStake, 2);
+        uint256 reward = SafeMath.sub(totalStake, toBurn);
+
+        delete relays[relay];
+
         address(0).transfer(toBurn);
-        relays[relay].stake = SafeMath.sub(relays[relay].stake, toBurn);
+        address payable reporter = msg.sender;
+        reporter.transfer(reward);
 
-        uint256 amount = relays[relay].stake;
-
-        // Ownership of the relay is transferred to the reporter, so that they can call unstakeRelay
-        relays[relay].owner = msg.sender;
-        relays[relay].state = RelayState.Penalized;
-
-        emit Penalized(relay, msg.sender, amount);
-
-        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
-        emit RelayRemoved(relay, relays[relay].unstakeTime);
+        emit Penalized(relay, reporter, reward);
+        emit RelayRemoved(relay, now);
+        emit Unstaked(relay, reward);
     }
 }
