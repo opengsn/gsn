@@ -3,15 +3,11 @@ jobs: # a collection of steps
   build: # runs not using Workflows must have a `build` job as entry point
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: tabookey/eth-tools:solc-5.5a # solc5.5, NO truffle/ganache (npm-install'ed locally) # solc-5.5a: Adding netcat
+      - image: tabookey/eth-tools:solc-5.5b # solc5.5, NO truffle/ganache (npm-install'ed locally) # solc-5.5b: Adding netcat
 
     steps: # a collection of executable commands
       - checkout # special step to check out source code to working directory
 
-      - run:
-          name: get yarn # just until we add it into our root image
-          command: npm install -g yarn
-      
       - restore_cache: # special step to restore the dependency cache
           key: dependency-cache-{{ checksum "package.json" }}-yarn
       - run:
