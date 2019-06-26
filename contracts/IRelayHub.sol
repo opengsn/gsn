@@ -4,19 +4,26 @@ contract IRelayHub {
 
     // status flags for TransactionRelayed() event
     enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
-    enum CanRelayStatus {OK, WrongSignature, WrongNonce, AcceptRelayedCallReverted}
 
-    event Staked(address indexed relay, uint stake);
-    event Unstaked(address indexed relay, uint stake);
+    // Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
+    enum PreconditionCheck {
+        OK,                         // All checks passed, the call can be relayed
+        WrongSignature,             // The transaction to relay is not signed by requested sender
+        WrongNonce,                 // The provided nonce has already been used by the sender
+        AcceptRelayedCallReverted   // The recipient rejected this call via acceptRelayedCall
+    }
+
+    event Staked(address indexed relay, uint256 stake);
+    event Unstaked(address indexed relay, uint256 stake);
 
     /* RelayAdded is emitted whenever a relay [re-]registers with the RelayHub.
      * filtering on these events (and filtering out RelayRemoved events) lets the client
      * find which relays are currently registered.
      */
-    event RelayAdded(address indexed relay, address indexed owner, uint transactionFee, uint stake, uint unstakeDelay, string url);
+    event RelayAdded(address indexed relay, address indexed owner, uint256 transactionFee, uint256 stake, uint256 unstakeDelay, string url);
 
     // emitted when a relay is removed
-    event RelayRemoved(address indexed relay, uint unstakeTime);
+    event RelayRemoved(address indexed relay, uint256 unstakeTime);
 
     /**
      * this events is emitted whenever a transaction is relayed.
@@ -25,16 +32,16 @@ contract IRelayHub {
      * the client uses this event so it can report correctly transaction complete (or revert) to the application.
      * Monitoring tools can use this event to detect liveliness of clients and relays.
      * Field chargeOrCanRelayStatus is the charge deducted from recipient's balance that is paid to the relay except for one case: when canRelay() failed.
-     * Whenever canRelay() failed, TransactionRelayed emits its status instead of charge, as the recipient is never charged anyway at that point.  
+     * Whenever canRelay() failed, TransactionRelayed emits its status instead of charge, as the recipient is never charged anyway at that point.
      */
-    event TransactionRelayed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint status, uint chargeOrCanRelayStatus);
-    event Deposited(address src, uint amount);
-    event Withdrawn(address dest, uint amount);
-    event Penalized(address indexed relay, address sender, uint amount);
+    event TransactionRelayed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint256 status, uint256 chargeOrCanRelayStatus);
+    event Deposited(address src, uint256 amount);
+    event Withdrawn(address dest, uint256 amount);
+    event Penalized(address indexed relay, address sender, uint256 amount);
 
-    function getNonce(address from) view external returns (uint);
+    function getNonce(address from) view external returns (uint256);
 
-    function relayCall(address from, address to, bytes memory encodedFunction, uint transactionFee, uint gasPrice, uint gasLimit, uint nonce, bytes memory approval) public;
+    function relayCall(address from, address to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public;
 
     /**
      * deposit ether for a contract.
@@ -56,7 +63,7 @@ contract IRelayHub {
      * @param unstakeDelay - the minimum time before the owner can unstake this relay. This number can be increased,
      *          but neven decreased for a given relay.
      */
-    function stake(address relayaddr, uint unstakeDelay) external payable;
+    function stake(address relayaddr, uint256 unstakeDelay) external payable;
 
     function stakeOf(address relayaddr) external view returns (uint256);
 
@@ -78,6 +85,6 @@ contract IRelayHub {
      * So in order to be able to withdraw its own deposited funds, a contract MUST call this method
      * (from an owner-only method)
      */
-    function withdraw(uint amount) public;
+    function withdraw(uint256 amount) public;
 }
 

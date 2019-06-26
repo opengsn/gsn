@@ -15,9 +15,8 @@ const { ProfilerSubprovider } = require("@0x/sol-profiler");
 const { CoverageSubprovider } = require("@0x/sol-coverage");
 const { RevertTraceSubprovider } = require("@0x/sol-trace");
 
-
 const projectRoot = "";
-const solcVersion = "0.5.5";
+const solcVersion = "0.5.9"
 const defaultFromAddress = "0x5409ed021d9299bf6814279a6a1411a7e866a631";
 const isVerbose = true;
 const artifactAdapter = new TruffleArtifactAdapter(projectRoot, solcVersion);
@@ -75,14 +74,14 @@ if (mode === "profile") {
 	const ganahceSubprovider = new GanacheSubprovider();
 
 	provider.addProvider(ganahceSubprovider);
-	
+
 	if ( global.exposeGanachePort ) {
 	  s = ganacheHttpServer( provider, {log : ()=>{}} )
 
-	  s.listen( {port:exposeGanachePort, host:'localhost'} ) 
+	  s.listen( {port:exposeGanachePort, host:'localhost'} )
 	  console.log( "Started in-process Ganache, on port "+exposeGanachePort )
 	}
-	
+
   } else {
 	//use external provider
 	provider.addProvider(new RpcProvider({ rpcUrl: "http://localhost:8544" }));

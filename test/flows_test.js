@@ -134,7 +134,9 @@ options.forEach(params => {
                 ex = e
             }
             assert.ok(ex != null, "Expected to throw " + msg + " but threw nothing")
-            assert.ok(ex.toString().includes(msg), "Expected to throw " + msg + " but threw " + ex.message)
+            let isExpectedError = ex.toString().includes(msg)
+                                || (ex.otherErrors != null && ex.otherErrors.length > 0 && ex.otherErrors[0].toString().includes(msg))
+            assert.ok(isExpectedError, "Expected to throw " + msg + " but threw " + ex.message)
         }
 
     })  //of contract

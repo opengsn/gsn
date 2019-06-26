@@ -25,7 +25,7 @@ module.exports = {
 	     verbose: process.env.VERBOSE,
        network_id: "*"
     },
-    npmtest: { //used from "npm test". see pakcage.json 
+    npmtest: { //used from "npm test". see pakcage.json
 		  verbose: process.env.VERBOSE,
   		host: "127.0.0.1",
   		port: 8544,
@@ -50,7 +50,7 @@ module.exports = {
   },
   compilers: {
     solc: {
-      version: "0.5.5",
+      version: "0.5.9",
     },
   }
 };
