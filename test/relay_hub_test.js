@@ -1,5 +1,3 @@
-/* globals web3 artifacts contract it before assert */
-
 const Big = require('big.js')
 
 const SampleRecipient = artifacts.require("./SampleRecipient.sol");
@@ -281,7 +279,7 @@ contract("RelayHub", function (accounts) {
         relay_nonce++;
         var log_relayed = result.logs[0];
         var args_relayed = log_relayed.args;
-        assert.equal("TransactionRelayed", log_relayed.event);        
+        assert.equal("TransactionRelayed", log_relayed.event);
         assert.equal(0, args_relayed.status.toNumber());
         logs_messages = await sr.contract.getPastEvents("SampleRecipientEmitted", {
             fromBlock: startBlock,
@@ -709,7 +707,7 @@ contract("RelayHub", function (accounts) {
             // What is the factor relay is expecting to get paid by. I.e. for 10% it is '1.1'; For 200% it is '3.0'
             let requested_coeff = new BigNumber((requested_fee + 100) / 100).toPrecision(3, BigNumber.ROUND_HALF_UP)
 
-            // Calculate the actual factor. Rounding is expected. 
+            // Calculate the actual factor. Rounding is expected.
             let revenue = relay_owner_hub_balance_after.sub(relay_owner_hub_balance_before).toString()
             let expenses = relay_balance_before.sub(relay_balance_after).toString()
 
@@ -761,9 +759,9 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
             relay_nonce++;
-            let PostRelayedFailed = 4;
+            let RecipientBalanceChanged = 5;
             assert.equal("TransactionRelayed", res.logs[0].event);
-            assert.equal(PostRelayedFailed, res.logs[0].args.status);
+            assert.equal(RecipientBalanceChanged, res.logs[0].args.status);
         } finally {
             // returning state to previous one
             await sr.setWithdrawDuringRelayedCall(false);
