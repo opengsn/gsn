@@ -448,6 +448,7 @@ contract RelayHub is IRelayHub {
 
         bytes32 hash = keccak256(abi.encodePacked(unsignedTx));
         address relay = ecrecover(hash, uint8(signature[0]), LibBytes.readBytes32(signature, 1), LibBytes.readBytes32(signature, 33));
+
         penalize(relay);
     }
 
