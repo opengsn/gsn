@@ -158,9 +158,11 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
                 await relayHub.unstake(relay, { from: relayOwner });
               });
 
-              it('relay can be restaked for with another owner', async function () {
-                await relayHub.stake(relay, initialUnstakeDelay, { value: initialStake, from: other });
-                expect(await relayHub.ownerOf(relay)).to.equal(other);
+              it('relay cannot be restaked for', async function () {
+                await expectRevert(
+                  relayHub.stake(relay, initialUnstakeDelay, { value: initialStake, from: relayOwner }),
+                  'wrong state for stake'
+                );
               });
             });
           });
@@ -337,7 +339,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
                 });
 
                 it('relay cannot be re-unstaked', async function () {
-                  await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'canUnstake failed');
+                  await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'Already unstaked');
                 });
               });
             });

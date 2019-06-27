@@ -46,7 +46,8 @@ contract RelayHub is IRelayHub {
         Unknown,    // The relay is unknown to the system: it has never been staked for
         Staked,     // The relay has been staked for, but it is not yet active
         Registered, // The relay has registered itself, and is active (can relay calls)
-        Removed,    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
+        Removing,   // The relay has been deregistered by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
+        Removed,    // The deregistered relay has been unstaked, and it can no longer be used in the system
         Penalized   // The relay has been penalized for misbehavior, its stake was removed and it can no longer be used in the system
     }
 
@@ -125,22 +126,25 @@ contract RelayHub is IRelayHub {
 
         // Start the unstake counter
         relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
-        relays[relay].state = RelayState.Removed;
+        relays[relay].state = RelayState.Removing;
 
         emit RelayRemoved(relay, relays[relay].unstakeTime);
     }
 
     function unstake(address relay) public {
+        require(relays[relay].state != RelayState.Removed, "Already unstaked");
+
         require(canUnstake(relay), "canUnstake failed");
         require(relays[relay].owner == msg.sender, "not owner");
 
-        address payable owner = msg.sender;
-        uint256 amount = relays[relay].stake;
+        relays[relay].state = RelayState.Removed;
 
-        delete relays[relay];
+        uint256 toTransfer = relays[relay].stake;
+        relays[relay].stake = 0;
 
-        owner.transfer(amount);
-        emit Unstaked(relay, amount);
+        relays[relay].owner.transfer(toTransfer);
+
+        emit Unstaked(relay, toTransfer);
     }
 
     /**
@@ -469,7 +473,7 @@ contract RelayHub is IRelayHub {
 
         require((relays[relay].state == RelayState.Staked) ||
             (relays[relay].state == RelayState.Registered) ||
-            (relays[relay].state == RelayState.Removed), "Unstaked relay");
+            (relays[relay].state == RelayState.Removing), "Unstaked relay");
 
         if (relays[relay].state == RelayState.Registered) {
             emit RelayRemoved(relay, now);
