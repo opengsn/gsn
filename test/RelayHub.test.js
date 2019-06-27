@@ -340,103 +340,101 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
   });
 
   describe('penalizations', function () {
-    describe('triggers', function () {
-      context('with staked relay', function () {
-        beforeEach(async function () {
-          await relayHub.stake(relay, time.duration.days(1), { value: ether('1') });
+    describe('penalizable behaviors', function () {
+      beforeEach('staking for relay', async function () {
+        await relayHub.stake(relay, time.duration.days(1), { value: ether('1') });
+      });
+
+      describe.skip('repeated relay nonce', async function () {
+        // Some of these tests require signing using the relay's private key. For convenience, we hardcode it here and run
+        // ganache in deterministic mode, to always get the same key.
+        const relayPrivateKey = '0x6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c';
+
+        before(function () {
+          // We need to make sure the private key is the relay's
+          expect(relay.toLowerCase()).to.equal("0x" + privateToAddress(relayPrivateKey).toString('hex'));
         });
+      });
 
-        describe.skip('repeated relay nonce', async function () {
-          // Some of these tests require signing using the relay's private key. For convenience, we hardcode it here and run
-          // ganache in deterministic mode, to always get the same key.
-          const relayPrivateKey = '0x6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c';
+      describe('illegal call', async function () {
+        describe('with pre-EIP155 signatures', function () {
+          it('penalizes relay transactions to addresses other than RelayHub', async function () {
+            // Relay sending ether to another account
+            const { transactionHash } = await send.ether(relay, other, ether('0.5'));
+            const { data, signature } = await getDataAndSignature(transactionHash);
 
-          before(function () {
-            // We need to make sure the private key is the relay's
-            expect(relay.toLowerCase()).to.equal("0x" + privateToAddress(relayPrivateKey).toString('hex'));
+            const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
+            expectEvent.inLogs(logs, 'Penalized', { relay });
+          });
+
+          it('penalizes relay transactions to illegal RelayHub functions (stake)', async function () {
+            // Relay staking for a second relay
+            const { tx } = await relayHub.stake(other, time.duration.days(1), { value: ether('0.5'), from: relay });
+            const { data, signature } = await getDataAndSignature(tx);
+
+            const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
+            expectEvent.inLogs(logs, 'Penalized', { relay });
+          });
+
+          it('penalizes relay transactions to illegal RelayHub functions (penalize)', async function () {
+            // A second relay is registered
+            await relayHub.stake(otherRelay, time.duration.days(1), { value: ether('0.5'), from: other });
+
+            // An illegal transaction is sent by it
+            const stakeTx = await send.ether(otherRelay, other, ether('0.5'));
+
+            // A relay penalizes it
+            const stakeTxDataSig = await getDataAndSignature(stakeTx.transactionHash);
+            const penalizeTx = await relayHub.penalizeIllegalTransaction(
+              stakeTxDataSig.data, stakeTxDataSig.signature, { from: relay }
+            );
+
+            // It can now be penalized for that
+            const penalizeTxDataSig = await getDataAndSignature(penalizeTx.tx);
+            const secondPenalizeTx = await relayHub.penalizeIllegalTransaction(
+              penalizeTxDataSig.data, penalizeTxDataSig.signature
+            );
+
+            expectEvent.inLogs(secondPenalizeTx.logs, 'Penalized', { relay });
+          });
+
+          it('does not penalize legal relay transactions', async function () {
+            // registerRelay is a legal transaction
+
+            const registerTx = await relayHub.registerRelay(10, 'url.com', { from: relay });
+            const registerTxDataSig = await getDataAndSignature(registerTx.tx);
+
+            await expectRevert(
+              relayHub.penalizeIllegalTransaction(registerTxDataSig.data, registerTxDataSig.signature),
+               'Legal relay transaction'
+            );
+
+            // relayCall is a legal transaction
+
+            const fee = new BN('10');
+            const gasPrice = new BN('1');
+            const gasLimit = new BN('1000000');
+            const senderNonce = new BN('0');
+            const txData = recipient.contract.methods.emitMessage('').encodeABI();
+            const signature = await getTransactionSignature(
+              web3,
+              sender,
+              getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay)
+            );
+
+            await relayHub.depositFor(recipient.address, { from: other, value: ether('1') });
+            const relayCallTx = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, { from: relay, gasPrice, gasLimit });
+
+            const relayCallTxDataSig = await getDataAndSignature(relayCallTx.tx);
+            await expectRevert(
+              relayHub.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature),
+               'Legal relay transaction'
+            );
           });
         });
+      });
 
-        describe('illegal call', async function () {
-          describe('with pre-EIP155 signatures', function () {
-            it('penalizes relay transactions to addresses other than RelayHub', async function () {
-              // Relay sending ether to another account
-              const { transactionHash } = await send.ether(relay, other, ether('0.5'));
-              const { data, signature } = await getDataAndSignature(transactionHash);
-
-              const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
-              expectEvent.inLogs(logs, 'Penalized', { relay });
-            });
-
-            it('penalizes relay transactions to illegal RelayHub functions (stake)', async function () {
-              // Relay staking for a second relay
-              const { tx } = await relayHub.stake(other, time.duration.days(1), { value: ether('0.5'), from: relay });
-              const { data, signature } = await getDataAndSignature(tx);
-
-              const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
-              expectEvent.inLogs(logs, 'Penalized', { relay });
-            });
-
-            it('penalizes relay transactions to illegal RelayHub functions (penalize)', async function () {
-              // A second relay is registered
-              await relayHub.stake(otherRelay, time.duration.days(1), { value: ether('0.5'), from: other });
-
-              // An illegal transaction is sent by it
-              const stakeTx = await send.ether(otherRelay, other, ether('0.5'));
-
-              // A relay penalizes it
-              const stakeTxDataSig = await getDataAndSignature(stakeTx.transactionHash);
-              const penalizeTx = await relayHub.penalizeIllegalTransaction(
-                stakeTxDataSig.data, stakeTxDataSig.signature, { from: relay }
-              );
-
-              // It can now be penalized for that
-              const penalizeTxDataSig = await getDataAndSignature(penalizeTx.tx);
-              const secondPenalizeTx = await relayHub.penalizeIllegalTransaction(
-                penalizeTxDataSig.data, penalizeTxDataSig.signature
-              );
-
-              expectEvent.inLogs(secondPenalizeTx.logs, 'Penalized', { relay });
-            });
-
-            it('does not penalize legal relay transactions', async function () {
-              // registerRelay is a legal transaction
-
-              const registerTx = await relayHub.registerRelay(10, 'url.com', { from: relay });
-              const registerTxDataSig = await getDataAndSignature(registerTx.tx);
-
-              await expectRevert(
-                relayHub.penalizeIllegalTransaction(registerTxDataSig.data, registerTxDataSig.signature),
-                 'Legal relay transaction'
-              );
-
-              // relayCall is a legal transaction
-
-              const fee = new BN('10');
-              const gasPrice = new BN('1');
-              const gasLimit = new BN('1000000');
-              const senderNonce = new BN('0');
-              const txData = recipient.contract.methods.emitMessage('').encodeABI();
-              const signature = await getTransactionSignature(
-                web3,
-                sender,
-                getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay)
-              );
-
-              await relayHub.depositFor(recipient.address, { from: other, value: ether('1') });
-              const relayCallTx = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, { from: relay, gasPrice, gasLimit });
-
-              const relayCallTxDataSig = await getDataAndSignature(relayCallTx.tx);
-              await expectRevert(
-                relayHub.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature),
-                 'Legal relay transaction'
-              );
-            });
-          });
-        });
-
-        describe.skip('with EIP155 signatures', function () {
-        });
+      describe.skip('with EIP155 signatures', function () {
       });
     });
 
