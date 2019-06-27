@@ -38,8 +38,7 @@ contract RelayHub is IRelayHub {
         Unknown,    // The relay is unknown to the system: it has never been staked for
         Staked,     // The relay has been staked for, but it is not yet active
         Registered, // The relay has registered itself, and is active (can relay calls)
-        Removed,    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
-        Penalized   // The relay has been penalized. Its new owner must wait for the relay's unstakeDelay to elapse before it can redeem the reward
+        Removed    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
     }
 
     enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
@@ -453,25 +452,27 @@ contract RelayHub is IRelayHub {
     }
 
     function penalize(address relay) private {
-        require(relays[relay].state != RelayState.Penalized, "Relay already penalized");
-
         require((relays[relay].state == RelayState.Staked) ||
             (relays[relay].state == RelayState.Registered) ||
             (relays[relay].state == RelayState.Removed), "Unstaked relay");
 
-        // Half of the stake is burned (sent to address 0)
+        // Half of the stake will be burned (sent to address 0)
         uint256 totalStake = relays[relay].stake;
         uint256 toBurn = SafeMath.div(totalStake, 2);
         uint256 reward = SafeMath.sub(totalStake, toBurn);
 
+        if (relays[relay].state == RelayState.Registered) {
+            emit RelayRemoved(relay, now);
+        }
+
+        // The relay is deleted
         delete relays[relay];
 
+        // Ether is burned and transferred
         address(0).transfer(toBurn);
         address payable reporter = msg.sender;
         reporter.transfer(reward);
 
         emit Penalized(relay, reporter, reward);
-        emit RelayRemoved(relay, now);
-        emit Unstaked(relay, reward);
     }
 }

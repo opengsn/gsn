@@ -451,12 +451,12 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         beforeEach(async function () {
           // Relays are not allowed to transfer Ether
           const { transactionHash } = await send.ether(relay, other, ether('0.5'));
-          ({ data: penalizeTxData, signature: penalizableTxSignature } = await getDataAndSignature(transactionHash));
+          ({ data: penalizableTxData, signature: penalizableTxSignature } = await getDataAndSignature(transactionHash));
         });
 
         function penalizeFrom (from) {
           // Penalize with a gasPrice of 0 to help in balance change calculations
-          return relayHub.penalizeIllegalTransaction(penalizeTxData, penalizableTxSignature, { from, gasPrice: 0 });
+          return relayHub.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, { from, gasPrice: 0 });
         }
 
         function testRelayPenalization () {

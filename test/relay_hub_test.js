@@ -514,9 +514,9 @@ contract("RelayHub", function (accounts) {
             gasPrice: gasPricePenalize,
             gasLimit: gas_limit_any_value
         });
-        assert.equal("Penalized", res.logs[0].event)
-        assert.equal(address, res.logs[0].args.relay.toLowerCase())
-        assert.equal(snitching_account, res.logs[0].args.sender)
+        assert.equal("Penalized", res.logs[1].event)
+        assert.equal(address, res.logs[1].args.relay.toLowerCase())
+        assert.equal(snitching_account, res.logs[1].args.sender)
 
         let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]/2).sub(res.receipt.gasUsed * gasPricePenalize);
 
@@ -569,7 +569,7 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
 
-            assert.equal("Penalized", res.logs[0].event)
+            assert.equal("Penalized", res.logs[1].event)
 
             let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]/2).sub(res.receipt.gasUsed * gasPricePenalize);
 
