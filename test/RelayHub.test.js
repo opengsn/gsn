@@ -345,14 +345,57 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         await relayHub.stake(relay, time.duration.days(1), { value: ether('1') });
       });
 
-      describe.skip('repeated relay nonce', async function () {
-        // Some of these tests require signing using the relay's private key. For convenience, we hardcode it here and run
-        // ganache in deterministic mode, to always get the same key.
-        const relayPrivateKey = '0x6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c';
+      const encodedCallArgs = {
+        sender,
+        recipient: '0x1820b744B33945482C17Dc37218C01D858EBc714',
+        data: '0x1234',
+        fee: 10,
+        gasPrice: 50,
+        gasLimit: 1000000,
+        nonce: 0,
+      };
 
-        before(function () {
-          // We need to make sure the private key is the relay's
-          expect(relay.toLowerCase()).to.equal("0x" + privateToAddress(relayPrivateKey).toString('hex'));
+      const relayCallArgs = {
+        gasPrice: 50,
+        gasLimit: 1000000,
+        nonce: 0,
+        privateKey: '6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c',
+      };
+
+      describe('repeated relay nonce', async function () {
+        it('penalizes transactions with same nonce and different data', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(Object.assign(encodedCallArgs, { data: "0xabcd" }), relayCallArgs));
+
+          await relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature);
+        });
+
+        it('does not penalize transactions with same nonce and same data', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(
+            encodedCallArgs,
+            Object.assign(relayCallArgs, { gasPrice: 70, gasLimit: 2000000 }) // gasPrice and gasLimit may be different
+          ));
+
+          await expectRevert(relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature), 'tx.data is equal');
+        });
+
+        it('does not penalize transactions with different nonces', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(
+            encodedCallArgs,
+            Object.assign(relayCallArgs, { nonce: 1 })
+          ));
+          await expectRevert(relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature), 'Different nonce');
+        });
+
+        it('does not penalize transactions with same nonce from different relays', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(
+            encodedCallArgs,
+            Object.assign(relayCallArgs, { privateKey: '0123456789012345678901234567890123456789012345678901234567890123' })
+          ));
+          await expectRevert(relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature), 'Different signer');
         });
       });
 
@@ -361,7 +404,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           it('penalizes relay transactions to addresses other than RelayHub', async function () {
             // Relay sending ether to another account
             const { transactionHash } = await send.ether(relay, other, ether('0.5'));
-            const { data, signature } = await getDataAndSignature(transactionHash);
+            const { data, signature } = await getDataAndSignatureFromHash(transactionHash);
 
             const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
             expectEvent.inLogs(logs, 'Penalized', { relay });
@@ -370,7 +413,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           it('penalizes relay transactions to illegal RelayHub functions (stake)', async function () {
             // Relay staking for a second relay
             const { tx } = await relayHub.stake(other, time.duration.days(1), { value: ether('0.5'), from: relay });
-            const { data, signature } = await getDataAndSignature(tx);
+            const { data, signature } = await getDataAndSignatureFromHash(tx);
 
             const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
             expectEvent.inLogs(logs, 'Penalized', { relay });
@@ -384,13 +427,13 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             const stakeTx = await send.ether(otherRelay, other, ether('0.5'));
 
             // A relay penalizes it
-            const stakeTxDataSig = await getDataAndSignature(stakeTx.transactionHash);
+            const stakeTxDataSig = await getDataAndSignatureFromHash(stakeTx.transactionHash);
             const penalizeTx = await relayHub.penalizeIllegalTransaction(
               stakeTxDataSig.data, stakeTxDataSig.signature, { from: relay }
             );
 
             // It can now be penalized for that
-            const penalizeTxDataSig = await getDataAndSignature(penalizeTx.tx);
+            const penalizeTxDataSig = await getDataAndSignatureFromHash(penalizeTx.tx);
             const secondPenalizeTx = await relayHub.penalizeIllegalTransaction(
               penalizeTxDataSig.data, penalizeTxDataSig.signature
             );
@@ -402,7 +445,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             // registerRelay is a legal transaction
 
             const registerTx = await relayHub.registerRelay(10, 'url.com', { from: relay });
-            const registerTxDataSig = await getDataAndSignature(registerTx.tx);
+            const registerTxDataSig = await getDataAndSignatureFromHash(registerTx.tx);
 
             await expectRevert(
               relayHub.penalizeIllegalTransaction(registerTxDataSig.data, registerTxDataSig.signature),
@@ -425,7 +468,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             await relayHub.depositFor(recipient.address, { from: other, value: ether('1') });
             const relayCallTx = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, { from: relay, gasPrice, gasLimit });
 
-            const relayCallTxDataSig = await getDataAndSignature(relayCallTx.tx);
+            const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx);
             await expectRevert(
               relayHub.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature),
                'Legal relay transaction'
@@ -449,7 +492,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         beforeEach(async function () {
           // Relays are not allowed to transfer Ether
           const { transactionHash } = await send.ether(relay, other, ether('0.5'));
-          ({ data: penalizableTxData, signature: penalizableTxSignature } = await getDataAndSignature(transactionHash));
+          ({ data: penalizableTxData, signature: penalizableTxSignature } = await getDataAndSignatureFromHash(transactionHash));
         });
 
         function penalizeFrom (from) {
@@ -533,7 +576,32 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       });
     });
 
-    async function getDataAndSignature(txHash) {
+    function encodeRelayCall(encodedCallArgs, relayCallArgs) {
+      const encodedCall = relayHub.contract.methods.relayCall(
+          encodedCallArgs.sender,
+          encodedCallArgs.recipient,
+          encodedCallArgs.data,
+          encodedCallArgs.fee,
+          encodedCallArgs.gasPrice,
+          encodedCallArgs.gasLimit,
+          encodedCallArgs.nonce,
+          '0xabcdef123456',
+        ).encodeABI();
+
+      const transaction = new Transaction({
+        nonce: relayCallArgs.nonce,
+        gasLimit: relayCallArgs.gasLimit,
+        gasPrice: relayCallArgs.gasPrice,
+        to: relayHub.address,
+        value: 0,
+        data: encodedCall,
+      });
+
+      transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'));
+      return transaction;
+    }
+
+    async function getDataAndSignatureFromHash(txHash) {
       const rpcTx = await web3.eth.getTransaction(txHash);
 
       const tx = new Transaction({
@@ -548,6 +616,10 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         s: rpcTx.s,
       });
 
+      return getDataAndSignature(tx);
+    }
+
+    function getDataAndSignature(tx) {
       const data = `0x${rlp.encode([tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]).toString('hex')}`;
       const signature = `0x${tx.v.toString('hex')}${tx.r.toString('hex')}${tx.s.toString('hex')}`
 
