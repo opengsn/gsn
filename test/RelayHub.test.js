@@ -367,6 +367,9 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       // The other half is burned, so RelayHub's balance is decreased by the full stake
       expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equals(stake.neg());
 
+      expect(await relayHub.stakeOf(relay)).to.be.bignumber.equals('0');
+      expect((await relayHub.relays(relay)).unstakeTime).to.be.bignumber.equals(await time.latest());
+
       return receipt;
     }
 
@@ -547,7 +550,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
 
           it('relay cannot be penalized twice', async function () {
             await penalize();
-            await expectRevert(penalize(), 'Unstaked relay');
+            await expectRevert(penalize(), 'Already penalized');
           });
         }
 

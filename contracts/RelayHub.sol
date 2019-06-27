@@ -46,7 +46,8 @@ contract RelayHub is IRelayHub {
         Unknown,    // The relay is unknown to the system: it has never been staked for
         Staked,     // The relay has been staked for, but it is not yet active
         Registered, // The relay has registered itself, and is active (can relay calls)
-        Removed    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
+        Removed,    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
+        Penalized   // The relay has been penalized for misbehavior, its stake was removed and it can no longer be used in the system
     }
 
     enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
@@ -464,21 +465,24 @@ contract RelayHub is IRelayHub {
     }
 
     function penalize(address relay) private {
+        require(relays[relay].state != RelayState.Penalized, "Already penalized");
+
         require((relays[relay].state == RelayState.Staked) ||
             (relays[relay].state == RelayState.Registered) ||
             (relays[relay].state == RelayState.Removed), "Unstaked relay");
-
-        // Half of the stake will be burned (sent to address 0)
-        uint256 totalStake = relays[relay].stake;
-        uint256 toBurn = SafeMath.div(totalStake, 2);
-        uint256 reward = SafeMath.sub(totalStake, toBurn);
 
         if (relays[relay].state == RelayState.Registered) {
             emit RelayRemoved(relay, now);
         }
 
-        // The relay is deleted
-        delete relays[relay];
+        relays[relay].state = RelayState.Penalized;
+
+        // Half of the stake will be burned (sent to address 0), the other half
+        // sent to the reporter as a reward
+        uint256 toBurn = SafeMath.div(relays[relay].stake, 2);
+        uint256 reward = SafeMath.sub(relays[relay].stake, toBurn);
+        relays[relay].stake = 0;
+        relays[relay].unstakeTime = now;
 
         // Ether is burned and transferred
         address(0).transfer(toBurn);
