@@ -113,17 +113,21 @@ contract IRelayHub {
     // Emits a TransactionRelayed event.
     function relayCall(address from, address to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public;
 
-    // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
-    // indicated in the status field, which is a RelayCallStatus value.
-    // Useful when monitoring a relay's operation and relayed calls to a contract.
-    // Field chargeOrCanRelayStatus is the charge deducted from recipient's balance, paid to the relay, except when status
-    // is RelayCallStatus.CanRelayFailed. In that case, this value is a PreconditionCheck value, and the recipient is not charged.
-    event TransactionRelayed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint256 status, uint256 chargeOrCanRelayStatus);
+    // Emitted when an attempt to relay a call failed. This can happen due to incorrect relayCall arguments, or the
+    // recipient not accepting the relayed call. The actual relayed call was not executed, and the recipient not charged.
+    // The reason field contains an error code: values 1-10 correspond to PreconditionCheck entries, and values over 10
+    // are custom recipient error codes returned from acceptRelayedCall.
+    event RelayCallFailed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint256 reason);
 
-    // Status flags for the TransactionRelayed event
+    // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
+    // indicated in the status field.
+    // Useful when monitoring a relay's operation and relayed calls to a contract.
+    // Charge is the ether value deducted from the recipient's balance, paid to the relay's owner.
+    event TransactionRelayed(address indexed relay, address indexed from, address indexed to, bytes4 selector, RelayCallStatus status, uint256 charge);
+
+    // Reason error codes for the TransactionRelayed event
     enum RelayCallStatus {
-        OK,                      // The transaction was successfully relayed and execution successful
-        CanRelayFailed,          // The transaction was not relayed due to canRelay failing
+        OK,                      // The transaction was successfully relayed and execution successful - never included in the event
         RelayedCallFailed,       // The transaction was relayed, but the relayed call failed
         PreRelayedFailed,        // The transaction was not relayed due to preRelatedCall reverting
         PostRelayedFailed,       // The transaction was relayed and reverted due to postRelatedCall reverting

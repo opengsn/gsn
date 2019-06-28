@@ -278,7 +278,7 @@ contract RelayHub is IRelayHub {
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
         if (preconditionCheck != uint256(PreconditionCheck.OK)) {
-            emit TransactionRelayed(msg.sender, from, recipient, functionSelector, uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
+            emit RelayCallFailed(msg.sender, from, recipient, functionSelector, preconditionCheck);
             return;
         }
 
@@ -303,7 +303,7 @@ contract RelayHub is IRelayHub {
         balances[recipient] -= charge;
         balances[relays[msg.sender].owner] += charge;
 
-        emit TransactionRelayed(msg.sender, from, recipient, functionSelector, uint256(status), charge);
+        emit TransactionRelayed(msg.sender, from, recipient, functionSelector, status, charge);
     }
 
     function getChargedAmount(uint256 gas, uint256 gasPrice, uint256 fee) private pure returns (uint256) {
