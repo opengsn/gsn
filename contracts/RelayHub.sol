@@ -192,38 +192,18 @@ contract RelayHub is IRelayHub {
             return uint256(PreconditionCheck.WrongNonce);
         }
 
-        bytes memory rawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
-            relay, from, encodedFunction, gasPrice, transactionFee, approval);
+        bytes memory encodedTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
+            relay, from, encodedFunction, gasPrice, transactionFee, approval
+        );
 
-        (bool success, uint256 accept) = staticCallWithMaxGas(address(to), acceptRelayedCallMaxGas, rawTx);
+        (bool success, bytes memory returndata) = address(to).staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
 
         if (!success) {
             return uint256(PreconditionCheck.AcceptRelayedCallReverted);
         } else {
             // This can be either PreconditionCheck.OK, or a value outside of the enum range.
-            return accept;
+            return abi.decode(returndata, (uint256));
         }
-    }
-
-    // Due to a bug in Solidity v0.5.9 (https://github.com/ethereum/solidity/issues/6901) we need to implement this in
-    // assembly.
-    //
-    // Once the bug is fixed, uses of this function can be replaced by:
-    // (bool success, uint256 checkResult) = to.staticcall.gas(acceptRelayedCallMaxGas)(data);
-    function staticCallWithMaxGas(address to, uint256 maxGas, bytes memory data) private view returns (bool, uint256) {
-        bool success;
-        uint256 result;
-
-        assembly {
-            let dataSize := mload(data)
-            let dataPtr := add(data, 32)
-
-            // The 32-byte result is placed memory position 0 (scratch space)
-            success := staticcall(maxGas, to, dataPtr, dataSize, 0, 32)
-            result := mload(0)
-        }
-
-        return (success, result);
     }
 
     /**
