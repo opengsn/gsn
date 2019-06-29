@@ -21,9 +21,9 @@ RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources
 RUN apt-get update && \
 	apt-get install --no-install-recommends yarn
 
-#need to select which version we install: default is (right now) 0.5.5
-RUN curl -L -o /usr/local/bin/solc-5.5 https://github.com/ethereum/solidity/releases/download/v0.5.5/solc-static-linux && chmod a+rx /usr/local/bin/solc-5.5
-RUN ln -s /usr/local/bin/solc-5.5 /usr/local/bin/solc
+#need to select which version we install: default is (right now) 0.5.10
+RUN curl -L -o /usr/local/bin/solc-5.10 https://github.com/ethereum/solidity/releases/download/v0.5.10/solc-static-linux && chmod a+rx /usr/local/bin/solc-5.10
+RUN ln -s /usr/local/bin/solc-5.10 /usr/local/bin/solc
 #RUN apt-get install -y solc
 
 ENV PS1 "\e[31min-docker\e[0m \W \$ "
