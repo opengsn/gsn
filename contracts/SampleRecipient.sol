@@ -4,8 +4,10 @@ import "./GsnUtils.sol";
 import "./IRelayHub.sol";
 import "./RelayRecipient.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 contract SampleRecipient is RelayRecipient, Ownable {
+    using ECDSA for bytes32;
 
     mapping (address => bool) public relaysWhitelist;
 
@@ -96,7 +98,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
         blacklisted = addr;
     }
 
-    function acceptRelayedCall(address relay, address from, bytes memory /*encodedFunction*/, uint /*gasPrice*/, uint /*transactionFee*/ , bytes memory approval) public view returns(uint) {
+    function acceptRelayedCall(address relay, address from, bytes memory /*encodedFunction*/, uint /*gasPrice*/, uint /*transactionFee*/ , bytes memory approvalData, bytes memory /*signature*/) public view returns(uint) {
         // The factory accepts relayed transactions from anyone, so we whitelist our own relays to prevent abuse.
         // This protection only makes sense for contracts accepting anonymous calls, and therefore not used by Gatekeeper or Multisig.
         // May be protected by a user_credits map managed by a captcha-protected web app or association with a google account.
@@ -111,15 +113,14 @@ contract SampleRecipient is RelayRecipient, Ownable {
         if (from == blacklisted) return 11;
         if ( rejectAcceptRelayCall ) return 12;
 
-        // this is an example of how the dapp can provide an offchain approval to a transaction
-        if (approval.length == 65) {
+        // this is an example of how the dapp can provide an offchain signature to a transaction
+        if (approvalData.length == 0) {
             // No owner signature given - proceed as usual (for existing tests)
             return 0;
         }
 
-        // extract owner sig from all approval bytes
-        bytes memory ownerSig = LibBytes.slice(approval, 65, 130);
-        if (!GsnUtils.checkSig(owner(), keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked("I approve", from)))), ownerSig)) {
+        // extract owner sig from all signature bytes
+        if (keccak256(abi.encodePacked("I approve", from)).toEthSignedMessageHash().recover(approvalData) != owner()) {
             return 13;
         }
 

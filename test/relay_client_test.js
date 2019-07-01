@@ -365,7 +365,7 @@ contract('RelayClient', function (accounts) {
         let fromAddr = ephemeralKeypair.address
         rc.useKeypairForSigning(ephemeralKeypair)
         var did_assert = false
-        rc.sendViaRelay = function(relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress){
+        rc.sendViaRelay = function(relayUrl, approvalData, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress){
             let message = utils.getTransactionHash(
                 from,
                 to,

@@ -23,7 +23,7 @@ contract RelayHub is IRelayHub {
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
-    uint256 constant public gasOverhead = 47422;
+    uint256 constant public gasOverhead = 48120;
     uint256 constant public acceptRelayedCallMaxGas = 50000;
     uint256 constant public postRelayedCallMaxGas = 100000;
     uint256 constant public preRelayedCallMaxGas = 100000;
@@ -177,15 +177,16 @@ contract RelayHub is IRelayHub {
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
-        bytes memory approval
+        bytes memory approvalData,
+        bytes memory signature
     )
         public view returns (uint256)
     {
-        // Verify the sender's signature on the transaction
+        // Verify the sender's signature on the transaction - note that approvalData is *not* signed
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
 
-        if (hashedMessage.toEthSignedMessageHash().recover(approval) != from) {
+        if (hashedMessage.toEthSignedMessageHash().recover(signature) != from) {
             return uint256(PreconditionCheck.WrongSignature);
         }
 
@@ -195,7 +196,7 @@ contract RelayHub is IRelayHub {
         }
 
         bytes memory encodedTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
-            relay, from, encodedFunction, gasPrice, transactionFee, approval
+            relay, from, encodedFunction, gasPrice, transactionFee, approvalData, signature
         );
 
         (bool success, bytes memory returndata) = address(to).staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
@@ -219,7 +220,8 @@ contract RelayHub is IRelayHub {
      * @param gasLimit limit the client want to put on its transaction
      * @param transactionFee fee (%) the relay takes over actual gas cost.
      * @param nonce sender's nonce (in nonces[])
-     * @param approval client's signature over all params (first 65 bytes). The remainder is dapp-specific data.
+     * @param approvalData dapp-specific data
+     * @param signature client's signature over all params
      */
     function relayCall(
         address from,
@@ -229,7 +231,8 @@ contract RelayHub is IRelayHub {
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
-        bytes memory approval
+        bytes memory approvalData,
+        bytes memory signature
     )
         public
     {
@@ -253,15 +256,17 @@ contract RelayHub is IRelayHub {
         // for the maximum possible charge.
         require(gasPrice * initialGas <= balances[recipient], "Recipient balance too low");
 
-        // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed), and
-        // that the recpient will accept to be charged by it.
-        uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
-
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
-        if (preconditionCheck != uint256(PreconditionCheck.OK)) {
-            emit TransactionRelayed(msg.sender, from, recipient, functionSelector, uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
-            return;
+        {
+            // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed), and
+            // that the recpient will accept to be charged by it.
+            uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, signature);
+
+            if (preconditionCheck != uint256(PreconditionCheck.OK)) {
+                emit TransactionRelayed(msg.sender, from, recipient, functionSelector, uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
+                return;
+            }
         }
 
         // From this point on, this transaction will not revert nor run out of gas, and the recipient will be charged

@@ -333,6 +333,7 @@ func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature st
 
 	return RelayTransactionRequest{
 		EncodedFunction: txb,
+		ApprovalData:		 common.Hex2Bytes(""),
 		Signature:       common.Hex2Bytes(signature),
 		From:            addressGasless,
 		To:              sampleRecipient,

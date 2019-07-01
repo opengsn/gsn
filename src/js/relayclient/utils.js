@@ -101,8 +101,9 @@ module.exports = {
     getEcRecoverMeta: function(message, signature) {
         if (typeof signature === 'string'){
             let r = this.parseHexString(signature.substr(2, 65))
-            let s = this.parseHexString(signature.substr(67, 65))
-            let v = this.parseHexString(signature.substr(69,2))
+            let s = this.parseHexString(signature.substr(66, 65))
+            let v = this.parseHexString(signature.substr(130,2))
+
             signature = {
                 v: v,
                 r: r,
@@ -112,7 +113,7 @@ module.exports = {
         let msg = Buffer.concat([Buffer.from("\x19Ethereum Signed Message:\n32"), Buffer.from(removeHexPrefix(message), "hex")]);
         let signed = web3Utils.sha3("0x"+msg.toString('hex'));
         let buf_signed = Buffer.from(removeHexPrefix(signed), "hex");
-        let signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(buf_signed, signature.r, signature.s, signature.v)));
+        let signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(buf_signed, signature.v, signature.r, signature.s)));
         return signer;
     },
 
