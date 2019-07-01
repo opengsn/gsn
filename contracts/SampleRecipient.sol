@@ -24,6 +24,8 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     bool public rejectAcceptRelayCall;
 
+    bool public returnInvalidErrorCode;
+
     constructor(IRelayHub rhub) public {
         setRelayHub(rhub);
     }
@@ -44,16 +46,20 @@ contract SampleRecipient is RelayRecipient, Ownable {
         emit Reverting("if you see this revert failed...");
     }
 
-    function setWithdrawDuringPreRelayedCall(bool val) public{
+    function setWithdrawDuringPreRelayedCall(bool val) public {
         withdrawDuringPreRelayedCall = val;
     }
 
-    function setWithdrawDuringRelayedCall(bool val) public{
+    function setWithdrawDuringRelayedCall(bool val) public {
         withdrawDuringRelayedCall = val;
     }
 
-    function setWithdrawDuringPostRelayedCall(bool val) public{
+    function setWithdrawDuringPostRelayedCall(bool val) public {
         withdrawDuringPostRelayedCall = val;
+    }
+
+    function setReturnInvalidErrorCode(bool val) public {
+        returnInvalidErrorCode = val;
     }
 
     function setOverspendAcceptGas(bool val) public{
@@ -108,6 +114,8 @@ contract SampleRecipient is RelayRecipient, Ownable {
             bytes memory ret = new bytes(32);
             (success,ret) = address(this).staticcall(abi.encodeWithSelector(this.infiniteLoop.selector));
         }
+
+        if ( returnInvalidErrorCode ) return 10;
 
         if ( relaysWhitelist[relay] ) return 0;
         if (from == blacklisted) return 11;

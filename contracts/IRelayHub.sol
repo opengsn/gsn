@@ -17,7 +17,8 @@ contract IRelayHub {
         OK,                         // All checks passed, the call can be relayed
         WrongSignature,             // The transaction to relay is not signed by requested sender
         WrongNonce,                 // The provided nonce has already been used by the sender
-        AcceptRelayedCallReverted   // The recipient rejected this call via acceptRelayedCall
+        AcceptRelayedCallReverted,  // The recipient rejected this call via acceptRelayedCall
+        InvalidRecipientStatusCode  // The recipient returned an invalid (reserved) status code
     }
 
     event Staked(address indexed relay, uint256 stake);
