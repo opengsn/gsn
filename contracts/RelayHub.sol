@@ -23,7 +23,7 @@ contract RelayHub is IRelayHub {
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
     uint256 constant public gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
-    uint256 constant public gasOverhead = 47422;
+    uint256 constant public gasOverhead = 47241;
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
     uint256 constant public acceptRelayedCallMaxGas = 50000;

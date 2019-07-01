@@ -143,5 +143,7 @@ contract IRelayHub {
     function penalizeIllegalTransaction(bytes memory unsignedTx, bytes memory signature) public;
 
     event Penalized(address indexed relay, address sender, uint256 amount);
+
+    function getNonce(address from) view external returns (uint256);
 }
 
