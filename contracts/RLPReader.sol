@@ -27,7 +27,7 @@ library RLPReader {
     * @return tuple (nonce,gasPrice,gasLimit,to,value,data)
     */
 
-    function decodeTransaction(bytes memory rawTransaction) public pure returns (uint, uint, uint, address, uint, bytes memory){
+    function decodeTransaction(bytes memory rawTransaction) internal pure returns (uint, uint, uint, address, uint, bytes memory){
         RLPReader.RLPItem[] memory values = rawTransaction.toRlpItem().toList(); // must convert to an rlpItem first!
         return (values[0].toUint(), values[1].toUint(), values[2].toUint(), values[3].toAddress(), values[4].toUint(), values[5].toBytes());
     }
