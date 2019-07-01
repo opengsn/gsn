@@ -227,7 +227,7 @@ contract RelayHub is IRelayHub {
      * @param gasLimit limit the client want to put on its transaction
      * @param transactionFee fee (%) the relay takes over actual gas cost.
      * @param nonce sender's nonce (in nonces[])
-     * @param signature client's signature over all params
+     * @param signature client's signature over all params except approvalData
      * @param approvalData dapp-specific data
      */
     function relayCall(

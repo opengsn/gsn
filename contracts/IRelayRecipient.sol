@@ -29,7 +29,7 @@ contract IRelayRecipient {
      *          the contract may check the method-id for valid methods
      *  @param gasPrice - the gas price for this transaction
      *  @param transactionFee - the relay compensation (in %) for this transaction
-     *  @param signature - sender's signature over all parameters
+     *  @param signature - sender's signature over all parameters except approvalData
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      */
     function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory signature, bytes memory approvalData) public view returns (uint);
