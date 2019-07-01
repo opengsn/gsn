@@ -74,6 +74,7 @@
     "ganache-cli": "^6.4.3",
     "http-server": "^0.11.1",
     "istanbul": "^0.4.5",
+    "openzeppelin-test-helpers": "^0.4.0",
     "opn-cli": "^4.0.0",
     "promisify": "0.0.3",
     "run-with-testrpc": "^0.3.0",
