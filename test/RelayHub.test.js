@@ -72,7 +72,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
 
           it('relaying is aborted if the recipient returns an invalid status code', async function () {
             await recipient.setReturnInvalidErrorCode(true);
-            const { logs } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, { from: relay, gasPrice, gasLimit });
+            const { logs } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
 
             expectEvent.inLogs(logs, 'TransactionRelayed', {
               status: RelayCallStatusCodes.CanRelayFailed,
