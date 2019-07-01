@@ -1,7 +1,5 @@
 pragma solidity ^0.5.5;
 
-import "./IRelayRecipient.sol";
-
 contract IRelayHub {
     // Relay management
 
@@ -79,7 +77,7 @@ contract IRelayHub {
     //  - the recipient must accept this transaction (via acceptRelayedCall)
     // Returns a PreconditionCheck value (OK when the transaction can be relayed), or a recipient-specific error code if
     // it returns one in acceptRelayedCall.
-    function canRelay(address relay, address from, IRelayRecipient to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public view returns (uint256);
+    function canRelay(address relay, address from, address to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public view returns (uint256);
 
     // Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
     enum PreconditionCheck {

@@ -1,6 +1,7 @@
 pragma solidity ^0.5.5;
 
 import "./IRelayHub.sol";
+import "./IRelayRecipient.sol";
 import "./GsnUtils.sol";
 import "./RLPReader.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
@@ -180,7 +181,7 @@ contract RelayHub is IRelayHub {
     function canRelay(
         address relay,
         address from,
-        IRelayRecipient to,
+        address to,
         bytes memory encodedFunction,
         uint256 transactionFee,
         uint256 gasPrice,
@@ -204,11 +205,11 @@ contract RelayHub is IRelayHub {
             return uint256(PreconditionCheck.WrongNonce);
         }
 
-        bytes memory encodedTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
+        bytes memory encodedTx = abi.encodeWithSelector(IRelayRecipient(to).acceptRelayedCall.selector,
             relay, from, encodedFunction, gasPrice, transactionFee, approval
         );
 
-        (bool success, bytes memory returndata) = address(to).staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
+        (bool success, bytes memory returndata) = to.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
 
         if (!success) {
             return uint256(PreconditionCheck.AcceptRelayedCallReverted);
@@ -272,7 +273,7 @@ contract RelayHub is IRelayHub {
 
         // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed), and
         // that the recpient will accept to be charged by it.
-        uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
+        uint256 preconditionCheck = canRelay(msg.sender, from, recipient, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
 
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
