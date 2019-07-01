@@ -8,7 +8,6 @@ import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract RelayHub is IRelayHub {
-
     // Anyone can call certain functions in this singleton and trigger relay processes.
 
     uint256 constant public minimumStake = 0.1 ether;
@@ -29,6 +28,8 @@ contract RelayHub is IRelayHub {
     mapping(address => uint256) public nonces;    // Nonces of senders, since their ether address nonce may never change.
 
     enum State {UNKNOWN, STAKED, REGISTERED, REMOVED, PENALIZED}
+
+    enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
 
     struct Relay {
         uint256 stake;             // Size of the stake
@@ -191,38 +192,18 @@ contract RelayHub is IRelayHub {
             return uint256(PreconditionCheck.WrongNonce);
         }
 
-        bytes memory rawTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
-            relay, from, encodedFunction, gasPrice, transactionFee, approval);
+        bytes memory encodedTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
+            relay, from, encodedFunction, gasPrice, transactionFee, approval
+        );
 
-        (bool success, uint256 accept) = staticCallWithMaxGas(address(to), acceptRelayedCallMaxGas, rawTx);
+        (bool success, bytes memory returndata) = address(to).staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
 
         if (!success) {
             return uint256(PreconditionCheck.AcceptRelayedCallReverted);
         } else {
             // This can be either PreconditionCheck.OK, or a value outside of the enum range.
-            return accept;
+            return abi.decode(returndata, (uint256));
         }
-    }
-
-    // Due to a bug in Solidity v0.5.9 (https://github.com/ethereum/solidity/issues/6901) we need to implement this in
-    // assembly.
-    //
-    // Once the bug is fixed, uses of this function can be replaced by:
-    // (bool success, uint256 checkResult) = to.staticcall.gas(acceptRelayedCallMaxGas)(data);
-    function staticCallWithMaxGas(address to, uint256 maxGas, bytes memory data) private view returns (bool, uint256) {
-        bool success;
-        uint256 result;
-
-        assembly {
-            let dataSize := mload(data)
-            let dataPtr := add(data, 32)
-
-            // The 32-byte result is placed memory position 0 (scratch space)
-            success := staticcall(maxGas, to, dataPtr, dataSize, 0, 32)
-            result := mload(0)
-        }
-
-        return (success, result);
     }
 
     /**
@@ -297,7 +278,7 @@ contract RelayHub is IRelayHub {
         uint256 charge = getChargedAmount(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
-        // a sanity check to prevent overflows in case of bugs.msg.sender
+        // a sanity check to prevent overflows in case of bugs.
         require(balances[recipient] >= charge, "Should not get here");
         balances[recipient] -= charge;
         balances[relays[msg.sender].owner] += charge;
@@ -331,6 +312,10 @@ contract RelayHub is IRelayHub {
         // If either pre or post reverts, the whole internal transaction will be reverted, reverting all side effects on
         // the recipient. The recipient will still be charged for the used gas by the relay.
 
+        // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
+        // post state to ensure this doesn't happen.
+        uint256 balanceBefore = balances[recipient];
+
         // First preRelayedCall is executed.
         // It is the recipient's responsability to ensure, in acceptRelayedCall, that this call will not revert.
         bytes32 preReturnValue;
@@ -349,10 +334,6 @@ contract RelayHub is IRelayHub {
 
             preReturnValue = abi.decode(retData, (bytes32));
         }
-
-        // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
-        // post state to ensure this doesn't happen.
-        uint256 balanceBefore = balances[recipient];
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (bool relayedCallSuccess,) = recipient.call.gas(gasLimit)(abi.encodePacked(encodedFunction, from));
@@ -376,7 +357,7 @@ contract RelayHub is IRelayHub {
         }
 
         if (balances[recipient] < balanceBefore) {
-            revertWithStatus(RelayCallStatus.PostRelayedFailed);
+            revertWithStatus(RelayCallStatus.RecipientBalanceChanged);
         }
 
         return relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed;

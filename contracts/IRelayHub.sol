@@ -3,7 +3,14 @@ pragma solidity ^0.5.5;
 contract IRelayHub {
 
     // status flags for TransactionRelayed() event
-    enum RelayCallStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
+    enum RelayCallStatus {
+        OK,                      // The transaction was successfully relayed and execution successful
+        CanRelayFailed,          // The transaction was not relayed due to canRelay failing
+        RelayedCallFailed,       // The transaction was relayed, but the relayed call failed
+        PreRelayedFailed,        // The transaction was not relayed due to preRelatedCall reverting
+        PostRelayedFailed,       // The transaction was relayed and reverted due to postRelatedCall reverting
+        RecipientBalanceChanged  // The transaction was relayed and reverted due to the recipient's balance changing
+    }
 
     // Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
     enum PreconditionCheck {

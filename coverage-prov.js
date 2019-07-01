@@ -16,7 +16,7 @@ const { CoverageSubprovider } = require("@0x/sol-coverage");
 const { RevertTraceSubprovider } = require("@0x/sol-trace");
 
 const projectRoot = "";
-const solcVersion = "0.5.9"
+const solcVersion = "0.5.10"
 const defaultFromAddress = "0x5409ed021d9299bf6814279a6a1411a7e866a631";
 const isVerbose = true;
 const artifactAdapter = new TruffleArtifactAdapter(projectRoot, solcVersion);

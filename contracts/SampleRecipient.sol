@@ -9,8 +9,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     mapping (address => bool) public relaysWhitelist;
 
-    // Testing RelayHub: withdrawing a recipient's deposit is prohibited during relayed call
+    // Testing RelayHub: withdrawing a recipient's deposit is prohibited during relayCall
+    bool public withdrawDuringPreRelayedCall;
     bool public withdrawDuringRelayedCall;
+    bool public withdrawDuringPostRelayedCall;
 
     // Testing RelayHub: Looping to spend more than acceptRelayedCallMaxGas (50000)
     bool public overspendAcceptGas;
@@ -21,7 +23,6 @@ contract SampleRecipient is RelayRecipient, Ownable {
     bool public rejectAcceptRelayCall;
 
     constructor(IRelayHub rhub) public {
-
         setRelayHub(rhub);
     }
 
@@ -30,8 +31,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     }
 
     function withdraw() public onlyOwner {
-        uint balance = getRelayHub().balanceOf(address(this));
-        getRelayHub().withdraw(balance);
+        uint256 balance = withdrawAllBalance();
         msg.sender.transfer(balance);
     }
 
@@ -42,8 +42,16 @@ contract SampleRecipient is RelayRecipient, Ownable {
         emit Reverting("if you see this revert failed...");
     }
 
+    function setWithdrawDuringPreRelayedCall(bool val) public{
+        withdrawDuringPreRelayedCall = val;
+    }
+
     function setWithdrawDuringRelayedCall(bool val) public{
         withdrawDuringRelayedCall = val;
+    }
+
+    function setWithdrawDuringPostRelayedCall(bool val) public{
+        withdrawDuringPostRelayedCall = val;
     }
 
     function setOverspendAcceptGas(bool val) public{
@@ -68,9 +76,9 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     function emitMessage(string memory message) public {
         if (withdrawDuringRelayedCall) {
-            uint balance = getRelayHub().balanceOf(address(this));
-            getRelayHub().withdraw(balance);
+            withdrawAllBalance();
         }
+
         emit SampleRecipientEmitted(message, getSender(), msg.sender, tx.origin);
     }
 
@@ -128,6 +136,9 @@ contract SampleRecipient is RelayRecipient, Ownable {
     event SampleRecipientPreCall();
 
     function preRelayedCall(address /*relay*/, address /*from*/, bytes memory /*encodedFunction*/, uint /*transactionFee*/) public returns (bytes32) {
+        if (withdrawDuringPreRelayedCall) {
+            withdrawAllBalance();
+        }
 
         emit SampleRecipientPreCall();
 
@@ -140,6 +151,9 @@ contract SampleRecipient is RelayRecipient, Ownable {
     event SampleRecipientPostCall(uint usedGas, bytes32 preRetVal);
 
     function postRelayedCall(address /*relay*/ , address /*from*/, bytes memory /*encodedFunction*/, bool /*success*/, uint usedGas, uint transactionFee, bytes32 preRetVal) public {
+        if (withdrawDuringPostRelayedCall) {
+            withdrawAllBalance();
+        }
 
         emit SampleRecipientPostCall(usedGas * tx.gasprice * (transactionFee +100)/100, preRetVal);
 
@@ -148,5 +162,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
         }
     }
 
+    function withdrawAllBalance() private returns (uint256) {
+        uint256 balance = getRelayHub().balanceOf(address(this));
+        getRelayHub().withdraw(balance);
+        return balance;
+    }
 }
 
