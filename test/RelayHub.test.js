@@ -103,7 +103,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
 
             expect((await relayHub.relays(relay)).unstakeDelay).to.be.bignumber.equals(newUnstakeDelay);
           });
-        };
+        }
 
         testStake();
 
