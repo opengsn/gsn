@@ -177,8 +177,8 @@ contract RelayHub is IRelayHub {
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
-        bytes memory approvalData,
-        bytes memory signature
+        bytes memory signature,
+        bytes memory approvalData
     )
         public view returns (uint256)
     {
@@ -196,7 +196,7 @@ contract RelayHub is IRelayHub {
         }
 
         bytes memory encodedTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
-            relay, from, encodedFunction, gasPrice, transactionFee, approvalData, signature
+            relay, from, encodedFunction, gasPrice, transactionFee, signature, approvalData
         );
 
         (bool success, bytes memory returndata) = address(to).staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
@@ -220,8 +220,8 @@ contract RelayHub is IRelayHub {
      * @param gasLimit limit the client want to put on its transaction
      * @param transactionFee fee (%) the relay takes over actual gas cost.
      * @param nonce sender's nonce (in nonces[])
-     * @param approvalData dapp-specific data
      * @param signature client's signature over all params
+     * @param approvalData dapp-specific data
      */
     function relayCall(
         address from,
@@ -231,8 +231,8 @@ contract RelayHub is IRelayHub {
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
-        bytes memory approvalData,
-        bytes memory signature
+        bytes memory signature,
+        bytes memory approvalData
     )
         public
     {
@@ -261,7 +261,7 @@ contract RelayHub is IRelayHub {
         {
             // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed), and
             // that the recpient will accept to be charged by it.
-            uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, signature);
+            uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, signature, approvalData);
 
             if (preconditionCheck != uint256(PreconditionCheck.OK)) {
                 emit TransactionRelayed(msg.sender, from, recipient, functionSelector, uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);

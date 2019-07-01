@@ -48,7 +48,7 @@ contract IRelayHub {
 
     function getNonce(address from) view external returns (uint256);
 
-    function relayCall(address from, address to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approvalData, bytes memory signature) public;
+    function relayCall(address from, address to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory signature, bytes memory approvalData) public;
 
     /**
      * deposit ether for a contract.

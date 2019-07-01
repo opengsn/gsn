@@ -77,7 +77,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
               const txHash = await getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay);
               const signature = await getTransactionSignature(web3, sender, txHash);
 
-              const { logs } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, '0x', signature, { from: relay, gasPrice, gasLimit });
+              const { logs } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
 
               expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.RecipientBalanceChanged});
             }

@@ -484,7 +484,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 	input, err := hubAbi.Pack("relayCall", request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
-		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.ApprovalData, request.Signature)
+		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature, request.ApprovalData)
 	if err != nil {
 		log.Println(err)
 		return
@@ -524,7 +524,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 			auth.GasPrice = &request.GasPrice
 			return relay.rhub.RelayCall(auth, request.From, request.To,
 				common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
-				&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.ApprovalData, request.Signature)
+				&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature, request.ApprovalData)
 		})
 
 	return
@@ -571,7 +571,7 @@ func (relay *RelayServer) canRelay(encodedFunction string,
 		Pending: false,
 	}
 
-	res, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, approvalData, signature)
+	res, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature, approvalData)
 	if err != nil {
 		log.Println(err)
 		return
