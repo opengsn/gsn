@@ -76,7 +76,7 @@ class RelayClient {
      */
     validateRelayResponse(returned_tx, address_relay,
                           from, to, transaction_orig, transaction_fee, gas_price, gas_limit, nonce,
-                          relay_hub_address, relay_address, approvalData, sig) {
+                          relay_hub_address, relay_address, sig, approvalData) {
 
         var tx = new ethJsTx({
             nonce: returned_tx.nonce,
@@ -128,8 +128,8 @@ class RelayClient {
                 gas_price,
                 gas_limit,
                 nonce,
-                approvalData,
                 sig,
+                approvalData,
                 signer
             })
         }
@@ -140,15 +140,15 @@ class RelayClient {
      * Performs a '/relay' HTTP request to the given url
      * @returns a Promise that resolves to an instance of {@link ethJsTx} signed by a relay
      */
-    sendViaRelay(relayUrl, approvalData, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, recipientNonce, relayHubAddress, relayAddress, relayMaxNonce) {
+    sendViaRelay(relayUrl, signature, approvalData, from, to, encodedFunction, gasprice, gaslimit, relayFee, recipientNonce, relayHubAddress, relayAddress, relayMaxNonce) {
         var self = this;
 
         return new Promise(function (resolve, reject) {
 
             let jsonRequestData = {
                 "encodedFunction": encodedFunction,
-                "approvalData": parseHexString(approvalData.replace(/^0x/, '')),
                 "signature": parseHexString(signature.replace(/^0x/, '')),
+                "approvalData": parseHexString(approvalData.replace(/^0x/, '')),
                 "from": from,
                 "to": to,
                 "gasPrice": gasprice,
@@ -187,7 +187,7 @@ class RelayClient {
                 try {
                     validTransaction = self.validateRelayResponse(
                         body, relayAddress, from, to, encodedFunction,
-                        relayFee, gasprice, gaslimit, recipientNonce, relayHubAddress, relayAddress, approvalData, signature);
+                        relayFee, gasprice, gaslimit, recipientNonce, relayHubAddress, relayAddress, signature, approvalData);
                 } catch (error) {
                     console.error("validateRelayResponse " + error)
                 }
@@ -379,8 +379,8 @@ class RelayClient {
             try {
                 let validTransaction = await self.sendViaRelay(
                     relayUrl,
-                    approvalData,
                     signature,
+                    approvalData,
                     options.from,
                     options.to,
                     encodedFunctionCall,
