@@ -42,7 +42,7 @@ options.forEach(params => {
                 // rhub = await RelayHub.deployed()
                 rhub = await RelayHub.new()
                 relayproc = await testutils.startRelay(rhub, {
-                    stake: 1e17,
+                    stake: 1e18,
                     delay: 3600 * 24 * 7,
                     txfee: 12,
                     url: "asd",

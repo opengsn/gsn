@@ -9,7 +9,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract RelayHub is IRelayHub {
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
-    uint256 constant public minimumStake = 0.1 ether;
+    uint256 constant public minimumStake = 1 ether;
 
     // Minimum unstake delay. A relay needs to wait for this time to elapse after deregistering to retrieve its stake.
     uint256 constant public minimumUnstakeDelay = 1 weeks;
@@ -24,7 +24,7 @@ contract RelayHub is IRelayHub {
     uint256 constant public maximumRecipientDeposit = 2 ether;
 
     // Maximum amount that can be staked at once. Prevents user error by disallowing large deposits.
-    uint256 constant public maximumStakeDeposit = 2 ether;
+    uint256 constant public maximumStakeDeposit = 5 ether;
 
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().

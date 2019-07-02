@@ -137,7 +137,7 @@ contract("RelayHub", function (accounts) {
         let gasless_relay_address = "0x2Dd8C0665327A26D7655055B22c9b3bA596DfeD9"
         let balance_of_gasless_before = await web3.eth.getBalance(gasless_relay_address);
         let balance_of_acc7_before = await web3.eth.getBalance(accounts[7]);
-        let expected_stake = web3.utils.toWei('0.5', 'ether')
+        let expected_stake = web3.utils.toWei('1', 'ether')
         let gasPrice = 1
         let res = await rhub.stake(gasless_relay_address, 3600 * 24 * 7, {
             value: expected_stake,
