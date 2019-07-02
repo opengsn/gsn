@@ -66,6 +66,15 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
         );
       });
 
+      it('relays cannot be staked for with an unstake delay over the maximum', async function () {
+        const maximumUnstakeDelay = time.duration.weeks(12);
+
+        await expectRevert(
+          relayHub.stake(relay, maximumUnstakeDelay.addn(1), { value: ether('1'), from: other }),
+          'delay higher than maximum'
+        );
+      });
+
       context('with staked relay', function () {
         const initialStake = ether('2');
         const initialUnstakeDelay = time.duration.days(1);

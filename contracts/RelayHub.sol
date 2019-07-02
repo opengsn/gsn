@@ -11,6 +11,7 @@ contract RelayHub is IRelayHub {
     // Minimum values for stake
     uint256 constant public minimumStake = 0.1 ether;
     uint256 constant public minimumUnstakeDelay = 1 weeks;
+    uint256 constant public maximumUnstakeDelay = 12 weeks;
 
     // Minimum balance required for a relay to register or re-register
     uint256 constant public minimumRelayBalance = 0.1 ether;
@@ -80,6 +81,8 @@ contract RelayHub is IRelayHub {
         require(relays[relay].stake >= minimumStake, "stake lower than minimum");
 
         require(unstakeDelay >= minimumUnstakeDelay, "delay lower than minimum");
+        require(unstakeDelay <= maximumUnstakeDelay, "delay higher than maximum");
+
         require(unstakeDelay >= relays[relay].unstakeDelay, "unstakeDelay cannot be decreased");
         relays[relay].unstakeDelay = unstakeDelay;
 
