@@ -37,13 +37,13 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
   describe('relay management', function () {
     describe('staking', function () {
       it('unstaked relays can be staked for by anyone', async function () {
-        const { logs } = await relayHub.stake(relay, time.duration.days(1), { value: ether('1'), from: other });
+        const { logs } = await relayHub.stake(relay, time.duration.weeks(4), { value: ether('1'), from: other });
         expectEvent.inLogs(logs, 'Staked', { relay, stake: ether('1') });
       });
 
       it('relays cannot stake for themselves', async function () {
         await expectRevert(
-          relayHub.stake(relay, time.duration.days(1), { value: ether('1'), from: relay }),
+          relayHub.stake(relay, time.duration.weeks(4), { value: ether('1'), from: relay }),
           'relay cannot stake for itself'
         );
       });
@@ -52,9 +52,27 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
         const minimumStake = ether('0.1');
 
         await expectRevert(
-          relayHub.stake(relay, time.duration.days(1), { value: minimumStake.subn(1), from: other }),
+          relayHub.stake(relay, time.duration.weeks(4), { value: minimumStake.subn(1), from: other }),
           'stake lower than minimum'
         );
+      });
+
+      it('relays cannot be staked for with a stake over the maximum', async function () {
+        const maximumStake = ether('2');
+
+        await expectRevert(
+          relayHub.stake(relay, time.duration.weeks(4), { value: maximumStake.addn(1), from: other }),
+          'stake too big'
+        );
+      });
+
+      it('relays can be staked for multiple times and have a total stake larger than the maximum', async function () {
+        const maximumStake = ether('2');
+
+        await relayHub.stake(relay, time.duration.weeks(4), { value: maximumStake, from: other });
+        await relayHub.stake(relay, time.duration.weeks(4), { value: maximumStake, from: other });
+
+        expect(await relayHub.stakeOf(relay)).to.be.bignumber.equals(maximumStake.muln(2));
       });
 
       it('relays cannot be staked for with an unstake delay under the minimum', async function () {
@@ -77,7 +95,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
 
       context('with staked relay', function () {
         const initialStake = ether('2');
-        const initialUnstakeDelay = time.duration.days(1);
+        const initialUnstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, initialUnstakeDelay, { value: initialStake, from: relayOwner });
@@ -105,7 +123,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
           });
 
           it('owner can increase the unstake delay', async function () {
-            const newUnstakeDelay = time.duration.days(2);
+            const newUnstakeDelay = time.duration.weeks(6);
             const { logs } = await relayHub.stake(relay, newUnstakeDelay, { from: relayOwner });
             expectEvent.inLogs(logs, 'Staked', { relay, stake: '0' });
 
@@ -174,7 +192,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
 
       context('with staked relay', function () {
         const stake = ether('2');
-        const unstakeDelay = time.duration.days(1);
+        const unstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
@@ -232,7 +250,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
     describe('unregistering', function () {
       context('with staked relay', function () {
         const stake = ether('2');
-        const unstakeDelay = time.duration.days(1);
+        const unstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
@@ -277,7 +295,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
 
       context('with staked relay', function () {
         const stake = ether('2');
-        const unstakeDelay = time.duration.days(1);
+        const unstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
@@ -411,7 +429,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
       const fee = 10; // 10%
 
       beforeEach(async function () {
-        await relayHub.stake(relay, unstakeDelay, { value: ether('5'), from: relayOwner });
+        await relayHub.stake(relay, unstakeDelay, { value: ether('2'), from: relayOwner });
 
         await relayHub.registerRelay(fee, url, { from: relay });
       });

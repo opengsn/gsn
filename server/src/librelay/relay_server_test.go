@@ -166,7 +166,7 @@ func NewRelay(relayHubAddress common.Address) {
 	gasPricePercent := big.NewInt(10)
 	url := ""
 	port := "8090"
-	unstakeDelay := big.NewInt(0)
+	unstakeDelay := big.NewInt(3600 * 24 * 7)
 	registrationBlockRate := uint64(5)
 	clk = fakeclock.NewFakeClock(time.Now())
 	txStore := txstore.NewMemoryTxStore(clk)
