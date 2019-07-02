@@ -10,12 +10,12 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract RelayHub is IRelayHub {
     // Minimum values for stake
     uint256 constant public minimumStake = 0.1 ether;
-    uint256 constant public minimumUnstakeDelay = 0;
+    uint256 constant public minimumUnstakeDelay = 1 weeks;
 
     // Minimum balance required for a relay to register or re-register
     uint256 constant public minimumRelayBalance = 0.1 ether;
 
-    // Maximum funds that can be deposited at once. Prevents user errors by disallowing large deposits.
+    // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
     uint256 constant public maximumDeposit = 2 ether;
 
     /**

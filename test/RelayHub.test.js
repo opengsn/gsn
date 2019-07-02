@@ -57,9 +57,8 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
         );
       });
 
-      // current minUnstakeDelay is 0
-      it.skip('relays cannot be staked for with an unstake delay under the minimum', async function () {
-        const minimumUnstakeDelay = new BN('1');
+      it('relays cannot be staked for with an unstake delay under the minimum', async function () {
+        const minimumUnstakeDelay = time.duration.weeks(1);
 
         await expectRevert(
           relayHub.stake(relay, minimumUnstakeDelay.subn(1), { value: ether('1'), from: other }),
