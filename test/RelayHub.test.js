@@ -7,7 +7,6 @@ const RelayHub = artifacts.require('RelayHub');
 const SampleRecipient = artifacts.require('SampleRecipient');
 
 const Transaction = require('ethereumjs-tx');
-const { privateToAddress } = require('ethereumjs-util');
 const rlp = require('rlp');
 
 const { expect } = require('chai');
