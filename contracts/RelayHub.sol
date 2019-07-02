@@ -8,36 +8,49 @@ import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract RelayHub is IRelayHub {
-    // Anyone can call certain functions in this singleton and trigger relay processes.
-
+    // Minimum values for stake
     uint256 constant public minimumStake = 0.1 ether;
-    uint256 constant public maximumDeposit = 2 ether;
     uint256 constant public minimumUnstakeDelay = 0;
-    uint256 constant public minimumRelayBalance = 0.1 ether;  // can't register/refresh below this amount.
-    uint256 constant public gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
+
+    // Minimum balance required for a relay to register or re-register
+    uint256 constant public minimumRelayBalance = 0.1 ether;
+
+    // Maximum funds that can be deposited at once. Prevents user errors by disallowing large deposits.
+    uint256 constant public maximumDeposit = 2 ether;
 
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
-    uint256 constant public gasOverhead = 47422;
+    uint256 constant public gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
+    uint256 constant public gasOverhead = 47241;
+
+    // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
     uint256 constant public acceptRelayedCallMaxGas = 50000;
-    uint256 constant public postRelayedCallMaxGas = 100000;
     uint256 constant public preRelayedCallMaxGas = 100000;
+    uint256 constant public postRelayedCallMaxGas = 100000;
 
-    mapping(address => uint256) public nonces;    // Nonces of senders, since their ether address nonce may never change.
+    // Nonces of senders, used to prevent replay attacks
+    mapping(address => uint256) public nonces;
 
-    enum State {UNKNOWN, STAKED, REGISTERED, REMOVED, PENALIZED}
+    // States a relay can be in
+    enum RelayState {
+        Unknown,    // The relay is unknown to the system: it has never been staked for
+        Staked,     // The relay has been staked for, but it is not yet active
+        Registered, // The relay has registered itself, and is active (can relay calls)
+        Removed,    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
+        Penalized   // The relay has been penalized. Its new owner must wait for the relay's unstakeDelay to elapse before it can redeem the reward
+    }
 
     enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
 
     struct Relay {
-        uint256 stake;             // Size of the stake
-        uint256 unstakeDelay;     // How long between removal and unstaking
-        uint256 unstakeTime;      // When is the stake released.  Non-zero means that the relay has been removed and is waiting for unstake.
-        address owner;
-        uint256 transactionFee;
-        State state;
+        uint256 stake;          // Ether staked for this relay
+        uint256 unstakeDelay;   // Time that must elapse before the owner can retrieve the stake after calling remove
+        uint256 unstakeTime;    // Time when unstake will be callable. A value of zero indicates the relay has not been removed.
+        address payable owner;  // Relay's owner, will receive revenue and manage it (call stake, remove and unstake).
+        uint256 transactionFee; // Advertised transaction fee, not enforced
+        RelayState state;
     }
 
     mapping(address => Relay) public relays;
@@ -45,14 +58,77 @@ contract RelayHub is IRelayHub {
 
     string public version = "1.0.0";
 
-    function validateStake(address relay) private view {
-        require(relays[relay].state == State.STAKED || relays[relay].state == State.REGISTERED, "wrong state for stake");
+    function stake(address relay, uint256 unstakeDelay) external payable {
+        if (relays[relay].state == RelayState.Unknown) {
+            require(msg.sender != relay, "relay cannot stake for itself");
+            relays[relay].owner = msg.sender;
+            relays[relay].state = RelayState.Staked;
+
+        } else if ((relays[relay].state == RelayState.Staked) || (relays[relay].state == RelayState.Registered)) {
+            require(relays[relay].owner == msg.sender, "not owner");
+
+        } else {
+            revert('wrong state for stake');
+        }
+
+        // Increase the stake and unstakeDelay
+
+        uint256 addedStake = msg.value;
+        relays[relay].stake += addedStake;
+
+        // The added stake may be e.g. zero when only the unstake delay is being updated
         require(relays[relay].stake >= minimumStake, "stake lower than minimum");
-        require(relays[relay].unstakeDelay >= minimumUnstakeDelay, "delay lower than minimum");
+
+        require(unstakeDelay >= minimumUnstakeDelay, "delay lower than minimum");
+        require(unstakeDelay >= relays[relay].unstakeDelay, "unstakeDelay cannot be decreased");
+        relays[relay].unstakeDelay = unstakeDelay;
+
+        emit Staked(relay, addedStake);
     }
 
-    function getNonce(address from) view external returns (uint256) {
-        return nonces[from];
+    function ownerOf(address relay) external view returns (address) {
+        return relays[relay].owner;
+    }
+
+    function stakeOf(address relay) external view returns (uint256) {
+        return relays[relay].stake;
+    }
+
+    function registerRelay(uint256 transactionFee, string memory url) public {
+        address relay = msg.sender;
+
+        require(relay == tx.origin, "Contracts cannot register as relays");
+        require(relays[relay].state == RelayState.Staked || relays[relay].state == RelayState.Registered, "wrong state for stake");
+        require(relay.balance >= minimumRelayBalance, "balance lower than minimum");
+
+        relays[relay].state = RelayState.Registered;
+        relays[relay].transactionFee = transactionFee; // This is stored, but not enforced in relayCall
+
+        emit RelayAdded(relay, relays[relay].owner, transactionFee, relays[relay].stake, relays[relay].unstakeDelay, url);
+    }
+
+    function removeRelayByOwner(address relay) public {
+        require(relays[relay].owner == msg.sender, "not owner");
+        require((relays[relay].state == RelayState.Staked) || (relays[relay].state == RelayState.Registered), "already removed");
+
+        // Start the unstake counter
+        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
+        relays[relay].state = RelayState.Removed;
+
+        emit RelayRemoved(relay, relays[relay].unstakeTime);
+    }
+
+    function unstake(address relay) public {
+        require(canUnstake(relay), "canUnstake failed");
+        require(relays[relay].owner == msg.sender, "not owner");
+
+        address payable owner = msg.sender;
+        uint256 amount = relays[relay].stake;
+
+        delete relays[relay];
+
+        owner.transfer(amount);
+        emit Unstaked(relay, amount);
     }
 
     /**
@@ -63,10 +139,17 @@ contract RelayHub is IRelayHub {
      * Unused deposited can be withdrawn with `withdraw()`
      */
     function depositFor(address target) public payable {
-        require(msg.value <= maximumDeposit, "deposit too big");
-        balances[target] += msg.value;
-        require(balances[target] >= msg.value);
-        emit Deposited(target, msg.value);
+        uint256 amount = msg.value;
+        require(amount <= maximumDeposit, "deposit too big");
+
+        balances[target] = SafeMath.add(balances[target], amount);
+
+        emit Deposited(target, amount);
+    }
+
+    //check the deposit balance of a contract.
+    function balanceOf(address target) external view returns (uint256) {
+        return balances[target];
     }
 
     /**
@@ -77,40 +160,17 @@ contract RelayHub is IRelayHub {
      * the contract itself can withdraw its funds.
      */
     function withdraw(uint256 amount) public {
-        require(balances[msg.sender] >= amount, "insufficient funds");
-        balances[msg.sender] -= amount;
-        msg.sender.transfer(amount);
-        emit Withdrawn(msg.sender, amount);
+        address payable account = msg.sender;
+        require(balances[account] >= amount, "insufficient funds");
+
+        balances[account] -= amount;
+        account.transfer(amount);
+
+        emit Withdrawn(account, amount);
     }
 
-    //check the deposit balance of a contract.
-    function balanceOf(address target) external view returns (uint256) {
-        return balances[target];
-    }
-
-    function stakeOf(address relay) external view returns (uint256) {
-        return relays[relay].stake;
-    }
-
-    function ownerOf(address relay) external view returns (address) {
-        return relays[relay].owner;
-    }
-
-
-    function stake(address relay, uint256 unstakeDelay) external payable {
-        // Create or increase the stake and unstakeDelay
-        require(relays[relay].owner == address(0) || relays[relay].owner == msg.sender, "not owner");
-        require(msg.sender != relay, "relay cannot stake for itself");
-        relays[relay].owner = msg.sender;
-        relays[relay].stake += msg.value;
-        // Make sure that the relay doesn't decrease his delay if already registered
-        require(unstakeDelay >= relays[relay].unstakeDelay, "unstakeDelay cannot be decreased");
-        if (relays[relay].state == State.UNKNOWN) {
-            relays[relay].state = State.STAKED;
-        }
-        relays[relay].unstakeDelay = unstakeDelay;
-        validateStake(relay);
-        emit Staked(relay, msg.value);
+    function getNonce(address from) view external returns (uint256) {
+        return nonces[from];
     }
 
     function canUnstake(address relay) public view returns (bool) {
@@ -118,57 +178,10 @@ contract RelayHub is IRelayHub {
         // Finished the unstaking delay period?
     }
 
-    function unstake(address relay) public {
-        require(canUnstake(relay), "canUnstake failed");
-        require(relays[relay].owner == msg.sender, "not owner");
-        uint256 amount = relays[relay].stake;
-        delete relays[relay];
-        msg.sender.transfer(amount);
-        emit Unstaked(relay, amount);
-    }
-
-    function registerRelay(uint256 transactionFee, string memory url) public {
-        // Anyone with a stake can register a relay.  Apps choose relays by their transaction fee, stake size and unstake delay,
-        // optionally crossed against a blacklist.  Apps verify the relay's action in realtime.
-
-        // Penalized relay cannot reregister
-        validateStake(msg.sender);
-        require(msg.sender.balance >= minimumRelayBalance, "balance lower than minimum");
-        require(msg.sender == tx.origin, "Contracts cannot register as relays");
-        relays[msg.sender].unstakeTime = 0;
-        // Activate the lock
-        relays[msg.sender].state = State.REGISTERED;
-        relays[msg.sender].transactionFee = transactionFee;
-        emit RelayAdded(msg.sender, relays[msg.sender].owner, transactionFee, relays[msg.sender].stake, relays[msg.sender].unstakeDelay, url);
-    }
-
-    function removeRelayByOwner(address relay) public {
-        require(relays[relay].owner == msg.sender, "not owner");
-        require(relays[relay].unstakeTime == 0, "already removed");
-
-        // Start the unstake counter
-        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
-
-        if (relays[relay].state != State.PENALIZED && relays[relay].state != State.REMOVED) {
-            relays[relay].state = State.REMOVED;
-        }
-        emit RelayRemoved(relay, relays[relay].unstakeTime);
-    }
-
-    /**
-     * @notice Check if the Hub can accept a relayed operation. First the caller's signature and nonce are validated. If
-     * valid, the recipient's acceptRelayedCall function is queried for recipient-specific checks.
-     *
-     * @return
-     * - Zero if and only if the transaction can be relayed.
-     * - Non-zero values up to 10 correspond to the values of PreconditionCheck enum. Refer to the enum definition for
-     * documentation.
-     * - Non-zero values greater than 10 are recipient-specific values.
-     */
     function canRelay(
         address relay,
         address from,
-        IRelayRecipient to,
+        address to,
         bytes memory encodedFunction,
         uint256 transactionFee,
         uint256 gasPrice,
@@ -192,11 +205,11 @@ contract RelayHub is IRelayHub {
             return uint256(PreconditionCheck.WrongNonce);
         }
 
-        bytes memory encodedTx = abi.encodeWithSelector(to.acceptRelayedCall.selector,
+        bytes memory encodedTx = abi.encodeWithSelector(IRelayRecipient(to).acceptRelayedCall.selector,
             relay, from, encodedFunction, gasPrice, transactionFee, approval
         );
 
-        (bool success, bytes memory returndata) = address(to).staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
+        (bool success, bytes memory returndata) = to.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
 
         if (!success) {
             return uint256(PreconditionCheck.AcceptRelayedCallReverted);
@@ -243,7 +256,7 @@ contract RelayHub is IRelayHub {
         // Initial soundness checks - the relay must make sure these pass, or it will pay for a reverted transaction.
 
         // The relay must be registered
-        require(relays[msg.sender].state == State.REGISTERED, "Unknown relay");
+        require(relays[msg.sender].state == RelayState.Registered, "Unknown relay");
 
         // A relay may use a higher gas price than the one requested by the signer (to e.g. get the transaction in a
         // block faster), but it must not be lower. The recipient will be charged for the requested gas price, not the
@@ -260,7 +273,7 @@ contract RelayHub is IRelayHub {
 
         // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed), and
         // that the recpient will accept to be charged by it.
-        uint256 preconditionCheck = canRelay(msg.sender, from, IRelayRecipient(recipient), encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
+        uint256 preconditionCheck = canRelay(msg.sender, from, recipient, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
 
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
@@ -399,64 +412,66 @@ contract RelayHub is IRelayHub {
 
     }
 
-    function penalizeRepeatedNonce(bytes memory unsignedTx1, bytes memory sig1, bytes memory unsignedTx2, bytes memory sig2) public {
+    function penalizeRepeatedNonce(bytes memory unsignedTx1, bytes memory signature1, bytes memory unsignedTx2, bytes memory signature2) public {
         // Can be called by anyone.
         // If a relay attacked the system by signing multiple transactions with the same nonce (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
         // Check whether unsignedTx1 != unsignedTx2, that both are signed by the same address, and that unsignedTx1.nonce == unsignedTx2.nonce.  If all conditions are met, relay is considered an "offending relay".
         // The offending relay will be unregistered immediately, its stake will be forfeited and given to the address who reported it (msg.sender), thus incentivizing anyone to report offending relays.
         // If reported via a relay, the forfeited stake is split between msg.sender (the relay used for reporting) and the address that reported it.
 
-        Transaction memory decodedTx1 = decodeTransaction(unsignedTx1);
-        Transaction memory decodedTx2 = decodeTransaction(unsignedTx2);
-
         bytes32 hash1 = keccak256(abi.encodePacked(unsignedTx1));
-        address addr1 = ecrecover(hash1, uint8(sig1[0]), LibBytes.readBytes32(sig1, 1), LibBytes.readBytes32(sig1, 33));
+        address addr1 = ecrecover(hash1, uint8(signature1[0]), LibBytes.readBytes32(signature1, 1), LibBytes.readBytes32(signature1, 33));
 
         bytes32 hash2 = keccak256(abi.encodePacked(unsignedTx2));
-        address addr2 = ecrecover(hash2, uint8(sig2[0]), LibBytes.readBytes32(sig2, 1), LibBytes.readBytes32(sig2, 33));
+        address addr2 = ecrecover(hash2, uint8(signature2[0]), LibBytes.readBytes32(signature2, 1), LibBytes.readBytes32(signature2, 33));
+
+        require(addr1 == addr2, "Different signer");
+
+        Transaction memory decodedTx1 = decodeTransaction(unsignedTx1);
+        Transaction memory decodedTx2 = decodeTransaction(unsignedTx2);
 
         //checking that the same nonce is used in both transaction, with both signed by the same address and the actual data is different
         // note: we compare the hash of the data to save gas over iterating both byte arrays
         require(decodedTx1.nonce == decodedTx2.nonce, "Different nonce");
-        require(addr1 == addr2, "Different signer");
         require(keccak256(abi.encodePacked(decodedTx1.data)) != keccak256(abi.encodePacked(decodedTx2.data)), "tx.data is equal");
-        penalizeInternal(addr1);
+
+        penalize(addr1);
     }
 
-    function penalizeIllegalTransaction(bytes memory unsignedTx1, bytes memory sig1) public {
-        // Externally-owned accounts that are registered as relays are not allowed to perform
-        // any transactions other than 'relay' and 'registerRelay'. They have no legitimate
-        // reasons to do that, so this behaviour is too suspicious to be left unattended.
-        // It is enforced by penalizing the relay for a transaction that we consider illegal.
-        // Note: If you add  another valid function call to RelayHub, you must add a selector
-        // of the function you would like to declare as legal!
-
-        Transaction memory decodedTx1 = decodeTransaction(unsignedTx1);
+    function penalizeIllegalTransaction(bytes memory unsignedTx, bytes memory signature) public {
+        Transaction memory decodedTx1 = decodeTransaction(unsignedTx);
         if (decodedTx1.to == address(this)) {
             bytes4 selector = GsnUtils.getMethodSig(decodedTx1.data);
+            // Note: If RelayHub's relay API is extended, the selectors must be added to the ones listed here
             require(selector != this.relayCall.selector && selector != this.registerRelay.selector, "Legal relay transaction");
         }
-        bytes32 hash = keccak256(abi.encodePacked(unsignedTx1));
-        address addr = ecrecover(hash, uint8(sig1[0]), LibBytes.readBytes32(sig1, 1), LibBytes.readBytes32(sig1, 33));
-        penalizeInternal(addr);
+
+        bytes32 hash = keccak256(abi.encodePacked(unsignedTx));
+        address relay = ecrecover(hash, uint8(signature[0]), LibBytes.readBytes32(signature, 1), LibBytes.readBytes32(signature, 33));
+        penalize(relay);
     }
 
-    function penalizeInternal(address addr1) private {
-        // Checking that we do have addr1 as a staked relay
-        require(relays[addr1].stake > 0, "Unstaked relay");
-        // Checking that the relay wasn't penalized yet
-        require(relays[addr1].state != State.PENALIZED, "Relay already penalized");
+    function penalize(address relay) private {
+        require(relays[relay].state != RelayState.Penalized, "Relay already penalized");
 
-        // compensating the sender with HALF the stake of the relay (the other half is burned)
-        uint256 toBurn = SafeMath.div(relays[addr1].stake,2);
+        require((relays[relay].state == RelayState.Staked) ||
+            (relays[relay].state == RelayState.Registered) ||
+            (relays[relay].state == RelayState.Removed), "Unstaked relay");
+
+        // Half of the stake is burned (sent to address 0)
+        uint256 toBurn = SafeMath.div(relays[relay].stake, 2);
         address(0).transfer(toBurn);
-        relays[addr1].stake = SafeMath.sub(relays[addr1].stake, toBurn);
+        relays[relay].stake = SafeMath.sub(relays[relay].stake, toBurn);
 
-        uint256 amount = relays[addr1].stake;
-        // move ownership of relay
-        relays[addr1].owner = msg.sender;
-        relays[addr1].state = State.PENALIZED;
-        emit Penalized(addr1, msg.sender, amount);
-        removeRelayByOwner(addr1);
+        uint256 amount = relays[relay].stake;
+
+        // Ownership of the relay is transferred to the reporter, so that they can call unstakeRelay
+        relays[relay].owner = msg.sender;
+        relays[relay].state = RelayState.Penalized;
+
+        emit Penalized(relay, msg.sender, amount);
+
+        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
+        emit RelayRemoved(relay, relays[relay].unstakeTime);
     }
 }
