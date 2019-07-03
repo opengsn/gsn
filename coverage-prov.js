@@ -19,22 +19,16 @@ const projectRoot = "";
 const solcVersion = "0.5.10"
 const defaultFromAddress = "0x5409ed021d9299bf6814279a6a1411a7e866a631";
 const isVerbose = true;
+
+//ignore imported packages, tests (can also ignore interfaces: sol-coverage report 0% coverage on interfaces..)
+const ignoreFilesGlobs = [ "**/node_modules/**/*", "**/Migrations.sol", "**/Test*",
+	 "**/IRelay*", "**/RLPReader.sol" 
+   ]
+
 const artifactAdapter = new TruffleArtifactAdapter(projectRoot, solcVersion);
 const provider = new ProviderEngine();
 
-//add to tests: global.addPostCoverage(this), so they save coverage data.
-global.saveCoverageAtEnd = function(test) {
-	after = test.after
-	if ( typeof after !== 'function' ) {
-		console.log( "ERROR: given test", test, "doesn't have \"after()\" method" )
-		return
-	}
-	after("write coverage/profiler output", async () => {
-	        await global.postCoverage()
-	});
-}
-
-global.postCoverage = async function() {
+writeCoverageOnExit = async function() {
 
     if (mode === "profile") {
 	console.log( "==== writing profile data" );
@@ -49,7 +43,10 @@ if (mode === "profile") {
   global.profilerSubprovider = new ProfilerSubprovider(
     artifactAdapter,
     defaultFromAddress,
-    isVerbose
+    {
+      ignoreFilesGlobs,
+      isVerbose
+    }
   );
   global.profilerSubprovider.stop();
   provider.addProvider(global.profilerSubprovider);
@@ -59,9 +56,19 @@ if (mode === "profile") {
     global.coverageSubprovider = new CoverageSubprovider(
       artifactAdapter,
       defaultFromAddress,
-      isVerbose
+      {
+        ignoreFilesGlobs,
+        isVerbose
+      }
     );
     provider.addProvider(global.coverageSubprovider);
+    //hooking the "exit" method (we can't use process.on("exit"), since its for synch operations)
+    // (and we can't use process.on("beforeExit") since it doesn't work when calling "exit()")
+    saveExit = process.exit
+    process.exit = async function(code) {
+        await writeCoverageOnExit()
+        saveExit(code)
+    }
   } else if (mode === "trace") {
     const revertTraceSubprovider = new RevertTraceSubprovider(
       artifactAdapter,
@@ -89,7 +96,7 @@ if (mode === "profile") {
 }
 provider.start(err => {
   if (err !== undefined) {
-    console.log(err);
+    console.log("err:",err);
     process.exit(1);
   }
 });
