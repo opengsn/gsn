@@ -341,10 +341,6 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
 
   describe('penalizations', function () {
     describe('penalizable behaviors', function () {
-      beforeEach('staking for relay', async function () {
-        await relayHub.stake(relay, time.duration.days(1), { value: ether('1') });
-      });
-
       const encodedCallArgs = {
         sender,
         recipient: '0x1820b744B33945482C17Dc37218C01D858EBc714',
@@ -359,8 +355,16 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         gasPrice: 50,
         gasLimit: 1000000,
         nonce: 0,
-        privateKey: '6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c',
+        privateKey: '6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c', // relay's private key
       };
+
+      before(function () {
+        expect('0x' + privateToAddress('0x' + relayCallArgs.privateKey).toString('hex')).to.equal(relay.toLowerCase());
+      });
+
+      beforeEach('staking for relay', async function () {
+        await relayHub.stake(relay, time.duration.days(1), { value: ether('1') });
+      });
 
       describe('repeated relay nonce', async function () {
         it('penalizes transactions with same nonce and different data', async function () {
