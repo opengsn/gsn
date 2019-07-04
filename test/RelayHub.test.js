@@ -487,7 +487,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             );
 
             await relayHub.depositFor(recipient.address, { from: other, value: ether('1') });
-            const relayCallTx = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, { from: relay, gasPrice, gasLimit });
+            const relayCallTx = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
 
             const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx);
             await expectRevert(
@@ -590,6 +590,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           encodedCallArgs.gasLimit,
           encodedCallArgs.nonce,
           '0xabcdef123456',
+          '0x',
         ).encodeABI();
 
       const transaction = new Transaction({
@@ -625,7 +626,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
 
     function getDataAndSignature(tx) {
       const data = `0x${rlp.encode([tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]).toString('hex')}`;
-      const signature = `0x${tx.v.toString('hex')}${tx.r.toString('hex')}${tx.s.toString('hex')}`
+      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${tx.v.toString('hex')}`
 
       return { data, signature };
     }
