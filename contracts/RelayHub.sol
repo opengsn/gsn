@@ -23,9 +23,6 @@ contract RelayHub is IRelayHub {
     // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
     uint256 constant public maximumRecipientDeposit = 2 ether;
 
-    // Maximum amount that can be staked at once. Prevents user error by disallowing large deposits.
-    uint256 constant public maximumStakeDeposit = 5 ether;
-
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
@@ -82,7 +79,6 @@ contract RelayHub is IRelayHub {
         // Increase the stake
 
         uint256 addedStake = msg.value;
-        require(addedStake <= maximumStakeDeposit, "stake too big");
         relays[relay].stake += addedStake;
 
         // The added stake may be e.g. zero when only the unstake delay is being updated

@@ -57,24 +57,6 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
         );
       });
 
-      it('relays cannot be staked for with a stake over the maximum', async function () {
-        const maximumStake = ether('5');
-
-        await expectRevert(
-          relayHub.stake(relay, time.duration.weeks(4), { value: maximumStake.addn(1), from: other }),
-          'stake too big'
-        );
-      });
-
-      it('relays can be staked for multiple times and have a total stake larger than the maximum', async function () {
-        const maximumStake = ether('5');
-
-        await relayHub.stake(relay, time.duration.weeks(4), { value: maximumStake, from: other });
-        await relayHub.stake(relay, time.duration.weeks(4), { value: maximumStake, from: other });
-
-        expect(await relayHub.stakeOf(relay)).to.be.bignumber.equals(maximumStake.muln(2));
-      });
-
       it('relays cannot be staked for with an unstake delay under the minimum', async function () {
         const minimumUnstakeDelay = time.duration.weeks(1);
 
