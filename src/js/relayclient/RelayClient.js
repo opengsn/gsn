@@ -140,7 +140,7 @@ class RelayClient {
      * Performs a '/relay' HTTP request to the given url
      * @returns a Promise that resolves to an instance of {@link ethJsTx} signed by a relay
      */
-    sendViaRelay(relayUrl, signature, approvalData, from, to, encodedFunction, gasprice, gaslimit, relayFee, recipientNonce, relayHubAddress, relayAddress, relayMaxNonce) {
+    sendViaRelay(relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, recipientNonce, signature, approvalData, relayUrl, relayHubAddress, relayMaxNonce) {
         var self = this;
 
         return new Promise(function (resolve, reject) {
@@ -378,18 +378,18 @@ class RelayClient {
 
             try {
                 let validTransaction = await self.sendViaRelay(
-                    relayUrl,
-                    signature,
-                    approvalData,
+                    relayAddress,
                     options.from,
                     options.to,
                     encodedFunctionCall,
+                    options.txfee,
                     gasPrice,
                     gasLimit,
-                    options.txfee,
                     nonce,
+                    signature,
+                    approvalData,
+                    relayUrl,
                     relayHub._address,
-                    relayAddress,
                     relayMaxNonce
                 );
                 return validTransaction

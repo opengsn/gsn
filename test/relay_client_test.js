@@ -365,7 +365,7 @@ contract('RelayClient', function (accounts) {
         let fromAddr = ephemeralKeypair.address
         rc.useKeypairForSigning(ephemeralKeypair)
         var did_assert = false
-        rc.sendViaRelay = function(relayUrl, signature, approvalData, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress){
+        rc.sendViaRelay = function(relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress) {
             let message = utils.getTransactionHash(
                 from,
                 to,
@@ -400,9 +400,9 @@ contract('RelayClient', function (accounts) {
         rc.useKeypairForSigning(ephemeralKeypair)
 
         rc.origSendViaRelay = rc.sendViaRelay
-        rc.sendViaRelay = function(relayUrl, signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress){
+        rc.sendViaRelay = function(relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress){
             return this.origSendViaRelay.bind(this)(
-                "http://1.2.3.4:5678", signature, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, relayHubAddress, relayAddress);
+                relayAddress, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, signature, approvalData, "http://1.2.3.4:5678",  relayHubAddress);
         }
 
         let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()

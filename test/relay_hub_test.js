@@ -723,7 +723,7 @@ contract("RelayHub", function (accounts) {
 
             let received_coeff = new BigNumber(revenue).div(expenses)
             // I don't know how does rounding work for BigNumber, but it seems to be broken to me
-            if (received_coeff.lessThan(1)) {
+            if (received_coeff.lt(1)) {
                 received_coeff = received_coeff.toPrecision(2, BigNumber.ROUND_HALF_UP)
             } else {
                 received_coeff = received_coeff.toPrecision(3, BigNumber.ROUND_HALF_UP)

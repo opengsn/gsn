@@ -416,15 +416,15 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 
 	// check canRelay view function to see if we'll get paid for relaying this tx
-	res, err := relay.canRelay(request.EncodedFunction,
-		request.ApprovalData,
-		request.Signature,
-		request.From,
+	res, err := relay.canRelay(request.From,
 		request.To,
+		request.EncodedFunction,
+		request.RelayFee,
 		request.GasPrice,
 		request.GasLimit,
 		request.RecipientNonce,
-		request.RelayFee)
+		request.Signature,
+		request.ApprovalData)
 
 	if err != nil {
 		log.Println("canRelay failed in server", err)
@@ -554,15 +554,15 @@ func (relay *RelayServer) GetPort() string {
 	return relay.Port
 }
 
-func (relay *RelayServer) canRelay(encodedFunction string,
-	approvalData []byte,
-	signature []byte,
-	from common.Address,
+func (relay *RelayServer) canRelay(from common.Address,
 	to common.Address,
+	encodedFunction string,
+	relayFee big.Int,
 	gasPrice big.Int,
 	gasLimit big.Int,
 	recipientNonce big.Int,
-	relayFee big.Int) (res *big.Int, err error) {
+	signature []byte,
+	approvalData []byte) (res *big.Int, err error) {
 
 	relayAddress := relay.Address()
 
