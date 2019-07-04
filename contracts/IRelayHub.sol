@@ -77,7 +77,18 @@ contract IRelayHub {
     //  - the recipient must accept this transaction (via acceptRelayedCall)
     // Returns a PreconditionCheck value (OK when the transaction can be relayed), or a recipient-specific error code if
     // it returns one in acceptRelayedCall.
-    function canRelay(address relay, address from, address to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public view returns (uint256);
+    function canRelay(
+        address relay,
+        address from,
+        address to,
+        bytes memory encodedFunction,
+        uint256 transactionFee,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 nonce,
+        bytes memory signature,
+        bytes memory approvalData
+    ) public view returns (uint256);
 
     // Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
     enum PreconditionCheck {
@@ -108,10 +119,22 @@ contract IRelayHub {
     //  - gasPrice: gas price the client is willing to pay
     //  - gasLimit: gas to forward when calling the encoded function
     //  - nonce: client's nonce
-    //  - approval: client's signature over all params, plus the relay and RelayHub addresses (first 65 bytes). The remainder is dapp-specific data.
+    //  - signature: client's signature over all previous params, plus the relay and RelayHub addresses
+    //  - approvalData: dapp-specific data forwared to acceptRelayedCall. This value is *not* verified by the Hub, but
+    //    it still can be used for e.g. a signature.
     //
     // Emits a TransactionRelayed event.
-    function relayCall(address from, address to, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approval) public;
+    function relayCall(
+        address from,
+        address to,
+        bytes memory encodedFunction,
+        uint256 transactionFee,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 nonce,
+        bytes memory signature,
+        bytes memory approvalData
+    ) public;
 
     // Emitted when an attempt to relay a call failed. This can happen due to incorrect relayCall arguments, or the
     // recipient not accepting the relayed call. The actual relayed call was not executed, and the recipient not charged.

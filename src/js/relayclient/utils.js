@@ -78,9 +78,7 @@ module.exports = {
         }
 
         let signature = ethUtils.fromRpcSig(sig_);
-
-
-        let sig = web3Utils.toHex(signature.v) + removeHexPrefix(web3Utils.bytesToHex(signature.r)) + removeHexPrefix(web3Utils.bytesToHex(signature.s));
+        let sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(web3Utils.toHex(signature.v));
 
         return sig;
     },
@@ -96,15 +94,16 @@ module.exports = {
         let keyHex = "0x" + Buffer.from(privKey).toString('hex')
         const sig_ = EthCrypto.sign(keyHex, signed)
         let signature = ethUtils.fromRpcSig(sig_);
-        let sig = web3Utils.toHex(signature.v) + removeHexPrefix(web3Utils.bytesToHex(signature.r)) + removeHexPrefix(web3Utils.bytesToHex(signature.s));
+        let sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(web3Utils.toHex(signature.v));
         return sig
     },
 
     getEcRecoverMeta: function(message, signature) {
         if (typeof signature === 'string'){
-            let v = this.parseHexString(signature.substr(2,2))
-            let r = this.parseHexString(signature.substr(4, 65))
-            let s = this.parseHexString(signature.substr(68, 65))
+            let r = this.parseHexString(signature.substr(2, 65))
+            let s = this.parseHexString(signature.substr(66, 65))
+            let v = this.parseHexString(signature.substr(130,2))
+
             signature = {
                 v: v,
                 r: r,
@@ -122,10 +121,10 @@ module.exports = {
         var result = [];
         while (str.length >= 2) {
             result.push(parseInt(str.substring(0, 2), 16));
-    
+
             str = str.substring(2, str.length);
         }
-    
+
         return result;
     },
     removeHexPrefix: removeHexPrefix,
