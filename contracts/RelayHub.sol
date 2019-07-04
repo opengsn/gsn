@@ -6,8 +6,11 @@ import "./GsnUtils.sol";
 import "./RLPReader.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 contract RelayHub is IRelayHub {
+    using ECDSA for bytes32;
+
     // Minimum values for stake
     uint256 constant public minimumStake = 0.1 ether;
     uint256 constant public minimumUnstakeDelay = 0;
@@ -23,7 +26,7 @@ contract RelayHub is IRelayHub {
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
     uint256 constant public gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
-    uint256 constant public gasOverhead = 47241;
+    uint256 constant public gasOverhead = 48120;
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
     uint256 constant public acceptRelayedCallMaxGas = 50000;
@@ -186,16 +189,16 @@ contract RelayHub is IRelayHub {
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
-        bytes memory approval
+        bytes memory signature,
+        bytes memory approvalData
     )
         public view returns (uint256)
     {
+        // Verify the sender's signature on the transaction - note that approvalData is *not* signed
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
         bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
-        bytes32 signedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hashedMessage));
 
-        // Verify the sender's signature on the transaction
-        if (!GsnUtils.checkSig(from, signedMessage, approval)) {
+        if (hashedMessage.toEthSignedMessageHash().recover(signature) != from) {
             return uint256(PreconditionCheck.WrongSignature);
         }
 
@@ -205,7 +208,7 @@ contract RelayHub is IRelayHub {
         }
 
         bytes memory encodedTx = abi.encodeWithSelector(IRelayRecipient(to).acceptRelayedCall.selector,
-            relay, from, encodedFunction, gasPrice, transactionFee, approval
+            relay, from, encodedFunction, gasPrice, transactionFee, signature, approvalData
         );
 
         (bool success, bytes memory returndata) = to.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
@@ -236,7 +239,8 @@ contract RelayHub is IRelayHub {
      * @param gasLimit limit the client want to put on its transaction
      * @param transactionFee fee (%) the relay takes over actual gas cost.
      * @param nonce sender's nonce (in nonces[])
-     * @param approval client's signature over all params (first 65 bytes). The remainder is dapp-specific data.
+     * @param signature client's signature over all params except approvalData
+     * @param approvalData dapp-specific data
      */
     function relayCall(
         address from,
@@ -246,7 +250,8 @@ contract RelayHub is IRelayHub {
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
-        bytes memory approval
+        bytes memory signature,
+        bytes memory approvalData
     )
         public
     {
@@ -270,15 +275,17 @@ contract RelayHub is IRelayHub {
         // for the maximum possible charge.
         require(gasPrice * initialGas <= balances[recipient], "Recipient balance too low");
 
-        // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed), and
-        // that the recpient will accept to be charged by it.
-        uint256 preconditionCheck = canRelay(msg.sender, from, recipient, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approval);
-
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
-        if (preconditionCheck != uint256(PreconditionCheck.OK)) {
-            emit TransactionRelayed(msg.sender, from, recipient, functionSelector, uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
-            return;
+        {
+            // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed),
+            // and that the recpient will accept to be charged by it.
+            uint256 preconditionCheck = canRelay(msg.sender, from, recipient, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, signature, approvalData);
+
+            if (preconditionCheck != uint256(PreconditionCheck.OK)) {
+                emit TransactionRelayed(msg.sender, from, recipient, functionSelector, uint256(RelayCallStatus.CanRelayFailed), preconditionCheck);
+                return;
+            }
         }
 
         // From this point on, this transaction will not revert nor run out of gas, and the recipient will be charged
@@ -418,11 +425,8 @@ contract RelayHub is IRelayHub {
         // The offending relay will be unregistered immediately, its stake will be forfeited and given to the address who reported it (msg.sender), thus incentivizing anyone to report offending relays.
         // If reported via a relay, the forfeited stake is split between msg.sender (the relay used for reporting) and the address that reported it.
 
-        bytes32 hash1 = keccak256(abi.encodePacked(unsignedTx1));
-        address addr1 = ecrecover(hash1, uint8(signature1[0]), LibBytes.readBytes32(signature1, 1), LibBytes.readBytes32(signature1, 33));
-
-        bytes32 hash2 = keccak256(abi.encodePacked(unsignedTx2));
-        address addr2 = ecrecover(hash2, uint8(signature2[0]), LibBytes.readBytes32(signature2, 1), LibBytes.readBytes32(signature2, 33));
+        address addr1 = keccak256(abi.encodePacked(unsignedTx1)).recover(signature1);
+        address addr2 = keccak256(abi.encodePacked(unsignedTx2)).recover(signature2);
 
         require(addr1 == addr2, "Different signer");
 
@@ -438,15 +442,14 @@ contract RelayHub is IRelayHub {
     }
 
     function penalizeIllegalTransaction(bytes memory unsignedTx, bytes memory signature) public {
-        Transaction memory decodedTx1 = decodeTransaction(unsignedTx);
-        if (decodedTx1.to == address(this)) {
-            bytes4 selector = GsnUtils.getMethodSig(decodedTx1.data);
+        Transaction memory decodedTx = decodeTransaction(unsignedTx);
+        if (decodedTx.to == address(this)) {
+            bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
             // Note: If RelayHub's relay API is extended, the selectors must be added to the ones listed here
             require(selector != this.relayCall.selector && selector != this.registerRelay.selector, "Legal relay transaction");
         }
 
-        bytes32 hash = keccak256(abi.encodePacked(unsignedTx));
-        address relay = ecrecover(hash, uint8(signature[0]), LibBytes.readBytes32(signature, 1), LibBytes.readBytes32(signature, 33));
+        address relay = keccak256(abi.encodePacked(unsignedTx)).recover(signature);
 
         penalize(relay);
     }

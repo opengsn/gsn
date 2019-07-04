@@ -110,8 +110,8 @@ note that `yarn test` above runs the entire suite: it compiles the server, then 
 ### Client modifications.
 
 
-	tabookey = require( 'tabookey-gassless')
-    provider = new tabookey.RelayProvider(web3.currentProvider, {} }
+	tabookey = require( 'tabookey-gasless')
+    provider = new tabookey.RelayProvider(web3.currentProvider, {} )
     web3.setProvider(provider) 
 
 	//from now on, any transaction through this web3 will go through a relay
