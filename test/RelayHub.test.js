@@ -340,6 +340,29 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
   });
 
   describe('penalizations', function () {
+    const reporter = other;
+    const stake = ether('1');
+
+    // Receives a penalization function and its arguments, and tests that call for a penalization, including checking
+    // the emitted event and penalization reward transfer. Returns the transaction receipt.
+    async function expectPenalization(penalizeFn) {
+      const reporterBalanceTracker = await balance.tracker(reporter);
+      const relayHubBalanceTracker = await balance.tracker(relayHub.address);
+
+      // We call the penalization function with all supplied arguments, from the reporter and with a gas price of 0 to
+      // make tracking balance changes easier
+      const receipt = await penalizeFn.apply(null, [...arguments].slice(1).concat({ from: reporter, gasPrice: 0 }));
+      expectEvent.inLogs(receipt.logs, 'Penalized', { relay, sender: reporter, amount: stake.divn(2) });
+
+      // The reporter gets half of the stake
+      expect(await reporterBalanceTracker.delta()).to.be.bignumber.equals(stake.divn(2));
+
+      // The other half is burned, so RelayHub's balance is decreased by the full stake
+      expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equals(stake.neg());
+
+      return receipt;
+    }
+
     describe('penalizable behaviors', function () {
       const encodedCallArgs = {
         sender,
@@ -363,7 +386,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       });
 
       beforeEach('staking for relay', async function () {
-        await relayHub.stake(relay, time.duration.days(1), { value: ether('1') });
+        await relayHub.stake(relay, time.duration.days(1), { value: stake });
       });
 
       describe('repeated relay nonce', async function () {
@@ -371,7 +394,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
           const txDataSigB = getDataAndSignature(encodeRelayCall(Object.assign(encodedCallArgs, { data: "0xabcd" }), relayCallArgs));
 
-          await relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature);
+          await expectPenalization(relayHub.penalizeRepeatedNonce, txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature);
         });
 
         it('does not penalize transactions with same nonce and same data', async function () {
@@ -410,8 +433,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             const { transactionHash } = await send.ether(relay, other, ether('0.5'));
             const { data, signature } = await getDataAndSignatureFromHash(transactionHash);
 
-            const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
-            expectEvent.inLogs(logs, 'Penalized', { relay });
+            await expectPenalization(relayHub.penalizeIllegalTransaction, data, signature);
           });
 
           it('penalizes relay transactions to illegal RelayHub functions (stake)', async function () {
@@ -419,8 +441,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             const { tx } = await relayHub.stake(other, time.duration.days(1), { value: ether('0.5'), from: relay });
             const { data, signature } = await getDataAndSignatureFromHash(tx);
 
-            const { logs } = await relayHub.penalizeIllegalTransaction(data, signature);
-            expectEvent.inLogs(logs, 'Penalized', { relay });
+            await expectPenalization(relayHub.penalizeIllegalTransaction, data, signature);
           });
 
           it('penalizes relay transactions to illegal RelayHub functions (penalize)', async function () {
@@ -438,11 +459,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
 
             // It can now be penalized for that
             const penalizeTxDataSig = await getDataAndSignatureFromHash(penalizeTx.tx);
-            const secondPenalizeTx = await relayHub.penalizeIllegalTransaction(
-              penalizeTxDataSig.data, penalizeTxDataSig.signature
-            );
-
-            expectEvent.inLogs(secondPenalizeTx.logs, 'Penalized', { relay });
+            await expectPenalization(relayHub.penalizeIllegalTransaction, penalizeTxDataSig.data, penalizeTxDataSig.signature);
           });
 
           it('does not penalize legal relay transactions', async function () {
@@ -485,13 +502,10 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       });
     });
 
-    describe('relay state and reward', function () {
+    describe('penalizable relay states', function () {
       context('with penalizable transaction', function () {
         let penalizableTxData;
         let penalizableTxSignature;
-
-        const reporter = other;
-        const stake = ether('1');
 
         beforeEach(async function () {
           // Relays are not allowed to transfer Ether
@@ -499,40 +513,26 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           ({ data: penalizableTxData, signature: penalizableTxSignature } = await getDataAndSignatureFromHash(transactionHash));
         });
 
-        function penalizeFrom (from) {
-          // Penalize with a gasPrice of 0 to help in balance change calculations
-          return relayHub.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, { from, gasPrice: 0 });
+        // All of these tests use the same penalization function (we one we set up in the beforeEach block)
+        function penalize () {
+          return expectPenalization(relayHub.penalizeIllegalTransaction, penalizableTxData, penalizableTxSignature);
         }
 
-        function testRelayPenalization () {
+        // Checks that a relay can be penalized, but only once
+        function testUniqueRelayPenalization () {
           it('relay can be penalized', async function () {
-            const reporterBalanceTracker = await balance.tracker(reporter);
-            const relayHubBalanceTracker = await balance.tracker(relayHub.address);
-
-            const { logs } = await penalizeFrom(reporter);
-            expectEvent.inLogs(logs, 'Penalized', { relay, sender: reporter, amount: stake.divn(2) });
-
-            // The reporter gets half of the stake
-            expect(await reporterBalanceTracker.delta()).to.be.bignumber.equals(stake.divn(2));
-
-            // The other half is burned, so RelayHub's balance is decreased by the full stake
-            expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equals(stake.neg());
+            await expectPenalization(penalize);
           });
 
-          context('once penalized', function () {
-            beforeEach(async function () {
-              await penalizeFrom(reporter);
-            });
-
-            it('relay cannot be penalized again', async function () {
-              await expectRevert(penalizeFrom(reporter), 'Unstaked relay');
-            });
+          it('relay cannot be penalized twice', async function () {
+            await penalize();
+            await expectRevert(penalize(), 'Unstaked relay');
           });
         }
 
         context('with unstaked relay', function () {
           it('account cannot be penalized', async function () {
-            await expectRevert(penalizeFrom(reporter), 'Unstaked relay');
+            await expectRevert(penalize(), 'Unstaked relay');
           });
 
           context('with staked relay', function () {
@@ -542,17 +542,17 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
               await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
             });
 
-            testRelayPenalization();
+            testUniqueRelayPenalization();
 
             context('with registered relay', function () {
               beforeEach(async function () {
                 await relayHub.registerRelay(10, 'url.com', { from: relay });
               });
 
-              testRelayPenalization();
+              testUniqueRelayPenalization();
 
               it('RelayRemoved event is emitted', async function () {
-                const { logs } = await penalizeFrom(reporter);
+                const { logs } = await penalize();
                 expectEvent.inLogs(logs, 'RelayRemoved', { relay, unstakeTime: await time.latest() });
               });
 
@@ -561,7 +561,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
                   await relayHub.removeRelayByOwner(relay, { from: relayOwner });
                 });
 
-                testRelayPenalization();
+                testUniqueRelayPenalization();
 
                 context('with unstaked relay', function () {
                   beforeEach(async function () {
@@ -570,7 +570,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
                   });
 
                   it('relay cannot be penalized', async function () {
-                    await expectRevert(penalizeFrom(reporter), 'Unstaked relay');
+                    await expectRevert(penalize(), 'Unstaked relay');
                   });
                 });
               });
