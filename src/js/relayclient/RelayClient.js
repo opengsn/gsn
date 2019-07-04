@@ -412,9 +412,9 @@ class RelayClient {
     fixTransactionReceiptResp(resp) {
         if (resp && resp.result && resp.result.logs) {
             let logs = abi_decoder.decodeLogs(resp.result.logs);
-            let relayCallFailed = logs.find(e => e && e.name == 'RelayCallFailed');
+            let canRelayFailed = logs.find(e => e && e.name == 'CanRelayFailed');
             let transactionRelayed = logs.find(e => e && e.name == 'TransactionRelayed');
-            if (relayCallFailed || (transactionRelayed && transactionRelayed.events.find(e => e.name == "status").value != 0)) {
+            if (canRelayFailed || (transactionRelayed && transactionRelayed.events.find(e => e.name == "status").value != 0)) {
                 console.log("reverted relayed transaction. changing status to zero");
                 resp.result.status = 0
             }

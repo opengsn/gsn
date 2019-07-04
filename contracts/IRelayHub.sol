@@ -117,7 +117,7 @@ contract IRelayHub {
     // recipient not accepting the relayed call. The actual relayed call was not executed, and the recipient not charged.
     // The reason field contains an error code: values 1-10 correspond to PreconditionCheck entries, and values over 10
     // are custom recipient error codes returned from acceptRelayedCall.
-    event RelayCallFailed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint256 reason);
+    event CanRelayFailed(address indexed relay, address indexed from, address indexed to, bytes4 selector, uint256 reason);
 
     // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
     // indicated in the status field.

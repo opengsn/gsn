@@ -278,7 +278,7 @@ contract RelayHub is IRelayHub {
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
         if (preconditionCheck != uint256(PreconditionCheck.OK)) {
-            emit RelayCallFailed(msg.sender, from, recipient, functionSelector, preconditionCheck);
+            emit CanRelayFailed(msg.sender, from, recipient, functionSelector, preconditionCheck);
             return;
         }
 

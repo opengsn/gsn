@@ -331,7 +331,7 @@ contract("RelayHub", function (accounts) {
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
         });
-        assert.equal(res.logs[0].event, "RelayCallFailed")
+        assert.equal(res.logs[0].event, "CanRelayFailed")
         const customErrorCode = 11;
         assert.equal(res.logs[0].args.reason, customErrorCode)
         let canRelay = await rhub.canRelay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig);
@@ -723,7 +723,7 @@ contract("RelayHub", function (accounts) {
 
             let received_coeff = new BigNumber(revenue).div(expenses)
             // I don't know how does rounding work for BigNumber, but it seems to be broken to me
-            if (received_coeff.lessThan(1)) {
+            if (received_coeff.lt(1)) {
                 received_coeff = received_coeff.toPrecision(2, BigNumber.ROUND_HALF_UP)
             } else {
                 received_coeff = received_coeff.toPrecision(3, BigNumber.ROUND_HALF_UP)
@@ -795,7 +795,7 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
 
-            assert.equal("RelayCallFailed", res.logs[0].event);
+            assert.equal("CanRelayFailed", res.logs[0].event);
             assert.equal(AcceptRelayedCallReverted, res.logs[0].args.reason);
         } finally {
             // returning state to previous one

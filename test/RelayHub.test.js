@@ -434,7 +434,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
           await recipient.setReturnInvalidErrorCode(true);
           const { logs } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, { from: relay, gasPrice, gasLimit });
 
-          expectEvent.inLogs(logs, 'RelayCallFailed', { reason: PreconditionCheck.InvalidRecipientStatusCode });
+          expectEvent.inLogs(logs, 'CanRelayFailed', { reason: PreconditionCheck.InvalidRecipientStatusCode });
         });
 
         describe('recipient balance withdrawal ban', function () {
