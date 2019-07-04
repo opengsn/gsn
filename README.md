@@ -103,12 +103,12 @@ Notes
 
 note that `npm test` above runs the entire suite: it compiles the server, then launches *ganache-cli* node, deploys the needed component and starts the relay server. then it launches truffle test to run the client tests against the relay server and the contracts on the blockchain.
 
-### Client modifications.
+### Client modifications:
 
 
-	tabookey = require( 'tabookey-gassless')
-    provider = new tabookey.RelayProvider(web3.currentProvider, {} }
-    web3.setProvider(provider) 
+    tabookey = require('tabookey-gassless')
+    provider = new tabookey.RelayProvider(web3.currentProvider, {})
+    web3.setProvider(provider)
 
 	//from now on, any transaction through this web3 will go through a relay
 	
