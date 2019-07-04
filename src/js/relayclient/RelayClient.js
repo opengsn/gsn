@@ -414,9 +414,16 @@ class RelayClient {
             let logs = abi_decoder.decodeLogs(resp.result.logs);
             let canRelayFailed = logs.find(e => e && e.name == 'CanRelayFailed');
             let transactionRelayed = logs.find(e => e && e.name == 'TransactionRelayed');
-            if (canRelayFailed || (transactionRelayed && transactionRelayed.events.find(e => e.name == "status").value != 0)) {
-                console.log("reverted relayed transaction. changing status to zero");
+
+            const setErrorStatus = (reason) => {
+                console.log(`${reason}. changing status to zero`)
                 resp.result.status = 0
+            }
+
+            if (canRelayFailed) {
+                setErrorStatus("canRelay failed")
+            } else if (transactionRelayed && transactionRelayed.events.find(e => e.name == "status").value != 0) {
+                setErrorStatus("reverted relayed transaction")
             }
         }
         return resp
