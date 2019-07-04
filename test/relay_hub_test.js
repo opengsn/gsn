@@ -26,8 +26,6 @@ contract('SampleRecipient', function (accounts) {
     // TODO: account with no ether
     var expected_real_sender = accounts[0];
 
-    global.saveCoverageAtEnd(this)
-
     it("should emit message with msgSender and realSender", async function () {
         let sample = await SampleRecipient.deployed()
         let result = await sample.emitMessage(message);
@@ -66,8 +64,6 @@ contract('SampleRecipient', function (accounts) {
 
 const RelayHub = artifacts.require("./RelayHub.sol");
 contract("RelayHub", function (accounts) {
-
-    global.saveCoverageAtEnd(this)
 
     assert.ok(web3.version.toString().indexOf("1.0") >= 0, "Must use web3>=1.0 (truffle 5)")
 
@@ -723,6 +719,7 @@ contract("RelayHub", function (accounts) {
 
             let received_coeff = new BigNumber(revenue).div(expenses)
             // I don't know how does rounding work for BigNumber, but it seems to be broken to me
+
             if (received_coeff.lt(1)) {
                 received_coeff = received_coeff.toPrecision(2, BigNumber.ROUND_HALF_UP)
             } else {
