@@ -155,8 +155,18 @@ class RelayClient {
                     console.log("sendViaRelay resp=", body)
                 }
 
-                if (!body || !body.nonce) {
+                if (!body) {
                     reject("Empty body received from server.");
+                    return
+                }
+
+                if (body.error) {
+                    reject(`Server error ${body.error}`);
+                    return
+                }
+
+                if (!body.nonce) {
+                    reject(`No transaction nonce received from server ${body}`);
                     return
                 }
 
