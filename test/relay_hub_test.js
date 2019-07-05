@@ -7,20 +7,13 @@ const testutils = require('./testutils')
 const utils = require('../src/js/relayclient/utils')
 
 const register_new_relay = testutils.register_new_relay;
-const register_new_relay_with_privkey = testutils.register_new_relay_with_privkey;
-const increaseTime = testutils.increaseTime;
 const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect;
 const getTransactionSignature = utils.getTransactionSignature;
 const getTransactionHash = utils.getTransactionHash;
-const rlp = require('rlp');
 
-const ethUtils = require('ethereumjs-util');
-const ethJsTx = require('ethereumjs-tx');
 const BigNumber = require('bignumber.js');
 
 const message = "hello world";
-
-const zeroAddr = "0".repeat(40)
 
 contract('SampleRecipient', function (accounts) {
     // TODO: account with no ether
@@ -388,28 +381,6 @@ contract("RelayHub", function (accounts) {
 
     let dayInSec = 24 * 60 * 60;
     let weekInSec = dayInSec * 7;
-
-    let nonce_any_value = 4;
-    let gas_price_any_value = 4;
-    let tx_value_any_value = 0;
-    let gasPricePenalize = 5;
-
-    let snitching_account;
-    let privKey = Buffer.from("cf5de3123d7ee4e0c66761793f1cc258324ecdf677fe3422e4cd0d87b9132322", "hex");
-    let data1;
-    let data2;
-    let transaction1;
-    let transaction2;
-
-    let unsignedTransaction1Encoded;
-    let unsignedTransaction2Encoded;
-
-    let sig1;
-    let sig2;
-
-    function encodeRLP(transaction) {
-        return "0x" + rlp.encode(transaction.raw.slice(0, 6)).toString("hex")
-    }
 
     [0, 1, 3, 5, 10, 50, 100, 200].forEach(requested_fee => {
         //avoid duplicate coverage checks. they do the same, and take a lot of time:
