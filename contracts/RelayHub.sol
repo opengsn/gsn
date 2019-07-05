@@ -190,7 +190,7 @@ contract RelayHub is IRelayHub {
     }
 
     function canUnstake(address relay) public view returns (bool) {
-        return relays[relay].unstakeTime > 0 && relays[relay].unstakeTime <= now;
+        return relays[relay].state == RelayState.Removing && relays[relay].unstakeTime <= now;
         // Finished the unstaking delay period?
     }
 
