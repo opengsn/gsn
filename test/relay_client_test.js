@@ -46,7 +46,7 @@ contract('RelayClient', function (accounts) {
         console.log("starting relay")
 
         relayproc = await testutils.startRelay(rhub, {
-            stake: 1e17, delay: 3600, txfee: 12, url: "asd", relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
+            stake: 1e18, delay: 3600 * 24 * 7, txfee: 12, url: "asd", relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
 
     });
 
