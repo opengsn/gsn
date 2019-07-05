@@ -22,7 +22,7 @@ const isVerbose = true;
 
 //ignore imported packages, tests (can also ignore interfaces: sol-coverage report 0% coverage on interfaces..)
 const ignoreFilesGlobs = [ "**/node_modules/**/*", "**/Migrations.sol", "**/Test*",
-	 "**/IRelay*", "**/RLPReader.sol" 
+	 "**/IRelay*", "**/RLPReader.sol"
    ]
 
 const artifactAdapter = new TruffleArtifactAdapter(projectRoot, solcVersion);
@@ -78,7 +78,10 @@ if (mode === "profile") {
     provider.addProvider(revertTraceSubprovider);
   }
   if ( global.useInProcessGanache ) {
-	const ganahceSubprovider = new GanacheSubprovider();
+	const ganahceSubprovider = new GanacheSubprovider({
+    // Generate the same set of addresses as ganache-cli --deterministic
+    mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect'
+  });
 
 	provider.addProvider(ganahceSubprovider);
 
