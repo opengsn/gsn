@@ -45,12 +45,6 @@ contract('ServerHelper', function (accounts) {
             // stake too low
             await register_new_relay(rhub, 1e18, 3600 * 24 * 7 * 2, 20, "https://abcd3.com", accounts[3], accounts[0]);
 
-            // Added, removed, added again - go figure.
-            // 2 x will not ping
-            await register_new_relay(rhub, 2e18, 3600 * 24 * 7 * 2, 15, "https://abcd4.com", accounts[4], accounts[0]);
-            await rhub.removeRelayByOwner(accounts[4], { from: accounts[0] });
-            await increaseTime(3600 * 24 * 7 *2);
-            await rhub.unstake(accounts[4],{ from: accounts[0] });
             await register_new_relay(rhub, 2e18, 3600 * 24 * 7 * 2, 15, "go_resolve_this_address", accounts[4], accounts[0]);
 
             await register_new_relay(rhub, 2e18, 3600 * 24 * 7 * 2, 30, "https://abcd4.com", accounts[5], accounts[0]);
