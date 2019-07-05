@@ -521,7 +521,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         // Checks that a relay can be penalized, but only once
         function testUniqueRelayPenalization () {
           it('relay can be penalized', async function () {
-            await expectPenalization(penalize);
+            await penalize();
           });
 
           it('relay cannot be penalized twice', async function () {
