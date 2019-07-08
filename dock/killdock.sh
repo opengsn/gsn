@@ -1,1 +1,1 @@
-docker rm -f run-relaydock
+docker rm -f relaydock
