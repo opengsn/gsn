@@ -6,9 +6,13 @@ const { getTransactionHash, getTransactionSignature } = require('../src/js/relay
 const RelayHub = artifacts.require('RelayHub');
 const SampleRecipient = artifacts.require('SampleRecipient');
 
+const Transaction = require('ethereumjs-tx');
+const { privateToAddress } = require('ethereumjs-util');
+const rlp = require('rlp');
+
 const { expect } = require('chai');
 
-contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // eslint-disable-line no-unused-vars
+contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]) {  // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     CanRelayFailed: new BN('1'),
@@ -37,29 +41,28 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
   describe('relay management', function () {
     describe('staking', function () {
       it('unstaked relays can be staked for by anyone', async function () {
-        const { logs } = await relayHub.stake(relay, time.duration.days(1), { value: ether('1'), from: other });
+        const { logs } = await relayHub.stake(relay, time.duration.weeks(4), { value: ether('1'), from: other });
         expectEvent.inLogs(logs, 'Staked', { relay, stake: ether('1') });
       });
 
       it('relays cannot stake for themselves', async function () {
         await expectRevert(
-          relayHub.stake(relay, time.duration.days(1), { value: ether('1'), from: relay }),
+          relayHub.stake(relay, time.duration.weeks(4), { value: ether('1'), from: relay }),
           'relay cannot stake for itself'
         );
       });
 
       it('relays cannot be staked for with a stake under the minimum', async function () {
-        const minimumStake = ether('0.1');
+        const minimumStake = ether('1');
 
         await expectRevert(
-          relayHub.stake(relay, time.duration.days(1), { value: minimumStake.subn(1), from: other }),
+          relayHub.stake(relay, time.duration.weeks(4), { value: minimumStake.subn(1), from: other }),
           'stake lower than minimum'
         );
       });
 
-      // current minUnstakeDelay is 0
-      it.skip('relays cannot be staked for with an unstake delay under the minimum', async function () {
-        const minimumUnstakeDelay = new BN('1');
+      it('relays cannot be staked for with an unstake delay under the minimum', async function () {
+        const minimumUnstakeDelay = time.duration.weeks(1);
 
         await expectRevert(
           relayHub.stake(relay, minimumUnstakeDelay.subn(1), { value: ether('1'), from: other }),
@@ -67,9 +70,18 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
         );
       });
 
+      it('relays cannot be staked for with an unstake delay over the maximum', async function () {
+        const maximumUnstakeDelay = time.duration.weeks(12);
+
+        await expectRevert(
+          relayHub.stake(relay, maximumUnstakeDelay.addn(1), { value: ether('1'), from: other }),
+          'delay higher than maximum'
+        );
+      });
+
       context('with staked relay', function () {
         const initialStake = ether('2');
-        const initialUnstakeDelay = time.duration.days(1);
+        const initialUnstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, initialUnstakeDelay, { value: initialStake, from: relayOwner });
@@ -97,7 +109,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
           });
 
           it('owner can increase the unstake delay', async function () {
-            const newUnstakeDelay = time.duration.days(2);
+            const newUnstakeDelay = time.duration.weeks(6);
             const { logs } = await relayHub.stake(relay, newUnstakeDelay, { from: relayOwner });
             expectEvent.inLogs(logs, 'Staked', { relay, stake: '0' });
 
@@ -166,7 +178,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
 
       context('with staked relay', function () {
         const stake = ether('2');
-        const unstakeDelay = time.duration.days(1);
+        const unstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
@@ -224,7 +236,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
     describe('unregistering', function () {
       context('with staked relay', function () {
         const stake = ether('2');
-        const unstakeDelay = time.duration.days(1);
+        const unstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
@@ -269,7 +281,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
 
       context('with staked relay', function () {
         const stake = ether('2');
-        const unstakeDelay = time.duration.days(1);
+        const unstakeDelay = time.duration.weeks(4);
 
         beforeEach(async function () {
           await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
@@ -333,6 +345,312 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
         });
       });
     });
+  });
+
+  describe('penalizations', function () {
+    const reporter = other;
+    const stake = ether('1');
+
+    // Receives a function that will penalize the relay and tests that call for a penalization, including checking the
+    // emitted event and penalization reward transfer. Returns the transaction receipt.
+    async function expectPenalization(penalizeWithOpts) {
+      const reporterBalanceTracker = await balance.tracker(reporter);
+      const relayHubBalanceTracker = await balance.tracker(relayHub.address);
+
+      // A gas price of zero makes checking the balance difference simpler
+      const receipt = await penalizeWithOpts({ from: reporter, gasPrice: 0 });
+      expectEvent.inLogs(receipt.logs, 'Penalized', { relay, sender: reporter, amount: stake.divn(2) });
+
+      // The reporter gets half of the stake
+      expect(await reporterBalanceTracker.delta()).to.be.bignumber.equals(stake.divn(2));
+
+      // The other half is burned, so RelayHub's balance is decreased by the full stake
+      expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equals(stake.neg());
+
+      return receipt;
+    }
+
+    describe('penalizable behaviors', function () {
+      const encodedCallArgs = {
+        sender,
+        recipient: '0x1820b744B33945482C17Dc37218C01D858EBc714',
+        data: '0x1234',
+        fee: 10,
+        gasPrice: 50,
+        gasLimit: 1000000,
+        nonce: 0,
+      };
+
+      const relayCallArgs = {
+        gasPrice: 50,
+        gasLimit: 1000000,
+        nonce: 0,
+        privateKey: '6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c', // relay's private key
+      };
+
+      before(function () {
+        expect('0x' + privateToAddress('0x' + relayCallArgs.privateKey).toString('hex')).to.equal(relay.toLowerCase());
+      });
+
+      beforeEach('staking for relay', async function () {
+        await relayHub.stake(relay, time.duration.weeks(1), { value: stake });
+      });
+
+      describe('repeated relay nonce', async function () {
+        it('penalizes transactions with same nonce and different data', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(Object.assign(encodedCallArgs, { data: "0xabcd" }), relayCallArgs));
+
+          await expectPenalization((opts) =>
+            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
+          );
+        });
+
+        it('does not penalize transactions with same nonce and same data', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(
+            encodedCallArgs,
+            Object.assign(relayCallArgs, { gasPrice: 70, gasLimit: 2000000 }) // gasPrice and gasLimit may be different
+          ));
+
+          await expectRevert(
+            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature),
+            'tx.data is equal'
+          );
+        });
+
+        it('does not penalize transactions with different nonces', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(
+            encodedCallArgs,
+            Object.assign(relayCallArgs, { nonce: 1 })
+          ));
+
+          await expectRevert(
+            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature),
+            'Different nonce'
+          );
+        });
+
+        it('does not penalize transactions with same nonce from different relays', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(
+            encodedCallArgs,
+            Object.assign(relayCallArgs, { privateKey: '0123456789012345678901234567890123456789012345678901234567890123' })
+          ));
+
+          await expectRevert(
+            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature),
+            'Different signer'
+          );
+        });
+      });
+
+      describe('illegal call', async function () {
+        describe('with pre-EIP155 signatures', function () {
+          it('penalizes relay transactions to addresses other than RelayHub', async function () {
+            // Relay sending ether to another account
+            const { transactionHash } = await send.ether(relay, other, ether('0.5'));
+            const { data, signature } = await getDataAndSignatureFromHash(transactionHash);
+
+            await expectPenalization((opts) => relayHub.penalizeIllegalTransaction(data, signature, opts));
+          });
+
+          it('penalizes relay transactions to illegal RelayHub functions (stake)', async function () {
+            // Relay staking for a second relay
+            const { tx } = await relayHub.stake(other, time.duration.weeks(1), { value: ether('1'), from: relay });
+            const { data, signature } = await getDataAndSignatureFromHash(tx);
+
+            await expectPenalization((opts) => relayHub.penalizeIllegalTransaction(data, signature, opts));
+          });
+
+          it('penalizes relay transactions to illegal RelayHub functions (penalize)', async function () {
+            // A second relay is registered
+            await relayHub.stake(otherRelay, time.duration.weeks(1), { value: ether('1'), from: other });
+
+            // An illegal transaction is sent by it
+            const stakeTx = await send.ether(otherRelay, other, ether('0.5'));
+
+            // A relay penalizes it
+            const stakeTxDataSig = await getDataAndSignatureFromHash(stakeTx.transactionHash);
+            const penalizeTx = await relayHub.penalizeIllegalTransaction(
+              stakeTxDataSig.data, stakeTxDataSig.signature, { from: relay }
+            );
+
+            // It can now be penalized for that
+            const penalizeTxDataSig = await getDataAndSignatureFromHash(penalizeTx.tx);
+            await expectPenalization((opts) =>
+              relayHub.penalizeIllegalTransaction(penalizeTxDataSig.data, penalizeTxDataSig.signature, opts));
+          });
+
+          it('does not penalize legal relay transactions', async function () {
+            // registerRelay is a legal transaction
+
+            const registerTx = await relayHub.registerRelay(10, 'url.com', { from: relay });
+            const registerTxDataSig = await getDataAndSignatureFromHash(registerTx.tx);
+
+            await expectRevert(
+              relayHub.penalizeIllegalTransaction(registerTxDataSig.data, registerTxDataSig.signature),
+               'Legal relay transaction'
+            );
+
+            // relayCall is a legal transaction
+
+            const fee = new BN('10');
+            const gasPrice = new BN('1');
+            const gasLimit = new BN('1000000');
+            const senderNonce = new BN('0');
+            const txData = recipient.contract.methods.emitMessage('').encodeABI();
+            const signature = await getTransactionSignature(
+              web3,
+              sender,
+              getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay)
+            );
+
+            await relayHub.depositFor(recipient.address, { from: other, value: ether('1') });
+            const relayCallTx = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
+
+            const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx);
+            await expectRevert(
+              relayHub.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature),
+               'Legal relay transaction'
+            );
+          });
+        });
+      });
+
+      describe.skip('with EIP155 signatures', function () {
+      });
+    });
+
+    describe('penalizable relay states', function () {
+      context('with penalizable transaction', function () {
+        let penalizableTxData;
+        let penalizableTxSignature;
+
+        beforeEach(async function () {
+          // Relays are not allowed to transfer Ether
+          const { transactionHash } = await send.ether(relay, other, ether('0.5'));
+          ({ data: penalizableTxData, signature: penalizableTxSignature } = await getDataAndSignatureFromHash(transactionHash));
+        });
+
+        // All of these tests use the same penalization function (we one we set up in the beforeEach block)
+        function penalize () {
+          return expectPenalization((opts) => relayHub.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, opts));
+        }
+
+        // Checks that a relay can be penalized, but only once
+        function testUniqueRelayPenalization () {
+          it('relay can be penalized', async function () {
+            await penalize();
+          });
+
+          it('relay cannot be penalized twice', async function () {
+            await penalize();
+            await expectRevert(penalize(), 'Unstaked relay');
+          });
+        }
+
+        context('with unstaked relay', function () {
+          it('account cannot be penalized', async function () {
+            await expectRevert(penalize(), 'Unstaked relay');
+          });
+
+          context('with staked relay', function () {
+            const unstakeDelay = time.duration.weeks(1);
+
+            beforeEach(async function () {
+              await relayHub.stake(relay, unstakeDelay, { value: stake, from: relayOwner });
+            });
+
+            testUniqueRelayPenalization();
+
+            context('with registered relay', function () {
+              beforeEach(async function () {
+                await relayHub.registerRelay(10, 'url.com', { from: relay });
+              });
+
+              testUniqueRelayPenalization();
+
+              it('RelayRemoved event is emitted', async function () {
+                const { logs } = await penalize();
+                expectEvent.inLogs(logs, 'RelayRemoved', { relay, unstakeTime: await time.latest() });
+              });
+
+              context('with removed relay', function () {
+                beforeEach(async function () {
+                  await relayHub.removeRelayByOwner(relay, { from: relayOwner });
+                });
+
+                testUniqueRelayPenalization();
+
+                context('with unstaked relay', function () {
+                  beforeEach(async function () {
+                    await time.increase(unstakeDelay);
+                    await relayHub.unstake(relay, { from: relayOwner });
+                  });
+
+                  it('relay cannot be penalized', async function () {
+                    await expectRevert(penalize(), 'Unstaked relay');
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    function encodeRelayCall(encodedCallArgs, relayCallArgs) {
+      const encodedCall = relayHub.contract.methods.relayCall(
+          encodedCallArgs.sender,
+          encodedCallArgs.recipient,
+          encodedCallArgs.data,
+          encodedCallArgs.fee,
+          encodedCallArgs.gasPrice,
+          encodedCallArgs.gasLimit,
+          encodedCallArgs.nonce,
+          '0xabcdef123456',
+          '0x',
+        ).encodeABI();
+
+      const transaction = new Transaction({
+        nonce: relayCallArgs.nonce,
+        gasLimit: relayCallArgs.gasLimit,
+        gasPrice: relayCallArgs.gasPrice,
+        to: relayHub.address,
+        value: 0,
+        data: encodedCall,
+      });
+
+      transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'));
+      return transaction;
+    }
+
+    async function getDataAndSignatureFromHash(txHash) {
+      const rpcTx = await web3.eth.getTransaction(txHash);
+
+      const tx = new Transaction({
+        nonce: new BN(rpcTx.nonce),
+        gasPrice: new BN(rpcTx.gasPrice),
+        gasLimit: new BN(rpcTx.gas),
+        to: rpcTx.to,
+        value: new BN(rpcTx.value),
+        data: rpcTx.input,
+        v: rpcTx.v,
+        r: rpcTx.r,
+        s: rpcTx.s,
+      });
+
+      return getDataAndSignature(tx);
+    }
+
+    function getDataAndSignature(tx) {
+      const data = `0x${rlp.encode([tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]).toString('hex')}`;
+      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${tx.v.toString('hex')}`
+
+      return { data, signature };
+    }
   });
 
   describe('balances', function () {
@@ -403,7 +721,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
       const fee = 10; // 10%
 
       beforeEach(async function () {
-        await relayHub.stake(relay, unstakeDelay, { value: ether('5'), from: relayOwner });
+        await relayHub.stake(relay, unstakeDelay, { value: ether('2'), from: relayOwner });
 
         await relayHub.registerRelay(fee, url, { from: relay });
       });
@@ -422,7 +740,7 @@ contract('RelayHub', function ([_, relayOwner, relay, sender, other]) {  // esli
         // truffle-contract doesn't let us create method data from the class, we need an actual instance
         txData = recipient.contract.methods.emitMessage(message).encodeABI();
 
-        txHash = await getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay);
+        txHash = getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay);
         signature = await getTransactionSignature(web3, sender, txHash);
       });
 

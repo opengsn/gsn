@@ -11,15 +11,20 @@ import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 contract RelayHub is IRelayHub {
     using ECDSA for bytes32;
 
-    // Minimum values for stake
-    uint256 constant public minimumStake = 0.1 ether;
-    uint256 constant public minimumUnstakeDelay = 0;
+    // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
+    uint256 constant public minimumStake = 1 ether;
 
-    // Minimum balance required for a relay to register or re-register
+    // Minimum unstake delay. A relay needs to wait for this time to elapse after deregistering to retrieve its stake.
+    uint256 constant public minimumUnstakeDelay = 1 weeks;
+    // Maximum unstake delay. Prevents relays from locking their funds into the RelayHub for too long.
+    uint256 constant public maximumUnstakeDelay = 12 weeks;
+
+    // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
+    // will not be able to immediatly start serving requests.
     uint256 constant public minimumRelayBalance = 0.1 ether;
 
-    // Maximum funds that can be deposited at once. Prevents user errors by disallowing large deposits.
-    uint256 constant public maximumDeposit = 2 ether;
+    // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
+    uint256 constant public maximumRecipientDeposit = 2 ether;
 
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
@@ -41,8 +46,7 @@ contract RelayHub is IRelayHub {
         Unknown,    // The relay is unknown to the system: it has never been staked for
         Staked,     // The relay has been staked for, but it is not yet active
         Registered, // The relay has registered itself, and is active (can relay calls)
-        Removed,    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
-        Penalized   // The relay has been penalized. Its new owner must wait for the relay's unstakeDelay to elapse before it can redeem the reward
+        Removed    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
     }
 
     enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
@@ -74,7 +78,7 @@ contract RelayHub is IRelayHub {
             revert('wrong state for stake');
         }
 
-        // Increase the stake and unstakeDelay
+        // Increase the stake
 
         uint256 addedStake = msg.value;
         relays[relay].stake += addedStake;
@@ -82,7 +86,11 @@ contract RelayHub is IRelayHub {
         // The added stake may be e.g. zero when only the unstake delay is being updated
         require(relays[relay].stake >= minimumStake, "stake lower than minimum");
 
+        // Increase the unstake delay
+
         require(unstakeDelay >= minimumUnstakeDelay, "delay lower than minimum");
+        require(unstakeDelay <= maximumUnstakeDelay, "delay higher than maximum");
+
         require(unstakeDelay >= relays[relay].unstakeDelay, "unstakeDelay cannot be decreased");
         relays[relay].unstakeDelay = unstakeDelay;
 
@@ -143,7 +151,7 @@ contract RelayHub is IRelayHub {
      */
     function depositFor(address target) public payable {
         uint256 amount = msg.value;
-        require(amount <= maximumDeposit, "deposit too big");
+        require(amount <= maximumRecipientDeposit, "deposit too big");
 
         balances[target] = SafeMath.add(balances[target], amount);
 
@@ -451,30 +459,32 @@ contract RelayHub is IRelayHub {
         }
 
         address relay = keccak256(abi.encodePacked(unsignedTx)).recover(signature);
+
         penalize(relay);
     }
 
     function penalize(address relay) private {
-        require(relays[relay].state != RelayState.Penalized, "Relay already penalized");
-
         require((relays[relay].state == RelayState.Staked) ||
             (relays[relay].state == RelayState.Registered) ||
             (relays[relay].state == RelayState.Removed), "Unstaked relay");
 
-        // Half of the stake is burned (sent to address 0)
-        uint256 toBurn = SafeMath.div(relays[relay].stake, 2);
+        // Half of the stake will be burned (sent to address 0)
+        uint256 totalStake = relays[relay].stake;
+        uint256 toBurn = SafeMath.div(totalStake, 2);
+        uint256 reward = SafeMath.sub(totalStake, toBurn);
+
+        if (relays[relay].state == RelayState.Registered) {
+            emit RelayRemoved(relay, now);
+        }
+
+        // The relay is deleted
+        delete relays[relay];
+
+        // Ether is burned and transferred
         address(0).transfer(toBurn);
-        relays[relay].stake = SafeMath.sub(relays[relay].stake, toBurn);
+        address payable reporter = msg.sender;
+        reporter.transfer(reward);
 
-        uint256 amount = relays[relay].stake;
-
-        // Ownership of the relay is transferred to the reporter, so that they can call unstakeRelay
-        relays[relay].owner = msg.sender;
-        relays[relay].state = RelayState.Penalized;
-
-        emit Penalized(relay, msg.sender, amount);
-
-        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
-        emit RelayRemoved(relay, relays[relay].unstakeTime);
+        emit Penalized(relay, reporter, reward);
     }
 }

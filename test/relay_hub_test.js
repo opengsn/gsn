@@ -105,10 +105,10 @@ contract("RelayHub", function (accounts) {
         // assert.equal(0, z);
 
         let expected_stake = web3.utils.toWei('1', 'ether');
-        await rhub.stake(relayAccount, 7, {value: expected_stake, from: ownerAccount})
+        await rhub.stake(relayAccount, 3600 * 24 * 7, {value: expected_stake, from: ownerAccount})
         let stake = await rhub.relays(relayAccount)
         assert.equal(expected_stake, new Big(stake[0]).sub(z));
-        assert.equal(7, stake[1]);
+        assert.equal(3600 * 24 * 7, stake[1]);
 
         assert.equal(expected_stake, await rhub.stakeOf(relayAccount));
         assert.equal(ownerAccount, await rhub.ownerOf(relayAccount));
@@ -133,9 +133,9 @@ contract("RelayHub", function (accounts) {
         let gasless_relay_address = "0x2Dd8C0665327A26D7655055B22c9b3bA596DfeD9"
         let balance_of_gasless_before = await web3.eth.getBalance(gasless_relay_address);
         let balance_of_acc7_before = await web3.eth.getBalance(accounts[7]);
-        let expected_stake = web3.utils.toWei('0.5', 'ether')
+        let expected_stake = web3.utils.toWei('1', 'ether')
         let gasPrice = 1
-        let res = await rhub.stake(gasless_relay_address, 7, {
+        let res = await rhub.stake(gasless_relay_address, 3600 * 24 * 7, {
             value: expected_stake,
             gasPrice: gasPrice,
             from: accounts[7]
@@ -153,7 +153,7 @@ contract("RelayHub", function (accounts) {
         let testutils = await TestRecipientUtils.new()
         try {
             await web3.eth.sendTransaction({from: accounts[0], to: testutils.address, value: 0.6e18})
-            await rhub.stake(testutils.address, 1, {value: 1e18})
+            await rhub.stake(testutils.address, 3600 * 24 * 7, {value: 1e18})
             await testutils.registerAsRelay(rhub.address);
             assert.fail();
         } catch (error) {
@@ -163,7 +163,7 @@ contract("RelayHub", function (accounts) {
 
     it("should forbid owners' addresses to register as relays", async function () {
         try {
-            await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[0], accounts[0]);
+            await register_new_relay(rhub, one_ether, weekInSec, 120, "hello", accounts[0], accounts[0]);
             assert.fail()
         } catch (error) {
             assertErrorMessageCorrect(error, "relay cannot stake for itself")
@@ -171,7 +171,7 @@ contract("RelayHub", function (accounts) {
     });
 
     it("should allow externally owned addresses to register as relays", async function () {
-        let res = await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[1], accounts[0]);
+        let res = await register_new_relay(rhub, one_ether, weekInSec, 120, "hello", accounts[1], accounts[0]);
         let log = res.logs[0]
         assert.equal("RelayAdded", log.event)
         // assert.equal(two_ether, log.args.stake) changes, depending on position in test list
@@ -445,6 +445,7 @@ contract("RelayHub", function (accounts) {
     it("should not allow to penalize an already penalized relay")
 
     let dayInSec = 24 * 60 * 60;
+    let weekInSec = dayInSec * 7;
 
     let nonce_any_value = 4;
     let gas_price_any_value = 4;
@@ -470,7 +471,7 @@ contract("RelayHub", function (accounts) {
 
     it("should penalize relay for signing two distinct transactions with the same nonce", async function () {
         let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
-        await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
+        await register_new_relay_with_privkey(rhub, one_ether, weekInSec, 120, "hello", accounts[0], web3, privKey);
         let stake = await rhub.relays(address);
         assert.equal(one_ether, stake[0]);
 
@@ -510,31 +511,15 @@ contract("RelayHub", function (accounts) {
             gasPrice: gasPricePenalize,
             gasLimit: gas_limit_any_value
         });
-        assert.equal("Penalized", res.logs[0].event)
-        assert.equal(address, res.logs[0].args.relay.toLowerCase())
-        assert.equal(snitching_account, res.logs[0].args.sender)
-        increaseTime(dayInSec)
-        await claim_snitch_reward(address, snitching_account_initial_balance, stake, res)
+
+        assert.equal("Penalized", res.logs[1].event)
+        assert.equal(address, res.logs[1].args.relay.toLowerCase())
+        assert.equal(snitching_account, res.logs[1].args.sender)
+
+        let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]/2).sub(res.receipt.gasUsed * gasPricePenalize);
+
+        assert(expected_balance_after_penalize.eq(new Big(await web3.eth.getBalance(snitching_account))));
     });
-    /**
-     *
-     * @param {*} address - relay that will be penalized
-     * @param {*} snitching_account_initial_balance
-     * @param {*} stake - relay's initial stake
-     * @param {*} res - receipt on the 'penalize' request
-     */
-    let claim_snitch_reward = async function (address, snitching_account_initial_balance, stake, res) {
-        let res2 = await rhub.unstake(address, {
-            from: snitching_account,
-            gasPrice: gasPricePenalize,
-            gasLimit: gas_limit_any_value
-        })
-
-        let balance_of_acc7 = await web3.eth.getBalance(snitching_account);
-        let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]/2).sub(res.receipt.gasUsed * gasPricePenalize).sub(res2.receipt.gasUsed * gasPricePenalize)
-
-        assert(expected_balance_after_penalize.eq(new Big(balance_of_acc7)));
-    }
 
     let asyncForEach = async function (array, callback) {
         for (let index = 0; index < array.length; index++) {
@@ -556,7 +541,7 @@ contract("RelayHub", function (accounts) {
             }]
         await asyncForEach(illegalTransactions, async function (tx) {
             console.log("will try: " + tx.data.slice(0, 10) + " " + tx.destination)
-            await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
+            await register_new_relay_with_privkey(rhub, one_ether, weekInSec, 120, "hello", accounts[0], web3, privKey);
             let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
             let stake = await rhub.relays(address);
             assert.equal(one_ether, stake[0]);
@@ -582,15 +567,18 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
 
-            assert.equal("Penalized", res.logs[0].event)
-            increaseTime(dayInSec)
-            await claim_snitch_reward(address, snitching_account_initial_balance, stake, res)
+
+            assert.equal("Penalized", res.logs[1].event)
+
+            let expected_balance_after_penalize = new Big(snitching_account_initial_balance).add(stake[0]/2).sub(res.receipt.gasUsed * gasPricePenalize);
+
+            assert(expected_balance_after_penalize.eq(new Big(await web3.eth.getBalance(snitching_account))));
         });
     });
 
     it("should revert an attempt to penalize relay with an allowed transaction ", async function () {
         try {
-            await register_new_relay_with_privkey(rhub, one_ether, dayInSec, 120, "hello", accounts[0], web3, privKey);
+            await register_new_relay_with_privkey(rhub, one_ether, weekInSec, 120, "hello", accounts[0], web3, privKey);
             await rhub.penalizeIllegalTransaction(unsignedTransaction1Encoded, sig1, {
                 from: snitching_account,
                 gasPrice: gasPricePenalize,
@@ -638,7 +626,7 @@ contract("RelayHub", function (accounts) {
     });
 
     it("should revert an attempt to penalize relay with two transactions from different relays", async function () {
-        await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", accounts[6], accounts[0]);
+        await register_new_relay(rhub, one_ether, weekInSec, 120, "hello", accounts[6], accounts[0]);
         let privKeySix = Buffer.from("e485d098507f54e7733a205420dfddbe58db035fa577fc294ebd14db90767a52", "hex");
         let hash = "0x" + transaction2.hash(false).toString('hex')
         let sig2_fromAccountSix = utils.getTransactionSignatureWithKey(privKeySix, hash, false)
@@ -664,7 +652,7 @@ contract("RelayHub", function (accounts) {
             if (requested_fee === 0) {
                 // Relay was removed in some previous test, unless skipped
                 try {
-                    await register_new_relay(rhub, one_ether, dayInSec, 120, "hello", relayAccount, accounts[0]);
+                    await register_new_relay(rhub, one_ether, weekInSec, 120, "hello", relayAccount, accounts[0]);
                 } catch (e) {
                     console.log(e)
                 }
