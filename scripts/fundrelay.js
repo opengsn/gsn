@@ -12,7 +12,7 @@ async function fundrelay(hubaddr, relayaddr, fromaddr, fund, stake, unstakeDelay
     let rhub = new web3.eth.Contract(irelayhub, hubaddr)
 
     let curstake = await rhub.methods.stakeOf(relayaddr).call();
-    if ( curstake > 1e17 ) {
+    if ( curstake > 1e18 ) {
         console.log( "already has a stake of "+(curstake/1e18)+" eth. NOT adding more")
     } else {
         console.log( "staking ",stake)
@@ -56,8 +56,7 @@ async function run() {
     const web3 = new Web3(new Web3.providers.HttpProvider(ethNodeUrl))
 
     let accounts = await web3.eth.getAccounts()
-
-    fundrelay(hubaddr, relay, accounts[fromaccount], 1.1e18, 1.1e18, 30, web3)
+    fundrelay(hubaddr, relay, accounts[fromaccount], 1.1e18, 1.1e18, 3600 * 24 * 7, web3)
 
 }
 
