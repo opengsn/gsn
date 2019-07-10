@@ -324,13 +324,14 @@ class RelayClient {
             }
             let relayAddress = activeRelay.RelayServerAddress;
             let relayUrl = activeRelay.relayUrl;
+            let txfee = parseInt(options.txfee || activeRelay.transactionFee);
 
             let hash =
                 utils.getTransactionHash(
                     options.from,
                     options.to,
                     encodedFunctionCall,
-                    options.txfee || activeRelay.transactionFee,
+                    txfee,
                     gasPrice,
                     gasLimit,
                     nonce,
@@ -382,7 +383,7 @@ class RelayClient {
                     options.from,
                     options.to,
                     encodedFunctionCall,
-                    parseInt(options.txfee || activeRelay.transactionFee),
+                    txfee,
                     gasPrice,
                     gasLimit,
                     nonce,

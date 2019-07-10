@@ -393,8 +393,7 @@ contract('RelayClient', function (accounts) {
         assert.equal(true, did_assert)
     })
 
-
-    it.only("should use relay's published transactionFee if none is given in options", async function(){
+    it("should use relay's published transactionFee if none is given in options", async function(){
         let rc = new RelayClient(web3)
         let ephemeralKeypair = RelayClient.newEphemeralKeypair()
         let fromAddr = ephemeralKeypair.address
