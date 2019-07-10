@@ -19,8 +19,6 @@ RUN	add-apt-repository ppa:gophers/archive &&\
 #need to select which version we install: default is (right now) 0.5.10
 RUN curl -L -o /usr/local/bin/solc-5.10 https://github.com/ethereum/solidity/releases/download/v0.5.10/solc-static-linux && chmod a+rx /usr/local/bin/solc-5.10
 RUN ln -s /usr/local/bin/solc-5.10 /usr/local/bin/solc
-#install ganache and truffle as global package
-RUN npm -g install ganache-cli truffle --unsafe-perm
 
 ENV PS1 "\e[31min-docker\e[0m \W \$ "
 RUN echo "export PS1=\"$PS1\"" >> /etc/bash.bashrc
