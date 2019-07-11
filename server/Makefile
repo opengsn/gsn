@@ -35,24 +35,21 @@ $(ETHFILE): Makefile
 
 gen-file: $(GEN_FILE) Makefile
 
-$(TRUFFLE_OUT): ../contracts/RelayHub.sol
+$(TRUFFLE_OUT): ../contracts/RelayHub.sol ../contracts/SampleRecipient.sol
 	cd ../
 	npx truffle compile
+	mkdir -p $(buildpath)/contracts
 	./scripts/get_abi_bin.js
 
 $(TRUFFLE_OUT_REC): $(TRUFFLE_OUT)
 
 $(GEN_FILE): ../contracts/RelayHub.sol ../contracts/IRelayHub.sol $(TRUFFLE_OUT)
 	mkdir -p $(buildpath)/src/gen/librelay
-	abigen --solc ../node_modules/.bin/solcjs --abi $(TRUFFLE_OUT:json=abi) --bin $(TRUFFLE_OUT:json=bin) --pkg librelay --type RelayHub --out $@
-	# truffle doesn't like having this file around
-	rm $(TRUFFLE_OUT:json=bin)
+	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=bin)) --pkg librelay --type RelayHub --out $@
 
 $(GEN_FILE_REC): ../contracts/SampleRecipient.sol $(TRUFFLE_OUT_REC)
 	mkdir -p $(buildpath)/src/gen/samplerec
-	abigen --solc ../node_modules/.bin/solcjs --abi $(TRUFFLE_OUT_REC:json=abi) --bin $(TRUFFLE_OUT_REC:json=bin) --pkg samplerec --type SampleRecipient --out $@
-	# truffle doesn't like having this file around
-	rm $(TRUFFLE_OUT_REC:json=bin)
+	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=bin)) --pkg samplerec --type SampleRecipient --out $@
 
 test: server
 	@scripts/test.sh
