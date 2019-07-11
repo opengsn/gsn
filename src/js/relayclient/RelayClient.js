@@ -424,7 +424,7 @@ class RelayClient {
             }
 
             if (canRelayFailed) {
-                setErrorStatus("canRelay failed")
+                setErrorStatus(`canRelay failed: ${canRelayFailed.find(e => e.name == "reason").value}`)
             } else if (transactionRelayed && transactionRelayed.events.find(e => e.name == "status").value != 0) {
                 setErrorStatus("reverted relayed transaction")
             }
