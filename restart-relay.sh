@@ -37,7 +37,7 @@ blocktime=${T=0}
 pkill -f ganache-cli && echo killed old ganache.
 pkill -f RelayHttpServer && echo kill old relayserver
 
-GANACHE="$root/node_modules/.bin/ganache-cli -l 8000000 -b $blocktime -a 11 -h 0.0.0.0 "
+GANACHE="npx ganache-cli -l 8000000 -b $blocktime -a 11 -h 0.0.0.0 "
 
 if [ -n "$DEBUG" ]; then
 	$GANACHE -d --verbose &
@@ -53,7 +53,7 @@ if ! pgrep  -f ganache > /dev/null ; then
 	exit 1
 fi
 
-hubaddr=`truffle migrate | tee /dev/stderr | grep -A 4 "RelayHub" | grep "contract address" | grep "0x.*" -o`
+hubaddr=`npx truffle migrate | tee /dev/stderr | grep -A 4 "RelayHub" | grep "contract address" | grep "0x.*" -o`
 
 if [ -z "$hubaddr" ]; then
 echo "FATAL: failed to detect RelayHub address"
@@ -72,8 +72,8 @@ cd $root
 sleep 1
 
 case "$*" in
-	test) 	cmd="truffle test" ;; 
-	test/*) cmd="truffle test $*" ;;
+	test) 	cmd="npx truffle test" ;; 
+	test/*) cmd="npx truffle test $*" ;;
 	web)	cmd="./init_metacoin.sh web" ;;
 	*)	echo "Unknown command. do '$0 help'"; exit 1 ;;
 esac

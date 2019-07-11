@@ -16,8 +16,8 @@ const gasPricePercent = 20
 const noRandomness= ()=>0
 
 contract('ServerHelper', function (accounts) {
-    let minStake = 1.5e17
-    let minDelay = 10
+    let minStake = 1.5e18
+    let minDelay = 3600 * 24 * 10
     let httpWrapper = new HttpWrapper()
     let serverHelper = new ServerHelper(httpWrapper, {}, { minStake, minDelay, verbose: false, addScoreRandomness : noRandomness})
     let rhub
@@ -27,7 +27,7 @@ contract('ServerHelper', function (accounts) {
         rhub = await RelayHub.deployed()
         relayproc = await testutils.startRelay(rhub, {
             verbose: process.env.relaylog,
-            stake: 2e17, delay: 3600, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
+            stake: 2e18, delay: 3600 * 24 * 10, txfee: 12, url: "asd", relayOwner: accounts[0], EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
         serverHelper.setHub(rhub)
     })
 
@@ -39,33 +39,33 @@ contract('ServerHelper', function (accounts) {
         // Note: a real relay server is not registered in this context
         before('registering relays', async function () {
             // unstake delay too low
-            await register_new_relay(rhub, 2e17, 2, 20, "https://abcd1.com", accounts[7], accounts[0]);
+            await register_new_relay(rhub, 2e18, 3600 * 24 * 7, 20, "https://abcd1.com", accounts[7], accounts[0]);
             // unregistered
-            await register_new_relay(rhub, 2e17, 20, 2, "https://abcd2.com", accounts[2], accounts[0]);
+            await register_new_relay(rhub, 2e18, 3600 * 24 * 7 * 2, 2, "https://abcd2.com", accounts[2], accounts[0]);
             // stake too low
-            await register_new_relay(rhub, 1e17, 20, 20, "https://abcd3.com", accounts[3], accounts[0]);
+            await register_new_relay(rhub, 1e18, 3600 * 24 * 7 * 2, 20, "https://abcd3.com", accounts[3], accounts[0]);
 
             // Added, removed, added again - go figure.
             // 2 x will not ping
-            await register_new_relay(rhub, 2e17, 20, 15, "https://abcd4.com", accounts[4], accounts[0]);
+            await register_new_relay(rhub, 2e18, 3600 * 24 * 7 * 2, 15, "https://abcd4.com", accounts[4], accounts[0]);
             await rhub.removeRelayByOwner(accounts[4], { from: accounts[0] });
-            await increaseTime(20 + 1);
+            await increaseTime(3600 * 24 * 7 *2);
             await rhub.unstake(accounts[4],{ from: accounts[0] });
-            await register_new_relay(rhub, 2e17, 20, 15, "go_resolve_this_address", accounts[4], accounts[0]);
+            await register_new_relay(rhub, 2e18, 3600 * 24 * 7 * 2, 15, "go_resolve_this_address", accounts[4], accounts[0]);
 
-            await register_new_relay(rhub, 2e17, 20, 30, "https://abcd4.com", accounts[5], accounts[0]);
+            await register_new_relay(rhub, 2e18, 3600 * 24 * 7 * 2, 30, "https://abcd4.com", accounts[5], accounts[0]);
 
             await rhub.removeRelayByOwner(accounts[2], { from: accounts[0] });
-            await increaseTime(20 + 1);
+            await increaseTime(3600 * 24 * 7 *2);
             await rhub.unstake(accounts[2],{ from: accounts[0] });
 
             serverHelper.setHub(rhub);
         });
-        
+
         it("should list all relays from relay contract", async function () {
             const relays = await serverHelper.fetchRelaysAdded();
             assert.deepEqual(
-                relays.map(relay => relay.relayUrl), 
+                relays.map(relay => relay.relayUrl),
                 [localhostOne, 'go_resolve_this_address', 'https://abcd4.com']
             );
         });
@@ -129,24 +129,24 @@ contract('ServerHelper', function (accounts) {
     });
 
     describe('with mock relay hub', function () {
-        // let minStake = 1.5e17
+        // let minStake = 1.5e18
         // let minDelay = 10
-    
+
         const mockRelayAddedEvents = [
             { relay: '1' },
             { relay: '2' },
             { relay: '3' },
-            { relay: '4', unstakeDelay: 5 }, // dropped out by default, below minDelay
-            { relay: '5', stake: 1e17, transactionFee: 1e5 }, // dropped out by default, below minStake
-            { relay: '6', stake: 3e17, transactionFee: 1e9 },
+            { relay: '4', unstakeDelay: 3600 * 24 * 7 }, // dropped out by default, below minDelay
+            { relay: '5', stake: 1e18, transactionFee: 1e5 }, // dropped out by default, below minStake
+            { relay: '6', stake: 3e18, transactionFee: 1e9 },
             { relay: '7', transactionFee: 1e7 },
-        ].map(relay => ({ 
-            event: 'RelayAdded', 
-            returnValues: Object.assign({}, { 
-                transactionFee: 1e10, 
+        ].map(relay => ({
+            event: 'RelayAdded',
+            returnValues: Object.assign({}, {
+                transactionFee: 1e10,
                 url: `url-${relay.relay}`,
-                stake: 2e17, 
-                unstakeDelay: 100
+                stake: 2e18,
+                unstakeDelay: 3600 * 24 * 14
             }, relay)
         }));
 
@@ -178,7 +178,7 @@ contract('ServerHelper', function (accounts) {
 
         it("should use custom strategy for filtering and sorting relays", async function() {
             // 1, 2, 3, & 4 are filtered out due to the custom strategy of filtering by address (only > 4)
-            // 6, 7 & 5 are sorted based on stake (3e17, 2e17 & 1e17 respectively)
+            // 6, 7 & 5 are sorted based on stake (3e18, 2e18 & 1e18 respectively)
             const customServerHelper = new ServerHelper(httpWrapper, {}, {
                 relayFilter: (relay) => (relay.address > '4'),
                 calculateRelayScore: (r) => r.stake,
@@ -219,7 +219,7 @@ contract('ServerHelper', function (accounts) {
             const customServerHelper = new ServerHelper(httpWrapper, failedRelays, {
                 addScoreRandomness: noRandomness
             });
-            
+
             customServerHelper.setHub(this.mockRelayHub);
 
             let relays = await customServerHelper.fetchRelaysAdded();

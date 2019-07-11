@@ -166,7 +166,7 @@ func NewRelay(relayHubAddress common.Address) {
 	gasPricePercent := big.NewInt(10)
 	url := ""
 	port := "8090"
-	unstakeDelay := big.NewInt(0)
+	unstakeDelay := big.NewInt(3600 * 24 * 7)
 	registrationBlockRate := uint64(5)
 	clk = fakeclock.NewFakeClock(time.Now())
 	txStore := txstore.NewMemoryTxStore(clk)
@@ -184,23 +184,13 @@ func NewRelay(relayHubAddress common.Address) {
 
 func TestMain(m *testing.M) {
 	InitTestClient(ethereumNodeURL)
-	rlpaddr, _, _, err := librelay.DeployRLPReader(auth, client)
-	if err != nil {
-		log.Fatalf("could not deploy contract: %v", err)
-	}
-	/* No need to deploy it anymore
-	tbkUtils, _, _, err := librelay.DeployRecipientUtils(auth, sim)
-	if err != nil {
-		log.Fatalf("could not deploy contract: %v", err)
-	}
-	*/
 	parsed, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	// linking RlpReader to RelayHub
-	RelayHubBin := resolveLibrary("../contracts/RLPReader.sol:RLPReader", rlpaddr, librelay.RelayHubBin)
+	RelayHubBin := librelay.RelayHubBin
 
 	if _, err = hex.DecodeString(RelayHubBin[2:]); err != nil {
 		log.Println("RelayHubBin", RelayHubBin)
@@ -223,7 +213,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Printf("RelayHub:  %s\nRLPreader: %s\nRecipient: %s\n", rhaddr.String(), rlpaddr.String(), sampleRecipient.String())
+	fmt.Printf("RelayHub:  %s\nRecipient: %s\n", rhaddr.String(), sampleRecipient.String())
 	NewRelay(rhaddr)
 
 	tx, err := relay.sendStakeTransaction(ownerKey3)
@@ -386,7 +376,7 @@ func assertNoTransactionResent(t *testing.T, relay *RelayServer) {
 }
 
 func TestCreateRelayTransaction(t *testing.T) {
-	request := newRelayTransactionRequest(t, 0, "0xc33268c3d5d937380f73e17b5f6e165b8a9be3f94805d2cb9a8120834684f5d538a4a0dd49d7b632b4d99fb0adc3344f914a4e865240da6f9bca86458d60406c1c")
+	request := newRelayTransactionRequest(t, 0, "0x8d48d0f3416480011e4556d3dfbb4ef534632a2936b4169fc134fa17403693df354e888558439101e4fdec242acad39b2bd6d6a927842b9f311eba822a5b3d501b")
 	signedTx, err := relay.CreateRelayTransaction(request)
 	test.ErrFailWithDesc(err, t, "Creating relay transaction")
 	client.Commit()
@@ -395,7 +385,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 
 func TestResendRelayTransaction(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request := newRelayTransactionRequest(t, 1, "0x8bd923286fbcbd1a630f632f10fc98153d708a443781ca5eb0bc9f2db48b61f45ae2e9c21a8eaa73af41abfd62bf42a89ecfc7944c5864d411c7e4748bb439501b")
+	request := newRelayTransactionRequest(t, 1, "0x5f94ad28a24e38262824f47c6d329796886d7b282c6482e62a646b18aa9eb5ba6ec14cd6cd24463e2799c225c44b58bd84b66e314902d0c409b58c3e3e77d06b1c")
 
 	// Send a transaction via the relay, but then revert to a previous snapshot
 	snapshotID, err := client.Snapshot()
@@ -446,9 +436,9 @@ func TestResendRelayTransaction(t *testing.T) {
 
 func TestMultipleRelayTransactions(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request1 := newRelayTransactionRequest(t, 2, "0x6504e620f8603ff7b37419edede05568dfc7fc0e8aad4b669cf5c7241f4fe82f07a35c64cbad911e4cd8c9b4eb41b00c8db6f529bc3881bc4f3a7b0721bebf291c")
-	request2 := newRelayTransactionRequest(t, 3, "0x290b257a7aecb4d78c5687ff7c1e2b857c73d9d9e5166a0b511a46120deef43a4a0df53d1682efa4dafd44e0d17248ae7df7fb828d6e8aa12e859cb112725ba21c")
-	request3 := newRelayTransactionRequest(t, 4, "0x8a0b8f5f1a659dd261c5a1946316e12f1b347c785207a3c17f332316ed3177a06c332d5681e9d60b13bc8486db08c0dfd5d97667d54337041217e915630e30c71b")
+	request1 := newRelayTransactionRequest(t, 2, "0xa1a5580b9974a0a2a54e33e5c82f2cb913656e6b65a5381e20ef3b94e6f0d4280d62b78be4504ad32fce1575fc6f4eb8cfd6fcd4a9e8d919cf9867222ab108bf1b")
+	request2 := newRelayTransactionRequest(t, 3, "0xd6b2df0a5fe28710646e5dff18e8166264b829b199c7e07c7913aeb98fbf15416461406e6bf38c7e897456567122bbdb04b1493622801dac7379a9b74f2589851b")
+	request3 := newRelayTransactionRequest(t, 4, "0x0495a8eec6689e04d4712c188f66dc3bb18497c8f5e3e86460f429eb97ea626761d92c43ecfb93bdda77b482b1904e7667e4df1dd3ebe03e9a27abbed42b287d1b")
 
 	// Send 3 transactions, separated by 1 min each, and revert the last 2
 	signedTx1, err := relay.CreateRelayTransaction(request1)

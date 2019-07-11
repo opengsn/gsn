@@ -46,7 +46,7 @@ contract('RelayClient', function (accounts) {
         console.log("starting relay")
 
         relayproc = await testutils.startRelay(rhub, {
-            stake: 1e17, delay: 3600, txfee: 12, url: "asd", relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
+            stake: 1e18, delay: 3600 * 24 * 7, txfee: 12, url: "asd", relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
 
     });
 
@@ -391,6 +391,33 @@ contract('RelayClient', function (accounts) {
 
         await rc.relayTransaction(encoded, options)
         assert.equal(true, did_assert)
+    })
+
+    it("should use relay's published transactionFee if none is given in options", async function(){
+        let rc = new RelayClient(web3)
+        let ephemeralKeypair = RelayClient.newEphemeralKeypair()
+        let fromAddr = ephemeralKeypair.address
+        rc.useKeypairForSigning(ephemeralKeypair)
+        rc.sendViaRelay = function(relayAddress, from, to, encodedFunction, relayFee /*, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress*/) {
+            //mock implementation: only check the received relay fee (checked below in relayTransaction
+            throw new Error( "relayFee="+relayFee)
+        }
+
+        let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
+        let options = {
+            from: fromAddr,
+            to: sr.address,
+            //explicitly not specifying txfee
+            gas_limit: 1000000
+        }
+
+        try {
+            await rc.relayTransaction(encoded, options)
+            assert.ok(false,"didn't reach sendViaRelay")
+        } catch ( e) {
+            assert.ok(e.otherErrors, e)
+            assert.equal( e.otherErrors[0].message, "relayFee=11" );
+        }
     })
 
     it("should add relay to failedRelay dict in case of http timeout", async function(){

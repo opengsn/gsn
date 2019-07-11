@@ -4,6 +4,8 @@ useInProcessGanache=true
 //currently exposing the in-process ganache doesn't work well (relay fail to work with it..)
 //exposeGanachePort=8545
 
+package_json = require( './package.json' )
+
 const ProviderEngine = require("web3-provider-engine");
 const RpcProvider = require("web3-provider-engine/subproviders/rpc.js");
 const { TruffleArtifactAdapter } = require("@0x/sol-trace");
@@ -16,13 +18,13 @@ const { CoverageSubprovider } = require("@0x/sol-coverage");
 const { RevertTraceSubprovider } = require("@0x/sol-trace");
 
 const projectRoot = "";
-const solcVersion = "0.5.10"
+const solcVersion = package_json.devDependencies.solc
 const defaultFromAddress = "0x5409ed021d9299bf6814279a6a1411a7e866a631";
 const isVerbose = true;
 
 //ignore imported packages, tests (can also ignore interfaces: sol-coverage report 0% coverage on interfaces..)
 const ignoreFilesGlobs = [ "**/node_modules/**/*", "**/Migrations.sol", "**/Test*",
-	 "**/IRelay*", "**/RLPReader.sol" 
+	 "**/IRelay*", "**/RLPReader.sol"
    ]
 
 const artifactAdapter = new TruffleArtifactAdapter(projectRoot, solcVersion);
@@ -78,7 +80,10 @@ if (mode === "profile") {
     provider.addProvider(revertTraceSubprovider);
   }
   if ( global.useInProcessGanache ) {
-	const ganahceSubprovider = new GanacheSubprovider();
+	const ganahceSubprovider = new GanacheSubprovider({
+    // Generate the same set of addresses as ganache-cli --deterministic
+    mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect'
+  });
 
 	provider.addProvider(ganahceSubprovider);
 
