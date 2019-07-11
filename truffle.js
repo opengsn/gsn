@@ -1,6 +1,7 @@
 var HDWalletProvider = require("truffle-hdwallet-provider");
 var mnemonic = "digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six"
 
+package_json = require( './package.json' )
 const secret_mnemonic_file = "./secret_mnemonic"
 const fs=require('fs')
 let secret_mnemonic
@@ -50,7 +51,7 @@ module.exports = {
   },
   compilers: {
     solc: {
-      version: "0.5.10",
+      version: package_json.devDependencies.solc
     },
   }
 };

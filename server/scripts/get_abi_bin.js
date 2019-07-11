@@ -10,8 +10,8 @@ var contractsToExtract =[ "RelayHub", "SampleRecipient" ];
 contractsToExtract.forEach( name => {
     let contract = require("../../build/contracts/"+name+".json");
 
-    fs.writeFileSync("../build/contracts/"+name+".abi", JSON.stringify(contract.abi));
-    fs.writeFileSync("../build/contracts/"+name+".bin", contract.bytecode);
+    fs.writeFileSync("../build/server/contracts/"+name+".abi", JSON.stringify(contract.abi));
+    fs.writeFileSync("../build/server/contracts/"+name+".bin", contract.bytecode);
 });
 
 // fs.writeFileSync("../build/contracts/RelayHub.abi", JSON.stringify(rhub.abi));
