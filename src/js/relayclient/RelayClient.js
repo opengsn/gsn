@@ -24,9 +24,6 @@ const DEFAULT_HTTP_TIMEOUT = 10000;
 //default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
 const GASPRICE_PERCENT = 20;
 
-// default relayer per-transaction fee
-const DEFAULT_TX_FEE = 12;
-
 class RelayClient {
     /**
      * create a RelayClient library object, to force contracts to go through a relay.
@@ -327,13 +324,14 @@ class RelayClient {
             }
             let relayAddress = activeRelay.RelayServerAddress;
             let relayUrl = activeRelay.relayUrl;
+            let txfee = parseInt(options.txfee || activeRelay.transactionFee);
 
             let hash =
                 utils.getTransactionHash(
                     options.from,
                     options.to,
                     encodedFunctionCall,
-                    options.txfee,
+                    txfee,
                     gasPrice,
                     gasLimit,
                     nonce,
@@ -385,7 +383,7 @@ class RelayClient {
                     options.from,
                     options.to,
                     encodedFunctionCall,
-                    options.txfee,
+                    txfee,
                     gasPrice,
                     gasLimit,
                     nonce,
@@ -435,7 +433,7 @@ class RelayClient {
         let relayOptions = {
             from: params.from,
             to: params.to,
-            txfee: params.txFee || params.txfee || relayClientOptions.txfee || DEFAULT_TX_FEE,
+            txfee: params.txFee || params.txfee || relayClientOptions.txfee,
             gas_limit: params.gas && parseInt(params.gas, 16),
             gas_price: params.gasPrice && parseInt(params.gasPrice, 16)
         };

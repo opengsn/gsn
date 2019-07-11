@@ -206,10 +206,6 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             await relayHub.registerRelay(transactionFee, url, { from: relay });
           });
 
-          it('relay transaction fee can be queried', async function () {
-            expect((await relayHub.relays(relay)).transactionFee).to.be.bignumber.equals(transactionFee);
-          });
-
           it('relays can re-register with different transaction fee and url', async function () {
             const newTransactionFee = new BN('20');
             const newUrl = 'http://new-relay.com';

@@ -35,7 +35,7 @@ class ActiveRelayPinger {
                 }
                 firstRelayToRespond = await this.raceToSuccess(
                     slice
-                        .map(relay => this.getRelayAddressPing(relay.relayUrl, this.gasPrice))
+                        .map(relay => this.getRelayAddressPing(relay.relayUrl, relay.transactionFee, this.gasPrice))
                 );
                 if (this.verbose){
                     console.log("race finished with a champion: " + firstRelayToRespond.relayUrl)
@@ -55,12 +55,13 @@ class ActiveRelayPinger {
     /**
      * @returns JSON response from the relay server, but adds the requested URL to it:
      * { relayUrl: url,
+     *   transactionFee: fee,
      *   RelayServerAddress: address,
      *   Ready: bool,   //should ignore relays with "false"
      *   MinGasPrice:   //minimum gas requirement by this relay.
      * }
      */
-    async getRelayAddressPing(relayUrl, gasPrice) {
+    async getRelayAddressPing(relayUrl, transactionFee, gasPrice) {
         let self = this
         return new Promise(function (resolve, reject) {
             let callback = function (error, body) {
@@ -73,7 +74,8 @@ class ActiveRelayPinger {
                     return
                 }
                 try {
-                    body.relayUrl = relayUrl
+                    //add extra attributes (relayUrl, transactionFee)
+                    Object.assign(body, {relayUrl, transactionFee})
                     resolve(body);
                 }
                 catch (err) {
