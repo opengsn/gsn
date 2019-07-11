@@ -402,16 +402,34 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           );
         });
 
-        it('does not penalize transactions with same nonce and same data', async function () {
+        it('penalizes transactions with same nonce and different gas limit', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(encodedCallArgs,Object.assign(relayCallArgs, {gasLimit:100})));
+
+          await expectPenalization((opts) =>
+              relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
+          );
+        });
+
+        it('penalizes transactions with same nonce and different value', async function () {
+          const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(encodedCallArgs,Object.assign(relayCallArgs, {value:100})));
+
+          await expectPenalization((opts) =>
+              relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
+          );
+        });
+
+        it('does not penalize transactions with same nonce and data, value, gasLimit, destination', async function () {
           const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
           const txDataSigB = getDataAndSignature(encodeRelayCall(
             encodedCallArgs,
-            Object.assign(relayCallArgs, { gasPrice: 70, gasLimit: 2000000 }) // gasPrice and gasLimit may be different
+            Object.assign(relayCallArgs, { gasPrice: 70 }) // only gasPrice may be different
           ));
 
           await expectRevert(
             relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature),
-            'tx.data is equal'
+            'tx is equal'
           );
         });
 
@@ -615,7 +633,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         gasLimit: relayCallArgs.gasLimit,
         gasPrice: relayCallArgs.gasPrice,
         to: relayHub.address,
-        value: 0,
+        value: relayCallArgs.value,
         data: encodedCall,
       });
 
