@@ -111,7 +111,9 @@ contract RelayHub is IRelayHub {
         require(relays[relay].state == RelayState.Staked || relays[relay].state == RelayState.Registered, "wrong state for stake");
         require(relay.balance >= minimumRelayBalance, "balance lower than minimum");
 
-        relays[relay].state = RelayState.Registered;
+        if (relays[relay].state != RelayState.Registered){
+            relays[relay].state = RelayState.Registered;
+        }
 
         emit RelayAdded(relay, relays[relay].owner, transactionFee, relays[relay].stake, relays[relay].unstakeDelay, url);
     }
