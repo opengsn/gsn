@@ -5,6 +5,8 @@ const networks={
     local: "http://127.0.0.1:8545",
     xdai: "https://dai.poa.network",
     ropsten: "https://ropsten.infura.io/v3/c3422181d0594697a38defe7706a1e5b",
+    rinkeby: "https://rinkeby.infura.io/v3/c3422181d0594697a38defe7706a1e5b",
+    kovan: "https://kovan.infura.io/v3/c3422181d0594697a38defe7706a1e5b",
     mainnet: "https://mainnet.infura.io/v3/c3422181d0594697a38defe7706a1e5b",
 }
 
