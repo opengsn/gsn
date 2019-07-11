@@ -56,7 +56,6 @@ contract RelayHub is IRelayHub {
         uint256 unstakeDelay;   // Time that must elapse before the owner can retrieve the stake after calling remove
         uint256 unstakeTime;    // Time when unstake will be callable. A value of zero indicates the relay has not been removed.
         address payable owner;  // Relay's owner, will receive revenue and manage it (call stake, remove and unstake).
-        uint256 transactionFee; // Advertised transaction fee, not enforced
         RelayState state;
     }
 
@@ -113,7 +112,6 @@ contract RelayHub is IRelayHub {
         require(relay.balance >= minimumRelayBalance, "balance lower than minimum");
 
         relays[relay].state = RelayState.Registered;
-        relays[relay].transactionFee = transactionFee; // This is stored, but not enforced in relayCall
 
         emit RelayAdded(relay, relays[relay].owner, transactionFee, relays[relay].stake, relays[relay].unstakeDelay, url);
     }
