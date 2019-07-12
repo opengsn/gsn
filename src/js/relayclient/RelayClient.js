@@ -426,8 +426,11 @@ class RelayClient {
 
             if (canRelayFailed) {
                 setErrorStatus(`canRelay failed: ${canRelayFailed.find(e => e.name == "reason").value}`)
-            } else if (transactionRelayed && transactionRelayed.events.find(e => e.name == "status").value != 0) {
-                setErrorStatus("reverted relayed transaction")
+            } else if (transactionRelayed) {
+                const status = transactionRelayed.events.find(e => e.name == "status").value
+                if (status != 0) { // 0 signifies success
+                    setErrorStatus(`reverted relayed transaction, status code ${status}`)
+                }
             }
         }
         return resp
