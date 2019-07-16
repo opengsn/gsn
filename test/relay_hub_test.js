@@ -327,9 +327,8 @@ contract("RelayHub", function (accounts) {
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
         });
-        assert.equal(res.logs[0].event, "TransactionRelayed")
-        let canRelayFailed = 1;
-        assert.equal(res.logs[0].args.status, canRelayFailed)
+
+        assert.equal(res.logs[0].event, "CanRelayFailed")
         let canRelay = await rhub.canRelay.call(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, "0x");
         assert.equal(11, canRelay.valueOf().toString())
     });
@@ -745,7 +744,7 @@ contract("RelayHub", function (accounts) {
                 gasLimit: gas_limit_any_value
             });
             relay_nonce++;
-            let RecipientBalanceChanged = 5;
+            let RecipientBalanceChanged = 4;
             assert.equal("TransactionRelayed", res.logs[0].event);
             assert.equal(RecipientBalanceChanged, res.logs[0].args.status);
         } finally {
@@ -779,9 +778,9 @@ contract("RelayHub", function (accounts) {
                 gasPrice: gas_price,
                 gasLimit: gas_limit_any_value
             });
-            let CanRelayFailed = 1;
-            assert.equal("TransactionRelayed", res.logs[0].event);
-            assert.equal(CanRelayFailed, res.logs[0].args.status);
+
+            assert.equal("CanRelayFailed", res.logs[0].event);
+            assert.equal(AcceptRelayedCallReverted, res.logs[0].args.reason);
         } finally {
             // returning state to previous one
             await sr.setOverspendAcceptGas(false);
@@ -794,7 +793,7 @@ contract("RelayHub", function (accounts) {
 
     it("should not execute the 'relayedCall' if 'preRelayedCall' reverts", async function () {
 
-        let PreRelayedCallReverted = 3;
+        let PreRelayedCallReverted = 2;
         let revertPreRelayCall = await sr.revertPreRelayCall();
         try {
 
@@ -836,7 +835,7 @@ contract("RelayHub", function (accounts) {
 
     it("should revert the 'relayedCall' if 'postRelayedCall' reverts", async function () {
 
-        let PostRelayedCallReverted = 4;
+        let PostRelayedCallReverted = 3;
         let revertPostRelayCall = await sr.revertPostRelayCall();
         try {
 

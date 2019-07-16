@@ -15,11 +15,10 @@ const { expect } = require('chai');
 contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]) {  // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
-    CanRelayFailed: new BN('1'),
-    RelayedCallFailed: new BN('2'),
-    PreRelayedFailed: new BN('3'),
-    PostRelayedFailed: new BN('4'),
-    RecipientBalanceChanged: new BN('5'),
+    RelayedCallFailed: new BN('1'),
+    PreRelayedFailed: new BN('2'),
+    PostRelayedFailed: new BN('3'),
+    RecipientBalanceChanged: new BN('4'),
   };
 
   const PreconditionCheck = {
@@ -767,10 +766,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           await recipient.setReturnInvalidErrorCode(true);
           const { logs } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
 
-          expectEvent.inLogs(logs, 'TransactionRelayed', {
-            status: RelayCallStatusCodes.CanRelayFailed,
-            chargeOrCanRelayStatus: PreconditionCheck.InvalidRecipientStatusCode
-          });
+          expectEvent.inLogs(logs, 'CanRelayFailed', { reason: PreconditionCheck.InvalidRecipientStatusCode });
         });
 
         describe('recipient balance withdrawal ban', function () {
