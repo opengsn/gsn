@@ -43,8 +43,8 @@ contract RelayHub is IRelayHub {
 
     // States a relay can be in
     enum RelayState {
-        Unknown,    // The relay is unknown to the system: it has never been staked for
-        Staked,     // The relay has been staked for, but it is not yet active
+        Unknown, // The relay is unknown to the system: it has never been staked for
+        Staked, // The relay has been staked for, but it is not yet active
         Registered, // The relay has registered itself, and is active (can relay calls)
         Removed    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
     }
@@ -111,7 +111,7 @@ contract RelayHub is IRelayHub {
         require(relays[relay].state == RelayState.Staked || relays[relay].state == RelayState.Registered, "wrong state for stake");
         require(relay.balance >= minimumRelayBalance, "balance lower than minimum");
 
-        if (relays[relay].state != RelayState.Registered){
+        if (relays[relay].state != RelayState.Registered) {
             relays[relay].state = RelayState.Registered;
         }
 
@@ -201,7 +201,7 @@ contract RelayHub is IRelayHub {
         bytes memory signature,
         bytes memory approvalData
     )
-        public view returns (uint256)
+    public view returns (uint256)
     {
         // Verify the sender's signature on the transaction - note that approvalData is *not* signed
         bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
@@ -262,7 +262,7 @@ contract RelayHub is IRelayHub {
         bytes memory signature,
         bytes memory approvalData
     )
-        public
+    public
     {
         uint256 initialGas = gasleft();
 
@@ -337,8 +337,8 @@ contract RelayHub is IRelayHub {
         uint256 gasLimit,
         uint256 initialGas
     )
-        external
-        returns (RelayCallStatus)
+    external
+    returns (RelayCallStatus)
     {
         // This external function can only be called by RelayHub itself, creating an internal transaction. Calls to the
         // recipient (preRelayedCall, the relayedCall, and postRelayedCall) are called from inside this transaction.
@@ -443,9 +443,12 @@ contract RelayHub is IRelayHub {
         Transaction memory decodedTx2 = decodeTransaction(unsignedTx2);
 
         //checking that the same nonce is used in both transaction, with both signed by the same address and the actual data is different
-        // note: we compare the hash of the data to save gas over iterating both byte arrays
+        // note: we compare the hash of the tx to save gas over iterating both byte arrays
         require(decodedTx1.nonce == decodedTx2.nonce, "Different nonce");
-        require(keccak256(abi.encodePacked(decodedTx1.data)) != keccak256(abi.encodePacked(decodedTx2.data)), "tx.data is equal");
+
+        bytes memory dataToCheck1 = abi.encodePacked(decodedTx1.data, decodedTx1.gasLimit, decodedTx1.to, decodedTx1.value);
+        bytes memory dataToCheck2 = abi.encodePacked(decodedTx2.data, decodedTx2.gasLimit, decodedTx2.to, decodedTx2.value);
+        require(keccak256(dataToCheck1) != keccak256(dataToCheck2), "tx is equal");
 
         penalize(addr1);
     }
@@ -465,7 +468,7 @@ contract RelayHub is IRelayHub {
 
     function penalize(address relay) private {
         require((relays[relay].state == RelayState.Staked) ||
-            (relays[relay].state == RelayState.Registered) ||
+        (relays[relay].state == RelayState.Registered) ||
             (relays[relay].state == RelayState.Removed), "Unstaked relay");
 
         // Half of the stake will be burned (sent to address 0)

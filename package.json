@@ -1,5 +1,5 @@
 {
-  "version": "0.4.0",
+  "version": "0.4.0-beta1",
   "description": "Tabookey Gasless Relay Framework",
   "name": "tabookey-gasless",
   "license": "MIT",
@@ -82,7 +82,7 @@
     "shx": "^0.3.2",
     "solc": "0.5.10",
     "tar": ">=4.4.2",
-    "lodash": ">=4.17.11",
+    "lodash": "~>4.17.13",
     "truffle": "^5.0.21",
     "truffle-contract": "^4.0.2",
     "truffle-flattener": "^1.3.0",

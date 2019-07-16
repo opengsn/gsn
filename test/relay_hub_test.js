@@ -598,7 +598,7 @@ contract("RelayHub", function (accounts) {
             });
             assert.fail()
         } catch (error) {
-            assertErrorMessageCorrect(error, "tx.data is equal")
+            assertErrorMessageCorrect(error, "tx is equal")
         }
     });
 
