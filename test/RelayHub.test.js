@@ -41,7 +41,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
     describe('staking', function () {
       it('unstaked relays can be staked for by anyone', async function () {
         const { logs } = await relayHub.stake(relay, time.duration.weeks(4), { value: ether('1'), from: other });
-        expectEvent.inLogs(logs, 'Staked', { relay, stake: ether('1') });
+        expectEvent.inLogs(logs, 'Staked', { relay, stake: ether('1'), unstakeDelay: time.duration.weeks(4) });
       });
 
       it('relays cannot stake for themselves', async function () {
@@ -102,7 +102,9 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           it('owner can increase the relay stake', async function () {
             const addedStake = ether('2');
             const { logs } = await relayHub.stake(relay, initialUnstakeDelay, { value: addedStake, from: relayOwner });
-            expectEvent.inLogs(logs, 'Staked', { relay, stake: addedStake });
+            expectEvent.inLogs(logs, 'Staked', {
+              relay, stake: initialStake.add(addedStake), unstakeDelay: initialUnstakeDelay
+            });
 
             expect(await relayHub.stakeOf(relay)).to.be.bignumber.equals(initialStake.add(addedStake));
           });
@@ -110,7 +112,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
           it('owner can increase the unstake delay', async function () {
             const newUnstakeDelay = time.duration.weeks(6);
             const { logs } = await relayHub.stake(relay, newUnstakeDelay, { from: relayOwner });
-            expectEvent.inLogs(logs, 'Staked', { relay, stake: '0' });
+            expectEvent.inLogs(logs, 'Staked', { relay, stake: initialStake, unstakeDelay: newUnstakeDelay });
 
             expect((await relayHub.relays(relay)).unstakeDelay).to.be.bignumber.equals(newUnstakeDelay);
           });
@@ -403,7 +405,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
 
         it('penalizes transactions with same nonce and different gas limit', async function () {
           const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
-          const txDataSigB = getDataAndSignature(encodeRelayCall(encodedCallArgs,Object.assign(relayCallArgs, {gasLimit:100})));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(encodedCallArgs,Object.assign(relayCallArgs, { gasLimit: 100 })));
 
           await expectPenalization((opts) =>
               relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
@@ -412,7 +414,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
 
         it('penalizes transactions with same nonce and different value', async function () {
           const txDataSigA = getDataAndSignature(encodeRelayCall(encodedCallArgs, relayCallArgs));
-          const txDataSigB = getDataAndSignature(encodeRelayCall(encodedCallArgs,Object.assign(relayCallArgs, {value:100})));
+          const txDataSigB = getDataAndSignature(encodeRelayCall(encodedCallArgs,Object.assign(relayCallArgs, { value: 100 })));
 
           await expectPenalization((opts) =>
               relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
@@ -672,7 +674,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       const relayHubBalanceTracker = await balance.tracker(relayHub.address);
 
       const { logs } = await relayHub.depositFor(recipient, { from: sender, value: amount, gasPrice: 0 });
-      expectEvent.inLogs(logs, 'Deposited', { src: recipient, amount });
+      expectEvent.inLogs(logs, 'Deposited', { recipient, from: sender, amount });
 
       expect(await relayHub.balanceOf(recipient)).to.be.bignumber.equals(amount);
       expect(await senderBalanceTracker.delta()).to.be.bignumber.equals(amount.neg());

@@ -12,8 +12,8 @@ contract IRelayHub {
     // Emits a Staked event.
     function stake(address relayaddr, uint256 unstakeDelay) external payable;
 
-    // Emited when a relay's stake or unstakeDelay are increased, including the amount the stake was increased by.
-    event Staked(address indexed relay, uint256 stake);
+    // Emited when a relay's stake or unstakeDelay are increased
+    event Staked(address indexed relay, uint256 stake, uint256 unstakeDelay);
 
     // Returns a relay's owner, the account that can stake for it and remove it.
     function ownerOf(address relayaddr) external view returns (address);
@@ -56,7 +56,7 @@ contract IRelayHub {
     function depositFor(address target) public payable;
 
     // Emitted when depositFor is called, including the amount and account that was funded.
-    event Deposited(address src, uint256 amount);
+    event Deposited(address indexed recipient, address indexed from, uint256 amount);
 
     // Returns an account's deposits. These can be either a contnract's funds, or a relay owner's revenue.
     function balanceOf(address target) external view returns (uint256);
@@ -67,7 +67,7 @@ contract IRelayHub {
     function withdraw(uint256 amount) public;
 
     // Emitted when an account withdraws funds from RelayHub.
-    event Withdrawn(address dest, uint256 amount);
+    event Withdrawn(address indexed dest, uint256 amount);
 
     // Relaying
 
