@@ -87,6 +87,8 @@ type IRelay interface {
 
 	IsStaked() (staked bool, err error)
 
+	IsUnstaked() (removed bool, err error)
+
 	RegistrationDate() (when int64, err error)
 
 	IsRemoved() (removed bool, err error)
@@ -298,6 +300,22 @@ func (relay *RelayServer) IsStaked() (staked bool, err error) {
 		log.Println("Stake:", stakeEntry.Stake.String())
 	}
 	return
+}
+
+func (relay *RelayServer) IsUnstaked() (removed bool, err error) {
+	filterOpts := &bind.FilterOpts{
+		Start: 0,
+		End:   nil,
+	}
+	iter, err := relay.rhub.FilterUnstaked(filterOpts, []common.Address{relay.Address()})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if iter.Event == nil && !iter.Next() {
+		return
+	}
+	return true, nil
 }
 
 func (relay *RelayServer) RegistrationDate() (when int64, err error) {

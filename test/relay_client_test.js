@@ -15,6 +15,7 @@ const localhostOne = "http://localhost:8090"
 
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
+const increaseTime = testutils.increaseTime;
 
 const Big = require( 'big.js')
 
@@ -450,26 +451,43 @@ contract('RelayClient', function (accounts) {
     })
 
 
-    it("should send relay balance to owner after removed", async function () {
+    describe("relay balance management", async function () {
+        let relayServerAddress;
+        let beforeOwnerBalance;
+        it("should NOT send relay balance to owner after removed", async function () {
+            let response = await request(localhostOne+'/getaddr');
+            relayServerAddress = JSON.parse(response.body).RelayServerAddress;
+            beforeOwnerBalance = await web3.eth.getBalance(relayOwner);
+            let res = await rhub.removeRelayByOwner(relayServerAddress, {from:relayOwner});
+            let etherSpentByTx = res.receipt.gasUsed * (await web3.eth.getGasPrice());
+            assert.equal("RelayRemoved", res.logs[0].event);
+            assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase());
+            await testutils.sleep(2000);
+            let afterOwnerBalance = await web3.eth.getBalance(relayOwner);
+            assert.equal(parseInt(afterOwnerBalance) + etherSpentByTx, parseInt(beforeOwnerBalance))
 
-        let response = await request(localhostOne+'/getaddr');
-        let relayServerAddress = JSON.parse(response.body).RelayServerAddress;
-        let beforeOwnerBalance = await web3.eth.getBalance(relayOwner);
-        let res = await rhub.removeRelayByOwner(relayServerAddress, {from:relayOwner});
-        assert.equal("RelayRemoved", res.logs[0].event);
-        assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase());
+        });
 
-        let i = 0;
-        let relayBalance = await web3.eth.getBalance(relayServerAddress);
-        while (relayBalance != 0 && i < 20) {
-            await testutils.sleep(200);
-            relayBalance = await web3.eth.getBalance(relayServerAddress);
-            i++
-        }
-        assert.equal(0,relayBalance)
-        let afterOwnerBalance = await web3.eth.getBalance(relayOwner);
-        assert.equal(true,parseInt(afterOwnerBalance)  > parseInt(beforeOwnerBalance))
+        it("should send relay balance to owner only after unstaked", async function () {
+            beforeOwnerBalance = await web3.eth.getBalance(relayOwner);
+            let unstakeDelay = (await rhub.relays(relayServerAddress)).unstakeDelay;
+            increaseTime(unstakeDelay);
+            let res = await rhub.unstake(relayServerAddress, {from:relayOwner});
+            assert.equal("Unstaked", res.logs[0].event);
+            assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase());
 
+            let i = 0;
+            let relayBalance = await web3.eth.getBalance(relayServerAddress);
+            while (relayBalance != 0 && i < 10) {
+                await testutils.sleep(200);
+                relayBalance = await web3.eth.getBalance(relayServerAddress);
+                i++
+            }
+            assert.equal(0,relayBalance)
+            let afterOwnerBalance = await web3.eth.getBalance(relayOwner);
+            assert.equal(true,parseInt(afterOwnerBalance)  > parseInt(beforeOwnerBalance))
+
+        });
     });
 
 });
