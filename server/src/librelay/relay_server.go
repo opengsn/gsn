@@ -284,18 +284,18 @@ func (relay *RelayServer) IsStaked() (staked bool, err error) {
 		Pending: false,
 	}
 
-	stakeEntry, err := relay.rhub.Relays(callOpt, relayAddress)
+	stakeEntry, err := relay.rhub.GetRelay(callOpt, relayAddress)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	staked = (stakeEntry.Stake.Cmp(big.NewInt(0)) != 0)
+	staked = (stakeEntry.TotalStake.Cmp(big.NewInt(0)) != 0)
 
 	if staked && (relay.OwnerAddress.Hex() == common.HexToAddress("0").Hex()) {
 		log.Println("Got staked for the first time, setting owner")
 		relay.OwnerAddress = stakeEntry.Owner
 		log.Println("Owner is", relay.OwnerAddress.Hex())
-		log.Println("Stake:", stakeEntry.Stake.String())
+		log.Println("Stake:", stakeEntry.TotalStake.String())
 	}
 	return
 }
