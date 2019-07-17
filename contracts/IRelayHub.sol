@@ -168,6 +168,13 @@ contract IRelayHub {
         RecipientBalanceChanged  // The transaction was relayed and reverted due to the recipient's balance changing
     }
 
+    // Returns how much gas should be forwarded to a call to relayCall, in order to relay a transaction that will spend
+    // up to relayedCallStipend gas.
+    function requiredGas(uint256 relayedCallStipend) public view returns (uint256);
+
+    // Returns the maximum recipient charge, given the amount of gas forwarded, gas price and relay fee.
+    function maxPossibleCharge(uint256 relayedCallStipend, uint256 gasPrice, uint256 transactionFee) public view returns (uint256);
+
     // Relay penalization. Any account can penalize relays, removing them from the system immediately, and rewarding the
     // reporter with half of the relay's stake. The other half is burned so that, even if the relay penalizes itself, it
     // still loses half of its stake.
