@@ -88,14 +88,6 @@ contract RelayHub is IRelayHub {
         emit Staked(relay, relays[relay].stake, relays[relay].unstakeDelay);
     }
 
-    function ownerOf(address relay) external view returns (address) {
-        return relays[relay].owner;
-    }
-
-    function stakeOf(address relay) external view returns (uint256) {
-        return relays[relay].stake;
-    }
-
     function registerRelay(uint256 transactionFee, string memory url) public {
         address relay = msg.sender;
 

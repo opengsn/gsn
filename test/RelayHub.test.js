@@ -87,11 +87,11 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         });
 
         it('relay owner can be queried', async function () {
-          expect(await relayHub.ownerOf(relay)).to.equal(relayOwner);
+          expect((await relayHub.getRelay(relay)).owner).to.equal(relayOwner);
         });
 
         it('relay stake can be queried', async function () {
-          expect(await relayHub.stakeOf(relay)).to.be.bignumber.equals(initialStake);
+          expect((await relayHub.getRelay(relay)).totalStake).to.be.bignumber.equals(initialStake);
         });
 
         it('relay unstake delay can be queried', async function () {
@@ -106,7 +106,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
               relay, stake: initialStake.add(addedStake), unstakeDelay: initialUnstakeDelay
             });
 
-            expect(await relayHub.stakeOf(relay)).to.be.bignumber.equals(initialStake.add(addedStake));
+            expect((await relayHub.getRelay(relay)).totalStake).to.be.bignumber.equals(initialStake.add(addedStake));
           });
 
           it('owner can increase the unstake delay', async function () {
@@ -161,7 +161,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
 
               it('relay can be restaked for with another owner', async function () {
                 await relayHub.stake(relay, initialUnstakeDelay, { value: initialStake, from: other });
-                expect(await relayHub.ownerOf(relay)).to.equal(other);
+                expect((await relayHub.getRelay(relay)).owner).to.equal(other);
               });
             });
           });

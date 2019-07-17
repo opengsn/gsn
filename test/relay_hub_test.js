@@ -106,12 +106,10 @@ contract("RelayHub", function (accounts) {
 
         let expected_stake = web3.utils.toWei('1', 'ether');
         await rhub.stake(relayAccount, 3600 * 24 * 7, {value: expected_stake, from: ownerAccount})
-        let stake = await rhub.getRelay(relayAccount)
-        assert.equal(expected_stake, new Big(stake[0]).sub(z));
-        assert.equal(3600 * 24 * 7, stake[1]);
-
-        assert.equal(expected_stake, await rhub.stakeOf(relayAccount));
-        assert.equal(ownerAccount, await rhub.ownerOf(relayAccount));
+        let relayData = await rhub.getRelay(relayAccount)
+        assert.equal(expected_stake, new Big(relayData.totalStake).sub(z));
+        assert.equal(3600 * 24 * 7, relayData.unstakeDelay);
+        assert.equal(ownerAccount, relayData.owner);
     })
     it("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function () {
         let sample = await SampleRecipient.deployed()
