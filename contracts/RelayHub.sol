@@ -155,7 +155,7 @@ contract RelayHub is IRelayHub {
 
         balances[target] = SafeMath.add(balances[target], amount);
 
-        emit Deposited(target, amount);
+        emit Deposited(target, msg.sender, amount);
     }
 
     //check the deposit balance of a contract.

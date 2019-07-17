@@ -672,7 +672,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       const relayHubBalanceTracker = await balance.tracker(relayHub.address);
 
       const { logs } = await relayHub.depositFor(recipient, { from: sender, value: amount, gasPrice: 0 });
-      expectEvent.inLogs(logs, 'Deposited', { src: recipient, amount });
+      expectEvent.inLogs(logs, 'Deposited', { recipient, from: sender, amount });
 
       expect(await relayHub.balanceOf(recipient)).to.be.bignumber.equals(amount);
       expect(await senderBalanceTracker.delta()).to.be.bignumber.equals(amount.neg());
