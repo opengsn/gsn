@@ -56,7 +56,7 @@ contract IRelayHub {
     function depositFor(address target) public payable;
 
     // Emitted when depositFor is called, including the amount and account that was funded.
-    event Deposited(address src, uint256 amount);
+    event Deposited(address indexed src, uint256 amount);
 
     // Returns an account's deposits. These can be either a contnract's funds, or a relay owner's revenue.
     function balanceOf(address target) external view returns (uint256);
