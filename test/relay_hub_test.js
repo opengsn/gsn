@@ -42,7 +42,7 @@ contract('SampleRecipient', function (accounts) {
         let deposit = new Big("100000000000000000")
         let rhub = await RelayHub.deployed()
         await rhub.depositFor(sample.address, {from: accounts[0], value: deposit})
-        let depositActual = await rhub.balances.call(sample.address)
+        let depositActual = await rhub.balanceOf(sample.address)
         assert.equal(deposit.toString(), depositActual.toString())
         let a0_balance_before = await web3.eth.getBalance(accounts[0])
         try {
@@ -57,7 +57,7 @@ contract('SampleRecipient', function (accounts) {
         let a0_balance_after = await web3.eth.getBalance(accounts[0])
         let expected_balance_after = new Big(a0_balance_before).add(deposit).sub(res.receipt.gasUsed * gasPrice)
         assert.equal(expected_balance_after.toString(), a0_balance_after.toString())
-        depositActual = await rhub.balances.call(sample.address)
+        depositActual = await rhub.balanceOf(sample.address)
         assert.equal("0", depositActual.toString())
     });
 });
@@ -115,7 +115,7 @@ contract("RelayHub", function (accounts) {
     })
     it("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function () {
         let sample = await SampleRecipient.deployed()
-        let depositBefore = await rhub.balances.call(sample.address)
+        let depositBefore = await rhub.balanceOf(sample.address)
         let deposit = new Big("1000000000000000")
         try {
             await rhub.depositFor(sample.address, {from: accounts[0], value: new Big(one_ether).times(3)})
@@ -124,7 +124,7 @@ contract("RelayHub", function (accounts) {
             assertErrorMessageCorrect(error, "deposit too big")
         }
         await rhub.depositFor(sample.address, {from: accounts[0], value: deposit})
-        let depositActual = await rhub.balances.call(sample.address)
+        let depositActual = await rhub.balanceOf(sample.address)
         let depositExpected = deposit.add(depositBefore)
         assert.equal(depositExpected.toString(), depositActual.toString())
     });
@@ -660,17 +660,17 @@ contract("RelayHub", function (accounts) {
                 await rhub.depositFor(accounts[0], {value: 1})
             }
             /**/
-            let relay_recipient_balance_before = await rhub.balances(sr.address)
+            let relay_recipient_balance_before = await rhub.balanceOf(sr.address)
             if (relay_recipient_balance_before.toString() == 0) {
                 let deposit = 100000000;
                 await sr.deposit({value: deposit});
             }
-            relay_recipient_balance_before = await rhub.balances(sr.address)
+            relay_recipient_balance_before = await rhub.balanceOf(sr.address)
             let relay_balance_before = new Big(await web3.eth.getBalance(relayAccount));
             let r = await rhub.getRelay(relayAccount)
             let owner = r[3]
 
-            let relay_owner_hub_balance_before = await rhub.balances(owner)
+            let relay_owner_hub_balance_before = await rhub.balanceOf(owner)
 
 
             let digest = await getTransactionHash(from, to, transaction, requested_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
@@ -685,7 +685,7 @@ contract("RelayHub", function (accounts) {
             });
             relay_nonce++;
 
-            let relay_owner_hub_balance_after = await rhub.balances(owner)
+            let relay_owner_hub_balance_after = await rhub.balanceOf(owner)
             let relay_balance_after = await web3.eth.getBalance(relayAccount)
 
             // What is the factor relay is expecting to get paid by. I.e. for 10% it is '1.1'; For 200% it is '3.0'
@@ -719,7 +719,7 @@ contract("RelayHub", function (accounts) {
             assert.equal(expected_balance_after.toString(), relay_balance_after.toString())
 
             // Check that relay's revenue is deducted from recipient's stake.
-            let relay_recipient_balance_after = await rhub.balances(sr.address)
+            let relay_recipient_balance_after = await rhub.balanceOf(sr.address)
             let expected_recipient_balance = relay_recipient_balance_before - revenue
             assert.equal(expected_recipient_balance.toString(), relay_recipient_balance_after.toString())
         });

@@ -12,19 +12,19 @@ contract RelayHub is IRelayHub {
     using ECDSA for bytes32;
 
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
-    uint256 constant public minimumStake = 1 ether;
+    uint256 constant private minimumStake = 1 ether;
 
     // Minimum unstake delay. A relay needs to wait for this time to elapse after deregistering to retrieve its stake.
-    uint256 constant public minimumUnstakeDelay = 1 weeks;
+    uint256 constant private minimumUnstakeDelay = 1 weeks;
     // Maximum unstake delay. Prevents relays from locking their funds into the RelayHub for too long.
-    uint256 constant public maximumUnstakeDelay = 12 weeks;
+    uint256 constant private maximumUnstakeDelay = 12 weeks;
 
     // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
     // will not be able to immediatly start serving requests.
-    uint256 constant public minimumRelayBalance = 0.1 ether;
+    uint256 constant private minimumRelayBalance = 0.1 ether;
 
     // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
-    uint256 constant public maximumRecipientDeposit = 2 ether;
+    uint256 constant private maximumRecipientDeposit = 2 ether;
 
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
@@ -39,7 +39,7 @@ contract RelayHub is IRelayHub {
     uint256 constant public postRelayedCallMaxGas = 100000;
 
     // Nonces of senders, used to prevent replay attacks
-    mapping(address => uint256) public nonces;
+    mapping(address => uint256) private nonces;
 
     enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
 
@@ -52,7 +52,7 @@ contract RelayHub is IRelayHub {
     }
 
     mapping(address => Relay) private relays;
-    mapping(address => uint256) public balances;
+    mapping(address => uint256) private balances;
 
     string public version = "1.0.0";
 

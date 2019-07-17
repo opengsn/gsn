@@ -238,7 +238,7 @@ func TestMain(m *testing.M) {
 	_, _ = client.TransactionReceipt(context.Background(), tx.Hash())
 
 	callOpt := &bind.CallOpts{}
-	toBalance, err := rhub.Balances(callOpt, sampleRecipient)
+	toBalance, err := rhub.BalanceOf(callOpt, sampleRecipient)
 	if err != nil {
 		log.Println(err)
 		return

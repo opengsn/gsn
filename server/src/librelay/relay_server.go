@@ -489,7 +489,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	toBalance, err := relay.rhub.Balances(callOpt, request.To)
+	toBalance, err := relay.rhub.BalanceOf(callOpt, request.To)
 	if err != nil {
 		log.Println(err)
 		return
