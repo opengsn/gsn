@@ -15,12 +15,6 @@ contract IRelayHub {
     // Emited when a relay's stake or unstakeDelay are increased
     event Staked(address indexed relay, uint256 stake, uint256 unstakeDelay);
 
-    // Returns a relay's owner, the account that can stake for it and remove it.
-    function ownerOf(address relayaddr) external view returns (address);
-
-    // Returns a relay's stake.
-    function stakeOf(address relayaddr) external view returns (uint256);
-
     // Registers the caller as a relay.
     // The relay must be staked for, and not be a contract (i.e. this function must be called directly from an EOA).
     // Emits a RelayAdded event.
