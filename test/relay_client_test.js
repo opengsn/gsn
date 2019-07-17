@@ -470,7 +470,7 @@ contract('RelayClient', function (accounts) {
 
         it("should send relay balance to owner only after unstaked", async function () {
             beforeOwnerBalance = await web3.eth.getBalance(relayOwner);
-            let unstakeDelay = (await rhub.relays(relayServerAddress)).unstakeDelay;
+            let unstakeDelay = (await rhub.getRelay(relayServerAddress)).unstakeDelay;
             increaseTime(unstakeDelay);
             let res = await rhub.unstake(relayServerAddress, {from:relayOwner});
             assert.equal("Unstaked", res.logs[0].event);

@@ -100,13 +100,13 @@ contract("RelayHub", function (accounts) {
     it("test_stake", async function () {
         let ownerAccount = accounts[1];
         let relayAccount = await web3.eth.personal.newAccount("password")
-        let zero_stake = await rhub.relays(ownerAccount)
+        let zero_stake = await rhub.getRelay(ownerAccount)
         let z = zero_stake.valueOf()[0]
         // assert.equal(0, z);
 
         let expected_stake = web3.utils.toWei('1', 'ether');
         await rhub.stake(relayAccount, 3600 * 24 * 7, {value: expected_stake, from: ownerAccount})
-        let stake = await rhub.relays(relayAccount)
+        let stake = await rhub.getRelay(relayAccount)
         assert.equal(expected_stake, new Big(stake[0]).sub(z));
         assert.equal(3600 * 24 * 7, stake[1]);
 
@@ -140,7 +140,7 @@ contract("RelayHub", function (accounts) {
             gasPrice: gasPrice,
             from: accounts[7]
         })
-        let stake = await rhub.relays(gasless_relay_address)
+        let stake = await rhub.getRelay(gasless_relay_address)
         let balance_of_gasless_after = await web3.eth.getBalance(gasless_relay_address);
         let balance_of_acc7_after = await web3.eth.getBalance(accounts[7]);
         let expected_balance_after = new Big(balance_of_acc7_before).sub(expected_stake).sub(res.receipt.gasUsed * gasPrice)
@@ -397,7 +397,7 @@ contract("RelayHub", function (accounts) {
     });
 
     it("should not allow the owner to unstake unregistered relay's stake before time", async function () {
-        let relay = await rhub.relays.call(relayAccount);
+        let relay = await rhub.getRelay.call(relayAccount);
         assert.equal(false, relay.stake == 0);
         let canUnstake = await rhub.canUnstake.call(relayAccount);
 
@@ -434,8 +434,8 @@ contract("RelayHub", function (accounts) {
         assert.equal(true, canUnstake);
         await rhub.unstake(relayAccount);
 
-        let stakeAfter = await rhub.relays.call(relayAccount);
-        assert.equal(0, stakeAfter.stake)
+        let stakeAfter = await rhub.getRelay(relayAccount);
+        assert.equal(0, stakeAfter.totalStake)
     });
 
     it("should not allow a state to downgrade (possibly a few tests needed)")
@@ -471,7 +471,7 @@ contract("RelayHub", function (accounts) {
     it("should penalize relay for signing two distinct transactions with the same nonce", async function () {
         let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
         await register_new_relay_with_privkey(rhub, one_ether, weekInSec, 120, "hello", accounts[0], web3, privKey);
-        let stake = await rhub.relays(address);
+        let stake = await rhub.getRelay(address);
         assert.equal(one_ether, stake[0]);
 
         data1 = rhub.contract.methods.relayCall(testutils.zeroAddr, testutils.zeroAddr, "0x1", 1, 1, 1, 1, "0x1", "0x").encodeABI()
@@ -542,7 +542,7 @@ contract("RelayHub", function (accounts) {
             console.log("will try: " + tx.data.slice(0, 10) + " " + tx.destination)
             await register_new_relay_with_privkey(rhub, one_ether, weekInSec, 120, "hello", accounts[0], web3, privKey);
             let address = "0x" + ethUtils.privateToAddress(privKey).toString('hex')
-            let stake = await rhub.relays(address);
+            let stake = await rhub.getRelay(address);
             assert.equal(one_ether, stake[0]);
 
             let illegalTransaction = new ethJsTx({
@@ -667,7 +667,7 @@ contract("RelayHub", function (accounts) {
             }
             relay_recipient_balance_before = await rhub.balances(sr.address)
             let relay_balance_before = new Big(await web3.eth.getBalance(relayAccount));
-            let r = await rhub.relays(relayAccount)
+            let r = await rhub.getRelay(relayAccount)
             let owner = r[3]
 
             let relay_owner_hub_balance_before = await rhub.balances(owner)

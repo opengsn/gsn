@@ -48,6 +48,17 @@ contract IRelayHub {
     // Emitted when a relay is unstaked for, including the returned stake.
     event Unstaked(address indexed relay, uint256 stake);
 
+    // States a relay can be in
+    enum RelayState {
+        Unknown, // The relay is unknown to the system: it has never been staked for
+        Staked, // The relay has been staked for, but it is not yet active
+        Registered, // The relay has registered itself, and is active (can relay calls)
+        Removed    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
+    }
+
+    // Returns a relay's status. Note that relays can be deleted when unstaked or penalized.
+    function getRelay(address relay) external view returns (uint256 totalStake, uint256 unstakeDelay, uint256 unstakeTime, address payable owner, RelayState state);
+
     // Balance management
 
     // Deposits ether for a contract, so that it can receive (and pay for) relayed transactions. Unused balance can only

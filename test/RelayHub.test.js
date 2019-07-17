@@ -95,7 +95,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
         });
 
         it('relay unstake delay can be queried', async function () {
-          expect((await relayHub.relays(relay)).unstakeDelay).to.be.bignumber.equal(initialUnstakeDelay);
+          expect((await relayHub.getRelay(relay)).unstakeDelay).to.be.bignumber.equal(initialUnstakeDelay);
         });
 
         function testStake() {
@@ -114,7 +114,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             const { logs } = await relayHub.stake(relay, newUnstakeDelay, { from: relayOwner });
             expectEvent.inLogs(logs, 'Staked', { relay, stake: initialStake, unstakeDelay: newUnstakeDelay });
 
-            expect((await relayHub.relays(relay)).unstakeDelay).to.be.bignumber.equals(newUnstakeDelay);
+            expect((await relayHub.getRelay(relay)).unstakeDelay).to.be.bignumber.equals(newUnstakeDelay);
           });
         }
 
@@ -309,7 +309,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
             context('after unstakeTime', function () {
               beforeEach(async function () {
                 await time.increase(unstakeDelay);
-                expect(await time.latest()).to.be.bignumber.at.least((await relayHub.relays(relay)).unstakeTime);
+                expect(await time.latest()).to.be.bignumber.at.least((await relayHub.getRelay(relay)).unstakeTime);
               });
 
               it('owner can unstake relay', async function () {

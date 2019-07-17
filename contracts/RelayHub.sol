@@ -41,14 +41,6 @@ contract RelayHub is IRelayHub {
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) public nonces;
 
-    // States a relay can be in
-    enum RelayState {
-        Unknown, // The relay is unknown to the system: it has never been staked for
-        Staked, // The relay has been staked for, but it is not yet active
-        Registered, // The relay has registered itself, and is active (can relay calls)
-        Removed    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
-    }
-
     enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
 
     struct Relay {
@@ -59,7 +51,7 @@ contract RelayHub is IRelayHub {
         RelayState state;
     }
 
-    mapping(address => Relay) public relays;
+    mapping(address => Relay) private relays;
     mapping(address => uint256) public balances;
 
     string public version = "1.0.0";
@@ -140,6 +132,14 @@ contract RelayHub is IRelayHub {
 
         owner.transfer(amount);
         emit Unstaked(relay, amount);
+    }
+
+    function getRelay(address relay) external view returns (uint256 totalStake, uint256 unstakeDelay, uint256 unstakeTime, address payable owner, RelayState state) {
+        totalStake = relays[relay].stake;
+        unstakeDelay = relays[relay].unstakeDelay;
+        unstakeTime = relays[relay].unstakeTime;
+        owner = relays[relay].owner;
+        state = relays[relay].state;
     }
 
     /**
