@@ -30,13 +30,13 @@ contract RelayHub is IRelayHub {
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
-    uint256 constant public gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
-    uint256 constant public gasOverhead = 48120;
+    uint256 constant private gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
+    uint256 constant private gasOverhead = 48120;
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
-    uint256 constant public acceptRelayedCallMaxGas = 50000;
-    uint256 constant public preRelayedCallMaxGas = 100000;
-    uint256 constant public postRelayedCallMaxGas = 100000;
+    uint256 constant private acceptRelayedCallMaxGas = 50000;
+    uint256 constant private preRelayedCallMaxGas = 100000;
+    uint256 constant private postRelayedCallMaxGas = 100000;
 
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
@@ -310,7 +310,7 @@ contract RelayHub is IRelayHub {
         RelayCallStatus status = abi.decode(relayCallStatus, (RelayCallStatus));
 
         // Regardless of the outcome of the relayed transaction, the recipient is now charged.
-        uint256 charge = getChargedAmount(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
+        uint256 charge = calculateCharge(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
@@ -319,13 +319,6 @@ contract RelayHub is IRelayHub {
         balances[relays[msg.sender].owner] += charge;
 
         emit TransactionRelayed(msg.sender, from, recipient, functionSelector, status, charge);
-    }
-
-    function getChargedAmount(uint256 gas, uint256 gasPrice, uint256 fee) private pure returns (uint256) {
-        // The fee is expressed as a percentage. E.g. a value of 40 stands for a
-        // 40% fee, so the recipient will be charged for 1.4 times the spent
-        // amount.
-        return (gas * gasPrice * (100 + fee)) / 100;
     }
 
     function recipientCallsAtomic(
@@ -410,6 +403,20 @@ contract RelayHub is IRelayHub {
 
             revert(dataPtr, dataSize)
         }
+    }
+
+    function requiredGas(uint256 relayedCallStipend) public view returns (uint256) {
+        return gasOverhead + gasReserve + acceptRelayedCallMaxGas + preRelayedCallMaxGas + postRelayedCallMaxGas + relayedCallStipend;
+    }
+
+    function maxPossibleCharge(uint256 relayedCallStipend, uint256 gasPrice, uint256 transactionFee) public view returns (uint256) {
+        return calculateCharge(requiredGas(relayedCallStipend), gasPrice, transactionFee);
+    }
+
+    function calculateCharge(uint256 gas, uint256 gasPrice, uint256 fee) private pure returns (uint256) {
+        // The fee is expressed as a percentage. E.g. a value of 40 stands for a 40% fee, so the recipient will be
+        // charged for 1.4 times the spent amount.
+        return (gas * gasPrice * (100 + fee)) / 100;
     }
 
     struct Transaction {

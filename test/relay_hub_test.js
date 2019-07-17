@@ -692,15 +692,13 @@ contract("RelayHub", function (accounts) {
             let requested_coeff = new BigNumber((requested_fee + 100) / 100).toPrecision(3, BigNumber.ROUND_HALF_UP)
 
             // Calculate the actual factor. Rounding is expected.
-            let revenue = relay_owner_hub_balance_after.sub(relay_owner_hub_balance_before).toString()
-            let expenses = relay_balance_before.sub(relay_balance_after).toString()
+            let revenue = relay_owner_hub_balance_after.sub(relay_owner_hub_balance_before)
+            let expenses = relay_balance_before.sub(relay_balance_after)
 
             if (requested_fee == 0) {
-                let cur_overhead = await rhub.gasOverhead()
-                let gas_diff = (expenses - revenue) / gas_price
+                let gas_diff = expenses.sub(revenue).div(gas_price)
                 if (gas_diff != 0) {
-                    console.log("== zero-fee unmatched gas. RelayHub.gasOverhead should be: " +
-                        (parseInt(cur_overhead) + gas_diff) + " (cur_overhead=" + cur_overhead + ")")
+                    console.log("== zero-fee unmatched gas. RelayHub.gasOverhead should be increased by: " + gas_diff.toString())
                 }
             }
 
