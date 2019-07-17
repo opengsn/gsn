@@ -146,7 +146,7 @@ type RelayServer struct {
 	Client                IClient
 	ChainID               *big.Int
 	TxStore               txstore.ITxStore
-	rhub                  *librelay.RelayHub
+	rhub                  *librelay.IRelayHub
 	clock                 clock.Clock
 }
 
@@ -180,7 +180,7 @@ func NewRelayServer(
 	TxStore txstore.ITxStore,
 	clk clock.Clock) (*RelayServer, error) {
 
-	rhub, err := librelay.NewRelayHub(RelayHubAddress, Client)
+	rhub, err := librelay.NewIRelayHub(RelayHubAddress, Client)
 	if err != nil {
 		return nil, err
 	}

@@ -11,9 +11,9 @@ ETHFILE=${ETHDIR}/Makefile
 ETHREPO="https://github.com/ethereum/go-ethereum.git"
 ETHVERSION=v1.8.21
 
-GEN_FILE=$(buildpath)/src/gen/librelay/relay_hub_sol.go 
+GEN_FILE=$(buildpath)/src/gen/librelay/relay_hub_sol.go
 GEN_FILE_REC=$(buildpath)/src/gen/samplerec/sample_rec_sol.go
-TRUFFLE_OUT=$(buildpath)/../contracts/RelayHub.json
+TRUFFLE_OUT=$(buildpath)/../contracts/IRelayHub.json
 TRUFFLE_OUT_REC=$(buildpath)/../contracts/SampleRecipient.json
 
 $(server_exe): $(GEN_FILE) $(GEN_FILE_REC) go-get $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
@@ -30,12 +30,12 @@ $(ETHFILE): Makefile
 	@if [ ! -d ${ETHDIR} ]; then \
 	  git clone ${ETHREPO} --depth=1 --branch=${ETHVERSION} ${ETHDIR} ;\
 	  go get -v -d ./...;\
-	fi 
+	fi
 	touch $(ETHFILE)
 
 gen-file: $(GEN_FILE) Makefile
 
-$(TRUFFLE_OUT): ../contracts/RelayHub.sol ../contracts/SampleRecipient.sol
+$(TRUFFLE_OUT): ../contracts/IRelayHub.sol ../contracts/SampleRecipient.sol
 	cd ../
 	npx truffle compile
 	mkdir -p $(buildpath)/contracts
@@ -43,9 +43,9 @@ $(TRUFFLE_OUT): ../contracts/RelayHub.sol ../contracts/SampleRecipient.sol
 
 $(TRUFFLE_OUT_REC): $(TRUFFLE_OUT)
 
-$(GEN_FILE): ../contracts/RelayHub.sol ../contracts/IRelayHub.sol $(TRUFFLE_OUT)
+$(GEN_FILE): ../contracts/IRelayHub.sol $(TRUFFLE_OUT)
 	mkdir -p $(buildpath)/src/gen/librelay
-	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=bin)) --pkg librelay --type RelayHub --out $@
+	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=bin)) --pkg librelay --type IRelayHub --out $@
 
 $(GEN_FILE_REC): ../contracts/SampleRecipient.sol $(TRUFFLE_OUT_REC)
 	mkdir -p $(buildpath)/src/gen/samplerec
