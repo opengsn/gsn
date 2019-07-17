@@ -93,7 +93,7 @@ contract RelayHub is IRelayHub {
         require(unstakeDelay >= relays[relay].unstakeDelay, "unstakeDelay cannot be decreased");
         relays[relay].unstakeDelay = unstakeDelay;
 
-        emit Staked(relay, addedStake);
+        emit Staked(relay, relays[relay].stake, relays[relay].unstakeDelay);
     }
 
     function ownerOf(address relay) external view returns (address) {

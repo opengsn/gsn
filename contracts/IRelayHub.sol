@@ -12,8 +12,8 @@ contract IRelayHub {
     // Emits a Staked event.
     function stake(address relayaddr, uint256 unstakeDelay) external payable;
 
-    // Emited when a relay's stake or unstakeDelay are increased, including the amount the stake was increased by.
-    event Staked(address indexed relay, uint256 stake);
+    // Emited when a relay's stake or unstakeDelay are increased
+    event Staked(address indexed relay, uint256 stake, uint256 unstakeDelay);
 
     // Returns a relay's owner, the account that can stake for it and remove it.
     function ownerOf(address relayaddr) external view returns (address);
