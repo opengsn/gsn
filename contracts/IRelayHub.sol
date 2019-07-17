@@ -67,7 +67,7 @@ contract IRelayHub {
     function withdraw(uint256 amount) public;
 
     // Emitted when an account withdraws funds from RelayHub.
-    event Withdrawn(address dest, uint256 amount);
+    event Withdrawn(address indexed dest, uint256 amount);
 
     // Relaying
 
