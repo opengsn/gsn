@@ -30,8 +30,15 @@ contract RelayHub is IRelayHub {
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
-    uint256 constant private gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
-    uint256 constant private gasOverhead = 48120;
+
+    // Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
+    uint256 constant private gasOverhead = 48204;
+
+    // Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
+    uint256 constant private gasReserve = 100000;
+
+    // Approximation of how much calling recipientCallsAtomic costs
+    uint256 constant private recipientCallsAtomicOverhead = 5000;
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
     uint256 constant private acceptRelayedCallMaxGas = 50000;
@@ -305,13 +312,19 @@ contract RelayHub is IRelayHub {
         // RelayCallStatus value.
         RelayCallStatus status;
         {
+            uint256 preChecksGas = initialGas - gasleft();
             bytes memory encodedFunctionWithFrom = abi.encodePacked(encodedFunction, from);
-            (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, recipient, encodedFunctionWithFrom, transactionFee, gasLimit, initialGas, recipientContext));
+            bytes memory data = abi.encodeWithSelector(this.recipientCallsAtomic.selector, recipient, encodedFunctionWithFrom, transactionFee, gasPrice, gasLimit, preChecksGas, recipientContext);
+            (, bytes memory relayCallStatus) = address(this).call(data);
             status = abi.decode(relayCallStatus, (RelayCallStatus));
         }
 
-        // Regardless of the outcome of the relayed transaction, the recipient is now charged.
-        uint256 charge = calculateCharge(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
+        // We know perform the actual charge calculation, based on the measured gas used
+        uint256 charge = calculateCharge(
+            getChargeableGas(initialGas - gasleft(), false),
+            gasPrice,
+            transactionFee
+        );
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
@@ -322,17 +335,29 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(msg.sender, from, recipient, functionSelector, status, charge);
     }
 
+    struct AtomicData {
+        uint256 atomicInitialGas;
+        uint256 balanceBefore;
+        bytes32 preReturnValue;
+        bool relayedCallSuccess;
+    }
+
     function recipientCallsAtomic(
         address recipient,
         bytes calldata encodedFunctionWithFrom,
         uint256 transactionFee,
+        uint256 gasPrice,
         uint256 gasLimit,
-        uint256 initialGas,
+        uint256 preChecksGas,
         bytes calldata recipientContext
     )
     external
     returns (RelayCallStatus)
     {
+        AtomicData memory atomicData;
+        atomicData.atomicInitialGas = gasleft(); // A new gas measurement is performed inside recipientCallsAtomic, since
+        // due to EIP150 available gas amounts cannot be directly compared across external calls
+
         // This external function can only be called by RelayHub itself, creating an internal transaction. Calls to the
         // recipient (preRelayedCall, the relayedCall, and postRelayedCall) are called from inside this transaction.
         require(msg.sender == address(this), "Only RelayHub should call this function");
@@ -342,11 +367,10 @@ contract RelayHub is IRelayHub {
 
         // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
         // post state to ensure this doesn't happen.
-        uint256 balanceBefore = balances[recipient];
+        atomicData.balanceBefore = balances[recipient];
 
         // First preRelayedCall is executed.
         // It is the recipient's responsability to ensure, in acceptRelayedCall, that this call will not revert.
-        bytes32 preReturnValue;
         {
             // Note: we open a new block to avoid growing the stack too much.
             bytes memory data = abi.encodeWithSelector(
@@ -359,22 +383,29 @@ contract RelayHub is IRelayHub {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed);
             }
 
-            preReturnValue = abi.decode(retData, (bytes32));
+            atomicData.preReturnValue = abi.decode(retData, (bytes32));
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
-        (bool relayedCallSuccess,) = recipient.call.gas(gasLimit)(encodedFunctionWithFrom);
+        (atomicData.relayedCallSuccess,) = recipient.call.gas(gasLimit)(encodedFunctionWithFrom);
 
-        // Even if the relayed call fails, execution continues
-
-        uint256 gasUsed = gasOverhead + initialGas - gasleft();
-
-        // Finally, postRelayedCall is executed, with the relayedCall execution's status.
+        // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         {
-            bytes memory data = abi.encodeWithSelector(
-                IRelayRecipient(recipient).postRelayedCall.selector,
-                recipientContext, relayedCallSuccess, gasUsed, preReturnValue
-            );
+            bytes memory data;
+            {
+                // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate
+                // accounting.
+                uint256 estimatedCharge = calculateCharge(
+                    getChargeableGas(preChecksGas + atomicData.atomicInitialGas - gasleft(), true), // postRelayedCall is included in the charge
+                    gasPrice,
+                    transactionFee
+                );
+
+                data = abi.encodeWithSelector(
+                    IRelayRecipient(recipient).postRelayedCall.selector,
+                    recipientContext, atomicData.relayedCallSuccess, estimatedCharge, atomicData.preReturnValue
+                );
+            }
 
             (bool successPost,) = recipient.call.gas(postRelayedCallMaxGas)(data);
 
@@ -383,11 +414,11 @@ contract RelayHub is IRelayHub {
             }
         }
 
-        if (balances[recipient] < balanceBefore) {
+        if (balances[recipient] < atomicData.balanceBefore) {
             revertWithStatus(RelayCallStatus.RecipientBalanceChanged);
         }
 
-        return relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed;
+        return atomicData.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed;
     }
 
     /**
@@ -416,6 +447,10 @@ contract RelayHub is IRelayHub {
         // The fee is expressed as a percentage. E.g. a value of 40 stands for a 40% fee, so the recipient will be
         // charged for 1.4 times the spent amount.
         return (gas * gasPrice * (100 + fee)) / 100;
+    }
+
+    function getChargeableGas(uint256 gasUsed, bool postRelayedCallEstimation) private pure returns (uint256) {
+        return gasOverhead + gasUsed + (postRelayedCallEstimation ? (postRelayedCallMaxGas + recipientCallsAtomicOverhead) : 0);
     }
 
     struct Transaction {
