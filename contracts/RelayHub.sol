@@ -209,8 +209,9 @@ contract RelayHub is IRelayHub {
             return uint256(PreconditionCheck.WrongNonce);
         }
 
+        uint256 maxCharge = maxPossibleCharge(gasLimit, gasPrice, transactionFee);
         bytes memory encodedTx = abi.encodeWithSelector(IRelayRecipient(to).acceptRelayedCall.selector,
-            relay, from, encodedFunction, gasPrice, transactionFee, signature, approvalData
+            relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxCharge
         );
 
         (bool success, bytes memory returndata) = to.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
@@ -371,7 +372,7 @@ contract RelayHub is IRelayHub {
             // Note: we open a new block to avoid growing the stack too much.
             bytes memory data = abi.encodeWithSelector(
                 IRelayRecipient(metaTx.recipient).preRelayedCall.selector,
-                metaTx.relay, metaTx.from, metaTx.encodedFunction, metaTx.transactionFee
+                metaTx.relay, metaTx.from, metaTx.encodedFunction, metaTx.transactionFee, metaTx.gasPrice, metaTx.gasLimit, metaTx.maxPossibleCharge
             );
 
             (bool success, bytes memory retData) = metaTx.recipient.call.gas(preRelayedCallMaxGas)(data);
@@ -394,7 +395,7 @@ contract RelayHub is IRelayHub {
         {
             bytes memory data = abi.encodeWithSelector(
                 IRelayRecipient(metaTx.recipient).postRelayedCall.selector,
-                metaTx.relay, metaTx.from, metaTx.encodedFunction, relayedCallSuccess, gasUsed, metaTx.transactionFee, preReturnValue
+                metaTx.relay, metaTx.from, metaTx.encodedFunction, metaTx.transactionFee, metaTx.gasPrice, metaTx.gasLimit, metaTx.maxPossibleCharge, gasUsed, relayedCallSuccess, preReturnValue
             );
 
             (bool successPost,) = metaTx.recipient.call.gas(postRelayedCallMaxGas)(data);

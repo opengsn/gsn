@@ -733,7 +733,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       const unstakeDelay = time.duration.weeks(4);
 
       const url = 'http://relay.com';
-      const fee = 10; // 10%
+      const fee = new BN('10'); // 10%
 
       beforeEach(async function () {
         await relayHub.stake(relay, unstakeDelay, { value: ether('2'), from: relayOwner });
@@ -762,6 +762,20 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       context('with funded recipient', function () {
         beforeEach(async function () {
           await relayHub.depositFor(recipient.address, { value: ether('1'), from: other });
+        });
+
+        it('preRelayedCall receives all arguments correctly', async function () {
+          const { tx } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
+          await expectEvent.inTransaction(tx, SampleRecipient, 'SampleRecipientPreCall', {
+            relay, from: sender, encodedFunction: txData, transactionFee: fee, gasPrice, gasLimit
+          });
+        });
+
+        it('postRelayedCall receives all arguments correctly', async function () {
+          const { tx } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
+          await expectEvent.inTransaction(tx, SampleRecipient, 'SampleRecipientPostCall', {
+            relay, from: sender, encodedFunction: txData, transactionFee: fee, gasPrice, gasLimit, success: true, preRetVal: '0x' + (123456).toString(16).padStart(64, '0')
+          });
         });
 
         it('relaying is aborted if the recipient returns an invalid status code', async function () {
