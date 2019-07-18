@@ -211,7 +211,7 @@ contract RelayHub is IRelayHub {
             return uint256(PreconditionCheck.WrongSignature);
         }
 
-        // Verify the transaction is not being repalyed
+        // Verify the transaction is not being replayed
         if (nonces[from] != nonce) {
             return uint256(PreconditionCheck.WrongNonce);
         }
