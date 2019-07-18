@@ -79,7 +79,7 @@ contract IRelayRecipient {
      *
      *
      * @param success - true if the relayed call succeeded, false if it reverted
-     * @param actualCharge - gas used up to this point. The recipient may use this information to perform local booking and
+     * @param actualCharge - estimation of how much the recipient will be charged. This information may be used to perform local booking and
      *   charge the sender for this call (e.g. in tokens).
      * @param preRetVal - preRelayedCall() return value passed back to the recipient
      *

@@ -164,8 +164,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
             withdrawAllBalance();
         }
 
-        uint256 charge = actualCharge * tx.gasprice * (transactionFee +100)/100;
-        emit SampleRecipientPostCall(relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, maxPossibleCharge, charge, success, preRetVal);
+        emit SampleRecipientPostCall(relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, maxPossibleCharge, actualCharge, success, preRetVal);
 
         if (revertPostRelayCall){
             revert("You asked me to revert, remember?");

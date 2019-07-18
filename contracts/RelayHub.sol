@@ -31,8 +31,15 @@ contract RelayHub is IRelayHub {
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
-    uint256 constant private gasReserve = 100000; // how much reserve we actually need, to complete the post-call part of relayCall().
+
+    // Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
     uint256 constant private gasOverhead = 49936;
+
+    // Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
+    uint256 constant private gasReserve = 100000;
+
+    // Approximation of how much calling recipientCallsAtomic costs
+    uint256 constant private recipientCallsAtomicOverhead = 5000;
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
     uint256 constant private acceptRelayedCallMaxGas = 50000;
@@ -329,14 +336,22 @@ contract RelayHub is IRelayHub {
         // The sender's nonce is advanced to prevent transaction replays.
         nonces[metaTx.from]++;
 
+        uint256 preChecksGas = initialGas - gasleft();
+
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
-        (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, metaTx, initialGas));
+        (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, metaTx, preChecksGas));
         RelayCallStatus status = abi.decode(relayCallStatus, (RelayCallStatus));
 
+        // We know perform the actual charge calculation, based on the measured gas used
+        uint256 charge = calculateCharge(
+            getChargeableGas(initialGas - gasleft(), false),
+            metaTx.gasPrice,
+            metaTx.transactionFee
+        );
+
         // Regardless of the outcome of the relayed transaction, the recipient is now charged.
-        uint256 charge = calculateCharge(gasOverhead + initialGas - gasleft(), metaTx.gasPrice, metaTx.transactionFee);
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
@@ -349,11 +364,14 @@ contract RelayHub is IRelayHub {
 
     function recipientCallsAtomic(
         MetaTxData memory metaTx,
-        uint256 initialGas
+        uint256 preChecksGas
     )
     public
     returns (RelayCallStatus)
     {
+        uint256 atomicInitialGas = gasleft(); // A new gas measurement is performed inside recipientCallsAtomic, since
+        // due to EIP150 available gas amounts cannot be directly compared across external calls
+
         // This external function can only be called by RelayHub itself, creating an internal transaction. Calls to the
         // recipient (preRelayedCall, the relayedCall, and postRelayedCall) are called from inside this transaction.
         require(msg.sender == address(this), "Only RelayHub should call this function");
@@ -387,15 +405,19 @@ contract RelayHub is IRelayHub {
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (bool relayedCallSuccess,) = metaTx.recipient.call.gas(metaTx.gasLimit)(abi.encodePacked(metaTx.encodedFunction, metaTx.from));
 
-        // Even if the relayed call fails, execution continues
-
-        uint256 gasUsed = gasOverhead + initialGas - gasleft();
+        // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate
+        // accounting.
+        uint256 estimatedCharge = calculateCharge(
+            getChargeableGas(preChecksGas + atomicInitialGas - gasleft(), true), // postRelayedCall is included in the charge
+            metaTx.gasPrice,
+            metaTx.transactionFee
+        );
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status.
         {
             bytes memory data = abi.encodeWithSelector(
                 IRelayRecipient(metaTx.recipient).postRelayedCall.selector,
-                metaTx.relay, metaTx.from, metaTx.encodedFunction, metaTx.transactionFee, metaTx.gasPrice, metaTx.gasLimit, metaTx.maxPossibleCharge, gasUsed, relayedCallSuccess, preReturnValue
+                metaTx.relay, metaTx.from, metaTx.encodedFunction, metaTx.transactionFee, metaTx.gasPrice, metaTx.gasLimit, metaTx.maxPossibleCharge, estimatedCharge, relayedCallSuccess, preReturnValue
             );
 
             (bool successPost,) = metaTx.recipient.call.gas(postRelayedCallMaxGas)(data);
@@ -438,6 +460,10 @@ contract RelayHub is IRelayHub {
         // The fee is expressed as a percentage. E.g. a value of 40 stands for a 40% fee, so the recipient will be
         // charged for 1.4 times the spent amount.
         return (gas * gasPrice * (100 + fee)) / 100;
+    }
+
+    function getChargeableGas(uint256 gasUsed, bool postRelayedCallEstimation) private pure returns (uint256) {
+        return gasOverhead + gasUsed + (postRelayedCallEstimation ? (postRelayedCallMaxGas + recipientCallsAtomicOverhead) : 0);
     }
 
     struct Transaction {
