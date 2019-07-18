@@ -13,7 +13,8 @@ ETHVERSION=v1.8.21
 
 GEN_FILE=$(buildpath)/src/gen/librelay/relay_hub_sol.go
 GEN_FILE_REC=$(buildpath)/src/gen/samplerec/sample_rec_sol.go
-TRUFFLE_OUT=$(buildpath)/../contracts/IRelayHub.json
+RELAYHUB_BIN=$(buildpath)/../contracts/RelayHub.json
+RELAYHUB_ABI=$(buildpath)/../contracts/IRelayHub.json
 TRUFFLE_OUT_REC=$(buildpath)/../contracts/SampleRecipient.json
 
 $(server_exe): $(GEN_FILE) $(GEN_FILE_REC) go-get $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
@@ -35,17 +36,19 @@ $(ETHFILE): Makefile
 
 gen-file: $(GEN_FILE) Makefile
 
-$(TRUFFLE_OUT): ../contracts/IRelayHub.sol ../contracts/SampleRecipient.sol
+$(RELAYHUB_BIN): ../contracts/IRelayHub.sol ../contracts/RelayHub.sol ../contracts/SampleRecipient.sol
 	cd ../
 	npx truffle compile
 	mkdir -p $(buildpath)/contracts
 	./scripts/get_abi_bin.js
 
-$(TRUFFLE_OUT_REC): $(TRUFFLE_OUT)
+$(RELAYHUB_ABI): $(RELAYHUB_BIN)
 
-$(GEN_FILE): ../contracts/IRelayHub.sol $(TRUFFLE_OUT)
+$(TRUFFLE_OUT_REC): $(RELAYHUB_BIN)
+
+$(GEN_FILE): ../contracts/IRelayHub.sol $(RELAYHUB_BIN) $(RELAYHUB_ABI)
 	mkdir -p $(buildpath)/src/gen/librelay
-	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT:json=bin)) --pkg librelay --type IRelayHub --out $@
+	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(RELAYHUB_ABI:json=abi)) --bin $(subst contracts,server/contracts,$(RELAYHUB_BIN:json=bin)) --pkg librelay --type IRelayHub --out $@
 
 $(GEN_FILE_REC): ../contracts/SampleRecipient.sol $(TRUFFLE_OUT_REC)
 	mkdir -p $(buildpath)/src/gen/samplerec
