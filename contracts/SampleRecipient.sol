@@ -171,10 +171,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
         return bytes32(uint(123456));
     }
 
-    event SampleRecipientPostCall(bool success, uint usedGas, bytes32 preRetVal);
+    event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
     event SampleRecipientPostCallWithValues(address relay, address from, bytes encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes approvalData, uint256 maxPossibleCharge);
 
-    function postRelayedCall(bytes memory context, bool success, uint usedGas, bytes32 preRetVal) public {
+    function postRelayedCall(bytes memory context, bool success, uint actualCharge, bytes32 preRetVal) public {
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
@@ -185,8 +185,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
             emit SampleRecipientPostCallWithValues(relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleCharge);
         }
 
-        uint256 transactionFee = 10;
-        emit SampleRecipientPostCall(success, usedGas * tx.gasprice * (transactionFee +100)/100, preRetVal);
+        emit SampleRecipientPostCall(success, actualCharge, preRetVal);
 
         if (revertPostRelayCall){
             revert("You asked me to revert, remember?");

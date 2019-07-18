@@ -69,13 +69,13 @@ contract IRelayRecipient {
      *
      *
      * @param success - true if the relayed call succeeded, false if it reverted
-     * @param usedGas - gas used up to this point. The recipient may use this information to perform local booking and
+     * @param actualCharge - estimation of how much the recipient will be charged. This information may be used to perform local booking and
      *   charge the sender for this call (e.g. in tokens).
      * @param preRetVal - preRelayedCall() return value passed back to the recipient
      *
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
      */
-    function postRelayedCall(bytes memory context, bool success, uint usedGas, bytes32 preRetVal) public;
+    function postRelayedCall(bytes memory context, bool success, uint actualCharge, bytes32 preRetVal) public;
 
 }
