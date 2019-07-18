@@ -384,7 +384,7 @@ contract RelayHub is IRelayHub {
         uint256 balanceBefore = balances[metaTx.recipient];
 
         // First preRelayedCall is executed.
-        // It is the recipient's responsability to ensure, in acceptRelayedCall, that this call will not revert.
+        // It is the recipient's responsibility to ensure, in acceptRelayedCall, that this call will not revert.
         bytes32 preReturnValue;
         {
             // Note: we open a new block to avoid growing the stack too much.
