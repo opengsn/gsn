@@ -33,6 +33,9 @@ var server *http.Server
 var stopKeepAlive chan bool
 var stopRefreshBlockchainView chan bool
 var stopUpdatingPendingTxs chan bool
+var stopListeningToRelayRemoved chan bool
+
+var timeUnit time.Duration
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -45,14 +48,14 @@ func main() {
 	http.HandleFunc("/relay", assureRelayReady(relayHandler))
 	http.HandleFunc("/getaddr", getEthAddrHandler)
 
-	timeUnit := time.Minute
+	timeUnit = time.Minute
 	if shortSleep {
 		timeUnit = 100 * time.Millisecond
 	}
 	stopKeepAlive = schedule(keepAlive, 1*timeUnit, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
 	stopUpdatingPendingTxs = schedule(updatePendingTxs, 1*timeUnit, 0)
-	schedule(shutdownOnRelayRemoved, 1*timeUnit, 0)
+	stopListeningToRelayRemoved = schedule(stopServingOnRelayRemoved, 1*timeUnit, 0)
 
 	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
 	err := server.ListenAndServe()
@@ -346,7 +349,7 @@ func keepAlive() {
 	log.Println("Done registering")
 }
 
-func shutdownOnRelayRemoved() {
+func stopServingOnRelayRemoved() {
 	var err error
 	removed, err = relay.IsRemoved()
 	if err != nil {
@@ -354,7 +357,23 @@ func shutdownOnRelayRemoved() {
 		return
 	}
 	if removed {
-		log.Println("Relay removed. Sending balance back to owner")
+		log.Println("Relay removed. Listening to Unstaked event")
+		schedule(shutdownOnRelayUnstaked, 1*timeUnit, 0)
+		stopListeningToRelayRemoved <- true
+	}
+
+}
+
+func shutdownOnRelayUnstaked() {
+	var err error
+	removed, err = relay.IsUnstaked()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if removed {
+		log.Println("Relay removed. Listening to Unstaked event")
+		log.Println("Relay unstaked. Sending balance back to owner")
 		sleep(2*time.Minute, shortSleep)
 		for {
 			err = relay.SendBalanceToOwner()

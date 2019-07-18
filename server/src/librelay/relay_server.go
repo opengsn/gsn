@@ -10,14 +10,12 @@ import (
 	"librelay/txstore"
 	"log"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
 	"code.cloudfoundry.org/clock"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -86,6 +84,8 @@ type IRelay interface {
 	RegisterRelay() (err error)
 
 	IsStaked() (staked bool, err error)
+
+	IsUnstaked() (removed bool, err error)
 
 	RegistrationDate() (when int64, err error)
 
@@ -300,6 +300,22 @@ func (relay *RelayServer) IsStaked() (staked bool, err error) {
 	return
 }
 
+func (relay *RelayServer) IsUnstaked() (removed bool, err error) {
+	filterOpts := &bind.FilterOpts{
+		Start: 0,
+		End:   nil,
+	}
+	iter, err := relay.rhub.FilterUnstaked(filterOpts, []common.Address{relay.Address()})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if iter.Event == nil && !iter.Next() {
+		return
+	}
+	return true, nil
+}
+
 func (relay *RelayServer) RegistrationDate() (when int64, err error) {
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
@@ -479,31 +495,6 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	hubAbi, err := abi.JSON(strings.NewReader(librelay.RelayHubABI))
-	if err != nil {
-		return
-	}
-	input, err := hubAbi.Pack("relayCall", request.From, request.To, common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
-		&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature, request.ApprovalData)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	gasEstimate, err := relay.Client.EstimateGas(context.Background(), ethereum.CallMsg{
-		To:   &request.To,
-		From: request.From,
-		Data: input,
-	})
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	maxCharge := request.GasPrice.Uint64() * gasEstimate * (100 + relay.GasPricePercent.Uint64()) / 100
-	if toBalance.Uint64() < maxCharge {
-		err = fmt.Errorf("Recipient balance too low: %d, gasEstimate*fee: %d", toBalance, maxCharge)
-		log.Println(err)
-		return
-	}
 	// Maximum gasLimit of relayed tx consists of:
 	// 1. request.GasLimit - user request gasLimit for the relayed function call
 	// 2. gasOverhead - Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
@@ -515,6 +506,14 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	gasLimit.Add(gasLimit, acceptRelayedCallMaxGas)
 	gasLimit.Add(gasLimit, postRelayedCallMaxGas)
 	gasLimit.Add(gasLimit, preRelayedCallMaxGas)
+
+	maxCharge := request.GasPrice.Uint64() * gasLimit.Uint64() * relay.Fee.Uint64() * (100 + relay.GasPricePercent.Uint64()) / 100
+	if toBalance.Uint64() < maxCharge {
+		err = fmt.Errorf("Recipient balance too low: %d, maxCharge: %d", toBalance, maxCharge)
+		log.Println(err)
+		return
+	}
+
 	log.Println("Estimated max charge of relayed tx:",maxCharge, "GasLimit of relayed tx:",gasLimit)
 
 	signedTx, err = relay.sendDataTransaction(

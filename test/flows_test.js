@@ -67,7 +67,7 @@ options.forEach(params => {
 
         if (params.relay) {
             it(params.title + "enable relay", async function () {
-                rhub.depositFor(sr.address, {value: 1e17})
+                rhub.depositFor(sr.address, {value: 1e18})
 
                 relay_client_config = {
                     txfee: 60,
