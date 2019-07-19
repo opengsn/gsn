@@ -551,10 +551,16 @@ func (relay *RelayServer) canRelay(from common.Address,
 		Pending: false,
 	}
 
-	res, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature, approvalData)
+	var result struct {
+		Status           *big.Int
+		RecipientContext []byte
+	}
+
+	result, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature, approvalData)
 	if err != nil {
 		log.Println(err)
-		return
+	} else {
+		res = result.Status
 	}
 
 	return

@@ -45,7 +45,7 @@ contract IRelayRecipient {
     )
     public
     view
-    returns (uint256);
+    returns (uint256, bytes memory);
 
     /** this method is called before the actual relayed function call.
      * It may be used to charge the caller before (in conjuction with refunding him later in postRelayedCall for example).
@@ -58,7 +58,7 @@ contract IRelayRecipient {
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
      */
-    function preRelayedCall(address relay, address from, bytes memory encodedFunction, uint transactionFee) public returns (bytes32);
+    function preRelayedCall(bytes memory context) public returns (bytes32);
 
     /** this method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
@@ -76,6 +76,6 @@ contract IRelayRecipient {
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
      */
-    function postRelayedCall(address relay, address from, bytes memory encodedFunction, bool success, uint usedGas, uint transactionFee, bytes32 preRetVal) public;
+    function postRelayedCall(bytes memory context, bool success, uint usedGas, bytes32 preRetVal) public;
 
 }
