@@ -32,7 +32,20 @@ contract IRelayRecipient {
      *  @param signature - sender's signature over all parameters except approvalData
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      */
-    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint gasPrice, uint transactionFee, bytes memory signature, bytes memory approvalData) public view returns (uint);
+     function acceptRelayedCall(
+        address relay,
+        address from,
+        bytes memory encodedFunction,
+        uint256 transactionFee,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 nonce,
+        bytes memory approvalData,
+        uint256 maxPossibleCharge
+    )
+    public
+    view
+    returns (uint256);
 
     /** this method is called before the actual relayed function call.
      * It may be used to charge the caller before (in conjuction with refunding him later in postRelayedCall for example).
