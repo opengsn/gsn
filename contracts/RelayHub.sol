@@ -212,7 +212,7 @@ contract RelayHub is IRelayHub {
             }
         }
 
-        // Verify the transaction is not being repalyed
+        // Verify the transaction is not being replayed
         if (nonces[from] != nonce) {
             return (uint256(PreconditionCheck.WrongNonce), "");
         }
@@ -319,7 +319,7 @@ contract RelayHub is IRelayHub {
             status = abi.decode(relayCallStatus, (RelayCallStatus));
         }
 
-        // We know perform the actual charge calculation, based on the measured gas used
+        // We now perform the actual charge calculation, based on the measured gas used
         uint256 charge = calculateCharge(
             getChargeableGas(initialGas - gasleft(), false),
             gasPrice,
@@ -370,13 +370,14 @@ contract RelayHub is IRelayHub {
         atomicData.balanceBefore = balances[recipient];
 
         // First preRelayedCall is executed.
-        // It is the recipient's responsability to ensure, in acceptRelayedCall, that this call will not revert.
         {
             // Note: we open a new block to avoid growing the stack too much.
             bytes memory data = abi.encodeWithSelector(
                 IRelayRecipient(recipient).preRelayedCall.selector, recipientContext
             );
 
+            // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
+            // acceptRelayedCall that this will not happen.
             (bool success, bytes memory retData) = recipient.call.gas(preRelayedCallMaxGas)(data);
 
             if (!success) {
