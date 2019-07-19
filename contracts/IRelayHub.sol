@@ -93,7 +93,7 @@ contract IRelayHub {
         uint256 nonce,
         bytes memory signature,
         bytes memory approvalData
-    ) public view returns (uint256);
+    ) public view returns (uint256 status, bytes memory recipientContext);
 
     // Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
     enum PreconditionCheck {

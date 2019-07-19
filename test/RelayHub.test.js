@@ -733,7 +733,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       const unstakeDelay = time.duration.weeks(4);
 
       const url = 'http://relay.com';
-      const fee = 10; // 10%
+      const fee = new BN('10'); // 10%
 
       beforeEach(async function () {
         await relayHub.stake(relay, unstakeDelay, { value: ether('2'), from: relayOwner });
@@ -762,6 +762,28 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other]
       context('with funded recipient', function () {
         beforeEach(async function () {
           await relayHub.depositFor(recipient.address, { value: ether('1'), from: other });
+        });
+
+        it('preRelayedCall receives values returned in acceptRelayedCall', async function () {
+          await recipient.setStoreAcceptData(true);
+          const { tx } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
+
+          const maxPossibleCharge = await relayHub.maxPossibleCharge(gasLimit, gasPrice, fee);
+
+          await expectEvent.inTransaction(tx, SampleRecipient, 'SampleRecipientPreCallWithValues', {
+            relay, from: sender, encodedFunction: txData, transactionFee: fee, gasPrice, gasLimit, nonce: senderNonce, approvalData: null, maxPossibleCharge
+          });
+        });
+
+        it('postRelayedCall receives values returned in acceptRelayedCall', async function () {
+          await recipient.setStoreAcceptData(true);
+          const { tx } = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit });
+
+          const maxPossibleCharge = await relayHub.maxPossibleCharge(gasLimit, gasPrice, fee);
+
+          await expectEvent.inTransaction(tx, SampleRecipient, 'SampleRecipientPostCallWithValues', {
+            relay, from: sender, encodedFunction: txData, transactionFee: fee, gasPrice, gasLimit, nonce: senderNonce, approvalData: null, maxPossibleCharge
+          });
         });
 
         it('relaying is aborted if the recipient returns an invalid status code', async function () {

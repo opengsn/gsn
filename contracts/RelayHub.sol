@@ -193,19 +193,21 @@ contract RelayHub is IRelayHub {
         bytes memory signature,
         bytes memory approvalData
     )
-    public view returns (uint256)
+    public view returns (uint256 status, bytes memory recipientContext)
     {
         // Verify the sender's signature on the transaction - note that approvalData is *not* signed
-        bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
-        bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
+        {
+            bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
+            bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
 
-        if (hashedMessage.toEthSignedMessageHash().recover(signature) != from) {
-            return uint256(PreconditionCheck.WrongSignature);
+            if (hashedMessage.toEthSignedMessageHash().recover(signature) != from) {
+                return (uint256(PreconditionCheck.WrongSignature), "");
+            }
         }
 
         // Verify the transaction is not being repalyed
         if (nonces[from] != nonce) {
-            return uint256(PreconditionCheck.WrongNonce);
+            return (uint256(PreconditionCheck.WrongNonce), "");
         }
 
         uint256 maxCharge = maxPossibleCharge(gasLimit, gasPrice, transactionFee);
@@ -216,16 +218,16 @@ contract RelayHub is IRelayHub {
         (bool success, bytes memory returndata) = to.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
 
         if (!success) {
-            return uint256(PreconditionCheck.AcceptRelayedCallReverted);
+            return (uint256(PreconditionCheck.AcceptRelayedCallReverted), "");
         } else {
-            uint256 accept = abi.decode(returndata, (uint256));
+            (status, recipientContext) = abi.decode(returndata, (uint256, bytes));
 
             // This can be either PreconditionCheck.OK or a custom error code
-            if ((accept == 0) || (accept > 10)) {
-                return accept;
+            if ((status == 0) || (status > 10)) {
+                return (status, recipientContext);
             } else {
                 // Error codes [1-10] are reserved to RelayHub
-                return uint256(PreconditionCheck.InvalidRecipientStatusCode);
+                return (uint256(PreconditionCheck.InvalidRecipientStatusCode), "");
             }
         }
     }
@@ -279,10 +281,12 @@ contract RelayHub is IRelayHub {
 
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
+        bytes memory recipientContext;
         {
             // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed),
             // and that the recpient will accept to be charged by it.
-            uint256 preconditionCheck = canRelay(msg.sender, from, recipient, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, signature, approvalData);
+            uint256 preconditionCheck;
+            (preconditionCheck, recipientContext) = canRelay(msg.sender, from, recipient, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, signature, approvalData);
 
             if (preconditionCheck != uint256(PreconditionCheck.OK)) {
                 emit CanRelayFailed(msg.sender, from, recipient, functionSelector, preconditionCheck);
@@ -299,8 +303,12 @@ contract RelayHub is IRelayHub {
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
-        (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, from, recipient, msg.sender, encodedFunction, transactionFee, gasLimit, initialGas));
-        RelayCallStatus status = abi.decode(relayCallStatus, (RelayCallStatus));
+        RelayCallStatus status;
+        {
+            bytes memory encodedFunctionWithFrom = abi.encodePacked(encodedFunction, from);
+            (, bytes memory relayCallStatus) = address(this).call(abi.encodeWithSelector(this.recipientCallsAtomic.selector, recipient, encodedFunctionWithFrom, transactionFee, gasLimit, initialGas, recipientContext));
+            status = abi.decode(relayCallStatus, (RelayCallStatus));
+        }
 
         // Regardless of the outcome of the relayed transaction, the recipient is now charged.
         uint256 charge = calculateCharge(gasOverhead + initialGas - gasleft(), gasPrice, transactionFee);
@@ -315,13 +323,12 @@ contract RelayHub is IRelayHub {
     }
 
     function recipientCallsAtomic(
-        address from,
         address recipient,
-        address relayAddr,
-        bytes calldata encodedFunction,
+        bytes calldata encodedFunctionWithFrom,
         uint256 transactionFee,
         uint256 gasLimit,
-        uint256 initialGas
+        uint256 initialGas,
+        bytes calldata recipientContext
     )
     external
     returns (RelayCallStatus)
@@ -343,8 +350,7 @@ contract RelayHub is IRelayHub {
         {
             // Note: we open a new block to avoid growing the stack too much.
             bytes memory data = abi.encodeWithSelector(
-                IRelayRecipient(recipient).preRelayedCall.selector,
-                relayAddr, from, encodedFunction, transactionFee
+                IRelayRecipient(recipient).preRelayedCall.selector, recipientContext
             );
 
             (bool success, bytes memory retData) = recipient.call.gas(preRelayedCallMaxGas)(data);
@@ -357,7 +363,7 @@ contract RelayHub is IRelayHub {
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
-        (bool relayedCallSuccess,) = recipient.call.gas(gasLimit)(abi.encodePacked(encodedFunction, from));
+        (bool relayedCallSuccess,) = recipient.call.gas(gasLimit)(encodedFunctionWithFrom);
 
         // Even if the relayed call fails, execution continues
 
@@ -367,7 +373,7 @@ contract RelayHub is IRelayHub {
         {
             bytes memory data = abi.encodeWithSelector(
                 IRelayRecipient(recipient).postRelayedCall.selector,
-                relayAddr, from, encodedFunction, relayedCallSuccess, gasUsed, transactionFee, preReturnValue
+                recipientContext, relayedCallSuccess, gasUsed, preReturnValue
             );
 
             (bool successPost,) = recipient.call.gas(postRelayedCallMaxGas)(data);

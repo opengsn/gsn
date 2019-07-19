@@ -26,6 +26,8 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     bool public returnInvalidErrorCode;
 
+    bool public storeAcceptData;
+
     constructor(IRelayHub rhub) public {
         setRelayHub(rhub);
     }
@@ -78,6 +80,10 @@ contract SampleRecipient is RelayRecipient, Ownable {
         rejectAcceptRelayCall = val;
     }
 
+    function setStoreAcceptData(bool val) public {
+        storeAcceptData = val;
+    }
+
     function() external payable {}
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin);
@@ -104,7 +110,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
         blacklisted = addr;
     }
 
-    function acceptRelayedCall(address relay, address from, bytes memory /*encodedFunction*/, uint256 /*transactionFee*/, uint256 /*gasPrice*/, uint256 /*gasLimit*/, uint256 /*nonce*/, bytes memory approvalData, uint256 /*maxPossibleCharge*/) public view returns (uint256) {
+    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approvalData, uint256 maxPossibleCharge) public view returns (uint256, bytes memory) {
         // The factory accepts relayed transactions from anyone, so we whitelist our own relays to prevent abuse.
         // This protection only makes sense for contracts accepting anonymous calls, and therefore not used by Gatekeeper or Multisig.
         // May be protected by a user_credits map managed by a captcha-protected web app or association with a google account.
@@ -115,24 +121,25 @@ contract SampleRecipient is RelayRecipient, Ownable {
             (success,ret) = address(this).staticcall(abi.encodeWithSelector(this.infiniteLoop.selector));
         }
 
-        if ( returnInvalidErrorCode ) return 10;
+        if ( returnInvalidErrorCode ) return (10, "");
 
-        if ( relaysWhitelist[relay] ) return 0;
-        if (from == blacklisted) return 11;
-        if ( rejectAcceptRelayCall ) return 12;
+        if ( relaysWhitelist[relay] ) return (0, "");
+        if (from == blacklisted) return (11, "");
+        if ( rejectAcceptRelayCall ) return (12, "");
 
         // this is an example of how the dapp can provide an offchain signature to a transaction
-        if (approvalData.length == 0) {
-            // No owner signature given - proceed as usual (for existing tests)
-            return 0;
+        if (approvalData.length > 0) {
+            // extract owner sig from all signature bytes
+            if (keccak256(abi.encodePacked("I approve", from)).toEthSignedMessageHash().recover(approvalData) != owner()) {
+                return (13, "");
+            }
         }
 
-        // extract owner sig from all signature bytes
-        if (keccak256(abi.encodePacked("I approve", from)).toEthSignedMessageHash().recover(approvalData) != owner()) {
-            return 13;
+        if (storeAcceptData) {
+            return (0, abi.encode(relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleCharge));
+        } else {
+            return (0, "");
         }
-
-        return 0;
     }
 
     function infiniteLoop() pure external{
@@ -143,13 +150,20 @@ contract SampleRecipient is RelayRecipient, Ownable {
     }
 
     event SampleRecipientPreCall();
+    event SampleRecipientPreCallWithValues(address relay, address from, bytes encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes approvalData, uint256 maxPossibleCharge);
 
-    function preRelayedCall(address /*relay*/, address /*from*/, bytes memory /*encodedFunction*/, uint /*transactionFee*/) public returns (bytes32) {
+    function preRelayedCall(bytes memory context) public returns (bytes32) {
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
         }
 
         emit SampleRecipientPreCall();
+
+        if (storeAcceptData) {
+            (address relay, address from, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approvalData, uint256 maxPossibleCharge) =
+                abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, bytes, uint256));
+            emit SampleRecipientPreCallWithValues(relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleCharge);
+        }
 
         if (revertPreRelayCall){
             revert("You asked me to revert, remember?");
@@ -157,14 +171,22 @@ contract SampleRecipient is RelayRecipient, Ownable {
         return bytes32(uint(123456));
     }
 
-    event SampleRecipientPostCall(uint usedGas, bytes32 preRetVal);
+    event SampleRecipientPostCall(bool success, uint usedGas, bytes32 preRetVal);
+    event SampleRecipientPostCallWithValues(address relay, address from, bytes encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes approvalData, uint256 maxPossibleCharge);
 
-    function postRelayedCall(address /*relay*/ , address /*from*/, bytes memory /*encodedFunction*/, bool /*success*/, uint usedGas, uint transactionFee, bytes32 preRetVal) public {
+    function postRelayedCall(bytes memory context, bool success, uint usedGas, bytes32 preRetVal) public {
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
 
-        emit SampleRecipientPostCall(usedGas * tx.gasprice * (transactionFee +100)/100, preRetVal);
+        if (storeAcceptData) {
+            (address relay, address from, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approvalData, uint256 maxPossibleCharge) =
+                abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, bytes, uint256));
+            emit SampleRecipientPostCallWithValues(relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleCharge);
+        }
+
+        uint256 transactionFee = 10;
+        emit SampleRecipientPostCall(success, usedGas * tx.gasprice * (transactionFee +100)/100, preRetVal);
 
         if (revertPostRelayCall){
             revert("You asked me to revert, remember?");
