@@ -208,8 +208,9 @@ contract RelayHub is IRelayHub {
             return uint256(PreconditionCheck.WrongNonce);
         }
 
+        uint256 maxCharge = maxPossibleCharge(gasLimit, gasPrice, transactionFee);
         bytes memory encodedTx = abi.encodeWithSelector(IRelayRecipient(to).acceptRelayedCall.selector,
-            relay, from, encodedFunction, gasPrice, transactionFee, signature, approvalData
+            relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxCharge
         );
 
         (bool success, bytes memory returndata) = to.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
