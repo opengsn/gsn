@@ -110,7 +110,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
         blacklisted = addr;
     }
 
-    function acceptRelayedCall(address relay, address from, bytes memory encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes memory approvalData, uint256 maxPossibleCharge) public view returns (uint256, bytes memory) {
+    function acceptRelayedCall(address relay, address from, bytes calldata encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes calldata approvalData, uint256 maxPossibleCharge) external view returns (uint256, bytes memory) {
         // The factory accepts relayed transactions from anyone, so we whitelist our own relays to prevent abuse.
         // This protection only makes sense for contracts accepting anonymous calls, and therefore not used by Gatekeeper or Multisig.
         // May be protected by a user_credits map managed by a captcha-protected web app or association with a google account.
@@ -152,7 +152,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     event SampleRecipientPreCall();
     event SampleRecipientPreCallWithValues(address relay, address from, bytes encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes approvalData, uint256 maxPossibleCharge);
 
-    function preRelayedCall(bytes memory context) public returns (bytes32) {
+    function preRelayedCall(bytes calldata context) external returns (bytes32) {
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
         }
@@ -174,7 +174,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
     event SampleRecipientPostCallWithValues(address relay, address from, bytes encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes approvalData, uint256 maxPossibleCharge);
 
-    function postRelayedCall(bytes memory context, bool success, uint actualCharge, bytes32 preRetVal) public {
+    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) external {
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
