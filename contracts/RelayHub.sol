@@ -280,7 +280,7 @@ contract RelayHub is IRelayHub {
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
-        require(SafeMath.sub(initialGas, gasLimit) >= gasReserve, "Not enough gasleft()");
+        require(initialGas >= SafeMath.sub(requiredGas(gasLimit), gasOverhead), "Not enough gasleft()");
 
         // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
         // for the maximum possible charge.
