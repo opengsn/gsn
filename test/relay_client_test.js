@@ -435,7 +435,7 @@ contract('RelayClient', function (accounts) {
             assert.ok(false,"didn't reach sendViaRelay")
         } catch ( e) {
             assert.ok(e.otherErrors, e)
-            assert.equal( e.otherErrors[0].message, "relayFee=11" );
+            assert.equal( e.otherErrors[0].message, "relayFee=12" );
         }
     })
 

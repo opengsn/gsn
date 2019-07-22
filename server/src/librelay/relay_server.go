@@ -696,14 +696,11 @@ func (relay *RelayServer) pollNonce() (nonce uint64, err error) {
 		return
 	}
 
-	//log.Println("Nonce is", nonce)
-
 	if lastNonce <= nonce {
 		lastNonce = nonce
 	} else {
 		nonce = lastNonce
 	}
-	//log.Println("lastNonce is", lastNonce)
 	return
 }
 
