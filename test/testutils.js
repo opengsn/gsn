@@ -32,6 +32,9 @@ module.exports = {
         if (options.GasPricePercent) {
             args.push("-GasPricePercent", options.GasPricePercent)
         }
+        if (options.txfee) {
+            args.push("-Fee", options.txfee)
+        }
         let proc = child_process.spawn(server, args)
 
         let relaylog = function () {
