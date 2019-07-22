@@ -152,7 +152,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     event SampleRecipientPreCall();
     event SampleRecipientPreCallWithValues(address relay, address from, bytes encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes approvalData, uint256 maxPossibleCharge);
 
-    function preRelayedCall(bytes calldata context) external returns (bytes32) {
+    function preRelayedCall(bytes calldata context) relayHubOnly external returns (bytes32) {
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
         }
@@ -174,7 +174,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
     event SampleRecipientPostCallWithValues(address relay, address from, bytes encodedFunction, uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, bytes approvalData, uint256 maxPossibleCharge);
 
-    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) external {
+    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) relayHubOnly external {
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
