@@ -15,3 +15,4 @@ tabookey-gasless-*.tgz
 /coverage/
 /coverage.json
 /artifacts/
+/webtools/tabookey-webtools.pack.js

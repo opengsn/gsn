@@ -47,6 +47,14 @@ contract IRelayRecipient {
     view
     returns (uint256, bytes memory);
 
+    /*
+     * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
+     */
+    modifier relayHubOnly() {
+        require(msg.sender == getHubAddr(),"Function can only be called by RelayHub");
+        _;
+    }
+
     /** this method is called before the actual relayed function call.
      * It may be used to charge the caller before (in conjuction with refunding him later in postRelayedCall for example).
      * the method is given all parameters of acceptRelayedCall and actual used gas.

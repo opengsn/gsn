@@ -16,6 +16,7 @@ const localhostOne = "http://localhost:8090"
 const testutils = require('./testutils')
 const register_new_relay = testutils.register_new_relay;
 const increaseTime = testutils.increaseTime;
+const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect;
 
 const Big = require( 'big.js')
 
@@ -177,6 +178,23 @@ contract('RelayClient', function (accounts) {
         }
     });
 
+    it("should revert calls to preRelayedCall from non RelayHub address", async function () {
+        try {
+            await sr.preRelayedCall(Buffer.from(""),{from:accounts[1]});
+            assert.fail();
+        } catch (error) {
+            assertErrorMessageCorrect(error, "Function can only be called by RelayHub")
+        }
+    });
+
+    it("should revert calls to postRelayedCall from non RelayHub address", async function () {
+        try {
+            await sr.postRelayedCall(Buffer.from(""),true,0,Buffer.from(""));
+            assert.fail();
+        } catch (error) {
+            assertErrorMessageCorrect(error, "Function can only be called by RelayHub")
+        }
+    });
 
     it("should relay transparently", async () => {
 
@@ -417,7 +435,7 @@ contract('RelayClient', function (accounts) {
             assert.ok(false,"didn't reach sendViaRelay")
         } catch ( e) {
             assert.ok(e.otherErrors, e)
-            assert.equal( e.otherErrors[0].message, "relayFee=11" );
+            assert.equal( e.otherErrors[0].message, "relayFee=12" );
         }
     })
 

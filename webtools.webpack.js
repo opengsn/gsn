@@ -9,7 +9,7 @@ module.exports = {
   entry: './src/js/webtools/webtools.js',
   mode: 'development',
   output: {
-    path: path.resolve(__dirname, 'build/dist'),
+    path: path.resolve(__dirname, 'webtools'),
     filename: 'tabookey-webtools.pack.js'
   }
 };

@@ -59,7 +59,8 @@ class RelayManager {
 
         console.log("relay addr=", relayaddr, "ready=", resp.Ready, "hub=", this.hub.address)
 
-        let currentOwner = await promisify(this.hub.ownerOf)(relayaddr)
+        let relayInfo = await promisify(this.hub.getRelay)(relayaddr)
+        let currentOwner = relayInfo[3]
         if (currentOwner == '0x') {
             this.log("unable to check relay - check if hub is deployed at that address")
             return
@@ -78,7 +79,7 @@ class RelayManager {
         let balance = (await promisify(web3.eth.getBalance)(relayaddr)) / 1e18
         this.log("current balance=", balance)
 
-        let stake = (await promisify(this.hub.stakeOf)(relayaddr)) / 1e18
+        let stake = relayInfo[0] / 1e18
         this.log("current stake=", stake)
 
         if (newStake) {
