@@ -144,7 +144,7 @@ type RelayServer struct {
 	EthereumNodeURL       string
 	gasPrice              *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
 	Client                IClient
-	ChainID               *big.Int
+	chainID               *big.Int
 	TxStore               txstore.ITxStore
 	rhub                  *librelay.IRelayHub
 	clock                 clock.Clock
@@ -185,11 +185,6 @@ func NewRelayServer(
 		return nil, err
 	}
 
-	chainId, err := Client.NetworkID(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
 	if clk == nil {
 		clk = clock.NewClock()
 	}
@@ -209,12 +204,26 @@ func NewRelayServer(
 		RegistrationBlockRate: RegistrationBlockRate,
 		EthereumNodeURL:       EthereumNodeURL,
 		Client:                Client,
-		ChainID:               chainId,
 		TxStore:               TxStore,
 		rhub:                  rhub,
 		clock:                 clk,
 	}
 	return relay, err
+}
+
+func (relay *RelayServer) ChainID() (chainID *big.Int, err error) {
+	if relay.chainID != nil {
+		return relay.chainID, nil
+	}
+
+	chainID, err = relay.Client.NetworkID(context.Background())
+	if err != nil {
+		log.Println("ChainID() failed", err)
+		return
+	}
+
+	relay.chainID = chainID
+	return
 }
 
 func (relay *RelayServer) Balance() (balance *big.Int, err error) {
@@ -495,7 +504,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	log.Println("Estimated max charge of relayed tx:",maxCharge, "GasLimit of relayed tx:",requiredGas)
+	log.Println("Estimated max charge of relayed tx:", maxCharge, "GasLimit of relayed tx:", requiredGas)
 
 	signedTx, err = relay.sendDataTransaction(
 		fmt.Sprintf("Relay(from=%s, to=%s)", request.From.Hex(), request.To.Hex()),
@@ -583,7 +592,13 @@ func (relay *RelayServer) sendPlainTransaction(desc string, to common.Address, v
 
 	tx := types.NewTransaction(nonce, to, value, gasLimit, gasPrice, data)
 
-	signedTx, err = types.SignTx(tx, types.NewEIP155Signer(relay.ChainID), relay.PrivateKey)
+	chainID, err := relay.ChainID()
+	if err != nil {
+		log.Println(desc, "error getting chain id:", err)
+		return
+	}
+
+	signedTx, err = types.SignTx(tx, types.NewEIP155Signer(chainID), relay.PrivateKey)
 	if err != nil {
 		log.Println(desc, "error signing tx:", err)
 		return
@@ -652,9 +667,15 @@ func (relay *RelayServer) resendTransaction(tx *types.Transaction) (signedTx *ty
 		newGasPrice.SetUint64(maxGasPrice)
 	}
 
+	// Grab chain ID
+	chainID, err := relay.ChainID()
+	if err != nil {
+		return
+	}
+
 	// Resend transaction with exactly the same values except for gas price
 	newTx := types.NewTransaction(tx.Nonce(), *tx.To(), tx.Value(), tx.Gas(), newGasPrice, tx.Data())
-	signedTx, err = types.SignTx(newTx, types.NewEIP155Signer(relay.ChainID), relay.PrivateKey)
+	signedTx, err = types.SignTx(newTx, types.NewEIP155Signer(chainID), relay.PrivateKey)
 	if err != nil {
 		log.Println("ResendTransaction: error signing tx", err)
 		return
