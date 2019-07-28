@@ -9,6 +9,9 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 contract RelayHub is IRelayHub {
+
+    string constant commitId = "$Id$";
+
     using ECDSA for bytes32;
 
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
