@@ -225,6 +225,10 @@ func (relay *RelayServer) ChainID() (chainID *big.Int, err error) {
 		return
 	}
 
+	if relay.DevMode && chainID.Int64() < 1000 {
+		log.Fatalf("Cowardly refusing to connect to chain with ID=%s in DevMode. Only chains with ID 1000 or higher are supported for dev mode to prevent the relay from being accidentally penalized.", chainID.String())
+	}
+
 	relay.chainID = chainID
 	return
 }
