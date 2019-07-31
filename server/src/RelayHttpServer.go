@@ -171,6 +171,8 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseCommandLine() (relayParams librelay.RelayParams) {
+	var devMode = false
+
 	ownerAddress := flag.String("OwnerAddress", common.HexToAddress("0").Hex(), "Relay's owner address")
 	fee := flag.Int64("Fee", 70, "Relay's per transaction fee")
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
@@ -185,6 +187,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
 	flag.BoolVar(&shortSleep, "ShortSleep", false, "Whether we wait after calls to blockchain or return (almost) immediately")
+	flag.BoolVar(&devMode, "DevMode", false, "Enable developer mode (do not retry unconfirmed txs, do not cache account nonce)")
 
 	flag.Parse()
 
@@ -210,12 +213,18 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayParams.RegistrationBlockRate = *registrationBlockRate
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 	relayParams.DBFile = filepath.Join(*workdir, "db")
+	relayParams.DevMode = devMode
 
 	KeystoreDir = filepath.Join(*workdir, "keystore")
 
 	log.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
 	log.Println("Using workdir: " + *workdir)
-	log.Println("shortsleep? ", shortSleep)
+	if shortSleep {
+		log.Println("Using short sleep")
+	}
+	if devMode {
+		log.Println("Using dev mode")
+	}
 
 	return relayParams
 
@@ -240,7 +249,7 @@ func configRelay(relayParams librelay.RelayParams) {
 		relayParams.RelayHubAddress, relayParams.StakeAmount,
 		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
-		client, txStore, nil)
+		client, txStore, nil, relayParams.DevMode)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
 		return
