@@ -23,7 +23,7 @@ const VERSION = "0.4.0"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
-var shortSleep bool                                               // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
+var devMode bool                                                  // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
 var ready = false
 var removed = false
@@ -51,7 +51,7 @@ func main() {
 	http.HandleFunc("/getaddr", getEthAddrHandler)
 
 	timeUnit = time.Minute
-	if shortSleep {
+	if devMode {
 		timeUnit = 100 * time.Millisecond
 	}
 	stopKeepAlive = schedule(keepAlive, 60*timeUnit, 0)
@@ -171,8 +171,6 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseCommandLine() (relayParams librelay.RelayParams) {
-	var devMode = false
-
 	ownerAddress := flag.String("OwnerAddress", common.HexToAddress("0").Hex(), "Relay's owner address")
 	fee := flag.Int64("Fee", 70, "Relay's per transaction fee")
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
@@ -186,8 +184,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	registrationBlockRate := flag.Uint64("RegistrationBlockRate", 5800, "Relay registeration rate (in blocks)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
-	flag.BoolVar(&shortSleep, "ShortSleep", false, "Whether we wait after calls to blockchain or return (almost) immediately")
-	flag.BoolVar(&devMode, "DevMode", false, "Enable developer mode (do not retry unconfirmed txs, do not cache account nonce)")
+	flag.BoolVar(&devMode, "DevMode", false, "Enable developer mode (do not retry unconfirmed txs, do not cache account nonce, do not wait after calls to the chain, faster polling)")
 
 	flag.Parse()
 
@@ -219,9 +216,6 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 
 	log.Println("Using RelayHub address: " + relayParams.RelayHubAddress.String())
 	log.Println("Using workdir: " + *workdir)
-	if shortSleep {
-		log.Println("Using short sleep")
-	}
 	if devMode {
 		log.Println("Using dev mode")
 	}
@@ -269,7 +263,7 @@ func refreshBlockchainView() {
 			log.Println(err)
 		}
 		ready = false
-		sleep(15*time.Second, shortSleep)
+		sleep(15*time.Second, devMode)
 	}
 
 	for err := relay.RefreshGasPrice(); err != nil; err = relay.RefreshGasPrice() {
@@ -277,7 +271,7 @@ func refreshBlockchainView() {
 			log.Println(err)
 		}
 		ready = false
-		sleep(10*time.Second, shortSleep)
+		sleep(10*time.Second, devMode)
 
 	}
 	gasPrice := relay.GasPrice()
@@ -312,7 +306,7 @@ func waitForOwnerActions() {
 		}
 		ready = false
 		log.Println("Waiting for stake...")
-		sleep(5*time.Second, shortSleep)
+		sleep(5*time.Second, devMode)
 	}
 
 	// wait for funding
@@ -324,7 +318,7 @@ func waitForOwnerActions() {
 	for ; err != nil || balance.Uint64() <= minimumRelayBalance; balance, err = relay.Balance() {
 		ready = false
 		log.Println("Server's balance too low. Waiting for funding...")
-		sleep(10*time.Second, shortSleep)
+		sleep(10*time.Second, devMode)
 	}
 	log.Println("Relay funded. Balance:", balance)
 }
@@ -351,7 +345,7 @@ func keepAlive() {
 		}
 		log.Println(err)
 		log.Println("Trying to register again...")
-		sleep(1*time.Minute, shortSleep)
+		sleep(1*time.Minute, devMode)
 	}
 	log.Println("Done registering")
 }
@@ -381,13 +375,13 @@ func shutdownOnRelayUnstaked() {
 	if removed {
 		log.Println("Relay removed. Listening to Unstaked event")
 		log.Println("Relay unstaked. Sending balance back to owner")
-		sleep(2*time.Minute, shortSleep)
+		sleep(2*time.Minute, devMode)
 		for {
 			err = relay.SendBalanceToOwner()
 			if err == nil {
 				break
 			}
-			sleep(5*time.Second, shortSleep)
+			sleep(5*time.Second, devMode)
 		}
 		server.Close()
 	}
