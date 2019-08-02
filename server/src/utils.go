@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func IsEmpty(name string) (bool) {
+func IsEmpty(name string) bool {
 	f, err := os.Open(name)
 	if err != nil {
 		return true
@@ -68,7 +68,6 @@ func loadPrivateKey(keystoreDir string) *ecdsa.PrivateKey {
 	return keyWrapper.PrivateKey
 }
 
-
 func schedule(job func(), delay time.Duration, when time.Duration) chan bool {
 
 	stop := make(chan bool)
@@ -90,8 +89,8 @@ func schedule(job func(), delay time.Duration, when time.Duration) chan bool {
 
 func sleep(duration time.Duration, shortSleep bool) {
 	if shortSleep {
-		time.Sleep(100*time.Millisecond)
-	}else {
+		time.Sleep(time.Second)
+	} else {
 		time.Sleep(duration)
 	}
 }

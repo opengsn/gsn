@@ -52,7 +52,7 @@ func main() {
 
 	timeUnit = time.Minute
 	if devMode {
-		timeUnit = 100 * time.Millisecond
+		timeUnit = time.Second
 	}
 	stopKeepAlive = schedule(keepAlive, 60*timeUnit, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
