@@ -194,7 +194,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     function withdrawAllBalance() private returns (uint256) {
         uint256 balance = getRelayHub().balanceOf(address(this));
-        getRelayHub().withdraw(balance);
+        getRelayHub().withdraw(balance, address(this));
         return balance;
     }
 }
