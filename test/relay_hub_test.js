@@ -660,7 +660,7 @@ contract("RelayHub", function (accounts) {
             /**/
             let relay_recipient_balance_before = await rhub.balanceOf(sr.address)
             if (relay_recipient_balance_before.toString() == 0) {
-                let deposit = 100000000;
+                let deposit = 1000000000;
                 await sr.deposit({value: deposit});
             }
             relay_recipient_balance_before = await rhub.balanceOf(sr.address)
