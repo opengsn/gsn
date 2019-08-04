@@ -172,14 +172,14 @@ contract RelayHub is IRelayHub {
      * note that while everyone can `depositFor()` a contract, only
      * the contract itself can withdraw its funds.
      */
-    function withdraw(uint256 amount) public {
+    function withdraw(uint256 amount, address payable dest) public {
         address payable account = msg.sender;
         require(balances[account] >= amount, "insufficient funds");
 
         balances[account] -= amount;
-        account.transfer(amount);
+        dest.transfer(amount);
 
-        emit Withdrawn(account, amount);
+        emit Withdrawn(account, dest, amount);
     }
 
     function getNonce(address from) view external returns (uint256) {
