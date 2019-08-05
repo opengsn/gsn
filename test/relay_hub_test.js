@@ -348,6 +348,8 @@ contract("RelayHub", function (accounts) {
 
     it("should not accept relay requests if destination recipient doesn't have a balance to pay for it", async function () {
         await sr.withdraw();
+        let maxPossibleCharge = (await rhub.maxPossibleCharge(gas_limit, gas_price, transaction_fee)).toNumber();
+        await sr.deposit({value: maxPossibleCharge - 1});
         try {
             await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, '0x', {
                 from: relayAccount,
@@ -358,6 +360,8 @@ contract("RelayHub", function (accounts) {
         } catch (error) {
             assertErrorMessageCorrect(error, "Recipient balance too low")
         }
+        // Adding deposit for future tests
+        await sr.deposit({value: 10*maxPossibleCharge});
     });
 
 
@@ -659,10 +663,6 @@ contract("RelayHub", function (accounts) {
             }
             /**/
             let relay_recipient_balance_before = await rhub.balanceOf(sr.address)
-            if (relay_recipient_balance_before.toString() == 0) {
-                let deposit = 100000000;
-                await sr.deposit({value: deposit});
-            }
             relay_recipient_balance_before = await rhub.balanceOf(sr.address)
             let relay_balance_before = new Big(await web3.eth.getBalance(relayAccount));
             let r = await rhub.getRelay(relayAccount)

@@ -37,8 +37,7 @@ $(ETHFILE): Makefile
 gen-file: $(GEN_FILE) Makefile
 
 $(RELAYHUB_BIN): ../contracts/IRelayHub.sol ../contracts/RelayHub.sol ../contracts/SampleRecipient.sol
-	cd ../
-	npx truffle compile
+	cd ../ && npx truffle compile
 	mkdir -p $(buildpath)/contracts
 	./scripts/get_abi_bin.js
 
