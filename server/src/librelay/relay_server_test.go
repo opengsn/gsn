@@ -170,12 +170,13 @@ func NewRelay(relayHubAddress common.Address) {
 	registrationBlockRate := uint64(5)
 	clk = fakeclock.NewFakeClock(time.Now())
 	txStore := txstore.NewMemoryTxStore(clk)
+	devMode := false
 	var err error
 	relay.RelayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
 		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
 		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,
-		ethereumNodeURL, client, txStore, clk)
+		ethereumNodeURL, client, txStore, clk, devMode)
 	if err != nil {
 		log.Fatalln("Relay was not created", err)
 	}
@@ -316,7 +317,7 @@ func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature st
 
 	return RelayTransactionRequest{
 		EncodedFunction: txb,
-		ApprovalData:		 common.Hex2Bytes(""),
+		ApprovalData:    common.Hex2Bytes(""),
 		Signature:       common.Hex2Bytes(signature),
 		From:            addressGasless,
 		To:              sampleRecipient,
@@ -476,4 +477,31 @@ func TestMultipleRelayTransactions(t *testing.T) {
 	if noTx != nil || err != nil {
 		t.Errorf("Expected tx store to be empty but found %v (error %v)", noTx, err)
 	}
+}
+
+func TestReuseNonceOnDevMode(t *testing.T) {
+	test.ErrFail(relay.TxStore.Clear(), t)
+	request := newRelayTransactionRequest(t, 5, "0x55a42b75dd3b8ef3c02df9458b55916dc2a271df754d4eb2f30a5e5bd834b7477057a3ee98932bc7b3d6ebf19e72f8c2040305deb9162b488ac2245815b94bb71b")
+
+	// Relay a tx
+	snapshotID, err := client.Snapshot()
+	test.ErrFailWithDesc(err, t, "Creating snapshot")
+	signedTx1, err := relay.CreateRelayTransaction(request)
+	assertTransactionRelayed(t, signedTx1.Hash())
+
+	// Revert blockchain state and resend it, failing with "the tx doesn't have the correct nonce"
+	test.ErrFailWithDesc(client.Revert(snapshotID), t, "Restoring snapshot")
+	noTx, err := relay.CreateRelayTransaction(request)
+	if noTx != nil || err == nil {
+		t.Errorf("Expected relay operation to fail due to nonce")
+	}
+
+	// Disable nonce cache and retry successfully
+	relay.DevMode = true
+	signedTx2, err := relay.CreateRelayTransaction(request)
+	test.ErrFailWithDesc(err, t, "Sending tx with old nonce on dev mode")
+	assertTransactionRelayed(t, signedTx2.Hash())
+
+	// Clean up for the next test
+	relay.DevMode = false
 }

@@ -148,6 +148,7 @@ type RelayServer struct {
 	TxStore               txstore.ITxStore
 	rhub                  *librelay.IRelayHub
 	clock                 clock.Clock
+	DevMode               bool
 }
 
 type RelayParams struct {
@@ -178,7 +179,8 @@ func NewRelayServer(
 	EthereumNodeURL string,
 	Client IClient,
 	TxStore txstore.ITxStore,
-	clk clock.Clock) (*RelayServer, error) {
+	clk clock.Clock,
+	DevMode bool) (*RelayServer, error) {
 
 	rhub, err := librelay.NewIRelayHub(RelayHubAddress, Client)
 	if err != nil {
@@ -207,6 +209,7 @@ func NewRelayServer(
 		TxStore:               TxStore,
 		rhub:                  rhub,
 		clock:                 clk,
+		DevMode:               DevMode,
 	}
 	return relay, err
 }
@@ -220,6 +223,10 @@ func (relay *RelayServer) ChainID() (chainID *big.Int, err error) {
 	if err != nil {
 		log.Println("ChainID() failed", err)
 		return
+	}
+
+	if relay.DevMode && chainID.Int64() < 1000 {
+		log.Fatalf("Cowardly refusing to connect to chain with ID=%s in DevMode. Only chains with ID 1000 or higher are supported for dev mode to prevent the relay from being accidentally penalized.", chainID.String())
 	}
 
 	relay.chainID = chainID
@@ -717,7 +724,8 @@ func (relay *RelayServer) pollNonce() (nonce uint64, err error) {
 		return
 	}
 
-	if lastNonce <= nonce {
+	// Always overwrite nonce cache if on dev mode
+	if relay.DevMode || lastNonce <= nonce {
 		lastNonce = nonce
 	} else {
 		nonce = lastNonce
@@ -729,6 +737,10 @@ const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 // 5 minutes
 
 func (relay *RelayServer) UpdateUnconfirmedTransactions() (newTx *types.Transaction, err error) {
+	if relay.DevMode {
+		return nil, nil
+	}
+
 	// Load unconfirmed transactions from store, and bail if there are none
 	tx, err := relay.TxStore.GetFirstTransaction()
 	if err != nil {
