@@ -287,7 +287,7 @@ contract RelayHub is IRelayHub {
 
         // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
         // for the maximum possible charge.
-        require(gasPrice * initialGas <= balances[recipient], "Recipient balance too low");
+        require(maxPossibleCharge(gasLimit, gasPrice, transactionFee) <= balances[recipient], "Recipient balance too low");
 
         bytes4 functionSelector = LibBytes.readBytes4(encodedFunction, 0);
 
