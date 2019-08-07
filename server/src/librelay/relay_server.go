@@ -392,7 +392,7 @@ func (relay *RelayServer) SendBalanceToOwner() (err error) {
 		log.Println(err)
 		return
 	}
-	if balance.Uint64() == 0 {
+	if balance.Cmp(big.NewInt(0)) == 0 {
 		log.Println("SendBalanceToOwner: balance is 0")
 		return
 	}
@@ -405,8 +405,9 @@ func (relay *RelayServer) SendBalanceToOwner() (err error) {
 		log.Println(err)
 		return
 	}
-	cost := gasPrice.Uint64() * gasLimit
-	value := big.NewInt(int64(balance.Uint64() - cost))
+	cost := big.NewInt(int64(gasPrice.Uint64() * gasLimit))
+	value := big.NewInt(0)
+	value.Sub(balance, cost)
 
 	tx, err := relay.sendPlainTransaction(
 		fmt.Sprintf("SendBalanceToOwner(to=%s)", relay.OwnerAddress.Hex()),
