@@ -2,6 +2,7 @@
 pwd=$(shell pwd)
 buildpath=$(pwd)/../build/server
 server_exe=$(buildpath)/bin/RelayHttpServer
+platforms=linux/amd64 windows/amd64 darwin/amd64 linux/386 windows/386
 export GOPATH=$(pwd):$(buildpath)
 
 server: $(server_exe)
@@ -20,7 +21,7 @@ TRUFFLE_OUT_REC=$(buildpath)/../contracts/SampleRecipient.json
 $(server_exe): $(GEN_FILE) $(GEN_FILE_REC) go-get $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
 	echo "Using GOPATH=$(GOPATH)"
 	mkdir -p $(buildpath)/bin
-	go build -o $(server_exe) src/RelayHttpServer.go src/utils.go
+	go build -o $(server_exe) relay
 	strip $(server_exe)
 
 go-get: $(GEN_FILE) $(ETHFILE)
@@ -56,3 +57,11 @@ $(GEN_FILE_REC): ../contracts/SampleRecipient.sol $(TRUFFLE_OUT_REC)
 test: server
 	@scripts/test.sh
 
+go-get-xgo:
+	go get github.com/karalabe/xgo
+
+release-binaries: $(server_exe) go-get-xgo
+	mkdir -p ./build/xgo
+	go run github.com/karalabe/xgo -out='build/xgo/gsn-relay' --targets='$(platforms)' -v ./src/relay
+	mv -f ./build/xgo/* $(buildpath)/bin/
+	rm -rf ./build/xgo
