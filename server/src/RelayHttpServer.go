@@ -37,7 +37,7 @@ var stopListeningToRelayRemoved chan bool
 
 var timeUnit time.Duration
 
-const minimumRelayBalance = 0.1 * params.Ether
+var minimumRelayBalance = big.NewInt(1e17) // 0.1 eth
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -89,13 +89,13 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 			return
 		}
-		if balance.Uint64() == 0 {
+		if balance.Cmp(big.NewInt(0)) == 0 {
 			err = fmt.Errorf("Waiting for funding...")
 			log.Println(err)
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 			return
 		}
-		log.Println("Relay balance:", balance.Uint64())
+		log.Println("Relay balance:", balance.String())
 
 		gasPrice := relay.GasPrice()
 		if gasPrice.Uint64() == 0 {
@@ -315,9 +315,9 @@ func waitForOwnerActions() {
 		log.Println(err)
 		return
 	}
-	for ; err != nil || balance.Uint64() <= minimumRelayBalance; balance, err = relay.Balance() {
+	for ; err != nil || balance.Cmp(minimumRelayBalance) <= 0; balance, err = relay.Balance() {
 		ready = false
-		log.Println("Server's balance too low. Waiting for funding...")
+		log.Printf("Server's balance too low (%s, required %s). Waiting for funding...", balance.String(), minimumRelayBalance.String())
 		sleep(10*time.Second, devMode)
 	}
 	log.Println("Relay funded. Balance:", balance)
