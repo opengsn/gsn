@@ -21,7 +21,7 @@ import (
 
 const VERSION = "0.4.0"
 
-var KeystoreDir = filepath.Join(os.Getenv("PWD"), "build/server/keystore")
+var KeystoreDir = filepath.Join(os.Getenv("PWD"), "data/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
 var devMode bool                                                  // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
@@ -183,7 +183,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	registrationBlockRate := flag.Uint64("RegistrationBlockRate", 5800, "Relay registeration rate (in blocks)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
-	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "build/server"), "The relay server's workdir")
+	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "data"), "The relay server's workdir")
 	flag.BoolVar(&devMode, "DevMode", false, "Enable developer mode (do not retry unconfirmed txs, do not cache account nonce, do not wait after calls to the chain, faster polling)")
 
 	flag.Parse()
