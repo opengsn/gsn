@@ -33,7 +33,13 @@ class RelayProvider {
     send(payload, callback) {
 
         if (!this.skipRelay(payload)) {
-            if (payload.method == 'eth_sendTransaction') {
+            if (payload.method == 'eth_sendRawTransaction') {
+                if (this.relayOptions.verbose)
+                    console.log("calling sendAsync" + JSON.stringify(payload))
+                this.relayClient.runRelay(payload, callback)
+                return
+
+            } else if (payload.method == 'eth_sendTransaction') {
                 if (this.relayOptions.verbose)
                     console.log("calling sendAsync" + JSON.stringify(payload))
                 this.relayClient.runRelay(payload, callback)
