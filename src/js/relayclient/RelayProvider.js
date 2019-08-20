@@ -1,6 +1,6 @@
 const Web3 = require( 'web3')
 const RelayClient = require('./RelayClient')
-const txDecoder = require('ethereum-tx-decoder');
+const ethers = require('ethers')
 
 class RelayProvider {
 
@@ -35,15 +35,19 @@ class RelayProvider {
 
         if (!this.skipRelay(payload)) {
             if (payload.method == 'eth_sendRawTransaction') {
-                if (this.relayOptions.verbose)
+
+                const params = ethers.utils.parseTransaction(payload.params[0])
+
+                if (this.relayOptions.verbose) {
+
                     console.log("calling sendAsync" + JSON.stringify(payload))
-                
-                const rawPayload = txDecoder.decodeTx(payload.params[0])
-                
+                    console.log('transaction', params)
+                }
+
                 payload.params = [
-                    rawPayload
-                ];
-                
+                    params
+                ]
+
                 this.relayClient.runRelay(payload, callback)
                 return
 
