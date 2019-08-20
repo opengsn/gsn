@@ -44,6 +44,9 @@ class RelayProvider {
                     console.log('transaction', params)
                 }
 
+                params.gas = params.gasLimit
+                delete params.gasLimit
+
                 payload.params = [
                     params
                 ]
