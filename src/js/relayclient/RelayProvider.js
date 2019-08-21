@@ -44,9 +44,9 @@ class RelayProvider {
                     console.log('transaction', params)
                 }
 
-                params.gasPrice = params.gasPrice.toString(16)
-                params.value = params.value.toString(16)
-                params.gas = params.gasLimit.toString(16)
+                params.gasPrice = Number.parseInt(params.gasPrice.toString()).toString(16)
+                params.value = Number.parseInt(params.value.toString()).toString(16)
+                params.gas = Number.parseInt(params.gasLimit.toString()).toString(16)
                 delete params.gasLimit
 
                 payload.params = [
