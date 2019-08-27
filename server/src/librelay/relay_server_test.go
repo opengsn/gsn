@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"gen/librelay"
@@ -81,28 +82,28 @@ type TestServer struct {
 	*RelayServer
 }
 
-func (relay *TestServer) Stake(ownerKey *ecdsa.PrivateKey) (err error) {
-	tx, err := relay.sendStakeTransaction(ownerKey)
+func (relay *TestServer) Stake(ownerKey *ecdsa.PrivateKey, stakeAmount *big.Int, unstakeDelay *big.Int) (err error) {
+	tx, err := relay.sendStakeTransaction(ownerKey, stakeAmount, unstakeDelay)
 	if err != nil {
 		return err
 	}
 	return relay.awaitTransactionMined(tx)
 }
 
-func (relay *TestServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+func (relay *TestServer) sendStakeTransaction(ownerKey *ecdsa.PrivateKey, stakeAmount *big.Int, unstakeDelay *big.Int) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(ownerKey)
-	auth.Value = relay.StakeAmount
-	tx, err = relay.rhub.Stake(auth, relay.Address(), relay.UnstakeDelay)
+	auth.Value = stakeAmount
+	tx, err = relay.rhub.Stake(auth, relay.Address(), unstakeDelay)
 	if err != nil {
-		log.Println("rhub.stake() failed", relay.StakeAmount, relay.UnstakeDelay)
+		log.Println("rhub.stake() failed", stakeAmount, unstakeDelay)
 		return
 	}
 	log.Println("Stake() tx sent:", tx.Hash().Hex())
 	return
 }
 
-func (relay *TestServer) Unstake(ownerKey *ecdsa.PrivateKey) (err error) {
-	tx, err := relay.sendUnstakeTransaction(ownerKey)
+func (relay *TestServer) Unstake(ownerKey *ecdsa.PrivateKey, stakeAmount *big.Int) (err error) {
+	tx, err := relay.sendUnstakeTransaction(ownerKey, stakeAmount)
 	if err != nil {
 		return err
 	}
@@ -110,12 +111,12 @@ func (relay *TestServer) Unstake(ownerKey *ecdsa.PrivateKey) (err error) {
 
 }
 
-func (relay *TestServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey) (tx *types.Transaction, err error) {
+func (relay *TestServer) sendUnstakeTransaction(ownerKey *ecdsa.PrivateKey, stakeAmount *big.Int) (tx *types.Transaction, err error) {
 	auth := bind.NewKeyedTransactor(ownerKey)
-	auth.Value = relay.StakeAmount
+	auth.Value = stakeAmount
 	tx, err = relay.rhub.Unstake(auth, relay.Address())
 	if err != nil {
-		log.Println("rhub.Unstake() failed", relay.StakeAmount, relay.UnstakeDelay)
+		log.Println("rhub.Unstake() failed", stakeAmount)
 		return
 	}
 	log.Println("Unstake() tx sent:", tx.Hash().Hex())
@@ -128,6 +129,8 @@ var client *TestClient
 var relayKey1 *ecdsa.PrivateKey
 var gaslessKey2 *ecdsa.PrivateKey
 var ownerKey3 *ecdsa.PrivateKey
+var unstakeDelay = big.NewInt(1 * 60 * 60 * 24 * 7) // 1 week in seconds
+var stakeAmount = big.NewInt(1100000000000000000)
 var rhub *librelay.IRelayHub
 var clk *fakeclock.FakeClock
 
@@ -160,13 +163,10 @@ func InitTestClient(url string) {
 
 func NewRelay(relayHubAddress common.Address) {
 	fee := big.NewInt(10)
-	stakeAmount := big.NewInt(1100000000000000000)
-	gasLimit := uint64(1000000)
 	defaultGasPrice := int64(params.GWei)
 	gasPricePercent := big.NewInt(10)
 	url := ""
 	port := "8090"
-	unstakeDelay := big.NewInt(3600 * 24 * 7)
 	registrationBlockRate := uint64(5)
 	clk = fakeclock.NewFakeClock(time.Now())
 	txStore := txstore.NewMemoryTxStore(clk)
@@ -174,8 +174,8 @@ func NewRelay(relayHubAddress common.Address) {
 	var err error
 	relay.RelayServer, err = NewRelayServer(
 		common.Address{}, fee, url, port,
-		relayHubAddress, stakeAmount, gasLimit, defaultGasPrice,
-		gasPricePercent, relayKey1, unstakeDelay, registrationBlockRate,
+		relayHubAddress, defaultGasPrice,
+		gasPricePercent, relayKey1, registrationBlockRate,
 		ethereumNodeURL, client, txStore, clk, devMode)
 	if err != nil {
 		log.Fatalln("Relay was not created", err)
@@ -216,7 +216,7 @@ func TestMain(m *testing.M) {
 	fmt.Printf("RelayHub:  %s\nRecipient: %s\n", rhaddr.String(), sampleRecipient.String())
 	NewRelay(rhaddr)
 
-	tx, err := relay.sendStakeTransaction(ownerKey3)
+	tx, err := relay.sendStakeTransaction(ownerKey3, stakeAmount, unstakeDelay)
 	if err != nil {
 		log.Fatalf("Could not 'sendStakeTransaction': %v", err)
 	}
@@ -504,4 +504,17 @@ func TestReuseNonceOnDevMode(t *testing.T) {
 
 	// Clean up for the next test
 	relay.DevMode = false
+}
+
+func TestGetEncodedFunctionGas(t *testing.T) {
+	encodedFunction := "2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
+	gas := getEncodedFunctionGas(encodedFunction)
+	if gas.Cmp(big.NewInt(1488)) != 0 {
+		test.ErrFail(errors.New("Wrong gas calculation"), t)
+	}
+	encodedFunctionWithPrefix := "0x" + encodedFunction
+	gas = getEncodedFunctionGas(encodedFunctionWithPrefix)
+	if gas.Cmp(big.NewInt(1488)) != 0 {
+		test.ErrFail(errors.New("Wrong gas calculation"), t)
+	}
 }

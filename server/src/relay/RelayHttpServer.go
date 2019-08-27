@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.4.0"
+const VERSION = "0.4.1"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "data/keystore")
 var delayBetweenRegistrations = 24 * int64(time.Hour/time.Second) // time.Duration is in nanosec - converting to sec like unix
@@ -59,7 +59,7 @@ func main() {
 	stopUpdatingPendingTxs = schedule(updatePendingTxs, 1*timeUnit, 0)
 	stopListeningToRelayRemoved = schedule(stopServingOnRelayRemoved, 1*timeUnit, 0)
 
-	log.Println("RelayHttpServer started.Listening on port: ", relay.GetPort())
+	log.Println("RelayHttpServer started. Listening on port: ", relay.GetPort())
 	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatalln(err)
@@ -104,7 +104,7 @@ func assureRelayReady(fn http.HandlerFunc) http.HandlerFunc {
 			w.Write([]byte("{\"error\":\"" + err.Error() + "\"}"))
 			return
 		}
-		log.Println("Relay received gasPrice::", gasPrice.Uint64())
+		log.Println("Relay received gasPrice:", gasPrice.Uint64())
 		fn(w, r)
 	}
 
@@ -176,11 +176,8 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
 	port := flag.String("Port", "", "Relay server's port")
 	relayHubAddress := flag.String("RelayHubAddress", "0x537F27a04470242ff6b2c3ad247A05248d0d27CE", "RelayHub address")
-	stakeAmount := flag.Int64("StakeAmount", 10000000000000000, "Relay's stake (in wei)")
-	gasLimit := flag.Uint64("GasLimit", 100000, "Relay's gas limit per transaction")
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
-	unstakeDelay := flag.Int64("UnstakeDelay", 1200, "Relay's time delay before being able to unsatke from relayhub (in days)")
 	registrationBlockRate := flag.Uint64("RegistrationBlockRate", 5800, "Relay registeration rate (in blocks)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "data"), "The relay server's workdir")
@@ -202,11 +199,8 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 
 	relayParams.Port = *port
 	relayParams.RelayHubAddress = common.HexToAddress(*relayHubAddress)
-	relayParams.StakeAmount = big.NewInt(*stakeAmount)
-	relayParams.GasLimit = *gasLimit
 	relayParams.DefaultGasPrice = *defaultGasPrice
 	relayParams.GasPricePercent = big.NewInt(*gasPricePercent)
-	relayParams.UnstakeDelay = big.NewInt(*unstakeDelay)
 	relayParams.RegistrationBlockRate = *registrationBlockRate
 	relayParams.EthereumNodeURL = *ethereumNodeUrl
 	relayParams.DBFile = filepath.Join(*workdir, "db")
@@ -240,9 +234,8 @@ func configRelay(relayParams librelay.RelayParams) {
 	}
 	relay, err = librelay.NewRelayServer(
 		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
-		relayParams.RelayHubAddress, relayParams.StakeAmount,
-		relayParams.GasLimit, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
-		privateKey, relayParams.UnstakeDelay, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
+		relayParams.RelayHubAddress, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
+		privateKey, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
 		client, txStore, nil, relayParams.DevMode)
 	if err != nil {
 		log.Println("Could not create Relay Server", err)
