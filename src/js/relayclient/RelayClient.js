@@ -51,10 +51,10 @@ class RelayClient {
     constructor(web3, config) {
         // TODO: require sign() or privKey
         //fill in defaults:
-        this.config = {
+        this.config = Object.assign( {
             validateCanRelay: true,
-            httpTimeout : DEFAULT_HTTP_TIMEOUT,
-        ...config }
+            httpTimeout : DEFAULT_HTTP_TIMEOUT
+        }, config )
 
         this.web3 = web3;
         this.httpSend = new HttpWrapper({ timeout: this.config.httpTimeout });
@@ -290,7 +290,7 @@ class RelayClient {
     async relayTransaction(encodedFunctionCall, options) {
 
         //validateCanRelay defaults (in config). to disable, explicitly set options.validateCanRelay=false
-        options = { validateCanRelay:this.config.validateCanRelay, ...options  }
+        options = Object.assign( { validateCanRelay:this.config.validateCanRelay }, options )
 
         var self = this;
         let relayRecipient = this.createRelayRecipient(options.to);
