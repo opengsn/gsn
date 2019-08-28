@@ -30,6 +30,7 @@ class RelayClient {
      * @param web3  - the web3 instance to use.
      * @param {object} config options
      *    txfee
+     *    validateCanRelay - client calls canRelay before calling the relay the first time (defaults to true)
      *lookup for relay
      *    minStake - ignore relays with stake below this (wei) value.
      *    minDelay - ignore relays with delay lower this (sec) value
@@ -50,9 +51,10 @@ class RelayClient {
     constructor(web3, config) {
         // TODO: require sign() or privKey
         //fill in defaults:
-        this.config = Object.assign( {
-            httpTimeout : DEFAULT_HTTP_TIMEOUT
-        }, config )
+        this.config = {
+            validateCanRelay: true,
+            httpTimeout : DEFAULT_HTTP_TIMEOUT,
+        ...config }
 
         this.web3 = web3;
         this.httpSend = new HttpWrapper({ timeout: this.config.httpTimeout });
@@ -278,11 +280,17 @@ class RelayClient {
     }
 
     /**
-     * Options include standard transaction params: from,to, gasprice, gaslimit
+     * Options include standard transaction params: from,to, gas_price, gas_limit
+     * relay-specific params:
+     *  txfee (override config.txfee)
+     *  validateCanRelay - client calls canRelay before calling the relay the first time (defaults to true)
      * can also override default relayUrl, relayFee
      * return value is the same as from sendTransaction
      */
     async relayTransaction(encodedFunctionCall, options) {
+
+        //validateCanRelay defaults (in config). to disable, explicitly set options.validateCanRelay=false
+        options = { validateCanRelay:this.config.validateCanRelay, ...options  }
 
         var self = this;
         let relayRecipient = this.createRelayRecipient(options.to);
@@ -315,6 +323,7 @@ class RelayClient {
         let blockFrom = Math.max(1, blockNow - relay_lookup_limit_blocks);
         let pinger = await this.serverHelper.newActiveRelayPinger(blockFrom, gasPrice);
         let errors = [];
+        let firstTry = true
         for (; ;) {
             let activeRelay = await pinger.nextRelay();
             if (!activeRelay) {
@@ -376,6 +385,28 @@ class RelayClient {
                 allowed_relay_nonce_gap = 3
             }
             let relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowed_relay_nonce_gap;
+
+            //on first found relay, call canRelay to make sure that on-chain this request can pass
+            if ( options.validateCanRelay && firstTry ) {
+                firstTry = false;
+                let res = await relayHub.methods.canRelay(
+                    relayAddress,
+                    options.from,
+                    options.to,
+                    encodedFunctionCall,
+                    txfee,
+                    gasPrice,
+                    gasLimit,
+                    nonce,
+                    signature,
+                    approvalData
+                ).call()
+                if ( res.status !=0 ) {
+                    //in case of error, the context is an error message.
+                    let errorMsg = Buffer.from( res.recipientContext.slice(2), 'hex' ).toString();
+                    throw new Error( "canRelay failed: "+res.status+": "+errorMsg )
+                }
+            }
 
             try {
                 let validTransaction = await self.sendViaRelay(
