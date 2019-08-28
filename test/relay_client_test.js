@@ -227,6 +227,37 @@ contract('RelayClient', function (accounts) {
 
     })
 
+    it("should relay transparently with long encoded function", async () => {
+
+        relay_client_config = {
+
+            txfee: 12,
+            force_gasPrice: gasPrice,			//override requested gas price
+            force_gasLimit: 4000029,		//override requested gas limit.
+            verbose: process.env.DEBUG
+        }
+
+        let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
+        // web3.setProvider(relayProvider)
+
+        //NOTE: in real application its enough to set the provider in web3.
+        // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
+        // so changing the global one is not enough...
+        SampleRecipient.web3.setProvider(relayProvider)
+
+        let res = await sr.emitMessage("hello world".repeat(1000), {from: gasLess})
+        assert.equal(res.logs[1].event, "SampleRecipientEmitted")
+        assert.equal(res.logs[1].args.message, "hello world".repeat(1000))
+        assert.equal(res.logs[1].args.realSender, gasLess)
+        assert.equal(res.logs[1].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
+        res = await sr.emitMessage("hello again".repeat(1000), { from: accounts[3] })
+        assert.equal(res.logs[1].event, "SampleRecipientEmitted")
+        assert.equal(res.logs[1].args.message, "hello again".repeat(1000))
+
+        assert.equal(res.logs[1].args.realSender, accounts[3])
+
+    })
+
     // This test currently has no asserts. 'auditTransaction' returns no value.
     it.skip("should send a signed raw transaction from selected relay to backup relays - in case penalty will be needed", async function () {
         let tbk = new RelayClient(web3);
