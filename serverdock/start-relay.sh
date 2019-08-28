@@ -16,8 +16,8 @@ else
 	network=devUseHardcodedAddress
 fi
 
-truffle migrate --network $network
-hubaddr=0x9C57C0F1965D225951FE1B2618C92Eefd687654F
+hubaddr=`perl -ne 'print $1 if /contract.*address.*?(\w+)/' < ./singleton/deploy.json`
+truffle exec --network $network ./scripts/singleton/deploy.js
 
 echo $ethereumNodeUrl
 #fund relay:
