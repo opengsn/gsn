@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -xe
 
 repository=tabookey/gsn-dev-server
 version=`docker run -t gsn-dev-server cat version`

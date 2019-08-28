@@ -16,3 +16,4 @@ tabookey-gasless-*.tgz
 /coverage.json
 /artifacts/
 /webtools/tabookey-webtools.pack.js
+/singleton/

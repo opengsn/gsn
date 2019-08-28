@@ -15,7 +15,5 @@ RUN rm -rf node_modules/websocket
 RUN npm install openzeppelin-solidity@2.1.2 @0x/contracts-utils@3.1.1
 
 ADD . .
-ENV PATH=./node_modules/.bin:$PATH
-RUN truffle compile
 
 CMD "/start-relay.sh"

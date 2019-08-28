@@ -15,5 +15,5 @@ else
 	PORT=
 fi
 
-docker run -t --name gsn-dock --rm -p 8090:8090 $PORT tabookey/gsn-dev-server:0.4.0-beta2 $ARG
+docker run -t --name gsn-dock --rm -p 8090:8090 $PORT tabookey/gsn-dev-server:v0.4.1 $ARG
 exited=1
