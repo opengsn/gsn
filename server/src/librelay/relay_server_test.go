@@ -506,6 +506,40 @@ func TestReuseNonceOnDevMode(t *testing.T) {
 	relay.DevMode = false
 }
 
+func TestTransactionTotalGasCost(t *testing.T) {
+	test.ErrFail(relay.TxStore.Clear(), t)
+	// We create two relayed txs of equal byte length, with the second tx having one more non-zero byte and one less zero byte
+	// meaning that the expected gas cost diff between them is 64 per the yellowpaper
+	expectedGasDiff := uint64(64)
+
+	request1 := newRelayTransactionRequest(t, 6, "0x55b684977318cbef0d83419ceaa4ccae729cb727fc1bac31c789679df8dd9d5920b82a04f5db9ba4b746b5541eb3c6c15eb53427bc8c2bbec97c4c2438f2a8071c")
+	// Changing encoded function to call dontEmitMessage() instead of emitMessage()
+	request1.EncodedFunction = "0xb51fab0a0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
+	// Creating a new relayed tx with encoded function 'dontEmitMessage("hello world" + "\x00" + "a")' instead of 'dontEmitMessage("hello world")'
+	request2 := newRelayTransactionRequest(t, 7, "0x955aa88ca0c4d566c4de97cc08d6c3e11ae0ea1f5dea8e855873ef8f24049f7a4d84180563db56cbcb0e3b8bdcb13c5509888e1dedbca2b290fbbb1c661470921c")
+	request2.EncodedFunction = "0xb51fab0a0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d68656c6c6f20776f726c64006100000000000000000000000000000000000000"
+
+	// Send the 2 transactions
+	signedTx1, err := relay.CreateRelayTransaction(request1)
+	test.ErrFailWithDesc(err, t, "Creating relay transaction 1")
+	clk.IncrementBySeconds(60)
+	receipt1, err := client.TransactionReceipt(context.Background(), signedTx1.Hash())
+	test.ErrFailWithDesc(err, t, fmt.Sprint("Fetching transaction receipt for hash ", signedTx1.Hash()))
+	signedTx2, err := relay.CreateRelayTransaction(request2)
+	test.ErrFailWithDesc(err, t, "Creating relay transaction 2")
+	clk.IncrementBySeconds(60)
+	receipt2, err := client.TransactionReceipt(context.Background(), signedTx2.Hash())
+	test.ErrFailWithDesc(err, t, fmt.Sprint("Fetching transaction receipt for hash ", signedTx2.Hash()))
+
+	if  (getEncodedFunctionGas(request2.EncodedFunction).Uint64() - getEncodedFunctionGas(request1.EncodedFunction).Uint64() != expectedGasDiff){
+		test.ErrFail(errors.New("Wrong gas cost difference between encoded functions"), t)
+	}
+	if (receipt2.GasUsed - receipt1.GasUsed != expectedGasDiff) {
+		test.ErrFail(errors.New("Wrong gasUsed difference between relayed transactions"), t)
+	}
+
+}
+
 func TestGetEncodedFunctionGas(t *testing.T) {
 	encodedFunction := "2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
 	gas := getEncodedFunctionGas(encodedFunction)
