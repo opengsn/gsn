@@ -24,6 +24,13 @@ const DEFAULT_HTTP_TIMEOUT = 10000;
 //default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
 const GASPRICE_PERCENT = 20;
 
+const canRelayStatus = {
+    1 : "1 WrongSignature",             // The transaction to relay is not signed by requested sender
+    2 : "2 WrongNonce",                 // The provided nonce has already been used by the sender
+    3 : "3 AcceptRelayedCallReverted",  // The recipient rejected this call via acceptRelayedCall
+    4 : "4 InvalidRecipientStatusCode",  // The recipient returned an invalid (reserved) status code
+}
+
 class RelayClient {
     /**
      * create a RelayClient library object, to force contracts to go through a relay.
@@ -403,8 +410,9 @@ class RelayClient {
                 ).call()
                 if ( res.status !=0 ) {
                     //in case of error, the context is an error message.
-                    let errorMsg = Buffer.from( res.recipientContext.slice(2), 'hex' ).toString();
-                    throw new Error( "canRelay failed: "+res.status+": "+errorMsg )
+                    let errorMsg = res.recipientContext ? Buffer.from( res.recipientContext.slice(2), 'hex' ).toString() : ""
+                    let status = canRelayStatus[res.status] || res.status
+                    throw new Error( "canRelay failed: "+status+": "+errorMsg )
                 }
             }
 
