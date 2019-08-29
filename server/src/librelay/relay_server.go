@@ -10,6 +10,7 @@ import (
 	"librelay/txstore"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -134,12 +135,9 @@ type RelayServer struct {
 	Url                   string
 	Port                  string
 	RelayHubAddress       common.Address
-	StakeAmount           *big.Int
-	GasLimit              uint64
 	DefaultGasPrice       int64
 	GasPricePercent       *big.Int
 	PrivateKey            *ecdsa.PrivateKey
-	UnstakeDelay          *big.Int
 	RegistrationBlockRate uint64
 	EthereumNodeURL       string
 	gasPrice              *big.Int // set dynamically as suggestedGasPrice*(GasPricePercent+100)/100
@@ -169,12 +167,9 @@ func NewRelayServer(
 	Url string,
 	Port string,
 	RelayHubAddress common.Address,
-	StakeAmount *big.Int,
-	GasLimit uint64,
 	DefaultGasPrice int64,
 	GasPricePercent *big.Int,
 	PrivateKey *ecdsa.PrivateKey,
-	UnstakeDelay *big.Int,
 	RegistrationBlockRate uint64,
 	EthereumNodeURL string,
 	Client IClient,
@@ -197,12 +192,9 @@ func NewRelayServer(
 		Url:                   Url,
 		Port:                  Port,
 		RelayHubAddress:       RelayHubAddress,
-		StakeAmount:           StakeAmount,
-		GasLimit:              GasLimit,
 		DefaultGasPrice:       DefaultGasPrice,
 		GasPricePercent:       GasPricePercent,
 		PrivateKey:            PrivateKey,
-		UnstakeDelay:          UnstakeDelay,
 		RegistrationBlockRate: RegistrationBlockRate,
 		EthereumNodeURL:       EthereumNodeURL,
 		Client:                Client,
@@ -355,9 +347,6 @@ func (relay *RelayServer) RegistrationDate() (when int64, err error) {
 	if (iter.Event == nil && !iter.Next()) ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
-		(iter.Event.Stake.Cmp(relay.StakeAmount) < 0) ||
-		//(iter.Event.Stake.Cmp(relay.StakeAmount) != 0) ||
-		//(iter.Event.UnstakeDelay.Cmp(relay.UnstakeDelay) != 0) ||
 		(iter.Event.Url != relay.Url) {
 		return 0, fmt.Errorf("Could not receive RelayAdded() events for our relay")
 	}
@@ -465,11 +454,12 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 
 	if res.Uint64() != 0 {
-		errStr := fmt.Sprint("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
+		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
 			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
 			request.RelayFee.String(), "AppData:", hexutil.Encode(request.ApprovalData), "Sig:", hexutil.Encode(request.Signature))
+		errStr = errStr[:len(errStr) - 1]
 		err = fmt.Errorf("canRelay() view function returned error code=%d. params:%s", res, errStr)
-		log.Println(err, errStr)
+		log.Println(err)
 		return
 	}
 
@@ -486,6 +476,8 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		log.Println(err)
 		return
 	}
+	// Adding the exact gas cost of the encoded function as it is the only dynamic parameter in the relayed call
+	requiredGas.Add(requiredGas, getEncodedFunctionGas(request.EncodedFunction))
 
 	maxCharge, err := relay.rhub.MaxPossibleCharge(callOpt, &request.GasLimit, &request.GasPrice, &request.RelayFee)
 	if err != nil {
@@ -848,4 +840,23 @@ func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
 
 func (relay *RelayServer) Close() (err error) {
 	return relay.TxStore.Close()
+}
+
+/**
+ * @return Gas cost of encoded function as parameter in relayedCall
+ * As per the yellowpaper, each non-zero byte costs 68 and zero byte costs 4
+ */
+func getEncodedFunctionGas(encodedFunction string) (*big.Int){
+	if strings.HasPrefix(encodedFunction, "0x") {
+		encodedFunction = encodedFunction[2:]
+	}
+	gasLimitSlack := int64(0)
+	for i := 0; i < len(encodedFunction); i += 2 {
+		if encodedFunction[i:i+2] == "00" {
+			gasLimitSlack += 4
+		} else {
+			gasLimitSlack += 68
+		}
+	}
+	return big.NewInt(gasLimitSlack)
 }

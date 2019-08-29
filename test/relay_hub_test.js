@@ -663,7 +663,6 @@ contract("RelayHub", function (accounts) {
             }
             /**/
             let relay_recipient_balance_before = await rhub.balanceOf(sr.address)
-            relay_recipient_balance_before = await rhub.balanceOf(sr.address)
             let relay_balance_before = new Big(await web3.eth.getBalance(relayAccount));
             let r = await rhub.getRelay(relayAccount)
             let owner = r[3]
