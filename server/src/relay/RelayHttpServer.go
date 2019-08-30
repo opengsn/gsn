@@ -36,6 +36,7 @@ var stopUpdatingPendingTxs chan bool
 var stopListeningToRelayRemoved chan bool
 
 var timeUnit time.Duration
+var keepAlivePeriod time.Duration
 
 var minimumRelayBalance = big.NewInt(1e17) // 0.1 eth
 
@@ -54,7 +55,10 @@ func main() {
 	if devMode {
 		timeUnit = time.Second
 	}
-	stopKeepAlive = schedule(keepAlive, 60*timeUnit, 0)
+
+	keepAlivePeriod = 60*timeUnit
+
+	stopKeepAlive = schedule(keepAlive, keepAlivePeriod, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
 	stopUpdatingPendingTxs = schedule(updatePendingTxs, 1*timeUnit, 0)
 	stopListeningToRelayRemoved = schedule(stopServingOnRelayRemoved, 1*timeUnit, 0)
@@ -326,7 +330,8 @@ func keepAlive() {
 	log.Println("when registered:", when, "unix:", time.Unix(when, 0))
 	if err != nil {
 		log.Println(err)
-	} else if time.Now().Unix()-when < delayBetweenRegistrations {
+	// We need to make sure we're registered before the next call to keepAlive is executed, to prevent downtime
+	} else if time.Now().Unix()-when < (delayBetweenRegistrations - (2 * int64(keepAlivePeriod.Seconds()))) {
 		log.Println("Relay registered lately. No need to reregister")
 		return
 	}
