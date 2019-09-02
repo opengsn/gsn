@@ -205,10 +205,19 @@ func TestMain(m *testing.M) {
 		log.Fatalln(err)
 	}
 	auth.GasLimit = 4000000
-	sampleRecipient, _, boundRecipient, err = bind.DeployContract(auth, parsed, common.FromHex(samplerec.SampleRecipientBin), client, rhaddr)
+	sampleRecipient, _, boundRecipient, err = bind.DeployContract(auth, parsed, common.FromHex(samplerec.SampleRecipientBin), client)
 	if err != nil {
 		log.Fatalln("Error deploying SampleRecipient contract:", err)
 	}
+	sr, err :=samplerec.NewSampleRecipient(sampleRecipient, client)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	_,err = sr.SetHub(auth, rhaddr)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	rhub, err = librelay.NewIRelayHub(rhaddr, client)
 	if err != nil {
 		log.Fatalln(err)

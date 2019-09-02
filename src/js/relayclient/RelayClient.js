@@ -13,6 +13,11 @@ const ethJsTx = require('ethereumjs-tx');
 const abi_decoder = require('abi-decoder');
 
 const relayHubAbi = require('./IRelayHub');
+// This file is only needed so we don't change IRelayHub code, which would affect RelayHub expected deployed address
+// TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove Version.json
+const versionAbi = require('./Version');
+relayHubAbi.push(versionAbi);
+
 const relayRecipientAbi = require('./IRelayRecipient');
 
 const relay_lookup_limit_blocks = 6000;
@@ -58,13 +63,13 @@ class RelayClient {
     constructor(web3, config) {
         // TODO: require sign() or privKey
         //fill in defaults:
-        this.config = Object.assign( {
+        this.config = Object.assign({
             validateCanRelay: true,
-            httpTimeout : DEFAULT_HTTP_TIMEOUT
-        }, config )
+            httpTimeout: DEFAULT_HTTP_TIMEOUT
+        }, config)
 
         this.web3 = web3;
-        this.httpSend = new HttpWrapper({ timeout: this.config.httpTimeout });
+        this.httpSend = new HttpWrapper({timeout: this.config.httpTimeout});
         this.failedRelays = {}
         this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.failedRelays, this.config);
     }
@@ -170,11 +175,11 @@ class RelayClient {
 
             let callback = async function (error, body) {
                 if (error) {
-                    if ( error.error && error.error.indexOf("timeout")!= -1 ) {
+                    if (error.error && error.error.indexOf("timeout") != -1) {
                         self.failedRelays[relayUrl] = {
-                            lastError : new Date().getTime(),
-                            address : relayAddress,
-                            url : relayUrl
+                            lastError: new Date().getTime(),
+                            address: relayAddress,
+                            url: relayUrl
                         }
                     }
                     reject(error);
@@ -276,12 +281,7 @@ class RelayClient {
      * (not strictly a client operation, but without a balance, the target contract can't accept calls)
      */
     async balanceOf(target) {
-        let relayRecipient = this.createRelayRecipient(target);
-        let relayHubAddress;
-
-        relayHubAddress = await relayRecipient.methods.getHubAddr().call();
-        let relayHub = this.createRelayHub(relayHubAddress);
-
+        const relayHub = await this.createRelayHubFromRecipient(target);
         //note that the returned value is a promise too, returning BigNumber
         return relayHub.methods.balanceOf(target).call()
     }
@@ -300,11 +300,7 @@ class RelayClient {
         options = Object.assign( { validateCanRelay:this.config.validateCanRelay }, options )
 
         var self = this;
-        let relayRecipient = this.createRelayRecipient(options.to);
-
-        let relayHubAddress = await relayRecipient.methods.getHubAddr().call();
-
-        let relayHub = this.createRelayHub(relayHubAddress);
+        const relayHub = await this.createRelayHubFromRecipient(options.to);
 
         var nonce = parseInt(await relayHub.methods.getNonce(options.from).call());
 
@@ -435,7 +431,7 @@ class RelayClient {
                 return validTransaction
             } catch (error) {
                 errors.push(error);
-                if (self.config.verbose)
+                if (self.config.verbose) {
                     console.log("relayTransaction: req:", {
                         from: options.from,
                         to: options.to,
@@ -447,7 +443,8 @@ class RelayClient {
                         relayhub: relayHub._address,
                         relayAddress
                     });
-                console.log("relayTransaction:", ("" + error).replace(/ (\w+:)/g, "\n$1 "))
+                    console.log("relayTransaction:", ("" + error).replace(/ (\w+:)/g, "\n$1 "))
+                }
             }
         }
     }
@@ -545,6 +542,36 @@ class RelayClient {
             ephemeralKeypair.privateKey = Buffer.from(removeHexPrefix(ephemeralKeypair.privateKey), "hex");
         }
         this.ephemeralKeypair = ephemeralKeypair
+    }
+
+    async createRelayHubFromRecipient(recipientAddress) {
+        const relayRecipient = this.createRelayRecipient(recipientAddress);
+
+        let relayHubAddress;
+        try {
+            relayHubAddress = await relayRecipient.methods.getHubAddr().call();
+        } catch (err) {
+            throw new Error(`Could not get relay hub address from recipient at ${recipientAddress} (${err.message}). Make sure it is a valid recipient contract.`);
+        }
+
+        if (!relayHubAddress || ethUtils.isZeroAddress(relayHubAddress)) {
+            throw new Error(`The relay hub address is set to zero in recipient at ${recipientAddress}. Make sure it is a valid recipient contract.`);
+        }
+
+        const relayHub = this.createRelayHub(relayHubAddress);
+
+        let hubVersion;
+        try {
+            hubVersion = await relayHub.methods.version().call();
+        } catch (err) {
+            throw new Error(`Could not query relay hub version at ${relayHubAddress} (${err.message}). Make sure the address corresponds to a relay hub.`);
+        }
+
+        if (!hubVersion.startsWith('1')) {
+            throw new Error(`Unsupported relay hub version '${hubVersion}'.`);
+        }
+
+        return relayHub;
     }
 }
 

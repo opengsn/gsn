@@ -28,7 +28,9 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     bool public storeAcceptData;
 
-    constructor(IRelayHub rhub) public {
+    constructor() public {}
+
+    function setHub(IRelayHub rhub) public {
         setRelayHub(rhub);
     }
 

@@ -31,6 +31,7 @@ contract('RelayClient', function (accounts) {
     let relayproc;
     let gasPrice;
     let relay_client_config;
+    let relayProvider;
     let relayOwner = accounts[1];
 
     before(async function () {
@@ -39,6 +40,8 @@ contract('RelayClient', function (accounts) {
 
         rhub = await RelayHub.deployed()
         sr = await SampleRecipient.deployed()
+        // let sr2 = await SampleRecipient.new(rhub.address)
+        // console.log("W".repeat(100), sr2.address)
 
         await sr.deposit({value: web3.utils.toWei('1', 'ether')});
         // let known_deposit = await rhub.balances(sr.address);
@@ -217,7 +220,7 @@ contract('RelayClient', function (accounts) {
             verbose: process.env.DEBUG
         }
 
-        let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
+        relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
         // web3.setProvider(relayProvider)
 
         //NOTE: in real application its enough to set the provider in web3.
@@ -358,7 +361,7 @@ contract('RelayClient', function (accounts) {
                 else {
                     let callback_wrap = function (e, r) {
                         assert.equal(null, e)
-                        assert.equal(true, r.input.includes(message_hex))
+                        assert.equal(true, r.input && r.input.includes(message_hex))
                         callback(e, r)
                     }
                     orig_httpSend.send(url, jsonRequestData, callback_wrap)
@@ -548,6 +551,77 @@ contract('RelayClient', function (accounts) {
             assert.equal(true,parseInt(afterOwnerBalance)  > parseInt(beforeOwnerBalance))
 
         });
+    });
+
+    describe("should handle incorrect relay hub contract in recipient", async function () {
+        let sr2;
+        before( async function () {
+            SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = false
+            sr2 = await SampleRecipient.new()
+            SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
+        });
+
+        it("should revert on zero hub in recipient contract", async function () {
+            try {
+                await sr2.emitMessage("hello world", {from: gasLess})
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("The relay hub address is set to zero in recipient at"))
+            }
+        });
+
+        it("should throw on invalid recipient", async function () {
+            let tbk = new RelayClient(web3);
+            try {
+                await tbk.createRelayHubFromRecipient(gasLess)
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("Could not get relay hub address from recipient at"))
+            }
+        });
+
+        it("should throw on invalid hub ", async function () {
+            let tbk = new RelayClient(web3);
+            tbk.createRelayHub = function () {
+                return {methods: {
+                        version: function () {
+                            return {call: function() {throw new Error("NOPE")}}
+                        }
+                }
+                }
+            }
+            try {
+                await tbk.createRelayHubFromRecipient(sr.address)
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("Could not query relay hub version at"))
+                assert.equal(true, error.message.includes("NOPE"))
+            }
+        });
+
+        it("should throw on wrong hub version", async function () {
+            let tbk = new RelayClient(web3);
+            tbk.createRelayHub = function () {
+                return {methods: {
+                        version: function () {
+                            return {call: function() {return "wrong version"}}
+                        }
+                    }
+                }
+            }
+            try {
+                await tbk.createRelayHubFromRecipient(sr.address)
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("Unsupported relay hub version"))
+                assert.equal(true, error.message.includes("wrong version"))
+            }
+        });
+
     });
 
 });

@@ -58,7 +58,8 @@ options.forEach(params => {
                 rhub = await RelayHub.deployed()
             }
 
-            sr = await SampleRecipient.new(rhub.address)
+            sr = await SampleRecipient.new()
+            await sr.setHub(rhub.address)
         })
 
         after(async function () {
