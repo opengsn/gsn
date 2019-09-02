@@ -114,7 +114,8 @@ contract('RelayClient', function (accounts) {
         })
     });
 
-    it("should consider a transaction with an incorrect approval as invalid", async function () {
+    [false,true].forEach( validateCanRelay =>
+    it("should consider a transaction with an incorrect approval as invalid " + (validateCanRelay ? "":"(without client calling canRelay)" ), async function () {
         const expected_error = 13
         let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()
         let to = sr.address;
@@ -125,6 +126,10 @@ contract('RelayClient', function (accounts) {
             txfee: 12,
             gas_limit: 1000000
         }
+        //only add parameter if false (true should be the default..)
+        if ( !validateCanRelay )
+            options.validateCanRelay = false
+
         let relay_client_config = {
             relayUrl: localhostOne,
             relayAddress: relayAddress,
@@ -138,9 +143,15 @@ contract('RelayClient', function (accounts) {
             assert.fail()
         }
         catch (error){
-            assert.equal(true, error.otherErrors[0].includes("canRelay() view function returned error code=" + expected_error))
+            if ( validateCanRelay ) {
+                //error checked by relayTransaction:
+                assert.equal("Error: canRelay failed: 13: test: not approved", error.toString())
+            } else {
+                //error checked by relay:
+                assert.equal(true, error.otherErrors[0].includes("canRelay() view function returned error code=" + expected_error))
+            }
         }
-    });
+    }));
 
     it("should consider a transaction with a relay tx nonce higher than expected as invalid", async function () {
         let encoded = sr.contract.methods.emitMessage("hello world").encodeABI()

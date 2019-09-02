@@ -133,7 +133,7 @@ contract SampleRecipient is RelayRecipient, Ownable {
         if (approvalData.length > 0) {
             // extract owner sig from all signature bytes
             if (keccak256(abi.encodePacked("I approve", from)).toEthSignedMessageHash().recover(approvalData) != owner()) {
-                return (13, "");
+                return (13, "test: not approved");
             }
         }
 
