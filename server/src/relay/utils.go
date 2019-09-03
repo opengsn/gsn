@@ -37,7 +37,6 @@ func loadPrivateKey(keystoreDir string) *ecdsa.PrivateKey {
 	// find (or create) account
 	var account accounts.Account
 	var err error
-	log.Println("ks accounts len", len(ks.Accounts()))
 	if _, err = os.Stat(filepath.Join(keystoreDir, "")); os.IsNotExist(err) || IsEmpty(keystoreDir) {
 		account, err = ks.NewAccount("")
 		if err != nil {
