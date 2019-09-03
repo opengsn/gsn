@@ -451,13 +451,13 @@ class RelayClient {
 
     fixTransactionReceiptResp(respResult) {
         if (respResult && respResult.logs) {
-            let logs = abi_decoder.decodeLogs(respResult.rawLogs ? respResult.rawLogs : respResult.logs);
+            let logs = abi_decoder.decodeLogs(respResult.logs);
             let canRelayFailed = logs.find(e => e && e.name == 'CanRelayFailed');
             let transactionRelayed = logs.find(e => e && e.name == 'TransactionRelayed');
 
             const setErrorStatus = (reason) => {
                 console.log(`${reason}. changing status to zero`)
-                respResult.status = typeof respResult.status === 'boolean' ? false : 0
+                respResult.status = 0
             }
 
             if (canRelayFailed) {

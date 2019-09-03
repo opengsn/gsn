@@ -634,31 +634,30 @@ contract('RelayClient', function (accounts) {
 
     it("should report canRelayFailed on transactionReceipt", async function () {
         let from = accounts[6];
-        let to = sr.address
+        let to = sr.address;
         let relay_nonce = 0;
         let message = "hello world";
         let transaction = sr.contract.methods.emitMessage(message).encodeABI();
         let transaction_fee = 10;
         let gas_price = 10;
         let gas_limit = 1000000;
-        let gas_limit_any_value = 8000029
+        let gas_limit_any_value = 7000029;
+        let tbk = new RelayClient(web3);
 
         await sr.setBlacklisted(from)
         let digest = await utils.getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
         let sig = await utils.getTransactionSignature(web3, from, digest)
-        let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, '0x', {
+        let res = await rhub.contract.methods.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, '0x').send({
             from: relayAccount,
             gasPrice: gas_price,
             gasLimit: gas_limit_any_value
         });
 
-        assert.equal(res.logs[0].event, "CanRelayFailed")
+        let receipt = await web3.eth.getTransactionReceipt(res.transactionHash)
         let canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, "0x");
         assert.equal(11, canRelay.status.valueOf().toString())
 
-        let receipt = res.receipt
         assert.equal(true, receipt.status)
-        let tbk = new RelayClient(web3);
         await tbk.fixTransactionReceiptResp(receipt)
         assert.equal(false, receipt.status)
 
