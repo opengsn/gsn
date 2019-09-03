@@ -449,19 +449,19 @@ class RelayClient {
         }
     }
 
-    fixTransactionReceiptResp(resp) {
-        if (resp && resp.result && resp.result.logs) {
-            let logs = abi_decoder.decodeLogs(resp.result.logs);
+    fixTransactionReceiptResp(respResult) {
+        if (respResult && respResult.logs) {
+            let logs = abi_decoder.decodeLogs(respResult.rawLogs ? respResult.rawLogs : respResult.logs);
             let canRelayFailed = logs.find(e => e && e.name == 'CanRelayFailed');
             let transactionRelayed = logs.find(e => e && e.name == 'TransactionRelayed');
 
             const setErrorStatus = (reason) => {
                 console.log(`${reason}. changing status to zero`)
-                resp.result.status = 0
+                respResult.status = typeof respResult.status === 'boolean' ? false : 0
             }
 
             if (canRelayFailed) {
-                setErrorStatus(`canRelay failed: ${canRelayFailed.find(e => e.name == "reason").value}`)
+                setErrorStatus(`canRelay failed: ${canRelayFailed.events.find(e => e.name == "reason").value}`)
             } else if (transactionRelayed) {
                 const status = transactionRelayed.events.find(e => e.name == "status").value
                 if (status != 0) { // 0 signifies success
@@ -469,7 +469,6 @@ class RelayClient {
                 }
             }
         }
-        return resp
     }
 
     runRelay(payload, callback) {

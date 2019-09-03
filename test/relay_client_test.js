@@ -31,17 +31,17 @@ contract('RelayClient', function (accounts) {
     let relayproc;
     let gasPrice;
     let relay_client_config;
-    let relayProvider;
     let relayOwner = accounts[1];
-
+    let relayAccount;
+    let dayInSec = 24 * 60 * 60;
+    let weekInSec = dayInSec * 7;
+    let one_ether = 1e18;
     before(async function () {
         const gasPricePercent = 20
         gasPrice = ( await web3.eth.getGasPrice() ) * (100  + gasPricePercent)/100
 
         rhub = await RelayHub.deployed()
         sr = await SampleRecipient.deployed()
-        // let sr2 = await SampleRecipient.new(rhub.address)
-        // console.log("W".repeat(100), sr2.address)
 
         await sr.deposit({value: web3.utils.toWei('1', 'ether')});
         // let known_deposit = await rhub.balances(sr.address);
@@ -52,6 +52,14 @@ contract('RelayClient', function (accounts) {
 
         relayproc = await testutils.startRelay(rhub, {
             stake: 1e18, delay: 3600 * 24 * 7, txfee: 12, url: "asd", relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
+
+        relayAccount = await web3.eth.personal.newAccount("asdgasfd2r43")
+        await web3.eth.personal.unlockAccount(relayAccount, "asdgasfd2r43")
+        await web3.eth.sendTransaction({
+            from: accounts[0],
+            to: relayAccount,
+            value: one_ether});
+        await register_new_relay(rhub, one_ether, weekInSec, 120, "hello", relayAccount, relayOwner);
 
     });
 
@@ -220,7 +228,7 @@ contract('RelayClient', function (accounts) {
             verbose: process.env.DEBUG
         }
 
-        relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
+        let relayProvider = new RelayProvider(web3.currentProvider, relay_client_config)
         // web3.setProvider(relayProvider)
 
         //NOTE: in real application its enough to set the provider in web3.
@@ -621,6 +629,38 @@ contract('RelayClient', function (accounts) {
                 assert.equal(true, error.message.includes("wrong version"))
             }
         });
+
+    });
+
+    it("should report canRelayFailed on transactionReceipt", async function () {
+        let from = accounts[6];
+        let to = sr.address
+        let relay_nonce = 0;
+        let message = "hello world";
+        let transaction = sr.contract.methods.emitMessage(message).encodeABI();
+        let transaction_fee = 10;
+        let gas_price = 10;
+        let gas_limit = 1000000;
+        let gas_limit_any_value = 8000029
+
+        await sr.setBlacklisted(from)
+        let digest = await utils.getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
+        let sig = await utils.getTransactionSignature(web3, from, digest)
+        let res = await rhub.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, '0x', {
+            from: relayAccount,
+            gasPrice: gas_price,
+            gasLimit: gas_limit_any_value
+        });
+
+        assert.equal(res.logs[0].event, "CanRelayFailed")
+        let canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, "0x");
+        assert.equal(11, canRelay.status.valueOf().toString())
+
+        let receipt = res.receipt
+        assert.equal(true, receipt.status)
+        let tbk = new RelayClient(web3);
+        await tbk.fixTransactionReceiptResp(receipt)
+        assert.equal(false, receipt.status)
 
     });
 
