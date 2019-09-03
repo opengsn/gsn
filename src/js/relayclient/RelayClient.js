@@ -14,8 +14,8 @@ const abi_decoder = require('abi-decoder');
 
 const relayHubAbi = require('./IRelayHub');
 // This file is only needed so we don't change IRelayHub code, which would affect RelayHub expected deployed address
-// TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove Version.json
-const versionAbi = require('./Version');
+// TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove IRelayHubVersionAbi.json
+const versionAbi = require('./IRelayHubVersionAbi');
 relayHubAbi.push(versionAbi);
 
 const relayRecipientAbi = require('./IRelayRecipient');
