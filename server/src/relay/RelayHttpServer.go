@@ -54,7 +54,7 @@ func main() {
 	if devMode {
 		timeUnit = time.Second
 	}
-	stopKeepAlive = schedule(keepAlive, 60*timeUnit, 0)
+	stopKeepAlive = schedule(keepAlive, 10*timeUnit, 0)
 	stopRefreshBlockchainView = schedule(refreshBlockchainView, 1*timeUnit, 0)
 	stopUpdatingPendingTxs = schedule(updatePendingTxs, 1*timeUnit, 0)
 	stopListeningToRelayRemoved = schedule(stopServingOnRelayRemoved, 1*timeUnit, 0)
@@ -313,7 +313,6 @@ func waitForOwnerActions() {
 		log.Printf("Server's balance too low (%s, required %s). Waiting for funding...", balance.String(), minimumRelayBalance.String())
 		sleep(10*time.Second, devMode)
 	}
-	log.Println("Relay funded. Balance:", balance)
 }
 
 func keepAlive() {
