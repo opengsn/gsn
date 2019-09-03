@@ -34,7 +34,8 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
 
   beforeEach(async function () {
     relayHub = await RelayHub.new();
-    recipient = await SampleRecipient.new(relayHub.address);
+    recipient = await SampleRecipient.new();
+    await recipient.setHub(relayHub.address);
   });
 
   describe('relay management', function () {

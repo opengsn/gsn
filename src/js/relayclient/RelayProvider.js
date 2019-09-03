@@ -44,8 +44,10 @@ class RelayProvider {
                     console.log("calling sendAsync" + JSON.stringify(payload))
                 this.origProviderSend(payload, (e, r) => {
                     if (e) callback(e)
-                    else
-                        callback(null, this.relayClient.fixTransactionReceiptResp(r))
+                    else{
+                        this.relayClient.fixTransactionReceiptResp(r.result);
+                        callback(null, r)
+                    }
                 })
                 return
             }

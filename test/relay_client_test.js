@@ -32,7 +32,10 @@ contract('RelayClient', function (accounts) {
     let gasPrice;
     let relay_client_config;
     let relayOwner = accounts[1];
-
+    let relayAccount;
+    let dayInSec = 24 * 60 * 60;
+    let weekInSec = dayInSec * 7;
+    let one_ether = 1e18;
     before(async function () {
         const gasPricePercent = 20
         gasPrice = ( await web3.eth.getGasPrice() ) * (100  + gasPricePercent)/100
@@ -49,6 +52,14 @@ contract('RelayClient', function (accounts) {
 
         relayproc = await testutils.startRelay(rhub, {
             stake: 1e18, delay: 3600 * 24 * 7, txfee: 12, url: "asd", relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host,GasPricePercent:gasPricePercent})
+
+        relayAccount = await web3.eth.personal.newAccount("asdgasfd2r43")
+        await web3.eth.personal.unlockAccount(relayAccount, "asdgasfd2r43")
+        await web3.eth.sendTransaction({
+            from: accounts[0],
+            to: relayAccount,
+            value: one_ether});
+        await register_new_relay(rhub, one_ether, weekInSec, 120, "hello", relayAccount, relayOwner);
 
     });
 
@@ -358,7 +369,7 @@ contract('RelayClient', function (accounts) {
                 else {
                     let callback_wrap = function (e, r) {
                         assert.equal(null, e)
-                        assert.equal(true, r.input.includes(message_hex))
+                        assert.equal(true, r.input && r.input.includes(message_hex))
                         callback(e, r)
                     }
                     orig_httpSend.send(url, jsonRequestData, callback_wrap)
@@ -548,6 +559,108 @@ contract('RelayClient', function (accounts) {
             assert.equal(true,parseInt(afterOwnerBalance)  > parseInt(beforeOwnerBalance))
 
         });
+    });
+
+    describe("should handle incorrect relay hub contract in recipient", async function () {
+        let sr2;
+        before( async function () {
+            SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = false
+            sr2 = await SampleRecipient.new()
+            SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
+        });
+
+        it("should revert on zero hub in recipient contract", async function () {
+            try {
+                await sr2.emitMessage("hello world", {from: gasLess})
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("The relay hub address is set to zero in recipient at"))
+            }
+        });
+
+        it("should throw on invalid recipient", async function () {
+            let tbk = new RelayClient(web3);
+            try {
+                await tbk.createRelayHubFromRecipient(gasLess)
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("Could not get relay hub address from recipient at"))
+            }
+        });
+
+        it("should throw on invalid hub ", async function () {
+            let tbk = new RelayClient(web3);
+            tbk.createRelayHub = function () {
+                return {methods: {
+                        version: function () {
+                            return {call: function() {throw new Error("NOPE")}}
+                        }
+                }
+                }
+            }
+            try {
+                await tbk.createRelayHubFromRecipient(sr.address)
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("Could not query relay hub version at"))
+                assert.equal(true, error.message.includes("NOPE"))
+            }
+        });
+
+        it("should throw on wrong hub version", async function () {
+            let tbk = new RelayClient(web3);
+            tbk.createRelayHub = function () {
+                return {methods: {
+                        version: function () {
+                            return {call: function() {return "wrong version"}}
+                        }
+                    }
+                }
+            }
+            try {
+                await tbk.createRelayHubFromRecipient(sr.address)
+                assert.fail()
+            }
+            catch (error) {
+                assert.equal(true, error.message.includes("Unsupported relay hub version"))
+                assert.equal(true, error.message.includes("wrong version"))
+            }
+        });
+
+    });
+
+    it("should report canRelayFailed on transactionReceipt", async function () {
+        let from = accounts[6];
+        let to = sr.address;
+        let relay_nonce = 0;
+        let message = "hello world";
+        let transaction = sr.contract.methods.emitMessage(message).encodeABI();
+        let transaction_fee = 10;
+        let gas_price = 10;
+        let gas_limit = 1000000;
+        let gas_limit_any_value = 7000029;
+        let tbk = new RelayClient(web3);
+
+        await sr.setBlacklisted(from)
+        let digest = await utils.getTransactionHash(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, rhub.address, relayAccount);
+        let sig = await utils.getTransactionSignature(web3, from, digest)
+        let res = await rhub.contract.methods.relayCall(from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, '0x').send({
+            from: relayAccount,
+            gasPrice: gas_price,
+            gasLimit: gas_limit_any_value
+        });
+
+        let receipt = await web3.eth.getTransactionReceipt(res.transactionHash)
+        let canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transaction_fee, gas_price, gas_limit, relay_nonce, sig, "0x");
+        assert.equal(11, canRelay.status.valueOf().toString())
+
+        assert.equal(true, receipt.status)
+        await tbk.fixTransactionReceiptResp(receipt)
+        assert.equal(false, receipt.status)
+
     });
 
 });
