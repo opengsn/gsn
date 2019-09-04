@@ -18,21 +18,20 @@ RELAYHUB_BIN=$(buildpath)/../contracts/RelayHub.json
 RELAYHUB_ABI=$(buildpath)/../contracts/IRelayHub.json
 TRUFFLE_OUT_REC=$(buildpath)/../contracts/SampleRecipient.json
 
-$(server_exe): $(GEN_FILE) $(GEN_FILE_REC) go-get $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
-	echo "Using GOPATH=$(GOPATH)"
+$(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
+	@echo "Using GOPATH=$(GOPATH)"
 	mkdir -p $(buildpath)/bin
 	go build -o $(server_exe) relay
 	strip $(server_exe)
 
 go-get: $(GEN_FILE) $(ETHFILE)
-	go get -v code.cloudfoundry.org/clock github.com/syndtr/goleveldb/leveldb
 
 $(ETHFILE): Makefile
-	@echo "Downloading the ethereum library. Might take a few minutes."
 	@if [ ! -d ${ETHDIR} ]; then \
+	  echo "Downloading the ethereum library. Might take a few minutes.";\
 	  git clone ${ETHREPO} --depth=1 --branch=${ETHVERSION} ${ETHDIR} ;\
-	  go get -v -d ./...;\
 	fi
+	go get -v code.cloudfoundry.org/clock github.com/syndtr/goleveldb/leveldb;
 	touch $(ETHFILE)
 
 gen-file: $(GEN_FILE) Makefile
