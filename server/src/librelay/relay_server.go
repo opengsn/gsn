@@ -324,7 +324,7 @@ func (relay *RelayServer) IsUnstaked() (removed bool, err error) {
 	return true, nil
 }
 
-func (relay *RelayServer) BlockCountSinceRegistration() (when uint64, err error) {
+func (relay *RelayServer) BlockCountSinceRegistration() (count uint64, err error) {
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		log.Println(err)
@@ -352,7 +352,7 @@ func (relay *RelayServer) BlockCountSinceRegistration() (when uint64, err error)
 		(iter.Event.Url != relay.Url) {
 		return 0, fmt.Errorf("Could not receive RelayAdded events for our relay")
 	}
-	when = lastBlockNumber - iter.Event.Raw.BlockNumber
+	count = lastBlockNumber - iter.Event.Raw.BlockNumber
 	return
 }
 

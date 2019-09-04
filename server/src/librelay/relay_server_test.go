@@ -289,12 +289,12 @@ func TestRegisterRelay(t *testing.T) {
 	}
 	client.Commit()
 	test.ErrFail(relay.awaitTransactionMined(tx), t)
-	when, err := relay.BlockCountSinceRegistration()
+	count, err := relay.BlockCountSinceRegistration()
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
-	if when > 1 {
-		t.Error("Wrong registration block",  when)
+	if count > 1 {
+		t.Error("Wrong registration block",  count)
 	}
 }
 
