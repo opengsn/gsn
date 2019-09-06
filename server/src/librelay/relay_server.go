@@ -345,7 +345,8 @@ func (relay *RelayServer) BlockCountSinceRegistration() (count uint64, err error
 		return
 	}
 	// We only care about the last registration event
-	for iter.Next() {}
+	for iter.Next() {
+	}
 	if (iter.Event == nil && !iter.Next()) ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
 		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
@@ -454,7 +455,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
 			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
 			request.RelayFee.String(), "AppData:", hexutil.Encode(request.ApprovalData), "Sig:", hexutil.Encode(request.Signature))
-		errStr = errStr[:len(errStr) - 1]
+		errStr = errStr[:len(errStr)-1]
 		err = fmt.Errorf("canRelay() view function returned error code=%d. params:%s", res, errStr)
 		log.Println(err)
 		return
@@ -473,8 +474,12 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		log.Println(err)
 		return
 	}
-	// Adding the exact gas cost of the encoded function as it is the only dynamic parameter in the relayed call
+	/*
+	 * Adding the exact gas cost of the encoded function and approval data as they arethe only dynamic parameters in the relayed call.
+	 * While the signature is also byte array, it is checked off chain during canRelay() so any size other than 65 bytes will get reverted on "WrongSignature"
+	*/
 	requiredGas.Add(requiredGas, getEncodedFunctionGas(request.EncodedFunction))
+	requiredGas.Add(requiredGas, getEncodedFunctionGas(common.Bytes2Hex(request.ApprovalData)))
 
 	maxCharge, err := relay.rhub.MaxPossibleCharge(callOpt, &request.GasLimit, &request.GasPrice, &request.RelayFee)
 	if err != nil {
@@ -843,7 +848,7 @@ func (relay *RelayServer) Close() (err error) {
  * @return Gas cost of encoded function as parameter in relayedCall
  * As per the yellowpaper, each non-zero byte costs 68 and zero byte costs 4
  */
-func getEncodedFunctionGas(encodedFunction string) (*big.Int){
+func getEncodedFunctionGas(encodedFunction string) (*big.Int) {
 	if strings.HasPrefix(encodedFunction, "0x") {
 		encodedFunction = encodedFunction[2:]
 	}

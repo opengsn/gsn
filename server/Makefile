@@ -64,3 +64,9 @@ release-binaries: $(server_exe) go-get-xgo
 	go run github.com/karalabe/xgo -out='build/xgo/gsn-relay' --targets='$(platforms)' -v ./src/relay
 	mv -f ./build/xgo/* $(buildpath)/bin/
 	rm -rf ./build/xgo
+
+clean:
+	rm -rf pkg
+	rm -rf server/src/code.cloudfoundry.org
+	rm -rf server/src/github.com
+	rm -rf ../build/server
