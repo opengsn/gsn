@@ -90,6 +90,8 @@ type IRelay interface {
 
 	BlockCountSinceRegistration() (when uint64, err error)
 
+	GetRegistrationBlockRate() (rate uint64)
+
 	IsRemoved() (removed bool, err error)
 
 	SendBalanceToOwner() (err error)
@@ -152,6 +154,23 @@ type RelayServer struct {
 type RelayParams struct {
 	RelayServer
 	DBFile string
+}
+
+func (relayParams *RelayParams) Dump() {
+
+	log.Println("Relay initial configuration:")
+	log.Println("OwnerAddress:", relayParams.OwnerAddress.String())
+	log.Println("Fee:", relayParams.Fee.String())
+	log.Println("Url:", relayParams.Url)
+	log.Println("Port:", relayParams.Port)
+	log.Println("RelayHubAddress:", relayParams.RelayHubAddress.String())
+	log.Println("DefaultGasPrice:", relayParams.DefaultGasPrice)
+	log.Println("GasPricePercent:", relayParams.GasPricePercent.String())
+	log.Println("RegistrationBlockRate:", relayParams.RegistrationBlockRate)
+	log.Println("EthereumNodeUrl:", relayParams.EthereumNodeURL)
+	if relayParams.DevMode {
+		log.Println("Using dev mode")
+	}
 }
 
 func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
@@ -355,6 +374,10 @@ func (relay *RelayServer) BlockCountSinceRegistration() (count uint64, err error
 	}
 	count = lastBlockNumber - iter.Event.Raw.BlockNumber
 	return
+}
+
+func (relay *RelayServer) GetRegistrationBlockRate() (uint64) {
+	return relay.RegistrationBlockRate
 }
 
 func (relay *RelayServer) IsRemoved() (removed bool, err error) {
