@@ -174,7 +174,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	fee := flag.Int64("Fee", 70, "Relay's per transaction fee")
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
 	port := flag.String("Port", "", "Relay server's port")
-	relayHubAddress := flag.String("RelayHubAddress", "0x537F27a04470242ff6b2c3ad247A05248d0d27CE", "RelayHub address")
+	relayHubAddress := flag.String("RelayHubAddress", "0xD216153c06E857cD7f72665E0aF1d7D82172F494", "RelayHub address")
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
 	RegistrationBlockRate:= flag.Uint64("RegistrationBlockRate", 6000-200, "Relay registeration rate (in blocks)")
