@@ -1,15 +1,23 @@
 # Manual setup for a GSN relayer
 
-## Compile the server
+The following steps were tested on amazon AWS Ubuntu instance.
 
-On Linux:
+Make sure to modify your network specific parameters: 
+
+Your hostname (instead of `example.com`), and infura `NETWORK` and `INFURATOKEN`.
+
+
+## Compile the server
+Can be done on a local machine, and only copy the output RelayHttpServer to the target instance:
+
+On Linux (requires preinstalled `truffle`, `go`, `geth`):
 ```
 yarn 
 make server
 cp build/server/bin/RelayHttpServer .
 ```
 
-On Mac (using docker to build the linux image):
+On Mac - or Linux without the above pre-requisites (requires only `docker`):
 ```
 ./dock/run.sh yarn
 ./dock/run.sh make
@@ -101,8 +109,8 @@ URL=https://example.com
 LOCAL_PORT=8091
 WORKDIR=/app/data
 NODE_URL=https://NETWORK.infura.io/v3/INFURATOKEN
-RELAY_HUB=RELAY_HUB_ADDRESS
-GAS_PRICE_PERCENT=0
+RELAY_HUB=0xD216153c06E857cD7f72665E0aF1d7D82172F494
+GAS_PRICE_PERCENT=70
 ```
 
 ## Configure service on systemd
@@ -142,7 +150,20 @@ sudo systemctl start relayer
 curl 'https://example.com/getaddr'
 ```
 
+should return a json with `Ready:false`
+
 ## Fund it (from local workstation)
 ```
 ./scripts/fundrelay.js RELAY_HUB_ADDRESS 'https://example.com' 0 PROVIDER_URL
+```
+
+The above script will stake the relay (with 1 eth), and then fund it with 1 eth.
+Note that staking the relay makes your account its OWNER. Collected fees from relaying 
+transactions are going into your account.
+
+Once funded, the above test should show `Ready:true`.
+For troubleshooting, you can look on the relay server at the log:
+
+```
+journalctl -u relay
 ```
