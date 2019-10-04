@@ -4,7 +4,7 @@ This document comes to describe the protocol between the client application and 
  for the purpose of sending a transaction to the blockchain.
 
 Note that most of the client data is checked not by the relay but on-chain by the `RelayHub` contract.<br/> 
-The formal specification of the protocol is defined by [EIP1813](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1613.md)
+The formal specification of the protocol is defined by [EIP1613](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1613.md)
 
 ## Versioning
 
@@ -34,7 +34,7 @@ At a high-level the client perform the following steps:
 3. [Create a request](#create-request)
 4. [Send Request to the Relay.](#send-request)
 5. [Validate Response.](#validate-response)
-6. [ Handle Relay Error Responses.](#relay-error)
+6. [Handle Relay Error Responses.](#relay-error)
 7. [Process Trasnaction-receipt](#process-tx-rcpt)
 
 A relay perform the following steps:
@@ -62,8 +62,8 @@ A relay perform the following steps:
 ###  2. Select a Relay
 
 * For each potential relay, the client "pings" the relay by sending a `/getaddr` request.
-* Validate the relay is valid (contains `valid:true`)
-* Validate the relay supports this protocol: `version:1.0.x`
+* Validate the relay is valid (contains `Ready: true`)
+* Validate the relay supports this protocol: `version:0.4.x`
 * Validate the `MinGasPrice`: The relay MAY reject request with lower gas-price, so the client 
     SHOULD skip requesting the relay if the relay requires higher gas-price.
 * The client SHOULD ping few relays, but not too much: e.g. default client pings 3 relays, and use the first valid one. 
@@ -75,7 +75,7 @@ A relay perform the following steps:
 * The client should create and sign a relay request, which MUST contain the following fields:
   -  `from`: the client's address
   -  `to`: the target contract's address
-  - `encodedFunction` - the function to call on the **target** contract.
+  - `encodedFunction` - the function to call on the **target** contract (selector and params)
   -  `relayFee`: the fee the client would pay for the relay. The fee is precent above the real transaction price, so "70" means the actual fee the client will pay would be: `usedGas*(100+relayFee)/100`
   -  `gasPrice`: the **Minimum** gas price for the request. The relay MAY use higher gas-price, but will only get 
     compensated for this advertised gas-price.

@@ -17,7 +17,7 @@ make server
 cp build/server/bin/RelayHttpServer .
 ```
 
-On Mac - or Linux without the above pre-requisites (requires only `docker`):
+Using Docker: On Mac - or Linux without the above pre-requisites (requires only `docker`):
 ```
 ./dock/run.sh yarn
 ./dock/run.sh make
