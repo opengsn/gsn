@@ -135,7 +135,7 @@ A relay client can receive various options:
 
 ### Contract modifications
 
-In order to support relayed trasnactions, the contract must implement the `RelayRecipient` contract. This way it can check (before the call) the caller, and decide whether to accept the call.
+In order to support relayed transactions, the contract must implement the `RelayRecipient` contract. This way it can check (before the call) the caller, and decide whether to accept the call.
 
 Here's a basic contract, which accepts requests from known users.
 
