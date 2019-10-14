@@ -326,16 +326,13 @@ func keepAlive() {
 		return
 	}
 	log.Println("Registering relay...")
-	for {
-		err := relay.RegisterRelay()
-		if err == nil {
-			break
-		}
-		log.Println(err)
-		log.Println("Trying to register again...")
-		sleep(1*time.Minute, devMode)
+	
+	err = relay.RegisterRelay()
+	if err == nil {
+		log.Println("Done registering")
+		return
 	}
-	log.Println("Done registering")
+	log.Println(err)
 }
 
 func stopServingOnRelayRemoved() {
