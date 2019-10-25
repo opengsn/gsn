@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.4.1"
+const VERSION = "0.4.2"
 
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "data/keystore")
 var devMode bool                                                  // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
