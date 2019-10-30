@@ -25,21 +25,24 @@ class ActiveRelayPinger {
             return null
         }
 
-        let firstRelayToRespond
-        for ( ;!firstRelayToRespond && this.remainingRelays.length ; ) {
+        while ( this.remainingRelays.length  ) {
             let bulkSize = Math.min( 3, this.remainingRelays.length)
             try {
                 let slice = this.remainingRelays.slice(0, bulkSize)
                 if (this.verbose){
                     console.log("nextRelay: find fastest relay from: " + JSON.stringify(slice))
                 }
-                firstRelayToRespond = await this.raceToSuccess(
+                let firstRelayToRespond = await this.raceToSuccess(
                     slice
                         .map(relay => this.getRelayAddressPing(relay.relayUrl, relay.transactionFee, this.gasPrice))
                 );
                 if (this.verbose){
                     console.log("race finished with a champion: " + firstRelayToRespond.relayUrl)
                 }
+                this.remainingRelays = this.remainingRelays.filter(a => a.relayUrl !== firstRelayToRespond.relayUrl)
+                this.pingedRelays++
+                return firstRelayToRespond
+
             } catch (e) {
                 console.log("One batch of relays failed, last error: ", e)
                 //none of the first `bulkSize` items matched. remove them, to continue with the next bulk.
@@ -47,9 +50,6 @@ class ActiveRelayPinger {
             }
         }
 
-        this.remainingRelays = this.remainingRelays.filter(a => a.relayUrl !== firstRelayToRespond.relayUrl)
-        this.pingedRelays++
-        return firstRelayToRespond
     }
 
     /**

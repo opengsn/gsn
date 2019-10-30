@@ -1,4 +1,3 @@
-/* global web3 contract it before after artifacts describe beforeEach afterEach */
 const assert = require('chai').use(require('chai-as-promised')).assert;
 const ServerHelper = require('../src/js/relayclient/ServerHelper');
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper');

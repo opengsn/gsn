@@ -1,4 +1,3 @@
-/* global web3 */
 const utils = require('./utils')
 const promisify = utils.promisify
 const IRelayHub = require('../relayclient/IRelayHub')

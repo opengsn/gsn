@@ -1,5 +1,3 @@
-/* globals web3 artifacts contract it before after assert */
-
 const RelayClient = require('../src/js/relayclient/RelayClient');
 const RelayProvider = require('../src/js/relayclient/RelayProvider');
 const utils = require('../src/js/relayclient/utils')
@@ -566,6 +564,7 @@ contract('RelayClient', function (accounts) {
         before( async function () {
             SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = false
             sr2 = await SampleRecipient.new()
+            //eslint-disable-next-line
             SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
         });
 

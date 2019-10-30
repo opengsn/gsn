@@ -1,4 +1,3 @@
-/* global web3 contract it assert before after artifacts */
 // test various flows, in multiple modes:
 //  once in Direct mode, and once in Relay (gasless) mode.
 // the two modes must behave just the same (with an exception of gasless test, which must fail on direct mode, and must
