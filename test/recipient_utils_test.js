@@ -1,6 +1,4 @@
-/*global artifacts describe before it assert */
 const TestRecipientUtils=artifacts.require( 'TestRecipientUtils.sol' )
-
 
 describe('GsnUtils', async() => {
 	var testForUtils;

@@ -1,5 +1,3 @@
-/* global web3 assert */
-
 const child_process = require('child_process')
 const HttpWrapper = require("../src/js/relayclient/HttpWrapper")
 const localhostOne = "http://localhost:8090"

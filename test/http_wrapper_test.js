@@ -1,4 +1,3 @@
-/* global describe web3 require it */
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
 const assert = require('chai').use(require('chai-as-promised')).assert;
 
