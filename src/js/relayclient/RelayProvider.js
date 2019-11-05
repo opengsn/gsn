@@ -15,13 +15,13 @@ class RelayProvider {
         relayOptions = relayOptions || {}
         relayOptions.isRelayEnabled = true
         this.relayOptions = relayOptions
-        this.origProvider = origProvider
 
         if ( origProvider.origProvider) {
             //we're 2nd-level wrapper.. disable previous one.
             console.log( "wrapping RelayProvider with another.. skipping previous one.")
             origProvider = origProvider.origProvider
         }
+        this.origProvider = origProvider
         this.origProviderSend = ( this.origProvider['sendAsync'] || this.origProvider['send'] ) .bind(this.origProvider)
         this.relayClient = new RelayClient(new Web3(origProvider), relayOptions)
     }
