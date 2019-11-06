@@ -29,7 +29,6 @@ const TxReceiptTimeout = 60 * time.Second
 
 var lastNonce uint64 = 0
 var nonceMutex = &sync.Mutex{}
-var unconfirmedTxs = make(map[uint64]*types.Transaction)
 
 type RelayTransactionRequest struct {
 	EncodedFunction string
@@ -838,29 +837,6 @@ func (relay *RelayServer) UpdateUnconfirmedTransactions() (newTx *types.Transact
 	}
 
 	return newtx, nil
-}
-
-func (relay *RelayServer) replayUnconfirmedTxs(client *ethclient.Client) {
-	log.Println("replayUnconfirmedTxs start")
-	log.Println("unconfirmedTxs size", len(unconfirmedTxs))
-	ctx := context.Background()
-	nonce, err := relay.Client.PendingNonceAt(ctx, relay.Address())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	for i := uint64(0); i < nonce; i++ {
-		delete(unconfirmedTxs, i)
-	}
-	log.Println("unconfirmedTxs size after deletion", len(unconfirmedTxs))
-	for i, tx := range unconfirmedTxs {
-		log.Println("replaying tx nonce ", i)
-		err = relay.Client.SendTransaction(ctx, tx)
-		if err != nil {
-			log.Println("tx ", i, ":", err)
-		}
-	}
-	log.Println("replayUnconfirmedTxs end")
 }
 
 func (relay *RelayServer) Close() (err error) {

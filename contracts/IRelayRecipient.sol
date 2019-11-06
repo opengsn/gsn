@@ -12,7 +12,7 @@ contract IRelayRecipient {
      * can be used to determine if the contract can pay for incoming calls,
      * before making any.
      */
-    function getRecipientBalance() public view returns (uint);
+    function getRecipientBalance() public view returns (uint256);
 
     /*
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
