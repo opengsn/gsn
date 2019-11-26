@@ -1,5 +1,5 @@
 const ethUtils = require('ethereumjs-util');
-const EthCrypto = require('eth-crypto');
+const sign = require('eth-crypto/dist/lib/sign');
 const web3Utils = require('web3-utils')
 const relay_prefix = "rlx:"
 
@@ -92,7 +92,7 @@ module.exports = {
         else
             signed = hash
         let keyHex = "0x" + Buffer.from(privKey).toString('hex')
-        const sig_ = EthCrypto.sign(keyHex, signed)
+        const sig_ = sign(keyHex, signed)
         let signature = ethUtils.fromRpcSig(sig_);
         let sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(web3Utils.toHex(signature.v));
         return sig
