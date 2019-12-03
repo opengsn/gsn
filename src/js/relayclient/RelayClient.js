@@ -159,10 +159,11 @@ class RelayClient {
 
         return new Promise(function (resolve, reject) {
 
+
             let jsonRequestData = {
                 "encodedFunction": encodedFunction,
                 "signature": parseHexString(signature.replace(/^0x/, '')),
-                "approvalData": parseHexString(approvalData.replace(/^0x/, '')),
+                "approvalData": parseHexString(approvalData.toString('hex').replace(/^0x/, '')),
                 "from": from,
                 "to": to,
                 "gasPrice": gasprice,
@@ -357,7 +358,7 @@ class RelayClient {
                 signature = await getTransactionSignature(this.web3, options.from, hash);
             }
 
-            let approvalData = "0x";
+            let approvalData = options.approvalData || "0x";
             if (typeof options.approveFunction === "function") {
                 approvalData = "0x" + await options.approveFunction({
                     from: options.from,
@@ -476,12 +477,12 @@ class RelayClient {
         let params = payload.params[0];
         let relayClientOptions = this.config;
 
+        const {txfee, txFee, gas, gasPrice } = params;
         let relayOptions = {
-            from: params.from,
-            to: params.to,
-            txfee: params.txFee || params.txfee || relayClientOptions.txfee,
-            gas_limit: params.gas && parseInt(params.gas, 16),
-            gas_price: params.gasPrice && parseInt(params.gasPrice, 16)
+            ...params,
+            txfee: txFee || txfee || relayClientOptions.txfee,
+            gas_limit: gas && parseInt(gas, 16),
+            gas_price: gasPrice && parseInt(gasPrice, 16)
         };
 
         if (relayClientOptions.verbose)

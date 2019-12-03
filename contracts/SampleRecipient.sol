@@ -28,6 +28,8 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     bool public storeAcceptData;
 
+    bytes public expectedApprovalData;
+
     constructor() public {}
 
     function setHub(IRelayHub rhub) public {
@@ -86,6 +88,11 @@ contract SampleRecipient is RelayRecipient, Ownable {
         storeAcceptData = val;
     }
 
+    function setExpectedApprovalData(bytes memory val) public {
+        expectedApprovalData = val;
+    }
+
+
     function() external payable {}
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin);
@@ -130,6 +137,12 @@ contract SampleRecipient is RelayRecipient, Ownable {
         if ( relaysWhitelist[relay] ) return (0, "");
         if (from == blacklisted) return (11, "");
         if ( rejectAcceptRelayCall ) return (12, "");
+
+        if (expectedApprovalData.length > 0) {
+            if (keccak256(expectedApprovalData) != keccak256(approvalData)) {
+                return (14, abi.encodePacked("test: unexpected approvalData: '", approvalData, "' instead of '", expectedApprovalData, "'"));
+            }
+        } else
 
         // this is an example of how the dapp can provide an offchain signature to a transaction
         if (approvalData.length > 0) {

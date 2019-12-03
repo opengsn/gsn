@@ -64,8 +64,25 @@ class RelayProvider {
 
     //hook method: skip relay if the "from" address appears in optins.skipSenders
     skipRelay(payload) {
-        return !this.relayOptions.isRelayEnabled ||
-            this.relayOptions.skipSenders && this.relayOptions.skipSenders[payload.params.from]
+        let ret=false
+        if ( payload.params && payload.params[0] ) {
+            let useGSN = payload.params[0].useGSN
+            if ( useGSN ) {
+                console.log( "tada")
+            }
+            if ( typeof useGSN === 'undefined' ) useGSN = this.relayOptions.useGSN
+            if ( typeof useGSN === 'function' ) useGSN = useGSN(payload)
+            if ( typeof useGSN !== 'undefined' && !useGSN ) {
+                ret=true
+            }
+        }
+
+        if ( !ret ) {
+            ret = !this.relayOptions.isRelayEnabled ||
+                 this.relayOptions.skipSenders && this.relayOptions.skipSenders[payload.params.from]
+        }
+
+        return ret
     }
 }
 
