@@ -125,6 +125,49 @@ options.forEach(params => {
             }, "revert")
         })
 
+        if (params.relay) {
+            it(params.title + "wait for specific approvalData", async () => {
+                try {
+                    await sr.setExpectedApprovalData('0x414243', {from: accounts[0], useGSN: false});
+                    await sr.emitMessage("xxx", {from: gasless, approvalData: '0x414243'});
+                } catch (e) {
+                    console.log("error1: ", e)
+                    throw e
+                } finally {
+                    await sr.setExpectedApprovalData(Buffer.from(''), {from: accounts[0], useGSN: false});
+                }
+            })
+
+            it(params.title + "wait for specific approvalData as Buffer", async () => {
+                try {
+                    await sr.setExpectedApprovalData(Buffer.from('hello'), {from: accounts[0], useGSN: false});
+                    SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
+                    await sr.emitMessage("xxx", {from: gasless, approvalData: Buffer.from('hello')});
+                } catch (e) {
+                    console.log("error2: ", e)
+                    throw e
+                } finally {
+                    await sr.setExpectedApprovalData(Buffer.from(''), {from: accounts[0], useGSN: false});
+                }
+
+            })
+
+            it(params.title + "fail on no approval data", async () => {
+                try {
+                    await sr.setExpectedApprovalData(Buffer.from('hello1'), {from: accounts[0], useGSN: false});
+                    await asyncShouldThrow(async () => {
+                        await sr.emitMessage("xxx", {from: gasless});
+                    }, "unexpected approvalData: '' instead of")
+                } catch (e) {
+                    console.log("error3: ", e)
+                    throw e
+                } finally {
+                    await sr.setExpectedApprovalData(Buffer.from(''), {from: accounts[0], useGSN: false});
+                }
+
+            })
+        }
+
         async function asyncShouldThrow(asyncFunc, str) {
             let msg = str || 'Error'
             let ex = null
