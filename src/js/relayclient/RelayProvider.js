@@ -67,9 +67,6 @@ class RelayProvider {
         let ret=false
         if ( payload.params && payload.params[0] ) {
             let useGSN = payload.params[0].useGSN
-            if ( useGSN ) {
-                console.log( "tada")
-            }
             if ( typeof useGSN === 'undefined' ) useGSN = this.relayOptions.useGSN
             if ( typeof useGSN === 'function' ) useGSN = useGSN(payload)
             if ( typeof useGSN !== 'undefined' && !useGSN ) {
