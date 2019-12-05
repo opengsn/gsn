@@ -69,7 +69,7 @@ class RelayClient {
         }, config)
 
         this.web3 = web3;
-        this.httpSend = new HttpWrapper({timeout: this.config.httpTimeout});
+        this.httpSend = this.config.httpSend || new HttpWrapper({timeout: this.config.httpTimeout});
         this.failedRelays = {}
         this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.failedRelays, this.config);
     }
