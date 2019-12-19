@@ -264,9 +264,9 @@ func refreshBlockchainView() {
 		sleep(10*time.Second, devMode)
 
 	}
-	gasPrice := relay.GasPrice()
-	log.Println("GasPrice:", gasPrice.Uint64())
-
+	if !ready {
+		log.Println("Relay ready for client requests.")
+	}
 	ready = true
 }
 
@@ -277,7 +277,6 @@ func updatePendingTxs() {
 	}
 	waitForOwnerActions()
 
-	log.Println("Updating unconfirmed txs...")
 	_, err := relay.UpdateUnconfirmedTransactions()
 	if err != nil {
 		log.Println("Error updating unconfirmed txs", err)
@@ -322,7 +321,6 @@ func keepAlive() {
 	if err != nil {
 		log.Println(err)
 	} else if count < relay.GetRegistrationBlockRate() {
-		log.Println("Relay registered lately: ", count, " blocks ago")
 		return
 	}
 	log.Println("Registering relay...")

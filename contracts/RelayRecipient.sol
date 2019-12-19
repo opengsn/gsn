@@ -28,9 +28,6 @@ contract RelayRecipient is IRelayRecipient {
      */
     function setRelayHub(IRelayHub _rhub) internal {
         relayHub = _rhub;
-
-        //attempt a read method, just to validate the relay is a valid RelayHub contract.
-        getRecipientBalance();
     }
 
     function getRelayHub() internal view returns (IRelayHub) {
