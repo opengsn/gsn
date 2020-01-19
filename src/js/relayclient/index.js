@@ -1,7 +1,7 @@
-let RelayProvider = require( './RelayProvider')
-let RelayClient = require('./RelayClient')
+const RelayProvider = require('./RelayProvider')
+const RelayClient = require('./RelayClient')
 
 module.exports = {
-    RelayProvider,
-    RelayClient
+  RelayProvider,
+  RelayClient
 }

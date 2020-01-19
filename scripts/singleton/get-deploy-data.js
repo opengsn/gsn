@@ -1,18 +1,14 @@
-const { lstatSync, readdirSync } = require('fs')
-const { join } = require('path')
+import Transaction from 'ethereumjs-tx'
+import ethUtils from 'ethereumjs-util'
+import fs from 'fs'
 
-const ethTx = require('ethereumjs-tx');
-const ethUtils = require('ethereumjs-util');
-
-const fs = require('fs');
-
-function toHexString(buffer) {
+function toHexString (buffer) {
   return '0x' + buffer.toString('hex')
 }
 
-const bin = fs.readFileSync('singleton/singleton_RelayHub_flattened_sol_RelayHub.bin', 'ascii');
+const bin = fs.readFileSync('singleton/singleton_RelayHub_flattened_sol_RelayHub.bin', 'ascii')
 
-const tx = new ethTx({
+const tx = new Transaction({
   nonce: 0,
   data: '0x' + bin,
   value: 0,
@@ -21,14 +17,14 @@ const tx = new ethTx({
   v: 27,
   r: '0x1613161316131613161316131613161316131613161316131613161316131613',
   s: '0x1613161316131613161316131613161316131613161316131613161316131613'
-});
+})
 
-const deployer = tx.getSenderAddress();
+const deployer = tx.getSenderAddress()
 
 console.log(JSON.stringify({
   deployer: toHexString(deployer),
   contract: {
     address: toHexString(ethUtils.generateAddress(deployer, ethUtils.toBuffer(0))),
-    deployTx: toHexString(tx.serialize()),
+    deployTx: toHexString(tx.serialize())
   }
-}));
+}))

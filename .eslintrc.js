@@ -12,7 +12,10 @@ module.exports = {
         "contract": false,
         "web3": false,
     },
-    "extends": "eslint:recommended",
+    "extends":
+    [
+      "standard"
+    ],
     "parserOptions": {
         "ecmaVersion": 2018
     },

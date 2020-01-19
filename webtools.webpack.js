@@ -1,9 +1,9 @@
-const path = require('path');
-BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
+const path = require('path')
+// BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
 
 module.exports = {
   plugins: [
-//      new BundleAnalyzerPlugin()
+    //      new BundleAnalyzerPlugin()
   ],
 
   entry: './src/js/webtools/webtools.js',
@@ -12,4 +12,4 @@ module.exports = {
     path: path.resolve(__dirname, 'webtools'),
     filename: 'tabookey-webtools.pack.js'
   }
-};
+}
