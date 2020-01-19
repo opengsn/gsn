@@ -122,7 +122,7 @@ class RelayClient {
         let transaction_orig_params_hash = utils.getTransactionHash(
             from, to, transaction_orig, transaction_fee, gas_price, gas_limit, nonce, relay_hub_address, relay_address);
 
-        if (returned_tx_params_hash === transaction_orig_params_hash && address_relay === signer) {
+        if (returned_tx_params_hash === transaction_orig_params_hash && utils.isSameAddress(address_relay, signer)) {
             if (this.config.verbose) {
                 console.log("validateRelayResponse - valid transaction response")
             }
