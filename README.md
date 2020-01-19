@@ -17,7 +17,7 @@ Its very simple to adapt an existing contract and apps to use the Relays
 
 ## How it works?
 
-For a full techincal description, see our [EIP draft](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1613.md)
+For a full technical description, see our [EIP draft](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1613.md)
 
 The client has an account (address and private key) just like any other ethereum account - except that it never has to have any money in it.
 
