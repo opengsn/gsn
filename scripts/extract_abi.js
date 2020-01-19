@@ -7,9 +7,9 @@ const fs = require('fs')
 const path = require('path')
 
 // TODO: pass all these things as parameters
-const projectFolder = 'solidity/'
+const projectFolder = ''
 const contractsFolder = projectFolder + 'contracts'
-const outAbiFolder = 'solidity/src/js/generated'
+const outAbiFolder = 'src/js/relayclient'
 
 const contractsToExtract = ['IRelayHub', 'IRelayRecipient']
 
