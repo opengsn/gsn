@@ -1,8 +1,8 @@
-var RelayHub = artifacts.require("./RelayHub.sol");
-var SampleRecipient = artifacts.require("./SampleRecipient.sol");
+var RelayHub = artifacts.require('./RelayHub.sol')
+var SampleRecipient = artifacts.require('./SampleRecipient.sol')
 
-module.exports = async function(deployer) {
-    await deployer.deploy(RelayHub);
-    let sr = await deployer.deploy(SampleRecipient);
-    await sr.setHub(RelayHub.address)
-};
+module.exports = async function (deployer) {
+  await deployer.deploy(RelayHub)
+  const sr = await deployer.deploy(SampleRecipient)
+  await sr.setHub(RelayHub.address)
+}

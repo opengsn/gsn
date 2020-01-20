@@ -31,12 +31,12 @@ jobs: # a collection of steps
             - ./server/src/code.cloudfoundry.org
 
       - run:
-          name: compile
-          command: make
-
-      - run:
           name: lint
           command: npm run lint
+
+      - run:
+          name: compile
+          command: make
 
       - run: # run tests
           name: test
@@ -48,9 +48,9 @@ jobs: # a collection of steps
             - ./coverage
 
       - run: # run coverage. update "coverage/covsig.txt" if successful run. 
-             # use last coverage report if no test/contract was changed.
+          # use last coverage report if no test/contract was changed.
           name: coverage
-          command: npm run coverage-if-changed 
+          command: npm run coverage-if-changed
 
       - save_cache: # special cache for coverage test
           key: last-coverage
@@ -59,7 +59,7 @@ jobs: # a collection of steps
 
       - store_artifacts: # special step to save test results as as artifact
           path: ./coverage
-      - store_artifacts: 
+      - store_artifacts:
           path: ./coverage.html
 
       - store_test_results: # special step to upload test results for display in Test Summary
