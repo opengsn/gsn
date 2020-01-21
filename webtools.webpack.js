@@ -10,6 +10,6 @@ module.exports = {
   mode: 'development',
   output: {
     path: path.resolve(__dirname, 'webtools'),
-    filename: 'tabookey-webtools.pack.js'
+    filename: 'openeth-webtools.pack.js'
   }
 }

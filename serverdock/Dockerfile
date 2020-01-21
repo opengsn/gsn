@@ -1,5 +1,5 @@
 FROM phusion/baseimage
-MAINTAINER "dror@tabookey.com"
+MAINTAINER "dror.tirosh@gmail.com"
 
 RUN	apt-get update && \
 	apt-get install -y git nodejs npm

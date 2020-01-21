@@ -64,8 +64,6 @@ contract('SampleRecipient', function (accounts) {
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 contract('RelayHub', function (accounts) {
-  assert.ok(web3.version.toString().indexOf('1.0') >= 0, 'Must use web3>=1.0 (truffle 5)')
-
   let rhub
   let sr
 

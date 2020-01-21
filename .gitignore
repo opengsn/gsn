@@ -3,7 +3,6 @@
 /node_modules/
 /server/src/github.com/ethereum/go-ethereum/
 /metacoin/
-tabookey-gasless-*.tgz
 /.vscode/settings.json
 /.idea/
 /server/pkg/darwin_amd64/
@@ -15,6 +14,6 @@ tabookey-gasless-*.tgz
 /coverage/
 /coverage.json
 /artifacts/
-/webtools/tabookey-webtools.pack.js
+/webtools/openeth-webtools.pack.js
 /singleton/
 /server/pkg/
