@@ -78,7 +78,7 @@ The above is a docker wrapper, containing build prerequisites (`go`, `abigen`, `
 ### Running a web client
 
 Here's how to download and run our modified "MetaToken", modified to demonstrate supoprt for gasless transaction.
-In the gsn folder do:
+In the `gsn` folder do:
 
 	./dock/run.sh ./restart-relay.sh web
 
