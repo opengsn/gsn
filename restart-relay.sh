@@ -5,7 +5,6 @@ if [ "$1" == "help" ]; then
 echo Usage:
 echo "  $0 test - run all tests, and exit"
 echo "  $0      - (no args) start HttpRelayServer, and wait"
-echo "  $0 web  - start HttpRelayServer and sample MetaCoin web app (downloaded into \"webpack-box\" subfolder"
 exit 1
 
 else 
@@ -74,7 +73,6 @@ sleep 1
 case "$*" in
 	test) 	cmd="npx truffle test" ;; 
 	test/*) cmd="npx truffle test $*" ;;
-	web)	cmd="./init_metacoin.sh web" ;;
 	*)	echo "Unknown command. do '$0 help'"; exit 1 ;;
 esac
 

@@ -2,7 +2,6 @@
 .DS_Store
 /node_modules/
 /server/src/github.com/ethereum/go-ethereum/
-/metacoin/
 /.vscode/settings.json
 /.idea/
 /server/pkg/darwin_amd64/
@@ -17,3 +16,4 @@
 /webtools/openeth-webtools.pack.js
 /singleton/
 /server/pkg/
+/.eslintcache
