@@ -1,16 +1,16 @@
 {
   "version": "0.4.5",
-  "description": "Tabookey Gasless Relay Framework",
-  "name": "tabookey-gasless",
+  "description": "Openeth Gas Stations Network",
+  "name": "@openeth/gsn",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/tabookey-dev/tabookey-gasless",
+    "url": "https://github.com/openeth-dev/gsn",
     "type": "git"
   },
   "contributors": [
     {
       "name": "Dror Tirosh",
-      "email": "dror@tabookey.com"
+      "email": "dror.tirosh@gmail.com"
     },
     {
       "name": "Yoav Weiss",
@@ -18,11 +18,11 @@
     },
     {
       "name": "Shahaf Nacson",
-      "email": "shahaf@tabookey.com"
+      "email": "shahaflol@gmail.com"
     },
     {
       "name": "Alex Forshtat",
-      "email": "alex@tabookey.com"
+      "email": "forshtat1@gmail.com"
     }
   ],
   "bin": {

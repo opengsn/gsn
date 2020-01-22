@@ -1,4 +1,4 @@
-# Tabookey Relay Network
+# Gas Stations Network
 
 ## What is it?
 
@@ -47,7 +47,7 @@ All transaction are signed, both by the client (though its account doesn't have 
 - The client can be sure the relay did its job to relay the request, and didn't try to fool either the client or contract.
 - The Relay, even though its an off-chain component, is not trusted in any way, and can't DoS the system or steal funds. Any such attempt is cryptographically proven, and penalizes the relay before banning it from the network.
 
-Neither the relays in the network, nor the RelayHub contract are controlled by Tabookey in any way. 
+Neither the relays in the network, nor the RelayHub contract are controlled by Openeth in any way.
 We will operate relays in the network, to make sure there's availability of relays, but so can anyone else. 
 The relays network is a free market, where relays compete based on transaction fees and quality of service, on equal grounds.
 
@@ -78,7 +78,7 @@ The above is a docker wrapper, containing build prerequisites (`go`, `abigen`, `
 ### Running a web client
 
 Here's how to download and run our modified "MetaToken", modified to demonstrate supoprt for gasless transaction.
-In the tabookey-gasless folder do:
+In the `gsn` folder do:
 
 	./dock/run.sh ./restart-relay.sh web
 
@@ -110,15 +110,15 @@ note that `yarn test` above runs the entire suite: it compiles the server, then 
 ### Client modifications.
 
 
-	tabookey = require( 'tabookey-gasless')
-    provider = new tabookey.RelayProvider(web3.currentProvider, {} )
+	const Gsn = require( '@openeth/gsn')
+    const provider = new Gsn.RelayProvider(web3.currentProvider, {} )
     web3.setProvider(provider) 
 
 	//from now on, any transaction through this web3 will go through a relay
 	
 	MyContract = new web3.eth.Contract(...)
 
-	myContract = MyContract.at('...')
+	const myContract = await MyContract.at('...')
 	myContract.someMethod()
 
 
