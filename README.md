@@ -3,7 +3,7 @@
 ## What is it?
 
 It's a mechanism for dApps to work with gas-less clients.
-Users are no longer required to install browser extensions, or buy Ether in order to use the dApp. 
+Users are no longer required to buy Ether in order to use the dApp.
 
 The dApp owner decides which clients or what calls are allowed, and pays for the calls. It may use its own mechanism to manage its users.
 
@@ -17,7 +17,11 @@ Its very simple to adapt an existing contract and apps to use the Relays
 
 ## How it works?
 
-For a full technical description, see our [EIP draft](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1613.md)
+See our Medium Posts: 
+ * [United We Stand in a Trustless Way](https://medium.com/tabookey/united-we-stand-in-a-trustless-way-fd28ecf4126f)
+ * [1–800-Ethereum: Gas Stations Network for Toll Free Transactions](https://medium.com/tabookey/1-800-ethereum-gas-stations-network-for-toll-free-transactions-4bbfc03a0a56)
+
+Or see the full technical description, in our [EIP draft](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1613.md)
 
 The client has an account (address and private key) just like any other ethereum account - except that it never has to have any money in it.
 
@@ -29,23 +33,25 @@ The relay gets **compensated** by the target contract for its effort.
 
 The system is completely decentralized and trust-less: the client doesn't trust on the Relay Service, and the Relay service  
 doesn't trust neither the client nor the target contract, yet none can compromise the system.
+A network of relays guarantees the system has high availability.
 
 ## Do I need Metamask/Mist/Hardware wallet ?
 
-Since clients no longer carry ether, you're not *required* to use strong wallet - you can keep the client's private key
-is a local file (cookie). 
-The client can use your local web3 account (e.g. MetaMask), or create a local private-key. 
+A strong wallet is required if you want to use it to save valuable assets. 
+The fact the user doesn't hold eth doesn't mean its key is not valuable.
+If you create a sample app, where the user won't lose much if the key is lost, then its ok to keep the key in a browser "cookie".
 
 ## Is it safe?
 
-Absolutely.
+The GSN had passed through an extensive review, including a full security audit by OpenZeppelin, so we believe it is secured.
+
 In our "mutual-distrust" model, neither the client or contract has to trust the relay to work correctly, nor the relay trusts the contract or client.
 All transaction are signed, both by the client (though its account doesn't have to carry any ether) and by the relay.
 
 - The contract knows that only trusted requests will ever be relayed to it, and that it's only liable to pay for those.
 - The relay can be sure it will be compensated by the contract for its service.
 - The client can be sure the relay did its job to relay the request, and didn't try to fool either the client or contract.
-- The Relay, even though its an off-chain component, is not trusted in any way, and can't DoS the system or steal funds. Any such attempt is cryptographically proven, and penalizes the relay before banning it from the network.
+- A Relay, even though its an off-chain component, is not trusted in any way, and can't DoS the system or steal funds. Any such attempt is cryptographically proven, and penalizes the relay before banning it from the network.
 
 Neither the relays in the network, nor the RelayHub contract are controlled by Openeth in any way.
 We will operate relays in the network, to make sure there's availability of relays, but so can anyone else. 
@@ -121,7 +127,7 @@ Here's a basic contract, which accepts requests from known users.
 contract MyContract is RelayRecipient {
     constructor() {
         // this is the only hub I trust to receive calls from
-        init_relay_hub(RelayHub(0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab));
+        setRelayHub(RelayHub(0xd216153c06e857cd7f72665e0af1d7d82172f494));
     }
 
     mapping (address => bool) public my_users;
@@ -131,19 +137,31 @@ contract MyContract is RelayRecipient {
     // the relay for its service.
     // it can check the user, the relay or the actual function call data.
     // note that when the RelayHub calls this method, its after it did validation of the relay and caller signatures.
-    function accept_relayed_call(address relay, address from, bytes encoded_function, uint gas_price, uint transaction_fee ) external view returns(uint32) {
+    function acceptRelayedCall(address relay, address from, bytes calldata encodedFunction, 
+            uint256 transactionFee, uint256 gasPrice, uint256 gasLimit, uint256 nonce, 
+            bytes calldata approvalData, uint256 maxPossibleCharge) 
+    external view returns (uint256, bytes memory) {
 
         // we simply trust all our known users.
-        if ( !my_users[from] ) return 10;
+        if ( !my_users[from] ) return (10, "unknown user");
+        return (0,"");
+    }
+
+    //simple contracts can leave the pre/post calls empty. This is where you can add
+    // accounting logic for your users.
+    function preRelayedCall(bytes calldata context) relayHubOnly external returns (bytes32) {
         return 0;
+    }
+
+    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) relayHubOnly external {
     }
 
     // This is a sample contract method. 
     // note that when receiving a request from a relay, the msg.sender is always a RelayHub.
-    // You must change your contract to use get_sender() to get the real sender.
-    // (its OK if someone calls this method directly: if no relay is involved, get_sender() returns msg.sender)
+    // You must change your contract to use getSender() to get the real sender.
+    // (its OK if someone calls this method directly: if no relay is involved, getSender() returns msg.sender)
     function my_method() {
-        require ( my_users[ get_sender() ] );
+        require ( my_users[ getSender() ] );
         ...
     }
 }
