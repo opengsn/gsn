@@ -75,28 +75,6 @@ The above is a docker wrapper, containing build prerequisites (`go`, `abigen`, `
 
 	yarn test
 
-### Running a web client
-
-Here's how to download and run our modified "MetaToken", modified to demonstrate supoprt for gasless transaction.
-In the `gsn` folder do:
-
-	./dock/run.sh ./restart-relay.sh web
-
-Configure your MetaMask to Localhost:8545
-open your browser to `http://localhost:8080/`
-
-Notes
-
-- The MetaCoin app was modified to give initial 10000 META for every account.
-- It prompts you whether to use MetaMask account or "ephemeral" private key, saved as browser cookie.
-- Once you enter an amount and hit "transfer", a metamask "SIGN" dialog would appear.
-- After successful transaction, the amount of META tokens left is updated, to signify the transaction succeeded.
-- Restarting the `restart-relay.sh` script will kill ganache, so you must run `truffle migrate && truffle test` again
-	in the `webpack-box project`, to re-deploy the MetaCoin, and fund it with initial ether 
-	(remember: it's the contract that pays for transactions, not the calling webapp!)
-- MetaMask gets confused after node restart, so switch to another network (e.g. mainnet) and back to localhost.
-
-
 ### Components:
 
 - **RelayHub** - master contract on the blockchain, to manage all relays, and help clients find them.
