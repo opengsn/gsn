@@ -34,6 +34,7 @@
     "test": "npm run test-server && npm run test-js",
     "test-server": "make test-server",
     "test-js": "make build-server && run-with-testrpc --port 8544 --gasLimit 8000000 --defaultBalanceEther 1000 --deterministic 'npx truffle --network npmtest test'",
+    "quick-test-js": "truffle test",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
     "webtools": "webpack-cli --config ./webtools.webpack.js && http-server webtools/ -o",
     "lint": "yarn run lint:js",
@@ -99,7 +100,8 @@
     "truffle-hdwallet-provider": "^1.0.1",
     "web3-provider-engine": "^14.1.0",
     "webpack": "^4.37.0",
-    "webpack-cli": "^3.3.6"
+    "webpack-cli": "^3.3.6",
+    "eth-sig-util": "latest"
   },
   "files": [
     "src/",

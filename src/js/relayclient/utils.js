@@ -1,6 +1,9 @@
 const ethUtils = require('ethereumjs-util')
 const EthCrypto = require('eth-crypto')
 const web3Utils = require('web3-utils')
+
+const getDataToSign = require('./EIP712/Eip712Helper')
+
 const relayPrefix = 'rlx:'
 
 function toUint256NoPrefix (int) {
@@ -32,6 +35,47 @@ module.exports = {
   register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
     await relayHub.stake(account, delay, { from: account, value: stake })
     return relayHub.registerRelay(txFee, url, { from: account })
+  },
+
+  getEip712Signature: async function (
+    {
+      web3,
+      methodAppendix: methodSuffix = '',
+      senderAccount,
+      senderNonce,
+      target,
+      encodedFunction,
+      pctRelayFee,
+      gasPrice,
+      gasLimit,
+      relayHub,
+      relayAddress
+    }) {
+    const data = await getDataToSign({
+      web3,
+      senderAccount,
+      senderNonce,
+      target,
+      encodedFunction,
+      pctRelayFee,
+      gasPrice,
+      gasLimit,
+      relayHub,
+      relayAddress
+    })
+    return new Promise((resolve, reject) => {
+      web3.currentProvider.send({
+        method: 'eth_signTypedData' + methodSuffix,
+        params: [senderAccount, data],
+        from: senderAccount
+      }, (err, res) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(res)
+        }
+      })
+    })
   },
 
   getTransactionHash: function (from, to, tx, txfee, gasPrice, gasLimit, nonce, relayHubAddress, relayAddress) {
