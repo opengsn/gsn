@@ -33,14 +33,17 @@ function bytesToHexNoPrefix (bytes) {
 
 module.exports = {
   register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
-    await relayHub.stake(account, delay, { from: account, value: stake })
+    await relayHub.stake(account, delay, {
+      from: account,
+      value: stake
+    })
     return relayHub.registerRelay(txFee, url, { from: account })
   },
 
   getEip712Signature: async function (
     {
       web3,
-      methodAppendix: methodSuffix = '',
+      methodSuffix = '',
       senderAccount,
       senderNonce,
       target,
@@ -51,6 +54,14 @@ module.exports = {
       relayHub,
       relayAddress
     }) {
+    if (
+      typeof gasPrice !== 'string' ||
+      typeof gasLimit !== 'string' ||
+      typeof pctRelayFee !== 'string' ||
+      typeof senderNonce !== 'string'
+    ) {
+      throw Error('using wrong types will cause signatures to be invalid')
+    }
     const data = await getDataToSign({
       web3,
       senderAccount,
@@ -72,7 +83,10 @@ module.exports = {
         if (err) {
           reject(err)
         } else {
-          resolve(res.result)
+          resolve({
+            signature: res.result,
+            data
+          })
         }
       })
     })

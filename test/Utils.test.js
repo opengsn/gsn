@@ -11,12 +11,12 @@ contract('Utils', async function (accounts) {
   describe('#getEip712Signature()', async function () {
     it('shuld generate a valid EIP-712 compatible signature', async function () {
       const senderAccount = accounts[0]
-      const senderNonce = 5
+      const senderNonce = '5'
       const target = accounts[5]
       const encodedFunction = '0xdeadbeef'
-      const pctRelayFee = 15
-      const gasPrice = 10000000
-      const gasLimit = 500000
+      const pctRelayFee = '15'
+      const gasPrice = '10000000'
+      const gasLimit = '500000'
       const relayHub = accounts[8]
       const relayAddress = accounts[9]
 
@@ -47,12 +47,12 @@ contract('Utils', async function (accounts) {
       })
       const recoveredAccount = sigUtil.recoverTypedSignature_v4({
         data,
-        sig: sig.result
+        sig: sig.signature
       })
       assert.strictEqual(senderAccount.toLowerCase(), recoveredAccount.toLowerCase())
 
       const eip712Sig = await EIP712Sig.new(relayHub)
-      const verify = await eip712Sig.verify(data.message, sig.result, { from: senderAccount })
+      const verify = await eip712Sig.verify(data.message, sig.signature, { from: senderAccount })
       assert.strictEqual(verify, true)
     })
   })

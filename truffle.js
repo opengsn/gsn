@@ -51,7 +51,10 @@ module.exports = {
   },
   compilers: {
     solc: {
-      version: packageJson.devDependencies.solc
+      version: packageJson.devDependencies.solc,
+      settings: {
+        evmVersion: 'istanbul'
+      }
     }
   }
 }

@@ -1,11 +1,12 @@
 const { balance, BN, constants, ether, expectEvent, expectRevert, send, time } = require('openzeppelin-test-helpers')
 const { ZERO_ADDRESS } = constants
 
-const { getTransactionHash, getTransactionSignature } = require('../src/js/relayclient/utils')
+const { getEip712Signature } = require('../src/js/relayclient/utils')
 
 const RelayHub = artifacts.require('RelayHub')
 const SampleRecipient = artifacts.require('SampleRecipient')
 
+const sigUtil = require('eth-sig-util')
 const Transaction = require('ethereumjs-tx')
 const { privateToAddress } = require('ethereumjs-util')
 const rlp = require('rlp')
@@ -517,11 +518,18 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
             const gasLimit = new BN('1000000')
             const senderNonce = new BN('0')
             const txData = recipient.contract.methods.emitMessage('').encodeABI()
-            const signature = await getTransactionSignature(
+            const signature = (await getEip712Signature({
               web3,
-              sender,
-              getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay)
-            )
+              senderAccount: sender,
+              target: recipient.address,
+              encodedFunction: txData,
+              pctRelayFee: fee.toString(),
+              gasPrice: gasPrice.toString(),
+              gasLimit: gasLimit.toString(),
+              senderNonce: senderNonce.toString(),
+              relayHub: relayHub.address,
+              relayAddress: relay
+            })).signature
 
             await relayHub.depositFor(recipient.address, { from: other, value: ether('1') })
             const relayCallTx = await relayHub.relayCall(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, signature, '0x', { from: relay, gasPrice, gasLimit })
@@ -749,15 +757,30 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
       const senderNonce = new BN('0')
 
       let txData
-      let txHash
       let signature
 
       beforeEach(async function () {
         // truffle-contract doesn't let us create method data from the class, we need an actual instance
         txData = recipient.contract.methods.emitMessage(message).encodeABI()
 
-        txHash = getTransactionHash(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relayHub.address, relay)
-        signature = await getTransactionSignature(web3, sender, txHash)
+        const eip712Sig = await getEip712Signature({
+          web3,
+          senderAccount: sender,
+          senderNonce: senderNonce.toString(),
+          target: recipient.address,
+          encodedFunction: txData,
+          pctRelayFee: fee.toString(),
+          gasPrice: gasPrice.toString(),
+          gasLimit: gasLimit.toString(),
+          relayHub: relayHub.address,
+          relayAddress: relay
+        })
+        signature = eip712Sig.signature
+        const recoveredAccount = sigUtil.recoverTypedSignature_v4({
+          data: eip712Sig.data,
+          sig: eip712Sig.signature
+        })
+        expect(recoveredAccount.toLowerCase()).to.be.equals(sender.toLowerCase())
       })
 
       context('with funded recipient', function () {

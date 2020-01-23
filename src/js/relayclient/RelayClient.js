@@ -1,5 +1,4 @@
 const utils = require('./utils')
-const getTransactionSignature = utils.getTransactionSignature
 const getEip712Signature = utils.getEip712Signature
 const getTransactionSignatureWithKey = utils.getTransactionSignatureWithKey
 const parseHexString = utils.parseHexString
@@ -348,20 +347,20 @@ class RelayClient {
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
         signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash)
       } else {
-        signature = await getEip712Signature(
+        signature = (await getEip712Signature(
           {
             web3: this.web3,
             methodAppendix: '',
             senderAccount: options.from,
-            senderNonce: nonce,
+            senderNonce: nonce.toString(),
             target: options.to,
             encodedFunction: encodedFunctionCall,
-            pctRelayFee: txfee,
-            gasPrice,
-            gasLimit,
+            pctRelayFee: txfee.toString(),
+            gasPrice: gasPrice.toString(),
+            gasLimit: gasLimit.toString(),
             relayHub: relayHub._address,
             relayAddress
-          })
+          })).signature
       }
 
       let approvalData = options.approvalData || '0x'
@@ -496,7 +495,11 @@ class RelayClient {
     this.relayTransaction(params.data, relayOptions)
       .then(validTransaction => {
         var hash = '0x' + validTransaction.hash(true).toString('hex')
-        callback(null, { jsonrpc: '2.0', id: payload.id, result: hash })
+        callback(null, {
+          jsonrpc: '2.0',
+          id: payload.id,
+          result: hash
+        })
       })
       .catch(err => {
         if (relayClientOptions.verbose) { console.log('RR error: ', err) }
