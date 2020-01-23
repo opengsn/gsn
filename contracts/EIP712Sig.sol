@@ -6,7 +6,7 @@ contract EIP712Sig {
     struct EIP712Domain {
         string name;
         string version;
-        uint256 chainId;
+//        uint256 chainId;
         address verifyingContract;
     }
 
@@ -22,7 +22,7 @@ contract EIP712Sig {
     }
 
     bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
-        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        "EIP712Domain(string name,string version,address verifyingContract)"
     );
 
     bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction,address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee)");
@@ -33,7 +33,7 @@ contract EIP712Sig {
         DOMAIN_SEPARATOR = hash(EIP712Domain({
             name : 'GSN Relayed Transaction',
             version : '1',
-            chainId : getChainID(),
+//            chainId : getChainID(),
             verifyingContract : verifier
             }));
     }
@@ -43,7 +43,7 @@ contract EIP712Sig {
                 EIP712DOMAIN_TYPEHASH,
                 keccak256(bytes(eip712Domain.name)),
                 keccak256(bytes(eip712Domain.version)),
-                eip712Domain.chainId,
+//                eip712Domain.chainId,
                 eip712Domain.verifyingContract
             ));
     }

@@ -44,6 +44,7 @@ module.exports = {
     {
       web3,
       methodSuffix = '',
+      jsonStringifyRequest = false,
       senderAccount,
       senderNonce,
       target,
@@ -62,7 +63,7 @@ module.exports = {
     ) {
       throw Error('using wrong types will cause signatures to be invalid')
     }
-    const data = await getDataToSign({
+    let data = await getDataToSign({
       web3,
       senderAccount,
       senderNonce,
@@ -74,6 +75,9 @@ module.exports = {
       relayHub,
       relayAddress
     })
+    if (jsonStringifyRequest) {
+      data = JSON.stringify(data)
+    }
     return new Promise((resolve, reject) => {
       web3.currentProvider.send({
         method: 'eth_signTypedData' + methodSuffix,

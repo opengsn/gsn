@@ -4,7 +4,7 @@ const CallData = require('./CallData')
 const EIP712Domain = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
-  { name: 'chainId', type: 'uint256' },
+  // { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }
 ]
 const RelayRequest = [
@@ -34,11 +34,11 @@ module.exports = async function getDataToSign (
 ) {
   // const chainId = await web3.eth.net.getId()
   // TODO: enable ChainID opcode in the EIP712Sig
-  const chainId = 7
+  // const chainId = 7
   const domain = {
     name: 'GSN Relayed Transaction',
     version: '1',
-    chainId: chainId,
+    // chainId: chainId,
     verifyingContract: relayHub
   }
 

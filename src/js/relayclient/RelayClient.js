@@ -349,7 +349,8 @@ class RelayClient {
         signature = (await getEip712Signature(
           {
             web3: this.web3,
-            methodAppendix: '',
+            methodSuffix: options.methodSuffix || '',
+            jsonStringifyRequest: options.jsonStringifyRequest || false,
             senderAccount: options.from,
             senderNonce: nonce.toString(),
             target: options.to,
