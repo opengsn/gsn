@@ -1,3 +1,4 @@
+/* global BigInt */
 const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
@@ -21,7 +22,7 @@ const Big = require('big.js')
 const util = require('util')
 const request = util.promisify(require('request'))
 
-contract.only('RelayClient', function (accounts) {
+contract('RelayClient', function (accounts) {
   let rhub
   let sr
   let gasLess
@@ -523,7 +524,7 @@ contract.only('RelayClient', function (accounts) {
     }
   })
 
-  describe.only('relay balance management', async function () {
+  describe('relay balance management', async function () {
     let relayServerAddress
     let beforeOwnerBalance
     it('should NOT send relay balance to owner after removed', async function () {
@@ -535,12 +536,12 @@ contract.only('RelayClient', function (accounts) {
         from: relayOwner,
         gasPrice
       })
-      const etherSpentByTx = res.receipt.gasUsed * gasPrice
+      const etherSpentByTx = BigInt(res.receipt.gasUsed) * BigInt(gasPrice)
       assert.equal('RelayRemoved', res.logs[0].event)
       assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase())
       await testutils.sleep(2000)
-      const afterOwnerBalance = await web3.eth.getBalance(relayOwner)
-      assert.equal(parseInt(afterOwnerBalance) + etherSpentByTx, parseInt(beforeOwnerBalance))
+      const afterOwnerBalance = BigInt(await web3.eth.getBalance(relayOwner))
+      assert.equal(afterOwnerBalance + etherSpentByTx, BigInt(beforeOwnerBalance))
     })
 
     it('should send relay balance to owner only after unstaked', async function () {

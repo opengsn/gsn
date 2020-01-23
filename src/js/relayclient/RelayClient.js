@@ -1,6 +1,5 @@
 const utils = require('./utils')
 const getEip712Signature = utils.getEip712Signature
-const getTransactionSignatureWithKey = utils.getTransactionSignatureWithKey
 const parseHexString = utils.parseHexString
 const removeHexPrefix = utils.removeHexPrefix
 const padTo64 = utils.padTo64
@@ -345,7 +344,7 @@ class RelayClient {
 
       let signature
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
-        signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash)
+        // signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash)
       } else {
         signature = (await getEip712Signature(
           {

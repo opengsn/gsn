@@ -463,7 +463,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         })
       })
 
-      describe('illegal call', async function () {
+      describe.skip('illegal call', async function () {
         describe('with pre-EIP155 signatures', function () {
           it('penalizes relay transactions to addresses other than RelayHub', async function () {
             // Relay sending ether to another account
