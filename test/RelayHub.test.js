@@ -547,7 +547,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
       })
     })
 
-    describe('penalizable relay states', function () {
+    describe.skip('penalizable relay states', function () {
       context('with penalizable transaction', function () {
         let penalizableTxData
         let penalizableTxSignature
