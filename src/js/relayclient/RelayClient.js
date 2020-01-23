@@ -1,5 +1,6 @@
 const utils = require('./utils')
 const getTransactionSignature = utils.getTransactionSignature
+const getEip712Signature = utils.getEip712Signature
 const getTransactionSignatureWithKey = utils.getTransactionSignatureWithKey
 const parseHexString = utils.parseHexString
 const removeHexPrefix = utils.removeHexPrefix
@@ -331,23 +332,36 @@ class RelayClient {
       const relayUrl = activeRelay.relayUrl
       const txfee = parseInt(options.txfee || activeRelay.transactionFee)
 
-      const hash =
-        utils.getTransactionHash(
-          options.from,
-          options.to,
-          encodedFunctionCall,
-          txfee,
-          gasPrice,
-          gasLimit,
-          nonce,
-          relayHub._address,
-          relayAddress)
+      // const hash =
+      //   utils.getTransactionHash(
+      //     options.from,
+      //     options.to,
+      //     encodedFunctionCall,
+      //     txfee,
+      //     gasPrice,
+      //     gasLimit,
+      //     nonce,
+      //     relayHub._address,
+      //     relayAddress)
 
       let signature
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
         signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash)
       } else {
-        signature = await getTransactionSignature(this.web3, options.from, hash)
+        signature = await getEip712Signature(
+          {
+            web3: this.web3,
+            methodAppendix: '',
+            senderAccount: options.from,
+            senderNonce: nonce,
+            target: options.to,
+            encodedFunction: encodedFunctionCall,
+            pctRelayFee: txfee,
+            gasPrice,
+            gasLimit,
+            relayHub: relayHub._address,
+            relayAddress
+          })
       }
 
       let approvalData = options.approvalData || '0x'
@@ -366,13 +380,13 @@ class RelayClient {
       }
 
       if (self.config.verbose) {
-        console.log('relayTransaction hash: ', hash, 'from: ', options.from, 'sig: ', signature)
-        const rec = utils.getEcRecoverMeta(hash, signature)
-        if (rec.toLowerCase() === options.from.toLowerCase()) {
-          console.log('relayTransaction recovered:', rec, 'signature is correct')
-        } else {
-          console.error('relayTransaction recovered:', rec, 'signature error')
-        }
+        console.log('relayTransaction', 'from: ', options.from, 'sig: ', signature)
+        // const rec = utils.getEcRecoverMeta(hash, signature)
+        // if (rec.toLowerCase() === options.from.toLowerCase()) {
+        //   console.log('relayTransaction recovered:', rec, 'signature is correct')
+        // } else {
+        //   console.error('relayTransaction recovered:', rec, 'signature error')
+        // }
       }
 
       // max nonce is not signed, as contracts cannot access addresses' nonces.

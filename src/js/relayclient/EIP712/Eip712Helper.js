@@ -32,7 +32,9 @@ module.exports = async function getDataToSign (
     relayAddress
   }
 ) {
-  const chainId = await web3.eth.net.getId()
+  // const chainId = await web3.eth.net.getId()
+  // TODO: enable ChainID opcode in the EIP712Sig
+  const chainId = 7
   const domain = {
     name: 'GSN Relayed Transaction',
     version: '1',

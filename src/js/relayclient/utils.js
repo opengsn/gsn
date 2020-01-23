@@ -72,7 +72,7 @@ module.exports = {
         if (err) {
           reject(err)
         } else {
-          resolve(res)
+          resolve(res.result)
         }
       })
     })
