@@ -7,15 +7,24 @@ const EIP712Domain = [
   // { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }
 ]
-const RelayRequest = [
+
+const CallDataType = [
   { name: 'target', type: 'address' },
   { name: 'gasLimit', type: 'uint256' },
   { name: 'gasPrice', type: 'uint256' },
-  { name: 'encodedFunction', type: 'bytes' },
+  { name: 'encodedFunction', type: 'bytes' }
+]
+
+const RelayDataType = [
   { name: 'senderAccount', type: 'address' },
   { name: 'senderNonce', type: 'uint256' },
   { name: 'relayAddress', type: 'address' },
   { name: 'pctRelayFee', type: 'uint256' }
+]
+
+const RelayRequest = [
+  { name: 'callData', type: 'CallData' },
+  { name: 'relayData', type: 'RelayData' }
 ]
 
 module.exports = async function getDataToSign (
@@ -55,13 +64,15 @@ module.exports = async function getDataToSign (
     pctRelayFee
   })
   const message = {
-    ...callData,
-    ...relayData
+    callData,
+    relayData
   }
   return {
     types: {
       EIP712Domain,
-      RelayRequest
+      RelayRequest,
+      CallData: CallDataType,
+      RelayData: RelayDataType
     },
     domain,
     primaryType: 'RelayRequest',

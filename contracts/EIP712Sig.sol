@@ -10,22 +10,34 @@ contract EIP712Sig {
         address verifyingContract;
     }
 
-    struct RelayRequest {
+    struct CallData {
         address target;
         uint256 gasLimit;
         uint256 gasPrice;
         bytes encodedFunction;
+    }
+
+    struct RelayData {
         address senderAccount;
         uint256 senderNonce;
         address relayAddress;
         uint256 pctRelayFee;
     }
 
+    struct RelayRequest {
+        CallData callData;
+        RelayData relayData;
+    }
+
     bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,address verifyingContract)"
     );
 
-    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction,address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee)");
+    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(CallData callData,RelayData relayData)CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee)");
+
+    bytes32 public constant CALLDATA_TYPEHASH = keccak256("CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)");
+
+    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee)");
 
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
 
@@ -51,14 +63,28 @@ contract EIP712Sig {
     function hash(RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
-                    req.target,
-                    req.gasLimit,
-                    req.gasPrice,
-                    keccak256(req.encodedFunction),
-                    req.senderAccount,
-                    req.senderNonce,
-                    req.relayAddress,
-                    req.pctRelayFee
+                    hash(req.callData),
+                    hash(req.relayData)
+            ));
+    }
+
+    function hash(CallData memory req) internal pure returns (bytes32) {
+        return keccak256(abi.encode(
+                CALLDATA_TYPEHASH,
+                req.target,
+                req.gasLimit,
+                req.gasPrice,
+                keccak256(req.encodedFunction)
+            ));
+    }
+
+    function hash(RelayData memory req) internal pure returns (bytes32) {
+        return keccak256(abi.encode(
+                RELAYDATA_TYPEHASH,
+                req.senderAccount,
+                req.senderNonce,
+                req.relayAddress,
+                req.pctRelayFee
             ));
     }
 
@@ -85,7 +111,7 @@ contract EIP712Sig {
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hash(req)
             ));
-        return ecrecover(digest, v, r, s) == req.senderAccount;
+        return ecrecover(digest, v, r, s) == req.relayData.senderAccount;
     }
 
     function getChainID() internal pure returns (uint256) {
