@@ -82,6 +82,7 @@ if (mode === 'profile') {
   if (useInProcessGanache) {
     const ganahceSubprovider = new GanacheSubprovider({
       // Generate the same set of addresses as ganache-cli --deterministic
+      gasLimit: 8000000,
       mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect'
     })
 
