@@ -743,7 +743,7 @@ contract('RelayHub', function (accounts) {
 
       if (requestedFee === 0) {
         const gasDiff = expenses.sub(revenue).div(gasPrice)
-        if (gasDiff !== 0) {
+        if (gasDiff.toString() !== '0') {
           console.log('== zero-fee unmatched gas. RelayHub.gasOverhead should be increased by: ' + gasDiff.toString())
         }
       }

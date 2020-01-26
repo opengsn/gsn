@@ -34,7 +34,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
   let recipient
 
   beforeEach(async function () {
-    relayHub = await RelayHub.new()
+    relayHub = await RelayHub.new({ gas: 8000000 })
     recipient = await SampleRecipient.new()
     await recipient.setHub(relayHub.address)
   })
@@ -463,7 +463,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         })
       })
 
-      describe.skip('illegal call', async function () {
+      describe('illegal call', async function () {
         describe('with pre-EIP155 signatures', function () {
           it('penalizes relay transactions to addresses other than RelayHub', async function () {
             // Relay sending ether to another account
@@ -547,7 +547,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
       })
     })
 
-    describe.skip('penalizable relay states', function () {
+    describe('penalizable relay states', function () {
       context('with penalizable transaction', function () {
         let penalizableTxData
         let penalizableTxSignature
