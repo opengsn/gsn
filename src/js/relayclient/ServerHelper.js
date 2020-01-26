@@ -99,7 +99,7 @@ class ActiveRelayPinger {
               resolve(res)
             }).catch(err => {
               if (++numRejected === promises.length) {
-                reject(Error('No response matched filter from any server: ' + err))
+                reject(Error('No response matched filter from any server: ' + JSON.stringify(err)))
               }
             })
         )

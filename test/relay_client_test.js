@@ -4,9 +4,18 @@ const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./SampleRecipient.sol')
+const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 
 const Transaction = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
+
+const chai = require('chai')
+const sinon = require('sinon')
+const sinonChai = require('sinon-chai')
+const expect = require('chai').expect
+chai.use(sinonChai)
+
+const sigUtil = require('eth-sig-util')
 
 const relayAddress = '0x610bb1573d1046fcb8a70bbbd395754cd57c2b60'
 
@@ -433,28 +442,12 @@ contract('RelayClient', function (accounts) {
     assert.equal(address, keypair.address)
   })
 
-  // TODO: re-enable ephemeral keys for signTypedData
-  it.skip('should use a given ephemeral key for signing', async function () {
+  it('should use a given ephemeral key for signing', async function () {
     const rc = new RelayClient(web3)
     const ephemeralKeypair = RelayClient.newEphemeralKeypair()
     const fromAddr = ephemeralKeypair.address
     rc.useKeypairForSigning(ephemeralKeypair)
-    var didAssert = false
-    rc.sendViaRelay = function (relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress) {
-      const message = utils.getTransactionHash(
-        from,
-        to,
-        encodedFunction,
-        relayFee,
-        gasprice,
-        gaslimit,
-        nonce,
-        relayHubAddress,
-        relayAddress)
-      const addr = utils.getEcRecoverMeta(message, signature)
-      assert.equal(ephemeralKeypair.address, addr)
-      didAssert = true
-    }
+    sinon.spy(rc)
     const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
     const to = sr.address
     const options = {
@@ -465,15 +458,36 @@ contract('RelayClient', function (accounts) {
     }
 
     await rc.relayTransaction(encoded, options)
-    assert.equal(true, didAssert)
+    // eslint-disable-next-line no-unused-expressions
+    expect(rc.sendViaRelay.calledOnce).to.be.true
+    expect(rc.sendViaRelay).to.have.been.calledWith(
+      sinon.match(({ relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, recipientNonce, signature, approvalData, relayUrl, relayHubAddress }) => {
+        const data = getDataToSign({
+          chainId: 7,
+          senderAccount: from,
+          senderNonce: recipientNonce,
+          target: to,
+          encodedFunction,
+          pctRelayFee: relayFee,
+          gasPrice: gasprice,
+          gasLimit: gaslimit,
+          relayHub: relayHubAddress,
+          relayAddress
+        })
+        const recoveredAccount = sigUtil.recoverTypedSignature_v4({
+          data,
+          sig: signature
+        })
+        return recoveredAccount.toLowerCase() === from.toLowerCase()
+      }))
   })
 
-  it.skip('should use relay\'s published transactionFee if none is given in options', async function () {
+  it('should use relay\'s published transactionFee if none is given in options', async function () {
     const rc = new RelayClient(web3)
     const ephemeralKeypair = RelayClient.newEphemeralKeypair()
     const fromAddr = ephemeralKeypair.address
     rc.useKeypairForSigning(ephemeralKeypair)
-    rc.sendViaRelay = function (relayAddress, from, to, encodedFunction, relayFee /*, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress */) {
+    rc.sendViaRelay = function ({ relayFee }) {
       // mock implementation: only check the received relay fee (checked below in relayTransaction
       throw new Error('relayFee=' + relayFee)
     }
@@ -495,16 +509,17 @@ contract('RelayClient', function (accounts) {
     }
   })
 
-  it.skip('should add relay to failedRelay dict in case of http timeout', async function () {
+  it('should add relay to failedRelay dict in case of http timeout', async function () {
+    const relayUrl = 'http://1.2.3.4:5678'
     const rc = new RelayClient(web3, { httpTimeout: 100 })
     const ephemeralKeypair = RelayClient.newEphemeralKeypair()
     const fromAddr = ephemeralKeypair.address
     rc.useKeypairForSigning(ephemeralKeypair)
 
     rc.origSendViaRelay = rc.sendViaRelay
-    rc.sendViaRelay = function (relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress) {
-      return this.origSendViaRelay.bind(this)(
-        relayAddress, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, signature, approvalData, 'http://1.2.3.4:5678', relayHubAddress)
+    rc.sendViaRelay = function (params) {
+      params.relayUrl = relayUrl
+      return this.origSendViaRelay.bind(this)(params)
     }
 
     const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
@@ -520,7 +535,7 @@ contract('RelayClient', function (accounts) {
       await rc.relayTransaction(encoded, options)
       assert.fail('relayTransaction should throw..')
     } catch (ignored) {
-      assert.isTrue(rc.failedRelays['http://1.2.3.4:5678'] !== undefined)
+      assert.isTrue(rc.failedRelays[relayUrl] !== undefined)
     }
   })
 
