@@ -1,15 +1,15 @@
 pragma solidity ^0.5.5;
 pragma experimental ABIEncoderV2;
 
+import "@0x/contracts-utils/contracts/src/LibBytes.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+
 import "./EIP712Sig.sol";
 import "./GsnUtils.sol";
 import "./IRelayHub.sol";
 import "./IRelayRecipient.sol";
 import "./RLPReader.sol";
-import "@0x/contracts-utils/contracts/src/LibBytes.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
-import "./EIP712Sig.sol";
 
 contract RelayHub is IRelayHub {
 
