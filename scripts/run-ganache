@@ -15,7 +15,7 @@ ganache_running() {
 }
 
 start_ganache() {
-  node_modules/.bin/ganache-cli --networkId 4447 -g 1000 -p $ganache_port -d > /dev/null &
+  node_modules/.bin/ganache-cli --l 8000000 --networkId 4447 -g 1000 -p $ganache_port -d > /dev/null &
   ganache_pid=$!
   echo $ganache_pid
 

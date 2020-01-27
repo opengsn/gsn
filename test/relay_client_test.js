@@ -1,11 +1,21 @@
+/* global BigInt */
 const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./SampleRecipient.sol')
+const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 
 const Transaction = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
+
+const chai = require('chai')
+const sinon = require('sinon')
+const sinonChai = require('sinon-chai')
+const expect = require('chai').expect
+chai.use(sinonChai)
+
+const sigUtil = require('eth-sig-util')
 
 const relayAddress = '0x610bb1573d1046fcb8a70bbbd395754cd57c2b60'
 
@@ -47,7 +57,15 @@ contract('RelayClient', function (accounts) {
     console.log('gasLess = ' + gasLess)
     console.log('starting relay')
 
-    relayproc = await testutils.startRelay(rhub, { stake: 1e18, delay: 3600 * 24 * 7, txfee: 12, url: 'asd', relayOwner: relayOwner, EthereumNodeUrl: web3.currentProvider.host, GasPricePercent: gasPricePercent })
+    relayproc = await testutils.startRelay(rhub, {
+      stake: 1e18,
+      delay: 3600 * 24 * 7,
+      txfee: 12,
+      url: 'asd',
+      relayOwner: relayOwner,
+      EthereumNodeUrl: web3.currentProvider.host,
+      GasPricePercent: gasPricePercent
+    })
 
     relayAccount = await web3.eth.personal.newAccount('asdgasfd2r43')
     await web3.eth.personal.unlockAccount(relayAccount, 'asdgasfd2r43')
@@ -382,9 +400,18 @@ contract('RelayClient', function (accounts) {
     const res = await request(localhostOne + '/getaddr')
     const relayServerAddress = JSON.parse(res.body).RelayServerAddress
     const filteredRelays = [
-      { relayUrl: 'localhost1', RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1' },
-      { relayUrl: 'localhost2', RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1' },
-      { relayUrl: localhostOne, RelayServerAddress: relayServerAddress }
+      {
+        relayUrl: 'localhost1',
+        RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
+      },
+      {
+        relayUrl: 'localhost2',
+        RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
+      },
+      {
+        relayUrl: localhostOne,
+        RelayServerAddress: relayServerAddress
+      }
     ]
 
     let counter = 0
@@ -420,22 +447,7 @@ contract('RelayClient', function (accounts) {
     const ephemeralKeypair = RelayClient.newEphemeralKeypair()
     const fromAddr = ephemeralKeypair.address
     rc.useKeypairForSigning(ephemeralKeypair)
-    var didAssert = false
-    rc.sendViaRelay = function (relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress) {
-      const message = utils.getTransactionHash(
-        from,
-        to,
-        encodedFunction,
-        relayFee,
-        gasprice,
-        gaslimit,
-        nonce,
-        relayHubAddress,
-        relayAddress)
-      const addr = utils.getEcRecoverMeta(message, signature)
-      assert.equal(ephemeralKeypair.address, addr)
-      didAssert = true
-    }
+    sinon.spy(rc)
     const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
     const to = sr.address
     const options = {
@@ -446,15 +458,36 @@ contract('RelayClient', function (accounts) {
     }
 
     await rc.relayTransaction(encoded, options)
-    assert.equal(true, didAssert)
+    // eslint-disable-next-line no-unused-expressions
+    expect(rc.sendViaRelay.calledOnce).to.be.true
+    expect(rc.sendViaRelay).to.have.been.calledWith(
+      sinon.match(({ relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, recipientNonce, signature, approvalData, relayUrl, relayHubAddress }) => {
+        const data = getDataToSign({
+          chainId: 7,
+          senderAccount: from,
+          senderNonce: recipientNonce,
+          target: to,
+          encodedFunction,
+          pctRelayFee: relayFee,
+          gasPrice: gasprice,
+          gasLimit: gaslimit,
+          relayHub: relayHubAddress,
+          relayAddress
+        })
+        const recoveredAccount = sigUtil.recoverTypedSignature_v4({
+          data,
+          sig: signature
+        })
+        return recoveredAccount.toLowerCase() === from.toLowerCase()
+      }))
   })
 
-  it("should use relay's published transactionFee if none is given in options", async function () {
+  it('should use relay\'s published transactionFee if none is given in options', async function () {
     const rc = new RelayClient(web3)
     const ephemeralKeypair = RelayClient.newEphemeralKeypair()
     const fromAddr = ephemeralKeypair.address
     rc.useKeypairForSigning(ephemeralKeypair)
-    rc.sendViaRelay = function (relayAddress, from, to, encodedFunction, relayFee /*, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress */) {
+    rc.sendViaRelay = function ({ relayFee }) {
       // mock implementation: only check the received relay fee (checked below in relayTransaction
       throw new Error('relayFee=' + relayFee)
     }
@@ -469,7 +502,7 @@ contract('RelayClient', function (accounts) {
 
     try {
       await rc.relayTransaction(encoded, options)
-      assert.ok(false, "didn't reach sendViaRelay")
+      assert.ok(false, 'didn\'t reach sendViaRelay')
     } catch (e) {
       assert.ok(e.otherErrors, e)
       assert.equal(e.otherErrors[0].message, 'relayFee=12')
@@ -477,15 +510,16 @@ contract('RelayClient', function (accounts) {
   })
 
   it('should add relay to failedRelay dict in case of http timeout', async function () {
+    const relayUrl = 'http://1.2.3.4:5678'
     const rc = new RelayClient(web3, { httpTimeout: 100 })
     const ephemeralKeypair = RelayClient.newEphemeralKeypair()
     const fromAddr = ephemeralKeypair.address
     rc.useKeypairForSigning(ephemeralKeypair)
 
     rc.origSendViaRelay = rc.sendViaRelay
-    rc.sendViaRelay = function (relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, nonce, signature, approvalData, relayUrl, relayHubAddress) {
-      return this.origSendViaRelay.bind(this)(
-        relayAddress, from, to, encodedFunction, gasprice, gaslimit, relayFee, nonce, signature, approvalData, 'http://1.2.3.4:5678', relayHubAddress)
+    rc.sendViaRelay = function (params) {
+      params.relayUrl = relayUrl
+      return this.origSendViaRelay.bind(this)(params)
     }
 
     const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
@@ -501,7 +535,7 @@ contract('RelayClient', function (accounts) {
       await rc.relayTransaction(encoded, options)
       assert.fail('relayTransaction should throw..')
     } catch (ignored) {
-      assert.isTrue(rc.failedRelays['http://1.2.3.4:5678'] !== undefined)
+      assert.isTrue(rc.failedRelays[relayUrl] !== undefined)
     }
   })
 
@@ -512,13 +546,17 @@ contract('RelayClient', function (accounts) {
       const response = await request(localhostOne + '/getaddr')
       relayServerAddress = JSON.parse(response.body).RelayServerAddress
       beforeOwnerBalance = await web3.eth.getBalance(relayOwner)
-      const res = await rhub.removeRelayByOwner(relayServerAddress, { from: relayOwner })
-      const etherSpentByTx = res.receipt.gasUsed * (await web3.eth.getGasPrice())
+      const gasPrice = await web3.eth.getGasPrice()
+      const res = await rhub.removeRelayByOwner(relayServerAddress, {
+        from: relayOwner,
+        gasPrice
+      })
+      const etherSpentByTx = BigInt(res.receipt.gasUsed) * BigInt(gasPrice)
       assert.equal('RelayRemoved', res.logs[0].event)
       assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase())
       await testutils.sleep(2000)
-      const afterOwnerBalance = await web3.eth.getBalance(relayOwner)
-      assert.equal(parseInt(afterOwnerBalance) + etherSpentByTx, parseInt(beforeOwnerBalance))
+      const afterOwnerBalance = BigInt(await web3.eth.getBalance(relayOwner))
+      assert.equal(afterOwnerBalance + etherSpentByTx, BigInt(beforeOwnerBalance))
     })
 
     it('should send relay balance to owner only after unstaked', async function () {
@@ -549,7 +587,7 @@ contract('RelayClient', function (accounts) {
       SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = false
       sr2 = await SampleRecipient.new()
       // eslint-disable-next-line
-            SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
+      SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
     })
 
     it('should revert on zero hub in recipient contract', async function () {
@@ -625,8 +663,18 @@ contract('RelayClient', function (accounts) {
     const tbk = new RelayClient(web3)
 
     await sr.setBlacklisted(from)
-    const digest = await utils.getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-    const sig = await utils.getTransactionSignature(web3, from, digest)
+    const sig = (await utils.getEip712Signature({
+      web3,
+      senderAccount: from,
+      target: to,
+      encodedFunction: transaction,
+      pctRelayFee: transactionFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      senderNonce: relayNonce.toString(),
+      relayHub: rhub.address,
+      relayAddress: relayAccount
+    })).signature
     const res = await rhub.contract.methods.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x').send({
       from: relayAccount,
       gasPrice: gasPrice,

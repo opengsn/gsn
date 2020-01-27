@@ -1,6 +1,5 @@
 const utils = require('./utils')
-const getTransactionSignature = utils.getTransactionSignature
-const getTransactionSignatureWithKey = utils.getTransactionSignatureWithKey
+const getEip712Signature = utils.getEip712Signature
 const parseHexString = utils.parseHexString
 const removeHexPrefix = utils.removeHexPrefix
 const padTo64 = utils.padTo64
@@ -11,7 +10,9 @@ const ethUtils = require('ethereumjs-util')
 const ethWallet = require('ethereumjs-wallet')
 const Transaction = require('ethereumjs-tx')
 const abiDecoder = require('abi-decoder')
+const sigUtil = require('eth-sig-util')
 
+const getDataToSign = require('./EIP712/Eip712Helper')
 const relayHubAbi = require('./IRelayHub')
 // This file is only needed so we don't change IRelayHub code, which would affect RelayHub expected deployed address
 // TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove IRelayHubVersionAbi.json
@@ -152,7 +153,7 @@ class RelayClient {
    * Performs a '/relay' HTTP request to the given url
    * @returns a Promise that resolves to an instance of {@link Transaction} signed by a relay
    */
-  sendViaRelay (relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, recipientNonce, signature, approvalData, relayUrl, relayHubAddress, relayMaxNonce) {
+  async sendViaRelay ({ relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, recipientNonce, signature, approvalData, relayUrl, relayHubAddress, relayMaxNonce }) {
     var self = this
 
     return new Promise(function (resolve, reject) {
@@ -331,23 +332,40 @@ class RelayClient {
       const relayUrl = activeRelay.relayUrl
       const txfee = parseInt(options.txfee || activeRelay.transactionFee)
 
-      const hash =
-        utils.getTransactionHash(
-          options.from,
-          options.to,
-          encodedFunctionCall,
-          txfee,
+      let signature
+      let signedData
+      if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
+        signedData = await getDataToSign({
+          web3,
+          senderAccount: options.from,
+          senderNonce: nonce,
+          target: options.to,
+          encodedFunction: encodedFunctionCall,
+          pctRelayFee: txfee,
           gasPrice,
           gasLimit,
-          nonce,
-          relayHub._address,
-          relayAddress)
-
-      let signature
-      if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
-        signature = await getTransactionSignatureWithKey(self.ephemeralKeypair.privateKey, hash)
+          relayHub: relayHub._address,
+          relayAddress
+        })
+        signature = sigUtil.signTypedData_v4(self.ephemeralKeypair.privateKey, { data: signedData })
       } else {
-        signature = await getTransactionSignature(this.web3, options.from, hash)
+        const eip712Sig = await getEip712Signature(
+          {
+            web3: this.web3,
+            methodSuffix: options.methodSuffix || '',
+            jsonStringifyRequest: options.jsonStringifyRequest || false,
+            senderAccount: options.from,
+            senderNonce: nonce.toString(),
+            target: options.to,
+            encodedFunction: encodedFunctionCall,
+            pctRelayFee: txfee.toString(),
+            gasPrice: gasPrice.toString(),
+            gasLimit: gasLimit.toString(),
+            relayHub: relayHub._address,
+            relayAddress
+          })
+        signature = eip712Sig.signature
+        signedData = eip712Sig.data
       }
 
       let approvalData = options.approvalData || '0x'
@@ -366,8 +384,8 @@ class RelayClient {
       }
 
       if (self.config.verbose) {
-        console.log('relayTransaction hash: ', hash, 'from: ', options.from, 'sig: ', signature)
-        const rec = utils.getEcRecoverMeta(hash, signature)
+        console.log('relayTransaction', 'from: ', options.from, 'sig: ', signature)
+        const rec = sigUtil.recoverTypedSignature_v4({ data: signedData, sig: signature })
         if (rec.toLowerCase() === options.from.toLowerCase()) {
           console.log('relayTransaction recovered:', rec, 'signature is correct')
         } else {
@@ -406,22 +424,21 @@ class RelayClient {
       }
 
       try {
-        const validTransaction = await self.sendViaRelay(
+        return await self.sendViaRelay({
           relayAddress,
-          options.from,
-          options.to,
-          encodedFunctionCall,
-          txfee,
-          gasPrice,
-          gasLimit,
-          nonce,
+          from: options.from,
+          to: options.to,
+          encodedFunction: encodedFunctionCall,
+          relayFee: txfee,
+          gasprice: gasPrice,
+          gaslimit: gasLimit,
+          recipientNonce: nonce,
           signature,
           approvalData,
           relayUrl,
-          relayHub._address,
+          relayHubAddress: relayHub._address,
           relayMaxNonce
-        )
-        return validTransaction
+        })
       } catch (error) {
         errors.push(error)
         if (self.config.verbose) {
@@ -482,7 +499,11 @@ class RelayClient {
     this.relayTransaction(params.data, relayOptions)
       .then(validTransaction => {
         var hash = '0x' + validTransaction.hash(true).toString('hex')
-        callback(null, { jsonrpc: '2.0', id: payload.id, result: hash })
+        callback(null, {
+          jsonrpc: '2.0',
+          id: payload.id,
+          result: hash
+        })
       })
       .catch(err => {
         if (relayClientOptions.verbose) { console.log('RR error: ', err) }

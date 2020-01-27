@@ -1,12 +1,15 @@
 pragma solidity ^0.5.5;
+pragma experimental ABIEncoderV2;
 
-import "./IRelayHub.sol";
-import "./IRelayRecipient.sol";
-import "./GsnUtils.sol";
-import "./RLPReader.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+
+import "./EIP712Sig.sol";
+import "./GsnUtils.sol";
+import "./IRelayHub.sol";
+import "./IRelayRecipient.sol";
+import "./RLPReader.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -35,7 +38,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
-    uint256 constant private gasOverhead = 48204;
+    uint256 constant private gasOverhead = 49791;
 
     // Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
     uint256 constant private gasReserve = 100000;
@@ -65,6 +68,12 @@ contract RelayHub is IRelayHub {
     mapping(address => uint256) private balances;
 
     string public version = "1.0.0";
+
+    EIP712Sig eip712sig;
+
+    constructor () public {
+        eip712sig = new EIP712Sig(address(this));
+    }
 
     function stake(address relay, uint256 unstakeDelay) external payable {
         if (relays[relay].state == RelayState.Unknown) {
@@ -207,10 +216,9 @@ contract RelayHub is IRelayHub {
     {
         // Verify the sender's signature on the transaction - note that approvalData is *not* signed
         {
-            bytes memory packed = abi.encodePacked("rlx:", from, to, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, address(this));
-            bytes32 hashedMessage = keccak256(abi.encodePacked(packed, relay));
-
-            if (hashedMessage.toEthSignedMessageHash().recover(signature) != from) {
+            EIP712Sig.CallData memory callData = EIP712Sig.CallData(to, gasLimit, gasPrice, encodedFunction);
+            EIP712Sig.RelayData memory relayData = EIP712Sig.RelayData(from, nonce, relay, transactionFee);
+            if (!eip712sig.verify(EIP712Sig.RelayRequest(callData, relayData), signature)){
                 return (uint256(PreconditionCheck.WrongSignature), "");
             }
         }

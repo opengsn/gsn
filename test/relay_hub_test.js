@@ -10,10 +10,10 @@ const registerNewRelay = testutils.register_new_relay
 const registerNewRelayWithPrivkey = testutils.register_new_relay_with_privkey
 const increaseTime = testutils.increaseTime
 const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect
-const getTransactionSignature = utils.getTransactionSignature
-const getTransactionHash = utils.getTransactionHash
+const getEip712Signature = utils.getEip712Signature
 const rlp = require('rlp')
 
+const sigUtil = require('eth-sig-util')
 const ethUtils = require('ethereumjs-util')
 const Transaction = require('ethereumjs-tx')
 const BigNumber = require('bignumber.js')
@@ -69,7 +69,6 @@ contract('RelayHub', function (accounts) {
 
   let transaction
   let sig
-  let digest
   const gasLimitAnyValue = 8000029
   const relayAccount = accounts[1]
 
@@ -77,8 +76,18 @@ contract('RelayHub', function (accounts) {
     rhub = await RelayHub.deployed()
     sr = await SampleRecipient.deployed()
     transaction = await getTransaction(sr)
-    digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-    sig = await getTransactionSignature(web3, accounts[0], digest)
+    sig = (await getEip712Signature({
+      web3,
+      senderAccount: from,
+      senderNonce: relayNonce.toString(),
+      target: to,
+      encodedFunction: transaction,
+      pctRelayFee: transactionFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      relayHub: rhub.address,
+      relayAddress: relayAccount
+    })).signature
     const deposit = 100000000000
     await sr.deposit({ value: deposit })
   })
@@ -198,8 +207,20 @@ contract('RelayHub', function (accounts) {
 
   it("should get '2' (Wrong Nonce) from 'canRelay' for a transaction with a wrong nonce", async function () {
     const wrongNonce = 777
-    const digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, wrongNonce, rhub.address, relayAccount)
-    const sig = await getTransactionSignature(web3, accounts[0], digest)
+    const { signature: sig, data } = await getEip712Signature({
+      web3,
+      senderAccount: from,
+      senderNonce: wrongNonce.toString(),
+      target: to,
+      encodedFunction: transaction,
+      pctRelayFee: transactionFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      relayHub: rhub.address,
+      relayAddress: relayAccount
+    })
+    const recoveredAccount = sigUtil.recoverTypedSignature_v4({ data, sig })
+    assert.strictEqual(from.toLowerCase(), recoveredAccount.toLowerCase())
     const canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, wrongNonce, sig, '0x')
     assert.equal(2, canRelay.status.valueOf())
   })
@@ -249,9 +270,18 @@ contract('RelayHub', function (accounts) {
     await testutils.evmMine()
     const startBlock = await web3.eth.getBlockNumber()
     const transacionNoParams = sr.contract.methods.emitMessageNoParams().encodeABI()
-    const digest = await getTransactionHash(from, to, transacionNoParams, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-    const sig = await getTransactionSignature(web3, accounts[0], digest)
-
+    const sig = (await getEip712Signature({
+      web3,
+      senderAccount: from,
+      senderNonce: relayNonce.toString(),
+      target: to,
+      encodedFunction: transacionNoParams,
+      pctRelayFee: transactionFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      relayHub: rhub.address,
+      relayAddress: relayAccount
+    })).signature
     let logsMessages = await sr.contract.getPastEvents('SampleRecipientEmitted', {
       fromBlock: startBlock,
       toBlock: 'latest'
@@ -279,8 +309,18 @@ contract('RelayHub', function (accounts) {
   })
 
   it('should not accept relay requests from unknown addresses', async function () {
-    digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-    sig = await getTransactionSignature(web3, accounts[0], digest)
+    sig = (await getEip712Signature({
+      web3,
+      senderAccount: from,
+      senderNonce: relayNonce.toString(),
+      target: to,
+      encodedFunction: transaction,
+      pctRelayFee: transactionFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      relayHub: rhub.address,
+      relayAddress: relayAccount
+    })).signature
     try {
       await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
         from: accounts[6],
@@ -310,8 +350,18 @@ contract('RelayHub', function (accounts) {
     const from = accounts[6]
     const relayNonce = 0
     await sr.setBlacklisted(from)
-    const digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-    const sig = await getTransactionSignature(web3, from, digest)
+    const sig = (await getEip712Signature({
+      web3,
+      senderAccount: from,
+      senderNonce: relayNonce.toString(),
+      target: to,
+      encodedFunction: transaction,
+      pctRelayFee: transactionFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      relayHub: rhub.address,
+      relayAddress: relayAccount
+    })).signature
     const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
       from: relayAccount,
       gasPrice: gasPrice,
@@ -659,8 +709,18 @@ contract('RelayHub', function (accounts) {
 
       const relayOwnerHubBalanceBefore = await rhub.balanceOf(owner)
 
-      const digest = await getTransactionHash(from, to, transaction, requestedFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-      const sig = await getTransactionSignature(web3, from, digest)
+      const sig = (await getEip712Signature({
+        web3,
+        senderAccount: from,
+        senderNonce: relayNonce.toString(),
+        target: to,
+        encodedFunction: transaction,
+        pctRelayFee: requestedFee.toString(),
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString(),
+        relayHub: rhub.address,
+        relayAddress: relayAccount
+      })).signature
 
       assert.equal(0, (await rhub.canRelay(relayAccount, from, to, transaction, requestedFee, gasPrice, gasLimit, relayNonce, sig, '0x')).status)
 
@@ -683,7 +743,7 @@ contract('RelayHub', function (accounts) {
 
       if (requestedFee === 0) {
         const gasDiff = expenses.sub(revenue).div(gasPrice)
-        if (gasDiff !== 0) {
+        if (gasDiff.toString() !== '0') {
           console.log('== zero-fee unmatched gas. RelayHub.gasOverhead should be increased by: ' + gasDiff.toString())
         }
       }
@@ -717,8 +777,18 @@ contract('RelayHub', function (accounts) {
       withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall()
       assert.equal(withdrawDuringRelayedCall, true)
 
-      const digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-      const sig = await getTransactionSignature(web3, from, digest)
+      const sig = (await getEip712Signature({
+        web3,
+        senderAccount: from,
+        senderNonce: relayNonce.toString(),
+        target: to,
+        encodedFunction: transaction,
+        pctRelayFee: transactionFee.toString(),
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString(),
+        relayHub: rhub.address,
+        relayAddress: relayAccount
+      })).signature
 
       assert.equal(0, (await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x')).status)
 
@@ -748,8 +818,18 @@ contract('RelayHub', function (accounts) {
       overspendAcceptGas = await sr.overspendAcceptGas()
       assert.equal(overspendAcceptGas, true)
 
-      const digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-      const sig = await getTransactionSignature(web3, from, digest)
+      const sig = (await getEip712Signature({
+        web3,
+        senderAccount: from,
+        senderNonce: relayNonce.toString(),
+        target: to,
+        encodedFunction: transaction,
+        pctRelayFee: transactionFee.toString(),
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString(),
+        relayHub: rhub.address,
+        relayAddress: relayAccount
+      })).signature
 
       assert.equal(AcceptRelayedCallReverted, (await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x')).status)
 
@@ -779,8 +859,18 @@ contract('RelayHub', function (accounts) {
       revertPreRelayCall = await sr.revertPreRelayCall()
       assert.equal(revertPreRelayCall, true)
 
-      const digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-      const sig = await getTransactionSignature(web3, from, digest)
+      const sig = (await getEip712Signature({
+        web3,
+        senderAccount: from,
+        senderNonce: relayNonce.toString(),
+        target: to,
+        encodedFunction: transaction,
+        pctRelayFee: transactionFee.toString(),
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString(),
+        relayHub: rhub.address,
+        relayAddress: relayAccount
+      })).signature
 
       const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
         from: relayAccount,
@@ -819,8 +909,18 @@ contract('RelayHub', function (accounts) {
       revertPostRelayCall = await sr.revertPostRelayCall()
       assert.equal(revertPostRelayCall, true)
 
-      const digest = await getTransactionHash(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, rhub.address, relayAccount)
-      const sig = await getTransactionSignature(web3, from, digest)
+      const sig = (await getEip712Signature({
+        web3,
+        senderAccount: from,
+        senderNonce: relayNonce.toString(),
+        target: to,
+        encodedFunction: transaction,
+        pctRelayFee: transactionFee.toString(),
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString(),
+        relayHub: rhub.address,
+        relayAddress: relayAccount
+      })).signature
 
       const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
         from: relayAccount,
