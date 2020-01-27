@@ -1,8 +1,13 @@
 pragma solidity ^0.5.5;
 pragma experimental ABIEncoderV2;
 
+import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+
 // https://github.com/ethereum/EIPs/blob/master/assets/eip-712/Example.sol
 contract EIP712Sig {
+
+    using ECDSA for bytes32;
+
     struct EIP712Domain {
         string name;
         string version;
@@ -88,30 +93,12 @@ contract EIP712Sig {
             ));
     }
 
-    // from openzeppelin/ECDSA
     function verify(RelayRequest memory req, bytes memory signature) public view returns (bool) {
-        // Divide the signature in r, s and v variables
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        // ecrecover takes the signature parameters, and the only way to get them
-        // currently is to use assembly.
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            r := mload(add(signature, 0x20))
-            s := mload(add(signature, 0x40))
-            v := byte(0, mload(add(signature, 0x60)))
-        }
-        return verify(req, v, r, s);
-    }
-
-    function verify(RelayRequest memory req, uint8 v, bytes32 r, bytes32 s) private view returns (bool) {
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hash(req)
             ));
-        return ecrecover(digest, v, r, s) == req.relayData.senderAccount;
+        return digest.recover(signature) == req.relayData.senderAccount;
     }
 
     function getChainID() internal pure returns (uint256) {
