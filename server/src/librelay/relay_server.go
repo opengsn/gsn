@@ -535,9 +535,21 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		func(auth *bind.TransactOpts) (*types.Transaction, error) {
 			auth.GasLimit = requiredGas.Uint64()
 			auth.GasPrice = &request.GasPrice
-			return relay.rhub.RelayCall(auth, request.From, request.To,
-				common.Hex2Bytes(request.EncodedFunction[2:]), &request.RelayFee,
-				&request.GasPrice, &request.GasLimit, &request.RecipientNonce, request.Signature, request.ApprovalData)
+			relayRequest := librelay.EIP712SigRelayRequest{
+				CallData:  librelay.EIP712SigCallData{
+					Target:          request.To,
+					GasLimit:        &request.GasLimit,
+					GasPrice:        &request.GasPrice,
+					EncodedFunction: common.Hex2Bytes(request.EncodedFunction[2:]),
+				},
+				RelayData: librelay.EIP712SigRelayData{
+					SenderAccount: request.From,
+					SenderNonce:   &request.RecipientNonce,
+					RelayAddress:  relay.Address(),
+					PctRelayFee:   &request.RelayFee,
+				},
+			}
+			return relay.rhub.RelayCall(auth, relayRequest, request.Signature, request.ApprovalData)
 		})
 
 	return
@@ -589,7 +601,21 @@ func (relay *RelayServer) canRelay(from common.Address,
 		RecipientContext []byte
 	}
 
-	result, err = relay.rhub.CanRelay(callOpt, relayAddress, from, to, common.Hex2Bytes(encodedFunction[2:]), &relayFee, &gasPrice, &gasLimit, &recipientNonce, signature, approvalData)
+	relayRequest := librelay.EIP712SigRelayRequest{
+		CallData:  librelay.EIP712SigCallData{
+			Target:          to,
+			GasLimit:        &gasLimit,
+			GasPrice:        &gasPrice,
+			EncodedFunction: common.Hex2Bytes(encodedFunction[2:]),
+		},
+		RelayData: librelay.EIP712SigRelayData{
+			SenderAccount: from,
+			SenderNonce:   &recipientNonce,
+			RelayAddress:  relayAddress,
+			PctRelayFee:   &relayFee,
+		},
+	}
+	result, err = relay.rhub.CanRelay(callOpt, relayRequest, signature, approvalData)
 	if err != nil {
 		log.Println(err)
 	} else {
