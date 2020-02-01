@@ -38,7 +38,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
-    uint256 constant private gasOverhead = 49791;
+    uint256 constant private gasOverhead = 52722;
 
     // Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
     uint256 constant private gasReserve = 100000;

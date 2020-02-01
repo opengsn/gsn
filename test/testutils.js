@@ -1,9 +1,11 @@
 const childProcess = require('child_process')
-const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
-const localhostOne = 'http://localhost:8090'
-const ethUtils = require('ethereumjs-util')
-const Transaction = require('ethereumjs-tx')
 
+const Transaction = require('ethereumjs-tx')
+const EthUtils = require('ethereumjs-util')
+
+const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
+
+const localhostOne = 'http://localhost:8090'
 const zeroAddr = '0'.repeat(40)
 
 module.exports = {
@@ -75,7 +77,7 @@ module.exports = {
       console.log('sleep before cont.')
       await module.exports.sleep(1000)
     }
-    assert.ok(res, "can't ping server")
+    assert.ok(res, 'can\'t ping server')
     const relayServerAddress = res.RelayServerAddress
     console.log('Relay Server Address', relayServerAddress)
     await web3.eth.sendTransaction({
@@ -83,7 +85,10 @@ module.exports = {
       from: options.relayOwner,
       value: web3.utils.toWei('2', 'ether')
     })
-    await rhub.stake(relayServerAddress, options.delay || 3600, { from: options.relayOwner, value: options.stake })
+    await rhub.stake(relayServerAddress, options.delay || 3600, {
+      from: options.relayOwner,
+      value: options.stake
+    })
 
     // now ping server until it "sees" the stake and funding, and gets "ready"
     res = ''
@@ -106,14 +111,24 @@ module.exports = {
   },
 
   register_new_relay: async function (relayHub, stake, delay, txFee, url, relayAccount, ownerAccount) {
-    await relayHub.stake(relayAccount, delay, { from: ownerAccount, value: stake })
+    await relayHub.stake(relayAccount, delay, {
+      from: ownerAccount,
+      value: stake
+    })
     return relayHub.registerRelay(txFee, url, { from: relayAccount })
   },
 
   register_new_relay_with_privkey: async function (relayHub, stake, delay, txFee, url, ownerAccount, web3, privKey) {
-    const address = '0x' + ethUtils.privateToAddress(privKey).toString('hex')
-    await relayHub.stake(address, delay, { from: ownerAccount, value: stake })
-    await web3.eth.sendTransaction({ to: address, from: ownerAccount, value: web3.utils.toWei('1', 'ether') })
+    const address = '0x' + EthUtils.privateToAddress(privKey).toString('hex')
+    await relayHub.stake(address, delay, {
+      from: ownerAccount,
+      value: stake
+    })
+    await web3.eth.sendTransaction({
+      to: address,
+      from: ownerAccount,
+      value: web3.utils.toWei('1', 'ether')
+    })
     const nonce = await web3.eth.getTransactionCount(address)
     const registerData = relayHub.contract.methods.registerRelay(txFee, url).encodeABI()
     const validTransaction = new Transaction({
@@ -163,8 +178,11 @@ module.exports = {
         params: [],
         id: new Date().getSeconds()
       }, (e, r) => {
-        if (e) reject(e)
-        else resolve(r)
+        if (e) {
+          reject(e)
+        } else {
+          resolve(r)
+        }
       })
     })
   },

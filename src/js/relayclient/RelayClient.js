@@ -86,13 +86,13 @@ class RelayClient {
   /**
    * Decode the signed transaction returned from the Relay Server, compare it to the
    * requested transaction and validate its signature.
-   * @returns a signed {@link ethJsTx} instance for broacasting, or null if returned
+   * @returns a signed {@link Transaction} instance for broadcasting, or null if returned
    * transaction is not valid.
    */
   validateRelayResponse (returnedTx, addressRelay,
     from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce,
     relayHubAddress, relayAddress, sig, approvalData) {
-    var tx = new Transaction({
+    const tx = new Transaction({
       nonce: returnedTx.nonce,
       gasPrice: returnedTx.gasPrice,
       gasLimit: returnedTx.gas,
@@ -108,21 +108,15 @@ class RelayClient {
 
     const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, txV[0], txR, txS)))
     const requestDecodedParams = abiDecoder.decodeMethod(returnedTx.input).params
-    const returnedTxParamsHash = utils.getTransactionHash(
-      requestDecodedParams[0].value,
-      requestDecodedParams[1].value,
-      requestDecodedParams[2].value,
-      requestDecodedParams[3].value,
-      requestDecodedParams[4].value,
-      requestDecodedParams[5].value,
-      requestDecodedParams[6].value,
-      returnedTx.to,
-      signer
-    )
-    const transactionOrigParamsHash = utils.getTransactionHash(
-      from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayHubAddress, relayAddress)
 
-    if (returnedTxParamsHash === transactionOrigParamsHash && utils.isSameAddress(addressRelay, signer)) {
+    const relayRequestOrig = utils.getRelayRequest(
+      from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress)
+
+    if (
+      utils.isSameAddress(returnedTx.to, relayHubAddress) &&
+      utils.isSameRelayRequest(requestDecodedParams[0].value, relayRequestOrig) &&
+      utils.isSameAddress(addressRelay, signer)
+    ) {
       if (this.config.verbose) {
         console.log('validateRelayResponse - valid transaction response')
       }
@@ -201,7 +195,7 @@ class RelayClient {
             body, relayAddress, from, to, encodedFunction,
             relayFee, gasprice, gaslimit, recipientNonce, relayHubAddress, relayAddress, signature, approvalData)
         } catch (error) {
-          console.error('validateRelayResponse ' + error)
+          console.error('validateRelayResponse threw error:\n', error, error.stack)
         }
 
         if (!validTransaction) {
@@ -334,6 +328,7 @@ class RelayClient {
 
       let signature
       let signedData
+      // TODO: refactor so signedData is created regardless of ephemeral key used or not
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
         signedData = await getDataToSign({
           web3,
@@ -385,7 +380,10 @@ class RelayClient {
 
       if (self.config.verbose) {
         console.log('relayTransaction', 'from: ', options.from, 'sig: ', signature)
-        const rec = sigUtil.recoverTypedSignature_v4({ data: signedData, sig: signature })
+        const rec = sigUtil.recoverTypedSignature_v4({
+          data: signedData,
+          sig: signature
+        })
         if (rec.toLowerCase() === options.from.toLowerCase()) {
           console.log('relayTransaction recovered:', rec, 'signature is correct')
         } else {
@@ -404,14 +402,7 @@ class RelayClient {
       if (options.validateCanRelay && firstTry) {
         firstTry = false
         const res = await relayHub.methods.canRelay(
-          relayAddress,
-          options.from,
-          options.to,
-          encodedFunctionCall,
-          txfee,
-          gasPrice,
-          gasLimit,
-          nonce,
+          signedData.message,
           signature,
           approvalData
         ).call()

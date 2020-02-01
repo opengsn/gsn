@@ -663,7 +663,7 @@ contract('RelayClient', function (accounts) {
     const tbk = new RelayClient(web3)
 
     await sr.setBlacklisted(from)
-    const sig = (await utils.getEip712Signature({
+    const { signature, data } = await utils.getEip712Signature({
       web3,
       senderAccount: from,
       target: to,
@@ -674,15 +674,15 @@ contract('RelayClient', function (accounts) {
       senderNonce: relayNonce.toString(),
       relayHub: rhub.address,
       relayAddress: relayAccount
-    })).signature
-    const res = await rhub.contract.methods.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x').send({
+    })
+    const res = await rhub.contract.methods.relayCall(data.message, signature, '0x').send({
       from: relayAccount,
       gasPrice: gasPrice,
       gasLimit: gasLimitAnyValue
     })
 
     const receipt = await web3.eth.getTransactionReceipt(res.transactionHash)
-    const canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x')
+    const canRelay = await rhub.canRelay(data.message, signature, '0x')
     assert.equal(11, canRelay.status.valueOf().toString())
 
     assert.equal(true, receipt.status)
