@@ -27,6 +27,7 @@ contract EIP712Sig {
         uint256 senderNonce;
         address relayAddress;
         uint256 pctRelayFee;
+        address gasSponsor;
     }
 
     struct RelayRequest {

@@ -1,6 +1,6 @@
 const Big = require('big.js')
 
-const SampleRecipient = artifacts.require('./SampleRecipient.sol')
+const SampleRecipient = artifacts.require('./TestRecipient.sol')
 const TestRecipientUtils = artifacts.require('./TestRecipientUtils.sol')
 
 const testutils = require('./testutils')

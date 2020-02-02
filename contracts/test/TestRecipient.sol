@@ -1,12 +1,13 @@
 pragma solidity ^0.5.5;
 
-import "./GsnUtils.sol";
-import "./IRelayHub.sol";
-import "./RelayRecipient.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
-contract SampleRecipient is RelayRecipient, Ownable {
+import "../utils/GsnUtils.sol";
+import "../interfaces/IRelayHub.sol";
+import "../BaseRelayRecipient.sol";
+
+contract TestRecipient is BaseRelayRecipient, Ownable {
     using ECDSA for bytes32;
 
     mapping (address => bool) public relaysWhitelist;
@@ -32,12 +33,12 @@ contract SampleRecipient is RelayRecipient, Ownable {
 
     constructor() public {}
 
-    function setHub(IRelayHub rhub) public {
-        setRelayHub(rhub);
+    function setHub(IRelayHub _relayHub) public {
+        relayHub = _relayHub;
     }
 
     function deposit() public payable {
-        getRelayHub().depositFor.value(msg.value)(address(this));
+        relayHub.depositFor.value(msg.value)(address(this));
     }
 
     function withdraw() public onlyOwner {
@@ -210,8 +211,8 @@ contract SampleRecipient is RelayRecipient, Ownable {
     }
 
     function withdrawAllBalance() private returns (uint256) {
-        uint256 balance = getRelayHub().balanceOf(address(this));
-        getRelayHub().withdraw(balance, address(this));
+        uint256 balance = relayHub.balanceOf(address(this));
+        relayHub.withdraw(balance, address(this));
         return balance;
     }
 }

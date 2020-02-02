@@ -5,11 +5,11 @@ import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
-import "./EIP712Sig.sol";
-import "./GsnUtils.sol";
-import "./IRelayHub.sol";
-import "./IRelayRecipient.sol";
-import "./RLPReader.sol";
+import "./utils/EIP712Sig.sol";
+import "./utils/GsnUtils.sol";
+import "./utils/RLPReader.sol";
+import "./interfaces/IRelayHub.sol";
+import "./interfaces/IGasSponsor.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -218,11 +218,11 @@ contract RelayHub is IRelayHub {
         }
 
         uint256 maxCharge = maxPossibleCharge(relayRequest.callData.gasLimit, relayRequest.callData.gasPrice, relayRequest.relayData.pctRelayFee);
-        bytes memory encodedTx = abi.encodeWithSelector(IRelayRecipient(relayRequest.callData.target).acceptRelayedCall.selector,
+        bytes memory encodedTx = abi.encodeWithSelector(IGasSponsor(address(0)).acceptRelayedCall.selector,
             relayRequest.relayData.relayAddress, relayRequest.relayData.senderAccount, relayRequest.callData.encodedFunction, relayRequest.relayData.pctRelayFee, relayRequest.callData.gasPrice, relayRequest.callData.gasLimit, relayRequest.relayData.senderNonce, approvalData, maxCharge
         );
 
-        (bool success, bytes memory returndata) = relayRequest.callData.target.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
+        (bool success, bytes memory returndata) = relayRequest.relayData.gasSponsor.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
 
         if (!success) {
             return (uint256(PreconditionCheck.AcceptRelayedCallReverted), "");
@@ -269,7 +269,7 @@ contract RelayHub is IRelayHub {
 
         // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
         // for the maximum possible charge.
-        require(maxPossibleCharge(relayRequest.callData.gasLimit, relayRequest.callData.gasPrice, relayRequest.relayData.pctRelayFee) <= balances[relayRequest.callData.target], "Recipient balance too low");
+        require(maxPossibleCharge(relayRequest.callData.gasLimit, relayRequest.callData.gasPrice, relayRequest.relayData.pctRelayFee) <= balances[relayRequest.relayData.gasSponsor], "Sponsor balance too low");
 
         bytes4 functionSelector = LibBytes.readBytes4(relayRequest.callData.encodedFunction, 0);
 
@@ -281,7 +281,7 @@ contract RelayHub is IRelayHub {
             (preconditionCheck, recipientContext) = canRelay(relayRequest, signature, approvalData);
 
             if (preconditionCheck != uint256(PreconditionCheck.OK)) {
-                emit CanRelayFailed(msg.sender, relayRequest.relayData.senderAccount, relayRequest.callData.target, functionSelector, preconditionCheck);
+                emit CanRelayFailed(msg.sender, relayRequest.relayData.senderAccount, relayRequest.callData.target, relayRequest.relayData.gasSponsor, functionSelector, preconditionCheck);
                 return;
             }
         }
@@ -312,11 +312,11 @@ contract RelayHub is IRelayHub {
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
-        require(balances[relayRequest.callData.target] >= charge, "Should not get here");
-        balances[relayRequest.callData.target] -= charge;
+        require(balances[relayRequest.relayData.gasSponsor] >= charge, "Should not get here");
+        balances[relayRequest.relayData.gasSponsor] -= charge;
         balances[relays[msg.sender].owner] += charge;
 
-        emit TransactionRelayed(msg.sender, relayRequest.relayData.senderAccount, relayRequest.callData.target, functionSelector, status, charge);
+        emit TransactionRelayed(msg.sender, relayRequest.relayData.senderAccount, relayRequest.callData.target, relayRequest.relayData.gasSponsor,  functionSelector, status, charge);
     }
 
     struct AtomicData {
@@ -347,18 +347,18 @@ contract RelayHub is IRelayHub {
 
         // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
         // post state to ensure this doesn't happen.
-        atomicData.balanceBefore = balances[relayRequest.callData.target];
+        atomicData.balanceBefore = balances[relayRequest.relayData.gasSponsor];
 
         // First preRelayedCall is executed.
         {
             // Note: we open a new block to avoid growing the stack too much.
             bytes memory data = abi.encodeWithSelector(
-                IRelayRecipient(relayRequest.callData.target).preRelayedCall.selector, recipientContext
+                IGasSponsor(address(0)).preRelayedCall.selector, recipientContext
             );
 
             // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
             // acceptRelayedCall that this will not happen.
-            (bool success, bytes memory retData) = relayRequest.callData.target.call.gas(preRelayedCallMaxGas)(data);
+            (bool success, bytes memory retData) = relayRequest.relayData.gasSponsor.call.gas(preRelayedCallMaxGas)(data);
 
             if (!success) {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed);
@@ -385,19 +385,19 @@ contract RelayHub is IRelayHub {
                 );
 
                 data = abi.encodeWithSelector(
-                    IRelayRecipient(relayRequest.callData.target).postRelayedCall.selector,
+                    IGasSponsor(address(0)).postRelayedCall.selector,
                     recipientContext, atomicData.relayedCallSuccess, estimatedCharge, atomicData.preReturnValue
                 );
             }
 
-            (bool successPost,) = relayRequest.callData.target.call.gas(postRelayedCallMaxGas)(data);
+            (bool successPost,) = relayRequest.relayData.gasSponsor.call.gas(postRelayedCallMaxGas)(data);
 
             if (!successPost) {
                 revertWithStatus(RelayCallStatus.PostRelayedFailed);
             }
         }
 
-        if (balances[relayRequest.callData.target] < atomicData.balanceBefore) {
+        if (balances[relayRequest.relayData.gasSponsor] < atomicData.balanceBefore) {
             revertWithStatus(RelayCallStatus.RecipientBalanceChanged);
         }
 

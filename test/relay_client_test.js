@@ -3,7 +3,7 @@ const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require('./RelayHub.sol')
-const SampleRecipient = artifacts.require('./SampleRecipient.sol')
+const SampleRecipient = artifacts.require('./TestRecipient.sol')
 const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 
 const Transaction = require('ethereumjs-tx')

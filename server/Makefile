@@ -36,7 +36,7 @@ $(ETHFILE): Makefile
 
 gen-file: $(GEN_FILE) Makefile
 
-$(RELAYHUB_BIN): ../contracts/IRelayHub.sol ../contracts/RelayHub.sol ../contracts/SampleRecipient.sol
+$(RELAYHUB_BIN): ../contracts/interfaces/IRelayHub.sol ../contracts/RelayHub.sol ../contracts/test/TestRecipient.sol
 	cd ../ && npx truffle compile
 	mkdir -p $(buildpath)/contracts
 	./scripts/get_abi_bin.js
@@ -45,11 +45,11 @@ $(RELAYHUB_ABI): $(RELAYHUB_BIN)
 
 $(TRUFFLE_OUT_REC): $(RELAYHUB_BIN)
 
-$(GEN_FILE): ../contracts/IRelayHub.sol $(RELAYHUB_BIN) $(RELAYHUB_ABI)
+$(GEN_FILE): ../contracts/interfaces/IRelayHub.sol $(RELAYHUB_BIN) $(RELAYHUB_ABI)
 	mkdir -p $(buildpath)/src/gen/librelay
 	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(RELAYHUB_ABI:json=abi)) --bin $(subst contracts,server/contracts,$(RELAYHUB_BIN:json=bin)) --pkg librelay --type IRelayHub --out $@
 
-$(GEN_FILE_REC): ../contracts/SampleRecipient.sol $(TRUFFLE_OUT_REC)
+$(GEN_FILE_REC): ../contracts/test/TestRecipient.sol $(TRUFFLE_OUT_REC)
 	mkdir -p $(buildpath)/src/gen/samplerec
 	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=bin)) --pkg samplerec --type SampleRecipient --out $@
 
