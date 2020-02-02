@@ -971,9 +971,10 @@ abbrev@1.0.x:
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.0.9.tgz#91b4792588a7738c25f35dd6f63752a2f8776135"
   integrity sha1-kbR5JYinc4wl813W9jdSovh3YTU=
 
-"abi-decoder@file:abi-decoder-2.2.2-alexf.tgz":
-  version "2.2.2-alexf"
-  resolved "file:abi-decoder-2.2.2-alexf.tgz#03195f1d3b38ead4d89a988f253deb89cbfa8172"
+abi-decoder@2.2.2:
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/abi-decoder/-/abi-decoder-2.2.2.tgz#aa1e6679f43c6c6be5d2a3fb20e9578e14e44440"
+  integrity sha512-viRNIt7FzBC9/Y99AVKsAvEMJsIe9Yc/PMrqYT7edSlZ4EnbXlxAq7hS08XTeMzjMP6DpoVrYyCwhSCskCPQqA==
   dependencies:
     web3-eth-abi "^1.2.1"
     web3-utils "^1.2.1"

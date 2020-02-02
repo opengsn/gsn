@@ -101,17 +101,6 @@ module.exports = {
     }
   },
 
-  isSameRelayRequest: function (relayRequest1, relayReqyest2) {
-    return relayRequest1.callData.encodedFunction === relayReqyest2.callData.encodedFunction &&
-      this.isSameAddress(relayRequest1.callData.target, relayReqyest2.callData.target) &&
-      relayRequest1.callData.gasPrice === relayReqyest2.callData.gasPrice &&
-      relayRequest1.callData.gasLimit === relayReqyest2.callData.gasLimit &&
-      this.isSameAddress(relayRequest1.relayData.senderAccount, relayReqyest2.relayData.senderAccount) &&
-      this.isSameAddress(relayRequest1.relayData.relayAddress, relayReqyest2.relayData.relayAddress) &&
-      relayRequest1.relayData.senderNonce === relayReqyest2.relayData.senderNonce &&
-      relayRequest1.relayData.pctRelayFee === relayReqyest2.relayData.pctRelayFee
-  },
-
   getTransactionSignature: async function (web3, account, hash) {
     let sig_
     try {

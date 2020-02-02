@@ -107,14 +107,16 @@ class RelayClient {
     const txS = Buffer.from(padTo64(removeHexPrefix(returnedTx.s)), 'hex')
 
     const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, txV[0], txR, txS)))
-    const requestDecodedParams = abiDecoder.decodeMethod(returnedTx.input).params
 
     const relayRequestOrig = utils.getRelayRequest(
       from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress)
 
+    const relayHub = this.createRelayHub(relayHubAddress)
+    const relayRequestAbiEncode = relayHub.methods.relayCall(relayRequestOrig, sig, approvalData).encodeABI()
+
     if (
       utils.isSameAddress(returnedTx.to, relayHubAddress) &&
-      utils.isSameRelayRequest(requestDecodedParams[0].value, relayRequestOrig) &&
+      relayRequestAbiEncode === returnedTx.input &&
       utils.isSameAddress(addressRelay, signer)
     ) {
       if (this.config.verbose) {
@@ -125,21 +127,8 @@ class RelayClient {
       tx.s = txS
       return tx
     } else {
-      console.error('validateRelayResponse: req', JSON.stringify(requestDecodedParams))
-      console.error('validateRelayResponse: rsp', {
-        returned_tx: returnedTx,
-        address_relay: addressRelay,
-        from,
-        to,
-        transaction_orig: transactionOrig,
-        transaction_fee: transactionFee,
-        gas_price: gasPrice,
-        gas_limit: gasLimit,
-        nonce,
-        sig,
-        approvalData,
-        signer
-      })
+      console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, addressRelay)
+      console.error('validateRelayResponse: rsp', returnedTx.input, returnedTx.to, signer)
     }
   }
 
