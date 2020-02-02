@@ -1,6 +1,6 @@
 pragma solidity ^0.5.5;
 
-contract IRelayRecipient {
+contract IGasSponsor {
 
     /**
      * return the relayHub of this contract.
