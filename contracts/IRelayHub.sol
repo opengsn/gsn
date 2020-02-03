@@ -1,4 +1,7 @@
 pragma solidity ^0.5.5;
+pragma experimental ABIEncoderV2;
+
+import "./EIP712Sig.sol";
 
 contract IRelayHub {
     // Relay management
@@ -12,7 +15,7 @@ contract IRelayHub {
     // Emits a Staked event.
     function stake(address relayaddr, uint256 unstakeDelay) external payable;
 
-    // Emited when a relay's stake or unstakeDelay are increased
+    // Emitted when a relay's stake or unstakeDelay are increased
     event Staked(address indexed relay, uint256 stake, uint256 unstakeDelay);
 
     // Registers the caller as a relay.
@@ -22,7 +25,7 @@ contract IRelayHub {
     // is not enforced by relayCall.
     function registerRelay(uint256 transactionFee, string memory url) public;
 
-    // Emitted when a relay is registered or re-registerd. Looking at these events (and filtering out RelayRemoved
+    // Emitted when a relay is registered or re-registered. Looking at these events (and filtering out RelayRemoved
     // events) lets a client discover the list of available relays.
     event RelayAdded(address indexed relay, address indexed owner, uint256 transactionFee, uint256 stake, uint256 unstakeDelay, string url);
 
@@ -56,14 +59,14 @@ contract IRelayHub {
     // Balance management
 
     // Deposits ether for a contract, so that it can receive (and pay for) relayed transactions. Unused balance can only
-    // be withdrawn by the contract itself, by callingn withdraw.
+    // be withdrawn by the contract itself, by calling withdraw.
     // Emits a Deposited event.
     function depositFor(address target) public payable;
 
     // Emitted when depositFor is called, including the amount and account that was funded.
     event Deposited(address indexed recipient, address indexed from, uint256 amount);
 
-    // Returns an account's deposits. These can be either a contnract's funds, or a relay owner's revenue.
+    // Returns an account's deposits. These can be either a contract's funds, or a relay owner's revenue.
     function balanceOf(address target) external view returns (uint256);
 
     // Withdraws from an account's balance, sending it back to it. Relay owners call this to retrieve their revenue, and
@@ -83,14 +86,7 @@ contract IRelayHub {
     // Returns a PreconditionCheck value (OK when the transaction can be relayed), or a recipient-specific error code if
     // it returns one in acceptRelayedCall.
     function canRelay(
-        address relay,
-        address from,
-        address to,
-        bytes memory encodedFunction,
-        uint256 transactionFee,
-        uint256 gasPrice,
-        uint256 gasLimit,
-        uint256 nonce,
+        EIP712Sig.RelayRequest memory relayRequest,
         bytes memory signature,
         bytes memory approvalData
     ) public view returns (uint256 status, bytes memory recipientContext);
@@ -104,7 +100,7 @@ contract IRelayHub {
         InvalidRecipientStatusCode  // The recipient returned an invalid (reserved) status code
     }
 
-    // Relays a transaction. For this to suceed, multiple conditions must be met:
+    // Relays a transaction. For this to succeed, multiple conditions must be met:
     //  - canRelay must return PreconditionCheck.OK
     //  - the sender must be a registered relay
     //  - the transaction's gas price must be larger or equal to the one that was requested by the sender
@@ -125,18 +121,12 @@ contract IRelayHub {
     //  - gasLimit: gas to forward when calling the encoded function
     //  - nonce: client's nonce
     //  - signature: client's signature over all previous params, plus the relay and RelayHub addresses
-    //  - approvalData: dapp-specific data forwared to acceptRelayedCall. This value is *not* verified by the Hub, but
+    //  - approvalData: dapp-specific data forwarded to acceptRelayedCall. This value is *not* verified by the Hub, but
     //    it still can be used for e.g. a signature.
     //
     // Emits a TransactionRelayed event.
     function relayCall(
-        address from,
-        address to,
-        bytes memory encodedFunction,
-        uint256 transactionFee,
-        uint256 gasPrice,
-        uint256 gasLimit,
-        uint256 nonce,
+        EIP712Sig.RelayRequest memory relayRequest,
         bytes memory signature,
         bytes memory approvalData
     ) public;

@@ -114,6 +114,7 @@ contract('RelayHub', function (accounts) {
     assert.equal(3600 * 24 * 7, relayData.unstakeDelay)
     assert.equal(ownerAccount, relayData.owner)
   })
+
   it("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function () {
     const sample = await SampleRecipient.deployed()
     const depositBefore = await rhub.balanceOf(sample.address)
@@ -130,7 +131,8 @@ contract('RelayHub', function (accounts) {
     assert.equal(depositExpected.toString(), depositActual.toString())
   })
 
-  it('should allow owner to stake on behalf of the relay', async function () {
+  // duplicate for 'unstaked relays can be staked for by anyone'
+  it.skip('should allow owner to stake on behalf of the relay', async function () {
     const gaslessRelayAddress = '0x2Dd8C0665327A26D7655055B22c9b3bA596DfeD9'
     const balanceOfGaslessBefore = await web3.eth.getBalance(gaslessRelayAddress)
     const balanceOfAcc7Before = await web3.eth.getBalance(accounts[7])
@@ -195,13 +197,15 @@ contract('RelayHub', function (accounts) {
      * Depends on 'test_register_relay'
      */
   it("should get '0' (Success Code) from 'canRelay' for a valid transaction", async function () {
-    const canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x')
+    const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+    const canRelay = await rhub.canRelay(relayRequest, sig, '0x')
     assert.equal(0, canRelay.status.valueOf())
   })
 
   it("should get '1' (Wrong Signature) from 'canRelay' for a transaction with a wrong signature", async function () {
     const wrongSig = '0xaaaa6ad4b4fab03bb2feaea2d54c690206e40036e4baa930760e72479da0cc5575779f9db9ef801e144b5e6af48542107f2f094649334b030e2bb44f054429b451'
-    const canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, wrongSig, '0x')
+    const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+    const canRelay = await rhub.canRelay(relayRequest, wrongSig, '0x')
     assert.equal(1, canRelay.status.valueOf())
   })
 
@@ -221,7 +225,8 @@ contract('RelayHub', function (accounts) {
     })
     const recoveredAccount = sigUtil.recoverTypedSignature_v4({ data, sig })
     assert.strictEqual(from.toLowerCase(), recoveredAccount.toLowerCase())
-    const canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, wrongNonce, sig, '0x')
+    const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, wrongNonce, relayAccount)
+    const canRelay = await rhub.canRelay(relayRequest, sig, '0x')
     assert.equal(2, canRelay.status.valueOf())
   })
 
@@ -233,7 +238,8 @@ contract('RelayHub', function (accounts) {
 
     assert.equal(relayNonce, await rhub.getNonce(from))
 
-    const result = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+    const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+    const result = await rhub.relayCall(relayRequest, sig, '0x', {
       from: relayAccount,
       gasPrice: gasPrice,
       gasLimit: gasLimitAnyValue
@@ -287,7 +293,9 @@ contract('RelayHub', function (accounts) {
       toBlock: 'latest'
     })
     assert.equal(0, logsMessages.length)
-    const result = await rhub.relayCall(from, to, transacionNoParams, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+
+    const relayRequest = utils.getRelayRequest(from, to, transacionNoParams, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+    const result = await rhub.relayCall(relayRequest, sig, '0x', {
       from: relayAccount,
       gasPrice: gasPrice,
       gasLimit: gasLimitAnyValue
@@ -322,7 +330,8 @@ contract('RelayHub', function (accounts) {
       relayAddress: relayAccount
     })).signature
     try {
-      await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      await rhub.relayCall(relayRequest, sig, '0x', {
         from: accounts[6],
         gasPrice: gasPrice,
         gasLimit: gasLimitAnyValue
@@ -335,7 +344,8 @@ contract('RelayHub', function (accounts) {
 
   it('should not accept relay requests with gas price lower then user specified', async function () {
     try {
-      await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      await rhub.relayCall(relayRequest, sig, '0x', {
         from: relayAccount,
         gasPrice: gasPrice - 1,
         gasLimit: gasLimitAnyValue
@@ -346,7 +356,8 @@ contract('RelayHub', function (accounts) {
     }
   })
 
-  it("should not accept relay requests if destination recipient doesn't approve it", async function () {
+  // duplicate of 'relaying is aborted if the recipient returns an invalid status code'
+  it.skip("should not accept relay requests if destination recipient doesn't approve it", async function () {
     const from = accounts[6]
     const relayNonce = 0
     await sr.setBlacklisted(from)
@@ -377,7 +388,8 @@ contract('RelayHub', function (accounts) {
     // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
     const gasReserve = 99999
     try {
-      await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      await rhub.relayCall(relayRequest, sig, '0x', {
         from: relayAccount,
         gasPrice: gasPrice,
         gas: gasLimit + gasReserve
@@ -393,7 +405,8 @@ contract('RelayHub', function (accounts) {
     const maxPossibleCharge = (await rhub.maxPossibleCharge(gasLimit, gasPrice, transactionFee)).toNumber()
     await sr.deposit({ value: maxPossibleCharge - 1 })
     try {
-      await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      await rhub.relayCall(relayRequest, sig, '0x', {
         from: relayAccount,
         gasPrice: gasPrice,
         gasLimit: gasLimitAnyValue
@@ -406,7 +419,8 @@ contract('RelayHub', function (accounts) {
     await sr.deposit({ value: 10 * maxPossibleCharge })
   })
 
-  it('should not allow non-owners to remove relay', async function () {
+  // duplicate of 'non-owners cannot remove a relay'
+  it.skip('should not allow non-owners to remove relay', async function () {
     try {
       await rhub.removeRelayByOwner(relayAccount, { from: accounts[2] })
       assert.fail()
@@ -415,7 +429,8 @@ contract('RelayHub', function (accounts) {
     }
   })
 
-  it('should not allow owners to unstake if still registered', async function () {
+  // duplicate of 'unremoved relays cannot be unstaked'
+  it.skip('should not allow owners to unstake if still registered', async function () {
     const canUnstake = await rhub.canUnstake.call(relayAccount)
     assert.equal(canUnstake, false)
     try {
@@ -426,7 +441,8 @@ contract('RelayHub', function (accounts) {
     }
   })
 
-  it('should allow the owner to remove his relay', async function () {
+  // duplicate of 'a registered relay can be removed'
+  it.skip('should allow the owner to remove his relay', async function () {
     try {
       await rhub.removeRelayByOwner(zeroAddr)
       assert.fail()
@@ -439,7 +455,8 @@ contract('RelayHub', function (accounts) {
     assert.equal(relayAccount, res.logs[0].args.relay)
   })
 
-  it("should not allow the owner to unstake unregistered relay's stake before time", async function () {
+  // duplicate of 'relay cannot be unstaked before unstakeTime'
+  it.skip("should not allow the owner to unstake unregistered relay's stake before time", async function () {
     const relay = await rhub.getRelay.call(relayAccount)
     // eslint-disable-next-line eqeqeq
     assert.equal(false, relay.stake == 0)
@@ -461,7 +478,8 @@ contract('RelayHub', function (accounts) {
     assert.equal(canUnstake, true)
   })
 
-  it('should not allow non-owners to unstake', async function () {
+  // duplicate of 'non-owner cannot unstake relay'
+  it.skip('should not allow non-owners to unstake', async function () {
     const canUnstake = await rhub.canUnstake.call(relayAccount)
     assert.equal(true, canUnstake)
 
@@ -473,7 +491,8 @@ contract('RelayHub', function (accounts) {
     }
   })
 
-  it("should allow the owner to unstake unregistered relay's stake", async function () {
+  // duplicate of 'owner can unstake relay'
+  it.skip("should allow the owner to unstake unregistered relay's stake", async function () {
     const canUnstake = await rhub.canUnstake.call(relayAccount)
     assert.equal(true, canUnstake)
     await rhub.unstake(relayAccount)
@@ -518,8 +537,10 @@ contract('RelayHub', function (accounts) {
     const stake = await rhub.getRelay(address)
     assert.equal(oneEther, stake[0])
 
-    data1 = rhub.contract.methods.relayCall(testutils.zeroAddr, testutils.zeroAddr, '0x1', 1, 1, 1, 1, '0x1', '0x').encodeABI()
-    data2 = rhub.contract.methods.relayCall(testutils.zeroAddr, testutils.zeroAddr, '0x2', 2, 2, 2, 2, '0x2', '0x').encodeABI()
+    const relayRequest1 = utils.getRelayRequest(testutils.zeroAddr, testutils.zeroAddr, '0x1', 1, 1, 1, 1, relayAccount)
+    const relayRequest2 = utils.getRelayRequest(testutils.zeroAddr, testutils.zeroAddr, '0x2', 2, 2, 2, 2, relayAccount)
+    data1 = rhub.contract.methods.relayCall(relayRequest1, '0x1', '0x').encodeABI()
+    data2 = rhub.contract.methods.relayCall(relayRequest2, '0x2', '0x').encodeABI()
 
     transaction1 = new Transaction({
       nonce: nonceAnyValue,
@@ -722,9 +743,10 @@ contract('RelayHub', function (accounts) {
         relayAddress: relayAccount
       })).signature
 
-      assert.equal(0, (await rhub.canRelay(relayAccount, from, to, transaction, requestedFee, gasPrice, gasLimit, relayNonce, sig, '0x')).status)
+      const relayRequest = utils.getRelayRequest(from, to, transaction, requestedFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      assert.equal(0, (await rhub.canRelay(relayRequest, sig, '0x')).status)
 
-      const res = await rhub.relayCall(from, to, transaction, requestedFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const res = await rhub.relayCall(relayRequest, sig, '0x', {
         from: relayAccount,
         gasPrice: gasPrice,
         gasLimit: gasLimitAnyValue
@@ -769,7 +791,8 @@ contract('RelayHub', function (accounts) {
     })
   })
 
-  it('should revert relayed call on an attempt to withdraw deposit during relayed transaction', async function () {
+  // duplicate of 'reverts relayed call if recipient withdraws balance during XXX'
+  it.skip('should revert relayed call on an attempt to withdraw deposit during relayed transaction', async function () {
     let withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall()
     assert.equal(withdrawDuringRelayedCall, false)
     try {
@@ -831,9 +854,10 @@ contract('RelayHub', function (accounts) {
         relayAddress: relayAccount
       })).signature
 
-      assert.equal(AcceptRelayedCallReverted, (await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x')).status)
+      const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      assert.equal(AcceptRelayedCallReverted, (await rhub.canRelay(relayRequest, sig, '0x')).status)
 
-      const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const res = await rhub.relayCall(relayRequest, sig, '0x', {
         from: relayAccount,
         gasPrice: gasPrice,
         gasLimit: gasLimitAnyValue
@@ -872,7 +896,8 @@ contract('RelayHub', function (accounts) {
         relayAddress: relayAccount
       })).signature
 
-      const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      const res = await rhub.relayCall(relayRequest, sig, '0x', {
         from: relayAccount,
         gasPrice: gasPrice,
         gasLimit: gasLimitAnyValue
@@ -922,7 +947,8 @@ contract('RelayHub', function (accounts) {
         relayAddress: relayAccount
       })).signature
 
-      const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
+      const relayRequest = utils.getRelayRequest(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, relayAccount)
+      const res = await rhub.relayCall(relayRequest, sig, '0x', {
         from: relayAccount,
         gasPrice: gasPrice,
         gasLimit: gasLimitAnyValue

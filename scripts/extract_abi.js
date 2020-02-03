@@ -7,8 +7,7 @@ const fs = require('fs')
 const path = require('path')
 
 // TODO: pass all these things as parameters
-const projectFolder = ''
-const contractsFolder = projectFolder + 'contracts'
+const contractsFolder = 'contracts'
 const outAbiFolder = 'src/js/relayclient'
 
 const contractsToExtract = ['IRelayHub', 'IRelayRecipient']
@@ -46,7 +45,7 @@ function compileFile (contractFile, c) {
       const subPath = parts.length === 0 ? '' : '/' + parts.join('/')
       let realPath = contractsFolder + subPath + '/' + path
       if (!fs.existsSync(realPath)) {
-        realPath = projectFolder + '/node_modules/' + path
+        realPath = 'node_modules/' + path
       }
       console.log(fs.existsSync(realPath) ? 'resolved:' : 'failed to resolve', realPath)
 

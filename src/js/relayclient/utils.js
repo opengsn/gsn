@@ -2,13 +2,9 @@ const ethUtils = require('ethereumjs-util')
 const EthCrypto = require('eth-crypto')
 const web3Utils = require('web3-utils')
 
+const CallData = require('./EIP712/CallData')
+const RelayData = require('./EIP712/RelayData')
 const getDataToSign = require('./EIP712/Eip712Helper')
-
-const relayPrefix = 'rlx:'
-
-function toUint256NoPrefix (int) {
-  return removeHexPrefix(ethUtils.bufferToHex(ethUtils.setLengthLeft(int, 32)))
-}
 
 function removeHexPrefix (hex) {
   return hex.replace(/^0x/, '')
@@ -19,14 +15,6 @@ const zeroPad = '000000000000000000000000000000000000000000000000000000000000000
 function padTo64 (hex) {
   if (hex.length < 64) {
     hex = (zeroPad + hex).slice(-64)
-  }
-  return hex
-}
-
-function bytesToHexNoPrefix (bytes) {
-  let hex = removeHexPrefix(web3Utils.toHex(bytes))
-  if (hex.length % 2 !== 0) {
-    hex = '0' + hex
   }
   return hex
 }
@@ -96,20 +84,21 @@ module.exports = {
     })
   },
 
-  getTransactionHash: function (from, to, tx, txfee, gasPrice, gasLimit, nonce, relayHubAddress, relayAddress) {
-    const txhstr = bytesToHexNoPrefix(tx)
-    const dataToHash =
-            Buffer.from(relayPrefix).toString('hex') +
-            removeHexPrefix(from) +
-            removeHexPrefix(to) +
-            txhstr +
-            toUint256NoPrefix(parseInt(txfee)) +
-            toUint256NoPrefix(parseInt(gasPrice)) +
-            toUint256NoPrefix(parseInt(gasLimit)) +
-            toUint256NoPrefix(parseInt(nonce)) +
-            removeHexPrefix(relayHubAddress) +
-            removeHexPrefix(relayAddress)
-    return web3Utils.sha3('0x' + dataToHash)
+  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay) {
+    return {
+      callData: new CallData({
+        target: recipient,
+        gasLimit: gasLimit.toString(),
+        gasPrice: gasPrice.toString(),
+        encodedFunction: txData
+      }),
+      relayData: new RelayData({
+        senderAccount: sender,
+        senderNonce: senderNonce.toString(),
+        relayAddress: relay,
+        pctRelayFee: fee.toString()
+      })
+    }
   },
 
   getTransactionSignature: async function (web3, account, hash) {
@@ -118,8 +107,11 @@ module.exports = {
       sig_ = await new Promise((resolve, reject) => {
         try {
           web3.eth.personal.sign(hash, account, (err, res) => {
-            if (err) reject(err)
-            else resolve(res)
+            if (err) {
+              reject(err)
+            } else {
+              resolve(res)
+            }
           })
         } catch (e) {
           reject(e)
@@ -128,8 +120,11 @@ module.exports = {
     } catch (e) {
       sig_ = await new Promise((resolve, reject) => {
         web3.eth.sign(hash, account, (err, res) => {
-          if (err) reject(err)
-          else resolve(res)
+          if (err) {
+            reject(err)
+          } else {
+            resolve(res)
+          }
         })
       })
     }
