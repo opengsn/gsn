@@ -9,7 +9,7 @@ const EIP712Sig = artifacts.require('./EIP712Sig.sol')
 
 contract('Utils', async function (accounts) {
   describe('#getEip712Signature()', async function () {
-    it('shuld generate a valid EIP-712 compatible signature', async function () {
+    it('should generate a valid EIP-712 compatible signature', async function () {
       const senderAccount = accounts[0]
       const senderNonce = '5'
       const target = accounts[5]
@@ -17,6 +17,7 @@ contract('Utils', async function (accounts) {
       const pctRelayFee = '15'
       const gasPrice = '10000000'
       const gasLimit = '500000'
+      const gasSponsor = accounts[7]
       const relayHub = accounts[8]
       const relayAddress = accounts[9]
 
@@ -29,6 +30,7 @@ contract('Utils', async function (accounts) {
         pctRelayFee,
         gasPrice,
         gasLimit,
+        gasSponsor,
         relayHub,
         relayAddress
       })
@@ -42,6 +44,7 @@ contract('Utils', async function (accounts) {
         pctRelayFee,
         gasPrice,
         gasLimit,
+        gasSponsor,
         relayHub,
         relayAddress
       })

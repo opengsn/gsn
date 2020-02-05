@@ -6,7 +6,9 @@
 
 var testutils = require('./testutils.js')
 
-const SampleRecipient = artifacts.require('SampleRecipient')
+const SampleRecipient = artifacts.require('tests/TestRecipient')
+const TestSponsor = artifacts.require('tests/TestSponsorEverythingAccepted')
+const TestSponsorApproval = artifacts.require('tests/TestSponsorPreconfiguredApproval')
 
 const RelayHub = artifacts.require('RelayHub')
 
@@ -21,6 +23,7 @@ options.forEach(params => {
   contract(params.title + 'Flow', async (acc) => {
     let from
     let sr
+    let gasSponsor
     let rhub
     const accounts = acc
     let gasless
@@ -56,7 +59,9 @@ options.forEach(params => {
       }
 
       sr = await SampleRecipient.new()
+      gasSponsor = await TestSponsor.new()
       await sr.setHub(rhub.address)
+      await gasSponsor.setHub(rhub.address)
     })
 
     after(async function () {
@@ -65,7 +70,7 @@ options.forEach(params => {
 
     if (params.relay) {
       it(params.title + 'enable relay', async function () {
-        rhub.depositFor(sr.address, { value: 1e18 })
+        rhub.depositFor(gasSponsor.address, { value: 1e18 })
 
         relayClientConfig = {
           txfee: 60,
@@ -88,23 +93,19 @@ options.forEach(params => {
     }
 
     it(params.title + 'send normal transaction', async () => {
-      const logIndex = params.relay ? 1 : 0
-
       console.log('running emitMessage (should succeed')
-      const res = await sr.emitMessage('hello', { from: from })
-      assert.equal('hello', res.logs[0 + logIndex].args.message)
+      const res = await sr.emitMessage('hello', { from: from, gasSponsor: gasSponsor.address })
+      assert.equal('hello', res.logs[0].args.message)
     })
 
     it(params.title + 'send gasless tranasaction', async () => {
-      const logIndex = params.relay ? 1 : 0
-
       console.log('gasless=' + gasless)
 
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed')
       let ex
       try {
-        const res = await sr.emitMessage('hello, from gasless', { from: gasless })
-        console.log('res after gasless emit:', res.logs[logIndex].args.message)
+        const res = await sr.emitMessage('hello, from gasless', { from: gasless, gasSponsor: gasSponsor.address })
+        console.log('res after gasless emit:', res.logs[0].args.message)
       } catch (e) {
         ex = e
       }
@@ -117,47 +118,59 @@ options.forEach(params => {
     })
     it(params.title + 'running testRevert (should always fail)', async () => {
       await asyncShouldThrow(async () => {
-        await sr.testRevert({ from: from })
+        await sr.testRevert({ from: from, gasSponsor: gasSponsor.address })
       }, 'revert')
     })
 
     if (params.relay) {
+      let approvalSponsor
+
+      before(async function () {
+        approvalSponsor = await TestSponsorApproval.new()
+        await approvalSponsor.setHub(rhub.address)
+        await rhub.depositFor(approvalSponsor.address, { value: 1e18 })
+      })
+
       it(params.title + 'wait for specific approvalData', async () => {
         try {
-          await sr.setExpectedApprovalData('0x414243', { from: accounts[0], useGSN: false })
-          await sr.emitMessage('xxx', { from: gasless, approvalData: '0x414243' })
+          await approvalSponsor.setExpectedApprovalData('0x414243', { from: accounts[0], useGSN: false })
+          await sr.emitMessage('xxx', { from: gasless, approvalData: '0x414243', gasSponsor: approvalSponsor.address })
         } catch (e) {
           console.log('error1: ', e)
           throw e
         } finally {
-          await sr.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
+          await approvalSponsor.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
         }
       })
 
       it(params.title + 'wait for specific approvalData as Buffer', async () => {
         try {
-          await sr.setExpectedApprovalData(Buffer.from('hello'), { from: accounts[0], useGSN: false })
+          await approvalSponsor.setExpectedApprovalData(Buffer.from('hello'), { from: accounts[0], useGSN: false })
           SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
-          await sr.emitMessage('xxx', { from: gasless, approvalData: Buffer.from('hello') })
+          await sr.emitMessage('xxx', {
+            from: gasless,
+            approvalData: Buffer.from('hello'),
+            gasSponsor: approvalSponsor.address
+          })
         } catch (e) {
           console.log('error2: ', e)
           throw e
         } finally {
-          await sr.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
+          await approvalSponsor.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
         }
       })
 
       it(params.title + 'fail on no approval data', async () => {
         try {
-          await sr.setExpectedApprovalData(Buffer.from('hello1'), { from: accounts[0], useGSN: false })
+          await approvalSponsor.setExpectedApprovalData(Buffer.from('hello1'), { from: accounts[0], useGSN: false })
           await asyncShouldThrow(async () => {
-            await sr.emitMessage('xxx', { from: gasless })
+            await sr.emitMessage('xxx', { from: gasless, gasSponsor: approvalSponsor.address })
           }, 'unexpected approvalData: \'\' instead of')
         } catch (e) {
           console.log('error3: ', e)
           throw e
         } finally {
-          await sr.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
+          await approvalSponsor.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
         }
       })
     }

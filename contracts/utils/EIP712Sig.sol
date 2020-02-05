@@ -39,11 +39,11 @@ contract EIP712Sig {
         "EIP712Domain(string name,string version,address verifyingContract)"
     );
 
-    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(CallData callData,RelayData relayData)CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee)");
+    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(CallData callData,RelayData relayData)CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
 
     bytes32 public constant CALLDATA_TYPEHASH = keccak256("CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)");
 
-    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee)");
+    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
 
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
 
@@ -90,7 +90,8 @@ contract EIP712Sig {
                 req.senderAccount,
                 req.senderNonce,
                 req.relayAddress,
-                req.pctRelayFee
+                req.pctRelayFee,
+                req.gasSponsor
             ));
     }
 

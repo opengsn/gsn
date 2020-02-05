@@ -44,7 +44,7 @@ interface IRelayHub {
 
     // Emitted when depositFor is called, including the amount and account that was funded.
     event Deposited(
-        address indexed recipient,
+        address indexed sponsor,
         address indexed from,
         uint256 amount
     );

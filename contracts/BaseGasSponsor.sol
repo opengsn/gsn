@@ -15,7 +15,7 @@ import "./interfaces/IRelayHub.sol";
 contract BaseGasSponsor is IGasSponsor, Ownable {
 
     /// The IRelayHub singleton which is allowed to call us
-    IRelayHub private relayHub;
+    IRelayHub internal relayHub;
 
     function getHubAddr() public view returns (address) {
         return address(relayHub);
@@ -42,6 +42,4 @@ contract BaseGasSponsor is IGasSponsor, Ownable {
     function withdrawRelayHubDepositTo(uint amount, address payable target) onlyOwner public {
         relayHub.withdraw(amount, target);
     }
-
-
 }
