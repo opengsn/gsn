@@ -138,6 +138,7 @@ contract('RelayHub', function (accounts) {
     assert.equal(depositExpected.toString(), depositActual.toString())
   })
 
+  // duplicate for 'unstaked relays can be staked for by anyone'
   it.skip('should allow owner to stake on behalf of the relay', async function () {
     const gaslessRelayAddress = '0x2Dd8C0665327A26D7655055B22c9b3bA596DfeD9'
     const balanceOfGaslessBefore = await web3.eth.getBalance(gaslessRelayAddress)
@@ -365,6 +366,7 @@ contract('RelayHub', function (accounts) {
     }
   })
 
+  // duplicate of 'relaying is aborted if the recipient returns an invalid status code'
   it.skip("should not accept relay requests if destination recipient doesn't approve it", async function () {
     const from = accounts[6]
     const relayNonce = 0
@@ -427,6 +429,7 @@ contract('RelayHub', function (accounts) {
     }
   })
 
+  // duplicate of 'non-owners cannot remove a relay'
   it.skip('should not allow non-owners to remove relay', async function () {
     try {
       await rhub.removeRelayByOwner(relayAccount, { from: accounts[2] })
@@ -436,6 +439,7 @@ contract('RelayHub', function (accounts) {
     }
   })
 
+  // duplicate of 'unremoved relays cannot be unstaked'
   it.skip('should not allow owners to unstake if still registered', async function () {
     const canUnstake = await rhub.canUnstake.call(relayAccount)
     assert.equal(canUnstake, false)
@@ -447,6 +451,7 @@ contract('RelayHub', function (accounts) {
     }
   })
 
+  // duplicate of 'a registered relay can be removed'
   it.skip('should allow the owner to remove his relay', async function () {
     try {
       await rhub.removeRelayByOwner(zeroAddr)
@@ -460,6 +465,7 @@ contract('RelayHub', function (accounts) {
     assert.equal(relayAccount, res.logs[0].args.relay)
   })
 
+  // duplicate of 'relay cannot be unstaked before unstakeTime'
   it.skip("should not allow the owner to unstake unregistered relay's stake before time", async function () {
     const relay = await rhub.getRelay.call(relayAccount)
     // eslint-disable-next-line eqeqeq
@@ -482,6 +488,7 @@ contract('RelayHub', function (accounts) {
     assert.equal(canUnstake, true)
   })
 
+  // duplicate of 'non-owner cannot unstake relay'
   it.skip('should not allow non-owners to unstake', async function () {
     const canUnstake = await rhub.canUnstake.call(relayAccount)
     assert.equal(true, canUnstake)
@@ -494,6 +501,7 @@ contract('RelayHub', function (accounts) {
     }
   })
 
+  // duplicate of 'owner can unstake relay'
   it.skip("should allow the owner to unstake unregistered relay's stake", async function () {
     const canUnstake = await rhub.canUnstake.call(relayAccount)
     assert.equal(true, canUnstake)
@@ -794,6 +802,7 @@ contract('RelayHub', function (accounts) {
     })
   })
 
+  // duplicate of 'reverts relayed call if recipient withdraws balance during XXX'
   it.skip('should revert relayed call on an attempt to withdraw deposit during relayed transaction', async function () {
     let withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall()
     assert.equal(withdrawDuringRelayedCall, false)
