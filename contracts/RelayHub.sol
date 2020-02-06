@@ -219,7 +219,7 @@ contract RelayHub is IRelayHub {
 
         uint256 maxCharge = maxPossibleCharge(relayRequest.callData.gasLimit, relayRequest.callData.gasPrice, relayRequest.relayData.pctRelayFee);
         bytes memory encodedTx = abi.encodeWithSelector(IGasSponsor(address(0)).acceptRelayedCall.selector,
-            relayRequest.relayData.relayAddress, relayRequest.relayData.senderAccount, relayRequest.callData.encodedFunction, relayRequest.relayData.pctRelayFee, relayRequest.callData.gasPrice, relayRequest.callData.gasLimit, relayRequest.relayData.senderNonce, approvalData, maxCharge
+            relayRequest, approvalData, maxCharge
         );
 
         (bool success, bytes memory returndata) = relayRequest.relayData.gasSponsor.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
