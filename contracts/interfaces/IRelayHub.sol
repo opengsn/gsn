@@ -50,7 +50,8 @@ interface IRelayHub {
     );
 
     // Emitted when an attempt to relay a call failed. This can happen due to incorrect relayCall arguments, or the
-    // recipient not accepting the relayed call. The actual relayed call was not executed, and the recipient not charged.
+    // recipient not accepting the relayed call.
+    // The actual relayed call was not executed, and the recipient not charged.
     // The reason field contains an error code: values 1-10 correspond to PreconditionCheck entries, and values over 10
     // are custom recipient error codes returned from acceptRelayedCall.
     event CanRelayFailed(
@@ -80,30 +81,46 @@ interface IRelayHub {
         uint256 amount
     );
 
-    // Reason error codes for the TransactionRelayed event
+    /// Reason error codes for the TransactionRelayed event
+    /// @param OK - the transaction was successfully relayed and execution successful - never included in the event
+    /// @param RelayedCallFailed - the transaction was relayed, but the relayed call failed
+    /// @param PreRelayedFailed - the transaction was not relayed due to preRelatedCall reverting
+    /// @param PostRelayedFailed - the transaction was relayed and reverted due to postRelatedCall reverting
+    /// @param RecipientBalanceChanged - the transaction was relayed and reverted due to the recipient balance change
     enum RelayCallStatus {
-        OK, // The transaction was successfully relayed and execution successful - never included in the event
-        RelayedCallFailed, // The transaction was relayed, but the relayed call failed
-        PreRelayedFailed, // The transaction was not relayed due to preRelatedCall reverting
-        PostRelayedFailed, // The transaction was relayed and reverted due to postRelatedCall reverting
-        RecipientBalanceChanged  // The transaction was relayed and reverted due to the recipient's balance changing
+        OK,
+        RelayedCallFailed,
+        PreRelayedFailed,
+        PostRelayedFailed,
+        RecipientBalanceChanged
     }
 
-    // States a relay can be in
+    /// States a relay can be in
+    /// @param Unknown - the relay is unknown to the system: it has never been staked for
+    /// @param Staked - the relay has been staked for, but it is not yet active
+    /// @param Registered - the relay has registered itself, and is active (can relay calls)
+    /// @param Removed - the relay has been removed by its owner and can no longer relay calls.
+    ///         It must wait for its unstake delay to elapse before it can unstake
     enum RelayState {
-        Unknown, // The relay is unknown to the system: it has never been staked for
-        Staked, // The relay has been staked for, but it is not yet active
-        Registered, // The relay has registered itself, and is active (can relay calls)
-        Removed    // The relay has been removed by its owner and can no longer relay calls. It must wait for its unstakeDelay to elapse before it can unstake
+        Unknown,
+        Staked,
+        Registered,
+        Removed
+
     }
 
-    // Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
+    /// Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
+    /// @param OK - all checks passed, the call can be relayed
+    /// @param WrongSignature - the transaction to relay is not signed by requested sender
+    /// @param WrongNonce - the provided nonce has already been used by the sender
+    /// @param AcceptRelayedCallReverted - the recipient rejected this call via acceptRelayedCall
+    /// @param InvalidRecipientStatusCode - the recipient returned an invalid (reserved) status code
     enum PreconditionCheck {
-        OK, // All checks passed, the call can be relayed
-        WrongSignature, // The transaction to relay is not signed by requested sender
-        WrongNonce, // The provided nonce has already been used by the sender
-        AcceptRelayedCallReverted, // The recipient rejected this call via acceptRelayedCall
-        InvalidRecipientStatusCode  // The recipient returned an invalid (reserved) status code
+        OK,
+        WrongSignature,
+        WrongNonce,
+        AcceptRelayedCallReverted,
+        InvalidRecipientStatusCode
     }
 
     // Add stake to a relay and sets its unstakeDelay.
@@ -111,7 +128,7 @@ interface IRelayHub {
     // of this function becomes its owner. If the relay already exists, only the owner can call this function. A relay
     // cannot be its own owner.
     // All Ether in this function call will be added to the relay's stake.
-    // Its unstake delay will be assigned to unstakeDelay, but the new value must be greater or equal to the current one.
+    // Its unstake delay will be assigned to unstakeDelay, but the new value must be greater or equal to the current one
     // Emits a Staked event.
     function stake(address relayaddr, uint256 unstakeDelay) external payable;
 

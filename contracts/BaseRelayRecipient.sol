@@ -32,7 +32,8 @@ contract BaseRelayRecipient {
      */
     function getSender() public view returns (address) {
         if (msg.sender == address(relayHub)) {
-            // At this point we know that the sender is a trusted IRelayHub, so we trust that the last bytes of msg.data are the verified sender address.
+            // At this point we know that the sender is a trusted IRelayHub,
+            // so we trust that the last bytes of msg.data are the verified sender address.
             // extract sender address from the end of msg.data
             return LibBytes.readAddress(msg.data, msg.data.length - 20);
         }
