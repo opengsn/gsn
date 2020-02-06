@@ -1,4 +1,7 @@
 pragma solidity ^0.5.5;
+pragma experimental ABIEncoderV2;
+
+import "../utils/EIP712Sig.sol";
 
 interface IGasSponsor {
 
@@ -32,13 +35,7 @@ interface IGasSponsor {
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      */
      function acceptRelayedCall(
-        address relay,
-        address from,
-        bytes calldata encodedFunction,
-        uint256 transactionFee,
-        uint256 gasPrice,
-        uint256 gasLimit,
-        uint256 nonce,
+        EIP712Sig.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )

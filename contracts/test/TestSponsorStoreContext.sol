@@ -1,4 +1,5 @@
 pragma solidity ^0.5.16;
+pragma experimental ABIEncoderV2;
 
 import "./TestSponsorEverythingAccepted.sol";
 
@@ -32,13 +33,7 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
      * This demonstrates how acceptRelayedCall can return 'context' data for reuse in preRelayedCall/postRelayedCall.
      */
     function acceptRelayedCall(
-        address relay,
-        address from,
-        bytes calldata encodedFunction,
-        uint256 transactionFee,
-        uint256 gasPrice,
-        uint256 gasLimit,
-        uint256 nonce,
+        EIP712Sig.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )
@@ -46,7 +41,15 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
     view
     returns (uint256, bytes memory){
         return (0, abi.encode(
-            relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleCharge));
+            relayRequest.relayData.relayAddress,
+            relayRequest.relayData.senderAccount,
+            relayRequest.callData.encodedFunction,
+            relayRequest.relayData.pctRelayFee,
+            relayRequest.callData.gasPrice,
+            relayRequest.callData.gasLimit,
+            relayRequest.relayData.senderNonce,
+            approvalData,
+            maxPossibleCharge));
     }
 
     function preRelayedCall(bytes calldata context) relayHubOnly external returns (bytes32) {

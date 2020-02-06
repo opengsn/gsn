@@ -1,4 +1,5 @@
 pragma solidity ^0.5.16;
+pragma experimental ABIEncoderV2;
 
 import "./TestSponsorEverythingAccepted.sol";
 
@@ -11,13 +12,7 @@ contract TestSponsorPreconfiguredApproval is TestSponsorEverythingAccepted {
     }
 
     function acceptRelayedCall(
-        address relay,
-        address from,
-        bytes calldata encodedFunction,
-        uint256 transactionFee,
-        uint256 gasPrice,
-        uint256 gasLimit,
-        uint256 nonce,
+        EIP712Sig.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )

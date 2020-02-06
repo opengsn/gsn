@@ -1,4 +1,5 @@
 pragma solidity ^0.5.16;
+pragma experimental ABIEncoderV2;
 
 import "./TestSponsorEverythingAccepted.sol";
 
@@ -31,24 +32,15 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     }
 
 
-    /**
-     * This demonstrates how dapps can provide an off-chain signature to a relayed transaction.
-     */
     function acceptRelayedCall(
-        address relay,
-        address from,
-        bytes calldata encodedFunction,
-        uint256 transactionFee,
-        uint256 gasPrice,
-        uint256 gasLimit,
-        uint256 nonce,
+        EIP712Sig.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )
     external
     view
     returns (uint256, bytes memory){
-        (relay,from,encodedFunction,transactionFee,gasPrice,gasLimit,nonce,approvalData,maxPossibleCharge);
+        (relayRequest);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {
