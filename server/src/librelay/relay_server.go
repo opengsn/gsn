@@ -174,7 +174,7 @@ func (relayParams *RelayParams) Dump() {
 }
 
 func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error) {
-	client := &TbkClient{DefaultGasPrice: defaultGasPrice}
+	client := &OpenethClient{DefaultGasPrice: defaultGasPrice}
 	var err error
 	client.Client, err = ethclient.Dial(EthereumNodeURL)
 	return client, err
