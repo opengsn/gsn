@@ -117,9 +117,9 @@ contract('RelayClient', function (accounts) {
         verbose: process.env.DEBUG
       }
 
-      const tbk = new RelayClient(web3, relayClientConfig)
+      const relayClient = new RelayClient(web3, relayClientConfig)
 
-      const validTransaction = await tbk.relayTransaction(encoded, options)
+      const validTransaction = await relayClient.relayTransaction(encoded, options)
       const txhash = '0x' + validTransaction.hash(true).toString('hex')
       let res
       do {
@@ -163,9 +163,9 @@ contract('RelayClient', function (accounts) {
         verbose: process.env.DEBUG
       }
 
-      const tbk = new RelayClient(web3, relayClientConfig)
+      const relayClient = new RelayClient(web3, relayClientConfig)
       try {
-        await tbk.relayTransaction(encoded, options)
+        await relayClient.relayTransaction(encoded, options)
         assert.fail()
       } catch (error) {
         if (validateCanRelay) {
@@ -194,17 +194,17 @@ contract('RelayClient', function (accounts) {
       allowed_relay_nonce_gap: -1,
       verbose: process.env.DEBUG
     }
-    const tbk = new RelayClient(web3, relayClientConfig)
-    const origSend = tbk.httpSend.send
-    tbk.httpSend.send = function (url, jsonRequestData, callback) {
+    const relayClient = new RelayClient(web3, relayClientConfig)
+    const origSend = relayClient.httpSend.send
+    relayClient.httpSend.send = function (url, jsonRequestData, callback) {
       if (url.includes('/relay')) {
         // Otherwise, server will return an error if asked to sign with a low nonce.
         jsonRequestData.RelayMaxNonce = 1000000
       }
-      origSend.bind(tbk.httpSend)(url, jsonRequestData, callback)
+      origSend.bind(relayClient.httpSend)(url, jsonRequestData, callback)
     }
     try {
-      await tbk.relayTransaction(encoded, options)
+      await relayClient.relayTransaction(encoded, options)
       assert.fail()
     } catch (error) {
       if (error.toString().includes('Assertion')) {
@@ -296,7 +296,7 @@ contract('RelayClient', function (accounts) {
 
   // This test currently has no asserts. 'auditTransaction' returns no value.
   it.skip('should send a signed raw transaction from selected relay to backup relays - in case penalty will be needed', async function () {
-    const tbk = new RelayClient(web3)
+    const relayClient = new RelayClient(web3)
     const data1 = rhub.contract.methods.relay(1, 1, 1, 1, 1, 1, 1, 1).encodeABI()
     const transaction = new Transaction({
       nonce: 2,
@@ -310,7 +310,7 @@ contract('RelayClient', function (accounts) {
     transaction.sign(privKey)
     const rawTx = '0x' + transaction.serialize().toString('hex')
     console.log('tx to audit', rawTx)
-    await tbk.auditTransaction(rawTx, [localhostOne, localhostOne])
+    await relayClient.auditTransaction(rawTx, [localhostOne, localhostOne])
   })
 
   it.skip('should report a suspicious transaction to an auditor relay, which will penalize the double-signing relay', async function () {
@@ -346,8 +346,8 @@ contract('RelayClient', function (accounts) {
     transaction2.sign(perpetratorPrivKey)
     const rawTx = '0x' + transaction2.serialize().toString('hex')
 
-    const tbk = new RelayClient(web3, { relayUrl: localhostOne })
-    await tbk.auditTransaction(rawTx, [localhostOne])
+    const relayClient = new RelayClient(web3, { relayUrl: localhostOne })
+    await relayClient.auditTransaction(rawTx, [localhostOne])
     // let the auditor do the job
     // testutils.sleep(10)
 
@@ -402,8 +402,8 @@ contract('RelayClient', function (accounts) {
       },
       setHub: function () {}
     }
-    const tbk = new RelayClient(web3, { serverHelper: mockServerHelper })
-    tbk.httpSend = httpSend
+    const relayClient = new RelayClient(web3, { serverHelper: mockServerHelper })
+    relayClient.httpSend = httpSend
     const res = await request(localhostOne + '/getaddr')
     const relayServerAddress = JSON.parse(res.body).RelayServerAddress
     const filteredRelays = [
@@ -435,7 +435,7 @@ contract('RelayClient', function (accounts) {
       gasSponsor: gasSponsor.address
     }
 
-    const validTransaction = await tbk.relayTransaction(encoded, options)
+    const validTransaction = await relayClient.relayTransaction(encoded, options)
 
     // RelayClient did retry for 2 times
     assert.equal(2, counter)
@@ -616,9 +616,9 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should throw on invalid recipient', async function () {
-      const tbk = new RelayClient(web3)
+      const relayClient = new RelayClient(web3)
       try {
-        await tbk.createRelayHubFromSponsor(gasLess)
+        await relayClient.createRelayHubFromSponsor(gasLess)
         assert.fail()
       } catch (error) {
         assert.equal(true, error.message.includes('Could not get relay hub address from sponsor at'))
@@ -626,8 +626,8 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should throw on invalid hub ', async function () {
-      const tbk = new RelayClient(web3)
-      tbk.createRelayHub = function () {
+      const relayClient = new RelayClient(web3)
+      relayClient.createRelayHub = function () {
         return {
           methods: {
             version: function () {
@@ -637,7 +637,7 @@ contract('RelayClient', function (accounts) {
         }
       }
       try {
-        await tbk.createRelayHubFromSponsor(gasSponsor.address)
+        await relayClient.createRelayHubFromSponsor(gasSponsor.address)
         assert.fail()
       } catch (error) {
         assert.equal(true, error.message.includes('Could not query relay hub version at'),
@@ -647,8 +647,8 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should throw on wrong hub version', async function () {
-      const tbk = new RelayClient(web3)
-      tbk.createRelayHub = function () {
+      const relayClient = new RelayClient(web3)
+      relayClient.createRelayHub = function () {
         return {
           methods: {
             version: function () {
@@ -658,7 +658,7 @@ contract('RelayClient', function (accounts) {
         }
       }
       try {
-        await tbk.createRelayHubFromSponsor(gasSponsor.address)
+        await relayClient.createRelayHubFromSponsor(gasSponsor.address)
         assert.fail()
       } catch (error) {
         assert.equal(true, error.message.includes('Unsupported relay hub version'),
@@ -683,7 +683,7 @@ contract('RelayClient', function (accounts) {
     const gasPrice = 10
     const gasLimit = 1000000
     const gasLimitAnyValue = 7000029
-    const tbk = new RelayClient(web3)
+    const relayClient = new RelayClient(web3)
 
     const { signature, data } = await utils.getEip712Signature({
       web3,
@@ -709,7 +709,7 @@ contract('RelayClient', function (accounts) {
     assert.equal(13, canRelay.status.valueOf().toString())
 
     assert.equal(true, receipt.status)
-    await tbk.fixTransactionReceiptResp(receipt)
+    await relayClient.fixTransactionReceiptResp(receipt)
     assert.equal(false, receipt.status)
   })
 
