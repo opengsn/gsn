@@ -10,7 +10,7 @@ const path = require('path')
 const contractsFolder = 'contracts'
 const outAbiFolder = 'src/js/relayclient'
 
-const contractsToExtract = ['IRelayHub', 'IRelayRecipient']
+const contractsToExtract = ['interfaces/IRelayHub', 'interfaces/IGasSponsor']
 
 function compileFile (contractFile, c) {
   console.log('compiling ' + contractFile)
@@ -44,6 +44,10 @@ function compileFile (contractFile, c) {
     const compile = solc.compile(JSON.stringify(input), function (path) {
       const subPath = parts.length === 0 ? '' : '/' + parts.join('/')
       let realPath = contractsFolder + subPath + '/' + path
+      // Try neighboring directories first
+      if (path.split('/').length > 1) {
+        realPath = contractsFolder + '/' + path
+      }
       if (!fs.existsSync(realPath)) {
         realPath = 'node_modules/' + path
       }

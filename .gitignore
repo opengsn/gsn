@@ -17,3 +17,4 @@
 /singleton/
 /server/pkg/
 /.eslintcache
+/src/js/relayclient/interfaces/

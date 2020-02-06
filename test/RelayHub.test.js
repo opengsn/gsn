@@ -4,9 +4,11 @@ const { ZERO_ADDRESS } = constants
 const { getEip712Signature, getRelayRequest } = require('../src/js/relayclient/utils')
 
 const RelayHub = artifacts.require('RelayHub')
-const SampleRecipient = artifacts.require('SampleRecipient')
+const SampleRecipient = artifacts.require('./test/TestRecipient')
+const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
+const TestSponsorStoreContext = artifacts.require('./test/TestSponsorStoreContext')
+const TestSponsorConfigurableMisbehavior = artifacts.require('./test/TestSponsorConfigurableMisbehavior')
 
-const sigUtil = require('eth-sig-util')
 const Transaction = require('ethereumjs-tx')
 const { privateToAddress } = require('ethereumjs-util')
 const rlp = require('rlp')
@@ -32,11 +34,14 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
 
   let relayHub
   let recipient
+  let gasSponsor
 
   beforeEach(async function () {
     relayHub = await RelayHub.new({ gas: 8000000 })
     recipient = await SampleRecipient.new()
+    gasSponsor = await TestSponsor.new()
     await recipient.setHub(relayHub.address)
+    await gasSponsor.setHub(relayHub.address)
   })
 
   describe('relay management', function () {
@@ -460,6 +465,8 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
 
       before(function () {
         expect('0x' + privateToAddress('0x' + relayCallArgs.privateKey).toString('hex')).to.equal(relay.toLowerCase())
+        // TODO: I don't want to refactor everything here, but this value is not available before 'before' is run :-(
+        encodedCallArgs.gasSponsor = gasSponsor.address
       })
 
       beforeEach('staking for relay', async function () {
@@ -595,7 +602,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
             const gasLimit = new BN('1000000')
             const senderNonce = new BN('0')
             const txData = recipient.contract.methods.emitMessage('').encodeABI()
-            const signature = (await getEip712Signature({
+            const sharedSigValues = {
               web3,
               senderAccount: sender,
               target: recipient.address,
@@ -606,13 +613,16 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
               senderNonce: senderNonce.toString(),
               relayHub: relayHub.address,
               relayAddress: relay
-            })).signature
-
-            await relayHub.depositFor(recipient.address, {
+            }
+            const { signature } = await getEip712Signature({
+              ...sharedSigValues,
+              gasSponsor: gasSponsor.address
+            })
+            await relayHub.depositFor(gasSponsor.address, {
               from: other,
               value: ether('1')
             })
-            const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay)
+            const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor.address)
             const relayCallTx = await relayHub.relayCall(relayRequest, signature, '0x', {
               from: relay,
               gasPrice,
@@ -729,7 +739,8 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         encodedCallArgs.gasPrice,
         encodedCallArgs.gasLimit,
         encodedCallArgs.nonce,
-        relayAddress
+        relayAddress,
+        encodedCallArgs.gasSponsor
       )
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x').encodeABI()
 
@@ -776,14 +787,14 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
   })
 
   describe('balances', function () {
-    async function testDeposit (sender, recipient, amount) {
+    async function testDeposit (sender, sponsor, amount) {
       const senderBalanceTracker = await balance.tracker(sender)
       const relayHubBalanceTracker = await balance.tracker(relayHub.address)
 
-      const { logs } = await relayHub.depositFor(recipient, { from: sender, value: amount, gasPrice: 0 })
-      expectEvent.inLogs(logs, 'Deposited', { recipient, from: sender, amount })
+      const { logs } = await relayHub.depositFor(sponsor, { from: sender, value: amount, gasPrice: 0 })
+      expectEvent.inLogs(logs, 'Deposited', { sponsor, from: sender, amount })
 
-      expect(await relayHub.balanceOf(recipient)).to.be.bignumber.equals(amount)
+      expect(await relayHub.balanceOf(sponsor)).to.be.bignumber.equals(amount)
       expect(await senderBalanceTracker.delta()).to.be.bignumber.equals(amount.neg())
       expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equals(amount)
     }
@@ -855,13 +866,14 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
       const senderNonce = new BN('0')
 
       let txData
-      let signature
 
+      // TODO: this is a piece of legacy structure of this test suite. The signature could afford to be static
+      //  throughout the test as there were no moving parts signed. Using multiple sponsors breaks it. Fix later.
+      let sharedSigValues
       beforeEach(async function () {
         // truffle-contract doesn't let us create method data from the class, we need an actual instance
         txData = recipient.contract.methods.emitMessage(message).encodeABI()
-
-        const eip712Sig = await getEip712Signature({
+        sharedSigValues = {
           web3,
           senderAccount: sender,
           senderNonce: senderNonce.toString(),
@@ -872,25 +884,36 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
           gasLimit: gasLimit.toString(),
           relayHub: relayHub.address,
           relayAddress: relay
-        })
-        signature = eip712Sig.signature
-        const recoveredAccount = sigUtil.recoverTypedSignature_v4({
-          data: eip712Sig.data,
-          sig: eip712Sig.signature
-        })
-        expect(recoveredAccount.toLowerCase()).to.be.equals(sender.toLowerCase())
+        }
       })
 
       context('with funded recipient', function () {
+        let gasSponsorWithContext
+        let misbehavingSponsor
+        let signatureWithContextSponsor
+        let signatureWithMisbehavingSponsor
         beforeEach(async function () {
-          await relayHub.depositFor(recipient.address, { value: ether('1'), from: other })
+          gasSponsorWithContext = await TestSponsorStoreContext.new()
+          misbehavingSponsor = await TestSponsorConfigurableMisbehavior.new()
+          await gasSponsorWithContext.setHub(relayHub.address)
+          await misbehavingSponsor.setHub(relayHub.address)
+          await relayHub.depositFor(gasSponsorWithContext.address, { value: ether('1'), from: other })
+          await relayHub.depositFor(misbehavingSponsor.address, { value: ether('1'), from: other })
+
+          signatureWithMisbehavingSponsor = (await getEip712Signature({
+            ...sharedSigValues,
+            gasSponsor: misbehavingSponsor.address
+          })).signature
+
+          signatureWithContextSponsor = (await getEip712Signature({
+            ...sharedSigValues,
+            gasSponsor: gasSponsorWithContext.address
+          })).signature
         })
 
         it('preRelayedCall receives values returned in acceptRelayedCall', async function () {
-          await recipient.setStoreAcceptData(true)
-
-          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay)
-          const { tx } = await relayHub.relayCall(relayRequest, signature, '0x', {
+          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsorWithContext.address)
+          const { tx } = await relayHub.relayCall(relayRequest, signatureWithContextSponsor, '0x', {
             from: relay,
             gasPrice,
             gasLimit
@@ -898,7 +921,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
 
           const maxPossibleCharge = await relayHub.maxPossibleCharge(gasLimit, gasPrice, fee)
 
-          await expectEvent.inTransaction(tx, SampleRecipient, 'SampleRecipientPreCallWithValues', {
+          await expectEvent.inTransaction(tx, TestSponsorStoreContext, 'SampleRecipientPreCallWithValues', {
             relay,
             from: sender,
             encodedFunction: txData,
@@ -912,9 +935,8 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         })
 
         it('postRelayedCall receives values returned in acceptRelayedCall', async function () {
-          await recipient.setStoreAcceptData(true)
-          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay)
-          const { tx } = await relayHub.relayCall(relayRequest, signature, '0x', {
+          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsorWithContext.address)
+          const { tx } = await relayHub.relayCall(relayRequest, signatureWithContextSponsor, '0x', {
             from: relay,
             gasPrice,
             gasLimit
@@ -922,7 +944,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
 
           const maxPossibleCharge = await relayHub.maxPossibleCharge(gasLimit, gasPrice, fee)
 
-          await expectEvent.inTransaction(tx, SampleRecipient, 'SampleRecipientPostCallWithValues', {
+          await expectEvent.inTransaction(tx, TestSponsorStoreContext, 'SampleRecipientPostCallWithValues', {
             relay,
             from: sender,
             encodedFunction: txData,
@@ -936,9 +958,9 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         })
 
         it('relaying is aborted if the recipient returns an invalid status code', async function () {
-          await recipient.setReturnInvalidErrorCode(true)
-          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay)
-          const { logs } = await relayHub.relayCall(relayRequest, signature, '0x', {
+          await misbehavingSponsor.setReturnInvalidErrorCode(true)
+          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, misbehavingSponsor.address)
+          const { logs } = await relayHub.relayCall(relayRequest, signatureWithMisbehavingSponsor, '0x', {
             from: relay,
             gasPrice,
             gasLimit
@@ -948,23 +970,40 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         })
 
         describe('recipient balance withdrawal ban', function () {
+          let signature
+          let misbehavingSponsor
+          beforeEach(async function () {
+            misbehavingSponsor = await TestSponsorConfigurableMisbehavior.new()
+            await misbehavingSponsor.setHub(relayHub.address)
+            await relayHub.depositFor(misbehavingSponsor.address, { value: ether('1'), from: other })
+            const eip712Sig = await getEip712Signature({
+              ...sharedSigValues,
+              gasSponsor: misbehavingSponsor.address
+            })
+            signature = eip712Sig.signature
+          })
+
           it('reverts relayed call if recipient withdraws balance during preRelayedCall', async function () {
-            await recipient.setWithdrawDuringPreRelayedCall(true)
+            await misbehavingSponsor.setWithdrawDuringPreRelayedCall(true)
             await assertRevertWithRecipientBalanceChanged()
           })
 
           it('reverts relayed call if recipient withdraws balance during the relayed call', async function () {
-            await recipient.setWithdrawDuringRelayedCall(true)
+            await recipient.setWithdrawDuringRelayedCall(misbehavingSponsor.address)
             await assertRevertWithRecipientBalanceChanged()
           })
 
           it('reverts relayed call if recipient withdraws balance during postRelayedCall', async function () {
-            await recipient.setWithdrawDuringPostRelayedCall(true)
+            await misbehavingSponsor.setWithdrawDuringPostRelayedCall(true)
             await assertRevertWithRecipientBalanceChanged()
           })
 
           async function assertRevertWithRecipientBalanceChanged () {
-            const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay)
+            const relayRequest = getRelayRequest(
+              sender, recipient.address, txData,
+              fee, gasPrice, gasLimit, senderNonce,
+              relay, misbehavingSponsor.address
+            )
             const { logs } = await relayHub.relayCall(relayRequest, signature, '0x', {
               from: relay,
               gasPrice,

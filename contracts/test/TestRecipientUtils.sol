@@ -1,7 +1,7 @@
 pragma solidity ^0.5.5;
 
-import './GsnUtils.sol';
-import './IRelayHub.sol';
+import '../utils/GsnUtils.sol';
+import '../interfaces/IRelayHub.sol';
 
 contract TestRecipientUtils {
 

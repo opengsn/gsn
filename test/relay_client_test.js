@@ -3,7 +3,9 @@ const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require('./RelayHub.sol')
-const SampleRecipient = artifacts.require('./SampleRecipient.sol')
+const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
+const TestEverythingAcceptedSponsor = artifacts.require('./test/TestSponsorEverythingAccepted.sol')
+const TestSponsorOwnerSignature = artifacts.require('./test/TestSponsorOwnerSignature.sol')
 const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 
 const Transaction = require('ethereumjs-tx')
@@ -34,6 +36,7 @@ const request = util.promisify(require('request'))
 contract('RelayClient', function (accounts) {
   let rhub
   let sr
+  let gasSponsor
   let gasLess
   let relayproc
   let gasPrice
@@ -49,10 +52,9 @@ contract('RelayClient', function (accounts) {
 
     rhub = await RelayHub.deployed()
     sr = await SampleRecipient.deployed()
+    gasSponsor = await TestEverythingAcceptedSponsor.deployed()
 
-    await sr.deposit({ value: web3.utils.toWei('1', 'ether') })
-    // let known_deposit = await rhub.balances(sr.address);
-    // assert.ok(known_deposit>= deposit, "deposited "+deposit+" but found only "+known_deposit);
+    await gasSponsor.deposit({ value: web3.utils.toWei('1', 'ether') })
     gasLess = await web3.eth.personal.newAccount('password')
     console.log('gasLess = ' + gasLess)
     console.log('starting relay')
@@ -81,15 +83,12 @@ contract('RelayClient', function (accounts) {
     await testutils.stopRelay(relayproc)
   })
 
-  it('test balanceOf target contract', async () => {
+  it('should query hub deposit of a sponsor contract on every call', async () => {
     const relayclient = new RelayClient(web3)
-    const b1 = await relayclient.balanceOf(sr.address)
-    console.log('balance before redeposit', b1)
+    const b1 = await relayclient.balanceOf(gasSponsor.address)
     const added = 200000
-    await sr.deposit({ value: added })
-    const b2 = new Big(await relayclient.balanceOf(sr.address))
-    console.log('balance after redeposit', b2.toString())
-
+    await gasSponsor.deposit({ value: added })
+    const b2 = new Big(await relayclient.balanceOf(gasSponsor.address))
     assert.equal(b2.sub(b1), added)
   })
 
@@ -108,7 +107,8 @@ contract('RelayClient', function (accounts) {
         from: gasLess,
         to: to,
         txfee: 12,
-        gas_limit: 1000000
+        gas_limit: 1000000,
+        gasSponsor: gasSponsor.address
       }
       const relayClientConfig = {
         relayUrl: localhostOne,
@@ -138,6 +138,10 @@ contract('RelayClient', function (accounts) {
 
   [false, true].forEach(validateCanRelay =>
     it('should consider a transaction with an incorrect approval as invalid ' + (validateCanRelay ? '' : '(without client calling canRelay)'), async function () {
+      const approvalSponsor = await TestSponsorOwnerSignature.new()
+      await approvalSponsor.setHub(rhub.address)
+      await rhub.depositFor(approvalSponsor.address, { value: 1e18 })
+
       const expectedError = 13
       const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
       const to = sr.address
@@ -146,7 +150,8 @@ contract('RelayClient', function (accounts) {
         from: gasLess,
         to: to,
         txfee: 12,
-        gas_limit: 1000000
+        gas_limit: 1000000,
+        gasSponsor: approvalSponsor.address
       }
       // only add parameter if false (true should be the default..)
       if (!validateCanRelay) { options.validateCanRelay = false }
@@ -180,7 +185,8 @@ contract('RelayClient', function (accounts) {
       from: gasLess,
       to: to,
       txfee: 12,
-      gas_limit: 1000000
+      gas_limit: 1000000,
+      gasSponsor: gasSponsor.address
     }
     const relayClientConfig = {
       relayUrl: localhostOne,
@@ -210,7 +216,7 @@ contract('RelayClient', function (accounts) {
 
   it('should revert calls to preRelayedCall from non RelayHub address', async function () {
     try {
-      await sr.preRelayedCall(Buffer.from(''), { from: accounts[1] })
+      await gasSponsor.preRelayedCall(Buffer.from(''), { from: accounts[1] })
       assert.fail()
     } catch (error) {
       assertErrorMessageCorrect(error, 'Function can only be called by RelayHub')
@@ -219,7 +225,7 @@ contract('RelayClient', function (accounts) {
 
   it('should revert calls to postRelayedCall from non RelayHub address', async function () {
     try {
-      await sr.postRelayedCall(Buffer.from(''), true, 0, Buffer.from(''))
+      await gasSponsor.postRelayedCall(Buffer.from(''), true, 0, Buffer.from(''))
       assert.fail()
     } catch (error) {
       assertErrorMessageCorrect(error, 'Function can only be called by RelayHub')
@@ -245,16 +251,16 @@ contract('RelayClient', function (accounts) {
     // so changing the global one is not enough...
     SampleRecipient.web3.setProvider(relayProvider)
 
-    let res = await sr.emitMessage('hello world', { from: gasLess })
-    assert.equal(res.logs[1].event, 'SampleRecipientEmitted')
-    assert.equal(res.logs[1].args.message, 'hello world')
-    assert.equal(res.logs[1].args.realSender, gasLess)
-    assert.equal(res.logs[1].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
-    res = await sr.emitMessage('hello again', { from: accounts[3] })
-    assert.equal(res.logs[1].event, 'SampleRecipientEmitted')
-    assert.equal(res.logs[1].args.message, 'hello again')
+    let res = await sr.emitMessage('hello world', { from: gasLess, gasSponsor: gasSponsor.address })
+    assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
+    assert.equal(res.logs[0].args.message, 'hello world')
+    assert.equal(res.logs[0].args.realSender, gasLess)
+    assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
+    res = await sr.emitMessage('hello again', { from: accounts[3], gasSponsor: gasSponsor.address })
+    assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
+    assert.equal(res.logs[0].args.message, 'hello again')
 
-    assert.equal(res.logs[1].args.realSender, accounts[3])
+    assert.equal(res.logs[0].args.realSender, accounts[3])
   })
 
   it('should relay transparently with long encoded function', async () => {
@@ -276,16 +282,16 @@ contract('RelayClient', function (accounts) {
     // so changing the global one is not enough...
     SampleRecipient.web3.setProvider(relayProvider)
 
-    let res = await sr.emitMessage('hello world'.repeat(1000), { from: gasLess })
-    assert.equal(res.logs[1].event, 'SampleRecipientEmitted')
-    assert.equal(res.logs[1].args.message, 'hello world'.repeat(1000))
-    assert.equal(res.logs[1].args.realSender, gasLess)
-    assert.equal(res.logs[1].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
-    res = await sr.emitMessage('hello again'.repeat(1000), { from: accounts[3] })
-    assert.equal(res.logs[1].event, 'SampleRecipientEmitted')
-    assert.equal(res.logs[1].args.message, 'hello again'.repeat(1000))
+    let res = await sr.emitMessage('hello world'.repeat(1000), { from: gasLess, gasSponsor: gasSponsor.address })
+    assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
+    assert.equal(res.logs[0].args.message, 'hello world'.repeat(1000))
+    assert.equal(res.logs[0].args.realSender, gasLess)
+    assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
+    res = await sr.emitMessage('hello again'.repeat(1000), { from: accounts[3], gasSponsor: gasSponsor.address })
+    assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
+    assert.equal(res.logs[0].args.message, 'hello again'.repeat(1000))
 
-    assert.equal(res.logs[1].args.realSender, accounts[3])
+    assert.equal(res.logs[0].args.realSender, accounts[3])
   })
 
   // This test currently has no asserts. 'auditTransaction' returns no value.
@@ -355,6 +361,7 @@ contract('RelayClient', function (accounts) {
     return new Promise(resolve => setTimeout(resolve, ms))
   }
 
+  // TODO: this test is crazy - it stubs the entire world to make it's assertion. refactor!
   it('should fallback to other relays if the preferred one does not respond correctly', async function () {
     const rc = new RelayClient(web3)
     const origHttpSend = rc.httpSend
@@ -424,7 +431,8 @@ contract('RelayClient', function (accounts) {
       from: gasLess,
       to: sr.address,
       txfee: 12,
-      gas_limit: 1000000
+      gas_limit: 1000000,
+      gasSponsor: gasSponsor.address
     }
 
     const validTransaction = await tbk.relayTransaction(encoded, options)
@@ -454,23 +462,25 @@ contract('RelayClient', function (accounts) {
       from: fromAddr,
       to: to,
       txfee: 12,
-      gas_limit: 1000000
+      gas_limit: 1000000,
+      gasSponsor: gasSponsor.address
     }
 
     await rc.relayTransaction(encoded, options)
     // eslint-disable-next-line no-unused-expressions
     expect(rc.sendViaRelay.calledOnce).to.be.true
     expect(rc.sendViaRelay).to.have.been.calledWith(
-      sinon.match(({ relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, recipientNonce, signature, approvalData, relayUrl, relayHubAddress }) => {
+      sinon.match(({ relayAddress, from, to, encodedFunction, relayFee, gasPrice, gasLimit, gasSponsor, senderNonce, signature, approvalData, relayUrl, relayHubAddress }) => {
         const data = getDataToSign({
           chainId: 7,
           senderAccount: from,
-          senderNonce: recipientNonce,
+          senderNonce,
           target: to,
           encodedFunction,
           pctRelayFee: relayFee,
-          gasPrice: gasprice,
-          gasLimit: gaslimit,
+          gasPrice,
+          gasLimit,
+          gasSponsor,
           relayHub: relayHubAddress,
           relayAddress
         })
@@ -497,7 +507,8 @@ contract('RelayClient', function (accounts) {
       from: fromAddr,
       to: sr.address,
       // explicitly not specifying txfee
-      gas_limit: 1000000
+      gas_limit: 1000000,
+      gasSponsor: gasSponsor.address
     }
 
     try {
@@ -528,13 +539,16 @@ contract('RelayClient', function (accounts) {
       from: fromAddr,
       to: to,
       txfee: 12,
-      gas_limit: 1000000
+      gas_limit: 1000000,
+      gasSponsor: gasSponsor.address
     }
 
     try {
       await rc.relayTransaction(encoded, options)
       assert.fail('relayTransaction should throw..')
     } catch (ignored) {
+      assert.isTrue(ignored.otherErrors.length > 0,
+        'There were no lookup errors, this is not the exception we are aiming for')
       assert.isTrue(rc.failedRelays[relayUrl] !== undefined)
     }
   })
@@ -582,30 +596,32 @@ contract('RelayClient', function (accounts) {
   })
 
   describe('should handle incorrect relay hub contract in recipient', async function () {
-    let sr2
+    let gasSponsor2
     before(async function () {
+      const relayProvider = new RelayProvider(web3.currentProvider, relayClientConfig)
+      SampleRecipient.web3.setProvider(relayProvider)
       SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = false
-      sr2 = await SampleRecipient.new()
+      gasSponsor2 = await TestEverythingAcceptedSponsor.new()
       // eslint-disable-next-line
       SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
     })
 
     it('should revert on zero hub in recipient contract', async function () {
       try {
-        await sr2.emitMessage('hello world', { from: gasLess })
+        await sr.emitMessage('hello world', { from: gasLess, gasSponsor: gasSponsor2.address })
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('The relay hub address is set to zero in recipient at'))
+        assert.equal(true, error.message.includes('The relay hub address is set to zero in sponsor at'))
       }
     })
 
     it('should throw on invalid recipient', async function () {
       const tbk = new RelayClient(web3)
       try {
-        await tbk.createRelayHubFromRecipient(gasLess)
+        await tbk.createRelayHubFromSponsor(gasLess)
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('Could not get relay hub address from recipient at'))
+        assert.equal(true, error.message.includes('Could not get relay hub address from sponsor at'))
       }
     })
 
@@ -621,10 +637,11 @@ contract('RelayClient', function (accounts) {
         }
       }
       try {
-        await tbk.createRelayHubFromRecipient(sr.address)
+        await tbk.createRelayHubFromSponsor(gasSponsor.address)
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('Could not query relay hub version at'))
+        assert.equal(true, error.message.includes('Could not query relay hub version at'),
+          'Actual error: ' + error.toString())
         assert.equal(true, error.message.includes('NOPE'))
       }
     })
@@ -641,16 +658,22 @@ contract('RelayClient', function (accounts) {
         }
       }
       try {
-        await tbk.createRelayHubFromRecipient(sr.address)
+        await tbk.createRelayHubFromSponsor(gasSponsor.address)
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('Unsupported relay hub version'))
+        assert.equal(true, error.message.includes('Unsupported relay hub version'),
+          'Actual error: ' + error.toString())
         assert.equal(true, error.message.includes('wrong version'))
       }
     })
   })
 
+  // TODO: remove this test, it is nonsense!
   it('should report canRelayFailed on transactionReceipt', async function () {
+    const approvalSponsor = await TestSponsorOwnerSignature.new()
+    await approvalSponsor.setHub(rhub.address)
+    await rhub.depositFor(approvalSponsor.address, { value: 1e18 })
+
     const from = accounts[6]
     const to = sr.address
     const relayNonce = 0
@@ -662,7 +685,6 @@ contract('RelayClient', function (accounts) {
     const gasLimitAnyValue = 7000029
     const tbk = new RelayClient(web3)
 
-    await sr.setBlacklisted(from)
     const { signature, data } = await utils.getEip712Signature({
       web3,
       senderAccount: from,
@@ -671,6 +693,7 @@ contract('RelayClient', function (accounts) {
       pctRelayFee: transactionFee.toString(),
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
+      gasSponsor: approvalSponsor.address,
       senderNonce: relayNonce.toString(),
       relayHub: rhub.address,
       relayAddress: relayAccount
@@ -683,7 +706,7 @@ contract('RelayClient', function (accounts) {
 
     const receipt = await web3.eth.getTransactionReceipt(res.transactionHash)
     const canRelay = await rhub.canRelay(data.message, signature, '0x')
-    assert.equal(11, canRelay.status.valueOf().toString())
+    assert.equal(13, canRelay.status.valueOf().toString())
 
     assert.equal(true, receipt.status)
     await tbk.fixTransactionReceiptResp(receipt)

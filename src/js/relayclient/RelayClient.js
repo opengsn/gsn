@@ -13,13 +13,13 @@ const abiDecoder = require('abi-decoder')
 const sigUtil = require('eth-sig-util')
 
 const getDataToSign = require('./EIP712/Eip712Helper')
-const relayHubAbi = require('./IRelayHub')
+const relayHubAbi = require('./interfaces/IRelayHub')
 // This file is only needed so we don't change IRelayHub code, which would affect RelayHub expected deployed address
 // TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove IRelayHubVersionAbi.json
 const versionAbi = require('./IRelayHubVersionAbi')
 relayHubAbi.push(versionAbi)
 
-const relayRecipientAbi = require('./IRelayRecipient')
+const gasSponsorAbi = require('./interfaces/IGasSponsor')
 
 const relayLookupLimitBlocks = 6000
 abiDecoder.addABI(relayHubAbi)
@@ -75,8 +75,8 @@ class RelayClient {
     this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.failedRelays, this.config)
   }
 
-  createRelayRecipient (addr) {
-    return new this.web3.eth.Contract(relayRecipientAbi, addr)
+  createGasSponsor (addr) {
+    return new this.web3.eth.Contract(gasSponsorAbi, addr)
   }
 
   createRelayHub (addr) {
@@ -90,7 +90,7 @@ class RelayClient {
    * transaction is not valid.
    */
   validateRelayResponse (returnedTx, addressRelay,
-    from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce,
+    from, to, transactionOrig, transactionFee, gasPrice, gasLimit, gasSponsor, nonce,
     relayHubAddress, relayAddress, sig, approvalData) {
     const tx = new Transaction({
       nonce: returnedTx.nonce,
@@ -109,7 +109,7 @@ class RelayClient {
     const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, txV[0], txR, txS)))
 
     const relayRequestOrig = utils.getRelayRequest(
-      from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress)
+      from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress, gasSponsor)
 
     const relayHub = this.createRelayHub(relayHubAddress)
     const relayRequestAbiEncode = relayHub.methods.relayCall(relayRequestOrig, sig, approvalData).encodeABI()
@@ -136,7 +136,23 @@ class RelayClient {
    * Performs a '/relay' HTTP request to the given url
    * @returns a Promise that resolves to an instance of {@link Transaction} signed by a relay
    */
-  async sendViaRelay ({ relayAddress, from, to, encodedFunction, relayFee, gasprice, gaslimit, recipientNonce, signature, approvalData, relayUrl, relayHubAddress, relayMaxNonce }) {
+  async sendViaRelay (
+    {
+      relayAddress,
+      from,
+      to,
+      encodedFunction,
+      relayFee,
+      gasPrice,
+      gasLimit,
+      gasSponsor,
+      senderNonce,
+      signature,
+      approvalData,
+      relayUrl,
+      relayHubAddress,
+      relayMaxNonce
+    }) {
     var self = this
 
     return new Promise(function (resolve, reject) {
@@ -146,10 +162,11 @@ class RelayClient {
         approvalData: parseHexString(approvalData.toString('hex').replace(/^0x/, '')),
         from: from,
         to: to,
-        gasPrice: gasprice,
-        gasLimit: gaslimit,
+        gasPrice,
+        gasLimit,
+        gasSponsor,
         relayFee: relayFee,
-        RecipientNonce: parseInt(recipientNonce),
+        SenderNonce: parseInt(senderNonce),
         RelayMaxNonce: parseInt(relayMaxNonce),
         RelayHubAddress: relayHubAddress
       }
@@ -182,7 +199,8 @@ class RelayClient {
         try {
           validTransaction = self.validateRelayResponse(
             body, relayAddress, from, to, encodedFunction,
-            relayFee, gasprice, gaslimit, recipientNonce, relayHubAddress, relayAddress, signature, approvalData)
+            relayFee, gasPrice, gasLimit, gasSponsor, senderNonce,
+            relayHubAddress, relayAddress, signature, approvalData)
         } catch (error) {
           console.error('validateRelayResponse threw error:\n', error, error.stack)
         }
@@ -258,7 +276,7 @@ class RelayClient {
    * (not strictly a client operation, but without a balance, the target contract can't accept calls)
    */
   async balanceOf (target) {
-    const relayHub = await this.createRelayHubFromRecipient(target)
+    const relayHub = await this.createRelayHubFromSponsor(target)
     // note that the returned value is a promise too, returning BigNumber
     return relayHub.methods.balanceOf(target).call()
   }
@@ -268,17 +286,20 @@ class RelayClient {
    * relay-specific params:
    *  txfee (override config.txfee)
    *  validateCanRelay - client calls canRelay before calling the relay the first time (defaults to true)
+   *  gasSponsor - the contract that is compensating the relay for the gas (defaults to transaction destination 'to')
    * can also override default relayUrl, relayFee
    * return value is the same as from sendTransaction
    */
   async relayTransaction (encodedFunctionCall, options) {
+    const self = this
+
     // validateCanRelay defaults (in config). to disable, explicitly set options.validateCanRelay=false
     options = Object.assign({ validateCanRelay: this.config.validateCanRelay }, options)
 
-    var self = this
-    const relayHub = await this.createRelayHubFromRecipient(options.to)
+    const gasSponsor = options.gasSponsor || options.to
+    const relayHub = await this.createRelayHubFromSponsor(gasSponsor)
 
-    var nonce = parseInt(await relayHub.methods.getNonce(options.from).call())
+    const nonce = parseInt(await relayHub.methods.getNonce(options.from).call())
 
     this.serverHelper.setHub(relayHub)
 
@@ -307,7 +328,13 @@ class RelayClient {
     for (; ;) {
       const activeRelay = await pinger.nextRelay()
       if (!activeRelay) {
-        const error = new Error('No relay responded! ' + pinger.relaysCount + ' attempted, ' + pinger.pingedRelays + ' pinged')
+        const error = new Error('No relay responded! ' +
+          pinger.relaysCount +
+          ' attempted, ' +
+          pinger.pingedRelays +
+          ' pinged\nOther errors thrown during relay lookup:\n' +
+          JSON.stringify(errors)
+        )
         error.otherErrors = errors
         throw error
       }
@@ -328,6 +355,7 @@ class RelayClient {
           pctRelayFee: txfee,
           gasPrice,
           gasLimit,
+          gasSponsor,
           relayHub: relayHub._address,
           relayAddress
         })
@@ -345,6 +373,7 @@ class RelayClient {
             pctRelayFee: txfee.toString(),
             gasPrice: gasPrice.toString(),
             gasLimit: gasLimit.toString(),
+            gasSponsor,
             relayHub: relayHub._address,
             relayAddress
           })
@@ -390,11 +419,16 @@ class RelayClient {
       // on first found relay, call canRelay to make sure that on-chain this request can pass
       if (options.validateCanRelay && firstTry) {
         firstTry = false
-        const res = await relayHub.methods.canRelay(
-          signedData.message,
-          signature,
-          approvalData
-        ).call()
+        let res
+        try {
+          res = await relayHub.methods.canRelay(
+            signedData.message,
+            signature,
+            approvalData
+          ).call()
+        } catch (e) {
+          throw new Error('canRelay reverted (should not happen): ' + e)
+        }
         if (res.status !== '0') {
           // in case of error, the context is an error message.
           const errorMsg = res.recipientContext ? Buffer.from(res.recipientContext.slice(2), 'hex').toString() : ''
@@ -410,9 +444,10 @@ class RelayClient {
           to: options.to,
           encodedFunction: encodedFunctionCall,
           relayFee: txfee,
-          gasprice: gasPrice,
-          gaslimit: gasLimit,
-          recipientNonce: nonce,
+          gasPrice,
+          gasLimit,
+          gasSponsor,
+          senderNonce: nonce,
           signature,
           approvalData,
           relayUrl,
@@ -533,18 +568,18 @@ class RelayClient {
     this.ephemeralKeypair = ephemeralKeypair
   }
 
-  async createRelayHubFromRecipient (recipientAddress) {
-    const relayRecipient = this.createRelayRecipient(recipientAddress)
+  async createRelayHubFromSponsor (sponsorAddress) {
+    const relayRecipient = this.createGasSponsor(sponsorAddress)
 
     let relayHubAddress
     try {
       relayHubAddress = await relayRecipient.methods.getHubAddr().call()
     } catch (err) {
-      throw new Error(`Could not get relay hub address from recipient at ${recipientAddress} (${err.message}). Make sure it is a valid recipient contract.`)
+      throw new Error(`Could not get relay hub address from sponsor at ${sponsorAddress} (${err.message}). Make sure it is a valid sponsor contract.`)
     }
 
     if (!relayHubAddress || ethUtils.isZeroAddress(relayHubAddress)) {
-      throw new Error(`The relay hub address is set to zero in recipient at ${recipientAddress}. Make sure it is a valid recipient contract.`)
+      throw new Error(`The relay hub address is set to zero in sponsor at ${sponsorAddress}. Make sure it is a valid sponsor contract.`)
     }
 
     const relayHub = this.createRelayHub(relayHubAddress)

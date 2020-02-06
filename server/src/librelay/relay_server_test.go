@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"gen/librelay"
-	"gen/samplerec"
+	"gen/testcontracts"
 	"librelay/test"
 	"librelay/txstore"
 	"log"
@@ -135,10 +135,12 @@ var rhub *librelay.IRelayHub
 var clk *fakeclock.FakeClock
 
 var sampleRecipient common.Address
+var testSponsor common.Address
 var rhaddr common.Address
 
 var boundHub *bind.BoundContract
 var boundRecipient *bind.BoundContract
+var boundSponsor *bind.BoundContract
 
 var ethereumNodeURL = "http://localhost:8543"
 
@@ -201,16 +203,16 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("could not deploy contract: %v", err)
 	}
-	parsed, err = abi.JSON(strings.NewReader(samplerec.SampleRecipientABI))
+	parsed, err = abi.JSON(strings.NewReader(testcontracts.SampleRecipientABI))
 	if err != nil {
 		log.Fatalln(err)
 	}
 	auth.GasLimit = 4000000
-	sampleRecipient, _, boundRecipient, err = bind.DeployContract(auth, parsed, common.FromHex(samplerec.SampleRecipientBin), client)
+	sampleRecipient, _, boundRecipient, err = bind.DeployContract(auth, parsed, common.FromHex(testcontracts.SampleRecipientBin), client)
 	if err != nil {
 		log.Fatalln("Error deploying SampleRecipient contract:", err)
 	}
-	sr, err :=samplerec.NewSampleRecipient(sampleRecipient, client)
+	sr, err :=testcontracts.NewSampleRecipient(sampleRecipient, client)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -219,11 +221,30 @@ func TestMain(m *testing.M) {
 		log.Fatalln(err)
 	}
 
+	parsed, err = abi.JSON(strings.NewReader(testcontracts.TestSponsorABI))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	auth.GasLimit = 4000000
+	testSponsor, _, boundSponsor, err = bind.DeployContract(auth, parsed, common.FromHex(testcontracts.TestSponsorBin), client)
+	if err != nil {
+		log.Fatalln("Error deploying TestSponsor contract:", err)
+	}
+	ts, err :=testcontracts.NewTestSponsor(testSponsor, client)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	_,err = ts.SetHub(auth, rhaddr)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	rhub, err = librelay.NewIRelayHub(rhaddr, client)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Printf("RelayHub:  %s\nRecipient: %s\n", rhaddr.String(), sampleRecipient.String())
+	fmt.Printf("RelayHub:  %s\nRecipient: %s\nSponsor: %s\n",
+		rhaddr.String(), sampleRecipient.String(), testSponsor.String())
 	NewRelay(rhaddr)
 
 	tx, err := relay.sendStakeTransaction(ownerKey3, stakeAmount, unstakeDelay)
@@ -240,7 +261,7 @@ func TestMain(m *testing.M) {
 	auth.Value = big.NewInt(1)
 	auth.Value.Lsh(auth.Value, 40)
 
-	tx, err = rhub.DepositFor(auth, sampleRecipient)
+	tx, err = rhub.DepositFor(auth, testSponsor)
 	client.Commit()
 	if err != nil {
 		log.Fatalln(err)
@@ -248,7 +269,7 @@ func TestMain(m *testing.M) {
 	_, _ = client.TransactionReceipt(context.Background(), tx.Hash())
 
 	callOpt := &bind.CallOpts{}
-	toBalance, err := rhub.BalanceOf(callOpt, sampleRecipient)
+	toBalance, err := rhub.BalanceOf(callOpt, testSponsor)
 	if err != nil {
 		log.Println(err)
 		return
@@ -299,7 +320,7 @@ func TestRegisterRelay(t *testing.T) {
 	}
 }
 
-func printSignature(txb string, txFee int64, gasPrice int64, gasLimit int64, relayMaxNonce int64, recipientNonce int64) {
+func printSignature(txb string, txFee int64, gasPrice int64, gasLimit int64, relayMaxNonce int64, senderNonce int64) {
 	fmt.Println("ganache-cli -d")
 	fmt.Println("npx truffle console --network development")
 	fmt.Println("const utils = require('../src/js/relayclient/utils')")
@@ -309,12 +330,12 @@ func printSignature(txb string, txFee int64, gasPrice int64, gasLimit int64, rel
 	//)
 	//fmt.Printf("utils.getTransactionSignature(web3, '0xffcf8fdee72ac11b5c542428b35eef5769c409f0', hash)\n")
 	fmt.Printf(
-		"let hash = utils.getEip712Signature({web3, senderAccount: '%v', senderNonce: '%v', target: '%v', encodedFunction: '%v', pctRelayFee: '%v', gasPrice: '%v', gasLimit: '%v', relayHub: '%v', relayAddress: '%v'})\n",
-		crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), recipientNonce, sampleRecipient.Hex(), txb, txFee, gasPrice, gasLimit, rhaddr.Hex(), relay.Address().Hex(),
+		"hash = utils.getEip712Signature({web3, senderAccount: '%v', senderNonce: '%v', target: '%v', encodedFunction: '%v', pctRelayFee: '%v', gasPrice: '%v', gasLimit: '%v', gasSponsor: '%v', relayHub: '%v', relayAddress: '%v'})\n",
+		crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), senderNonce, sampleRecipient.Hex(), txb, txFee, gasPrice, gasLimit, testSponsor.Hex(), rhaddr.Hex(), relay.Address().Hex(),
 	)
 }
 
-func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature string) (request RelayTransactionRequest) {
+func newRelayTransactionRequest(t *testing.T, senderNonce int64, signature string) (request RelayTransactionRequest) {
 	test.ErrFail(relay.RefreshGasPrice(), t)
 	addressGasless := crypto.PubkeyToAddress(gaslessKey2.PublicKey)
 	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
@@ -327,7 +348,7 @@ func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature st
 	}
 
 	// Uncomment the following line to print the commands to generate the signature that needs to be injected
-	//printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, recipientNonce)
+	//printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, senderNonce)
 
 	return RelayTransactionRequest{
 		EncodedFunction: txb,
@@ -335,9 +356,10 @@ func newRelayTransactionRequest(t *testing.T, recipientNonce int64, signature st
 		Signature:       common.Hex2Bytes(signature),
 		From:            addressGasless,
 		To:              sampleRecipient,
+		GasSponsor:      testSponsor,
 		GasPrice:        *big.NewInt(gasPrice),
 		GasLimit:        *big.NewInt(gasLimit),
-		RecipientNonce:  *big.NewInt(recipientNonce),
+		SenderNonce:  	 *big.NewInt(senderNonce),
 		RelayMaxNonce:   *big.NewInt(relayMaxNonce),
 		RelayFee:        *big.NewInt(txFee),
 		RelayHubAddress: rhaddr,
@@ -353,12 +375,12 @@ func assertTransactionRelayed(t *testing.T, txHash common.Hash) (receipt *types.
 		t.Errorf("Incorrect logs len: expected %d, actual: %d", expectedLogs, logsLen)
 	}
 	transactionRelayedEvent := new(librelay.IRelayHubTransactionRelayed)
-	sampleRecipientEmitted := new(samplerec.SampleRecipientSampleRecipientEmitted)
-	preRelayedEmitted := new(samplerec.SampleRecipientSampleRecipientPreCall)
-	postRelayedEmitted := new(samplerec.SampleRecipientSampleRecipientPostCall)
-	test.ErrFailWithDesc(boundRecipient.UnpackLog(preRelayedEmitted, "SampleRecipientPreCall", *receipt.Logs[0]), t, "Unpacking SampleRecipientPreCall")
-	test.ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[1]), t, "Unpacking sample recipient emitted")
-	test.ErrFailWithDesc(boundRecipient.UnpackLog(postRelayedEmitted, "SampleRecipientPostCall", *receipt.Logs[2]), t, "Unpacking SampleRecipientPostCall")
+	sampleRecipientEmitted := new(testcontracts.SampleRecipientSampleRecipientEmitted)
+	preRelayedEmitted := new(testcontracts.TestSponsorSampleRecipientPreCall)
+	postRelayedEmitted := new(testcontracts.TestSponsorSampleRecipientPostCall)
+	test.ErrFailWithDesc(boundSponsor.UnpackLog(preRelayedEmitted, "SampleRecipientPreCall", *receipt.Logs[0]), t, "Unpacking SampleRecipientPreCall")
+	test.ErrFailWithDesc(boundRecipient.UnpackLog(sampleRecipientEmitted, "SampleRecipientEmitted", *receipt.Logs[1]), t, "Unpacking SampleRecipientEmitted")
+	test.ErrFailWithDesc(boundSponsor.UnpackLog(postRelayedEmitted, "SampleRecipientPostCall", *receipt.Logs[2]), t, "Unpacking SampleRecipientPostCall")
 	test.ErrFailWithDesc(boundHub.UnpackLog(transactionRelayedEvent, "TransactionRelayed", *receipt.Logs[3]), t, "Unpacking transaction relayed")
 
 	expectedMessage := "hello world"
@@ -384,7 +406,7 @@ func assertNoTransactionResent(t *testing.T, relay *RelayServer) {
 }
 
 func TestCreateRelayTransaction(t *testing.T) {
-	request := newRelayTransactionRequest(t, 0, "0xd735f61c4364b4543fe627529959558ea14f7d50940347c2073db1ef1d18691958be8c4da835d65bb84e74eff73c428085dc1b3fce14b34fb024e27c4e6921391c")
+	request := newRelayTransactionRequest(t, 0, "0xbe894dfa52ed84c3395d609a6976177f74b75748e57ffefc25c9b4dc134e36b37f7621f297cd465be9c2ede807e91791a6d57b34e1fefaf5e19a39c535d20bbf1c")
 	signedTx, err := relay.CreateRelayTransaction(request)
 	test.ErrFailWithDesc(err, t, "Creating relay transaction")
 	client.Commit()
@@ -393,7 +415,7 @@ func TestCreateRelayTransaction(t *testing.T) {
 
 func TestResendRelayTransaction(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request := newRelayTransactionRequest(t, 1, "0xfcddc648afc3aa23da5e867fe2d5ca04b8982dd30a52245d62690bab5647a70e00700e75fc6b386edf4aff42abaf6fefe4c37965831bab1fa5091fe840a8b3721b")
+	request := newRelayTransactionRequest(t, 1, "0x9a5f0efe59994ddc28a253fe62012a39eefb355ebe4fcaefc52c4377d348df535bbf42f1e7900f4cb56c295f0576f0feb7a37fa822de019696833251671258b61b")
 
 	// Send a transaction via the relay, but then revert to a previous snapshot
 	snapshotID, err := client.Snapshot()
@@ -444,9 +466,9 @@ func TestResendRelayTransaction(t *testing.T) {
 
 func TestMultipleRelayTransactions(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request1 := newRelayTransactionRequest(t, 2, "0x3059a03a43ff3f72cf80446ba5c3ea9a6d9f9a959cc2eb8fa32d229484e9bec42d661d7591416d6be4d1022ee8da3c13d2c38832318491071f27ad150e813cd41b")
-	request2 := newRelayTransactionRequest(t, 3, "0xd0d7692130a1bf69c75828730f24a7898cdfc11f0085350297c4b2092c0e321e16bce77cdf98150b7aefd2fe68f1bf0e2e488663fa02ef3c4baaf681d8acac401c")
-	request3 := newRelayTransactionRequest(t, 4, "0x8ef49334c17c5a2aee322a834c5ee25b6e6882e3c51c6eac661671d1f0fdc96137f93731be9d7365a7640bd97280c4b9260fc25637700b7d810343bcc4cebb9e1c")
+	request1 := newRelayTransactionRequest(t, 2, "0xa5139c871c7107f069c6105dba80bd7317ab2363d3fcb20f97c2b5e964c44cef4a5f92d4f665c4468986e899c1956800588dc15301f840bb0664ee01776fecb91c")
+	request2 := newRelayTransactionRequest(t, 3, "0x9f66399aaf800fdf1c71d597a0db9b532713f3dea553b9d698f0c3fbc288c0ca75ca599327e5e62fd7263e232d96a0bab136de026dcd0d2e58004da477b3d66f1b")
+	request3 := newRelayTransactionRequest(t, 4, "0x3733b0553880e6da23b4bdef7d46c415a80605bf13cbbde9707a8cbc4539fe2b6d7f2d13e4a2327eac6fb5a466fb9120f3984195447b074ca853c77f09fb72111c")
 
 	// Send 3 transactions, separated by 1 min each, and revert the last 2
 	signedTx1, err := relay.CreateRelayTransaction(request1)
@@ -495,12 +517,16 @@ func TestMultipleRelayTransactions(t *testing.T) {
 
 func TestReuseNonceOnDevMode(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request := newRelayTransactionRequest(t, 5, "0x36cc44c4492105b6b8d025bc674b16b277a2d200b2e0598cf991d063b3f816d452fc547c39176a2f0e4d3e82bf84285ba9db5f79e8bb69e431d6a6523c4ff8b91b")
+	request := newRelayTransactionRequest(t, 5, "0xce9461945a4aa2d0f2ca7d6b431602f76150f71a0aea1ab861067938213393e84a8b8be00e6c8119a46f59bd932492a4a16d72d52dd11dfdb0733420f3711f361c")
 
 	// Relay a tx
 	snapshotID, err := client.Snapshot()
 	test.ErrFailWithDesc(err, t, "Creating snapshot")
 	signedTx1, err := relay.CreateRelayTransaction(request)
+	if err != nil {
+		t.Errorf("CreateRelayTransaction error %v", err)
+		return
+	}
 	assertTransactionRelayed(t, signedTx1.Hash())
 
 	// Revert blockchain state and resend it, failing with "the tx doesn't have the correct nonce"
@@ -526,11 +552,11 @@ func TestTransactionTotalGasCost(t *testing.T) {
 	// meaning that the expected gas cost diff between them is 64 per the yellowpaper
 	expectedGasDiff := uint64(64)
 
-	request1 := newRelayTransactionRequest(t, 6, "0xda24ee9c19adfb9343cc7b78ae3c3a75fc9f9d13fb7d2eef1b24d0a372b1cef624764209319f9ee3465b54822f3ab59c2d9a348496e0d25af047ab917e9267c01b")
+	request1 := newRelayTransactionRequest(t, 6, "0xb3a5dfce2a6a916d94163712512f78eb3daaa9e95412fc59c63c9124932ce86546f4e64816178af060ebb2c2e410eeb89d37a214753ff4f2b0211f49c90423731c")
 	// Changing encoded function to call dontEmitMessage() instead of emitMessage()
 	request1.EncodedFunction = "0xb51fab0a0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
 	// Creating a new relayed tx with encoded function 'dontEmitMessage("hello world" + "\x00" + "a")' instead of 'dontEmitMessage("hello world")'
-	request2 := newRelayTransactionRequest(t, 7, "0xf8083635cfe641ae7c2f6ec6d2815d6ba9b4fec05fcdf4ee50344d22a8e54da640336912eef27b933eea5ecc94ed7b91534a91fe577510bb3febf9bc6610c1201c")
+	request2 := newRelayTransactionRequest(t, 7, "0x458d06ee531f2075c3a23f05e5933be52590829825d59970d3872d146c2012685c08fb978035f3331274970fc81ecd32546309bf5c54c59b0ac558f5cff3d8b81c")
 	request2.EncodedFunction = "0xb51fab0a0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d68656c6c6f20776f726c64610000000000000000000000000000000000000000"
 
 	// Send the 2 transactions

@@ -2,7 +2,7 @@
 
 var fs = require('fs')
 
-var contractsToExtract = ['IRelayHub', 'RelayHub', 'SampleRecipient']
+var contractsToExtract = ['IRelayHub', 'RelayHub', 'TestRecipient', 'TestSponsorEverythingAccepted']
 
 // var rhub = require("../../build/contracts/IRelayHub.json");
 // var sampleRec = require("../../build/contracts/SampleRecipient.json");

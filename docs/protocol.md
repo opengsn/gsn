@@ -81,7 +81,7 @@ A relay perform the following steps:
     compensated for this advertised gas-price.
   -  `gasLimit`: the **Minimum** gas-limit available for the **encodedFunction**. Note that the actual request will have higher gas-limit,
     to compensate for the pre- and post- relay calls, but these are limited by a total of 250,000 gas.<br/>
-  -  `RecipientNonce`: the client should put `relayHub.getNonce(from)` in this field.<br/>
+  -  `SenderNonce`: the client should put `relayHub.getNonce(from)` in this field.<br/>
         **NOTE**: this is a naming bug: its a `senderNonce`, not `recpientNonce`...
   -  `RelayHubAddress`: the address of the relay hub.
   - `relay-address`: this is not sent over the protocol, but it is added to the hash to create the signature

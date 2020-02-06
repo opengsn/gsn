@@ -36,9 +36,10 @@ type RelayTransactionRequest struct {
 	Signature       []byte
 	From            common.Address
 	To              common.Address
+	GasSponsor      common.Address
 	GasPrice        big.Int
 	GasLimit        big.Int
-	RecipientNonce  big.Int
+	SenderNonce  big.Int
 	RelayMaxNonce   big.Int
 	RelayFee        big.Int
 	RelayHubAddress common.Address
@@ -460,11 +461,12 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	// check canRelay view function to see if we'll get paid for relaying this tx
 	res, err := relay.canRelay(request.From,
 		request.To,
+		request.GasSponsor,
 		request.EncodedFunction,
 		request.RelayFee,
 		request.GasPrice,
 		request.GasLimit,
-		request.RecipientNonce,
+		request.SenderNonce,
 		request.Signature,
 		request.ApprovalData)
 
@@ -475,7 +477,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 
 	if res.Uint64() != 0 {
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
-			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.RecipientNonce.String(), "Fee:",
+			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.SenderNonce.String(), "Fee:",
 			request.RelayFee.String(), "AppData:", hexutil.Encode(request.ApprovalData), "Sig:", hexutil.Encode(request.Signature))
 		errStr = errStr[:len(errStr)-1]
 		err = fmt.Errorf("canRelay() view function returned error code=%d. params:%s", res, errStr)
@@ -509,7 +511,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		return
 	}
 
-	toBalance, err := relay.rhub.BalanceOf(callOpt, request.To)
+	sponsorBalance, err := relay.rhub.BalanceOf(callOpt, request.GasSponsor)
 	if err != nil {
 		log.Println(err)
 		return
@@ -522,8 +524,8 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	// 3. gasReserve - Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
 	// 4. acceptRelayedCallMaxGas, postRelayedCallMaxGas, preRelayedCallMaxGas - max gas cost of recipient calls acceptRelayedCall(), postRelayedCall() preRelayedCall()
 
-	if toBalance.Cmp(maxCharge) < 0 {
-		err = fmt.Errorf("Recipient balance too low: %d, maxCharge: %d", toBalance, maxCharge)
+	if sponsorBalance.Cmp(maxCharge) < 0 {
+		err = fmt.Errorf("sponsor balance too low: %d, maxCharge: %d", sponsorBalance, maxCharge)
 		log.Println(err)
 		return
 	}
@@ -544,9 +546,10 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 				},
 				RelayData: librelay.EIP712SigRelayData{
 					SenderAccount: request.From,
-					SenderNonce:   &request.RecipientNonce,
+					SenderNonce:   &request.SenderNonce,
 					RelayAddress:  relay.Address(),
 					PctRelayFee:   &request.RelayFee,
+					GasSponsor:    request.GasSponsor,
 				},
 			}
 			return relay.rhub.RelayCall(auth, relayRequest, request.Signature, request.ApprovalData)
@@ -581,11 +584,12 @@ func (relay *RelayServer) GetPort() string {
 
 func (relay *RelayServer) canRelay(from common.Address,
 	to common.Address,
+	gasSponsor common.Address,
 	encodedFunction string,
 	relayFee big.Int,
 	gasPrice big.Int,
 	gasLimit big.Int,
-	recipientNonce big.Int,
+	senderNonce big.Int,
 	signature []byte,
 	approvalData []byte) (res *big.Int, err error) {
 
@@ -610,9 +614,10 @@ func (relay *RelayServer) canRelay(from common.Address,
 		},
 		RelayData: librelay.EIP712SigRelayData{
 			SenderAccount: from,
-			SenderNonce:   &recipientNonce,
+			SenderNonce:   &senderNonce,
 			RelayAddress:  relayAddress,
 			PctRelayFee:   &relayFee,
+			GasSponsor:    gasSponsor,
 		},
 	}
 	result, err = relay.rhub.CanRelay(callOpt, relayRequest, signature, approvalData)

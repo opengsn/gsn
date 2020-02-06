@@ -40,6 +40,7 @@ module.exports = {
       pctRelayFee,
       gasPrice,
       gasLimit,
+      gasSponsor,
       relayHub,
       relayAddress
     }) {
@@ -47,6 +48,7 @@ module.exports = {
       typeof gasPrice !== 'string' ||
       typeof gasLimit !== 'string' ||
       typeof pctRelayFee !== 'string' ||
+      typeof gasSponsor !== 'string' ||
       typeof senderNonce !== 'string'
     ) {
       throw Error('using wrong types will cause signatures to be invalid')
@@ -60,6 +62,7 @@ module.exports = {
       pctRelayFee,
       gasPrice,
       gasLimit,
+      gasSponsor,
       relayHub,
       relayAddress
     })
@@ -84,7 +87,7 @@ module.exports = {
     })
   },
 
-  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay) {
+  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor) {
     return {
       callData: new CallData({
         target: recipient,
@@ -96,7 +99,8 @@ module.exports = {
         senderAccount: sender,
         senderNonce: senderNonce.toString(),
         relayAddress: relay,
-        pctRelayFee: fee.toString()
+        pctRelayFee: fee.toString(),
+        gasSponsor
       })
     }
   },

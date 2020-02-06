@@ -1,18 +1,17 @@
 pragma solidity ^0.5.5;
 
-contract IRelayRecipient {
+interface IGasSponsor {
 
     /**
      * return the relayHub of this contract.
      */
-    function getHubAddr() public view returns (address);
+    function getHubAddr() external view returns (address);
 
     /**
-     * return the contract's balance on the RelayHub.
-     * can be used to determine if the contract can pay for incoming calls,
-     * before making any.
+     * Can be used to determine if the contract can pay for incoming calls before making any.
+     * @return the sponsor's deposit in the RelayHub.
      */
-    function getRecipientBalance() public view returns (uint256);
+    function getRelayHubDeposit() external view returns (uint256);
 
     /*
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
@@ -46,14 +45,6 @@ contract IRelayRecipient {
     external
     view
     returns (uint256, bytes memory);
-
-    /*
-     * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
-     */
-    modifier relayHubOnly() {
-        require(msg.sender == getHubAddr(),"Function can only be called by RelayHub");
-        _;
-    }
 
     /** this method is called before the actual relayed function call.
      * It may be used to charge the caller before (in conjuction with refunding him later in postRelayedCall for example).
