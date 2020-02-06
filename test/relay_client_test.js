@@ -173,7 +173,7 @@ contract('RelayClient', function (accounts) {
           assert.equal('Error: canRelay failed: 13: test: not approved', error.toString())
         } else {
           // error checked by relay:
-          assert.equal(true, error.otherErrors[0].includes('canRelay() view function returned error code=' + expectedError))
+          assert.include(error.otherErrors[0], 'canRelay() view function returned error code=' + expectedError)
         }
       }
     }))
@@ -210,7 +210,7 @@ contract('RelayClient', function (accounts) {
       if (error.toString().includes('Assertion')) {
         throw error
       }
-      assert.equal(true, error.otherErrors[0].message.includes('Relay used a tx nonce higher than requested'))
+      assert.include(error.otherErrors[0].message, 'Relay used a tx nonce higher than requested')
     }
   })
 
@@ -380,7 +380,8 @@ contract('RelayClient', function (accounts) {
         } else {
           const callbackWrap = function (e, r) {
             assert.equal(null, e)
-            assert.equal(true, r.input && r.input.includes(messageHex))
+            assert.ok(r.input)
+            assert.include(r.input, messageHex)
             callback(e, r)
           }
           origHttpSend.send(url, jsonRequestData, callbackWrap)
@@ -611,7 +612,7 @@ contract('RelayClient', function (accounts) {
         await sr.emitMessage('hello world', { from: gasLess, gasSponsor: gasSponsor2.address })
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('The relay hub address is set to zero in sponsor at'))
+        assert.include(error.message, 'The relay hub address is set to zero in sponsor at')
       }
     })
 
@@ -621,7 +622,7 @@ contract('RelayClient', function (accounts) {
         await relayClient.createRelayHubFromSponsor(gasLess)
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('Could not get relay hub address from sponsor at'))
+        assert.include(error.message, 'Could not get relay hub address from sponsor at')
       }
     })
 
@@ -640,9 +641,8 @@ contract('RelayClient', function (accounts) {
         await relayClient.createRelayHubFromSponsor(gasSponsor.address)
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('Could not query relay hub version at'),
-          'Actual error: ' + error.toString())
-        assert.equal(true, error.message.includes('NOPE'))
+        assert.include(error.message, 'Could not query relay hub version at')
+        assert.include(error.message, 'NOPE')
       }
     })
 
@@ -661,9 +661,8 @@ contract('RelayClient', function (accounts) {
         await relayClient.createRelayHubFromSponsor(gasSponsor.address)
         assert.fail()
       } catch (error) {
-        assert.equal(true, error.message.includes('Unsupported relay hub version'),
-          'Actual error: ' + error.toString())
-        assert.equal(true, error.message.includes('wrong version'))
+        assert.include(error.message, 'Unsupported relay hub version')
+        assert.include(error.message, 'wrong version')
       }
     })
   })
@@ -721,8 +720,7 @@ contract('RelayClient', function (accounts) {
       await recipient.emitMessage("ain't gonna work mate", { from: accounts[0], gasSponsor: gasSponsor.address })
       assert.fail()
     } catch (error) {
-      assert.equal(true, error.message.includes('Sponsor and recipient RelayHub addresses do not match'),
-        'Actual error: ' + error.toString())
+      assert.include(error.message, 'Sponsor and recipient RelayHub addresses do not match')
     }
   })
 })
