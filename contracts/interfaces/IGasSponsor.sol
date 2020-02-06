@@ -34,7 +34,7 @@ interface IGasSponsor {
      *  @param signature - sender's signature over all parameters except approvalData
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      */
-     function acceptRelayedCall(
+    function acceptRelayedCall(
         EIP712Sig.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
@@ -44,11 +44,13 @@ interface IGasSponsor {
     returns (uint256, bytes memory);
 
     /** this method is called before the actual relayed function call.
-     * It may be used to charge the caller before (in conjuction with refunding him later in postRelayedCall for example).
+     * It may be used to charge the caller before
+     * (in conjunction with refunding him later in postRelayedCall for example).
      * the method is given all parameters of acceptRelayedCall and actual used gas.
      *
      *
-     *** NOTICE: if this method modifies the contract's state, it must be protected with access control i.e. require msg.sender == getHubAddr()
+     * NOTICE: if this method modifies the contract's state, it must be
+     * protected with access control i.e. require msg.sender == getHubAddr()
      *
      *
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
@@ -61,11 +63,13 @@ interface IGasSponsor {
      * the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
      *
      *
-     *** NOTICE: if this method modifies the contract's state, it must be protected with access control i.e. require msg.sender == getHubAddr()
+     * NOTICE: if this method modifies the contract's state,
+     * it must be protected with access control i.e. require msg.sender == getHubAddr()
      *
      *
      * @param success - true if the relayed call succeeded, false if it reverted
-     * @param actualCharge - estimation of how much the recipient will be charged. This information may be used to perform local booking and
+     * @param actualCharge - estimation of how much the recipient will be charged.
+     *   This information may be used to perform local booking and
      *   charge the sender for this call (e.g. in tokens).
      * @param preRetVal - preRelayedCall() return value passed back to the recipient
      *

@@ -39,10 +39,13 @@ contract EIP712Sig {
         "EIP712Domain(string name,string version,address verifyingContract)"
     );
 
+    // solhint-disable-next-line max-line-length
     bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(CallData callData,RelayData relayData)CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
 
+    // solhint-disable-next-line max-line-length
     bytes32 public constant CALLDATA_TYPEHASH = keccak256("CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)");
 
+    // solhint-disable-next-line max-line-length
     bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
 
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
@@ -53,7 +56,7 @@ contract EIP712Sig {
             version : '1',
 //            chainId : getChainID(),
             verifyingContract : verifier
-            }));
+        }));
     }
 
     function hash(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {

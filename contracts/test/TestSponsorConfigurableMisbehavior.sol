@@ -63,7 +63,14 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
         return 0;
     }
 
-    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) relayHubOnly external {
+    function postRelayedCall(
+        bytes calldata context,
+        bool success,
+        uint actualCharge,
+        bytes32 preRetVal)
+    relayHubOnly
+    external
+    {
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
