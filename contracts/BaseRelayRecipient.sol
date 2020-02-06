@@ -21,6 +21,9 @@ contract BaseRelayRecipient {
         _;
     }
 
+    function getHubAddr() public view returns (address) {
+        return address(relayHub);
+    }
     /**
      * return the sender of this call.
      * if the call came through the valid RelayHub, return the original sender.

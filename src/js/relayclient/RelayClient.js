@@ -299,6 +299,15 @@ class RelayClient {
     const gasSponsor = options.gasSponsor || options.to
     const relayHub = await this.createRelayHubFromSponsor(gasSponsor)
 
+    // TODO: refactor! wrong instance is created for accidentally same method!
+    if (!utils.isSameAddress(gasSponsor, options.to)) {
+      const recipientHub = await this.createGasSponsor(options.to).methods.getHubAddr().call()
+
+      if (!utils.isSameAddress(relayHub._address, recipientHub)) {
+        throw Error('Sponsor and recipient RelayHub addresses do not match')
+      }
+    }
+
     const nonce = parseInt(await relayHub.methods.getNonce(options.from).call())
 
     this.serverHelper.setHub(relayHub)

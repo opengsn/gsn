@@ -712,4 +712,17 @@ contract('RelayClient', function (accounts) {
     await tbk.fixTransactionReceiptResp(receipt)
     assert.equal(false, receipt.status)
   })
+
+  it('should fail to relay if provided Gas Sponsor and Relay Recipient do not use same Relay Hub', async function () {
+    // TODO: all tests rely on 'SampleRecipient.web3.setProvider(relayProvider)' being called in other test!!!
+    const recipient = await SampleRecipient.deployed()
+    await recipient.setHub(accounts[4], { from: accounts[0], useGSN: false })
+    try {
+      await recipient.emitMessage("ain't gonna work mate", { from: accounts[0], gasSponsor: gasSponsor.address })
+      assert.fail()
+    } catch (error) {
+      assert.equal(true, error.message.includes('Sponsor and recipient RelayHub addresses do not match'),
+        'Actual error: ' + error.toString())
+    }
+  })
 })
