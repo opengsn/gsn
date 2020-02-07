@@ -19,6 +19,7 @@ contract TestSponsorPreconfiguredApproval is TestSponsorEverythingAccepted {
     external
     view
     returns (uint256, bytes memory){
+        (relayRequest, approvalData, maxPossibleCharge);
         if (keccak256(expectedApprovalData) != keccak256(approvalData)) {
             return (14,
             abi.encodePacked(

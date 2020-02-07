@@ -19,6 +19,7 @@ contract TestSponsorOwnerSignature is TestSponsorEverythingAccepted {
     external
     view
     returns (uint256, bytes memory){
+        (relayRequest, approvalData, maxPossibleCharge);
         address signer =
             keccak256(abi.encodePacked("I approve", relayRequest.relayData.senderAccount))
             .toEthSignedMessageHash()

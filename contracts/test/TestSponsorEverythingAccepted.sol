@@ -23,6 +23,7 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
     relayHubOnly
     external
     returns (bytes32){
+        (context);
         emit SampleRecipientPreCall();
         return bytes32(uint(123456));
     }

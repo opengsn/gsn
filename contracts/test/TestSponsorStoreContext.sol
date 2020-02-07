@@ -66,6 +66,7 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
     function postRelayedCall(
         bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal
     ) relayHubOnly external {
+        (context, success, actualCharge, preRetVal);
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 transactionFee, uint256 gasPrice, uint256 gasLimit,

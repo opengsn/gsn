@@ -54,6 +54,7 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     }
 
     function preRelayedCall(bytes calldata context) relayHubOnly external returns (bytes32) {
+        (context);
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
         }
@@ -71,6 +72,7 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     relayHubOnly
     external
     {
+        (context, success, actualCharge, preRetVal);
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
