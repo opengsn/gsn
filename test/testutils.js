@@ -8,7 +8,25 @@ const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
 const localhostOne = 'http://localhost:8090'
 const zeroAddr = '0'.repeat(40)
 
+// available on node13, as Object.fromEntries
+// this method is the reverse of Object.entries()
+function entriesToObject (entries) {
+  return entries.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
+}
+
 module.exports = {
+
+  // pack solidity logs into simpler structure, easier to assert.deepEquals.
+  // "event" member contains the event name. and then named members for all event params
+  packLogs: function (logs) {
+    return logs.map(log => ({
+      event: log.event,
+      ...entriesToObject(Object.entries({ ...log.args })
+        .filter(([name]) => /^[^_0-9]/.test(name))
+        .map(([name, val]) => ([name, val.toString()]))
+      )
+    }))
+  },
 
   // start a background relay process.
   // rhub - relay hub contract
