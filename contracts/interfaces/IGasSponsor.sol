@@ -16,6 +16,15 @@ interface IGasSponsor {
      */
     function getRelayHubDeposit() external view returns (uint256);
 
+//    function getGasLimitsForSponsorCalls()
+//    external
+//    view
+//    returns (
+//        uint256 acceptRelayCallMaxGas,
+//        uint256 preRelayCallMaxGas,
+//        uint256 postRelayCallMaxGas
+//    );
+
     /*
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
      * Note: Accepting this call means paying for the tx whether the relayed call reverted or not.
