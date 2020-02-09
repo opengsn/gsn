@@ -1,4 +1,3 @@
-const Big = require('big.js')
 
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestSponsorEverythingAccepted = artifacts.require('./test/TestSponsorEverythingAccepted.sol')
@@ -10,7 +9,6 @@ const utils = require('../src/js/relayclient/utils')
 
 const registerNewRelay = testutils.register_new_relay
 const registerNewRelayWithPrivkey = testutils.register_new_relay_with_privkey
-const increaseTime = testutils.increaseTime
 const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect
 const getEip712Signature = utils.getEip712Signature
 const rlp = require('rlp')
@@ -19,53 +17,6 @@ const sigUtil = require('eth-sig-util')
 const ethUtils = require('ethereumjs-util')
 const Transaction = require('ethereumjs-tx')
 const BigNumber = require('bignumber.js')
-
-const message = 'hello world'
-
-const zeroAddr = '0'.repeat(40)
-
-contract('SampleRecipient', function (accounts) {
-  // TODO: account with no ether
-  const expectedRealSender = accounts[0]
-
-  it('should emit message with msgSender and realSender', async function () {
-    const sample = await SampleRecipient.deployed()
-    const result = await sample.emitMessage(message)
-    const log = result.logs[0]
-    const args = log.args
-    assert.equal('SampleRecipientEmitted', log.event)
-    assert.equal(args.message, message)
-    assert.equal(accounts[0], args.msgSender)
-    assert.equal(expectedRealSender, args.realSender)
-  })
-
-  it('should allow owner to withdraw balance from RelayHub', async function () {
-    const sample = await TestSponsorEverythingAccepted.deployed()
-    const deposit = new Big('100000000000000000')
-    const rhub = await RelayHub.deployed()
-    await rhub.depositFor(sample.address, { from: accounts[0], value: deposit })
-    let depositActual = await rhub.balanceOf(sample.address)
-    assert.equal(deposit.toString(), depositActual.toString())
-    const a0BalanceBefore = await web3.eth.getBalance(accounts[0])
-    try {
-      await sample.withdrawRelayHubDepositTo(depositActual, accounts[2], { from: accounts[2] })
-      assert.fail()
-    } catch (error) {
-      assertErrorMessageCorrect(error, 'revert')
-    }
-    const gasPrice = 1
-    const owner = await sample.owner.call()
-    const res = await sample.withdrawRelayHubDepositTo(depositActual, owner, {
-      from: owner,
-      gasPrice: gasPrice
-    })
-    const a0BalanceAfter = await web3.eth.getBalance(accounts[0])
-    const expectedBalanceAfter = new Big(a0BalanceBefore).add(deposit).sub(res.receipt.gasUsed * gasPrice)
-    assert.equal(expectedBalanceAfter.toString(), a0BalanceAfter.toString())
-    depositActual = await rhub.balanceOf(sample.address)
-    assert.equal('0', depositActual.toString())
-  })
-})
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 contract('RelayHub', function (accounts) {
@@ -121,42 +72,6 @@ contract('RelayHub', function (accounts) {
     assert.equal(expectedStake, new Big(relayData.totalStake).sub(z))
     assert.equal(3600 * 24 * 7, relayData.unstakeDelay)
     assert.equal(ownerAccount, relayData.owner)
-  })
-  it.skip("should allow anyone to deposit for a recipient contract, but not more than 'maximumDeposit'", async function () {
-    const sample = await SampleRecipient.deployed()
-    const depositBefore = await rhub.balanceOf(sample.address)
-    const deposit = new Big('1000000000000000')
-    try {
-      await rhub.depositFor(sample.address, { from: accounts[0], value: new Big(oneEther).times(3) })
-      assert.fail()
-    } catch (error) {
-      assertErrorMessageCorrect(error, 'deposit too big')
-    }
-    await rhub.depositFor(sample.address, { from: accounts[0], value: deposit })
-    const depositActual = await rhub.balanceOf(sample.address)
-    const depositExpected = deposit.add(depositBefore)
-    assert.equal(depositExpected.toString(), depositActual.toString())
-  })
-
-  // duplicate for 'unstaked relays can be staked for by anyone'
-  it.skip('should allow owner to stake on behalf of the relay', async function () {
-    const gaslessRelayAddress = '0x2Dd8C0665327A26D7655055B22c9b3bA596DfeD9'
-    const balanceOfGaslessBefore = await web3.eth.getBalance(gaslessRelayAddress)
-    const balanceOfAcc7Before = await web3.eth.getBalance(accounts[7])
-    const expectedStake = web3.utils.toWei('1', 'ether')
-    const gasPrice = 1
-    const res = await rhub.stake(gaslessRelayAddress, 3600 * 24 * 7, {
-      value: expectedStake,
-      gasPrice: gasPrice,
-      from: accounts[7]
-    })
-    const stake = await rhub.getRelay(gaslessRelayAddress)
-    const balanceOfGaslessAfter = await web3.eth.getBalance(gaslessRelayAddress)
-    const balanceOfAcc7After = await web3.eth.getBalance(accounts[7])
-    const expectedBalanceAfter = new Big(balanceOfAcc7Before).sub(expectedStake).sub(res.receipt.gasUsed * gasPrice)
-    assert.equal(balanceOfAcc7After.toString(), expectedBalanceAfter.toString())
-    assert.equal(balanceOfGaslessAfter.toString(), balanceOfGaslessBefore.toString())
-    assert.equal(expectedStake, stake[0])
   })
 
   it('should forbid contracts-owned addresses to register as relays', async function () {
@@ -366,35 +281,6 @@ contract('RelayHub', function (accounts) {
     }
   })
 
-  // duplicate of 'relaying is aborted if the recipient returns an invalid status code'
-  it.skip("should not accept relay requests if destination recipient doesn't approve it", async function () {
-    const from = accounts[6]
-    const relayNonce = 0
-    await sr.setBlacklisted(from)
-    const sig = (await getEip712Signature({
-      web3,
-      senderAccount: from,
-      senderNonce: relayNonce.toString(),
-      target: to,
-      encodedFunction: transaction,
-      pctRelayFee: transactionFee.toString(),
-      gasPrice: gasPrice.toString(),
-      gasLimit: gasLimit.toString(),
-      gasSponsor: gasSponsor.address,
-      relayHub: rhub.address,
-      relayAddress: relayAccount
-    })).signature
-    const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
-      from: relayAccount,
-      gasPrice: gasPrice,
-      gasLimit: gasLimitAnyValue
-    })
-
-    assert.equal(res.logs[0].event, 'CanRelayFailed')
-    const canRelay = await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x')
-    assert.equal(11, canRelay.status.valueOf().toString())
-  })
-
   it('should not accept relay requests if gas limit is too low for a relayed transaction', async function () {
     // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
     const gasReserve = 99999
@@ -428,93 +314,6 @@ contract('RelayHub', function (accounts) {
       assertErrorMessageCorrect(error, 'Sponsor balance too low')
     }
   })
-
-  // duplicate of 'non-owners cannot remove a relay'
-  it.skip('should not allow non-owners to remove relay', async function () {
-    try {
-      await rhub.removeRelayByOwner(relayAccount, { from: accounts[2] })
-      assert.fail()
-    } catch (error) {
-      assertErrorMessageCorrect(error, 'not owner')
-    }
-  })
-
-  // duplicate of 'unremoved relays cannot be unstaked'
-  it.skip('should not allow owners to unstake if still registered', async function () {
-    const canUnstake = await rhub.canUnstake.call(relayAccount)
-    assert.equal(canUnstake, false)
-    try {
-      await rhub.unstake(relayAccount)
-      assert.fail()
-    } catch (error) {
-      assertErrorMessageCorrect(error, 'canUnstake failed')
-    }
-  })
-
-  // duplicate of 'a registered relay can be removed'
-  it.skip('should allow the owner to remove his relay', async function () {
-    try {
-      await rhub.removeRelayByOwner(zeroAddr)
-      assert.fail()
-    } catch (error) {
-      assertErrorMessageCorrect(error, 'not owner')
-    }
-
-    const res = await rhub.removeRelayByOwner(relayAccount)
-    assert.equal('RelayRemoved', res.logs[0].event)
-    assert.equal(relayAccount, res.logs[0].args.relay)
-  })
-
-  // duplicate of 'relay cannot be unstaked before unstakeTime'
-  it.skip("should not allow the owner to unstake unregistered relay's stake before time", async function () {
-    const relay = await rhub.getRelay.call(relayAccount)
-    // eslint-disable-next-line eqeqeq
-    assert.equal(false, relay.stake == 0)
-    let canUnstake = await rhub.canUnstake.call(relayAccount)
-
-    assert.equal(false, canUnstake)
-    await increaseTime(relay.unstakeDelay / 2)
-
-    canUnstake = await rhub.canUnstake.call(relayAccount)
-    assert.equal(false, canUnstake)
-    try {
-      await rhub.unstake(relayAccount)
-      assert.fail()
-    } catch (error) {
-      assertErrorMessageCorrect(error, 'canUnstake failed')
-    }
-    await increaseTime(relay.unstakeDelay / 2)
-    canUnstake = await rhub.canUnstake.call(relayAccount)
-    assert.equal(canUnstake, true)
-  })
-
-  // duplicate of 'non-owner cannot unstake relay'
-  it.skip('should not allow non-owners to unstake', async function () {
-    const canUnstake = await rhub.canUnstake.call(relayAccount)
-    assert.equal(true, canUnstake)
-
-    try {
-      await rhub.unstake(relayAccount, { from: accounts[2] })
-      assert.fail()
-    } catch (error) {
-      assertErrorMessageCorrect(error, 'not owner')
-    }
-  })
-
-  // duplicate of 'owner can unstake relay'
-  it.skip("should allow the owner to unstake unregistered relay's stake", async function () {
-    const canUnstake = await rhub.canUnstake.call(relayAccount)
-    assert.equal(true, canUnstake)
-    await rhub.unstake(relayAccount)
-
-    const stakeAfter = await rhub.getRelay(relayAccount)
-    assert.equal(0, stakeAfter.totalStake)
-  })
-
-  it('should not allow a state to downgrade (possibly a few tests needed)')
-
-  it('should allow to penalize a removed relay')
-  it('should not allow to penalize an already penalized relay')
 
   const dayInSec = 24 * 60 * 60
   const weekInSec = dayInSec * 7
@@ -800,48 +599,6 @@ contract('RelayHub', function (accounts) {
       const expectedRecipientBalance = relayRecipientBalanceBefore - revenue
       assert.equal(expectedRecipientBalance.toString(), relayRecipientBalanceAfter.toString())
     })
-  })
-
-  // duplicate of 'reverts relayed call if recipient withdraws balance during XXX'
-  it.skip('should revert relayed call on an attempt to withdraw deposit during relayed transaction', async function () {
-    let withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall()
-    assert.equal(withdrawDuringRelayedCall, false)
-    try {
-      await sr.setWithdrawDuringRelayedCall(true)
-      withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall()
-      assert.equal(withdrawDuringRelayedCall, true)
-
-      const sig = (await getEip712Signature({
-        web3,
-        senderAccount: from,
-        senderNonce: relayNonce.toString(),
-        target: to,
-        encodedFunction: transaction,
-        pctRelayFee: transactionFee.toString(),
-        gasPrice: gasPrice.toString(),
-        gasLimit: gasLimit.toString(),
-        gasSponsor: gasSponsor.address,
-        relayHub: rhub.address,
-        relayAddress: relayAccount
-      })).signature
-
-      assert.equal(0, (await rhub.canRelay(relayAccount, from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x')).status)
-
-      const res = await rhub.relayCall(from, to, transaction, transactionFee, gasPrice, gasLimit, relayNonce, sig, '0x', {
-        from: relayAccount,
-        gasPrice: gasPrice,
-        gasLimit: gasLimitAnyValue
-      })
-      relayNonce++
-      const RecipientBalanceChanged = 4
-      assert.equal('TransactionRelayed', res.logs[0].event)
-      assert.equal(RecipientBalanceChanged, res.logs[0].args.status)
-    } finally {
-      // returning state to previous one
-      await sr.setWithdrawDuringRelayedCall(false)
-      withdrawDuringRelayedCall = await sr.withdrawDuringRelayedCall()
-      assert.equal(withdrawDuringRelayedCall, false)
-    }
   })
 
   it('should revert an attempt to use more than allowed gas for acceptRelayedCall(50000)', async function () {
