@@ -11,12 +11,12 @@ const rlp = require('rlp')
 
 const { expect } = require('chai')
 
-contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
+contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, sender, other]) { // eslint-disable-line no-unused-vars
   let relayHub
   let recipient
   let gasSponsor
 
-  beforeEach(async function () {
+  before(async function () {
     relayHub = await RelayHub.new({ gas: 8000000 })
     recipient = await SampleRecipient.new()
     gasSponsor = await TestSponsor.new()
@@ -26,7 +26,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
 
   describe('penalizations', function () {
     const reporter = other
-    const stake = ether('1')
+    let stake
 
     // Receives a function that will penalize the relay and tests that call for a penalization, including checking the
     // emitted event and penalization reward transfer. Returns the transaction receipt.
@@ -79,7 +79,8 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
       })
 
       beforeEach('staking for relay', async function () {
-        await relayHub.stake(relay, time.duration.weeks(1), { value: stake })
+        await relayHub.stake(relay, time.duration.weeks(1), { value: ether('1') })
+        stake = (await relayHub.getRelay(relay)).totalStake
       })
 
       describe('repeated relay nonce', async function () {
@@ -151,7 +152,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
       })
 
       describe('illegal call', async function () {
-        describe('with pre-EIP155 signatures', function () {
+        describe('with pre-EIP155 signatures', async function () {
           it('penalizes relay transactions to addresses other than RelayHub', async function () {
             // Relay sending ether to another account
             const { transactionHash } = await send.ether(relay, other, ether('0.5'))
@@ -251,7 +252,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
       })
     })
 
-    describe('penalizable relay states', function () {
+    describe('penalizable relay states', async function () {
       context('with penalizable transaction', function () {
         let penalizableTxData
         let penalizableTxSignature
@@ -283,6 +284,12 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         }
 
         context('with unstaked relay', function () {
+          before(async function () {
+            await relayHub.removeRelayByOwner(relay)
+            await time.increase(time.duration.weeks(1))
+            await relayHub.unstake(relay)
+          })
+
           it('account cannot be penalized', async function () {
             await expectRevert(penalize(), 'Unstaked relay')
           })

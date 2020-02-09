@@ -9,10 +9,6 @@ const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
 const TestSponsorStoreContext = artifacts.require('./test/TestSponsorStoreContext')
 const TestSponsorConfigurableMisbehavior = artifacts.require('./test/TestSponsorConfigurableMisbehavior')
 
-const Transaction = require('ethereumjs-tx')
-const { privateToAddress } = require('ethereumjs-util')
-const rlp = require('rlp')
-
 const { expect } = require('chai')
 
 contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
@@ -334,8 +330,13 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
     })
 
     describe('unstaking', function () {
-      it('unstaked relays cannnot be unstaked', async function () {
-        await expectRevert(relayHub.unstake(relay, { from: other }), 'canUnstake failed')
+      before(async function () {
+        await time.increase(time.duration.weeks(4))
+        await relayHub.unstake(relay, { from: relayOwner })
+      })
+
+      it('unstaked relays cannot be unstaked', async function () {
+        await expectRevert(relayHub.unstake(relay, { from: other }), 'Relay is not pending unstake')
       })
 
       context('with staked relay', function () {
@@ -350,7 +351,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         })
 
         it('unregistered relays cannnot be unstaked', async function () {
-          await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'canUnstake failed')
+          await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'Relay is not pending unstake')
         })
 
         context('with registerd relay', function () {
@@ -359,7 +360,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
           })
 
           it('unremoved relays cannot be unstaked', async function () {
-            await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'canUnstake failed')
+            await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'Relay is not pending unstake')
           })
 
           context('with removed relay', function () {
@@ -368,7 +369,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
             })
 
             it('relay cannot be unstaked before unstakeTime', async function () {
-              await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'canUnstake failed')
+              await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'Unstake is not due')
             })
 
             context('after unstakeTime', function () {
@@ -405,7 +406,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
                 })
 
                 it('relay cannot be re-unstaked', async function () {
-                  await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'canUnstake failed')
+                  await expectRevert(relayHub.unstake(relay, { from: relayOwner }), 'Relay is not pending unstake')
                 })
               })
             })

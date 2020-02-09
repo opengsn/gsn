@@ -151,7 +151,7 @@ contract RelayHub is IRelayHub {
     }
 
     function unstake(address relay) public {
-        require(canUnstake(relay), "canUnstake failed");
+        requireCanUnstake(relay);
         require(relays[relay].owner == msg.sender, "not owner");
 
         address payable owner = msg.sender;
@@ -216,10 +216,11 @@ contract RelayHub is IRelayHub {
         return nonces[from];
     }
 
-    function canUnstake(address relay) public view returns (bool) {
+    function requireCanUnstake(address relay) public view {
+        require(relays[relay].unstakeTime > 0, "Relay is not pending unstake");
         // TODO: I tend to agree with solhint here - lets use some number of blocks instead
         // solhint-disable-next-line not-rely-on-time
-        return relays[relay].unstakeTime > 0 && relays[relay].unstakeTime <= now;
+        require(relays[relay].unstakeTime <= now, "Unstake is not due");
         // Finished the unstaking delay period?
     }
 

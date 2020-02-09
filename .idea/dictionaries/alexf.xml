@@ -14,11 +14,14 @@
       <w>openeth</w>
       <w>openzeppelin</w>
       <w>ownable</w>
+      <w>penalizable</w>
+      <w>penalizations</w>
       <w>relaydata</w>
       <w>solhint</w>
       <w>typehash</w>
       <w>uniswap</w>
       <w>unstake</w>
+      <w>unstaked</w>
     </words>
   </dictionary>
 </component>
