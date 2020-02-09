@@ -1,12 +1,12 @@
-pragma solidity ^0.5.5;
+pragma solidity ^0.5.16;
 
-import '../utils/GsnUtils.sol';
-import '../interfaces/IRelayHub.sol';
+import "../utils/GsnUtils.sol";
+import "../interfaces/IRelayHub.sol";
 
 contract TestRecipientUtils {
 
     event Unused();
-    function testFunc(uint , string memory, uint , bytes memory ) public {
+    function testFunc(uint, string memory, uint, bytes memory) public {
         emit Unused();  //just to avoid warnings..
     }
 
@@ -25,7 +25,7 @@ contract TestRecipientUtils {
         return GsnUtils.getMethodSig(msgData);
     }
 
-    function getBytesParam(bytes memory msgData, uint index) public pure returns (bytes memory ret)  {
+    function getBytesParam(bytes memory msgData, uint index) public pure returns (bytes memory ret) {
         return GsnUtils.getBytesParam(msgData, index);
     }
     function getStringParam(bytes memory msgData, uint index) public pure returns (string memory) {

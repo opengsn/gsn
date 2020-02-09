@@ -1,4 +1,4 @@
-pragma solidity ^0.5.5;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "../utils/EIP712Sig.sol";
@@ -255,6 +255,6 @@ interface IRelayHub {
     // Penalize a relay that sent a transaction that didn't target RelayHub's registerRelay or relayCall.
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
 
-    function getNonce(address from) view external returns (uint256);
+    function getNonce(address from) external view returns (uint256);
 }
 

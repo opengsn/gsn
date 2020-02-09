@@ -1,4 +1,5 @@
-pragma solidity ^0.5.5;
+/* solhint-disable avoid-tx-origin */
+pragma solidity ^0.5.16;
 
 import "../utils/GsnUtils.sol";
 import "../interfaces/IRelayHub.sol";
@@ -18,7 +19,7 @@ contract TestRecipient is BaseRelayRecipient {
         emit Reverting("if you see this revert failed...");
     }
 
-    address payable sponsor;
+    address payable public sponsor;
 
     function setWithdrawDuringRelayedCall(address payable _sponsor) public {
         sponsor = _sponsor;
@@ -37,10 +38,10 @@ contract TestRecipient is BaseRelayRecipient {
     }
 
     function withdrawAllBalance() public {
-        uint256 balance = relayHub.balanceOf(sponsor);
         TestSponsorConfigurableMisbehavior(sponsor).withdrawAllBalance();
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function dontEmitMessage(string memory message) public {}
 
     function emitMessageNoParams() public {

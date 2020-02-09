@@ -1,4 +1,7 @@
-pragma solidity ^0.5.5;
+/* solhint-disable avoid-low-level-calls */
+/* solhint-disable no-inline-assembly */
+/* solhint-disable not-rely-on-time */
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
@@ -13,24 +16,24 @@ import "./interfaces/IGasSponsor.sol";
 
 contract RelayHub is IRelayHub {
 
-    string constant commitId = "$Id$";
+    string constant public COMMIT_ID = "$Id$";
 
     using ECDSA for bytes32;
 
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
-    uint256 constant private minimumStake = 1 ether;
+    uint256 constant private MINIMUM_STAKE = 1 ether;
 
     // Minimum unstake delay. A relay needs to wait for this time to elapse after deregistering to retrieve its stake.
-    uint256 constant private minimumUnstakeDelay = 1 weeks;
+    uint256 constant private MINIMUM_UNSTAKE_DELAY = 1 weeks;
     // Maximum unstake delay. Prevents relays from locking their funds into the RelayHub for too long.
-    uint256 constant private maximumUnstakeDelay = 12 weeks;
+    uint256 constant private MAXIMUM_UNSTAKE_DELAY = 12 weeks;
 
     // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
     // will not be able to immediatly start serving requests.
-    uint256 constant private minimumRelayBalance = 0.1 ether;
+    uint256 constant private MINIMUM_RELAY_BALANCE = 0.1 ether;
 
     // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
-    uint256 constant private maximumRecipientDeposit = 2 ether;
+    uint256 constant private MAXIMUM_RECIPIENT_DEPOSIT = 2 ether;
 
     /**
     * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
@@ -38,18 +41,18 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions before first gasleft() and after last gasleft()
-    uint256 constant private gasOverhead = 54756;
+    uint256 constant private GAS_OVERHEAD = 54756;
 
     // Gas cost of all relayCall() instructions after first gasleft() and before last gasleft()
-    uint256 constant private gasReserve = 100000;
+    uint256 constant private GAS_RESERVE = 100000;
 
     // Approximation of how much calling recipientCallsAtomic costs
-    uint256 constant private recipientCallsAtomicOverhead = 5000;
+    uint256 constant private RECIPIENT_CALLS_ATOMIC_OVERHEAD = 5000;
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
-    uint256 constant private acceptRelayedCallMaxGas = 50000;
-    uint256 constant private preRelayedCallMaxGas = 100000;
-    uint256 constant private postRelayedCallMaxGas = 100000;
+    uint256 constant private ACCEPT_RELAYED_CALL_MAX_GAS = 50000;
+    uint256 constant private PRE_RELAYED_CALL_MAX_GAS = 100000;
+    uint256 constant private POST_RELAYED_CALL_MAX_GAS = 100000;
 
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
@@ -74,7 +77,7 @@ contract RelayHub is IRelayHub {
 
     string public version = "1.0.0";
 
-    EIP712Sig eip712sig;
+    EIP712Sig private eip712sig;
 
     constructor () public {
         eip712sig = new EIP712Sig(address(this));
@@ -90,7 +93,7 @@ contract RelayHub is IRelayHub {
             require(relays[relay].owner == msg.sender, "not owner");
 
         } else {
-            revert('wrong state for stake');
+            revert("wrong state for stake");
         }
 
         // Increase the stake
@@ -99,12 +102,12 @@ contract RelayHub is IRelayHub {
         relays[relay].stake += addedStake;
 
         // The added stake may be e.g. zero when only the unstake delay is being updated
-        require(relays[relay].stake >= minimumStake, "stake lower than minimum");
+        require(relays[relay].stake >= MINIMUM_STAKE, "stake lower than minimum");
 
         // Increase the unstake delay
 
-        require(unstakeDelay >= minimumUnstakeDelay, "delay lower than minimum");
-        require(unstakeDelay <= maximumUnstakeDelay, "delay higher than maximum");
+        require(unstakeDelay >= MINIMUM_UNSTAKE_DELAY, "delay lower than minimum");
+        require(unstakeDelay <= MAXIMUM_UNSTAKE_DELAY, "delay higher than maximum");
 
         require(unstakeDelay >= relays[relay].unstakeDelay, "unstakeDelay cannot be decreased");
         relays[relay].unstakeDelay = unstakeDelay;
@@ -115,12 +118,13 @@ contract RelayHub is IRelayHub {
     function registerRelay(uint256 transactionFee, string memory url) public {
         address relay = msg.sender;
 
+        // solhint-disable-next-line avoid-tx-origin
         require(relay == tx.origin, "Contracts cannot register as relays");
         require(
             relays[relay].state == RelayState.Staked ||
             relays[relay].state == RelayState.Registered,
             "wrong state for stake");
-        require(relay.balance >= minimumRelayBalance, "balance lower than minimum");
+        require(relay.balance >= MINIMUM_RELAY_BALANCE, "balance lower than minimum");
 
         if (relays[relay].state != RelayState.Registered) {
             relays[relay].state = RelayState.Registered;
@@ -138,6 +142,8 @@ contract RelayHub is IRelayHub {
             "already removed");
 
         // Start the unstake counter
+        // TODO: I tend to agree with solhint here - lets use some number of blocks instead
+        // solhint-disable-next-line not-rely-on-time
         relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
         relays[relay].state = RelayState.Removed;
 
@@ -177,7 +183,7 @@ contract RelayHub is IRelayHub {
      */
     function depositFor(address target) public payable {
         uint256 amount = msg.value;
-        require(amount <= maximumRecipientDeposit, "deposit too big");
+        require(amount <= MAXIMUM_RECIPIENT_DEPOSIT, "deposit too big");
 
         balances[target] = SafeMath.add(balances[target], amount);
 
@@ -206,11 +212,13 @@ contract RelayHub is IRelayHub {
         emit Withdrawn(account, dest, amount);
     }
 
-    function getNonce(address from) view external returns (uint256) {
+    function getNonce(address from) external view returns (uint256) {
         return nonces[from];
     }
 
     function canUnstake(address relay) public view returns (bool) {
+        // TODO: I tend to agree with solhint here - lets use some number of blocks instead
+        // solhint-disable-next-line not-rely-on-time
         return relays[relay].unstakeTime > 0 && relays[relay].unstakeTime <= now;
         // Finished the unstaking delay period?
     }
@@ -239,7 +247,7 @@ contract RelayHub is IRelayHub {
         );
 
         (bool success, bytes memory returndata) =
-        relayRequest.relayData.gasSponsor.staticcall.gas(acceptRelayedCallMaxGas)(encodedTx);
+        relayRequest.relayData.gasSponsor.staticcall.gas(ACCEPT_RELAYED_CALL_MAX_GAS)(encodedTx);
 
         if (!success) {
             return (uint256(PreconditionCheck.AcceptRelayedCallReverted), "");
@@ -284,7 +292,7 @@ contract RelayHub is IRelayHub {
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
         require(
-            initialGas >= SafeMath.sub(requiredGas(relayRequest.callData.gasLimit), gasOverhead),
+            initialGas >= SafeMath.sub(requiredGas(relayRequest.callData.gasLimit), GAS_OVERHEAD),
             "Not enough gasleft()");
 
         address sponsor = relayRequest.relayData.gasSponsor;
@@ -395,7 +403,7 @@ contract RelayHub is IRelayHub {
 
         // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
         // acceptRelayedCall that this will not happen.
-        (bool success, bytes memory retData) = relayRequest.relayData.gasSponsor.call.gas(preRelayedCallMaxGas)(data);
+        (bool success, bytes memory retData) = relayRequest.relayData.gasSponsor.call.gas(PRE_RELAYED_CALL_MAX_GAS)(data);
 
         if (!success) {
             revertWithStatus(RelayCallStatus.PreRelayedFailed);
@@ -422,7 +430,7 @@ contract RelayHub is IRelayHub {
             recipientContext, atomicData.relayedCallSuccess, estimatedCharge, atomicData.preReturnValue
         );
 
-        (bool successPost,) = relayRequest.relayData.gasSponsor.call.gas(postRelayedCallMaxGas)(data);
+        (bool successPost,) = relayRequest.relayData.gasSponsor.call.gas(POST_RELAYED_CALL_MAX_GAS)(data);
 
         if (!successPost) {
             revertWithStatus(RelayCallStatus.PostRelayedFailed);
@@ -451,11 +459,11 @@ contract RelayHub is IRelayHub {
 
     function requiredGas(uint256 relayedCallStipend) public view returns (uint256) {
         return
-        gasOverhead +
-        gasReserve +
-        acceptRelayedCallMaxGas +
-        preRelayedCallMaxGas +
-        postRelayedCallMaxGas +
+        GAS_OVERHEAD +
+        GAS_RESERVE +
+        ACCEPT_RELAYED_CALL_MAX_GAS +
+        PRE_RELAYED_CALL_MAX_GAS +
+        POST_RELAYED_CALL_MAX_GAS +
         relayedCallStipend;
     }
 
@@ -477,9 +485,9 @@ contract RelayHub is IRelayHub {
 
     function getChargeableGas(uint256 gasUsed, bool postRelayedCallEstimation) private pure returns (uint256) {
         return
-        gasOverhead +
+        GAS_OVERHEAD +
         gasUsed +
-        (postRelayedCallEstimation ? (postRelayedCallMaxGas + recipientCallsAtomicOverhead) : 0);
+        (postRelayedCallEstimation ? (POST_RELAYED_CALL_MAX_GAS + RECIPIENT_CALLS_ATOMIC_OVERHEAD) : 0);
     }
 
     struct Transaction {

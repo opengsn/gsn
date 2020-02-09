@@ -3,7 +3,8 @@
 /node_modules/
 /server/src/github.com/ethereum/go-ethereum/
 /.vscode/settings.json
-/.idea/
+/.idea/*
+!/.idea/dictionaries/
 /server/pkg/darwin_amd64/
 /server/pkg/linux_amd64/
 /server/bin/

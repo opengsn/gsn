@@ -1,4 +1,4 @@
-pragma solidity ^0.5.5;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
@@ -35,7 +35,7 @@ contract EIP712Sig {
         RelayData relayData;
     }
 
-    bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
+    bytes32 public constant EIP712DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,address verifyingContract)"
     );
 
@@ -48,12 +48,13 @@ contract EIP712Sig {
     // solhint-disable-next-line max-line-length
     bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
 
+    // solhint-disable-next-line var-name-mixedcase
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
 
     constructor (address verifier) public {
         DOMAIN_SEPARATOR = hash(EIP712Domain({
-            name : 'GSN Relayed Transaction',
-            version : '1',
+            name : "GSN Relayed Transaction",
+            version : "1",
 //            chainId : getChainID(),
             verifyingContract : verifier
         }));

@@ -1,4 +1,4 @@
-pragma solidity ^0.5.5;
+pragma solidity ^0.5.16;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
@@ -27,13 +27,13 @@ library GsnUtils {
      * dynamic param
      * https://solidity.readthedocs.io/en/develop/abi-spec.html#use-of-dynamic-types
      */
-    function getBytesParam(bytes memory msgData, uint index) internal pure returns (bytes memory ret)  {
-        uint ofs = getParam(msgData,index)+4;
+    function getBytesParam(bytes memory msgData, uint index) internal pure returns (bytes memory ret) {
+        uint ofs = getParam(msgData, index) + 4;
         uint len = LibBytes.readUint256(msgData, ofs);
-        ret = LibBytes.slice(msgData, ofs+32, ofs+32+len);
+        ret = LibBytes.slice(msgData, ofs + 32, ofs + 32 + len);
     }
 
     function getStringParam(bytes memory msgData, uint index) internal pure returns (string memory) {
-        return string(getBytesParam(msgData,index));
+        return string(getBytesParam(msgData, index));
     }
 }
