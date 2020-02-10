@@ -1,13 +1,14 @@
 const { balance, BN, constants, ether, expectEvent, expectRevert, send, time } = require('@openzeppelin/test-helpers')
 const { ZERO_ADDRESS } = constants
 
-const RelayHub = artifacts.require('RelayHub')
+const TestRecipientUtils = artifacts.require('./TestRecipientUtils.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient')
 const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
+const RelayHub = artifacts.require('RelayHub')
 
 const { expect } = require('chai')
 
-contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
+contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
   let relayHub
   let recipient
   let gasSponsor
@@ -146,6 +147,29 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
             relayHub.stake(relay, initialUnstakeDelay, { from: other }),
             'not owner'
           )
+        })
+
+        describe('limitations on relay registration', async function () {
+          it('should forbid contracts-owned addresses to register as relays', async function () {
+            const testutils = await TestRecipientUtils.new()
+            await web3.eth.sendTransaction({
+              from: other,
+              to: testutils.address,
+              value: 0.6e18
+            })
+            await relayHub.stake(testutils.address, 3600 * 24 * 7, { value: 1e18 })
+            await expectRevert(
+              testutils.registerAsRelay(relayHub.address),
+              'Contracts cannot register as relays')
+          })
+
+          it('should forbid owners address to register as relay', async function () {
+            await expectRevert(
+              relayHub.stake(otherRelay, time.duration.weeks(1), {
+                from: otherRelay,
+                value: ether('1')
+              }), 'relay cannot stake for itself')
+          })
         })
 
         context('with registered relay', function () {
