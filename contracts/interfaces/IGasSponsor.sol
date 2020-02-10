@@ -1,4 +1,4 @@
-pragma solidity ^0.5.5;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "../utils/EIP712Sig.sol";
@@ -15,6 +15,15 @@ interface IGasSponsor {
      * @return the sponsor's deposit in the RelayHub.
      */
     function getRelayHubDeposit() external view returns (uint256);
+
+//    function getGasLimitsForSponsorCalls()
+//    external
+//    view
+//    returns (
+//        uint256 acceptRelayCallMaxGas,
+//        uint256 preRelayCallMaxGas,
+//        uint256 postRelayCallMaxGas
+//    );
 
     /*
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.

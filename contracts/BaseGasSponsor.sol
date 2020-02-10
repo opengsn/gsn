@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -35,12 +35,15 @@ contract BaseGasSponsor is IGasSponsor, Ownable {
 
     /// check current deposit on relay hub.
     // (wanted to name it "getRelayHubDeposit()", but we use the name from IRelayRecipient...
-    function getRelayHubDeposit() view public returns (uint)  {
+    function getRelayHubDeposit()
+    public
+    view
+    returns (uint) {
         return relayHub.balanceOf(address(this));
     }
 
     /// withdraw deposit from relayHub
-    function withdrawRelayHubDepositTo(uint amount, address payable target) onlyOwner public {
+    function withdrawRelayHubDepositTo(uint amount, address payable target) public onlyOwner {
         relayHub.withdraw(amount, target);
     }
 }

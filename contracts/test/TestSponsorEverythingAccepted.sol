@@ -15,14 +15,18 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
     )
     external
     view
-    returns (uint256, bytes memory){
+    returns (uint256, bytes memory) {
+        (relayRequest, approvalData, maxPossibleCharge);
         return (0, "");
     }
 
-    function preRelayedCall(bytes calldata context)
-    relayHubOnly
+    function preRelayedCall(
+        bytes calldata context
+    )
     external
-    returns (bytes32){
+    relayHubOnly
+    returns (bytes32) {
+        (context);
         emit SampleRecipientPreCall();
         return bytes32(uint(123456));
     }
@@ -30,9 +34,10 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
     function postRelayedCall(
         bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal
     )
-    relayHubOnly
     external
+    relayHubOnly
     {
+        (context);
         emit SampleRecipientPostCall(success, actualCharge, preRetVal);
     }
 
@@ -41,7 +46,7 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
     }
 
     function deposit() public payable {
-        require(address(relayHub) != address(0), 'relay hub address not set');
+        require(address(relayHub) != address(0), "relay hub address not set");
         relayHub.depositFor.value(msg.value)(address(this));
     }
 }

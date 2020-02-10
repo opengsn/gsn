@@ -41,7 +41,7 @@
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:fix": "yarn run lint:js:fix",
     "lint:js": "eslint --cache -f unix --ignore-path .gitignore .",
-    "lint:sol": "solhint \"contracts/**/*.sol\"",
+    "lint:sol": "solhint \"contracts/**/*.sol\" --max-warnings 0",
     "lint:js:fix": "eslint --ignore-path .gitignore . --fix",
     "gsn-dock-relay": "./scripts/gsn-dock-relay",
     "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache",
@@ -112,7 +112,6 @@
     "src/",
     "contracts/",
     "webtools/",
-    "samples/",
     "scripts/gsn*",
     "webtools.webpack.js"
   ],

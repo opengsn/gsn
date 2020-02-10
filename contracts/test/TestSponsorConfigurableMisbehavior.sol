@@ -39,8 +39,8 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     )
     external
     view
-    returns (uint256, bytes memory){
-        (relayRequest);
+    returns (uint256, bytes memory) {
+        (relayRequest, approvalData, maxPossibleCharge);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {
@@ -53,7 +53,8 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
         return (0, "");
     }
 
-    function preRelayedCall(bytes calldata context) relayHubOnly external returns (bytes32) {
+    function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
+        (context);
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
         }
@@ -68,9 +69,10 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
         bool success,
         uint actualCharge,
         bytes32 preRetVal)
-    relayHubOnly
     external
+    relayHubOnly
     {
+        (context, success, actualCharge, preRetVal);
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
@@ -79,9 +81,9 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
         }
     }
 
-    ///  leaving withdrawal public and unprotected
+    /// leaving withdrawal public and unprotected
     function withdrawAllBalance() public returns (uint256) {
-        require(address(relayHub) != address(0), 'relay hub address not set');
+        require(address(relayHub) != address(0), "relay hub address not set");
         uint256 balance = relayHub.balanceOf(address(this));
         relayHub.withdraw(balance, address(this));
         return balance;

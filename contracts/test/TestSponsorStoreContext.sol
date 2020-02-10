@@ -39,7 +39,7 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
     )
     external
     view
-    returns (uint256, bytes memory){
+    returns (uint256, bytes memory) {
         return (0, abi.encode(
             relayRequest.relayData.relayAddress,
             relayRequest.relayData.senderAccount,
@@ -52,7 +52,7 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
             maxPossibleCharge));
     }
 
-    function preRelayedCall(bytes calldata context) relayHubOnly external returns (bytes32) {
+    function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 transactionFee, uint256 gasPrice, uint256 gasLimit,
@@ -65,7 +65,11 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
 
     function postRelayedCall(
         bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal
-    ) relayHubOnly external {
+    )
+    external
+    relayHubOnly
+    {
+        (success, actualCharge, preRetVal);
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 transactionFee, uint256 gasPrice, uint256 gasLimit,
