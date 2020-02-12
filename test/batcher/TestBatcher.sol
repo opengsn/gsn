@@ -18,8 +18,9 @@ contract TestBatcher {
         emit BatchSent(msg.sender, count, CallBatcher.getErrorString(error));
     }
 
-    function sendBatchAndRevert(CallBatcher.Call[] memory calls) public {
-        CallBatcher.sendBatchAndRevert(calls);
+    function sendBatchAsTransaction(CallBatcher.Call[] memory calls) public {
+
+        CallBatcher.sendBatchAsTransaction(calls);
     }
 
     function somethingFailed() view public {

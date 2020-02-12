@@ -10,11 +10,11 @@ library CallBatcher {
         bytes callData;
     }
 
-    //amount of gas needed by sendBatch to "gracefully" exit
-    uint32 constant gasOverhead = 100;
+    function sendBatchAsTransaction(Call[] memory calls) internal {
+        (uint successfulCalls, bytes memory error) = sendBatch(calls, true);
+        require(successfulCalls == calls.length, getErrorString(error));
+    }
 
-    event outofgas(uint left, uint overhead);
-    event gasaftercall(uint gasleft, uint gasBeforecall);
     /**
      * send multiple calls.
      * @param calls - array of calls to make
@@ -24,24 +24,13 @@ library CallBatcher {
      * @return error - in case success at least one call failed, error contains
      *          the revert message of the first reverted call.
      *
-     * This method will never revert.
-     *
-     * ## Gas usage: ##
-     * Will attempt to execute as many calls as possible given the gaslimit.
+     * This method will never revert (unless it runs out of gas)
      */
     function sendBatch(Call[] memory calls, bool abortOnFirstRevert)
     internal returns (uint successfulCalls, bytes memory error) {
         for (uint i = 0; i < calls.length; i++) {
             Call memory c = calls[i];
-            uint gasLeft = gasleft();
-            bool success;
-            bytes memory ret;
-            if (gasLeft < gasOverhead) {
-                success = false;
-                ret = "out-of-gas";
-            } else {
-                (success, ret) = c.target.call.gas(gasLeft - gasOverhead)(c.callData);
-            }
+            (bool success, bytes memory ret) = c.target.call(c.callData);
             if (success) {
                 successfulCalls++;
             } else {
@@ -53,13 +42,6 @@ library CallBatcher {
                 }
             }
         }
-    }
-
-    //send the batch. revert on first failure.
-    // (since we perform a revert, there's no meaning for "continue after revert")
-    function sendBatchAndRevert(Call[] memory calls) internal {
-        (uint count, bytes memory error) = sendBatch(calls, true);
-        require(count == calls.length, getErrorString(error));
     }
 
     //utility method for parsing returned data from address.call()
@@ -81,6 +63,4 @@ library CallBatcher {
 
     bytes4 constant ErrorSig = bytes4(keccak256("Error(string)"));
     //    bytes4 constant ErrorSig = 0x08c379a0;
-
-
 }
