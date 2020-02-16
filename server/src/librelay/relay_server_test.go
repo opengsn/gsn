@@ -313,7 +313,7 @@ func TestRegisterRelay(t *testing.T) {
 	}
 	client.Commit()
 	test.ErrFail(relay.awaitTransactionMined(tx), t)
-	count, err := relay.BlockCountSinceRegistration()
+	count, err := relay.BlockCountSinceLastEvent()
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
@@ -413,6 +413,19 @@ func TestCreateRelayTransaction(t *testing.T) {
 	test.ErrFailWithDesc(err, t, "Creating relay transaction")
 	client.Commit()
 	assertTransactionRelayed(t, signedTx.Hash())
+
+}
+
+func TestBlockCountShouldCheckAllEvents(t *testing.T) {
+    //make sure that not only RelayAdded, but also TransactionRelayed counts for
+    // "last relay message"
+    count, err := relay.BlockCountSinceLastEvent()
+    if err != nil {
+        fmt.Println("ERROR", err)
+    }
+    if count != 1  {
+        t.Error("expected TransactionRelayed to be counted in BlockCountSinceLastEvent",  count)
+    }
 }
 
 func TestResendRelayTransaction(t *testing.T) {

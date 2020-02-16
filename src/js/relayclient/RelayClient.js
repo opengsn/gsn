@@ -22,7 +22,11 @@ relayHubAbi.push(versionAbi)
 
 const paymasterAbi = require('./interfaces/IPaymaster')
 
-const relayLookupLimitBlocks = 6000
+const SecondsPerBlock = 12
+
+// default history lookup for relays
+// assuming 12 seconds per block
+const relayLookupLimitBlocks = 3600 * 24 / SecondsPerBlock * 30
 abiDecoder.addABI(relayHubAbi)
 
 // default timeout (in ms) for http requests
@@ -45,11 +49,14 @@ class RelayClient {
    * create a RelayClient library object, to force contracts to go through a relay.
    * @param web3  - the web3 instance to use.
    * @param {object} config options
+   *    preferredRelays - if set, try to use these relays first. only if none of them return
+   *      a valid address (by calling its "/getaddr"), use the use the lookup mechanism.
    *    pctRelayFee
    *    validateCanRelay - client calls canRelay before calling the relay the first time (defaults to true)
    *lookup for relay
    *    minStake - ignore relays with stake below this (wei) value.
    *    minDelay - ignore relays with delay lower this (sec) value
+   *    relayLookupLimitBlocks - how many blocks back to look for relays. default = ~30 days
    *
    *    calculateRelayScore - function to give a "score" to a relay, based on its properties:
    *          transactionFee, stake, unstakeDelay, relayUrl.
