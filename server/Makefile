@@ -27,7 +27,7 @@ cp_go_mod:
 $(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(GEN_FILE_TYPES) $(GEN_FILE_SPONSOR) cp_go_mod $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
 	@echo "Using GOPATH=$(GOPATH)"
 	mkdir -p $(buildpath)/bin
-	cd ./src/relay; go build -o $(server_exe)
+	cd ./src/relay; go get; go build -o $(server_exe)
 	strip $(server_exe)
 
 go-get: $(GEN_FILE) $(ETHFILE)
