@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"librelay/test"
+	"openeth.dev/librelay/test"
 
 	"code.cloudfoundry.org/clock/fakeclock"
 
