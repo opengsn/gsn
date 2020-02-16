@@ -14,5 +14,6 @@ onexit() {
 cd .. && \
   ./scripts/run-ganache ${TESTPORT} > ganache.pid
 
-go test -v -count=1 librelay
-go test -v -count=1 librelay/txstore
+cd ./server/src/librelay
+go test -v -count=1 openeth.dev/librelay
+go test -v -count=1 openeth.dev/librelay/txstore
