@@ -67,6 +67,8 @@ type RelayTransactionResponse struct {
 }
 
 func (response *RelayTransactionResponse) MarshalJSON() ([]byte, error) {
+	_ = testcontracts.TestSponsor{} // TODO: do not keep, testing build
+
 	return json.Marshal(struct {
 		SignedTx   *types.Transaction
 		RawTxBytes []byte
