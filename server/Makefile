@@ -3,14 +3,14 @@ pwd=$(shell pwd)
 buildpath=$(pwd)/../build/server
 server_exe=$(buildpath)/bin/RelayHttpServer
 platforms=linux/amd64 windows/amd64 darwin/amd64 linux/386 windows/386
-export GOPATH=$(pwd):$(buildpath)
+export GOPATH=$(buildpath)
 
 server: $(server_exe)
 
 ETHDIR=./src/github.com/ethereum/go-ethereum
 ETHFILE=${ETHDIR}/Makefile
 ETHREPO="https://github.com/ethereum/go-ethereum.git"
-ETHVERSION=v1.8.21
+ETHVERSION=v1.9.10
 
 GEN_FILE=$(buildpath)/src/gen/librelay/relay_hub_sol.go
 GEN_FILE_REC=$(buildpath)/src/gen/testcontracts/test_rec_sol.go
@@ -20,10 +20,14 @@ RELAYHUB_ABI=$(buildpath)/../contracts/IRelayHub.json
 TRUFFLE_OUT_REC=$(buildpath)/../contracts/TestRecipient.json
 TRUFFLE_OUT_SPONSOR=$(buildpath)/../contracts/TestSponsorEverythingAccepted.json
 
-$(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(GEN_FILE_SPONSOR) $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
+cp_go_mod:
+	cp gen.go.mod $(buildpath)/src/gen/librelay/go.mod
+	cp testcontracts.go.mod $(buildpath)/src/gen/testcontracts/go.mod
+
+$(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(GEN_FILE_TYPES) $(GEN_FILE_SPONSOR) cp_go_mod $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
 	@echo "Using GOPATH=$(GOPATH)"
 	mkdir -p $(buildpath)/bin
-	go build -o $(server_exe) relay
+	cd ./src/relay; go get; go build -o $(server_exe)
 	strip $(server_exe)
 
 go-get: $(GEN_FILE) $(ETHFILE)

@@ -6,8 +6,9 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"gen/librelay"
-	"librelay/txstore"
+	"openeth.dev/gen/librelay"
+	"openeth.dev/gen/testcontracts"
+	"openeth.dev/librelay/txstore"
 	"log"
 	"math/big"
 	"strings"
@@ -66,6 +67,8 @@ type RelayTransactionResponse struct {
 }
 
 func (response *RelayTransactionResponse) MarshalJSON() ([]byte, error) {
+	_ = testcontracts.TestSponsor{} // TODO: do not keep, testing build
+
 	return json.Marshal(struct {
 		SignedTx   *types.Transaction
 		RawTxBytes []byte
