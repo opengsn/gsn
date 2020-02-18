@@ -20,13 +20,12 @@ RELAYHUB_ABI=$(buildpath)/../contracts/IRelayHub.json
 TRUFFLE_OUT_REC=$(buildpath)/../contracts/TestRecipient.json
 TRUFFLE_OUT_SPONSOR=$(buildpath)/../contracts/TestSponsorEverythingAccepted.json
 
-cp_go_mod:
-	cp gen.go.mod $(buildpath)/src/gen/librelay/go.mod
-	cp testcontracts.go.mod $(buildpath)/src/gen/testcontracts/go.mod
 
-$(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(GEN_FILE_TYPES) $(GEN_FILE_SPONSOR) cp_go_mod $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
+$(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(GEN_FILE_TYPES) $(GEN_FILE_SPONSOR) $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
 	@echo "Using GOPATH=$(GOPATH)"
 	mkdir -p $(buildpath)/bin
+	cp gen.go.mod $(buildpath)/src/gen/librelay/go.mod
+	cp testcontracts.go.mod $(buildpath)/src/gen/testcontracts/go.mod
 	cd ./src/relay; go get; go build -o $(server_exe)
 	strip $(server_exe)
 
