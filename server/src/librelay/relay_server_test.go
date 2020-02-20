@@ -198,8 +198,9 @@ func TestMain(m *testing.M) {
 		log.Println("RelayHubBin", RelayHubBin)
 		log.Fatalln("Invalid hex: RelayHubBin", err)
 	}
-	auth.GasLimit = 8000000
-	rhaddr, _, boundHub, err = bind.DeployContract(auth, parsed, common.FromHex(RelayHubBin), client)
+	auth.GasLimit = 13000000
+	x := big.NewInt(68)
+	rhaddr, _, boundHub, err = bind.DeployContract(auth, parsed, common.FromHex(RelayHubBin), client, x)
 	if err != nil {
 		log.Fatalf("could not deploy contract: %v", err)
 	}

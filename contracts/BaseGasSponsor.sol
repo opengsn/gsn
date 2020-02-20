@@ -9,14 +9,32 @@ import "./interfaces/IRelayHub.sol";
 /**
  * Abstract base class to be inherited by a concrete Gas Sponsor
  * A subclass must implement:
- *  - acceptRelayCall
+ *  - acceptRelayedCall
  *  - preRelayedCall
  *  - postRelayedCall
  */
 contract BaseGasSponsor is IGasSponsor, Ownable {
 
+    // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
+    uint256 constant private ACCEPT_RELAYED_CALL_MAX_GAS = 50000;
+    uint256 constant private PRE_RELAYED_CALL_MAX_GAS = 100000;
+    uint256 constant private POST_RELAYED_CALL_MAX_GAS = 110000;
+
     /// The IRelayHub singleton which is allowed to call us
     IRelayHub internal relayHub;
+
+    function getGasLimitsForSponsorCalls()
+    external
+    view
+    returns (
+        GSNTypes.SponsorLimits memory limits
+    ){
+        return GSNTypes.SponsorLimits(
+            ACCEPT_RELAYED_CALL_MAX_GAS,
+            PRE_RELAYED_CALL_MAX_GAS,
+            POST_RELAYED_CALL_MAX_GAS
+        );
+    }
 
     function getHubAddr() public view returns (address) {
         return address(relayHub);

@@ -9,7 +9,7 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
 
     function acceptRelayedCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )
@@ -32,13 +32,18 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
     }
 
     function postRelayedCall(
-        bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal
+        bytes calldata context,
+        bool success,
+        bytes32 preRetVal,
+        uint256 gasUseWithoutPost,
+        uint256 txFee,
+        uint256 gasPrice
     )
     external
     relayHubOnly
     {
-        (context);
-        emit SampleRecipientPostCall(success, actualCharge, preRetVal);
+        (context, gasUseWithoutPost, txFee, gasPrice);
+        emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
     }
 
     function setHub(IRelayHub _relayHub) public {

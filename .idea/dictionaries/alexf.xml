@@ -3,10 +3,13 @@
     <words>
       <w>blockchain</w>
       <w>calldata</w>
+      <w>calldatagascost</w>
       <w>dapp</w>
       <w>dapps</w>
       <w>ethereum</w>
       <w>gasleft</w>
+      <w>gtransaction</w>
+      <w>gtxdatanonzero</w>
       <w>ierc</w>
       <w>keccak</w>
       <w>mixedcase</w>

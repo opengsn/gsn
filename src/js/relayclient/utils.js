@@ -105,6 +105,34 @@ module.exports = {
     }
   },
 
+  /**
+   * TODO: make it work for both truffle and web3 contract objects!!!
+   * @param gasSponsor
+   * @param hub
+   * @param relayCallGasLimit
+   * @param calldataSize
+   * @param gtxdatanonzero
+   * @returns {Promise}
+   */
+  getTransactionGasData: async function ({
+    gasSponsor, _gasLimits, _overhead, relayHub, relayCallGasLimit, calldataSize, gtxdatanonzero
+  }) {
+    const gasLimits = _gasLimits || await gasSponsor.getGasLimitsForSponsorCalls()
+    const overhead = _overhead || (await relayHub.getHubOverhead()).toNumber()
+    const maxPossibleGas =
+      21000 +
+      overhead +
+      calldataSize * gtxdatanonzero +
+      relayCallGasLimit +
+      parseInt(gasLimits.acceptRelayedCallGasLimit) +
+      parseInt(gasLimits.preRelayCallGasLimit) +
+      parseInt(gasLimits.postRelayCallGasLimit)
+    return {
+      ...gasLimits,
+      maxPossibleGas
+    }
+  },
+
   getTransactionSignature: async function (web3, account, hash) {
     let sig_
     try {

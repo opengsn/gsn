@@ -12,7 +12,7 @@ contract TestSponsorOwnerSignature is TestSponsorEverythingAccepted {
      * This demonstrates how dapps can provide an off-chain signatures to relayed transactions.
      */
     function acceptRelayedCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )

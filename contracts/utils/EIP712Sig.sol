@@ -2,6 +2,7 @@ pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+import "./GSNTypes.sol";
 
 // https://github.com/ethereum/EIPs/blob/master/assets/eip-712/Example.sol
 contract EIP712Sig {
@@ -13,26 +14,6 @@ contract EIP712Sig {
         string version;
 //        uint256 chainId;
         address verifyingContract;
-    }
-
-    struct CallData {
-        address target;
-        uint256 gasLimit;
-        uint256 gasPrice;
-        bytes encodedFunction;
-    }
-
-    struct RelayData {
-        address senderAccount;
-        uint256 senderNonce;
-        address relayAddress;
-        uint256 pctRelayFee;
-        address gasSponsor;
-    }
-
-    struct RelayRequest {
-        CallData callData;
-        RelayData relayData;
     }
 
     bytes32 public constant EIP712DOMAIN_TYPEHASH = keccak256(
@@ -70,7 +51,7 @@ contract EIP712Sig {
             ));
     }
 
-    function hash(RelayRequest memory req) internal pure returns (bytes32) {
+    function hash(GSNTypes.RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
                     hash(req.callData),
@@ -78,7 +59,7 @@ contract EIP712Sig {
             ));
     }
 
-    function hash(CallData memory req) internal pure returns (bytes32) {
+    function hash(GSNTypes.CallData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 CALLDATA_TYPEHASH,
                 req.target,
@@ -88,7 +69,7 @@ contract EIP712Sig {
             ));
     }
 
-    function hash(RelayData memory req) internal pure returns (bytes32) {
+    function hash(GSNTypes.RelayData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
                 req.senderAccount,
@@ -99,7 +80,7 @@ contract EIP712Sig {
             ));
     }
 
-    function verify(RelayRequest memory req, bytes memory signature) public view returns (bool) {
+    function verify(GSNTypes.RelayRequest memory req, bytes memory signature) public view returns (bool) {
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hash(req)

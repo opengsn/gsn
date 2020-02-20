@@ -186,7 +186,9 @@ interface IRelayHub {
     // Returns a PreconditionCheck value (OK when the transaction can be relayed), or a recipient-specific error code if
     // it returns one in acceptRelayedCall.
     function canRelay(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
+        uint256 maxPossibleCharge,
+        uint256 acceptRelayedCallGasLimit,
         bytes calldata signature,
         bytes calldata approvalData
     )
@@ -220,23 +222,10 @@ interface IRelayHub {
     //
     // Emits a TransactionRelayed event.
     function relayCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
     ) external;
-
-    // Returns how much gas should be forwarded to a call to relayCall, in order to relay a transaction that will spend
-    // up to relayedCallStipend gas.
-    function requiredGas(uint256 relayedCallStipend) external view returns (uint256);
-
-    // Returns the maximum recipient charge, given the amount of gas forwarded, gas price and relay fee.
-    function maxPossibleCharge(
-        uint256 relayedCallStipend,
-        uint256 gasPrice,
-        uint256 transactionFee)
-    external
-    view
-    returns (uint256);
 
     // Relay penalization. Any account can penalize relays, removing them from the system immediately, and rewarding the
     // reporter with half of the relay's stake. The other half is burned so that, even if the relay penalizes itself, it
@@ -256,5 +245,9 @@ interface IRelayHub {
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
 
     function getNonce(address from) external view returns (uint256);
+
+    function getHubOverhead() external view returns (uint256);
+
+    function calculateCharge(uint256 gas, uint256 gasPrice, uint256 fee) external view returns (uint256);
 }
 

@@ -27,6 +27,8 @@ abiDecoder.addABI(relayHubAbi)
 // default timeout (in ms) for http requests
 const DEFAULT_HTTP_TIMEOUT = 10000
 
+const GTXDATANONZERO = 68
+
 // default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
 const GASPRICE_PERCENT = 20
 
@@ -429,9 +431,31 @@ class RelayClient {
       if (options.validateCanRelay && firstTry) {
         firstTry = false
         let res
+        const gasSponsorContract = this.createGasSponsor(gasSponsor)
+        const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
+        const calldataSize =
+          signedData.message.callData.encodedFunction.length +
+          signature.length +
+          approvalData.length +
+          relayCallExtraBytes
+
+        const _gasLimits = await gasSponsorContract.methods.getGasLimitsForSponsorCalls().call()
+        const _overhead = parseInt(await relayHub.methods.getHubOverhead().call())
+        const gasData = await utils.getTransactionGasData({
+          _gasLimits,
+          _overhead,
+          relayHub,
+          calldataSize,
+          gtxdatanonzero: options.gtxdatanonzero || GTXDATANONZERO,
+          relayCallGasLimit: gasLimit.toString(),
+          gasPrice: gasPrice.toString(),
+          fee: txfee
+        })
         try {
           res = await relayHub.methods.canRelay(
             signedData.message,
+            gasData.maxPossibleGas,
+            gasData.acceptRelayedCallGasLimit,
             signature,
             approvalData
           ).call()

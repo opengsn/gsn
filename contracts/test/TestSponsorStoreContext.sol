@@ -14,7 +14,7 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
         uint256 gasLimit,
         uint256 nonce,
         bytes approvalData,
-        uint256 maxPossibleCharge
+        uint256 maxPossibleGas
     );
 
     event SampleRecipientPostCallWithValues(
@@ -26,16 +26,16 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
         uint256 gasLimit,
         uint256 nonce,
         bytes approvalData,
-        uint256 maxPossibleCharge
+        uint256 maxPossibleGas
     );
 
     /**
      * This demonstrates how acceptRelayedCall can return 'context' data for reuse in preRelayedCall/postRelayedCall.
      */
     function acceptRelayedCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
-        uint256 maxPossibleCharge
+        uint256 maxPossibleGas
     )
     external
     view
@@ -49,33 +49,39 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
             relayRequest.callData.gasLimit,
             relayRequest.relayData.senderNonce,
             approvalData,
-            maxPossibleCharge));
+            maxPossibleGas));
     }
 
     function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 transactionFee, uint256 gasPrice, uint256 gasLimit,
-        uint256 nonce, bytes memory approvalData, uint256 maxPossibleCharge) =
+        uint256 nonce, bytes memory approvalData, uint256 maxPossibleGas) =
             abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, bytes, uint256));
         emit SampleRecipientPreCallWithValues(
-            relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleCharge);
+            relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleGas);
         return 0;
     }
 
     function postRelayedCall(
-        bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal
+        bytes calldata context,
+        bool success,
+        bytes32 preRetVal,
+        uint256 gasUseWithoutPost,
+        uint256 txFee,
+        uint256 gasPrice
     )
     external
     relayHubOnly
     {
-        (success, actualCharge, preRetVal);
+        (success, preRetVal);
         (
         address relay, address from, bytes memory encodedFunction,
-        uint256 transactionFee, uint256 gasPrice, uint256 gasLimit,
-        uint256 nonce, bytes memory approvalData, uint256 maxPossibleCharge) =
+        uint256 transactionFee, uint256 _gasPrice, uint256 gasLimit,
+        uint256 nonce, bytes memory approvalData, uint256 maxPossibleGas) =
             abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, bytes, uint256));
         emit SampleRecipientPostCallWithValues(
-            relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleCharge);
+            relay, from, encodedFunction, transactionFee, _gasPrice,
+            gasLimit, nonce, approvalData, maxPossibleGas);
     }
 }
