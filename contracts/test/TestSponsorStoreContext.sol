@@ -43,10 +43,10 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
         return (0, abi.encode(
             relayRequest.relayData.relayAddress,
             relayRequest.relayData.senderAccount,
-            relayRequest.callData.encodedFunction,
-            relayRequest.relayData.pctRelayFee,
-            relayRequest.callData.gasPrice,
-            relayRequest.callData.gasLimit,
+            relayRequest.encodedFunction,
+            relayRequest.gasData.pctRelayFee,
+            relayRequest.gasData.gasPrice,
+            relayRequest.gasData.gasLimit,
             relayRequest.relayData.senderNonce,
             approvalData,
             maxPossibleGas));
@@ -74,7 +74,7 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
     external
     relayHubOnly
     {
-        (success, preRetVal);
+        (context, success, preRetVal, gasUseWithoutPost, txFee, gasPrice);
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 transactionFee, uint256 _gasPrice, uint256 gasLimit,

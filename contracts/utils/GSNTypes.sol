@@ -2,23 +2,24 @@ pragma solidity ^0.5.16;
 
 library GSNTypes {
 
-    struct CallData {
-        address target;
+    struct GasData {
         uint256 gasLimit;
         uint256 gasPrice;
-        bytes encodedFunction;
+        uint256 pctRelayFee;
+        uint256 baseRelayFee;
     }
 
     struct RelayData {
         address senderAccount;
         uint256 senderNonce;
         address relayAddress;
-        uint256 pctRelayFee;
         address gasSponsor;
     }
 
     struct RelayRequest {
-        CallData callData;
+        address target;
+        bytes encodedFunction;
+        GasData gasData;
         RelayData relayData;
     }
 

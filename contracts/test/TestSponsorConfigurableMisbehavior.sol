@@ -75,7 +75,7 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     external
     relayHubOnly
     {
-        (context, success, preRetVal);
+        (context, success, preRetVal, gasUseWithoutPost, txFee, gasPrice);
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }

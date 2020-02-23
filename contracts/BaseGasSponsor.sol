@@ -28,7 +28,7 @@ contract BaseGasSponsor is IGasSponsor, Ownable {
     view
     returns (
         GSNTypes.SponsorLimits memory limits
-    ){
+    ) {
         return GSNTypes.SponsorLimits(
             ACCEPT_RELAYED_CALL_MAX_GAS,
             PRE_RELAYED_CALL_MAX_GAS,

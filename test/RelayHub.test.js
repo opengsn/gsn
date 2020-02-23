@@ -161,7 +161,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
 
     context('with unknown address trying to relay', async function () {
       it('should not accept a relay call', async function () {
-        const relayRequest = getRelayRequest(sender, recipient.address, '0x', fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor.address)
+        const relayRequest = getRelayRequest(sender, recipient.address, '0xdeadbeef', fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor.address)
         await expectRevert(
           relayHub.relayCall(relayRequest, '0xdeadbeef', '0x', {
             from: relay,

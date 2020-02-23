@@ -40,9 +40,10 @@ type RelayTransactionRequest struct {
 	GasSponsor      common.Address
 	GasPrice        big.Int
 	GasLimit        big.Int
-	SenderNonce  big.Int
+	SenderNonce     big.Int
 	RelayMaxNonce   big.Int
 	RelayFee        big.Int
+	BaseRelayFee    big.Int
 	RelayHubAddress common.Address
 }
 
@@ -511,6 +512,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 		gasLimits.AcceptRelayedCallGasLimit,
 		request.EncodedFunction,
 		request.RelayFee,
+		*big.NewInt(0),
 		request.GasPrice,
 		request.GasLimit,
 		request.SenderNonce,
@@ -566,17 +568,18 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 			auth.GasLimit = maxPossibleGas.Uint64()
 			auth.GasPrice = &request.GasPrice
 			relayRequest := librelay.GSNTypesRelayRequest{
-				CallData:  librelay.GSNTypesCallData{
 					Target:          request.To,
+					EncodedFunction: common.Hex2Bytes(request.EncodedFunction[2:]),
+				GasData:  librelay.GSNTypesGasData{
 					GasLimit:        &request.GasLimit,
 					GasPrice:        &request.GasPrice,
-					EncodedFunction: common.Hex2Bytes(request.EncodedFunction[2:]),
+					PctRelayFee:   &request.RelayFee,
+					BaseRelayFee:  &request.BaseRelayFee,
 				},
 				RelayData: librelay.GSNTypesRelayData{
 					SenderAccount: request.From,
 					SenderNonce:   &request.SenderNonce,
 					RelayAddress:  relay.Address(),
-					PctRelayFee:   &request.RelayFee,
 					GasSponsor:    request.GasSponsor,
 				},
 			}
@@ -617,6 +620,7 @@ func (relay *RelayServer) canRelay(from common.Address,
 	acceptRelayedCallMaxGas *big.Int,
 	encodedFunction string,
 	relayFee big.Int,
+	baseRelayFee big.Int,
 	gasPrice big.Int,
 	gasLimit big.Int,
 	senderNonce big.Int,
@@ -636,17 +640,18 @@ func (relay *RelayServer) canRelay(from common.Address,
 	}
 
 	relayRequest := librelay.GSNTypesRelayRequest{
-		CallData:  librelay.GSNTypesCallData{
-			Target:          to,
+		Target:          to,
+		EncodedFunction: common.Hex2Bytes(encodedFunction[2:]),
+		GasData: librelay.GSNTypesGasData{
 			GasLimit:        &gasLimit,
 			GasPrice:        &gasPrice,
-			EncodedFunction: common.Hex2Bytes(encodedFunction[2:]),
+			PctRelayFee:     &relayFee,
+			BaseRelayFee:    &baseRelayFee,
 		},
 		RelayData: librelay.GSNTypesRelayData{
 			SenderAccount: from,
 			SenderNonce:   &senderNonce,
 			RelayAddress:  relayAddress,
-			PctRelayFee:   &relayFee,
 			GasSponsor:    gasSponsor,
 		},
 	}

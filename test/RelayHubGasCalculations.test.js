@@ -127,7 +127,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
           maxPossibleGas: gasData.maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestSponsorVariableGasLimits, 'SampleRecipientPostCallWithValues', {
-          gasleft: (gasData.postRelayCallGasLimit - magicNumbers.post).toString(),
+          gasleft: (gasData.postRelayCallGasLimit - magicNumbers.post).toString()
         })
       })
 
@@ -162,8 +162,8 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
         gasPrice: gasPrice
       })
 
-      assert.equal('CanRelayFailed', res.logs[1].event)
-      assert.equal(AcceptRelayedCallReverted, res.logs[1].args.reason)
+      assert.equal('CanRelayFailed', res.logs[0].event)
+      assert.equal(AcceptRelayedCallReverted, res.logs[0].args.reason)
     })
   })
 

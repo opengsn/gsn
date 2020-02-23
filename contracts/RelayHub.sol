@@ -1,6 +1,7 @@
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */
 /* solhint-disable not-rely-on-time */
+/* solhint-disable bracket-align */
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
@@ -42,9 +43,9 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 20719;
+    uint256 constant private GAS_OVERHEAD = 17730;
 
-    function getHubOverhead() external view returns (uint256){
+    function getHubOverhead() external view returns (uint256) {
         return GAS_OVERHEAD;
     }
     // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
@@ -274,17 +275,42 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    struct RelayCallVariables {
-        uint256 initialGas;
-        uint256 requiredGas;
-        GSNTypes.SponsorLimits sponsorGasLimits;
-        GSNTypes.RelayRequest memoryRelayRequest;
-        uint256 maxPossibleGas;
-        uint256 maxPossibleCharge;
-        uint256 charge;
+    function getValidGasLimits(GSNTypes.GasData memory gasData, address gasSponsor)
+    private
+    view
+    returns (uint256, GSNTypes.SponsorLimits memory)
+    {
+        GSNTypes.SponsorLimits memory sponsorGasLimits =
+        IGasSponsor(gasSponsor).getGasLimitsForSponsorCalls();
+        uint256 requiredGas =
+            GAS_OVERHEAD +
+            sponsorGasLimits.acceptRelayedCallGasLimit +
+            sponsorGasLimits.preRelayCallGasLimit +
+            sponsorGasLimits.postRelayCallGasLimit +
+            gasData.gasLimit;
+
+        // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
+        // run out of gas later in this function.
+        require(
+            gasleft() >= GAS_RESERVE + requiredGas,
+            "Not enough gas left for recipientCallsAtomic to complete");
+
+        // The maximum possible charge is the cost of transaction assuming all bytes of calldata are non-zero and
+        // all sponsor and recipient calls consume entire available gas limit
+        uint256 maxPossibleGas = calldatagascost() + requiredGas;
+        uint256 maxPossibleCharge = calculateCharge(
+            maxPossibleGas,
+            gasData.gasPrice,
+            gasData.pctRelayFee
+        );
+
+        // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
+        // for the maximum possible charge.
+        require(maxPossibleCharge <= balances[gasSponsor],
+            "Sponsor balance too low");
+        return (maxPossibleGas, sponsorGasLimits);
     }
 
-    event KV(string key, uint256 value);
     /**
      * @notice Relay a transaction.
      *
@@ -298,10 +324,8 @@ contract RelayHub is IRelayHub {
     )
     external
     {
-        emit KV("initial gas left", gasleft());
-        RelayCallVariables memory vars;
-        vars.initialGas = gasleft();
-
+        uint256 initialGas = gasleft();
+        bytes4 functionSelector = LibBytes.readBytes4(relayRequest.encodedFunction, 0);
         // Initial soundness checks - the relay must make sure these pass, or it will pay for a reverted transaction.
 
         // The relay must be registered
@@ -310,62 +334,36 @@ contract RelayHub is IRelayHub {
         // A relay may use a higher gas price than the one requested by the signer (to e.g. get the transaction in a
         // block faster), but it must not be lower. The recipient will be charged for the requested gas price, not the
         // one used in the transaction.
-        require(relayRequest.callData.gasPrice <= tx.gasprice, "Invalid gas price");
-
-        vars.sponsorGasLimits = IGasSponsor(relayRequest.relayData.gasSponsor).getGasLimitsForSponsorCalls();
-        vars.requiredGas =
-            GAS_OVERHEAD +
-            vars.sponsorGasLimits.acceptRelayedCallGasLimit +
-            vars.sponsorGasLimits.preRelayCallGasLimit +
-            vars.sponsorGasLimits.postRelayCallGasLimit +
-            relayRequest.callData.gasLimit;
-        // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
-        // run out of gas later in this function.
-        require(
-            vars.initialGas >= GAS_RESERVE + vars.requiredGas,
-            "Not enough gas left for recipientCallsAtomic to complete");
-
-        // The maximum possible charge is the cost of transaction assuming all bytes of calldata are non-zero and
-        // all sponsor and recipient calls consume entire available gas limit
-        vars.maxPossibleGas = calldatagascost() + vars.requiredGas;
-        vars.maxPossibleCharge = calculateCharge(
-            vars.maxPossibleGas,
-            relayRequest.callData.gasPrice,
-            relayRequest.relayData.pctRelayFee
-        );
-
-        // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
-        // for the maximum possible charge.
-        require(vars.maxPossibleCharge <= balances[relayRequest.relayData.gasSponsor],
-            "Sponsor balance too low");
-
-        bytes4 functionSelector = LibBytes.readBytes4(relayRequest.callData.encodedFunction, 0);
-
+        require(relayRequest.gasData.gasPrice <= tx.gasprice, "Invalid gas price");
         bytes memory recipientContext;
-        // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed),
-        // and that the sponsor will agree to be charged for it.
-        uint256 preconditionCheck;
-        vars.memoryRelayRequest = GSNTypes.RelayRequest(
-            GSNTypes.CallData(
-                relayRequest.callData.target,
-                relayRequest.callData.gasLimit,
-                relayRequest.callData.gasPrice,
-                relayRequest.callData.encodedFunction
-            ),
-            relayRequest.relayData
-        );
-        (preconditionCheck, recipientContext) =
-        canRelay(vars.memoryRelayRequest, vars.maxPossibleGas, vars.sponsorGasLimits.acceptRelayedCallGasLimit, signature, approvalData);
+        GSNTypes.SponsorLimits memory sponsorGasLimits;
+        {
+            uint256 maxPossibleGas;
+            (maxPossibleGas, sponsorGasLimits) = getValidGasLimits(relayRequest.gasData, relayRequest.relayData.gasSponsor);
 
-        if (preconditionCheck != uint256(PreconditionCheck.OK)) {
-            emit CanRelayFailed(
-                msg.sender,
-                relayRequest.relayData.senderAccount,
-                relayRequest.callData.target,
-                relayRequest.relayData.gasSponsor,
-                functionSelector,
-                preconditionCheck);
-            return;
+            // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed),
+            // and that the sponsor will agree to be charged for it.
+            uint256 preconditionCheck;
+            (preconditionCheck, recipientContext) =
+            // TODO: this new RelayRequest is needed because solc doesn't implement calldata to memory conversion yet
+            canRelay(
+                GSNTypes.RelayRequest(
+                    relayRequest.target,
+                    relayRequest.encodedFunction,
+                    relayRequest.gasData,
+                    relayRequest.relayData),
+                maxPossibleGas, sponsorGasLimits.acceptRelayedCallGasLimit, signature, approvalData);
+
+            if (preconditionCheck != uint256(PreconditionCheck.OK)) {
+                emit CanRelayFailed(
+                    msg.sender,
+                    relayRequest.relayData.senderAccount,
+                    relayRequest.target,
+                    relayRequest.relayData.gasSponsor,
+                    functionSelector,
+                    preconditionCheck);
+                return;
+            }
         }
 
         // From this point on, this transaction will not revert nor run out of gas, and the recipient will be charged
@@ -378,34 +376,36 @@ contract RelayHub is IRelayHub {
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
         RelayCallStatus status;
-        bytes memory data =
-        abi.encodeWithSelector(this.recipientCallsAtomic.selector, relayRequest, vars.sponsorGasLimits, vars.initialGas, calldatagascost(), recipientContext);
-        (, bytes memory relayCallStatus) = address(this).call(data);
-        status = abi.decode(relayCallStatus, (RelayCallStatus));
+        {
+            bytes memory data =
+            abi.encodeWithSelector(this.recipientCallsAtomic.selector, relayRequest, sponsorGasLimits, initialGas, calldatagascost(), recipientContext);
+            (, bytes memory relayCallStatus) = address(this).call(data);
+            status = abi.decode(relayCallStatus, (RelayCallStatus));
+        }
 
         // We now perform the actual charge calculation, based on the measured gas used
-        vars.charge = calculateCharge(
+        uint256 charge = calculateCharge(
             calldatagascost() +
-            (vars.initialGas - gasleft()) +
+            (initialGas - gasleft()) +
             GAS_OVERHEAD,
-            relayRequest.callData.gasPrice,
-            relayRequest.relayData.pctRelayFee
+            relayRequest.gasData.gasPrice,
+            relayRequest.gasData.pctRelayFee
         );
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
-        require(balances[relayRequest.relayData.gasSponsor] >= vars.charge, "Should not get here");
-        balances[relayRequest.relayData.gasSponsor] -= vars.charge;
-        balances[relays[msg.sender].owner] += vars.charge;
+        require(balances[relayRequest.relayData.gasSponsor] >= charge, "Should not get here");
+        balances[relayRequest.relayData.gasSponsor] -= charge;
+        balances[relays[msg.sender].owner] += charge;
 
         emit TransactionRelayed(
             msg.sender,
             relayRequest.relayData.senderAccount,
-            relayRequest.callData.target,
+            relayRequest.target,
             relayRequest.relayData.gasSponsor,
             functionSelector,
             status,
-            vars.charge);
+            charge);
     }
 
     struct AtomicData {
@@ -459,21 +459,20 @@ contract RelayHub is IRelayHub {
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (atomicData.relayedCallSuccess,) =
-        relayRequest.callData.target.call.gas(relayRequest.callData.gasLimit)
-        (abi.encodePacked(relayRequest.callData.encodedFunction, relayRequest.relayData.senderAccount));
+        relayRequest.target.call.gas(relayRequest.gasData.gasLimit)
+        (abi.encodePacked(relayRequest.encodedFunction, relayRequest.relayData.senderAccount));
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate
         // accounting.
-        emit KV("post soon", gasleft());
         atomicData.data = abi.encodeWithSelector(
             IGasSponsor(address(0)).postRelayedCall.selector,
             recipientContext,
             atomicData.relayedCallSuccess,
             atomicData.preReturnValue,
             totalInitialGas - gasleft() + GAS_OVERHEAD + calldataGas,
-            relayRequest.relayData.pctRelayFee,
-            relayRequest.callData.gasPrice
+            relayRequest.gasData.pctRelayFee,
+            relayRequest.gasData.gasPrice
         );
 
         (bool successPost,) = relayRequest.relayData.gasSponsor.call.gas(sponsorLimits.postRelayCallGasLimit)(atomicData.data);

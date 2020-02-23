@@ -359,6 +359,7 @@ class RelayClient {
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
         signedData = await getDataToSign({
           web3,
+          baseRelayFee: '0',
           senderAccount: options.from,
           senderNonce: nonce,
           target: options.to,
@@ -432,9 +433,10 @@ class RelayClient {
         firstTry = false
         let res
         const gasSponsorContract = this.createGasSponsor(gasSponsor)
+        // TODO: validate this calculation in a test. Or, better, make '.encodeABI()' here with stub data.
         const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
         const calldataSize =
-          signedData.message.callData.encodedFunction.length +
+          signedData.message.encodedFunction.length +
           signature.length +
           approvalData.length +
           relayCallExtraBytes
@@ -447,7 +449,7 @@ class RelayClient {
           relayHub,
           calldataSize,
           gtxdatanonzero: options.gtxdatanonzero || GTXDATANONZERO,
-          relayCallGasLimit: gasLimit.toString(),
+          relayCallGasLimit: gasLimit,
           gasPrice: gasPrice.toString(),
           fee: txfee
         })

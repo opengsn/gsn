@@ -21,13 +21,13 @@ contract EIP712Sig {
     );
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(CallData callData,RelayData relayData)CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
+    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,bytes encodedFunction,GasData gasData,RelayData relayData)GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address senderAccount,uint256 senderNonce,address relayAddress,address gasSponsor)");
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant CALLDATA_TYPEHASH = keccak256("CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)");
+    bytes32 public constant CALLDATA_TYPEHASH = keccak256("GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)");
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
+    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,address gasSponsor)");
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
@@ -54,18 +54,20 @@ contract EIP712Sig {
     function hash(GSNTypes.RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
-                    hash(req.callData),
+                    req.target,
+                    keccak256(req.encodedFunction),
+                    hash(req.gasData),
                     hash(req.relayData)
             ));
     }
 
-    function hash(GSNTypes.CallData memory req) internal pure returns (bytes32) {
+    function hash(GSNTypes.GasData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 CALLDATA_TYPEHASH,
-                req.target,
                 req.gasLimit,
                 req.gasPrice,
-                keccak256(req.encodedFunction)
+                req.pctRelayFee,
+                req.baseRelayFee
             ));
     }
 
@@ -75,7 +77,6 @@ contract EIP712Sig {
                 req.senderAccount,
                 req.senderNonce,
                 req.relayAddress,
-                req.pctRelayFee,
                 req.gasSponsor
             ));
     }

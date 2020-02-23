@@ -14,6 +14,7 @@
       <w>ierc</w>
       <w>keccak</w>
       <w>mixedcase</w>
+      <w>nonces</w>
       <w>offchain</w>
       <w>openeth</w>
       <w>openzeppelin</w>

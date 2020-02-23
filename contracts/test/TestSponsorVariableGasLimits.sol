@@ -24,6 +24,7 @@ contract TestSponsorVariableGasLimits is TestSponsorEverythingAccepted {
     external
     view
     returns (uint256, bytes memory) {
+        (relayRequest, approvalData);
         return (0, abi.encode(
             gasleft(),
             maxPossibleGas));
@@ -49,7 +50,7 @@ contract TestSponsorVariableGasLimits is TestSponsorEverythingAccepted {
     external
     relayHubOnly
     {
-        (success, preRetVal);
+        (context, success, preRetVal, gasUseWithoutPost, txFee, gasPrice);
         emit SampleRecipientPostCallWithValues(gasleft(), gasUseWithoutPost);
     }
 }

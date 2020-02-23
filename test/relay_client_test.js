@@ -473,6 +473,7 @@ contract('RelayClient', function (accounts) {
     expect(rc.sendViaRelay).to.have.been.calledWith(
       sinon.match(({ relayAddress, from, to, encodedFunction, relayFee, gasPrice, gasLimit, gasSponsor, senderNonce, signature, approvalData, relayUrl, relayHubAddress }) => {
         const data = getDataToSign({
+          baseRelayFee: '0',
           chainId: 7,
           senderAccount: from,
           senderNonce,
