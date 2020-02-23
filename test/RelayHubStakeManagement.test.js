@@ -217,7 +217,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
       const url = 'http://relay.com'
 
       it('unstaked relays cannot be registered', async function () {
-        await expectRevert(relayHub.registerRelay(transactionFee, url, { from: relay }), 'wrong state for stake')
+        await expectRevert(relayHub.registerRelay(transactionFee, url, { from: relay }), 'wrong state for register')
       })
 
       context('with staked relay', function () {
@@ -282,7 +282,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
             })
 
             it('relay cannot re-register', async function () {
-              await expectRevert(relayHub.registerRelay(transactionFee, url, { from: relay }), 'wrong state for stake')
+              await expectRevert(relayHub.registerRelay(transactionFee, url, { from: relay }), 'wrong state for register')
             })
           })
         })
