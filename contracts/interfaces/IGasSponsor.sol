@@ -16,6 +16,9 @@ interface IGasSponsor {
      */
     function getRelayHubDeposit() external view returns (uint256);
 
+    /**
+     * The RelayHub will call accept-, pre-, and post-, RelayCall methods with these values for their gas limits.
+     */
     function getGasLimitsForSponsorCalls()
     external
     view

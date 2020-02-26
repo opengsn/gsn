@@ -490,9 +490,9 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	maxPossibleGas := big.NewInt(0)
 	maxPossibleGas.Add(maxPossibleGas, hubOverhead)
 	maxPossibleGas.Add(maxPossibleGas, gasLimits.AcceptRelayedCallGasLimit)
-	maxPossibleGas.Add(maxPossibleGas, gasLimits.PreRelayCallGasLimit)
+	maxPossibleGas.Add(maxPossibleGas, gasLimits.PreRelayedCallGasLimit)
 	maxPossibleGas.Add(maxPossibleGas, &request.GasLimit)
-	maxPossibleGas.Add(maxPossibleGas, gasLimits.PostRelayCallGasLimit)
+	maxPossibleGas.Add(maxPossibleGas, gasLimits.PostRelayedCallGasLimit)
 
 	// TODO: well, this sucks! I need to calculate max possible gas using entire msg.data!!!
 	//  In the meantime, these 400'000 extra gas should help :-)

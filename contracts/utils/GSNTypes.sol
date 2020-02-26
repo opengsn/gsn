@@ -25,7 +25,7 @@ library GSNTypes {
 
     struct SponsorLimits {
         uint256 acceptRelayedCallGasLimit;
-        uint256 preRelayCallGasLimit;
-        uint256 postRelayCallGasLimit;
+        uint256 preRelayedCallGasLimit;
+        uint256 postRelayedCallGasLimit;
     }
 }

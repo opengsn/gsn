@@ -285,8 +285,8 @@ contract RelayHub is IRelayHub {
         uint256 requiredGas =
             GAS_OVERHEAD +
             sponsorGasLimits.acceptRelayedCallGasLimit +
-            sponsorGasLimits.preRelayCallGasLimit +
-            sponsorGasLimits.postRelayCallGasLimit +
+            sponsorGasLimits.preRelayedCallGasLimit +
+            sponsorGasLimits.postRelayedCallGasLimit +
             gasData.gasLimit;
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
@@ -450,7 +450,7 @@ contract RelayHub is IRelayHub {
             bool success;
             // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
             // acceptRelayedCall that this will not happen.
-            (success, retData) = relayRequest.relayData.gasSponsor.call.gas(sponsorLimits.preRelayCallGasLimit)(atomicData.data);
+            (success, retData) = relayRequest.relayData.gasSponsor.call.gas(sponsorLimits.preRelayedCallGasLimit)(atomicData.data);
             if (!success) {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed);
             }
@@ -475,7 +475,7 @@ contract RelayHub is IRelayHub {
             relayRequest.gasData.gasPrice
         );
 
-        (bool successPost,) = relayRequest.relayData.gasSponsor.call.gas(sponsorLimits.postRelayCallGasLimit)(atomicData.data);
+        (bool successPost,) = relayRequest.relayData.gasSponsor.call.gas(sponsorLimits.postRelayedCallGasLimit)(atomicData.data);
 
         if (!successPost) {
             revertWithStatus(RelayCallStatus.PostRelayedFailed);

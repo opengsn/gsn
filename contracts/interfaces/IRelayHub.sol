@@ -187,7 +187,7 @@ interface IRelayHub {
     // it returns one in acceptRelayedCall.
     function canRelay(
         GSNTypes.RelayRequest calldata relayRequest,
-        uint256 maxPossibleCharge,
+        uint256 maxPossibleGas,
         uint256 acceptRelayedCallGasLimit,
         bytes calldata signature,
         bytes calldata approvalData
