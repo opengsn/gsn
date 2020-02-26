@@ -128,8 +128,8 @@ module.exports = {
       calldataSize * gtxdatanonzero +
       relayCallGasLimit +
       parseInt(gasLimits.acceptRelayedCallGasLimit) +
-      parseInt(gasLimits.preRelayCallGasLimit) +
-      parseInt(gasLimits.postRelayCallGasLimit)
+      parseInt(gasLimits.preRelayedCallGasLimit) +
+      parseInt(gasLimits.postRelayedCallGasLimit)
     return {
       ...gasLimits,
       maxPossibleGas

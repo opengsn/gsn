@@ -122,12 +122,12 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
         await expectEvent.inTransaction(tx, TestSponsorVariableGasLimits, 'SampleRecipientPreCallWithValues', {
-          gasleft: (gasData.preRelayCallGasLimit - magicNumbers.pre).toString(),
+          gasleft: (gasData.preRelayedCallGasLimit - magicNumbers.pre).toString(),
           arcGasleft: (gasData.acceptRelayedCallGasLimit - magicNumbers.arc).toString(),
           maxPossibleGas: gasData.maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestSponsorVariableGasLimits, 'SampleRecipientPostCallWithValues', {
-          gasleft: (gasData.postRelayCallGasLimit - magicNumbers.post).toString()
+          gasleft: (gasData.postRelayedCallGasLimit - magicNumbers.post).toString()
         })
       })
 
