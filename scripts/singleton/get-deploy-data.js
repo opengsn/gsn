@@ -1,6 +1,6 @@
-import Transaction from 'ethereumjs-tx'
-import ethUtils from 'ethereumjs-util'
-import fs from 'fs'
+const Transaction = require('ethereumjs-tx')
+const ethUtils = require('ethereumjs-util')
+const fs = require('fs')
 
 function toHexString (buffer) {
   return '0x' + buffer.toString('hex')
@@ -8,12 +8,17 @@ function toHexString (buffer) {
 
 const bin = fs.readFileSync('singleton/singleton_RelayHub_flattened_sol_RelayHub.bin', 'ascii')
 
+// gas price for nonzero byte. 68 pre-instanbul, 16 >= istanbul
+const gtxdatanonzero = 68
+const gasLimit = 5400000
+const gasPrice = 100000000000 /// 100 gigawei
+
 const tx = new Transaction({
   nonce: 0,
-  data: '0x' + bin,
+  data: '0x' + bin + gtxdatanonzero.toString(16).padStart(64, '0'),
   value: 0,
-  gasPrice: 100000000000, /// 100 gigawei
-  gasLimit: 4200000,
+  gasPrice,
+  gasLimit,
   v: 27,
   r: '0x1613161316131613161316131613161316131613161316131613161316131613',
   s: '0x1613161316131613161316131613161316131613161316131613161316131613'
@@ -23,6 +28,7 @@ const deployer = tx.getSenderAddress()
 
 console.log(JSON.stringify({
   deployer: toHexString(deployer),
+  gas: gasPrice * gasLimit,
   contract: {
     address: toHexString(ethUtils.generateAddress(deployer, ethUtils.toBuffer(0))),
     deployTx: toHexString(tx.serialize())

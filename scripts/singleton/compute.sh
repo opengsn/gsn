@@ -28,7 +28,7 @@ rm -rf "$output_dir" # Delete possible remains from previous run
 mkdir -p "$output_dir"
 
 echo "Flattening source files into a single file"
-npx truffle-flattener contracts/RelayHub.sol > $output_dir/RelayHub.flattened.sol
+( echo "pragma experimental ABIEncoderV2;"; npx truffle-flattener contracts/RelayHub.sol |grep -v 'pragma experimental ABIEncoderV2') > $output_dir/RelayHub.flattened.sol
 
 echo "Compiling with solcjs version $(npx solcjs --version)"
 npx solcjs --optimize --optimize-runs 200 --abi --bin --output-dir $output_dir "$output_dir/RelayHub.flattened.sol"
