@@ -186,7 +186,9 @@ interface IRelayHub {
     // Returns a PreconditionCheck value (OK when the transaction can be relayed), or a recipient-specific error code if
     // it returns one in acceptRelayedCall.
     function canRelay(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
+        uint256 maxPossibleGas,
+        uint256 acceptRelayedCallGasLimit,
         bytes calldata signature,
         bytes calldata approvalData
     )
@@ -194,49 +196,27 @@ interface IRelayHub {
     view
     returns (uint256 status, bytes memory recipientContext);
 
-    // Relays a transaction. For this to succeed, multiple conditions must be met:
-    //  - canRelay must return PreconditionCheck.OK
-    //  - the sender must be a registered relay
-    //  - the transaction's gas price must be larger or equal to the one that was requested by the sender
-    //  - the transaction must have enough gas to not run out of gas if all internal transactions (calls to the
-    // recipient) use all gas available to them
-    //  - the recipient must have enough balance to pay the relay for the worst-case scenario (i.e. when all gas is
-    // spent)
-    //
-    // If all conditions are met, the call will be relayed and the recipient charged. preRelayedCall, the encoded
-    // function and postRelayedCall will be called in order.
-    //
-    // Arguments:
-    //  - from: the client originating the request
-    //  - recipient: the target IRelayRecipient contract
-    //  - encodedFunction: the function call to relay, including data
-    //  - transactionFee: fee (%) the relay takes over actual gas cost
-    //  - gasPrice: gas price the client is willing to pay
-    //  - gasLimit: gas to forward when calling the encoded function
-    //  - nonce: client's nonce
-    //  - signature: client's signature over all previous params, plus the relay and RelayHub addresses
-    //  - approvalData: dapp-specific data forwarded to acceptRelayedCall. This value is *not* verified by the Hub, but
-    //    it still can be used for e.g. a signature.
-    //
-    // Emits a TransactionRelayed event.
+    /// Relays a transaction. For this to succeed, multiple conditions must be met:
+    ///  - canRelay must return PreconditionCheck.OK
+    ///  - the sender must be a registered relay
+    ///  - the transaction's gas price must be larger or equal to the one that was requested by the sender
+    ///  - the transaction must have enough gas to run all internal transactions if they use all gas available to them
+    ///  - the sponsor must have enough balance to pay the relay for the scenario when all gas is spent
+    ///
+    /// If all conditions are met, the call will be relayed and the recipient charged.
+    ///
+    /// Arguments:
+    /// @param relayRequest - all details of the requested relay call
+    /// @param signature - client's signature over all previous params, plus the relay and RelayHub addresses
+    /// @param approvalData: dapp-specific data forwarded to acceptRelayedCall.
+    ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the sponsor.
+    ///
+    /// Emits a TransactionRelayed event.
     function relayCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
     ) external;
-
-    // Returns how much gas should be forwarded to a call to relayCall, in order to relay a transaction that will spend
-    // up to relayedCallStipend gas.
-    function requiredGas(uint256 relayedCallStipend) external view returns (uint256);
-
-    // Returns the maximum recipient charge, given the amount of gas forwarded, gas price and relay fee.
-    function maxPossibleCharge(
-        uint256 relayedCallStipend,
-        uint256 gasPrice,
-        uint256 transactionFee)
-    external
-    view
-    returns (uint256);
 
     // Relay penalization. Any account can penalize relays, removing them from the system immediately, and rewarding the
     // reporter with half of the relay's stake. The other half is burned so that, even if the relay penalizes itself, it
@@ -256,5 +236,9 @@ interface IRelayHub {
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
 
     function getNonce(address from) external view returns (uint256);
+
+    function getHubOverhead() external view returns (uint256);
+
+    function calculateCharge(uint256 gas, uint256 gasPrice, uint256 fee) external view returns (uint256);
 }
 

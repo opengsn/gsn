@@ -225,7 +225,7 @@ contract('RelayClient', function (accounts) {
 
   it('should revert calls to postRelayedCall from non RelayHub address', async function () {
     try {
-      await gasSponsor.postRelayedCall(Buffer.from(''), true, 0, Buffer.from(''))
+      await gasSponsor.postRelayedCall(Buffer.from(''), true, Buffer.from(''), 0, 0, 0)
       assert.fail()
     } catch (error) {
       assertErrorMessageCorrect(error, 'Function can only be called by RelayHub')
@@ -473,6 +473,7 @@ contract('RelayClient', function (accounts) {
     expect(rc.sendViaRelay).to.have.been.calledWith(
       sinon.match(({ relayAddress, from, to, encodedFunction, relayFee, gasPrice, gasLimit, gasSponsor, senderNonce, signature, approvalData, relayUrl, relayHubAddress }) => {
         const data = getDataToSign({
+          baseRelayFee: '0',
           chainId: 7,
           senderAccount: from,
           senderNonce,
@@ -668,7 +669,7 @@ contract('RelayClient', function (accounts) {
   })
 
   // TODO: remove this test, it is nonsense!
-  it('should report canRelayFailed on transactionReceipt', async function () {
+  it.skip('should report canRelayFailed on transactionReceipt', async function () {
     const approvalSponsor = await TestSponsorOwnerSignature.new()
     await approvalSponsor.setHub(rhub.address)
     await rhub.depositFor(approvalSponsor.address, { value: 1e18 })

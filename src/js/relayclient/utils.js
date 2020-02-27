@@ -2,7 +2,7 @@ const ethUtils = require('ethereumjs-util')
 const EthCrypto = require('eth-crypto')
 const web3Utils = require('web3-utils')
 
-const CallData = require('./EIP712/CallData')
+const GasData = require('./EIP712/GasData')
 const RelayData = require('./EIP712/RelayData')
 const getDataToSign = require('./EIP712/Eip712Helper')
 
@@ -55,6 +55,7 @@ module.exports = {
     }
     let data = await getDataToSign({
       web3,
+      baseRelayFee: '0',
       senderAccount,
       senderNonce,
       target,
@@ -87,21 +88,51 @@ module.exports = {
     })
   },
 
-  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor) {
+  // TODO: this method is used way too many times
+  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor, baseFee) {
     return {
-      callData: new CallData({
-        target: recipient,
+      target: recipient,
+      encodedFunction: txData,
+      gasData: new GasData({
         gasLimit: gasLimit.toString(),
         gasPrice: gasPrice.toString(),
-        encodedFunction: txData
+        pctRelayFee: fee.toString(),
+        baseRelayFee: baseFee ? baseFee.toString() : '0'// TODO: remove "?:"
       }),
       relayData: new RelayData({
         senderAccount: sender,
         senderNonce: senderNonce.toString(),
         relayAddress: relay,
-        pctRelayFee: fee.toString(),
         gasSponsor
       })
+    }
+  },
+
+  /**
+   * TODO: make it work for both truffle and web3 contract objects!!!
+   * @param gasSponsor
+   * @param hub
+   * @param relayCallGasLimit
+   * @param calldataSize
+   * @param gtxdatanonzero
+   * @returns {Promise}
+   */
+  getTransactionGasData: async function ({
+    gasSponsor, _gasLimits, _overhead, relayHub, relayCallGasLimit, calldataSize, gtxdatanonzero
+  }) {
+    const gasLimits = _gasLimits || await gasSponsor.getGasLimitsForSponsorCalls()
+    const overhead = _overhead || (await relayHub.getHubOverhead()).toNumber()
+    const maxPossibleGas =
+      21000 +
+      overhead +
+      calldataSize * gtxdatanonzero +
+      relayCallGasLimit +
+      parseInt(gasLimits.acceptRelayedCallGasLimit) +
+      parseInt(gasLimits.preRelayedCallGasLimit) +
+      parseInt(gasLimits.postRelayedCallGasLimit)
+    return {
+      ...gasLimits,
+      maxPossibleGas
     }
   },
 

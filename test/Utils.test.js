@@ -37,6 +37,7 @@ contract('Utils', async function (accounts) {
 
       const data = await getDataToSign({
         web3,
+        baseRelayFee: '0',
         senderAccount,
         senderNonce,
         target,

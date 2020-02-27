@@ -19,6 +19,8 @@ const options = [
   { title: 'Relayed-', relay: 1 }
 ]
 
+const GTXDATANONZERO = 68
+
 options.forEach(params => {
   contract(params.title + 'Flow', async (acc) => {
     let from
@@ -40,7 +42,7 @@ options.forEach(params => {
 
       if (params.relay) {
         // rhub = await RelayHub.deployed()
-        rhub = await RelayHub.new({ gas: 8000000 })
+        rhub = await RelayHub.new(GTXDATANONZERO, { gas: 10000000 })
         relayproc = await testutils.startRelay(rhub, {
           stake: 1e18,
           delay: 3600 * 24 * 7,

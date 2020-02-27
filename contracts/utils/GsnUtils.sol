@@ -2,6 +2,8 @@ pragma solidity ^0.5.16;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
+import "./GSNTypes.sol";
+
 library GsnUtils {
 
     /**
