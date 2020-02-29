@@ -155,7 +155,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
       const acceptRelayedCallGasLimit = 50000
       const relayRequest = getRelayRequest(senderAccount, recipient.address, encodedFunction,
         fee, gasPrice, gasLimit, senderNonce, relayAddress, misbehavingSponsor.address)
-      const canRelayResponse = await relayHub.canRelay(relayRequest, maxPossibleGasIrrelevantValue, acceptRelayedCallGasLimit, signature, '0x')
+      const canRelayResponse = await relayHub.canRelay.call(relayRequest, maxPossibleGasIrrelevantValue, acceptRelayedCallGasLimit, signature, '0x')
       assert.equal(AcceptRelayedCallReverted, canRelayResponse.status)
 
       const res = await relayHub.relayCall(relayRequest, signature, '0x', {

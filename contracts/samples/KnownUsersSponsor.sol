@@ -61,7 +61,6 @@ contract KnownUsersSponsor is BaseGasSponsor, BaseRelayRecipient {
         uint256 maxPossibleCharge
     )
     external
-    view
     returns (uint256, bytes memory) {
         (approvalData, maxPossibleCharge);
         address from = relayRequest.relayData.senderAccount;
@@ -72,11 +71,11 @@ contract KnownUsersSponsor is BaseGasSponsor, BaseRelayRecipient {
     }
 
     function preRelayedCall(bytes calldata context) external returns (bytes32) {
-        (context);
+        (this, context);
         return "";
     }
 
-    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) external {
-        (context, success, actualCharge, preRetVal);
+    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) view external {
+        (this, context, success, actualCharge, preRetVal);
     }
 }

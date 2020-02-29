@@ -41,7 +41,6 @@ interface IGasSponsor {
         uint256 maxPossibleGas
     )
     external
-    view
     returns (uint256, bytes memory);
 
     /** this method is called before the actual relayed function call.

@@ -237,7 +237,6 @@ contract RelayHub is IRelayHub {
         bytes memory approvalData
     )
     public
-    view
     returns (uint256 status, bytes memory recipientContext)
     {
         // Verify the sender's signature on the transaction - note that approvalData is *not* signed

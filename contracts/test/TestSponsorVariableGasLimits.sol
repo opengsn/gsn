@@ -22,7 +22,6 @@ contract TestSponsorVariableGasLimits is TestSponsorEverythingAccepted {
         uint256 maxPossibleGas
     )
     external
-    view
     returns (uint256, bytes memory) {
         (relayRequest, approvalData);
         return (0, abi.encode(

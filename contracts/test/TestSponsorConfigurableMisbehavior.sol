@@ -38,7 +38,6 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
         uint256 maxPossibleCharge
     )
     external
-    view
     returns (uint256, bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
         if (overspendAcceptGas) {

@@ -17,7 +17,6 @@ contract TestSponsorPreconfiguredApproval is TestSponsorEverythingAccepted {
         uint256 maxPossibleCharge
     )
     external
-    view
     returns (uint256, bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
         if (keccak256(expectedApprovalData) != keccak256(approvalData)) {

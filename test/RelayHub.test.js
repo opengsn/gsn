@@ -219,7 +219,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
             relayHub,
             ...sharedTransactionData
           })
-          const canRelay = await relayHub.canRelay(
+          const canRelay = await relayHub.canRelay.call(
             relayRequest,
             gasLimits.maxPossibleGas,
             gasLimits.acceptRelayedCallGasLimit,
@@ -235,7 +235,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
             relayHub,
             ...sharedTransactionData
           })
-          const canRelay = await relayHub.canRelay(relayRequest,
+          const canRelay = await relayHub.canRelay.call(relayRequest,
             gasLimits.maxPossibleGas,
             gasLimits.acceptRelayedCallGasLimit,
             wrongSig, '0x')
@@ -255,7 +255,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
             ...sharedTransactionData
           })
 
-          const canRelay = await relayHub.canRelay(
+          const canRelay = await relayHub.canRelay.call(
             relayRequest,
             gasLimits.maxPossibleGas,
             gasLimits.acceptRelayedCallGasLimit,

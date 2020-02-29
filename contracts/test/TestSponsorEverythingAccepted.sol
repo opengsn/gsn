@@ -14,7 +14,6 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
         uint256 maxPossibleCharge
     )
     external
-    view
     returns (uint256, bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
         return (0, "");

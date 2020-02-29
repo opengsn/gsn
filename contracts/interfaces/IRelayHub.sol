@@ -193,7 +193,6 @@ interface IRelayHub {
         bytes calldata approvalData
     )
     external
-    view
     returns (uint256 status, bytes memory recipientContext);
 
     /// Relays a transaction. For this to succeed, multiple conditions must be met:

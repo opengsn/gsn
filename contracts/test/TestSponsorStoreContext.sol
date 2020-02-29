@@ -38,7 +38,6 @@ contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
         uint256 maxPossibleGas
     )
     external
-    view
     returns (uint256, bytes memory) {
         return (0, abi.encode(
             relayRequest.relayData.relayAddress,
