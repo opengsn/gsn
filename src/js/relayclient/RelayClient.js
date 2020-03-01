@@ -334,7 +334,7 @@ class RelayClient {
     const pinger = await this.serverHelper.newActiveRelayPinger(blockFrom, gasPrice)
     const errors = []
     let firstTry = true
-    for (; ;) {
+    for (let i = 0; i < 3 ; i++) {
       const activeRelay = await pinger.nextRelay()
       if (!activeRelay) {
         const error = new Error('No relay responded! ' +
@@ -356,7 +356,6 @@ class RelayClient {
       // TODO: refactor so signedData is created regardless of ephemeral key used or not
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
         signedData = await getDataToSign({
-          web3,
           senderAccount: options.from,
           senderNonce: nonce,
           target: options.to,
@@ -424,7 +423,6 @@ class RelayClient {
         allowedRelayNonceGap = 3
       }
       const relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowedRelayNonceGap
-
       // on first found relay, call canRelay to make sure that on-chain this request can pass
       if (options.validateCanRelay && firstTry) {
         firstTry = false
@@ -464,6 +462,7 @@ class RelayClient {
           relayMaxNonce
         })
       } catch (error) {
+        console.log('error??', error)
         errors.push(error)
         if (self.config.verbose) {
           console.log('relayTransaction: req:', {

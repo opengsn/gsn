@@ -54,7 +54,6 @@ module.exports = {
       throw Error('using wrong types will cause signatures to be invalid')
     }
     let data = await getDataToSign({
-      web3,
       senderAccount,
       senderNonce,
       target,
@@ -144,7 +143,9 @@ module.exports = {
     if (withPrefix) {
       const msg = Buffer.concat([Buffer.from('\x19Ethereum Signed Message:\n32'), Buffer.from(removeHexPrefix(hash), 'hex')])
       signed = web3Utils.sha3('0x' + msg.toString('hex'))
-    } else { signed = hash }
+    } else {
+      signed = hash
+    }
     const keyHex = '0x' + Buffer.from(privKey).toString('hex')
     const sig_ = EthCrypto.sign(keyHex, signed)
     const signature = ethUtils.fromRpcSig(sig_)
@@ -186,5 +187,9 @@ module.exports = {
 
   isSameAddress: function (address1, address2) {
     return address1.toLowerCase() === address2.toLowerCase()
+  },
+
+  sleep: function (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 }

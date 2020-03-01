@@ -350,13 +350,12 @@ func stopServingOnRelayRemoved() {
 
 func shutdownOnRelayUnstaked() {
 	var err error
-	removed, err = relay.IsUnstaked()
+	unstaked, err := relay.IsUnstaked()
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	if removed {
-		log.Println("Relay removed. Listening to Unstaked event")
+	if unstaked {
 		log.Println("Relay unstaked. Sending balance back to owner")
 		sleep(2*time.Minute, devMode)
 		for {
