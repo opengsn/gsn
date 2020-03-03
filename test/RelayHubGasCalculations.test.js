@@ -3,6 +3,7 @@ const Big = require('big.js')
 const { BN, ether, expectEvent, time } = require('@openzeppelin/test-helpers')
 
 const { getRelayRequest, getTransactionGasData, getEip712Signature } = require('../src/js/relayclient/utils')
+const Environments = require('../src/js/relayclient/Environments')
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient')
@@ -24,15 +25,15 @@ function correctGasCost (buffer, nonzerocost, zerocost) {
 contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddress, otherRelay, senderAccount, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = time.duration.weeks(4)
-  const gtxdatanonzero = 68
+  const gtxdatanonzero = Environments.istanbul.gtxdatanonzero
   const fee = new BN('10')
   const gasPrice = new BN('10')
   const gasLimit = new BN('1000000')
   const senderNonce = new BN('0')
   const magicNumbers = {
     arc: 805,
-    pre: 1239,
-    post: 1677
+    pre: 1839,
+    post: 2277
   }
 
   let relayHub

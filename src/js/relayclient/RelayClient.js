@@ -27,7 +27,7 @@ abiDecoder.addABI(relayHubAbi)
 // default timeout (in ms) for http requests
 const DEFAULT_HTTP_TIMEOUT = 10000
 
-const GTXDATANONZERO = 68
+const Environments = require('./Environments')
 
 // default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
 const GASPRICE_PERCENT = 20
@@ -448,7 +448,7 @@ class RelayClient {
           _overhead,
           relayHub,
           calldataSize,
-          gtxdatanonzero: options.gtxdatanonzero || GTXDATANONZERO,
+          gtxdatanonzero: options.gtxdatanonzero || Environments.istanbul.gtxdatanonzero,
           relayCallGasLimit: gasLimit,
           gasPrice: gasPrice.toString(),
           fee: txfee

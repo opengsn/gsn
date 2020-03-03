@@ -33,7 +33,7 @@
   "scripts": {
     "test": "npm run test-server && npm run test-js",
     "test-server": "make test-server",
-    "test-js": "make build-server && run-with-testrpc --hardfork 'constantinople' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic --allowUnlimitedContractSize 'npx truffle --network npmtest test'",
+    "test-js": "make build-server && npx run-with-testrpc --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic --allowUnlimitedContractSize 'npx truffle --network npmtest test'",
     "quick-test-js": "truffle test",
     "truffle-compile": "truffle compile",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
@@ -86,7 +86,7 @@
     "eslint-plugin-node": "10.0.0",
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
-    "ganache-cli": "6.4.3",
+    "ganache-cli": "6.9.1",
     "http-server": "0.11.1",
     "istanbul": "0.4.5",
     "lodash": "4.17.13",
