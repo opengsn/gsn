@@ -357,7 +357,7 @@ func newRelayTransactionRequest(t *testing.T, senderNonce int64, signature strin
 		Signature:       common.Hex2Bytes(signature),
 		From:            addressGasless,
 		To:              sampleRecipient,
-		GasSponsor:      testSponsor,
+		Paymaster:       testSponsor,
 		GasPrice:        *big.NewInt(gasPrice),
 		GasLimit:        *big.NewInt(gasLimit),
 		SenderNonce:  	 *big.NewInt(senderNonce),

@@ -14,7 +14,7 @@ import "./utils/GSNTypes.sol";
 import "./utils/GsnUtils.sol";
 import "./utils/RLPReader.sol";
 import "./interfaces/IRelayHub.sol";
-import "./interfaces/IGasSponsor.sol";
+import "./interfaces/IPaymaster.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -242,48 +242,48 @@ contract RelayHub is IRelayHub {
     {
         // Verify the sender's signature on the transaction - note that approvalData is *not* signed
         if (!eip712sig.verify(relayRequest, signature)) {
-            return (uint256(PreconditionCheck.WrongSignature), "");
+            return (uint256(CanRelayStatus.WrongSignature), "");
         }
 
         // Verify the transaction is not being replayed
         if (nonces[relayRequest.relayData.senderAccount] != relayRequest.relayData.senderNonce) {
-            return (uint256(PreconditionCheck.WrongNonce), "");
+            return (uint256(CanRelayStatus.WrongNonce), "");
         }
 
-        bytes memory encodedTx = abi.encodeWithSelector(IGasSponsor(address(0)).acceptRelayedCall.selector,
+        bytes memory encodedTx = abi.encodeWithSelector(IPaymaster(address(0)).acceptRelayedCall.selector,
             relayRequest, approvalData, maxPossibleGas
         );
 
         (bool success, bytes memory returndata) =
-        relayRequest.relayData.gasSponsor.staticcall.gas(acceptRelayedCallGasLimit)(encodedTx);
+        relayRequest.relayData.paymaster.staticcall.gas(acceptRelayedCallGasLimit)(encodedTx);
 
         if (!success) {
-            return (uint256(PreconditionCheck.AcceptRelayedCallReverted), "");
+            return (uint256(CanRelayStatus.AcceptRelayedCallReverted), "");
         } else {
             (status, recipientContext) = abi.decode(returndata, (uint256, bytes));
 
-            // This can be either PreconditionCheck.OK or a custom error code
+            // This can be either CanRelayStatus.OK or a custom error code
             if ((status == 0) || (status > 10)) {
                 return (status, recipientContext);
             } else {
                 // Error codes [1-10] are reserved to RelayHub
-                return (uint256(PreconditionCheck.InvalidRecipientStatusCode), "");
+                return (uint256(CanRelayStatus.InvalidRecipientStatusCode), "");
             }
         }
     }
 
-    function getValidGasLimits(GSNTypes.GasData memory gasData, address gasSponsor)
+    function getAndValidateGasLimits(GSNTypes.GasData memory gasData, address paymaster)
     private
     view
-    returns (uint256, GSNTypes.SponsorLimits memory)
+    returns (uint256, GSNTypes.GasLimits memory)
     {
-        GSNTypes.SponsorLimits memory sponsorGasLimits =
-        IGasSponsor(gasSponsor).getGasLimitsForSponsorCalls();
+        GSNTypes.GasLimits memory gasLimits =
+        IPaymaster(paymaster).getGasLimits();
         uint256 requiredGas =
             GAS_OVERHEAD +
-            sponsorGasLimits.acceptRelayedCallGasLimit +
-            sponsorGasLimits.preRelayedCallGasLimit +
-            sponsorGasLimits.postRelayedCallGasLimit +
+            gasLimits.acceptRelayedCallGasLimit +
+            gasLimits.preRelayedCallGasLimit +
+            gasLimits.postRelayedCallGasLimit +
             gasData.gasLimit;
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
@@ -293,7 +293,7 @@ contract RelayHub is IRelayHub {
             "Not enough gas left for recipientCallsAtomic to complete");
 
         // The maximum possible charge is the cost of transaction assuming all bytes of calldata are non-zero and
-        // all sponsor and recipient calls consume entire available gas limit
+        // all paymaster and recipient calls consume entire available gas limit
         uint256 maxPossibleGas = calldatagascost() + requiredGas;
         uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
@@ -303,9 +303,9 @@ contract RelayHub is IRelayHub {
 
         // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
         // for the maximum possible charge.
-        require(maxPossibleCharge <= balances[gasSponsor],
-            "Sponsor balance too low");
-        return (maxPossibleGas, sponsorGasLimits);
+        require(maxPossibleCharge <= balances[paymaster],
+            "Paymaster balance too low");
+        return (maxPossibleGas, gasLimits);
     }
 
     /**
@@ -333,15 +333,15 @@ contract RelayHub is IRelayHub {
         // one used in the transaction.
         require(relayRequest.gasData.gasPrice <= tx.gasprice, "Invalid gas price");
         bytes memory recipientContext;
-        GSNTypes.SponsorLimits memory sponsorGasLimits;
+        GSNTypes.GasLimits memory gasLimits;
         {
             uint256 maxPossibleGas;
-            (maxPossibleGas, sponsorGasLimits) = getValidGasLimits(relayRequest.gasData, relayRequest.relayData.gasSponsor);
+            (maxPossibleGas, gasLimits) = getAndValidateGasLimits(relayRequest.gasData, relayRequest.relayData.paymaster);
 
             // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed),
-            // and that the sponsor will agree to be charged for it.
-            uint256 preconditionCheck;
-            (preconditionCheck, recipientContext) =
+            // and that the paymaster will agree to be charged for it.
+            uint256 canRelayStatus;
+            (canRelayStatus, recipientContext) =
             // TODO: this new RelayRequest is needed because solc doesn't implement calldata to memory conversion yet
             canRelay(
                 GSNTypes.RelayRequest(
@@ -349,16 +349,16 @@ contract RelayHub is IRelayHub {
                     relayRequest.encodedFunction,
                     relayRequest.gasData,
                     relayRequest.relayData),
-                maxPossibleGas, sponsorGasLimits.acceptRelayedCallGasLimit, signature, approvalData);
+                maxPossibleGas, gasLimits.acceptRelayedCallGasLimit, signature, approvalData);
 
-            if (preconditionCheck != uint256(PreconditionCheck.OK)) {
+            if (canRelayStatus != uint256(CanRelayStatus.OK)) {
                 emit CanRelayFailed(
                     msg.sender,
                     relayRequest.relayData.senderAccount,
                     relayRequest.target,
-                    relayRequest.relayData.gasSponsor,
+                    relayRequest.relayData.paymaster,
                     functionSelector,
-                    preconditionCheck);
+                    canRelayStatus);
                 return;
             }
         }
@@ -375,7 +375,7 @@ contract RelayHub is IRelayHub {
         RelayCallStatus status;
         {
             bytes memory data =
-            abi.encodeWithSelector(this.recipientCallsAtomic.selector, relayRequest, sponsorGasLimits, initialGas, calldatagascost(), recipientContext);
+            abi.encodeWithSelector(this.recipientCallsAtomic.selector, relayRequest, gasLimits, initialGas, calldatagascost(), recipientContext);
             (, bytes memory relayCallStatus) = address(this).call(data);
             status = abi.decode(relayCallStatus, (RelayCallStatus));
         }
@@ -391,15 +391,15 @@ contract RelayHub is IRelayHub {
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
-        require(balances[relayRequest.relayData.gasSponsor] >= charge, "Should not get here");
-        balances[relayRequest.relayData.gasSponsor] -= charge;
+        require(balances[relayRequest.relayData.paymaster] >= charge, "Should not get here");
+        balances[relayRequest.relayData.paymaster] -= charge;
         balances[relays[msg.sender].owner] += charge;
 
         emit TransactionRelayed(
             msg.sender,
             relayRequest.relayData.senderAccount,
             relayRequest.target,
-            relayRequest.relayData.gasSponsor,
+            relayRequest.relayData.paymaster,
             functionSelector,
             status,
             charge);
@@ -414,7 +414,7 @@ contract RelayHub is IRelayHub {
 
     function recipientCallsAtomic(
         GSNTypes.RelayRequest calldata relayRequest,
-        GSNTypes.SponsorLimits calldata sponsorLimits,
+        GSNTypes.GasLimits calldata gasLimits,
         uint256 totalInitialGas,
         uint256 calldataGas,
         bytes calldata recipientContext
@@ -435,19 +435,19 @@ contract RelayHub is IRelayHub {
 
         // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
         // post state to ensure this doesn't happen.
-        atomicData.balanceBefore = balances[relayRequest.relayData.gasSponsor];
+        atomicData.balanceBefore = balances[relayRequest.relayData.paymaster];
 
         // First preRelayedCall is executed.
         // Note: we open a new block to avoid growing the stack too much.
         atomicData.data = abi.encodeWithSelector(
-            IGasSponsor(address(0)).preRelayedCall.selector, recipientContext
+            IPaymaster(address(0)).preRelayedCall.selector, recipientContext
         );
         bytes memory retData;
         {
             bool success;
             // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
             // acceptRelayedCall that this will not happen.
-            (success, retData) = relayRequest.relayData.gasSponsor.call.gas(sponsorLimits.preRelayedCallGasLimit)(atomicData.data);
+            (success, retData) = relayRequest.relayData.paymaster.call.gas(gasLimits.preRelayedCallGasLimit)(atomicData.data);
             if (!success) {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed);
             }
@@ -463,7 +463,7 @@ contract RelayHub is IRelayHub {
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate
         // accounting.
         atomicData.data = abi.encodeWithSelector(
-            IGasSponsor(address(0)).postRelayedCall.selector,
+            IPaymaster(address(0)).postRelayedCall.selector,
             recipientContext,
             atomicData.relayedCallSuccess,
             atomicData.preReturnValue,
@@ -472,13 +472,13 @@ contract RelayHub is IRelayHub {
             relayRequest.gasData.gasPrice
         );
 
-        (bool successPost,) = relayRequest.relayData.gasSponsor.call.gas(sponsorLimits.postRelayedCallGasLimit)(atomicData.data);
+        (bool successPost,) = relayRequest.relayData.paymaster.call.gas(gasLimits.postRelayedCallGasLimit)(atomicData.data);
 
         if (!successPost) {
             revertWithStatus(RelayCallStatus.PostRelayedFailed);
         }
 
-        if (balances[relayRequest.relayData.gasSponsor] < atomicData.balanceBefore) {
+        if (balances[relayRequest.relayData.paymaster] < atomicData.balanceBefore) {
             revertWithStatus(RelayCallStatus.RecipientBalanceChanged);
         }
 
@@ -486,7 +486,7 @@ contract RelayHub is IRelayHub {
     }
 
     /**
-     * @dev Reverts the transaction with returndata set to the ABI encoding of the status argument.
+     * @dev Reverts the transaction with return data set to the ABI encoding of the status argument.
      */
     function revertWithStatus(RelayCallStatus status) private pure {
         bytes memory data = abi.encode(status);

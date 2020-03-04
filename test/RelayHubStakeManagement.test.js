@@ -3,7 +3,7 @@ const { ZERO_ADDRESS } = constants
 
 const TestRecipientUtils = artifacts.require('./TestRecipientUtils.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient')
-const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
+const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted')
 const RelayHub = artifacts.require('RelayHub')
 
 const { expect } = require('chai')
@@ -12,14 +12,14 @@ const Environments = require('../src/js/relayclient/Environments')
 contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
   let relayHub
   let recipient
-  let gasSponsor
+  let paymaster
 
   beforeEach(async function () {
     relayHub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
     recipient = await SampleRecipient.new()
-    gasSponsor = await TestSponsor.new()
+    paymaster = await TestPaymasterEverythingAccepted.new()
     await recipient.setHub(relayHub.address)
-    await gasSponsor.setHub(relayHub.address)
+    await paymaster.setHub(relayHub.address)
   })
 
   describe('relay management', function () {

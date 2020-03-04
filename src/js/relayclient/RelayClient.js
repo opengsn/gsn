@@ -19,7 +19,7 @@ const relayHubAbi = require('./interfaces/IRelayHub')
 const versionAbi = require('./IRelayHubVersionAbi')
 relayHubAbi.push(versionAbi)
 
-const gasSponsorAbi = require('./interfaces/IGasSponsor')
+const paymasterAbi = require('./interfaces/IPaymaster')
 
 const relayLookupLimitBlocks = 6000
 abiDecoder.addABI(relayHubAbi)
@@ -77,8 +77,8 @@ class RelayClient {
     this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.failedRelays, this.config)
   }
 
-  createGasSponsor (addr) {
-    return new this.web3.eth.Contract(gasSponsorAbi, addr)
+  createPaymaster (addr) {
+    return new this.web3.eth.Contract(paymasterAbi, addr)
   }
 
   createRelayHub (addr) {
@@ -92,7 +92,7 @@ class RelayClient {
    * transaction is not valid.
    */
   validateRelayResponse (returnedTx, addressRelay,
-    from, to, transactionOrig, transactionFee, gasPrice, gasLimit, gasSponsor, nonce,
+    from, to, transactionOrig, transactionFee, gasPrice, gasLimit, paymaster, nonce,
     relayHubAddress, relayAddress, sig, approvalData) {
     const tx = new Transaction({
       nonce: returnedTx.nonce,
@@ -111,7 +111,7 @@ class RelayClient {
     const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, txV[0], txR, txS)))
 
     const relayRequestOrig = utils.getRelayRequest(
-      from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress, gasSponsor)
+      from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress, paymaster)
 
     const relayHub = this.createRelayHub(relayHubAddress)
     const relayRequestAbiEncode = relayHub.methods.relayCall(relayRequestOrig, sig, approvalData).encodeABI()
@@ -147,7 +147,7 @@ class RelayClient {
       relayFee,
       gasPrice,
       gasLimit,
-      gasSponsor,
+      paymaster,
       senderNonce,
       signature,
       approvalData,
@@ -166,7 +166,7 @@ class RelayClient {
         to: to,
         gasPrice,
         gasLimit,
-        gasSponsor,
+        paymaster,
         relayFee: relayFee,
         SenderNonce: parseInt(senderNonce),
         RelayMaxNonce: parseInt(relayMaxNonce),
@@ -201,7 +201,7 @@ class RelayClient {
         try {
           validTransaction = self.validateRelayResponse(
             body, relayAddress, from, to, encodedFunction,
-            relayFee, gasPrice, gasLimit, gasSponsor, senderNonce,
+            relayFee, gasPrice, gasLimit, paymaster, senderNonce,
             relayHubAddress, relayAddress, signature, approvalData)
         } catch (error) {
           console.error('validateRelayResponse threw error:\n', error, error.stack)
@@ -278,7 +278,7 @@ class RelayClient {
    * (not strictly a client operation, but without a balance, the target contract can't accept calls)
    */
   async balanceOf (target) {
-    const relayHub = await this.createRelayHubFromSponsor(target)
+    const relayHub = await this.createRelayHubFromPaymaster(target)
     // note that the returned value is a promise too, returning BigNumber
     return relayHub.methods.balanceOf(target).call()
   }
@@ -288,7 +288,7 @@ class RelayClient {
    * relay-specific params:
    *  txfee (override config.txfee)
    *  validateCanRelay - client calls canRelay before calling the relay the first time (defaults to true)
-   *  gasSponsor - the contract that is compensating the relay for the gas (defaults to transaction destination 'to')
+   *  paymaster - the contract that is compensating the relay for the gas (defaults to transaction destination 'to')
    * can also override default relayUrl, relayFee
    * return value is the same as from sendTransaction
    */
@@ -298,15 +298,15 @@ class RelayClient {
     // validateCanRelay defaults (in config). to disable, explicitly set options.validateCanRelay=false
     options = Object.assign({ validateCanRelay: this.config.validateCanRelay }, options)
 
-    const gasSponsor = options.gasSponsor || options.to
-    const relayHub = await this.createRelayHubFromSponsor(gasSponsor)
+    const paymaster = options.paymaster || options.to
+    const relayHub = await this.createRelayHubFromPaymaster(paymaster)
 
     // TODO: refactor! wrong instance is created for accidentally same method!
-    if (!utils.isSameAddress(gasSponsor, options.to)) {
-      const recipientHub = await this.createGasSponsor(options.to).methods.getHubAddr().call()
+    if (!utils.isSameAddress(paymaster, options.to)) {
+      const recipientHub = await this.createPaymaster(options.to).methods.getHubAddr().call()
 
       if (!utils.isSameAddress(relayHub._address, recipientHub)) {
-        throw Error('Sponsor and recipient RelayHub addresses do not match')
+        throw Error('Paymaster\'s and recipient\'s RelayHub addresses do not match')
       }
     }
 
@@ -367,7 +367,7 @@ class RelayClient {
           pctRelayFee: txfee,
           gasPrice,
           gasLimit,
-          gasSponsor,
+          paymaster,
           relayHub: relayHub._address,
           relayAddress
         })
@@ -385,7 +385,7 @@ class RelayClient {
             pctRelayFee: txfee.toString(),
             gasPrice: gasPrice.toString(),
             gasLimit: gasLimit.toString(),
-            gasSponsor,
+            paymaster,
             relayHub: relayHub._address,
             relayAddress
           })
@@ -432,7 +432,7 @@ class RelayClient {
       if (options.validateCanRelay && firstTry) {
         firstTry = false
         let res
-        const gasSponsorContract = this.createGasSponsor(gasSponsor)
+        const paymasterContract = this.createPaymaster(paymaster)
         // TODO: validate this calculation in a test. Or, better, make '.encodeABI()' here with stub data.
         const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
         const calldataSize =
@@ -441,7 +441,7 @@ class RelayClient {
           approvalData.length +
           relayCallExtraBytes
 
-        const _gasLimits = await gasSponsorContract.methods.getGasLimitsForSponsorCalls().call()
+        const _gasLimits = await paymasterContract.methods.getGasLimits().call()
         const _overhead = parseInt(await relayHub.methods.getHubOverhead().call())
         const gasData = await utils.getTransactionGasData({
           _gasLimits,
@@ -481,7 +481,7 @@ class RelayClient {
           relayFee: txfee,
           gasPrice,
           gasLimit,
-          gasSponsor,
+          paymaster,
           senderNonce: nonce,
           signature,
           approvalData,
@@ -603,18 +603,18 @@ class RelayClient {
     this.ephemeralKeypair = ephemeralKeypair
   }
 
-  async createRelayHubFromSponsor (sponsorAddress) {
-    const relayRecipient = this.createGasSponsor(sponsorAddress)
+  async createRelayHubFromPaymaster (paymasterAddress) {
+    const relayRecipient = this.createPaymaster(paymasterAddress)
 
     let relayHubAddress
     try {
       relayHubAddress = await relayRecipient.methods.getHubAddr().call()
     } catch (err) {
-      throw new Error(`Could not get relay hub address from sponsor at ${sponsorAddress} (${err.message}). Make sure it is a valid sponsor contract.`)
+      throw new Error(`Could not get relay hub address from paymaster at ${paymasterAddress} (${err.message}). Make sure it is a valid paymaster contract.`)
     }
 
     if (!relayHubAddress || ethUtils.isZeroAddress(relayHubAddress)) {
-      throw new Error(`The relay hub address is set to zero in sponsor at ${sponsorAddress}. Make sure it is a valid sponsor contract.`)
+      throw new Error(`The relay hub address is set to zero in paymaster at ${paymasterAddress}. Make sure it is a valid paymaster contract.`)
     }
 
     const relayHub = this.createRelayHub(relayHubAddress)

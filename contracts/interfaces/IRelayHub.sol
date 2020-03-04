@@ -44,7 +44,7 @@ interface IRelayHub {
 
     // Emitted when depositFor is called, including the amount and account that was funded.
     event Deposited(
-        address indexed sponsor,
+        address indexed paymaster,
         address indexed from,
         uint256 amount
     );
@@ -52,13 +52,13 @@ interface IRelayHub {
     // Emitted when an attempt to relay a call failed. This can happen due to incorrect relayCall arguments, or the
     // recipient not accepting the relayed call.
     // The actual relayed call was not executed, and the recipient not charged.
-    // The reason field contains an error code: values 1-10 correspond to PreconditionCheck entries, and values over 10
+    // The reason field contains an error code: values 1-10 correspond to CanRelayStatus entries, and values over 10
     // are custom recipient error codes returned from acceptRelayedCall.
     event CanRelayFailed(
         address indexed relay,
         address indexed from,
         address indexed to,
-        address sponsor,
+        address paymaster,
         bytes4 selector,
         uint256 reason);
 
@@ -70,7 +70,7 @@ interface IRelayHub {
         address indexed relay,
         address indexed from,
         address indexed to,
-        address sponsor,
+        address paymaster,
         bytes4 selector,
         RelayCallStatus status,
         uint256 charge);
@@ -115,7 +115,7 @@ interface IRelayHub {
     /// @param WrongNonce - the provided nonce has already been used by the sender
     /// @param AcceptRelayedCallReverted - the recipient rejected this call via acceptRelayedCall
     /// @param InvalidRecipientStatusCode - the recipient returned an invalid (reserved) status code
-    enum PreconditionCheck {
+    enum CanRelayStatus {
         OK,
         WrongSignature,
         WrongNonce,
@@ -183,7 +183,7 @@ interface IRelayHub {
     //  - all arguments must be signed for by the sender (from)
     //  - the sender's nonce must be the current one
     //  - the recipient must accept this transaction (via acceptRelayedCall)
-    // Returns a PreconditionCheck value (OK when the transaction can be relayed), or a recipient-specific error code if
+    // Returns a CanRelayStatus value (OK when the transaction can be relayed), or a recipient-specific error code if
     // it returns one in acceptRelayedCall.
     function canRelay(
         GSNTypes.RelayRequest calldata relayRequest,
@@ -197,7 +197,7 @@ interface IRelayHub {
     returns (uint256 status, bytes memory recipientContext);
 
     /// Relays a transaction. For this to succeed, multiple conditions must be met:
-    ///  - canRelay must return PreconditionCheck.OK
+    ///  - canRelay must return CanRelayStatus.OK
     ///  - the sender must be a registered relay
     ///  - the transaction's gas price must be larger or equal to the one that was requested by the sender
     ///  - the transaction must have enough gas to run all internal transactions if they use all gas available to them

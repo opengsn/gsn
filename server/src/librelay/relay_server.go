@@ -37,7 +37,7 @@ type RelayTransactionRequest struct {
 	Signature       []byte
 	From            common.Address
 	To              common.Address
-	GasSponsor      common.Address
+	Paymaster       common.Address
 	GasPrice        big.Int
 	GasLimit        big.Int
 	SenderNonce     big.Int
@@ -470,13 +470,13 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 
 	// With a transition to sponsor-defined gas limits, the server will need to crunch some numbers
-	sponsor, err := testcontracts.NewTestSponsor(request.GasSponsor, relay.Client)
+	sponsor, err := testcontracts.NewTestSponsor(request.Paymaster, relay.Client)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	gasLimits, err := sponsor.GetGasLimitsForSponsorCalls(&bind.CallOpts{From: relayAddress})
+	gasLimits, err := sponsor.GetGasLimits(&bind.CallOpts{From: relayAddress})
 	if err != nil {
 		log.Println(err)
 		return
@@ -509,7 +509,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	// check canRelay view function to see if we'll get paid for relaying this tx
 	res, err := relay.canRelay(request.From,
 		request.To,
-		request.GasSponsor,
+		request.Paymaster,
 		maxCharge,
 		gasLimits.AcceptRelayedCallGasLimit,
 		request.EncodedFunction,
@@ -543,7 +543,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	*/
 
 
-	sponsorBalance, err := relay.rhub.BalanceOf(callOpt, request.GasSponsor)
+	sponsorBalance, err := relay.rhub.BalanceOf(callOpt, request.Paymaster)
 	if err != nil {
 		log.Println(err)
 		return
@@ -582,7 +582,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 					SenderAccount: request.From,
 					SenderNonce:   &request.SenderNonce,
 					RelayAddress:  relay.Address(),
-					GasSponsor:    request.GasSponsor,
+					Paymaster:     request.Paymaster,
 				},
 			}
 			return relay.rhub.RelayCall(auth, relayRequest, request.Signature, request.ApprovalData)
@@ -617,7 +617,7 @@ func (relay *RelayServer) GetPort() string {
 
 func (relay *RelayServer) canRelay(from common.Address,
 	to common.Address,
-	gasSponsor common.Address,
+	paymaster common.Address,
 	maxPossibleCharge *big.Int,
 	acceptRelayedCallMaxGas *big.Int,
 	encodedFunction string,
@@ -654,7 +654,7 @@ func (relay *RelayServer) canRelay(from common.Address,
 			SenderAccount: from,
 			SenderNonce:   &senderNonce,
 			RelayAddress:  relayAddress,
-			GasSponsor:    gasSponsor,
+			Paymaster:     paymaster,
 		},
 	}
 	result, err = relay.rhub.CanRelay(callOpt, relayRequest,maxPossibleCharge, acceptRelayedCallMaxGas, signature, approvalData)

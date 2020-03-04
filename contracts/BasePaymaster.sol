@@ -3,36 +3,36 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-import "./interfaces/IGasSponsor.sol";
+import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
 
 /**
- * Abstract base class to be inherited by a concrete Gas Sponsor
+ * Abstract base class to be inherited by a concrete Paymaster
  * A subclass must implement:
  *  - acceptRelayedCall
  *  - preRelayedCall
  *  - postRelayedCall
  */
-contract BaseGasSponsor is IGasSponsor, Ownable {
+contract BasePaymaster is IPaymaster, Ownable {
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
-    uint256 constant private ACCEPT_RELAYED_CALL_MAX_GAS = 50000;
-    uint256 constant private PRE_RELAYED_CALL_MAX_GAS = 100000;
-    uint256 constant private POST_RELAYED_CALL_MAX_GAS = 110000;
+    uint256 constant private ACCEPT_RELAYED_CALL_GAS_LIMIT = 50000;
+    uint256 constant private PRE_RELAYED_CALL_GAS_LIMIT = 100000;
+    uint256 constant private POST_RELAYED_CALL_GAS_LIMIT = 110000;
 
     /// The IRelayHub singleton which is allowed to call us
     IRelayHub internal relayHub;
 
-    function getGasLimitsForSponsorCalls()
+    function getGasLimits()
     external
     view
     returns (
-        GSNTypes.SponsorLimits memory limits
+        GSNTypes.GasLimits memory limits
     ) {
-        return GSNTypes.SponsorLimits(
-            ACCEPT_RELAYED_CALL_MAX_GAS,
-            PRE_RELAYED_CALL_MAX_GAS,
-            POST_RELAYED_CALL_MAX_GAS
+        return GSNTypes.GasLimits(
+            ACCEPT_RELAYED_CALL_GAS_LIMIT,
+            PRE_RELAYED_CALL_GAS_LIMIT,
+            POST_RELAYED_CALL_GAS_LIMIT
         );
     }
 

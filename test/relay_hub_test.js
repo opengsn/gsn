@@ -1,7 +1,7 @@
 const Big = require('big.js')
 
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
-const TestSponsorEverythingAccepted = artifacts.require('./test/TestSponsorEverythingAccepted.sol')
+const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 
 const testutils = require('./testutils')
 const utils = require('../src/js/relayclient/utils')
@@ -18,7 +18,7 @@ const RelayHub = artifacts.require('./RelayHub.sol')
 contract('RelayHub', function (accounts) {
   let rhub
   let sr
-  let gasSponsor
+  let paymaster
 
   const gasLimitAnyValue = 8000029
   const relayAccount = accounts[1]
@@ -26,9 +26,9 @@ contract('RelayHub', function (accounts) {
   before(async function () {
     rhub = await RelayHub.deployed()
     sr = await SampleRecipient.deployed()
-    gasSponsor = await TestSponsorEverythingAccepted.deployed()
+    paymaster = await TestPaymasterEverythingAccepted.deployed()
     const deposit = 100000000000
-    await gasSponsor.deposit({ value: deposit })
+    await paymaster.deposit({ value: deposit })
   })
 
   const oneEther = web3.utils.toWei('1', 'ether')
@@ -64,8 +64,8 @@ contract('RelayHub', function (accounts) {
     const stake = await rhub.getRelay(address)
     assert.equal(oneEther, stake[0])
 
-    const relayRequest1 = utils.getRelayRequest(testutils.zeroAddr, testutils.zeroAddr, '0x1', 1, 1, 1, 1, relayAccount, gasSponsor.address)
-    const relayRequest2 = utils.getRelayRequest(testutils.zeroAddr, testutils.zeroAddr, '0x2', 2, 2, 2, 2, relayAccount, gasSponsor.address)
+    const relayRequest1 = utils.getRelayRequest(testutils.zeroAddr, testutils.zeroAddr, '0x1', 1, 1, 1, 1, relayAccount, paymaster.address)
+    const relayRequest2 = utils.getRelayRequest(testutils.zeroAddr, testutils.zeroAddr, '0x2', 2, 2, 2, 2, relayAccount, paymaster.address)
     data1 = rhub.contract.methods.relayCall(relayRequest1, '0x1', '0x').encodeABI()
     data2 = rhub.contract.methods.relayCall(relayRequest2, '0x2', '0x').encodeABI()
 

@@ -1,9 +1,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "./TestSponsorEverythingAccepted.sol";
+import "./TestPaymasterEverythingAccepted.sol";
 
-contract TestSponsorStoreContext is TestSponsorEverythingAccepted {
+contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
 
     event SampleRecipientPreCallWithValues(
         address relay,

@@ -40,7 +40,7 @@ module.exports = {
       pctRelayFee,
       gasPrice,
       gasLimit,
-      gasSponsor,
+      paymaster,
       relayHub,
       relayAddress
     }) {
@@ -48,7 +48,7 @@ module.exports = {
       typeof gasPrice !== 'string' ||
       typeof gasLimit !== 'string' ||
       typeof pctRelayFee !== 'string' ||
-      typeof gasSponsor !== 'string' ||
+      typeof paymaster !== 'string' ||
       typeof senderNonce !== 'string'
     ) {
       throw Error('using wrong types will cause signatures to be invalid')
@@ -63,7 +63,7 @@ module.exports = {
       pctRelayFee,
       gasPrice,
       gasLimit,
-      gasSponsor,
+      paymaster,
       relayHub,
       relayAddress
     })
@@ -89,7 +89,7 @@ module.exports = {
   },
 
   // TODO: this method is used way too many times
-  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor, baseFee) {
+  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay, paymaster, baseFee) {
     return {
       target: recipient,
       encodedFunction: txData,
@@ -103,14 +103,14 @@ module.exports = {
         senderAccount: sender,
         senderNonce: senderNonce.toString(),
         relayAddress: relay,
-        gasSponsor
+        paymaster
       })
     }
   },
 
   /**
    * TODO: make it work for both truffle and web3 contract objects!!!
-   * @param gasSponsor
+   * @param paymaster
    * @param hub
    * @param relayCallGasLimit
    * @param calldataSize
@@ -118,9 +118,9 @@ module.exports = {
    * @returns {Promise}
    */
   getTransactionGasData: async function ({
-    gasSponsor, _gasLimits, _overhead, relayHub, relayCallGasLimit, calldataSize, gtxdatanonzero
+    paymaster, _gasLimits, _overhead, relayHub, relayCallGasLimit, calldataSize, gtxdatanonzero
   }) {
-    const gasLimits = _gasLimits || await gasSponsor.getGasLimitsForSponsorCalls()
+    const gasLimits = _gasLimits || await paymaster.getGasLimits()
     const overhead = _overhead || (await relayHub.getHubOverhead()).toNumber()
     const maxPossibleGas =
       21000 +

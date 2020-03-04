@@ -19,7 +19,7 @@ const RelayDataType = [
   { name: 'senderAccount', type: 'address' },
   { name: 'senderNonce', type: 'uint256' },
   { name: 'relayAddress', type: 'address' },
-  { name: 'gasSponsor', type: 'address' }
+  { name: 'paymaster', type: 'address' }
 ]
 
 const RelayRequest = [
@@ -40,7 +40,7 @@ module.exports = function getDataToSign (
     baseRelayFee,
     gasPrice,
     gasLimit,
-    gasSponsor,
+    paymaster,
     relayHub,
     relayAddress
   }
@@ -63,7 +63,7 @@ module.exports = function getDataToSign (
     senderAccount,
     senderNonce,
     relayAddress,
-    gasSponsor
+    paymaster
   })
   const message = {
     target,

@@ -8,7 +8,7 @@ const { getEip712Signature, getRelayRequest } = require('../src/js/relayclient/u
 
 const RelayHub = artifacts.require('RelayHub')
 const SampleRecipient = artifacts.require('./test/TestRecipient')
-const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
+const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted')
 
 const { expect } = require('chai')
 const Environments = require('../src/js/relayclient/Environments')
@@ -18,14 +18,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
   const chainId = 1
   let relayHub
   let recipient
-  let gasSponsor
+  let paymaster
 
   before(async function () {
     relayHub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
     recipient = await SampleRecipient.new()
-    gasSponsor = await TestSponsor.new()
+    paymaster = await TestPaymasterEverythingAccepted.new()
     await recipient.setHub(relayHub.address)
-    await gasSponsor.setHub(relayHub.address)
+    await paymaster.setHub(relayHub.address)
   })
 
   describe('penalizations', function () {
@@ -79,7 +79,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
       before(function () {
         expect('0x' + privateToAddress('0x' + relayCallArgs.privateKey).toString('hex')).to.equal(relay.toLowerCase())
         // TODO: I don't want to refactor everything here, but this value is not available before 'before' is run :-(
-        encodedCallArgs.gasSponsor = gasSponsor.address
+        encodedCallArgs.paymaster = paymaster.address
       })
 
       beforeEach('staking for relay', async function () {
@@ -229,13 +229,13 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
           }
           const { signature } = await getEip712Signature({
             ...sharedSigValues,
-            gasSponsor: gasSponsor.address
+            paymaster: paymaster.address
           })
-          await relayHub.depositFor(gasSponsor.address, {
+          await relayHub.depositFor(paymaster.address, {
             from: other,
             value: ether('1')
           })
-          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor.address)
+          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, paymaster.address)
           const relayCallTx = await relayHub.relayCall(relayRequest, signature, '0x', {
             from: relay,
             gasPrice,
@@ -355,7 +355,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
         encodedCallArgs.gasLimit,
         encodedCallArgs.nonce,
         relayAddress,
-        encodedCallArgs.gasSponsor
+        encodedCallArgs.paymaster
       )
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x').encodeABI()
 

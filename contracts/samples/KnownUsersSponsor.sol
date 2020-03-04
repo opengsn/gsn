@@ -1,17 +1,17 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../BaseGasSponsor.sol";
+import "../BasePaymaster.sol";
 import "../BaseRelayRecipient.sol";
 
 // TODO: update this contract and cover it with a test. Currently unusable. Do not use it for reference.
 /**
- * Sample User whitelist relay sponsor.
+ * Sample User whitelist relay paymaster.
  * Only registered users are allowed to access this contract.
  * Only admins are allowed to add/remove users.
  * (note that neither users nor admins hold any ether)
  */
-contract KnownUsersSponsor is BaseGasSponsor, BaseRelayRecipient {
+contract KnownUsersPaymaster is BasePaymaster, BaseRelayRecipient {
 
     mapping(address => bool) public users;
     mapping(address => bool) public admins;

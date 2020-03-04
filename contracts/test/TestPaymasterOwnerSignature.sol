@@ -3,9 +3,9 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
-import "./TestSponsorEverythingAccepted.sol";
+import "./TestPaymasterEverythingAccepted.sol";
 
-contract TestSponsorOwnerSignature is TestSponsorEverythingAccepted {
+contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
     using ECDSA for bytes32;
 
     /**

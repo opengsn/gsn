@@ -1,9 +1,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../BaseGasSponsor.sol";
+import "../BasePaymaster.sol";
 
-contract TestSponsorEverythingAccepted is BaseGasSponsor {
+contract TestPaymasterEverythingAccepted is BasePaymaster {
 
     event SampleRecipientPreCall();
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);

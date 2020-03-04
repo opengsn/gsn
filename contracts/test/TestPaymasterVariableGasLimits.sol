@@ -1,9 +1,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "./TestSponsorEverythingAccepted.sol";
+import "./TestPaymasterEverythingAccepted.sol";
 
-contract TestSponsorVariableGasLimits is TestSponsorEverythingAccepted {
+contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
 
     event SampleRecipientPreCallWithValues(
         uint256 gasleft,

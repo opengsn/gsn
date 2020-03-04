@@ -1,9 +1,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "./TestSponsorEverythingAccepted.sol";
+import "./TestPaymasterEverythingAccepted.sol";
 
-contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
+contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted {
 
     bool public withdrawDuringPostRelayedCall;
     bool public withdrawDuringPreRelayedCall;

@@ -17,7 +17,7 @@ contract('Utils', async function (accounts) {
       const pctRelayFee = '15'
       const gasPrice = '10000000'
       const gasLimit = '500000'
-      const gasSponsor = accounts[7]
+      const paymaster = accounts[7]
       const relayHub = accounts[8]
       const relayAddress = accounts[9]
 
@@ -30,7 +30,7 @@ contract('Utils', async function (accounts) {
         pctRelayFee,
         gasPrice,
         gasLimit,
-        gasSponsor,
+        paymaster,
         relayHub,
         relayAddress
       })
@@ -45,7 +45,7 @@ contract('Utils', async function (accounts) {
         pctRelayFee,
         gasPrice,
         gasLimit,
-        gasSponsor,
+        paymaster,
         relayHub,
         relayAddress
       })
