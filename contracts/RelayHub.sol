@@ -7,9 +7,9 @@ pragma experimental ABIEncoderV2;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 import "./utils/EIP712Sig.sol";
-import "./utils/ECDSAEIP155.sol";
 import "./utils/GSNTypes.sol";
 import "./utils/GsnUtils.sol";
 import "./utils/RLPReader.sol";
@@ -20,7 +20,7 @@ contract RelayHub is IRelayHub {
 
     string constant public COMMIT_ID = "$Id$";
 
-    using ECDSAEIP155 for bytes32;
+    using ECDSA for bytes32;
 
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
     uint256 constant private MINIMUM_STAKE = 1 ether;
@@ -524,6 +524,14 @@ contract RelayHub is IRelayHub {
         return transaction;
 
     }
+    function fixEIP155Signature(bytes memory signature) private pure returns (bytes memory){
+        uint256 v = uint256(uint8(signature[64]));
+        if (v > 28) {
+            v -= GsnUtils.getChainID() * 2 + 8;
+        }
+        signature[64] = bytes1(uint8(v));
+        return signature;
+    }
 
     function penalizeRepeatedNonce(
         bytes memory unsignedTx1,
@@ -543,8 +551,8 @@ contract RelayHub is IRelayHub {
         // If reported via a relay, the forfeited stake is split between
         // msg.sender (the relay used for reporting) and the address that reported it.
 
-        address addr1 = keccak256(abi.encodePacked(unsignedTx1)).recover(signature1);
-        address addr2 = keccak256(abi.encodePacked(unsignedTx2)).recover(signature2);
+        address addr1 = keccak256(abi.encodePacked(unsignedTx1)).recover(fixEIP155Signature(signature1));
+        address addr2 = keccak256(abi.encodePacked(unsignedTx2)).recover(fixEIP155Signature(signature2));
 
         require(addr1 == addr2, "Different signer");
         require(addr1 != address(0), "ecrecover failed");
@@ -579,7 +587,7 @@ contract RelayHub is IRelayHub {
                 "Legal relay transaction");
         }
 
-        address relay = keccak256(abi.encodePacked(unsignedTx)).recover(signature);
+        address relay = keccak256(abi.encodePacked(unsignedTx)).recover(fixEIP155Signature(signature));
         require(relay != address(0), "ecrecover failed");
 
         penalize(relay);
