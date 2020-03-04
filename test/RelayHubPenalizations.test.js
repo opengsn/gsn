@@ -405,8 +405,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
           stripZeros(toBuffer(0))
         )
       }
+      let v = tx.v[0]
+      if (v > 28) {
+        v -= chainId * 2 + 8
+      }
       const data = `0x${rlp.encode(input).toString('hex')}`
-      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${tx.v.toString('hex')}`
+      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${v.toString(16)}`
 
       return {
         data,
