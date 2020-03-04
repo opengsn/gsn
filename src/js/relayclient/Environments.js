@@ -3,7 +3,7 @@
  * So far the only conflict we will have is migration to Istanbul, as ETC does not integrate it as of this writing.
  * TODO: see the differences between networks we want to support and make project structure multi-chain
  */
-module.exports = {
+const environments = {
   istanbul: {
     gtxdatanonzero: 16
   },
@@ -11,3 +11,7 @@ module.exports = {
     gtxdatanonzero: 68
   }
 }
+
+environments.default = environments.istanbul
+
+module.exports = environments

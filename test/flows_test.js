@@ -41,7 +41,7 @@ options.forEach(params => {
 
       if (params.relay) {
         // rhub = await RelayHub.deployed()
-        rhub = await RelayHub.new(Environments.istanbul.gtxdatanonzero, { gas: 10000000 })
+        rhub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
         relayproc = await testutils.startRelay(rhub, {
           stake: 1e18,
           delay: 3600 * 24 * 7,

@@ -448,7 +448,7 @@ class RelayClient {
           _overhead,
           relayHub,
           calldataSize,
-          gtxdatanonzero: options.gtxdatanonzero || Environments.istanbul.gtxdatanonzero,
+          gtxdatanonzero: options.gtxdatanonzero || Environments.default.gtxdatanonzero,
           relayCallGasLimit: gasLimit,
           gasPrice: gasPrice.toString(),
           fee: txfee

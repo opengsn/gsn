@@ -25,7 +25,7 @@ function correctGasCost (buffer, nonzerocost, zerocost) {
 contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddress, otherRelay, senderAccount, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = time.duration.weeks(4)
-  const gtxdatanonzero = Environments.istanbul.gtxdatanonzero
+  const gtxdatanonzero = Environments.default.gtxdatanonzero
   const fee = new BN('10')
   const gasPrice = new BN('10')
   const gasLimit = new BN('1000000')

@@ -21,7 +21,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
   let gasSponsor
 
   before(async function () {
-    relayHub = await RelayHub.new(Environments.istanbul.gtxdatanonzero, { gas: 10000000 })
+    relayHub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
     recipient = await SampleRecipient.new()
     gasSponsor = await TestSponsor.new()
     await recipient.setHub(relayHub.address)
