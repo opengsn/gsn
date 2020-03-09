@@ -89,24 +89,18 @@ class RelayClient {
    * @returns a signed {@link Transaction} instance for broadcasting, or null if returned
    * transaction is not valid.
    */
-  validateRelayResponse (returnedTx, addressRelay,
+  validateRelayResponse (
+    returnedTx, addressRelay,
     from, to, transactionOrig, transactionFee, gasPrice, gasLimit, gasSponsor, nonce,
     relayHubAddress, relayAddress, sig, approvalData) {
-    const tx = new Transaction({
-      nonce: returnedTx.nonce,
-      gasPrice: returnedTx.gasPrice,
-      gasLimit: returnedTx.gas,
-      to: returnedTx.to,
-      value: returnedTx.value,
-      data: returnedTx.input
-    })
+    const tx = new Transaction(returnedTx)
 
     const message = tx.hash(false)
-    const txV = Buffer.from(removeHexPrefix(returnedTx.v), 'hex')
-    const txR = Buffer.from(padTo64(removeHexPrefix(returnedTx.r)), 'hex')
-    const txS = Buffer.from(padTo64(removeHexPrefix(returnedTx.s)), 'hex')
+    if (this.config.verbose) {
+      console.log('returnedTx is', tx.v, tx.r, tx.s, tx.to, tx.data, tx.gasLimit, tx.gasPrice, tx.value)
+    }
 
-    const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, txV[0], txR, txS)))
+    const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, tx.v[0], tx.r, tx.s)))
 
     const relayRequestOrig = utils.getRelayRequest(
       from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress, gasSponsor)
@@ -115,20 +109,17 @@ class RelayClient {
     const relayRequestAbiEncode = relayHub.methods.relayCall(relayRequestOrig, sig, approvalData).encodeABI()
 
     if (
-      utils.isSameAddress(returnedTx.to, relayHubAddress) &&
-      relayRequestAbiEncode === returnedTx.input &&
+      utils.isSameAddress(ethUtils.bufferToHex(tx.to), relayHubAddress) &&
+      relayRequestAbiEncode === ethUtils.bufferToHex(tx.data) &&
       utils.isSameAddress(addressRelay, signer)
     ) {
       if (this.config.verbose) {
         console.log('validateRelayResponse - valid transaction response')
       }
-      tx.v = txV
-      tx.r = txR
-      tx.s = txS
       return tx
     } else {
       console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, addressRelay)
-      console.error('validateRelayResponse: rsp', returnedTx.input, returnedTx.to, signer)
+      console.error('validateRelayResponse: rsp', ethUtils.bufferToHex(tx.data), ethUtils.bufferToHex(tx.to), signer)
     }
   }
 
@@ -166,9 +157,9 @@ class RelayClient {
         gasLimit,
         gasSponsor,
         relayFee: relayFee,
-        SenderNonce: parseInt(senderNonce),
-        RelayMaxNonce: parseInt(relayMaxNonce),
-        RelayHubAddress: relayHubAddress
+        senderNonce: parseInt(senderNonce),
+        relayMaxNonce: parseInt(relayMaxNonce),
+        relayHubAddress: relayHubAddress
       }
 
       const callback = async function (error, body) {
@@ -186,19 +177,24 @@ class RelayClient {
         if (self.config.verbose) {
           console.log('sendViaRelay resp=', body)
         }
-        if (body && body.error) {
+        if (!body) {
+          reject(Error('Empty body received from server.'))
+          return
+        }
+        if (body.error) {
           reject(body.error)
           return
         }
-        if (!body || !body.nonce) {
-          reject(Error('Empty body received from server, or neither \'error\' nor \'nonce\' fields present.'))
+        if (!body.signedTx) {
+          console.log('body is', body)
+          reject(Error('body.signedTx field missing.'))
           return
         }
 
         let validTransaction
         try {
           validTransaction = self.validateRelayResponse(
-            body, relayAddress, from, to, encodedFunction,
+            body.signedTx, relayAddress, from, to, encodedFunction,
             relayFee, gasPrice, gasLimit, gasSponsor, senderNonce,
             relayHubAddress, relayAddress, signature, approvalData)
         } catch (error) {
@@ -213,7 +209,8 @@ class RelayClient {
         if (receivedNonce > relayMaxNonce) {
           // TODO: need to validate that client retries the same request and doesn't double-spend.
           // Note that this transaction is totally valid from the EVM's point of view
-          reject(Error('Relay used a tx nonce higher than requested. Requested ' + relayMaxNonce + ' got ' + receivedNonce))
+          reject(
+            Error('Relay used a tx nonce higher than requested. Requested ' + relayMaxNonce + ' got ' + receivedNonce))
           return
         }
 
@@ -254,7 +251,9 @@ class RelayClient {
       // see the EIP for description of the attack
 
       // don't display error for the known-good cases
-      if (!('' + error).match(/the tx doesn't have the correct nonce|known transaction/)) { console.log('broadcastTx: ', error || result) }
+      if (!('' + error).match(/the tx doesn't have the correct nonce|known transaction/)) {
+        console.log('broadcastTx: ', error || result)
+      }
 
       if (error) {
         // note that nonce-related errors at this point are VALID reponses: it means that
@@ -334,7 +333,7 @@ class RelayClient {
     const pinger = await this.serverHelper.newActiveRelayPinger(blockFrom, gasPrice)
     const errors = []
     let firstTry = true
-    for (let i = 0; i < 3 ; i++) {
+    for (; ;) {
       const activeRelay = await pinger.nextRelay()
       if (!activeRelay) {
         const error = new Error('No relay responded! ' +
@@ -583,11 +582,13 @@ class RelayClient {
     try {
       relayHubAddress = await relayRecipient.methods.getHubAddr().call()
     } catch (err) {
-      throw new Error(`Could not get relay hub address from sponsor at ${sponsorAddress} (${err.message}). Make sure it is a valid sponsor contract.`)
+      throw new Error(
+        `Could not get relay hub address from sponsor at ${sponsorAddress} (${err.message}). Make sure it is a valid sponsor contract.`)
     }
 
     if (!relayHubAddress || ethUtils.isZeroAddress(relayHubAddress)) {
-      throw new Error(`The relay hub address is set to zero in sponsor at ${sponsorAddress}. Make sure it is a valid sponsor contract.`)
+      throw new Error(
+        `The relay hub address is set to zero in sponsor at ${sponsorAddress}. Make sure it is a valid sponsor contract.`)
     }
 
     const relayHub = this.createRelayHub(relayHubAddress)
@@ -596,7 +597,8 @@ class RelayClient {
     try {
       hubVersion = await relayHub.methods.version().call()
     } catch (err) {
-      throw new Error(`Could not query relay hub version at ${relayHubAddress} (${err.message}). Make sure the address corresponds to a relay hub.`)
+      throw new Error(
+        `Could not query relay hub version at ${relayHubAddress} (${err.message}). Make sure the address corresponds to a relay hub.`)
     }
 
     if (!hubVersion.startsWith('1')) {

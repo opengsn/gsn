@@ -17,9 +17,10 @@ const argv = parseArgs(process.argv.slice(2), {
 
 if (argv._.length) error('unknown extra params: ' + argv._)
 
+console.log('runServer start. args', argv)
 const fee = argv.Fee || 70
 const url = argv.Url || 'http://localhost:8090'
-const port = argv.Port || 80
+const port = argv.Port || 8090
 const relayHubAddress = argv.RelayHubAddress || '0xD216153c06E857cD7f72665E0aF1d7D82172F494'
 const defaultGasPrice = argv.DefaultGasPrice || 1e9 // 1 Gwei
 const gasPricePercent = argv.GasPricePercent || 10
@@ -37,7 +38,8 @@ try {
   keypair = KeyManager.newKeypair()
 }
 const keyManager = new KeyManager({ ecdsaKeyPair: keypair, workdir })
-const web3provider = new Web3.providers.WebsocketProvider(ethNodeUrl)
+const web3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
+const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const relay = new RelayServer({
   keyManager,
   hubAddress: relayHubAddress,
@@ -45,7 +47,7 @@ const relay = new RelayServer({
   url,
   txFee: fee,
   devMode,
-  gasPriceFactor: (gasPricePercent + 100) / 100,
+  gasPriceFactor: gasPriceFactor,
   ethereumNodeUrl
 })
 console.log('Starting server.')

@@ -32,7 +32,7 @@ const increaseTime = testutils.increaseTime
 const util = require('util')
 const request = util.promisify(require('request'))
 
-contract.only('RelayServer', function (accounts) {
+contract.skip('RelayServer', function (accounts) {
   let rhub
   let sr
   let gasSponsor
@@ -88,10 +88,18 @@ contract.only('RelayServer', function (accounts) {
   })
 
   it('should initialize relay', async function () {
+    const expectedGasPrice = (await web3.eth.getGasPrice()) * relayServer.gasPriceFactor
+    const expectedBalance = await web3.eth.getBalance(relayServer.address)
     const chainId = await web3.eth.net.getId()
+    assert.notEqual(relayServer.gasPrice, expectedGasPrice)
+    assert.notEqual(relayServer.balance, expectedBalance)
     assert.notEqual(relayServer.chainId, chainId)
-    const receipt = await relayServer.init()
+    assert.equal(relayServer.ready, false)
+    const receipt = await relayServer._worker()
+    assert.equal(relayServer.gasPrice, expectedGasPrice)
+    assert.equal(relayServer.balance, expectedBalance)
     assert.equal(relayServer.chainId, chainId)
+    assert.equal(relayServer.ready, true)
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(relayServer._parseEvent)
     assert.equal(decodedLogs.length, 1)
     assert.equal(decodedLogs[0].name, 'RelayAdded')
@@ -101,17 +109,6 @@ contract.only('RelayServer', function (accounts) {
     assert.equal(decodedLogs[0].args.stake, relayServer.stake)
     assert.equal(decodedLogs[0].args.unstakeDelay, relayServer.unstakeDelay)
     assert.equal(decodedLogs[0].args.url, relayServer.url)
-  })
-
-  it('should run worker task to update relay blockchain view', async function () {
-    const expectedGasPrice = (await web3.eth.getGasPrice()) * relayServer.gasPriceFactor
-    const expectedBalance = await web3.eth.getBalance(relayServer.address)
-    assert.notEqual(relayServer.gasPrice, expectedGasPrice)
-    assert.notEqual(relayServer.balance, expectedBalance)
-    await relayServer._worker()
-    assert.equal(relayServer.gasPrice, expectedGasPrice)
-    assert.equal(relayServer.balance, expectedBalance)
-    // assert.equal(relayServer.lastScannedBlock, await web3.eth.getBlockNumber())
   })
 
   it('should relay transaction', async function () {
@@ -211,14 +208,16 @@ contract.only('RelayServer', function (accounts) {
 
   it('should handle RelayRemoved event', async function () {
     assert.equal(relayServer.removed, false)
+    assert.equal(relayServer.isReady(), true)
     await rhub.removeRelayByOwner(relayServer.address, {
       from: relayOwner
     })
     await relayServer._worker()
     assert.equal(relayServer.removed, true)
+    assert.equal(relayServer.isReady(), false)
   })
 
-  it('should handle Unstaked event', async function () {
+  it('should handle Unstaked event - send balance to owner', async function () {
     const relayBalanceBefore = await relayServer.getBalance()
     assert.isTrue(relayBalanceBefore > 0)
     await increaseTime(weekInSec)

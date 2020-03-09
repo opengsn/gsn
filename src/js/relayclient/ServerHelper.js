@@ -62,12 +62,23 @@ class ActiveRelayPinger {
     const self = this
     return new Promise(function (resolve, reject) {
       const callback = function (error, body) {
+        if (self.verbose) {
+          console.log('error, body', error, body)
+        }
         if (error) {
           reject(error)
           return
         }
-        if (!body || !body.Ready || body.MinGasPrice > gasPrice) {
-          reject(Error('Relay not ready or proposed gas price too low ' + JSON.stringify(body)))
+        if (!body) {
+          reject(Error('Relay responded without a body'))
+          return
+        }
+        if (!body.Ready) {
+          reject(Error('Relay not ready ' + JSON.stringify(body)))
+          return
+        }
+        if ( body.MinGasPrice > gasPrice) {
+          reject(Error(`Proposed gas price too low: ${gasPrice}, relay's gasPrice: ${body.MinGasPrice}`))
           return
         }
         try {
@@ -99,7 +110,7 @@ class ActiveRelayPinger {
               resolve(res)
             }).catch(err => {
               if (++numRejected === promises.length) {
-                reject(Error('No response matched filter from any server: ' + JSON.stringify(err)))
+                reject(Error('No response matched filter from any server: ' + JSON.stringify(err.message)))
               }
             })
         )
