@@ -1,9 +1,9 @@
-import express from 'express'
-import jsonrpc from 'jsonrpc-lite'
-import bodyParser from 'body-parser'
-import cors from 'cors'
+const express = require('express')
+const jsonrpc = require('jsonrpc-lite')
+const bodyParser = require('body-parser')
+const cors = require('cors')
 
-export default class HttpServer {
+class HttpServer {
   constructor ({ port, backend }) {
     this.port = port
     this.backend = backend
@@ -82,3 +82,5 @@ export default class HttpServer {
     res.send(signedTx)
   }
 }
+
+module.exports = HttpServer

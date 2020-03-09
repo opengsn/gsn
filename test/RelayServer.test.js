@@ -1,24 +1,20 @@
-/* global artifacts BigInt */
+/* global artifacts BigInt describe */
 const Web3 = require('web3')
 const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayServer = require('../src/js/relayserver/RelayServer')
-const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestEverythingAcceptedSponsor = artifacts.require('./test/TestSponsorEverythingAccepted.sol')
-const TestSponsorOwnerSignature = artifacts.require('./test/TestSponsorOwnerSignature.sol')
 const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 const KeyManager = require('../src/js/relayserver/KeyManager')
 const RelayHubABI = require('../src/js/relayclient/interfaces/IRelayHub')
 const GasSponsorABI = require('../src/js/relayclient/interfaces/IGasSponsor')
 
-const Transaction = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
 const abiDecoder = require('abi-decoder')
 
 const chai = require('chai')
-const sinon = require('sinon')
 const sinonChai = require('sinon-chai')
 const expect = require('chai').expect
 chai.use(sinonChai)
@@ -27,17 +23,11 @@ abiDecoder.addABI(GasSponsorABI)
 abiDecoder.addABI(SampleRecipient.abi)
 abiDecoder.addABI(TestEverythingAcceptedSponsor.abi)
 
-const sigUtil = require('eth-sig-util')
-
 const localhostOne = 'http://localhost:8090'
 const ethereumNodeUrl = 'http://localhost:8545'
 
 const testutils = require('./testutils')
-const registerNewRelay = testutils.register_new_relay
 const increaseTime = testutils.increaseTime
-const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect
-
-const Big = require('big.js')
 
 const util = require('util')
 const request = util.promisify(require('request'))
@@ -236,5 +226,11 @@ contract.only('RelayServer', function (accounts) {
     await relayServer._worker()
     const relayBalanceAfter = await relayServer.getBalance()
     assert.isTrue(relayBalanceAfter === 0)
+  })
+
+  it('')
+
+  describe('Http server', async function () {
+
   })
 })

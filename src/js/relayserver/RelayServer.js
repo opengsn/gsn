@@ -226,7 +226,7 @@ class RelayServer extends EventEmitter {
     await this.waitForOwnerActions()
     // register on chain
     const registerMethod = this.relayHubContract.methods.registerRelay(this.txFee, this.url)
-    const { receipt, } = await this._sendTransaction(
+    const { receipt } = await this._sendTransaction(
       { method: registerMethod, destination: this.relayHubContract.options.address })
     return receipt
   }
