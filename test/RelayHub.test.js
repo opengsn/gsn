@@ -9,8 +9,7 @@ const TestSponsorStoreContext = artifacts.require('./test/TestSponsorStoreContex
 const TestSponsorConfigurableMisbehavior = artifacts.require('./test/TestSponsorConfigurableMisbehavior')
 
 const { expect } = require('chai')
-
-const GTXDATANONZERO = 68
+const Environments = require('../src/js/relayclient/Environments')
 
 contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
@@ -34,7 +33,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
   let gasSponsor
 
   beforeEach(async function () {
-    relayHub = await RelayHub.new(68, { gas: 10000000 })
+    relayHub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
     recipient = await TestRecipient.new()
     gasSponsor = await TestSponsor.new()
     await recipient.setHub(relayHub.address)
@@ -211,7 +210,7 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
         const sharedTransactionData = {
           relayCallGasLimit: '1000000',
           calldataSize: '123',
-          gtxdatanonzero: GTXDATANONZERO
+          gtxdatanonzero: Environments.default.gtxdatanonzero
         }
         it('should get \'0\' (Success Code) from \'canRelay\' for a valid transaction', async function () {
           const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor.address)

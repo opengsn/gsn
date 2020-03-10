@@ -10,11 +10,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 import "./utils/EIP712Sig.sol";
+import "./utils/GSNTypes.sol";
 import "./utils/GsnUtils.sol";
 import "./utils/RLPReader.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IGasSponsor.sol";
-import "./utils/GSNTypes.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -43,7 +43,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 17730;
+    uint256 constant private GAS_OVERHEAD = 20730;
 
     function getHubOverhead() external view returns (uint256) {
         return GAS_OVERHEAD;
@@ -53,9 +53,6 @@ contract RelayHub is IRelayHub {
 
     uint256 public gtxdatanonzero;
     uint256 constant public GTRANSACTION = 21000;
-
-    // Approximation of how much calling recipientCallsAtomic costs
-    uint256 constant private RECIPIENT_CALLS_ATOMIC_OVERHEAD = 5000;
 
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;

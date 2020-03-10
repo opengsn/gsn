@@ -7,8 +7,7 @@ const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
 const RelayHub = artifacts.require('RelayHub')
 
 const { expect } = require('chai')
-
-const GTXDATANONZERO = 68
+const Environments = require('../src/js/relayclient/Environments')
 
 contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
   let relayHub
@@ -16,7 +15,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
   let gasSponsor
 
   beforeEach(async function () {
-    relayHub = await RelayHub.new(GTXDATANONZERO, { gas: 10000000 })
+    relayHub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
     recipient = await SampleRecipient.new()
     gasSponsor = await TestSponsor.new()
     await recipient.setHub(relayHub.address)

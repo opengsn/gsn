@@ -13,13 +13,12 @@ const TestSponsorApproval = artifacts.require('tests/TestSponsorPreconfiguredApp
 const RelayHub = artifacts.require('RelayHub')
 
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
+const Environments = require('../src/js/relayclient/Environments')
 
 const options = [
   { title: 'Direct-', relay: 0 },
   { title: 'Relayed-', relay: 1 }
 ]
-
-const GTXDATANONZERO = 68
 
 options.forEach(params => {
   contract(params.title + 'Flow', async (acc) => {
@@ -42,7 +41,7 @@ options.forEach(params => {
 
       if (params.relay) {
         // rhub = await RelayHub.deployed()
-        rhub = await RelayHub.new(GTXDATANONZERO, { gas: 10000000 })
+        rhub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
         relayproc = await testutils.startRelay(rhub, {
           stake: 1e18,
           delay: 3600 * 24 * 7,
