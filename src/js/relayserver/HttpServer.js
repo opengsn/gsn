@@ -17,7 +17,10 @@ class HttpServer {
     this.app.post('/', this.rootHandler.bind(this))
     // TODO change all to jsonrpc
     this.app.post('/getaddr', this.pingHandler.bind(this))
+    this.app.get('/getaddr', this.pingHandler.bind(this))
     this.app.post('/relay', this.relayHandler.bind(this))
+    this.backend.once('removed', this.stop.bind(this))
+    this.backend.once('unstaked', this.close.bind(this))
   }
 
   start () {
@@ -28,21 +31,21 @@ class HttpServer {
     }
     try {
       this.backend.start()
+      console.log('Relay worker started.')
     } catch (e) {
       console.log('relay task error', e)
     }
-
-    this.backend.on('removed', this.stop.bind(this))
   }
 
   stop () {
     this.serverInstance.close()
     console.log('Http server stopped.\nShutting down relay...')
-    this.backend('unstaked', this.close.bind(this))
   }
 
   close () {
-    process.exit()
+    console.log('Stopping relay worker...')
+    this.backend.stop()
+    // process.exit()
   }
 
   // TODO: use this when changing to jsonrpc
@@ -85,9 +88,14 @@ class HttpServer {
       return
     }
     console.log('creating relay tx')
-    const signedTx = await this.backend.createRelayTransaction(req.body)
-    res.send({signedTx})
-    console.log('relay tx sent')
+    try {
+      const signedTx = await this.backend.createRelayTransaction(req.body)
+      res.send({signedTx})
+      console.log('relay tx sent')
+    } catch (e) {
+      res.send({error:e.message})
+      console.log(`Error ${e.message} sent`)
+    }
   }
 }
 

@@ -158,7 +158,7 @@ class RelayServer extends EventEmitter {
     }).on('data', this._worker.bind(this)).on('error', console.error)
   }
 
-  async stop () {
+  stop () {
     this.subscription.unsubscribe(function (error, success) {
       if (success) {
         console.log('Successfully unsubscribed!')
@@ -169,60 +169,64 @@ class RelayServer extends EventEmitter {
   }
 
   async _worker (blockHeader) {
-    if (!this.chainId) {
-      this.chainId = await this.web3.eth.net.getId()
-    }
-    if (!this.chainId) {
-      this.ready = false
-      throw new Error('Could not get chainId from node')
-    }
-    if (this.devMode && this.chainId < 1000) {
-      console.log('Don\'t use real network\'s chainId while in devMode.')
-      process.exit(-1)
-    }
-    this.gasPrice = Math.floor(parseInt(await this.web3.eth.getGasPrice()) * this.gasPriceFactor)
-    if (!this.gasPrice) {
-      this.ready = false
-      throw new Error('Could not get gasPrice from node')
-    }
-    if (!(await this.getBalance()) || this.balance < minimumRelayBalance) {
-      this.ready = false
-      throw new Error(
-        `Server\'s balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
-    }
-    const options = {
-      fromBlock: this.lastScannedBlock + 1,
-      toBlock: 'latest',
-      address: this.relayHubContract.options.address,
-      topics: this.topics
-    }
-    const logs = await this.web3.eth.getPastLogs(options)
-    spam('logs?', logs)
-    spam('options? ', options)
-    const decodedLogs = abiDecoder.decodeLogs(logs).map(this._parseEvent)
-    let receipt
-    for (const dlog of decodedLogs) {
-      switch (dlog.name) {
-        case 'Staked':
-          receipt = await this._handleStakedEvent(dlog)
-          break
-        case 'RelayRemoved':
-          await this._handleRelayRemovedEvent(dlog)
-          break
-        case 'Unstaked':
-          receipt = await this._handleUnstakedEvent(dlog)
-          break
+    try {
+      if (!this.chainId) {
+        this.chainId = await this.web3.eth.net.getId()
       }
+      if (!this.chainId) {
+        this.ready = false
+        throw new Error('Could not get chainId from node')
+      }
+      if (this.devMode && this.chainId < 1000) {
+        console.log('Don\'t use real network\'s chainId while in devMode.')
+        process.exit(-1)
+      }
+      this.gasPrice = Math.floor(parseInt(await this.web3.eth.getGasPrice()) * this.gasPriceFactor)
+      if (!this.gasPrice) {
+        this.ready = false
+        throw new Error('Could not get gasPrice from node')
+      }
+      if (!(await this.getBalance()) || this.balance < minimumRelayBalance) {
+        this.ready = false
+        throw new Error(
+          `Server\'s balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
+      }
+      const options = {
+        fromBlock: this.lastScannedBlock + 1,
+        toBlock: 'latest',
+        address: this.relayHubContract.options.address,
+        topics: this.topics
+      }
+      const logs = await this.web3.eth.getPastLogs(options)
+      spam('logs?', logs)
+      spam('options? ', options)
+      const decodedLogs = abiDecoder.decodeLogs(logs).map(this._parseEvent)
+      let receipt
+      for (const dlog of decodedLogs) {
+        switch (dlog.name) {
+          case 'Staked':
+            receipt = await this._handleStakedEvent(dlog)
+            break
+          case 'RelayRemoved':
+            await this._handleRelayRemovedEvent(dlog)
+            break
+          case 'Unstaked':
+            receipt = await this._handleUnstakedEvent(dlog)
+            break
+        }
+      }
+      if (!(await this.getStake())) {
+        this.ready = false
+        throw new Error('Waiting for stake...')
+      }
+      if (logs[0] && logs[0].blockNumber) {
+        this.lastScannedBlock = logs[logs.length - 1].blockNumber
+      }
+      this.ready = true
+      return receipt
+    } catch (e) {
+      console.log('error in worker:', e.message)
     }
-    if (!(await this.getStake())) {
-      this.ready = false
-      throw new Error('Waiting for stake...')
-    }
-    if (logs[0] && logs[0].blockNumber) {
-      this.lastScannedBlock = logs[logs.length - 1].blockNumber
-    }
-    this.ready = true
-    return receipt
   }
 
   async getBalance () {
@@ -278,7 +282,7 @@ class RelayServer extends EventEmitter {
 
   async _handleUnstakedEvent (dlog) {
     // todo: send balance to owner
-    console.log('handle Unstaked event')
+    console.log('handle Unstaked event', dlog)
     // sanity checks
     if (dlog.name !== 'Unstaked' || dlog.args.relay.toLowerCase() !== this.address.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
@@ -286,6 +290,10 @@ class RelayServer extends EventEmitter {
     this.balance = await this.web3.eth.getBalance(this.address)
     const gasPrice = await this.web3.eth.getGasPrice()
     const gasLimit = 21000
+    console.log(`Sending balance ${this.balance} to owner`)
+    if (this.balance < gasLimit * gasPrice) {
+      throw new Error(`balance too low: ${this.balance}, tx cost: ${gasLimit * gasPrice}`)
+    }
     const { receipt, signedTx } = await this._sendTransaction({
       destination: this.owner,
       gasLimit,

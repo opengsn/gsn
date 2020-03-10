@@ -89,7 +89,7 @@
     "eslint-plugin-node": "10.0.0",
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
-    "ganache-cli": "6.4.3",
+    "ganache-cli": "6.9.0",
     "http-server": "0.11.1",
     "istanbul": "0.4.5",
     "lodash": "4.17.13",

@@ -169,7 +169,7 @@ module.exports = {
         jsonrpc: '2.0',
         method: 'evm_increaseTime',
         params: [time],
-        id: new Date().getSeconds()
+        id: Date.now()
       }, (err) => {
         if (err) return reject(err)
         module.exports.evmMine()
@@ -184,7 +184,7 @@ module.exports = {
         jsonrpc: '2.0',
         method: 'evm_mine',
         params: [],
-        id: new Date().getSeconds()
+        id: Date.now()
       }, (e, r) => {
         if (e) {
           reject(e)

@@ -182,6 +182,7 @@ class RelayClient {
           return
         }
         if (body.error) {
+          console.log('Got error response from relay', body.error)
           reject(body.error)
           return
         }
