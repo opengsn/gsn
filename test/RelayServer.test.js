@@ -32,7 +32,7 @@ const increaseTime = testutils.increaseTime
 const util = require('util')
 const request = util.promisify(require('request'))
 
-contract.skip('RelayServer', function (accounts) {
+contract('RelayServer', function (accounts) {
   let rhub
   let sr
   let gasSponsor

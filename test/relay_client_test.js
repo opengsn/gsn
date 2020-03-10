@@ -33,7 +33,7 @@ const Big = require('big.js')
 const util = require('util')
 const request = util.promisify(require('request'))
 
-contract.only('RelayClient', function (accounts) {
+contract('RelayClient', function (accounts) {
   let rhub
   let sr
   let gasSponsor
