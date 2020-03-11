@@ -49,8 +49,19 @@ contract DryRunSponsor is BaseGasSponsor, BaseRelayRecipient {
         (this, context);
         return "";
     }
-
-    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) view external {
-        (this, context, success, actualCharge, preRetVal);
+    function postRelayedCall(
+        bytes calldata context,
+        bool success,
+        bytes32 preRetVal,
+        uint256 gasUseWithoutPost,
+        uint256 txFee,
+        uint256 gasPrice
+    ) external {
+        (this, context, success, preRetVal, gasUseWithoutPost, txFee, gasPrice);
     }
 }
+
+library dryNonAbstract { function run() internal {
+	new DryRunSponsor(IRelayHub(address(0)));
+}}
+

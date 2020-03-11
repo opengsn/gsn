@@ -1,5 +1,5 @@
 {
-  "version": "0.4.5",
+  "version": "0.5.0-nonview-arc3",
   "description": "Openeth Gas Stations Network",
   "name": "@openeth/gsn",
   "license": "MIT",
