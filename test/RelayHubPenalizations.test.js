@@ -13,6 +13,9 @@ const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
 const { expect } = require('chai')
 const Environments = require('../src/js/relayclient/Environments')
 
+// (helper for buidler, which doesn't handle contract.skip
+//if (!contract.skip) contract.skip = (title) => { console.warn('skipping: ', title) }
+
 contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, sender, other]) { // eslint-disable-line no-unused-vars
   /* ganache still has issues with chainId API: https://github.com/trufflesuite/ganache-core/issues/515 */
   const chainId = 1

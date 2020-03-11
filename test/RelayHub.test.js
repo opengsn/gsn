@@ -372,6 +372,18 @@ contract('RelayHub', function ([_, relayOwner, relay, otherRelay, sender, other,
           })
         })
 
+        it('should succeed if acceptRelayedCall modifies data', async function () {
+          await misbehavingSponsor.setARCmodifies(true)
+          const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, misbehavingSponsor.address)
+          const { logs } = await relayHub.relayCall(relayRequest, signatureWithMisbehavingSponsor, '0x', {
+            from: relay,
+            gasPrice
+          })
+
+          console.log('logs=', logs)
+          expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.OK })
+        })
+
         it('relaying is aborted if the recipient returns an invalid status code', async function () {
           await misbehavingSponsor.setReturnInvalidErrorCode(true)
           const relayRequest = getRelayRequest(sender, recipient.address, txData, fee, gasPrice, gasLimit, senderNonce, relay, misbehavingSponsor.address)

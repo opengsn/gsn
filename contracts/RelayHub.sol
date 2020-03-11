@@ -15,8 +15,9 @@ import "./utils/GsnUtils.sol";
 import "./utils/RLPReader.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IGasSponsor.sol";
+import "./utils/DryRun.sol";
 
-contract RelayHub is IRelayHub {
+contract RelayHub is IRelayHub, DryRun {
 
     string constant public COMMIT_ID = "$Id$";
 
@@ -254,7 +255,7 @@ contract RelayHub is IRelayHub {
         );
 
         (bool success, bytes memory returndata) =
-        relayRequest.relayData.gasSponsor.staticcall.gas(acceptRelayedCallGasLimit)(encodedTx);
+        relayRequest.relayData.gasSponsor.call.gas(acceptRelayedCallGasLimit)(encodedTx);
 
         if (!success) {
             return (uint256(PreconditionCheck.AcceptRelayedCallReverted), "");
@@ -513,7 +514,7 @@ contract RelayHub is IRelayHub {
         bytes data;
     }
 
-    function decodeTransaction(bytes memory rawTransaction) private pure returns (Transaction memory transaction) {
+    function decodeTransaction(bytes memory rawTransaction) internal pure returns (Transaction memory transaction) {
         (transaction.nonce,
         transaction.gasPrice,
         transaction.gasLimit,
@@ -584,7 +585,7 @@ contract RelayHub is IRelayHub {
         penalize(relay);
     }
 
-    function penalize(address relay) private {
+    function penalize(address relay) internal {
         require((relays[relay].state == RelayState.Staked) ||
         (relays[relay].state == RelayState.Registered) ||
             (relays[relay].state == RelayState.Removed), "Unstaked relay");

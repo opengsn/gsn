@@ -217,6 +217,9 @@ interface IRelayHub {
         bytes calldata approvalData
     ) external;
 
+    function dryRun(address from, address target, bytes calldata encodedFunction, uint gasLimit)
+    external returns (bool success, string memory err);
+
     // Relay penalization. Any account can penalize relays, removing them from the system immediately, and rewarding the
     // reporter with half of the relay's stake. The other half is burned so that, even if the relay penalizes itself, it
     // still loses half of its stake.

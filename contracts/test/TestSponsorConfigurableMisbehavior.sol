@@ -12,6 +12,8 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     bool public overspendAcceptGas;
     bool public revertPreRelayCall;
 
+    bool public arcModifies;
+    uint public modified;
     function setWithdrawDuringPostRelayedCall(bool val) public {
         withdrawDuringPostRelayedCall = val;
     }
@@ -20,6 +22,9 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     }
     function setReturnInvalidErrorCode(bool val) public {
         returnInvalidErrorCode = val;
+    }
+    function setARCmodifies(bool val) public {
+        arcModifies=val;
     }
     function setRevertPostRelayCall(bool val) public {
         revertPostRelayCall = val;
@@ -31,6 +36,7 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
         overspendAcceptGas = val;
     }
 
+    event ARCmodified(uint counter);
 
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
@@ -40,6 +46,10 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
     external
     returns (uint256, bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
+        if ( arcModifies ) {
+            modified++;
+            emit ARCmodified(modified);
+        }
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {
