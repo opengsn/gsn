@@ -64,7 +64,7 @@ contract KnownUsersPaymaster is BasePaymaster, BaseRelayRecipient {
     view
     returns (uint256, bytes memory) {
         (approvalData, maxPossibleCharge);
-        address from = relayRequest.relayData.senderAccount;
+        address from = relayRequest.relayData.senderAddress;
         if (isUser(from) || isAdmin(from)) {
             return (0, "");
         }

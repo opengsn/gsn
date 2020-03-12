@@ -21,7 +21,7 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
     returns (uint256, bytes memory) {
         (maxPossibleCharge);
         address signer =
-            keccak256(abi.encodePacked("I approve", relayRequest.relayData.senderAccount))
+            keccak256(abi.encodePacked("I approve", relayRequest.relayData.senderAddress))
             .toEthSignedMessageHash()
             .recover(approvalData);
         if (signer != owner()) {

@@ -45,7 +45,7 @@ options.forEach(params => {
         relayproc = await testutils.startRelay(rhub, {
           stake: 1e18,
           delay: 3600 * 24 * 7,
-          txfee: 12,
+          pctRelayFee: 12,
           url: 'asd',
           relayOwner: accounts[0],
           EthereumNodeUrl: web3.currentProvider.host,
@@ -74,7 +74,7 @@ options.forEach(params => {
         rhub.depositFor(paymaster.address, { value: 1e18 })
 
         relayClientConfig = {
-          txfee: 60,
+          pctRelayFee: 60,
           // override requested gas price
           force_gasPrice: gasPrice,
           // override requested gas limit.

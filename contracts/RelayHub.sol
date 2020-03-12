@@ -43,7 +43,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 20730;
+    uint256 constant private GAS_OVERHEAD = 21717;
 
     function getHubOverhead() external view returns (uint256) {
         return GAS_OVERHEAD;
@@ -119,8 +119,7 @@ contract RelayHub is IRelayHub {
 
         emit Staked(relay, relays[relay].stake, relays[relay].unstakeDelay);
     }
-
-    function registerRelay(uint256 transactionFee, string memory url) public {
+    function registerRelay(uint256 baseRelayFee, uint256 pctRelayFee, string memory url) public {
         address relay = msg.sender;
 
         // solhint-disable-next-line avoid-tx-origin
@@ -136,7 +135,7 @@ contract RelayHub is IRelayHub {
         }
 
         emit RelayAdded(
-            relay, relays[relay].owner, transactionFee, relays[relay].stake, relays[relay].unstakeDelay, url);
+            relay, relays[relay].owner, baseRelayFee, pctRelayFee, relays[relay].stake, relays[relay].unstakeDelay, url);
     }
 
     function removeRelayByOwner(address relay) public {
@@ -246,7 +245,7 @@ contract RelayHub is IRelayHub {
         }
 
         // Verify the transaction is not being replayed
-        if (nonces[relayRequest.relayData.senderAccount] != relayRequest.relayData.senderNonce) {
+        if (nonces[relayRequest.relayData.senderAddress] != relayRequest.relayData.senderNonce) {
             return (uint256(CanRelayStatus.WrongNonce), "");
         }
 
@@ -297,8 +296,7 @@ contract RelayHub is IRelayHub {
         uint256 maxPossibleGas = calldatagascost() + requiredGas;
         uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
-            gasData.gasPrice,
-            gasData.pctRelayFee
+            gasData
         );
 
         // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
@@ -354,7 +352,7 @@ contract RelayHub is IRelayHub {
             if (canRelayStatus != uint256(CanRelayStatus.OK)) {
                 emit CanRelayFailed(
                     msg.sender,
-                    relayRequest.relayData.senderAccount,
+                    relayRequest.relayData.senderAddress,
                     relayRequest.target,
                     relayRequest.relayData.paymaster,
                     functionSelector,
@@ -367,7 +365,7 @@ contract RelayHub is IRelayHub {
         // for the gas spent.
 
         // The sender's nonce is advanced to prevent transaction replays.
-        nonces[relayRequest.relayData.senderAccount]++;
+        nonces[relayRequest.relayData.senderAddress]++;
 
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
@@ -385,8 +383,7 @@ contract RelayHub is IRelayHub {
             calldatagascost() +
             (initialGas - gasleft()) +
             GAS_OVERHEAD,
-            relayRequest.gasData.gasPrice,
-            relayRequest.gasData.pctRelayFee
+            relayRequest.gasData
         );
 
         // We've already checked that the recipient has enough balance to pay for the relayed transaction, this is only
@@ -397,7 +394,7 @@ contract RelayHub is IRelayHub {
 
         emit TransactionRelayed(
             msg.sender,
-            relayRequest.relayData.senderAccount,
+            relayRequest.relayData.senderAddress,
             relayRequest.target,
             relayRequest.relayData.paymaster,
             functionSelector,
@@ -457,7 +454,7 @@ contract RelayHub is IRelayHub {
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (atomicData.relayedCallSuccess,) =
         relayRequest.target.call.gas(relayRequest.gasData.gasLimit)
-        (abi.encodePacked(relayRequest.encodedFunction, relayRequest.relayData.senderAccount));
+        (abi.encodePacked(relayRequest.encodedFunction, relayRequest.relayData.senderAddress));
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate
@@ -468,8 +465,7 @@ contract RelayHub is IRelayHub {
             atomicData.relayedCallSuccess,
             atomicData.preReturnValue,
             totalInitialGas - gasleft() + GAS_OVERHEAD + calldataGas,
-            relayRequest.gasData.pctRelayFee,
-            relayRequest.gasData.gasPrice
+            relayRequest.gasData
         );
 
         (bool successPost,) = relayRequest.relayData.paymaster.call.gas(gasLimits.postRelayedCallGasLimit)(atomicData.data);
@@ -499,10 +495,8 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gas, uint256 gasPrice, uint256 fee) public view returns (uint256) {
-        // The fee is expressed as a percentage. E.g. a value of 40 stands for a 40% fee, so the recipient will be
-        // charged for 1.4 times the spent amount.
-        return (gas * gasPrice * (100 + fee)) / 100;
+    function calculateCharge(uint256 gasUsed, GSNTypes.GasData memory gasData) public view returns (uint256) {
+        return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
     }
 
     struct Transaction {

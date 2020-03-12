@@ -1,6 +1,3 @@
-const RelayData = require('./RelayData')
-const GasData = require('./GasData')
-
 const EIP712Domain = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
@@ -16,7 +13,7 @@ const GasDataType = [
 ]
 
 const RelayDataType = [
-  { name: 'senderAccount', type: 'address' },
+  { name: 'senderAddress', type: 'address' },
   { name: 'senderNonce', type: 'uint256' },
   { name: 'relayAddress', type: 'address' },
   { name: 'paymaster', type: 'address' }
@@ -29,48 +26,14 @@ const RelayRequest = [
   { name: 'relayData', type: 'RelayData' }
 ]
 
-module.exports = function getDataToSign (
+module.exports = function (
   {
     chainId,
-    senderAccount,
-    senderNonce,
-    target,
-    encodedFunction,
-    pctRelayFee,
-    baseRelayFee,
-    gasPrice,
-    gasLimit,
-    paymaster,
     relayHub,
-    relayAddress
+    relayRequest
   }
 ) {
   // TODO: enable ChainID opcode in the EIP712Sig
-  const domain = {
-    name: 'GSN Relayed Transaction',
-    version: '1',
-    chainId: chainId,
-    verifyingContract: relayHub
-  }
-
-  const gasData = new GasData({
-    gasLimit,
-    gasPrice,
-    pctRelayFee,
-    baseRelayFee
-  })
-  const relayData = new RelayData({
-    senderAccount,
-    senderNonce,
-    relayAddress,
-    paymaster
-  })
-  const message = {
-    target,
-    encodedFunction,
-    gasData,
-    relayData
-  }
   return {
     types: {
       EIP712Domain,
@@ -78,8 +41,13 @@ module.exports = function getDataToSign (
       GasData: GasDataType,
       RelayData: RelayDataType
     },
-    domain,
+    domain: {
+      name: 'GSN Relayed Transaction',
+      version: '1',
+      chainId: chainId,
+      verifyingContract: relayHub
+    },
     primaryType: 'RelayRequest',
-    message
+    message: relayRequest
   }
 }

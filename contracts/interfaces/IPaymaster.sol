@@ -83,8 +83,7 @@ interface IPaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        uint256 txFee,
-        uint256 gasPrice
+        GSNTypes.GasData calldata gasData
     ) external;
 
 }

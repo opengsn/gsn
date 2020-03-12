@@ -164,6 +164,7 @@ func InitTestClient(url string) {
 }
 
 func NewRelay(relayHubAddress common.Address) {
+	baseFee := big.NewInt(0)
 	fee := big.NewInt(10)
 	defaultGasPrice := int64(params.GWei)
 	gasPricePercent := big.NewInt(10)
@@ -175,7 +176,7 @@ func NewRelay(relayHubAddress common.Address) {
 	devMode := false
 	var err error
 	relay.RelayServer, err = NewRelayServer(
-		common.Address{}, fee, url, port,
+		common.Address{}, baseFee, fee, url, port,
 		relayHubAddress, defaultGasPrice,
 		gasPricePercent, relayKey1, registrationBlockRate,
 		ethereumNodeURL, client, txStore, clk, devMode)
@@ -360,9 +361,9 @@ func newRelayTransactionRequest(t *testing.T, senderNonce int64, signature strin
 		Paymaster:       testSponsor,
 		GasPrice:        *big.NewInt(gasPrice),
 		GasLimit:        *big.NewInt(gasLimit),
-		SenderNonce:  	 *big.NewInt(senderNonce),
+		SenderNonce:     *big.NewInt(senderNonce),
 		RelayMaxNonce:   *big.NewInt(relayMaxNonce),
-		RelayFee:        *big.NewInt(txFee),
+		PercentRelayFee: *big.NewInt(txFee),
 		RelayHubAddress: rhaddr,
 	}
 }

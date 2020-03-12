@@ -69,13 +69,12 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        uint256 txFee,
-        uint256 gasPrice
+        GSNTypes.GasData calldata gasData
     )
     external
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, txFee, gasPrice);
+        (context, success, preRetVal, gasUseWithoutPost, gasData);
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }

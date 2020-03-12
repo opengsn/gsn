@@ -17,7 +17,8 @@ interface IRelayHub {
     event RelayAdded(
         address indexed relay,
         address indexed owner,
-        uint256 transactionFee,
+        uint256 baseRelayFee,
+        uint256 pctRelayFee,
         uint256 stake,
         uint256 unstakeDelay,
         string url
@@ -78,7 +79,7 @@ interface IRelayHub {
     event Penalized(
         address indexed relay,
         address sender,
-        uint256 amount
+        uint256 reward
     );
 
     /// Reason error codes for the TransactionRelayed event
@@ -138,7 +139,7 @@ interface IRelayHub {
     // Emits a RelayAdded event.
     // This function can be called multiple times, emitting new RelayAdded events. Note that the received transactionFee
     // is not enforced by relayCall.
-    function registerRelay(uint256 transactionFee, string calldata url) external;
+    function registerRelay(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
 
 
     // Removes (deregisters) a relay. Unregistered (but staked for) relays can also be removed. Can only be called by
@@ -239,6 +240,9 @@ interface IRelayHub {
 
     function getHubOverhead() external view returns (uint256);
 
-    function calculateCharge(uint256 gas, uint256 gasPrice, uint256 fee) external view returns (uint256);
+    /// The fee is expressed as a base fee in wei plus percentage on actual charge.
+    /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
+    /// charged for 1.4 times the spent amount.
+    function calculateCharge(uint256 gasUsed, GSNTypes.GasData calldata gasData) external view returns (uint256);
 }
 

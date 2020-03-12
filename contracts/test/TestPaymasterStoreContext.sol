@@ -9,7 +9,8 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         address relay,
         address from,
         bytes encodedFunction,
-        uint256 transactionFee,
+        uint256 baseRelayFee,
+        uint256 pctRelayFee,
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
@@ -21,7 +22,8 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         address relay,
         address from,
         bytes encodedFunction,
-        uint256 transactionFee,
+        uint256 baseRelayFee,
+        uint256 pctRelayFee,
         uint256 gasPrice,
         uint256 gasLimit,
         uint256 nonce,
@@ -42,8 +44,9 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     returns (uint256, bytes memory) {
         return (0, abi.encode(
             relayRequest.relayData.relayAddress,
-            relayRequest.relayData.senderAccount,
+            relayRequest.relayData.senderAddress,
             relayRequest.encodedFunction,
+            relayRequest.gasData.baseRelayFee,
             relayRequest.gasData.pctRelayFee,
             relayRequest.gasData.gasPrice,
             relayRequest.gasData.gasLimit,
@@ -55,11 +58,12 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
         (
         address relay, address from, bytes memory encodedFunction,
-        uint256 transactionFee, uint256 gasPrice, uint256 gasLimit,
+        uint256 baseRelayFee, uint256 pctRelayFee, uint256 gasPrice, uint256 gasLimit,
         uint256 nonce, bytes memory approvalData, uint256 maxPossibleGas) =
-            abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, bytes, uint256));
+            abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, uint256, bytes, uint256));
         emit SampleRecipientPreCallWithValues(
-            relay, from, encodedFunction, transactionFee, gasPrice, gasLimit, nonce, approvalData, maxPossibleGas);
+            relay, from, encodedFunction, baseRelayFee, pctRelayFee,
+                gasPrice, gasLimit, nonce, approvalData, maxPossibleGas);
         return 0;
     }
 
@@ -68,20 +72,19 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        uint256 txFee,
-        uint256 gasPrice
+        GSNTypes.GasData calldata gasData
     )
     external
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, txFee, gasPrice);
+        (context, success, preRetVal, gasUseWithoutPost, gasData);
         (
         address relay, address from, bytes memory encodedFunction,
-        uint256 transactionFee, uint256 _gasPrice, uint256 gasLimit,
+        uint256 baseRelayFee, uint256 pctRelayFee, uint256 gasPrice, uint256 gasLimit,
         uint256 nonce, bytes memory approvalData, uint256 maxPossibleGas) =
-            abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, bytes, uint256));
+            abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, uint256, bytes, uint256));
         emit SampleRecipientPostCallWithValues(
-            relay, from, encodedFunction, transactionFee, _gasPrice,
+            relay, from, encodedFunction, baseRelayFee, pctRelayFee, gasPrice,
             gasLimit, nonce, approvalData, maxPossibleGas);
     }
 }

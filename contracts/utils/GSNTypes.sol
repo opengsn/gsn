@@ -10,7 +10,7 @@ library GSNTypes {
     }
 
     struct RelayData {
-        address senderAccount;
+        address senderAddress;
         uint256 senderNonce;
         address relayAddress;
         address paymaster;

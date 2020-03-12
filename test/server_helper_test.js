@@ -2,7 +2,7 @@ const assert = require('chai').use(require('chai-as-promised')).assert
 const ServerHelper = require('../src/js/relayclient/ServerHelper')
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
 const testutils = require('./testutils')
-const registerNewRelay = testutils.register_new_relay
+const registerNewRelay = testutils.registerNewRelay
 const increaseTime = testutils.increaseTime
 
 const RelayHub = artifacts.require('./RelayHub.sol')
@@ -33,7 +33,7 @@ contract('ServerHelper', function (accounts) {
       verbose: process.env.relaylog,
       stake: 2e18,
       delay: 3600 * 24 * 10,
-      txfee: 12,
+      pctRelayFee: 12,
       url: 'asd',
       relayOwner: accounts[0],
       EthereumNodeUrl: web3.currentProvider.host,
@@ -50,21 +50,75 @@ contract('ServerHelper', function (accounts) {
     // Note: a real relay server is not registered in this context
     before('registering relays', async function () {
       // unstake delay too low
-      await registerNewRelay(rhub, 2e18, 3600 * 24 * 7, 20, 'https://abcd1.com', accounts[7], accounts[0])
+      await registerNewRelay({
+        relayHub: rhub,
+        stake: 2e18,
+        delay: 3600 * 24 * 7,
+        baseRelayFee: 0,
+        pctRelayFee: 20,
+        url: 'https://abcd1.com',
+        relayAccount: accounts[7],
+        ownerAccount: accounts[0]
+      })
       // unregistered
-      await registerNewRelay(rhub, 2e18, 3600 * 24 * 7 * 2, 2, 'https://abcd2.com', accounts[2], accounts[0])
+      await registerNewRelay({
+        relayHub: rhub,
+        stake: 2e18,
+        delay: 3600 * 24 * 7 * 2,
+        baseRelayFee: 0,
+        pctRelayFee: 2,
+        url: 'https://abcd2.com',
+        relayAccount: accounts[2],
+        ownerAccount: accounts[0]
+      })
       // stake too low
-      await registerNewRelay(rhub, 1e18, 3600 * 24 * 7 * 2, 20, 'https://abcd3.com', accounts[3], accounts[0])
+      await registerNewRelay({
+        relayHub: rhub,
+        stake: 1e18,
+        delay: 3600 * 24 * 7 * 2,
+        baseRelayFee: 0,
+        pctRelayFee: 20,
+        url: 'https://abcd3.com',
+        relayAccount: accounts[3],
+        ownerAccount: accounts[0]
+      })
 
       // Added, removed, added again - go figure.
       // 2 x will not ping
-      await registerNewRelay(rhub, 2e18, 3600 * 24 * 7 * 2, 15, 'https://abcd4.com', accounts[4], accounts[0])
+      await registerNewRelay({
+        relayHub: rhub,
+        stake: 2e18,
+        delay: 3600 * 24 * 7 * 2,
+        baseRelayFee: 0,
+        pctRelayFee: 15,
+        url: 'https://abcd4.com',
+        relayAccount: accounts[4],
+        ownerAccount: accounts[0]
+      })
       await rhub.removeRelayByOwner(accounts[4], { from: accounts[0] })
       await increaseTime(3600 * 24 * 7 * 2)
       await rhub.unstake(accounts[4], { from: accounts[0] })
-      await registerNewRelay(rhub, 2e18, 3600 * 24 * 7 * 2, 15, 'go_resolve_this_address', accounts[4], accounts[0])
+      await registerNewRelay({
+        relayHub: rhub,
+        stake: 2e18,
+        delay: 3600 * 24 * 7 * 2,
+        baseRelayFee: 0,
+        pctRelayFee: 15,
+        url: 'go_resolve_this_address',
+        relayAccount: accounts[4],
+        ownerAccount: accounts[0]
+      })
 
-      await registerNewRelay(rhub, 2e18, 3600 * 24 * 7 * 2, 30, 'https://abcd4.com', accounts[5], accounts[0])
+      await registerNewRelay({
+        relayHub: rhub,
+        stake: 2e18,
+        delay: 3600 * 24 * 7 * 2,
+        baseRelayFee: 0,
+        pctRelayFee: 30,
+        url: 'https://abcd4.com',
+        relayAccount: accounts[5],
+        ownerAccount: accounts[0]
+      })
 
       await rhub.removeRelayByOwner(accounts[2], { from: accounts[0] })
       await increaseTime(3600 * 24 * 7 * 2)
@@ -146,13 +200,13 @@ contract('ServerHelper', function (accounts) {
       { relay: '2' },
       { relay: '3' },
       { relay: '4', unstakeDelay: 3600 * 24 * 7 }, // dropped out by default, below minDelay
-      { relay: '5', stake: 1e18, transactionFee: 1e5 }, // dropped out by default, below minStake
-      { relay: '6', stake: 3e18, transactionFee: 1e9 },
-      { relay: '7', transactionFee: 1e7 }
+      { relay: '5', stake: 1e18, pctRelayFee: 1e5 }, // dropped out by default, below minStake
+      { relay: '6', stake: 3e18, pctRelayFee: 1e9 },
+      { relay: '7', pctRelayFee: 1e7 }
     ].map(relay => ({
       event: 'RelayAdded',
       returnValues: Object.assign({}, {
-        transactionFee: 1e10,
+        pctRelayFee: 1e10,
         url: `url-${relay.relay}`,
         stake: 2e18,
         unstakeDelay: 3600 * 24 * 14

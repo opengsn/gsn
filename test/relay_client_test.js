@@ -1,39 +1,46 @@
 /* global BigInt */
+const Transaction = require('ethereumjs-tx')
+const ethUtils = require('ethereumjs-util')
+const chai = require('chai')
+const sinon = require('sinon')
+const sinonChai = require('sinon-chai')
+const sigUtil = require('eth-sig-util')
+const Web3 = require('web3')
+
 const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
+const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
+const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 const TestPaymasterOwnerSignature = artifacts.require('./test/TestPaymasterOwnerSignature.sol')
-const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 
-const Transaction = require('ethereumjs-tx')
-const ethUtils = require('ethereumjs-util')
-
-const chai = require('chai')
-const sinon = require('sinon')
-const sinonChai = require('sinon-chai')
-const expect = require('chai').expect
+const expect = chai.expect
 chai.use(sinonChai)
-
-const sigUtil = require('eth-sig-util')
 
 const relayAddress = '0x610bb1573d1046fcb8a70bbbd395754cd57c2b60'
 
 const localhostOne = 'http://localhost:8090'
 
-const testutils = require('./testutils')
-const registerNewRelay = testutils.register_new_relay
-const increaseTime = testutils.increaseTime
-const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect
-
+const {
+  registerNewRelay,
+  increaseTime,
+  assertErrorMessageCorrect,
+  startRelay,
+  stopRelay,
+  sleep
+} = require('./testutils')
 const Big = require('big.js')
 
 const util = require('util')
 const request = util.promisify(require('request'))
+const _web3 = web3
 
 contract('RelayClient', function (accounts) {
+  let web3
   let rhub
   let sr
   let paymaster
@@ -47,6 +54,7 @@ contract('RelayClient', function (accounts) {
   const weekInSec = dayInSec * 7
   const oneEther = 1e18
   before(async function () {
+    web3 = new Web3(_web3.currentProvider)
     const gasPricePercent = 20
     gasPrice = (await web3.eth.getGasPrice()) * (100 + gasPricePercent) / 100
 
@@ -59,10 +67,11 @@ contract('RelayClient', function (accounts) {
     console.log('gasLess = ' + gasLess)
     console.log('starting relay')
 
-    relayproc = await testutils.startRelay(rhub, {
+    relayproc = await startRelay(rhub, {
       stake: 1e18,
       delay: 3600 * 24 * 7,
-      txfee: 12,
+      baseRelayFee: 300,
+      pctRelayFee: 12,
       url: 'asd',
       relayOwner: relayOwner,
       EthereumNodeUrl: web3.currentProvider.host,
@@ -76,11 +85,20 @@ contract('RelayClient', function (accounts) {
       to: relayAccount,
       value: oneEther
     })
-    await registerNewRelay(rhub, oneEther, weekInSec, 120, 'hello', relayAccount, relayOwner)
+    await registerNewRelay({
+      relayHub: rhub,
+      stake: oneEther,
+      delay: weekInSec,
+      baseRelayFee: 0,
+      pctRelayFee: 120,
+      url: 'hello',
+      relayAccount,
+      ownerAccount: relayOwner
+    })
   })
 
   after(async function () {
-    await testutils.stopRelay(relayproc)
+    await stopRelay(relayproc)
   })
 
   it('should query hub deposit of a paymaster contract on every call', async () => {
@@ -106,7 +124,7 @@ contract('RelayClient', function (accounts) {
         approveFunction: approveFunction,
         from: gasLess,
         to: to,
-        txfee: 12,
+        pctRelayFee: 12,
         gas_limit: 1000000,
         paymaster: paymaster.address
       }
@@ -124,7 +142,7 @@ contract('RelayClient', function (accounts) {
       let res
       do {
         res = await web3.eth.getTransactionReceipt(txhash)
-        await testutils.sleep(500)
+        await sleep(500)
       } while (res === null)
 
       // validate we've got the "SampleRecipientEmitted" event
@@ -149,7 +167,7 @@ contract('RelayClient', function (accounts) {
         approveFunction: () => { return 'aaaa6ad4b4fab03bb2feaea2d54c690206e40036e4baa930760e72479da0cc5575779f9db9ef801e144b5e6af48542107f2f094649334b030e2bb44f054429b451' },
         from: gasLess,
         to: to,
-        txfee: 12,
+        pctRelayFee: 12,
         gas_limit: 1000000,
         paymaster: approvalPaymaster.address
       }
@@ -184,7 +202,7 @@ contract('RelayClient', function (accounts) {
     const options = {
       from: gasLess,
       to: to,
-      txfee: 12,
+      pctRelayFee: 12,
       gas_limit: 1000000,
       paymaster: paymaster.address
     }
@@ -225,7 +243,13 @@ contract('RelayClient', function (accounts) {
 
   it('should revert calls to postRelayedCall from non RelayHub address', async function () {
     try {
-      await paymaster.postRelayedCall(Buffer.from(''), true, Buffer.from(''), 0, 0, 0)
+      await paymaster.postRelayedCall(Buffer.from(''), true, Buffer.from(''), 0,
+        {
+          gasLimit: 0,
+          gasPrice: 0,
+          pctRelayFee: 0,
+          baseRelayFee: 0
+        })
       assert.fail()
     } catch (error) {
       assertErrorMessageCorrect(error, 'Function can only be called by RelayHub')
@@ -234,8 +258,7 @@ contract('RelayClient', function (accounts) {
 
   it('should relay transparently', async () => {
     relayClientConfig = {
-
-      txfee: 12,
+      pctRelayFee: 12,
       // override requested gas price
       force_gasPrice: gasPrice,
       // override requested gas limit.
@@ -251,12 +274,18 @@ contract('RelayClient', function (accounts) {
     // so changing the global one is not enough...
     SampleRecipient.web3.setProvider(relayProvider)
 
-    let res = await sr.emitMessage('hello world', { from: gasLess, paymaster: paymaster.address })
+    let res = await sr.emitMessage('hello world', {
+      from: gasLess,
+      paymaster: paymaster.address
+    })
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello world')
     assert.equal(res.logs[0].args.realSender, gasLess)
     assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
-    res = await sr.emitMessage('hello again', { from: accounts[3], paymaster: paymaster.address })
+    res = await sr.emitMessage('hello again', {
+      from: accounts[3],
+      paymaster: paymaster.address
+    })
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello again')
 
@@ -266,7 +295,7 @@ contract('RelayClient', function (accounts) {
   it('should relay transparently with long encoded function', async () => {
     relayClientConfig = {
 
-      txfee: 12,
+      pctRelayFee: 12,
       // override requested gas price
       force_gasPrice: gasPrice,
       // override requested gas limit.
@@ -282,12 +311,18 @@ contract('RelayClient', function (accounts) {
     // so changing the global one is not enough...
     SampleRecipient.web3.setProvider(relayProvider)
 
-    let res = await sr.emitMessage('hello world'.repeat(1000), { from: gasLess, paymaster: paymaster.address })
+    let res = await sr.emitMessage('hello world'.repeat(1000), {
+      from: gasLess,
+      paymaster: paymaster.address
+    })
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello world'.repeat(1000))
     assert.equal(res.logs[0].args.realSender, gasLess)
     assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
-    res = await sr.emitMessage('hello again'.repeat(1000), { from: accounts[3], paymaster: paymaster.address })
+    res = await sr.emitMessage('hello again'.repeat(1000), {
+      from: accounts[3],
+      paymaster: paymaster.address
+    })
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello again'.repeat(1000))
 
@@ -311,50 +346,6 @@ contract('RelayClient', function (accounts) {
     const rawTx = '0x' + transaction.serialize().toString('hex')
     console.log('tx to audit', rawTx)
     await relayClient.auditTransaction(rawTx, [localhostOne, localhostOne])
-  })
-
-  it.skip('should report a suspicious transaction to an auditor relay, which will penalize the double-signing relay', async function () {
-    /******/
-    await registerNewRelay(rhub, 1000, 20, 30, 'https://abcd.com', accounts[5])
-    /******/
-
-    // let auditor_relay = accounts[10]
-    // let initial_auditor_balance = web3.eth.getBalance(auditor_relay);
-
-    const perpetratorRelay = accounts[5]
-    // let perpetrator_stake = await rhub.stakes(perpetrator_relay);
-
-    const perpetratorPrivKey = Buffer.from('395df67f0c2d2d9fe1ad08d1bc8b6627011959b79c53d7dd6a3536a33ab8a4fd', 'hex')
-    // getTransactionCount is, by definition, account's nonce+1
-    const reusedNonce = web3.eth.getTransactionCount(perpetratorRelay)
-
-    // Make sure the transaction with that nonce was mined
-    const result = await sr.emitMessage('hello world', { from: perpetratorRelay })
-    var log = result.logs[0]
-    assert.equal('SampleRecipientEmitted', log.event)
-
-    // Create another tx with the same nonce
-    const data2 = rhub.contract.methods.relay(1, 1, 1, 1, 1, 1, 1, 1).encodeABI()
-    const transaction2 = new Transaction({
-      nonce: reusedNonce - 1,
-      gasPrice: 2,
-      gasLimit: 200000,
-      to: sr.address,
-      value: 0,
-      data: data2
-    })
-    transaction2.sign(perpetratorPrivKey)
-    const rawTx = '0x' + transaction2.serialize().toString('hex')
-
-    const relayClient = new RelayClient(web3, { relayUrl: localhostOne })
-    await relayClient.auditTransaction(rawTx, [localhostOne])
-    // let the auditor do the job
-    // testutils.sleep(10)
-
-    const perpetratorNewStake = await rhub.stakes(perpetratorRelay)
-
-    assert.equal(0, perpetratorNewStake[0].toNumber())
-    // TODO: validate reward distributed fairly
   })
 
   function timeout (ms) {
@@ -409,14 +400,20 @@ contract('RelayClient', function (accounts) {
     const relayServerAddress = JSON.parse(res.body).RelayServerAddress
     const filteredRelays = [
       {
+        pctRelayFee: 0,
+        baseRelayFee: 0,
         relayUrl: 'localhost1',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
+        pctRelayFee: 0,
+        baseRelayFee: 0,
         relayUrl: 'localhost2',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
+        pctRelayFee: 0,
+        baseRelayFee: 0,
         relayUrl: localhostOne,
         RelayServerAddress: relayServerAddress
       }
@@ -431,7 +428,7 @@ contract('RelayClient', function (accounts) {
     const options = {
       from: gasLess,
       to: sr.address,
-      txfee: 12,
+      pctRelayFee: 12,
       gas_limit: 1000000,
       paymaster: paymaster.address
     }
@@ -462,7 +459,7 @@ contract('RelayClient', function (accounts) {
     const options = {
       from: fromAddr,
       to: to,
-      txfee: 12,
+      pctRelayFee: 12,
       gas_limit: 1000000,
       paymaster: paymaster.address
     }
@@ -471,20 +468,23 @@ contract('RelayClient', function (accounts) {
     // eslint-disable-next-line no-unused-expressions
     expect(rc.sendViaRelay.calledOnce).to.be.true
     expect(rc.sendViaRelay).to.have.been.calledWith(
-      sinon.match(({ relayAddress, from, to, encodedFunction, relayFee, gasPrice, gasLimit, paymaster, senderNonce, signature, approvalData, relayUrl, relayHubAddress }) => {
-        const data = getDataToSign({
-          baseRelayFee: '0',
-          chainId: 7,
-          senderAccount: from,
+      sinon.match(({ relayAddress, from, to, encodedFunction, pctRelayFee, baseRelayFee, gasPrice, gasLimit, paymaster, senderNonce, signature, relayHubAddress }) => {
+        const relayRequest = new RelayRequest({
+          senderAddress: from,
           senderNonce,
           target: to,
           encodedFunction,
-          pctRelayFee: relayFee,
-          gasPrice,
-          gasLimit,
+          pctRelayFee,
+          baseRelayFee,
+          gasPrice: gasPrice.toString(),
+          gasLimit: gasLimit.toString(),
           paymaster,
-          relayHub: relayHubAddress,
           relayAddress
+        })
+        const data = getDataToSign({
+          chainId: 7,
+          relayHub: relayHubAddress,
+          relayRequest
         })
         const recoveredAccount = sigUtil.recoverTypedSignature_v4({
           data,
@@ -494,32 +494,29 @@ contract('RelayClient', function (accounts) {
       }))
   })
 
-  it('should use relay\'s published transactionFee if none is given in options', async function () {
+  it('should use relay\'s published transaction fees if none is given in options', async function () {
     const rc = new RelayClient(web3)
     const ephemeralKeypair = RelayClient.newEphemeralKeypair()
     const fromAddr = ephemeralKeypair.address
     rc.useKeypairForSigning(ephemeralKeypair)
-    rc.sendViaRelay = function ({ relayFee }) {
-      // mock implementation: only check the received relay fee (checked below in relayTransaction
-      throw new Error('relayFee=' + relayFee)
-    }
+    sinon.spy(rc)
 
     const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
     const options = {
       from: fromAddr,
       to: sr.address,
-      // explicitly not specifying txfee
+      // explicitly not specifying pctRelayFee or baseRelayFee
       gas_limit: 1000000,
       paymaster: paymaster.address
     }
-
-    try {
-      await rc.relayTransaction(encoded, options)
-      assert.ok(false, 'didn\'t reach sendViaRelay')
-    } catch (e) {
-      assert.ok(e.otherErrors, e)
-      assert.equal(e.otherErrors[0].message, 'relayFee=12')
-    }
+    await rc.relayTransaction(encoded, options)
+    const expectedBaseRelayFee = '300'
+    const expectedPctRelayFee = '12'
+    // eslint-disable-next-line no-unused-expressions
+    expect(rc.sendViaRelay.calledOnce).to.be.true
+    expect(rc.sendViaRelay).to.have.been.calledWith(sinon.match(({ pctRelayFee, baseRelayFee }) => {
+      return pctRelayFee === expectedPctRelayFee && baseRelayFee === expectedBaseRelayFee
+    }))
   })
 
   it('should add relay to failedRelay dict in case of http timeout', async function () {
@@ -540,7 +537,7 @@ contract('RelayClient', function (accounts) {
     const options = {
       from: fromAddr,
       to: to,
-      txfee: 12,
+      pctRelayFee: 12,
       gas_limit: 1000000,
       paymaster: paymaster.address
     }
@@ -558,10 +555,14 @@ contract('RelayClient', function (accounts) {
   describe('relay balance management', async function () {
     let relayServerAddress
     let beforeOwnerBalance
-    it('should NOT send relay balance to owner after removed', async function () {
+
+    before(async function () {
       const response = await request(localhostOne + '/getaddr')
       relayServerAddress = JSON.parse(response.body).RelayServerAddress
       beforeOwnerBalance = await web3.eth.getBalance(relayOwner)
+    })
+
+    it('should NOT send relay balance to owner after removed', async function () {
       const gasPrice = await web3.eth.getGasPrice()
       const res = await rhub.removeRelayByOwner(relayServerAddress, {
         from: relayOwner,
@@ -570,7 +571,7 @@ contract('RelayClient', function (accounts) {
       const etherSpentByTx = BigInt(res.receipt.gasUsed) * BigInt(gasPrice)
       assert.equal('RelayRemoved', res.logs[0].event)
       assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase())
-      await testutils.sleep(2000)
+      await sleep(2000)
       const afterOwnerBalance = BigInt(await web3.eth.getBalance(relayOwner))
       assert.equal(afterOwnerBalance + etherSpentByTx, BigInt(beforeOwnerBalance))
     })
@@ -578,7 +579,7 @@ contract('RelayClient', function (accounts) {
     it('should send relay balance to owner only after unstaked', async function () {
       beforeOwnerBalance = await web3.eth.getBalance(relayOwner)
       const unstakeDelay = (await rhub.getRelay(relayServerAddress)).unstakeDelay
-      increaseTime(unstakeDelay)
+      await increaseTime(unstakeDelay.toNumber())
       const res = await rhub.unstake(relayServerAddress, { from: relayOwner })
       assert.equal('Unstaked', res.logs[0].event)
       assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase())
@@ -587,7 +588,7 @@ contract('RelayClient', function (accounts) {
       let relayBalance = await web3.eth.getBalance(relayServerAddress)
       // eslint-disable-next-line eqeqeq
       while (relayBalance != 0 && i < 10) {
-        await testutils.sleep(200)
+        await sleep(200)
         relayBalance = await web3.eth.getBalance(relayServerAddress)
         i++
       }
@@ -610,7 +611,10 @@ contract('RelayClient', function (accounts) {
 
     it('should revert on zero hub in recipient contract', async function () {
       try {
-        await sr.emitMessage('hello world', { from: gasLess, paymaster: paymaster2.address })
+        await sr.emitMessage('hello world', {
+          from: gasLess,
+          paymaster: paymaster2.address
+        })
         assert.fail()
       } catch (error) {
         assert.include(error.message, 'The relay hub address is set to zero in paymaster at')
@@ -671,9 +675,15 @@ contract('RelayClient', function (accounts) {
   it('should fail to relay if provided Paymaster and Relay Recipient do not use same Relay Hub', async function () {
     // TODO: all tests rely on 'SampleRecipient.web3.setProvider(relayProvider)' being called in other test!!!
     const recipient = await SampleRecipient.deployed()
-    await recipient.setHub(accounts[4], { from: accounts[0], useGSN: false })
+    await recipient.setHub(accounts[4], {
+      from: accounts[0],
+      useGSN: false
+    })
     try {
-      await recipient.emitMessage("ain't gonna work mate", { from: accounts[0], paymaster: paymaster.address })
+      await recipient.emitMessage('ain\'t gonna work mate', {
+        from: accounts[0],
+        paymaster: paymaster.address
+      })
       assert.fail()
     } catch (error) {
       assert.include(error.message, 'Paymaster\'s and recipient\'s RelayHub addresses do not match')

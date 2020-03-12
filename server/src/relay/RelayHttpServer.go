@@ -171,7 +171,8 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 
 func parseCommandLine() (relayParams librelay.RelayParams) {
 	ownerAddress := flag.String("OwnerAddress", common.HexToAddress("0").Hex(), "Relay's owner address")
-	fee := flag.Int64("Fee", 70, "Relay's per transaction fee")
+	baseFee := flag.Int64("BaseFee", 0, "Relay's per transaction base fee")
+	percentFee := flag.Int64("PercentFee", 70, "Relay's per transaction percent fee")
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
 	port := flag.String("Port", "", "Relay server's port")
 	relayHubAddress := flag.String("RelayHubAddress", "0xD216153c06E857cD7f72665E0aF1d7D82172F494", "RelayHub address")
@@ -185,7 +186,8 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	flag.Parse()
 
 	relayParams.OwnerAddress = common.HexToAddress(*ownerAddress)
-	relayParams.Fee = big.NewInt(*fee)
+	relayParams.BaseFee = big.NewInt(*baseFee)
+	relayParams.PercentFee = big.NewInt(*percentFee)
 	relayParams.Url = *urlStr
 	u, err := url.Parse(*urlStr)
 	if err != nil {
@@ -230,7 +232,7 @@ func configRelay(relayParams librelay.RelayParams) {
 		return
 	}
 	relay, err = librelay.NewRelayServer(
-		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
+		relayParams.OwnerAddress, relayParams.BaseFee, relayParams.PercentFee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
 		client, txStore, nil, relayParams.DevMode)
