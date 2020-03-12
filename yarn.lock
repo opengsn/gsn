@@ -398,8 +398,10 @@
     fs-extra "^8.1.0"
     try-require "^1.2.1"
 
-"@openzeppelin/test-helpers@../openzeppelin-test-helpers":
-  version "0.5.4"
+"@openzeppelin/test-helpers@0.5.5":
+  version "0.5.5"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/test-helpers/-/test-helpers-0.5.5.tgz#c0a549fdcf1a9f4b1fd041233e52a700ed988eb6"
+  integrity sha512-jTSCQojQ0Q7FBMN3Me7o0OIVuRnfHRR9TcE+ZlfbSfdqrHkFLwSfeDHSNWtQGlF1xPQR5r3iRI0ccsCrN+JblA==
   dependencies:
     "@openzeppelin/contract-loader" "^0.4.0"
     "@truffle/contract" "^4.0.35"

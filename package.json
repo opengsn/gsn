@@ -75,7 +75,7 @@
     "@0x/sol-profiler": "3.1.7",
     "@0x/sol-trace": "2.0.13",
     "@0x/subproviders": "4.1.0",
-    "@openzeppelin/test-helpers": "../openzeppelin-test-helpers",
+    "@openzeppelin/test-helpers": "0.5.5",
     "bignumber.js": "9.0.0",
     "browser-request": "0.3.3",
     "chai": "4.2.0",
