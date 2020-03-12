@@ -234,12 +234,12 @@ class ServerHelper {
     if (this.verbose) {
       console.log('fetchRelaysAdded: found ', relayEvents.length + ' events')
     }
-    const foundRelays = {}
+    const foundRelays = new Set()
     relayEvents.forEach(event => {
       if (event.event === 'RelayRemoved') {
-        delete foundRelays[event.returnValues.relay]
+        foundRelays.delete(event.returnValues.relay)
       } else {
-        foundRelays[event.returnValues.relay] = 1
+        foundRelays.add(event.returnValues.relay)
       }
     })
 
@@ -259,7 +259,7 @@ class ServerHelper {
     // for actual address.
     const relayAddedEvents = await this.relayHubInstance.getPastEvents('RelayAdded', {
       fromBlock: 1,
-      topics: [relayAddedTopic, Object.keys(foundRelays).map(toBytes32)]
+      topics: [relayAddedTopic, Array.from(foundRelays, toBytes32)]
     })
 
     if (this.verbose) {
