@@ -26,7 +26,7 @@ class ActiveRelayPinger {
    * @returns the first relay to respond to a ping message. Note: will never return the same relay twice.
    */
   async nextRelay () {
-    let ret = await this.nextRelay1()
+    let ret = await this._nextRelayInternal()
     // only if no relay found in this ActivePinger, start using the next ActivePinger
     if (!ret && this.nextPinger) {
       ret = await this.nextPinger.nextRelay()
@@ -34,7 +34,7 @@ class ActiveRelayPinger {
     return ret
   }
 
-  async nextRelay1 () {
+  async _nextRelayInternal () {
     while (this.remainingRelays.length) {
       const bulkSize = Math.min(3, this.remainingRelays.length)
       try {
