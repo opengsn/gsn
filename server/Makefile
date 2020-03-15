@@ -20,7 +20,7 @@ RELAYHUB_BIN=$(buildpath)/../contracts/RelayHub.json
 RELAYHUB_ABI=$(buildpath)/../contracts/RelayHub.json
 TRUFFLE_OUT_REC=$(buildpath)/../contracts/TestRecipient.json
 TRUFFLE_OUT_TYPES=$(buildpath)/../contracts/GSNTypes.json
-TRUFFLE_OUT_SPONSOR=$(buildpath)/../contracts/TestSponsorEverythingAccepted.json
+TRUFFLE_OUT_SPONSOR=$(buildpath)/../contracts/TestPaymasterEverythingAccepted.json
 
 $(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(GEN_FILE_TYPES) $(GEN_FILE_SPONSOR) $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
 	@echo "Using GOPATH=$(GOPATH)"
@@ -63,7 +63,7 @@ $(GEN_FILE_REC): ../contracts/test/TestRecipient.sol $(TRUFFLE_OUT_REC)
 	mkdir -p $(buildpath)/src/gen/testcontracts
 	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=bin)) --pkg testcontracts --type SampleRecipient --out $@
 
-$(GEN_FILE_SPONSOR): ../contracts/test/TestSponsorEverythingAccepted.sol $(TRUFFLE_OUT_SPONSOR)
+$(GEN_FILE_SPONSOR): ../contracts/test/TestPaymasterEverythingAccepted.sol $(TRUFFLE_OUT_SPONSOR)
 	mkdir -p $(buildpath)/src/gen/testcontracts
 	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT_SPONSOR:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT_SPONSOR:json=bin)) --pkg testcontracts --type TestSponsor --out $@
 

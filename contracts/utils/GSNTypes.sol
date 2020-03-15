@@ -10,10 +10,10 @@ library GSNTypes {
     }
 
     struct RelayData {
-        address senderAccount;
+        address senderAddress;
         uint256 senderNonce;
         address relayAddress;
-        address gasSponsor;
+        address paymaster;
     }
 
     struct RelayRequest {
@@ -23,7 +23,7 @@ library GSNTypes {
         RelayData relayData;
     }
 
-    struct SponsorLimits {
+    struct GasLimits {
         uint256 acceptRelayedCallGasLimit;
         uint256 preRelayedCallGasLimit;
         uint256 postRelayedCallGasLimit;

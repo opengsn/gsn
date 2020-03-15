@@ -33,7 +33,7 @@ class ActiveRelayPinger {
         }
         const firstRelayToRespond = await this.raceToSuccess(
           slice
-            .map(relay => this.getRelayAddressPing(relay.relayUrl, relay.transactionFee, this.gasPrice))
+            .map(relay => this.getRelayAddressPing(relay.relayUrl, relay.baseRelayFee, relay.pctRelayFee, this.gasPrice))
         )
         if (this.verbose) {
           console.log('race finished with a champion: ' + firstRelayToRespond.relayUrl)
@@ -50,15 +50,9 @@ class ActiveRelayPinger {
   }
 
   /**
-   * @returns JSON response from the relay server, but adds the requested URL to it:
-   * { relayUrl: url,
-   *   transactionFee: fee,
-   *   RelayServerAddress: address,
-   *   Ready: bool,   //should ignore relays with "false"
-   *   MinGasPrice:   //minimum gas requirement by this relay.
-   * }
+   * @returns JSON response from the relay server, but adds the requested URL to it :'-(
    */
-  async getRelayAddressPing (relayUrl, transactionFee, gasPrice) {
+  async getRelayAddressPing (relayUrl, baseRelayFee, pctRelayFee, gasPrice) {
     const self = this
     return new Promise(function (resolve, reject) {
       const callback = function (error, body) {
@@ -71,8 +65,9 @@ class ActiveRelayPinger {
           return
         }
         try {
-          // add extra attributes (relayUrl, transactionFee)
-          Object.assign(body, { relayUrl, transactionFee })
+          // add extra attributes
+          // TODO: now this is a bad architecture! refactor!
+          Object.assign(body, { relayUrl, baseRelayFee, pctRelayFee })
           resolve(body)
         } catch (err) {
           reject(err)
@@ -113,7 +108,7 @@ class ServerHelper {
       verbose,
       minStake, minDelay, // params for relayFilter: filter out this relay if unstakeDelay or stake are too low.
       relayTimeoutGrace, // ignore score drop of a relay after this time (seconds)
-      calculateRelayScore, // function: return relay score, higher the better. default uses transactionFee and some randomness
+      calculateRelayScore, // function: return relay score, higher the better. default uses transaction fees and some randomness
       relayFilter, // function: return false to filter out a relay. default uses minStake, minDelay
       addScoreRandomness // function: return Math.random (0..1), to fairly distribute among relays with same score.
       // (used by test to REMOVE the randomness, and make the test deterministic.
@@ -143,7 +138,7 @@ class ServerHelper {
   defaultCalculateRelayScore (relay) {
     // basic score is trasnaction fee (which is %)
     // higher the better.
-    let score = 1000 - relay.transactionFee
+    let score = 1000 - relay.pctRelayFee
 
     const failedRelay = this.failedRelays[relay.relayUrl]
     if (failedRelay) {
@@ -217,7 +212,8 @@ class ServerHelper {
         const relay = {
           address: args.relay,
           relayUrl: args.url,
-          transactionFee: args.transactionFee,
+          baseRelayFee: args.baseRelayFee,
+          pctRelayFee: args.pctRelayFee,
           stake: args.stake,
           unstakeDelay: args.unstakeDelay
         }

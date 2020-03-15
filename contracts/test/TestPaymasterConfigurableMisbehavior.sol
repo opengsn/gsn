@@ -1,9 +1,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "./TestSponsorEverythingAccepted.sol";
+import "./TestPaymasterEverythingAccepted.sol";
 
-contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
+contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted {
 
     bool public withdrawDuringPostRelayedCall;
     bool public withdrawDuringPreRelayedCall;
@@ -69,13 +69,12 @@ contract TestSponsorConfigurableMisbehavior is TestSponsorEverythingAccepted {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        uint256 txFee,
-        uint256 gasPrice
+        GSNTypes.GasData calldata gasData
     )
     external
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, txFee, gasPrice);
+        (context, success, preRetVal, gasUseWithoutPost, gasData);
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }

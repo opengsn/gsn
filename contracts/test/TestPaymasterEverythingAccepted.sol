@@ -1,9 +1,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../BaseGasSponsor.sol";
+import "../BasePaymaster.sol";
 
-contract TestSponsorEverythingAccepted is BaseGasSponsor {
+contract TestPaymasterEverythingAccepted is BasePaymaster {
 
     event SampleRecipientPreCall();
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
@@ -36,13 +36,12 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        uint256 txFee,
-        uint256 gasPrice
+        GSNTypes.GasData calldata gasData
     )
     external
     relayHubOnly
     {
-        (context, gasUseWithoutPost, txFee, gasPrice);
+        (context, gasUseWithoutPost, gasData);
         emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
     }
 

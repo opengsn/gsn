@@ -2,7 +2,7 @@ const Big = require('big.js')
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
-const TestSponsorEverythingAccepted = artifacts.require('./test/TestSponsorEverythingAccepted.sol')
+const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 
 contract('SampleRecipient', function (accounts) {
   const expectedRealSender = accounts[0]
@@ -20,7 +20,7 @@ contract('SampleRecipient', function (accounts) {
   })
 
   it('should allow owner to withdraw balance from RelayHub', async function () {
-    const sample = await TestSponsorEverythingAccepted.deployed()
+    const sample = await TestPaymasterEverythingAccepted.deployed()
     const deposit = new Big('100000000000000000')
     const rhub = await RelayHub.deployed()
     await rhub.depositFor(sample.address, { from: accounts[0], value: deposit })

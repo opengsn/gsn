@@ -4,7 +4,7 @@ pragma solidity ^0.5.16;
 import "../utils/GsnUtils.sol";
 import "../interfaces/IRelayHub.sol";
 import "../BaseRelayRecipient.sol";
-import "./TestSponsorConfigurableMisbehavior.sol";
+import "./TestPaymasterConfigurableMisbehavior.sol";
 
 contract TestRecipient is BaseRelayRecipient {
 
@@ -19,10 +19,10 @@ contract TestRecipient is BaseRelayRecipient {
         emit Reverting("if you see this revert failed...");
     }
 
-    address payable public sponsor;
+    address payable public paymaster;
 
-    function setWithdrawDuringRelayedCall(address payable _sponsor) public {
-        sponsor = _sponsor;
+    function setWithdrawDuringRelayedCall(address payable _paymaster) public {
+        paymaster = _paymaster;
     }
 
     function() external payable {}
@@ -30,7 +30,7 @@ contract TestRecipient is BaseRelayRecipient {
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin);
 
     function emitMessage(string memory message) public {
-        if (sponsor != address(0)) {
+        if (paymaster != address(0)) {
             withdrawAllBalance();
         }
 
@@ -38,7 +38,7 @@ contract TestRecipient is BaseRelayRecipient {
     }
 
     function withdrawAllBalance() public {
-        TestSponsorConfigurableMisbehavior(sponsor).withdrawAllBalance();
+        TestPaymasterConfigurableMisbehavior(paymaster).withdrawAllBalance();
     }
 
     // solhint-disable-next-line no-empty-blocks
