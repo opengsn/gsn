@@ -4,6 +4,7 @@ const web3Utils = require('web3-utils')
 
 const getDataToSign = require('./EIP712/Eip712Helper')
 
+const abi = require('web3-eth-abi')
 function removeHexPrefix (hex) {
   return hex.replace(/^0x/, '')
 }
@@ -17,7 +18,19 @@ function padTo64 (hex) {
   return hex
 }
 
+function event2topic (contract, names) {
+  // for testing: don't crash on mockup..
+  if (!contract.options || !contract.options.jsonInterface) { return names }
+  if (typeof names === 'string') {
+    return event2topic(contract, [names])[0]
+  }
+  return contract.options.jsonInterface
+    .filter(e => names.includes(e.name))
+    .map(abi.encodeEventSignature)
+}
 module.exports = {
+  event2topic,
+
   getEip712Signature: async function (
     {
       web3,
