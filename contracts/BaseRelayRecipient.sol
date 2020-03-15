@@ -2,16 +2,13 @@ pragma solidity ^0.5.16;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
-import "./interfaces/IRelayHub.sol";
+import "./BaseGsnAware.sol";
 
 /**
  * A base class to be inherited by a concrete Relay Recipient
  * A subclass must use "getSender()" instead of "msg.sender"
  */
-contract BaseRelayRecipient {
-
-    /// The RelayHub singleton that is allowed to call us
-    IRelayHub internal relayHub;
+contract BaseRelayRecipient is BaseGsnAware {
 
     /*
      * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
@@ -21,9 +18,6 @@ contract BaseRelayRecipient {
         _;
     }
 
-    function getHubAddr() public view returns (address) {
-        return address(relayHub);
-    }
     /**
      * return the sender of this call.
      * if the call came through the valid RelayHub, return the original sender.
