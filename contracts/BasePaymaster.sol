@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
+import "./BaseGsnAware.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
 
@@ -13,15 +14,12 @@ import "./interfaces/IRelayHub.sol";
  *  - preRelayedCall
  *  - postRelayedCall
  */
-contract BasePaymaster is IPaymaster, Ownable {
+contract BasePaymaster is IPaymaster, Ownable, BaseGsnAware {
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
     uint256 constant private ACCEPT_RELAYED_CALL_GAS_LIMIT = 50000;
     uint256 constant private PRE_RELAYED_CALL_GAS_LIMIT = 100000;
     uint256 constant private POST_RELAYED_CALL_GAS_LIMIT = 110000;
-
-    /// The IRelayHub singleton which is allowed to call us
-    IRelayHub internal relayHub;
 
     function getGasLimits()
     external
@@ -36,9 +34,6 @@ contract BasePaymaster is IPaymaster, Ownable {
         );
     }
 
-    function getHubAddr() public view returns (address) {
-        return address(relayHub);
-    }
     /*
      * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
      */
