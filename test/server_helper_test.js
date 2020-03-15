@@ -1,6 +1,7 @@
 const assert = require('chai').use(require('chai-as-promised')).assert
 const ServerHelper = require('../src/js/relayclient/ServerHelper')
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
+const http = require('http')
 const testutils = require('./testutils')
 const registerNewRelay = testutils.registerNewRelay
 const increaseTime = testutils.increaseTime
@@ -13,6 +14,16 @@ const gasPricePercent = 20
 // ServerHelper adds "noise" to shuffle requests with the same score.
 // this will prevent this randomness, to make tests deterministic.
 const noRandomness = () => 0
+
+function mockserver (port, data) {
+  const s = http.createServer(function (req, res) {
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.write(JSON.stringify(data))
+    res.end()
+  })
+  s.listen(port)
+  return s
+}
 
 contract('ServerHelper', function (accounts) {
   const minStake = 1.5e18
@@ -39,7 +50,7 @@ contract('ServerHelper', function (accounts) {
       EthereumNodeUrl: web3.currentProvider.host,
       GasPricePercent: gasPricePercent
     })
-    serverHelper.setHub(rhub)
+    serverHelper.setHub(rhub.contract)
   })
 
   after(async function () {
@@ -124,7 +135,7 @@ contract('ServerHelper', function (accounts) {
       await increaseTime(3600 * 24 * 7 * 2)
       await rhub.unstake(accounts[2], { from: accounts[0] })
 
-      serverHelper.setHub(rhub)
+      serverHelper.setHub(rhub.contract)
     })
 
     it('should list all relays from relay contract', async function () {
@@ -139,6 +150,33 @@ contract('ServerHelper', function (accounts) {
       const pinger = await serverHelper.newActiveRelayPinger()
       const relay = await pinger.nextRelay()
       assert.equal(localhostOne, relay.relayUrl)
+    })
+
+    it('should discover preferred relay first', async () => {
+      let mockrelay
+      try {
+        const mockport = 12345
+        mockrelay = mockserver(mockport, {
+          RelayServerAddress: '0x' + 'a'.repeat(40),
+          MinGasPrice: 1111000000,
+          Ready: true,
+          Version: '0.4.2'
+        })
+        serverHelper.preferredRelays = [
+          'http://localhost:19999', // a preferred relay, but missing..
+          'http://localhost:' + mockport
+        ]
+        await serverHelper.fetchRelaysAdded()
+        console.log('list=', serverHelper.filteredRelays)
+        const pinger = await serverHelper.newActiveRelayPinger()
+        let relay = await pinger.nextRelay()
+        assert.equal('http://localhost:12345', relay.relayUrl)
+        relay = await pinger.nextRelay()
+        assert.equal(localhostOne, relay.relayUrl)
+      } finally {
+        serverHelper.preferredRelays = undefined
+        mockrelay.close()
+      }
     })
   })
 
@@ -237,6 +275,11 @@ contract('ServerHelper', function (accounts) {
       customServerHelper.setHub(this.mockRelayHub)
       const relays = await customServerHelper.fetchRelaysAdded()
       assert.deepEqual(relays.map(r => r.address), ['5', '7', '6', '1', '2', '3', '4'])
+    })
+
+    it('preferredRelays can be a url or an array', () => {
+      assert.deepEqual(['url'], new ServerHelper(httpWrapper, {}, { preferredRelays: 'url' }).preferredRelays)
+      assert.deepEqual(['url1', 'url2'], new ServerHelper(httpWrapper, {}, { preferredRelays: ['url1', 'url2'] }).preferredRelays)
     })
 
     it('should use custom strategy for filtering and sorting relays', async function () {

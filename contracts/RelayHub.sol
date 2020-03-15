@@ -54,6 +54,7 @@ contract RelayHub is IRelayHub {
     uint256 public gtxdatanonzero;
     uint256 constant public GTRANSACTION = 21000;
 
+
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
 

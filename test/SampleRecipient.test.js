@@ -35,7 +35,7 @@ contract('SampleRecipient', function (accounts) {
     })
     const a0BalanceAfter = await web3.eth.getBalance(accounts[0])
     const expectedBalanceAfter = new Big(a0BalanceBefore).add(deposit).sub(res.receipt.gasUsed * gasPrice)
-    assert.equal(expectedBalanceAfter.toString(), a0BalanceAfter.toString())
+    assert.equal(expectedBalanceAfter.toFixed(), a0BalanceAfter.toString())
     depositActual = await rhub.balanceOf(sample.address)
     assert.equal('0', depositActual.toString())
   })
