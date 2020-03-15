@@ -513,6 +513,7 @@ class RelayClient {
             to: options.to,
             encodedFunctionCall: encodedFunction,
             pctRelayFee: options.pctRelayFee,
+            baseRelayFee: options.baseRelayFee,
             gasPrice,
             gasLimit,
             nonce: senderNonce,
@@ -552,10 +553,11 @@ class RelayClient {
     const params = payload.params[0]
     const relayClientOptions = this.config
 
-    const { pctRelayFee, txFee, gas, gasPrice } = params
+    const { pctRelayFee, baseRelayFee, gas, gasPrice } = params
     const relayOptions = {
       ...params,
-      pctRelayFee: txFee || pctRelayFee || relayClientOptions.pctRelayFee,
+      pctRelayFee: pctRelayFee || relayClientOptions.pctRelayFee,
+      baseRelayFee: baseRelayFee || relayClientOptions.baseRelayFee,
       gas_limit: gas && parseInt(gas, 16),
       gas_price: gasPrice && parseInt(gasPrice, 16)
     }

@@ -274,9 +274,9 @@ contract RelayHub is IRelayHub {
     function getAndValidateGasLimits(GSNTypes.GasData memory gasData, address paymaster)
     private
     view
-    returns (uint256, GSNTypes.GasLimits memory)
+    returns (uint256 maxPossibleGas, GSNTypes.GasLimits memory gasLimits)
     {
-        GSNTypes.GasLimits memory gasLimits =
+        gasLimits =
         IPaymaster(paymaster).getGasLimits();
         uint256 requiredGas =
             GAS_OVERHEAD +
@@ -293,7 +293,7 @@ contract RelayHub is IRelayHub {
 
         // The maximum possible charge is the cost of transaction assuming all bytes of calldata are non-zero and
         // all paymaster and recipient calls consume entire available gas limit
-        uint256 maxPossibleGas = calldatagascost() + requiredGas;
+        maxPossibleGas = calldatagascost() + requiredGas;
         uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
             gasData
