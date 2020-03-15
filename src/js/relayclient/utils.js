@@ -1,5 +1,4 @@
 const ethUtils = require('ethereumjs-util')
-const EthCrypto = require('eth-crypto')
 const web3Utils = require('web3-utils')
 
 const getDataToSign = require('./EIP712/Eip712Helper')
@@ -125,15 +124,8 @@ module.exports = {
     return sig
   },
 
-  getTransactionSignatureWithKey: function (privKey, hash, withPrefix = true) {
-    let signed
-    if (withPrefix) {
-      const msg = Buffer.concat([Buffer.from('\x19Ethereum Signed Message:\n32'), Buffer.from(removeHexPrefix(hash), 'hex')])
-      signed = web3Utils.sha3('0x' + msg.toString('hex'))
-    } else { signed = hash }
-    const keyHex = '0x' + Buffer.from(privKey).toString('hex')
-    const sig_ = EthCrypto.sign(keyHex, signed)
-    const signature = ethUtils.fromRpcSig(sig_)
+  getTransactionSignatureWithKey: function (privKey, hash) {
+    const signature = ethUtils.ecsign(hash, privKey)
     const sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(web3Utils.toHex(signature.v))
     return sig
   },

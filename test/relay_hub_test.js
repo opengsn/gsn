@@ -120,11 +120,11 @@ contract('RelayHub', function (accounts) {
     })
     unsignedTransaction1Encoded = encodeRLP(transaction1)
     unsignedTransaction2Encoded = encodeRLP(transaction2)
-    const hash1 = '0x' + transaction1.hash(false).toString('hex')
-    sig1 = utils.getTransactionSignatureWithKey(privKey, hash1, false)
+    const hash1 = transaction1.hash(false)
+    sig1 = utils.getTransactionSignatureWithKey(privKey, hash1)
     assert.equal(sig1.length, 132)
-    const hash2 = '0x' + transaction2.hash(false).toString('hex')
-    sig2 = utils.getTransactionSignatureWithKey(privKey, hash2, false)
+    const hash2 = transaction2.hash(false)
+    sig2 = utils.getTransactionSignatureWithKey(privKey, hash2)
     assert.equal(sig2.length, 132)
 
     snitchingAccount = accounts[7]
@@ -193,8 +193,8 @@ contract('RelayHub', function (accounts) {
       const snitchingAccountInitialBalance = await web3.eth.getBalance(snitchingAccount)
 
       const unsignedillegalTransactionEncoded = encodeRLP(illegalTransaction)
-      const hash = '0x' + illegalTransaction.hash(false).toString('hex')
-      const sig = utils.getTransactionSignatureWithKey(privKey, hash, false)
+      const hash = illegalTransaction.hash(false)
+      const sig = utils.getTransactionSignatureWithKey(privKey, hash)
       assert.equal(sig.length, 132)
       const res = await rhub.penalizeIllegalTransaction(unsignedillegalTransactionEncoded, sig, {
         from: snitchingAccount,
@@ -253,8 +253,8 @@ contract('RelayHub', function (accounts) {
     transaction2NextNonce.nonce = nonceAnyValue + 1
 
     const unsignedTransaction2EncodedNextNonce = encodeRLP(transaction2NextNonce)
-    const hash = '0x' + transaction2NextNonce.hash(false).toString('hex')
-    const sig2NextNonce = utils.getTransactionSignatureWithKey(privKey, hash, false)
+    const hash = transaction2NextNonce.hash(false)
+    const sig2NextNonce = utils.getTransactionSignatureWithKey(privKey, hash)
     assert.equal(sig2NextNonce.length, 132)
 
     try {
@@ -281,8 +281,8 @@ contract('RelayHub', function (accounts) {
       ownerAccount: accounts[0]
     })
     const privKeySix = Buffer.from('e485d098507f54e7733a205420dfddbe58db035fa577fc294ebd14db90767a52', 'hex')
-    const hash = '0x' + transaction2.hash(false).toString('hex')
-    const sig2FromAccountSix = utils.getTransactionSignatureWithKey(privKeySix, hash, false)
+    const hash = transaction2.hash(false)
+    const sig2FromAccountSix = utils.getTransactionSignatureWithKey(privKeySix, hash)
     assert.equal(sig2FromAccountSix.length, 132)
 
     try {
