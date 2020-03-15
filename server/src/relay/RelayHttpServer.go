@@ -21,6 +21,9 @@ import (
 
 const VERSION = "0.4.2"
 
+const SECONDS_PER_BLOCK = 12
+const REGISTRATION_BLOCK_RATE = 24*3600*30 / SECONDS_PER_BLOCK
+
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "data/keystore")
 var devMode bool                                                  // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
@@ -178,7 +181,7 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	relayHubAddress := flag.String("RelayHubAddress", "0xD216153c06E857cD7f72665E0aF1d7D82172F494", "RelayHub address")
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
-	RegistrationBlockRate:= flag.Uint64("RegistrationBlockRate", 6000-200, "Relay registeration rate (in blocks)")
+	RegistrationBlockRate:= flag.Uint64("RegistrationBlockRate", REGISTRATION_BLOCK_RATE-200, "Relay registration rate (in blocks, since last sent event)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "data"), "The relay server's workdir")
 	flag.BoolVar(&devMode, "DevMode", false, "Enable developer mode (do not retry unconfirmed txs, do not cache account nonce, do not wait after calls to the chain, faster polling)")
@@ -249,8 +252,8 @@ func refreshBlockchainView() {
 		return
 	}
 	waitForOwnerActions()
-	_, err := relay.BlockCountSinceRegistration()
-	for ; err != nil; _, err = relay.BlockCountSinceRegistration() {
+	_, err := relay.BlockCountSinceLastEvent()
+	for ; err != nil; _, err = relay.BlockCountSinceLastEvent() {
 		if err != nil {
 			log.Println(err)
 		}
@@ -319,14 +322,14 @@ func keepAlive() {
 		return
 	}
 	waitForOwnerActions()
-	count, err := relay.BlockCountSinceRegistration()
+	count, err := relay.BlockCountSinceLastEvent()
 	if err != nil {
 		log.Println(err)
 	} else if count < relay.GetRegistrationBlockRate() {
 		return
 	}
 	log.Println("Registering relay...")
-	
+
 	err = relay.RegisterRelay()
 	if err == nil {
 		log.Println("Done registering")

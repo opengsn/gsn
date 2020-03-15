@@ -92,7 +92,7 @@ type IRelay interface {
 
 	IsUnstaked() (removed bool, err error)
 
-	BlockCountSinceRegistration() (when uint64, err error)
+	BlockCountSinceLastEvent() (when uint64, err error)
 
 	GetRegistrationBlockRate() (rate uint64)
 
@@ -351,7 +351,8 @@ func (relay *RelayServer) IsUnstaked() (removed bool, err error) {
 	return true, nil
 }
 
-func (relay *RelayServer) BlockCountSinceRegistration() (count uint64, err error) {
+//find last TransactionRelayed or RelayAdded
+func (relay *RelayServer) BlockCountSinceLastEvent() (count uint64, err error) {
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		log.Println(err)
@@ -380,7 +381,24 @@ func (relay *RelayServer) BlockCountSinceRegistration() (count uint64, err error
 		(iter.Event.Url != relay.Url) {
 		return 0, fmt.Errorf("Could not receive RelayAdded events for our relay")
 	}
-	count = lastBlockNumber - iter.Event.Raw.BlockNumber
+	blockNumber := iter.Event.Raw.BlockNumber
+
+	//Now find also last TransactionRelayed request, and use the latest of these:
+	iter1, err1 := relay.rhub.FilterTransactionRelayed(filterOpts, []common.Address{relay.Address()}, nil, nil)
+	if err1 != nil {
+		log.Println(err1)
+		return
+	}
+	// We only care about the last event
+	for iter1.Next() {
+	}
+	if (iter1.Event != nil &&
+		(bytes.Compare(iter1.Event.Relay.Bytes(), relay.Address().Bytes()) == 0) &&
+		iter1.Event.Raw.BlockNumber > blockNumber) {
+        blockNumber = iter1.Event.Raw.BlockNumber
+    }
+
+	count = lastBlockNumber - blockNumber
 	return
 }
 
