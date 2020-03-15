@@ -5,10 +5,12 @@
  */
 const environments = {
   istanbul: {
-    gtxdatanonzero: 16
+    gtxdatanonzero: 16,
+    chainId: 1
   },
   constantinople: {
-    gtxdatanonzero: 68
+    gtxdatanonzero: 68,
+    chainId: 1
   }
 }
 
