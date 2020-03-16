@@ -4,6 +4,7 @@ const Web3 = require('web3')
 const HttpServer = require('./HttpServer')
 const RelayServer = require('./RelayServer')
 const KeyManager = require('./KeyManager')
+const TxStoreManager = require('./TxStoreManager').TxStoreManager
 
 function error (err) { throw new Error(err) }
 
@@ -38,9 +39,11 @@ try {
   keypair = KeyManager.newKeypair()
 }
 const keyManager = new KeyManager({ ecdsaKeyPair: keypair, workdir })
+const txStoreManager = new TxStoreManager({ workdir })
 const web3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const relay = new RelayServer({
+  txStoreManager,
   keyManager,
   hubAddress: relayHubAddress,
   web3provider,

@@ -2,6 +2,7 @@
 const Web3 = require('web3')
 const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayServer = require('../src/js/relayserver/RelayServer')
+const TxStoreManager = require('../src/js/relayserver/TxStoreManager').TxStoreManager
 const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
@@ -16,7 +17,6 @@ const abiDecoder = require('abi-decoder')
 
 const chai = require('chai')
 const sinonChai = require('sinon-chai')
-const expect = require('chai').expect
 chai.use(sinonChai)
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(GasSponsorABI)
@@ -25,23 +25,20 @@ abiDecoder.addABI(TestEverythingAcceptedSponsor.abi)
 
 const localhostOne = 'http://localhost:8090'
 const ethereumNodeUrl = 'http://localhost:8545'
+const workdir = '/tmp/gsn/test/relayserver'
 
 const testutils = require('./testutils')
 const increaseTime = testutils.increaseTime
 
 const util = require('util')
-const request = util.promisify(require('request'))
 
 contract('RelayServer', function (accounts) {
   let rhub
   let sr
   let gasSponsor
   let gasLess
-  let relayproc
   let gasPrice
-  let relayClientConfig
   const relayOwner = accounts[1]
-  let relayAccount
   const dayInSec = 24 * 60 * 60
   const weekInSec = dayInSec * 7
   const oneEther = 1e18
@@ -62,7 +59,9 @@ contract('RelayServer', function (accounts) {
     await gasSponsor.deposit({ value: web3.utils.toWei('1', 'ether') })
     gasLess = await web3.eth.personal.newAccount('password')
     const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair() })
+    const txStoreManager = new TxStoreManager({ workdir })
     relayServer = new RelayServer({
+      txStoreManager,
       keyManager,
       // owner: relayOwner,
       hubAddress: rhub.address,
@@ -227,7 +226,9 @@ contract('RelayServer', function (accounts) {
     assert.isTrue(relayBalanceAfter === 0)
   })
 
-  it('')
+  it('should resend unconfirmed transactions', async function () {
+
+  })
 
   describe('Http server', async function () {
 

@@ -30,6 +30,7 @@ function spam () {
 class RelayServer extends EventEmitter {
   constructor (
     {
+      txStoreManager,
       keyManager,
       owner,
       hubAddress,
@@ -46,6 +47,7 @@ class RelayServer extends EventEmitter {
     }
     Object.assign(this,
       {
+        txStoreManager,
         keyManager,
         owner,
         hubAddress,
@@ -223,6 +225,7 @@ class RelayServer extends EventEmitter {
         this.lastScannedBlock = logs[logs.length - 1].blockNumber
       }
       this.ready = true
+      this._resendUnconfirmedTransactions()
       return receipt
     } catch (e) {
       console.log('error in worker:', e.message)
@@ -302,6 +305,10 @@ class RelayServer extends EventEmitter {
     })
     this.emit('unstaked')
     return receipt
+  }
+
+  async _resendUnconfirmedTransactions () {
+
   }
 
   async _sendTransaction ({ method, destination, value, gasLimit, gasPrice }) {
