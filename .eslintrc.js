@@ -14,10 +14,10 @@ module.exports = {
     },
     "extends":
     [
-      "standard"
+      "standard-with-typescript"
     ],
     "parserOptions": {
-        "ecmaVersion": 2018
+        "project": "./tsconfig.json"
     },
     "rules": {
         "no-console": "off",
