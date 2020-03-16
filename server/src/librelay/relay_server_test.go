@@ -164,6 +164,7 @@ func InitTestClient(url string) {
 }
 
 func NewRelay(relayHubAddress common.Address) {
+	baseFee := big.NewInt(0)
 	fee := big.NewInt(10)
 	defaultGasPrice := int64(params.GWei)
 	gasPricePercent := big.NewInt(10)
@@ -175,7 +176,7 @@ func NewRelay(relayHubAddress common.Address) {
 	devMode := false
 	var err error
 	relay.RelayServer, err = NewRelayServer(
-		common.Address{}, fee, url, port,
+		common.Address{}, baseFee, fee, url, port,
 		relayHubAddress, defaultGasPrice,
 		gasPricePercent, relayKey1, registrationBlockRate,
 		ethereumNodeURL, client, txStore, clk, devMode)
@@ -312,7 +313,7 @@ func TestRegisterRelay(t *testing.T) {
 	}
 	client.Commit()
 	test.ErrFail(relay.awaitTransactionMined(tx), t)
-	count, err := relay.BlockCountSinceRegistration()
+	count, err := relay.BlockCountSinceLastEvent()
 	if err != nil {
 		fmt.Println("ERROR", err)
 	}
@@ -321,18 +322,16 @@ func TestRegisterRelay(t *testing.T) {
 	}
 }
 
-func printSignature(txb string, txFee int64, gasPrice int64, gasLimit int64, relayMaxNonce int64, senderNonce int64) {
+func printSignature(txb string, baseFee int64, txFee int64, gasPrice int64, gasLimit int64, relayMaxNonce int64, senderNonce int64) {
 	fmt.Println("ganache-cli -d")
 	fmt.Println("npx truffle console --network development")
 	fmt.Println("const utils = require('../src/js/relayclient/utils')")
-	//fmt.Printf(
-	//	"let hash = utils.getTransactionHash('%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v')\n",
-	//	crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), sampleRecipient.Hex(), txb, txFee, gasPrice, gasLimit, recipientNonce, rhaddr.Hex(), relay.Address().Hex(),
-	//)
-	//fmt.Printf("utils.getTransactionSignature(web3, '0xffcf8fdee72ac11b5c542428b35eef5769c409f0', hash)\n")
+	fmt.Println("const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')")
 	fmt.Printf(
-		"hash = utils.getEip712Signature({web3, senderAccount: '%v', senderNonce: '%v', target: '%v', encodedFunction: '%v', pctRelayFee: '%v', gasPrice: '%v', gasLimit: '%v', gasSponsor: '%v', relayHub: '%v', relayAddress: '%v'})\n",
-		crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), senderNonce, sampleRecipient.Hex(), txb, txFee, gasPrice, gasLimit, testSponsor.Hex(), rhaddr.Hex(), relay.Address().Hex(),
+		"=====\n" +
+			"utils.getEip712Signature({web3, chainId: 1, relayHub: '%v', relayRequest: new RelayRequest({web3, senderAddress: '%v', senderNonce: '%v', target: '%v', encodedFunction: '%v', baseRelayFee: '%v', pctRelayFee: '%v', gasPrice: '%v', gasLimit: '%v', paymaster: '%v', relayAddress: '%v'}) })\n" +
+			"======\n",
+		rhaddr.Hex(), crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), senderNonce, sampleRecipient.Hex(), txb, baseFee, txFee, gasPrice, gasLimit, testSponsor.Hex(), relay.Address().Hex(),
 	)
 }
 
@@ -340,6 +339,7 @@ func newRelayTransactionRequest(t *testing.T, senderNonce int64, signature strin
 	test.ErrFail(relay.RefreshGasPrice(), t)
 	addressGasless := crypto.PubkeyToAddress(gaslessKey2.PublicKey)
 	txb := "0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000"
+	baseFee := int64(300)
 	txFee := int64(10)
 	gasPrice := int64(2000)
 	gasLimit := int64(1000000)
@@ -349,7 +349,7 @@ func newRelayTransactionRequest(t *testing.T, senderNonce int64, signature strin
 	}
 
 	// Uncomment the following line to print the commands to generate the signature that needs to be injected
-	//printSignature(txb, txFee, gasPrice, gasLimit, relayMaxNonce, senderNonce)
+	printSignature(txb, baseFee, txFee, gasPrice, gasLimit, relayMaxNonce, senderNonce)
 
 	return RelayTransactionRequest{
 		EncodedFunction: txb,
@@ -357,12 +357,13 @@ func newRelayTransactionRequest(t *testing.T, senderNonce int64, signature strin
 		Signature:       common.Hex2Bytes(signature),
 		From:            addressGasless,
 		To:              sampleRecipient,
-		GasSponsor:      testSponsor,
+		Paymaster:       testSponsor,
 		GasPrice:        *big.NewInt(gasPrice),
 		GasLimit:        *big.NewInt(gasLimit),
-		SenderNonce:  	 *big.NewInt(senderNonce),
+		SenderNonce:     *big.NewInt(senderNonce),
 		RelayMaxNonce:   *big.NewInt(relayMaxNonce),
-		RelayFee:        *big.NewInt(txFee),
+		PercentRelayFee: *big.NewInt(txFee),
+		BaseRelayFee:    *big.NewInt(baseFee),
 		RelayHubAddress: rhaddr,
 	}
 }
@@ -407,16 +408,29 @@ func assertNoTransactionResent(t *testing.T, relay *RelayServer) {
 }
 
 func TestCreateRelayTransaction(t *testing.T) {
-	request := newRelayTransactionRequest(t, 0, "0x717591514ee3e28f3981d9b1a9a80a4d5b8a2a824ad6d4329a83272e14ecf87b77067fa322eb5142d93bedd488d1a34aea2faef8c288cbf4603e55211f34e5171c")
+	request := newRelayTransactionRequest(t, 0, "0xc2f3ccc4a624ca99cbd7928503f33347a3dcaaf624d8640610c0193e7b3ae868409d84ad4a97c8f01c0bd8f9b65bd81a9efd44b865ad75df13bdfb512d809b911b")
 	signedTx, err := relay.CreateRelayTransaction(request)
 	test.ErrFailWithDesc(err, t, "Creating relay transaction")
 	client.Commit()
 	assertTransactionRelayed(t, signedTx.Hash())
+
+}
+
+func TestBlockCountShouldCheckAllEvents(t *testing.T) {
+    //make sure that not only RelayAdded, but also TransactionRelayed counts for
+    // "last relay message"
+    count, err := relay.BlockCountSinceLastEvent()
+    if err != nil {
+        fmt.Println("ERROR", err)
+    }
+    if count != 1  {
+        t.Error("expected TransactionRelayed to be counted in BlockCountSinceLastEvent",  count)
+    }
 }
 
 func TestResendRelayTransaction(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request := newRelayTransactionRequest(t, 1, "0x536b552bf799e5fff8804eb506cea153bc2f30aa007e5cfd2ef13202be8346840b3c82677b311a5726151123d53dbf0f2f5697d8f8520741f0003b2070cfe5871c")
+	request := newRelayTransactionRequest(t, 1, "0xecd49b552e031661aaca5b2722da98d4f04a5617b1fae4a66b85bf112f68068913b7f4f5c95912896892b856de74ada36b543b5aa1d18388166f912f1eb54cb91c")
 
 	// Send a transaction via the relay, but then revert to a previous snapshot
 	snapshotID, err := client.Snapshot()
@@ -467,9 +481,9 @@ func TestResendRelayTransaction(t *testing.T) {
 
 func TestMultipleRelayTransactions(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request1 := newRelayTransactionRequest(t, 2, "0x908fa85f9e7a29eb716f5fbcf8bec6017ea10faecb88134e227aabad1a53364a7cc37a02c74dc5e7c53d759e285fd3e5178b41def91d3f9c16c3d0460fc75b2f1c")
-	request2 := newRelayTransactionRequest(t, 3, "0xe5ad1858fea40c6214491bc64e176a940b0be7e43adccb6f08af9e953285b7b34b1b81ef627b3434f9f90ad62f7b5fc5006ddeed3c27d10b573d1891ec710de91c")
-	request3 := newRelayTransactionRequest(t, 4, "0xad0ac7a2bfb9f7366807f23e3b3cc2d691cc1a828a53d35674f3d285ce8c374a393c0faeb89d1c2eb1ae1536465b3a9c3900114c366cd27774e3aa17e069a50b1b")
+	request1 := newRelayTransactionRequest(t, 2, "0x6729cddc2ca86331eab946eb3013c36daea16044b8191c8549de6e25fc199cd3237677d1d4dbb12e50c1e3d9f3675fad7e7983a411d9f320043b9f60663ac2dc1c")
+	request2 := newRelayTransactionRequest(t, 3, "0xf8308ca7371385d08193e8eb98ce75110368cf322df963fd343863ee8ecbe35a2e2037f71901ef30a8b63ce8a5838dca816f0f111525971d6c1179f87306a5c11b")
+	request3 := newRelayTransactionRequest(t, 4, "0xc1f1beeb6677e93d01ee134c075636174636324996512000ef945c246439ce061283fa2593040957d43e3c8940abded04fadbbfcd577f1c5a0be2a1574984c581b")
 
 	// Send 3 transactions, separated by 1 min each, and revert the last 2
 	signedTx1, err := relay.CreateRelayTransaction(request1)
@@ -518,7 +532,7 @@ func TestMultipleRelayTransactions(t *testing.T) {
 
 func TestReuseNonceOnDevMode(t *testing.T) {
 	test.ErrFail(relay.TxStore.Clear(), t)
-	request := newRelayTransactionRequest(t, 5, "0x61d2bc30605faf5f8b9ba8b7bfc4a9ea66ac6bc139c7869ddad9d71476c95ad73918e7242aaeff0d0363fa89f2ad13638ce02796155c2f5e7896354e0cef4f901b")
+	request := newRelayTransactionRequest(t, 5, "0x4438b1023d7a9ac43ba1c0b5aef5d68bf87017698ad3e2b196360a2ea424b43a0890ea9230dbc5c6fe04395b496c6bad060cdb0d888e8e01023c4cc5e22a83bc1c")
 
 	// Relay a tx
 	snapshotID, err := client.Snapshot()

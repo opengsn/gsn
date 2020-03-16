@@ -1,11 +1,9 @@
 const ethUtils = require('ethereumjs-util')
-const EthCrypto = require('eth-crypto')
 const web3Utils = require('web3-utils')
 
-const GasData = require('./EIP712/GasData')
-const RelayData = require('./EIP712/RelayData')
 const getDataToSign = require('./EIP712/Eip712Helper')
 
+const abi = require('web3-eth-abi')
 function removeHexPrefix (hex) {
   return hex.replace(/^0x/, '')
 }
@@ -19,62 +17,42 @@ function padTo64 (hex) {
   return hex
 }
 
+function event2topic (contract, names) {
+  // for testing: don't crash on mockup..
+  if (!contract.options || !contract.options.jsonInterface) { return names }
+  if (typeof names === 'string') {
+    return event2topic(contract, [names])[0]
+  }
+  return contract.options.jsonInterface
+    .filter(e => names.includes(e.name))
+    .map(abi.encodeEventSignature)
+}
 module.exports = {
-  register_new_relay: async function (relayHub, stake, delay, txFee, url, account) {
-    await relayHub.stake(account, delay, {
-      from: account,
-      value: stake
-    })
-    return relayHub.registerRelay(txFee, url, { from: account })
-  },
+  event2topic,
 
   getEip712Signature: async function (
     {
       web3,
+      chainId,
+      relayHub,
+      relayRequest,
       methodSuffix = '',
-      jsonStringifyRequest = false,
-      senderAccount,
-      senderNonce,
-      target,
-      encodedFunction,
-      pctRelayFee,
-      gasPrice,
-      gasLimit,
-      gasSponsor,
-      relayHub,
-      relayAddress
+      jsonStringifyRequest = false
     }) {
-    if (
-      typeof gasPrice !== 'string' ||
-      typeof gasLimit !== 'string' ||
-      typeof pctRelayFee !== 'string' ||
-      typeof gasSponsor !== 'string' ||
-      typeof senderNonce !== 'string'
-    ) {
-      throw Error('using wrong types will cause signatures to be invalid')
-    }
-    let data = await getDataToSign({
-      web3,
-      baseRelayFee: '0',
-      senderAccount,
-      senderNonce,
-      target,
-      encodedFunction,
-      pctRelayFee,
-      gasPrice,
-      gasLimit,
-      gasSponsor,
+    let data = getDataToSign({
+      chainId,
       relayHub,
-      relayAddress
+      relayRequest
     })
     if (jsonStringifyRequest) {
       data = JSON.stringify(data)
     }
+    const senderAddress = relayRequest.relayData.senderAddress
     return new Promise((resolve, reject) => {
       web3.currentProvider.send({
         method: 'eth_signTypedData' + methodSuffix,
-        params: [senderAccount, data],
-        from: senderAccount
+        params: [senderAddress, data],
+        from: senderAddress
       }, (err, res) => {
         if (err) {
           reject(err)
@@ -88,52 +66,28 @@ module.exports = {
     })
   },
 
-  // TODO: this method is used way too many times
-  getRelayRequest: function (sender, recipient, txData, fee, gasPrice, gasLimit, senderNonce, relay, gasSponsor, baseFee) {
-    return {
-      target: recipient,
-      encodedFunction: txData,
-      gasData: new GasData({
-        gasLimit: gasLimit.toString(),
-        gasPrice: gasPrice.toString(),
-        pctRelayFee: fee.toString(),
-        baseRelayFee: baseFee ? baseFee.toString() : '0'// TODO: remove "?:"
-      }),
-      relayData: new RelayData({
-        senderAccount: sender,
-        senderNonce: senderNonce.toString(),
-        relayAddress: relay,
-        gasSponsor
-      })
-    }
-  },
-
   /**
-   * TODO: make it work for both truffle and web3 contract objects!!!
-   * @param gasSponsor
-   * @param hub
+   * @param gasLimits
+   * @param hubOverhead
    * @param relayCallGasLimit
    * @param calldataSize
    * @param gtxdatanonzero
-   * @returns {Promise}
+   * @returns maximum possible gas consumption by this relayed call
    */
-  getTransactionGasData: async function ({
-    gasSponsor, _gasLimits, _overhead, relayHub, relayCallGasLimit, calldataSize, gtxdatanonzero
+  calculateTransactionMaxPossibleGas: function ({
+    gasLimits,
+    hubOverhead,
+    relayCallGasLimit,
+    calldataSize,
+    gtxdatanonzero
   }) {
-    const gasLimits = _gasLimits || await gasSponsor.getGasLimitsForSponsorCalls()
-    const overhead = _overhead || (await relayHub.getHubOverhead()).toNumber()
-    const maxPossibleGas =
-      21000 +
-      overhead +
+    return 21000 +
+      hubOverhead +
       calldataSize * gtxdatanonzero +
       relayCallGasLimit +
       parseInt(gasLimits.acceptRelayedCallGasLimit) +
       parseInt(gasLimits.preRelayedCallGasLimit) +
       parseInt(gasLimits.postRelayedCallGasLimit)
-    return {
-      ...gasLimits,
-      maxPossibleGas
-    }
   },
 
   getTransactionSignature: async function (web3, account, hash) {
@@ -170,15 +124,8 @@ module.exports = {
     return sig
   },
 
-  getTransactionSignatureWithKey: function (privKey, hash, withPrefix = true) {
-    let signed
-    if (withPrefix) {
-      const msg = Buffer.concat([Buffer.from('\x19Ethereum Signed Message:\n32'), Buffer.from(removeHexPrefix(hash), 'hex')])
-      signed = web3Utils.sha3('0x' + msg.toString('hex'))
-    } else { signed = hash }
-    const keyHex = '0x' + Buffer.from(privKey).toString('hex')
-    const sig_ = EthCrypto.sign(keyHex, signed)
-    const signature = ethUtils.fromRpcSig(sig_)
+  getTransactionSignatureWithKey: function (privKey, hash) {
+    const signature = ethUtils.ecsign(hash, privKey)
     const sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(web3Utils.toHex(signature.v))
     return sig
   },

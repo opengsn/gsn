@@ -7,25 +7,24 @@
 var testutils = require('./testutils.js')
 
 const SampleRecipient = artifacts.require('tests/TestRecipient')
-const TestSponsor = artifacts.require('tests/TestSponsorEverythingAccepted')
-const TestSponsorApproval = artifacts.require('tests/TestSponsorPreconfiguredApproval')
+const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
+const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymasterPreconfiguredApproval')
 
 const RelayHub = artifacts.require('RelayHub')
 
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
+const Environments = require('../src/js/relayclient/Environments')
 
 const options = [
   { title: 'Direct-', relay: 0 },
   { title: 'Relayed-', relay: 1 }
 ]
 
-const GTXDATANONZERO = 68
-
 options.forEach(params => {
   contract(params.title + 'Flow', async (acc) => {
     let from
     let sr
-    let gasSponsor
+    let paymaster
     let rhub
     const accounts = acc
     let gasless
@@ -42,11 +41,11 @@ options.forEach(params => {
 
       if (params.relay) {
         // rhub = await RelayHub.deployed()
-        rhub = await RelayHub.new(GTXDATANONZERO, { gas: 10000000 })
+        rhub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
         relayproc = await testutils.startRelay(rhub, {
           stake: 1e18,
           delay: 3600 * 24 * 7,
-          txfee: 12,
+          pctRelayFee: 12,
           url: 'asd',
           relayOwner: accounts[0],
           EthereumNodeUrl: web3.currentProvider.host,
@@ -61,9 +60,9 @@ options.forEach(params => {
       }
 
       sr = await SampleRecipient.new()
-      gasSponsor = await TestSponsor.new()
+      paymaster = await TestPaymasterEverythingAccepted.new()
       await sr.setHub(rhub.address)
-      await gasSponsor.setHub(rhub.address)
+      await paymaster.setHub(rhub.address)
     })
 
     after(async function () {
@@ -72,10 +71,10 @@ options.forEach(params => {
 
     if (params.relay) {
       it(params.title + 'enable relay', async function () {
-        rhub.depositFor(gasSponsor.address, { value: 1e18 })
+        rhub.depositFor(paymaster.address, { value: 1e18 })
 
         relayClientConfig = {
-          txfee: 60,
+          pctRelayFee: 60,
           // override requested gas price
           force_gasPrice: gasPrice,
           // override requested gas limit.
@@ -96,7 +95,7 @@ options.forEach(params => {
 
     it(params.title + 'send normal transaction', async () => {
       console.log('running emitMessage (should succeed')
-      const res = await sr.emitMessage('hello', { from: from, gasSponsor: gasSponsor.address })
+      const res = await sr.emitMessage('hello', { from: from, paymaster: paymaster.address })
       assert.equal('hello', res.logs[0].args.message)
     })
 
@@ -106,7 +105,7 @@ options.forEach(params => {
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed')
       let ex
       try {
-        const res = await sr.emitMessage('hello, from gasless', { from: gasless, gasSponsor: gasSponsor.address })
+        const res = await sr.emitMessage('hello, from gasless', { from: gasless, paymaster: paymaster.address })
         console.log('res after gasless emit:', res.logs[0].args.message)
       } catch (e) {
         ex = e
@@ -120,59 +119,59 @@ options.forEach(params => {
     })
     it(params.title + 'running testRevert (should always fail)', async () => {
       await asyncShouldThrow(async () => {
-        await sr.testRevert({ from: from, gasSponsor: gasSponsor.address })
+        await sr.testRevert({ from: from, paymaster: paymaster.address })
       }, 'revert')
     })
 
     if (params.relay) {
-      let approvalSponsor
+      let approvalPaymaster
 
       before(async function () {
-        approvalSponsor = await TestSponsorApproval.new()
-        await approvalSponsor.setHub(rhub.address)
-        await rhub.depositFor(approvalSponsor.address, { value: 1e18 })
+        approvalPaymaster = await TestPaymasterPreconfiguredApproval.new()
+        await approvalPaymaster.setHub(rhub.address)
+        await rhub.depositFor(approvalPaymaster.address, { value: 1e18 })
       })
 
       it(params.title + 'wait for specific approvalData', async () => {
         try {
-          await approvalSponsor.setExpectedApprovalData('0x414243', { from: accounts[0], useGSN: false })
-          await sr.emitMessage('xxx', { from: gasless, approvalData: '0x414243', gasSponsor: approvalSponsor.address })
+          await approvalPaymaster.setExpectedApprovalData('0x414243', { from: accounts[0], useGSN: false })
+          await sr.emitMessage('xxx', { from: gasless, approvalData: '0x414243', paymaster: approvalPaymaster.address })
         } catch (e) {
           console.log('error1: ', e)
           throw e
         } finally {
-          await approvalSponsor.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
+          await approvalPaymaster.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
         }
       })
 
       it(params.title + 'wait for specific approvalData as Buffer', async () => {
         try {
-          await approvalSponsor.setExpectedApprovalData(Buffer.from('hello'), { from: accounts[0], useGSN: false })
+          await approvalPaymaster.setExpectedApprovalData(Buffer.from('hello'), { from: accounts[0], useGSN: false })
           SampleRecipient.web3.currentProvider.relayOptions.isRelayEnabled = true
           await sr.emitMessage('xxx', {
             from: gasless,
             approvalData: Buffer.from('hello'),
-            gasSponsor: approvalSponsor.address
+            paymaster: approvalPaymaster.address
           })
         } catch (e) {
           console.log('error2: ', e)
           throw e
         } finally {
-          await approvalSponsor.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
+          await approvalPaymaster.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
         }
       })
 
       it(params.title + 'fail on no approval data', async () => {
         try {
-          await approvalSponsor.setExpectedApprovalData(Buffer.from('hello1'), { from: accounts[0], useGSN: false })
+          await approvalPaymaster.setExpectedApprovalData(Buffer.from('hello1'), { from: accounts[0], useGSN: false })
           await asyncShouldThrow(async () => {
-            await sr.emitMessage('xxx', { from: gasless, gasSponsor: approvalSponsor.address })
+            await sr.emitMessage('xxx', { from: gasless, paymaster: approvalPaymaster.address })
           }, 'unexpected approvalData: \'\' instead of')
         } catch (e) {
           console.log('error3: ', e)
           throw e
         } finally {
-          await approvalSponsor.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
+          await approvalPaymaster.setExpectedApprovalData(Buffer.from(''), { from: accounts[0], useGSN: false })
         }
       })
     }

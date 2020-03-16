@@ -3,24 +3,23 @@ const { ZERO_ADDRESS } = constants
 
 const TestRecipientUtils = artifacts.require('./TestRecipientUtils.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient')
-const TestSponsor = artifacts.require('./test/TestSponsorEverythingAccepted')
+const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted')
 const RelayHub = artifacts.require('RelayHub')
 
 const { expect } = require('chai')
-
-const GTXDATANONZERO = 68
+const Environments = require('../src/js/relayclient/Environments')
 
 contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRelay, sender, other, dest]) { // eslint-disable-line no-unused-vars
   let relayHub
   let recipient
-  let gasSponsor
+  let paymaster
 
   beforeEach(async function () {
-    relayHub = await RelayHub.new(GTXDATANONZERO, { gas: 10000000 })
+    relayHub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
     recipient = await SampleRecipient.new()
-    gasSponsor = await TestSponsor.new()
+    paymaster = await TestPaymasterEverythingAccepted.new()
     await recipient.setHub(relayHub.address)
-    await gasSponsor.setHub(relayHub.address)
+    await paymaster.setHub(relayHub.address)
   })
 
   describe('relay management', function () {
@@ -176,7 +175,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
 
         context('with registered relay', function () {
           beforeEach(async function () {
-            await relayHub.registerRelay(10, 'http://test.url.com', { from: relay })
+            await relayHub.registerRelay(0, 10, 'http://test.url.com', { from: relay })
           })
 
           testStake()
@@ -217,7 +216,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
       const url = 'http://relay.com'
 
       it('unstaked relays cannot be registered', async function () {
-        await expectRevert(relayHub.registerRelay(transactionFee, url, { from: relay }), 'wrong state for register')
+        await expectRevert(relayHub.registerRelay(0, transactionFee, url, { from: relay }), 'wrong state for register')
       })
 
       context('with staked relay', function () {
@@ -238,18 +237,18 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
           // Minimum balance is 0.1 ether
           await send.ether(relay, ZERO_ADDRESS, relayBalance - ether('0.09'))
 
-          await expectRevert(relayHub.registerRelay(transactionFee, url, {
+          await expectRevert(relayHub.registerRelay(0, transactionFee, url, {
             from: relay,
             gasPrice: 0
           }), 'balance lower than minimum')
         })
 
         it('relay can register itself', async function () {
-          const { logs } = await relayHub.registerRelay(transactionFee, url, { from: relay })
+          const { logs } = await relayHub.registerRelay(0, transactionFee, url, { from: relay })
           expectEvent.inLogs(logs, 'RelayAdded', {
             relay,
             owner: relayOwner,
-            transactionFee,
+            pctRelayFee: transactionFee,
             stake,
             unstakeDelay,
             url
@@ -258,18 +257,18 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
 
         context('with registered relay', function () {
           beforeEach(async function () {
-            await relayHub.registerRelay(transactionFee, url, { from: relay })
+            await relayHub.registerRelay(0, transactionFee, url, { from: relay })
           })
 
           it('relays can re-register with different transaction fee and url', async function () {
             const newTransactionFee = new BN('20')
             const newUrl = 'http://new-relay.com'
 
-            const { logs } = await relayHub.registerRelay(newTransactionFee, newUrl, { from: relay })
+            const { logs } = await relayHub.registerRelay(0, newTransactionFee, newUrl, { from: relay })
             expectEvent.inLogs(logs, 'RelayAdded', {
               relay,
               owner: relayOwner,
-              transactionFee: newTransactionFee,
+              pctRelayFee: newTransactionFee,
               stake,
               unstakeDelay,
               url: newUrl
@@ -282,7 +281,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
             })
 
             it('relay cannot re-register', async function () {
-              await expectRevert(relayHub.registerRelay(transactionFee, url, { from: relay }), 'wrong state for register')
+              await expectRevert(relayHub.registerRelay(0, transactionFee, url, { from: relay }), 'wrong state for register')
             })
           })
         })
@@ -310,7 +309,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
         })
 
         it('a registered relay can be removed', async function () {
-          await relayHub.registerRelay(10, 'http://test.url.com', { from: relay })
+          await relayHub.registerRelay(0, 10, 'http://test.url.com', { from: relay })
 
           const { logs } = await relayHub.removeRelayByOwner(relay, { from: relayOwner })
           expectEvent.inLogs(logs, 'RelayRemoved', {
@@ -362,7 +361,7 @@ contract('RelayHub Stake Management', function ([_, relayOwner, relay, otherRela
 
         context('with registerd relay', function () {
           beforeEach(async function () {
-            await relayHub.registerRelay(10, 'http://test.url.com', { from: relay })
+            await relayHub.registerRelay(0, 10, 'http://test.url.com', { from: relay })
           })
 
           it('unremoved relays cannot be unstaked', async function () {

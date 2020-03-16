@@ -104,11 +104,11 @@ async function run () {
 
     const aowner = owner(r.owner)
     // console.log( e.blockNumber, e.event, r.url, aowner )
-    relays[r.relay] = { addr: r.relay, url: r.url, owner: aowner, txfee: r.transactionFee, status: 'no answer' }
+    relays[r.relay] = { addr: r.relay, url: r.url, owner: aowner, pctRelayFee: r.transactionFee, status: 'no answer' }
   })
   await Promise.all(waiters)
   console.log('\n# Relays:')
-  Object.values(relays).sort((a, b) => a.owner > b.owner).forEach(r => console.log('-', r.addr.slice(2, 10), r.url, '\t' + r.owner, '\ttxfee:' + r.txfee + '%', '\tbal', r.bal, '\t' + r.status))
+  Object.values(relays).sort((a, b) => a.owner > b.owner).forEach(r => console.log('-', r.addr.slice(2, 10), r.url, '\t' + r.owner, '\tpctRelayFee:' + r.pctRelayFee + '%', '\tbal', r.bal, '\t' + r.status))
 
   console.log('\n# Owners:')
   Object.keys(owners).forEach(k => {

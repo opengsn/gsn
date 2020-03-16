@@ -13,21 +13,26 @@ const abiDecoder = require('abi-decoder')
 const sigUtil = require('eth-sig-util')
 
 const getDataToSign = require('./EIP712/Eip712Helper')
+const RelayRequest = require('./EIP712/RelayRequest')
 const relayHubAbi = require('./interfaces/IRelayHub')
 // This file is only needed so we don't change IRelayHub code, which would affect RelayHub expected deployed address
 // TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove IRelayHubVersionAbi.json
 const versionAbi = require('./IRelayHubVersionAbi')
 relayHubAbi.push(versionAbi)
 
-const gasSponsorAbi = require('./interfaces/IGasSponsor')
+const paymasterAbi = require('./interfaces/IPaymaster')
 
-const relayLookupLimitBlocks = 6000
+const SecondsPerBlock = 12
+
+// default history lookup for relays
+// assuming 12 seconds per block
+const relayLookupLimitBlocks = 3600 * 24 / SecondsPerBlock * 30
 abiDecoder.addABI(relayHubAbi)
 
 // default timeout (in ms) for http requests
 const DEFAULT_HTTP_TIMEOUT = 10000
 
-const GTXDATANONZERO = 68
+const Environments = require('./Environments')
 
 // default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
 const GASPRICE_PERCENT = 20
@@ -44,11 +49,14 @@ class RelayClient {
    * create a RelayClient library object, to force contracts to go through a relay.
    * @param web3  - the web3 instance to use.
    * @param {object} config options
-   *    txfee
+   *    preferredRelays - if set, try to use these relays first. only if none of them return
+   *      a valid address (by calling its "/getaddr"), use the use the lookup mechanism.
+   *    pctRelayFee
    *    validateCanRelay - client calls canRelay before calling the relay the first time (defaults to true)
    *lookup for relay
    *    minStake - ignore relays with stake below this (wei) value.
    *    minDelay - ignore relays with delay lower this (sec) value
+   *    relayLookupLimitBlocks - how many blocks back to look for relays. default = ~30 days
    *
    *    calculateRelayScore - function to give a "score" to a relay, based on its properties:
    *          transactionFee, stake, unstakeDelay, relayUrl.
@@ -77,8 +85,8 @@ class RelayClient {
     this.serverHelper = this.config.serverHelper || new ServerHelper(this.httpSend, this.failedRelays, this.config)
   }
 
-  createGasSponsor (addr) {
-    return new this.web3.eth.Contract(gasSponsorAbi, addr)
+  createPaymaster (addr) {
+    return new this.web3.eth.Contract(paymasterAbi, addr)
   }
 
   createRelayHub (addr) {
@@ -92,7 +100,7 @@ class RelayClient {
    * transaction is not valid.
    */
   validateRelayResponse (returnedTx, addressRelay,
-    from, to, transactionOrig, transactionFee, gasPrice, gasLimit, gasSponsor, nonce,
+    senderAddress, target, encodedFunction, baseRelayFee, pctRelayFee, gasPrice, gasLimit, paymaster, senderNonce,
     relayHubAddress, relayAddress, sig, approvalData) {
     const tx = new Transaction({
       nonce: returnedTx.nonce,
@@ -110,8 +118,18 @@ class RelayClient {
 
     const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, txV[0], txR, txS)))
 
-    const relayRequestOrig = utils.getRelayRequest(
-      from, to, transactionOrig, transactionFee, gasPrice, gasLimit, nonce, relayAddress, gasSponsor)
+    const relayRequestOrig = new RelayRequest({
+      senderAddress,
+      target,
+      encodedFunction,
+      gasPrice,
+      gasLimit,
+      baseRelayFee,
+      pctRelayFee,
+      senderNonce,
+      relayAddress,
+      paymaster
+    })
 
     const relayHub = this.createRelayHub(relayHubAddress)
     const relayRequestAbiEncode = relayHub.methods.relayCall(relayRequestOrig, sig, approvalData).encodeABI()
@@ -144,10 +162,11 @@ class RelayClient {
       from,
       to,
       encodedFunction,
-      relayFee,
+      pctRelayFee,
+      baseRelayFee,
       gasPrice,
       gasLimit,
-      gasSponsor,
+      paymaster,
       senderNonce,
       signature,
       approvalData,
@@ -166,8 +185,9 @@ class RelayClient {
         to: to,
         gasPrice,
         gasLimit,
-        gasSponsor,
-        relayFee: relayFee,
+        paymaster,
+        PercentRelayFee: parseInt(pctRelayFee),
+        BaseRelayFee: parseInt(baseRelayFee),
         SenderNonce: parseInt(senderNonce),
         RelayMaxNonce: parseInt(relayMaxNonce),
         RelayHubAddress: relayHubAddress
@@ -198,10 +218,12 @@ class RelayClient {
         }
 
         let validTransaction
+        // TODO: this 'try/catch' is concealing all errors and makes development harder. Fix.
         try {
           validTransaction = self.validateRelayResponse(
             body, relayAddress, from, to, encodedFunction,
-            relayFee, gasPrice, gasLimit, gasSponsor, senderNonce,
+            baseRelayFee,
+            pctRelayFee, gasPrice.toString(), gasLimit.toString(), paymaster, senderNonce,
             relayHubAddress, relayAddress, signature, approvalData)
         } catch (error) {
           console.error('validateRelayResponse threw error:\n', error, error.stack)
@@ -278,7 +300,7 @@ class RelayClient {
    * (not strictly a client operation, but without a balance, the target contract can't accept calls)
    */
   async balanceOf (target) {
-    const relayHub = await this.createRelayHubFromSponsor(target)
+    const relayHub = await this.createRelayHubFromPaymaster(target)
     // note that the returned value is a promise too, returning BigNumber
     return relayHub.methods.balanceOf(target).call()
   }
@@ -286,31 +308,31 @@ class RelayClient {
   /**
    * Options include standard transaction params: from,to, gas_price, gas_limit
    * relay-specific params:
-   *  txfee (override config.txfee)
+   *  pctRelayFee (override config.pctRelayFee)
    *  validateCanRelay - client calls canRelay before calling the relay the first time (defaults to true)
-   *  gasSponsor - the contract that is compensating the relay for the gas (defaults to transaction destination 'to')
+   *  paymaster - the contract that is compensating the relay for the gas (defaults to transaction destination 'to')
    * can also override default relayUrl, relayFee
    * return value is the same as from sendTransaction
    */
-  async relayTransaction (encodedFunctionCall, options) {
+  async relayTransaction (encodedFunction, options) {
     const self = this
 
     // validateCanRelay defaults (in config). to disable, explicitly set options.validateCanRelay=false
     options = Object.assign({ validateCanRelay: this.config.validateCanRelay }, options)
 
-    const gasSponsor = options.gasSponsor || options.to
-    const relayHub = await this.createRelayHubFromSponsor(gasSponsor)
+    const paymaster = options.paymaster || options.to
+    const relayHub = await this.createRelayHubFromPaymaster(paymaster)
 
     // TODO: refactor! wrong instance is created for accidentally same method!
-    if (!utils.isSameAddress(gasSponsor, options.to)) {
-      const recipientHub = await this.createGasSponsor(options.to).methods.getHubAddr().call()
+    if (!utils.isSameAddress(paymaster, options.to)) {
+      const recipientHub = await this.createPaymaster(options.to).methods.getHubAddr().call()
 
       if (!utils.isSameAddress(relayHub._address, recipientHub)) {
-        throw Error('Sponsor and recipient RelayHub addresses do not match')
+        throw Error('Paymaster\'s and recipient\'s RelayHub addresses do not match')
       }
     }
 
-    const nonce = parseInt(await relayHub.methods.getNonce(options.from).call())
+    const senderNonce = (await relayHub.methods.getNonce(options.from).call()).toString()
 
     this.serverHelper.setHub(relayHub)
 
@@ -328,7 +350,7 @@ class RelayClient {
       options.gas_price || // user-supplied gas price
       Math.round((networkGasPrice) * (pct + 100) / 100)
 
-    // TODO: should add gas estimation for encodedFunctionCall (tricky, since its not a real transaction)
+    // TODO: should add gas estimation for encodedFunction (tricky, since its not a real transaction)
     const gasLimit = this.config.force_gasLimit || options.gas_limit
 
     const blockNow = await this.web3.eth.getBlockNumber()
@@ -351,25 +373,35 @@ class RelayClient {
       }
       const relayAddress = activeRelay.RelayServerAddress
       const relayUrl = activeRelay.relayUrl
-      const txfee = parseInt(options.txfee || activeRelay.transactionFee)
+      const pctRelayFee = (options.pctRelayFee || activeRelay.pctRelayFee).toString()
+      const baseRelayFee = (options.baseRelayFee || activeRelay.baseRelayFee).toString()
+      const relayRequest = new RelayRequest({
+        senderAddress: options.from,
+        target: options.to,
+        encodedFunction,
+        senderNonce,
+        pctRelayFee,
+        baseRelayFee,
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString(),
+        paymaster,
+        relayHub: relayHub._address,
+        relayAddress
+      })
+
+      if (this.web3.eth.getChainId === undefined) {
+        throw new Error(`getChainId is undefined. Web3 version is ${this.web3.version}, minimum required is 1.2.2`)
+      }
+      const chainId = await this.web3.eth.getChainId()
 
       let signature
       let signedData
       // TODO: refactor so signedData is created regardless of ephemeral key used or not
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
         signedData = await getDataToSign({
-          web3,
-          baseRelayFee: '0',
-          senderAccount: options.from,
-          senderNonce: nonce,
-          target: options.to,
-          encodedFunction: encodedFunctionCall,
-          pctRelayFee: txfee,
-          gasPrice,
-          gasLimit,
-          gasSponsor,
+          chainId,
           relayHub: relayHub._address,
-          relayAddress
+          relayRequest
         })
         signature = sigUtil.signTypedData_v4(self.ephemeralKeypair.privateKey, { data: signedData })
       } else {
@@ -378,16 +410,9 @@ class RelayClient {
             web3: this.web3,
             methodSuffix: options.methodSuffix || '',
             jsonStringifyRequest: options.jsonStringifyRequest || false,
-            senderAccount: options.from,
-            senderNonce: nonce.toString(),
-            target: options.to,
-            encodedFunction: encodedFunctionCall,
-            pctRelayFee: txfee.toString(),
-            gasPrice: gasPrice.toString(),
-            gasLimit: gasLimit.toString(),
-            gasSponsor,
             relayHub: relayHub._address,
-            relayAddress
+            chainId,
+            relayRequest
           })
         signature = eip712Sig.signature
         signedData = eip712Sig.data
@@ -398,11 +423,11 @@ class RelayClient {
         approvalData = '0x' + await options.approveFunction({
           from: options.from,
           to: options.to,
-          encodedFunctionCall: encodedFunctionCall,
-          txfee: options.txfee,
+          encodedFunctionCall: encodedFunction,
+          pctRelayFee: options.pctRelayFee,
           gas_price: gasPrice,
           gas_limit: gasLimit,
-          nonce: nonce,
+          nonce: senderNonce,
           relay_hub_address: relayHub._address,
           relay_address: relayAddress
         })
@@ -432,7 +457,7 @@ class RelayClient {
       if (options.validateCanRelay && firstTry) {
         firstTry = false
         let res
-        const gasSponsorContract = this.createGasSponsor(gasSponsor)
+        const paymasterContract = this.createPaymaster(paymaster)
         // TODO: validate this calculation in a test. Or, better, make '.encodeABI()' here with stub data.
         const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
         const calldataSize =
@@ -441,23 +466,20 @@ class RelayClient {
           approvalData.length +
           relayCallExtraBytes
 
-        const _gasLimits = await gasSponsorContract.methods.getGasLimitsForSponsorCalls().call()
-        const _overhead = parseInt(await relayHub.methods.getHubOverhead().call())
-        const gasData = await utils.getTransactionGasData({
-          _gasLimits,
-          _overhead,
-          relayHub,
-          calldataSize,
-          gtxdatanonzero: options.gtxdatanonzero || GTXDATANONZERO,
+        const gasLimits = await paymasterContract.methods.getGasLimits().call()
+        const hubOverhead = parseInt(await relayHub.methods.getHubOverhead().call())
+        const maxPossibleGas = utils.calculateTransactionMaxPossibleGas({
+          gasLimits,
+          hubOverhead,
           relayCallGasLimit: gasLimit,
-          gasPrice: gasPrice.toString(),
-          fee: txfee
+          calldataSize,
+          gtxdatanonzero: options.gtxdatanonzero || Environments.default.gtxdatanonzero
         })
         try {
           res = await relayHub.methods.canRelay(
             signedData.message,
-            gasData.maxPossibleGas,
-            gasData.acceptRelayedCallGasLimit,
+            maxPossibleGas,
+            gasLimits.acceptRelayedCallGasLimit,
             signature,
             approvalData
           ).call()
@@ -477,12 +499,13 @@ class RelayClient {
           relayAddress,
           from: options.from,
           to: options.to,
-          encodedFunction: encodedFunctionCall,
-          relayFee: txfee,
+          encodedFunction: encodedFunction,
+          pctRelayFee,
+          baseRelayFee,
           gasPrice,
           gasLimit,
-          gasSponsor,
-          senderNonce: nonce,
+          paymaster,
+          senderNonce: senderNonce,
           signature,
           approvalData,
           relayUrl,
@@ -495,11 +518,12 @@ class RelayClient {
           console.log('relayTransaction: req:', {
             from: options.from,
             to: options.to,
-            encodedFunctionCall,
-            txfee: options.txfee,
+            encodedFunctionCall: encodedFunction,
+            pctRelayFee: options.pctRelayFee,
+            baseRelayFee: options.baseRelayFee,
             gasPrice,
             gasLimit,
-            nonce,
+            nonce: senderNonce,
             relayhub: relayHub._address,
             relayAddress
           })
@@ -536,10 +560,11 @@ class RelayClient {
     const params = payload.params[0]
     const relayClientOptions = this.config
 
-    const { txfee, txFee, gas, gasPrice } = params
+    const { pctRelayFee, baseRelayFee, gas, gasPrice } = params
     const relayOptions = {
       ...params,
-      txfee: txFee || txfee || relayClientOptions.txfee,
+      pctRelayFee: pctRelayFee || relayClientOptions.pctRelayFee,
+      baseRelayFee: baseRelayFee || relayClientOptions.baseRelayFee,
       gas_limit: gas && parseInt(gas, 16),
       gas_price: gasPrice && parseInt(gasPrice, 16)
     }
@@ -603,18 +628,18 @@ class RelayClient {
     this.ephemeralKeypair = ephemeralKeypair
   }
 
-  async createRelayHubFromSponsor (sponsorAddress) {
-    const relayRecipient = this.createGasSponsor(sponsorAddress)
+  async createRelayHubFromPaymaster (paymasterAddress) {
+    const relayRecipient = this.createPaymaster(paymasterAddress)
 
     let relayHubAddress
     try {
       relayHubAddress = await relayRecipient.methods.getHubAddr().call()
     } catch (err) {
-      throw new Error(`Could not get relay hub address from sponsor at ${sponsorAddress} (${err.message}). Make sure it is a valid sponsor contract.`)
+      throw new Error(`Could not get relay hub address from paymaster at ${paymasterAddress} (${err.message}). Make sure it is a valid paymaster contract.`)
     }
 
     if (!relayHubAddress || ethUtils.isZeroAddress(relayHubAddress)) {
-      throw new Error(`The relay hub address is set to zero in sponsor at ${sponsorAddress}. Make sure it is a valid sponsor contract.`)
+      throw new Error(`The relay hub address is set to zero in paymaster at ${paymasterAddress}. Make sure it is a valid paymaster contract.`)
     }
 
     const relayHub = this.createRelayHub(relayHubAddress)

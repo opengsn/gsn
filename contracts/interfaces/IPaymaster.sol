@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "../utils/EIP712Sig.sol";
 
-interface IGasSponsor {
+interface IPaymaster {
 
     /**
      * return the relayHub of this contract.
@@ -12,18 +12,18 @@ interface IGasSponsor {
 
     /**
      * Can be used to determine if the contract can pay for incoming calls before making any.
-     * @return the sponsor's deposit in the RelayHub.
+     * @return the paymaster's deposit in the RelayHub.
      */
     function getRelayHubDeposit() external view returns (uint256);
 
     /**
      * The RelayHub will call accept-, pre-, and post-, RelayCall methods with these values for their gas limits.
      */
-    function getGasLimitsForSponsorCalls()
+    function getGasLimits()
     external
     view
     returns (
-        GSNTypes.SponsorLimits memory limits
+        GSNTypes.GasLimits memory limits
     );
 
     /**
@@ -31,9 +31,9 @@ interface IGasSponsor {
      * Note: Accepting this call means paying for the tx whether the relayed call reverted or not.
      *  @param relayRequest - the full relay request structure
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
-     *  @param maxPossibleGas - based on values returned from {@link getGasLimitsForSponsorCalls},
+     *  @param maxPossibleGas - based on values returned from {@link getGasLimits},
      *         the RelayHub will calculate the maximum possible amount of gas the user may be charged for.
-     *         In order to convert this value to wei, the Sponsor has to call "relayHub.calculateCharge()"
+     *         In order to convert this value to wei, the Paymaster has to call "relayHub.calculateCharge()"
      */
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
@@ -83,8 +83,7 @@ interface IGasSponsor {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        uint256 txFee,
-        uint256 gasPrice
+        GSNTypes.GasData calldata gasData
     ) external;
 
 }

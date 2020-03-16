@@ -37,12 +37,12 @@ type RelayTransactionRequest struct {
 	Signature       []byte
 	From            common.Address
 	To              common.Address
-	GasSponsor      common.Address
+	Paymaster       common.Address
 	GasPrice        big.Int
 	GasLimit        big.Int
 	SenderNonce     big.Int
 	RelayMaxNonce   big.Int
-	RelayFee        big.Int
+	PercentRelayFee big.Int
 	BaseRelayFee    big.Int
 	RelayHubAddress common.Address
 }
@@ -92,7 +92,7 @@ type IRelay interface {
 
 	IsUnstaked() (removed bool, err error)
 
-	BlockCountSinceRegistration() (when uint64, err error)
+	BlockCountSinceLastEvent() (when uint64, err error)
 
 	GetRegistrationBlockRate() (rate uint64)
 
@@ -137,7 +137,8 @@ type IClient interface {
 
 type RelayServer struct {
 	OwnerAddress          common.Address
-	Fee                   *big.Int
+	PercentFee            *big.Int
+	BaseFee               *big.Int
 	Url                   string
 	Port                  string
 	RelayHubAddress       common.Address
@@ -164,7 +165,8 @@ func (relayParams *RelayParams) Dump() {
 
 	log.Println("Relay initial configuration:")
 	log.Println("OwnerAddress:", relayParams.OwnerAddress.String())
-	log.Println("Fee:", relayParams.Fee.String())
+	log.Println("BaseFee:", relayParams.BaseFee.String())
+	log.Println("PercentFee:", relayParams.PercentFee.String())
 	log.Println("Url:", relayParams.Url)
 	log.Println("Port:", relayParams.Port)
 	log.Println("RelayHubAddress:", relayParams.RelayHubAddress.String())
@@ -186,7 +188,8 @@ func NewEthClient(EthereumNodeURL string, defaultGasPrice int64) (IClient, error
 
 func NewRelayServer(
 	OwnerAddress common.Address,
-	Fee *big.Int,
+	BaseFee *big.Int,
+	PercentFee *big.Int,
 	Url string,
 	Port string,
 	RelayHubAddress common.Address,
@@ -211,7 +214,8 @@ func NewRelayServer(
 
 	relay := &RelayServer{
 		OwnerAddress:          OwnerAddress,
-		Fee:                   Fee,
+		PercentFee:            PercentFee,
+		BaseFee:               BaseFee,
 		Url:                   Url,
 		Port:                  Port,
 		RelayHubAddress:       RelayHubAddress,
@@ -281,7 +285,7 @@ func (relay *RelayServer) RegisterRelay() (err error) {
 func (relay *RelayServer) sendRegisterTransaction() (tx *types.Transaction, err error) {
 	desc := fmt.Sprintf("RegisterRelay(address=%s, url=%s)", relay.RelayHubAddress.Hex(), relay.Url)
 	tx, err = relay.sendDataTransaction(desc, func(auth *bind.TransactOpts) (*types.Transaction, error) {
-		return relay.rhub.RegisterRelay(auth, relay.Fee, relay.Url)
+		return relay.rhub.RegisterRelay(auth, relay.BaseFee, relay.PercentFee, relay.Url)
 	})
 	return
 }
@@ -347,7 +351,8 @@ func (relay *RelayServer) IsUnstaked() (removed bool, err error) {
 	return true, nil
 }
 
-func (relay *RelayServer) BlockCountSinceRegistration() (count uint64, err error) {
+//find last TransactionRelayed or RelayAdded
+func (relay *RelayServer) BlockCountSinceLastEvent() (count uint64, err error) {
 	lastBlockHeader, err := relay.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		log.Println(err)
@@ -372,11 +377,28 @@ func (relay *RelayServer) BlockCountSinceRegistration() (count uint64, err error
 	}
 	if (iter.Event == nil && !iter.Next()) ||
 		(bytes.Compare(iter.Event.Relay.Bytes(), relay.Address().Bytes()) != 0) ||
-		(iter.Event.TransactionFee.Cmp(relay.Fee) != 0) ||
+		(iter.Event.PctRelayFee.Cmp(relay.PercentFee) != 0) ||
 		(iter.Event.Url != relay.Url) {
 		return 0, fmt.Errorf("Could not receive RelayAdded events for our relay")
 	}
-	count = lastBlockNumber - iter.Event.Raw.BlockNumber
+	blockNumber := iter.Event.Raw.BlockNumber
+
+	//Now find also last TransactionRelayed request, and use the latest of these:
+	iter1, err1 := relay.rhub.FilterTransactionRelayed(filterOpts, []common.Address{relay.Address()}, nil, nil)
+	if err1 != nil {
+		log.Println(err1)
+		return
+	}
+	// We only care about the last event
+	for iter1.Next() {
+	}
+	if (iter1.Event != nil &&
+		(bytes.Compare(iter1.Event.Relay.Bytes(), relay.Address().Bytes()) == 0) &&
+		iter1.Event.Raw.BlockNumber > blockNumber) {
+        blockNumber = iter1.Event.Raw.BlockNumber
+    }
+
+	count = lastBlockNumber - blockNumber
 	return
 }
 
@@ -443,7 +465,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 
 	// Check that the fee is acceptable
-	if !relay.validateFee(request.RelayFee) {
+	if !relay.validateFee(request.PercentRelayFee) {
 		err = fmt.Errorf("Unacceptable fee")
 		log.Println(err)
 		return
@@ -470,13 +492,13 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	}
 
 	// With a transition to sponsor-defined gas limits, the server will need to crunch some numbers
-	sponsor, err := testcontracts.NewTestSponsor(request.GasSponsor, relay.Client)
+	sponsor, err := testcontracts.NewTestSponsor(request.Paymaster, relay.Client)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	gasLimits, err := sponsor.GetGasLimitsForSponsorCalls(&bind.CallOpts{From: relayAddress})
+	gasLimits, err := sponsor.GetGasLimits(&bind.CallOpts{From: relayAddress})
 	if err != nil {
 		log.Println(err)
 		return
@@ -500,7 +522,14 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	maxPossibleGas.Add(maxPossibleGas, getEncodedFunctionMaxGas(request.EncodedFunction))
 	maxPossibleGas.Add(maxPossibleGas, getEncodedFunctionMaxGas(common.Bytes2Hex(request.ApprovalData)))
 
-	maxCharge, err := relay.rhub.CalculateCharge(callOpt, maxPossibleGas, &request.GasPrice, &request.RelayFee)
+	gasData := librelay.GSNTypesGasData{
+		GasLimit:        &request.GasLimit,
+		GasPrice:        &request.GasPrice,
+		PctRelayFee:     &request.PercentRelayFee,
+		BaseRelayFee:    &request.BaseRelayFee,
+	}
+
+	maxCharge, err := relay.rhub.CalculateCharge(callOpt, maxPossibleGas, gasData)
 	if err != nil {
 		log.Println(err)
 		return
@@ -509,12 +538,12 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	// check canRelay view function to see if we'll get paid for relaying this tx
 	res, err := relay.canRelay(request.From,
 		request.To,
-		request.GasSponsor,
+		request.Paymaster,
 		maxCharge,
 		gasLimits.AcceptRelayedCallGasLimit,
 		request.EncodedFunction,
-		request.RelayFee,
-		*big.NewInt(0),
+		request.PercentRelayFee,
+		request.BaseRelayFee,
 		request.GasPrice,
 		request.GasLimit,
 		request.SenderNonce,
@@ -528,8 +557,10 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 
 	if res.Uint64() != 0 {
 		errStr := fmt.Sprintln("EncodedFunction:", request.EncodedFunction, "From:", request.From.Hex(), "To:", request.To.Hex(),
-			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.SenderNonce.String(), "Fee:",
-			request.RelayFee.String(), "AppData:", hexutil.Encode(request.ApprovalData), "Sig:", hexutil.Encode(request.Signature))
+			"GasPrice:", request.GasPrice.String(), "GasLimit:", request.GasLimit.String(), "Nonce:", request.SenderNonce.String(),
+			"BaseFee", request.BaseRelayFee.String(),
+			"PercentFee:", request.PercentRelayFee.String(),
+			"AppData:", hexutil.Encode(request.ApprovalData), "Sig:", hexutil.Encode(request.Signature))
 		errStr = errStr[:len(errStr)-1]
 		err = fmt.Errorf("canRelay() view function returned error code=%d. params:%s", res, errStr)
 		log.Println(err)
@@ -543,7 +574,7 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 	*/
 
 
-	sponsorBalance, err := relay.rhub.BalanceOf(callOpt, request.GasSponsor)
+	sponsorBalance, err := relay.rhub.BalanceOf(callOpt, request.Paymaster)
 	if err != nil {
 		log.Println(err)
 		return
@@ -575,14 +606,14 @@ func (relay *RelayServer) CreateRelayTransaction(request RelayTransactionRequest
 				GasData:  librelay.GSNTypesGasData{
 					GasLimit:        &request.GasLimit,
 					GasPrice:        &request.GasPrice,
-					PctRelayFee:   &request.RelayFee,
+					PctRelayFee:   &request.PercentRelayFee,
 					BaseRelayFee:  &request.BaseRelayFee,
 				},
 				RelayData: librelay.GSNTypesRelayData{
-					SenderAccount: request.From,
+					SenderAddress: request.From,
 					SenderNonce:   &request.SenderNonce,
 					RelayAddress:  relay.Address(),
-					GasSponsor:    request.GasSponsor,
+					Paymaster:     request.Paymaster,
 				},
 			}
 			return relay.rhub.RelayCall(auth, relayRequest, request.Signature, request.ApprovalData)
@@ -617,7 +648,7 @@ func (relay *RelayServer) GetPort() string {
 
 func (relay *RelayServer) canRelay(from common.Address,
 	to common.Address,
-	gasSponsor common.Address,
+	paymaster common.Address,
 	maxPossibleCharge *big.Int,
 	acceptRelayedCallMaxGas *big.Int,
 	encodedFunction string,
@@ -651,10 +682,10 @@ func (relay *RelayServer) canRelay(from common.Address,
 			BaseRelayFee:    &baseRelayFee,
 		},
 		RelayData: librelay.GSNTypesRelayData{
-			SenderAccount: from,
+			SenderAddress: from,
 			SenderNonce:   &senderNonce,
 			RelayAddress:  relayAddress,
-			GasSponsor:    gasSponsor,
+			Paymaster:     paymaster,
 		},
 	}
 	result, err = relay.rhub.CanRelay(callOpt, relayRequest,maxPossibleCharge, acceptRelayedCallMaxGas, signature, approvalData)
@@ -668,7 +699,7 @@ func (relay *RelayServer) canRelay(from common.Address,
 }
 
 func (relay *RelayServer) validateFee(relayFee big.Int) bool {
-	return relayFee.Cmp(relay.Fee) >= 0
+	return relayFee.Cmp(relay.PercentFee) >= 0
 }
 
 func (relay *RelayServer) sendPlainTransaction(desc string, to common.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) (signedTx *types.Transaction, err error) {

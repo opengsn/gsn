@@ -10,7 +10,7 @@ const path = require('path')
 const contractsFolder = 'contracts'
 const outAbiFolder = 'src/js/relayclient'
 
-const contractsToExtract = ['interfaces/IRelayHub', 'interfaces/IGasSponsor']
+const contractsToExtract = ['interfaces/IRelayHub', 'interfaces/IPaymaster']
 
 function compileFile (contractFile, c) {
   console.log('compiling ' + contractFile)

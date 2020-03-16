@@ -21,6 +21,9 @@ import (
 
 const VERSION = "0.4.2"
 
+const SECONDS_PER_BLOCK = 12
+const REGISTRATION_BLOCK_RATE = 24*3600*30 / SECONDS_PER_BLOCK
+
 var KeystoreDir = filepath.Join(os.Getenv("PWD"), "data/keystore")
 var devMode bool                                                  // Whether we wait after calls to blockchain or return (almost) immediately. Usually when testing...
 
@@ -171,13 +174,14 @@ func relayHandler(w http.ResponseWriter, r *http.Request) {
 
 func parseCommandLine() (relayParams librelay.RelayParams) {
 	ownerAddress := flag.String("OwnerAddress", common.HexToAddress("0").Hex(), "Relay's owner address")
-	fee := flag.Int64("Fee", 70, "Relay's per transaction fee")
+	baseFee := flag.Int64("BaseFee", 0, "Relay's per transaction base fee")
+	percentFee := flag.Int64("PercentFee", 70, "Relay's per transaction percent fee")
 	urlStr := flag.String("Url", "http://localhost:8090", "Relay server's url ")
 	port := flag.String("Port", "", "Relay server's port")
 	relayHubAddress := flag.String("RelayHubAddress", "0xD216153c06E857cD7f72665E0aF1d7D82172F494", "RelayHub address")
 	defaultGasPrice := flag.Int64("DefaultGasPrice", int64(params.GWei), "Relay's default gasPrice per (non-relayed) transaction in wei")
 	gasPricePercent := flag.Int64("GasPricePercent", 10, "Relay's gas price increase as percentage from current average. GasPrice = (100+GasPricePercent)/100 * eth_gasPrice() ")
-	RegistrationBlockRate:= flag.Uint64("RegistrationBlockRate", 6000-200, "Relay registeration rate (in blocks)")
+	RegistrationBlockRate:= flag.Uint64("RegistrationBlockRate", REGISTRATION_BLOCK_RATE-200, "Relay registration rate (in blocks, since last sent event)")
 	ethereumNodeUrl := flag.String("EthereumNodeUrl", "http://localhost:8545", "The relay's ethereum node")
 	workdir := flag.String("Workdir", filepath.Join(os.Getenv("PWD"), "data"), "The relay server's workdir")
 	flag.BoolVar(&devMode, "DevMode", false, "Enable developer mode (do not retry unconfirmed txs, do not cache account nonce, do not wait after calls to the chain, faster polling)")
@@ -185,7 +189,8 @@ func parseCommandLine() (relayParams librelay.RelayParams) {
 	flag.Parse()
 
 	relayParams.OwnerAddress = common.HexToAddress(*ownerAddress)
-	relayParams.Fee = big.NewInt(*fee)
+	relayParams.BaseFee = big.NewInt(*baseFee)
+	relayParams.PercentFee = big.NewInt(*percentFee)
 	relayParams.Url = *urlStr
 	u, err := url.Parse(*urlStr)
 	if err != nil {
@@ -230,7 +235,7 @@ func configRelay(relayParams librelay.RelayParams) {
 		return
 	}
 	relay, err = librelay.NewRelayServer(
-		relayParams.OwnerAddress, relayParams.Fee, relayParams.Url, relayParams.Port,
+		relayParams.OwnerAddress, relayParams.BaseFee, relayParams.PercentFee, relayParams.Url, relayParams.Port,
 		relayParams.RelayHubAddress, relayParams.DefaultGasPrice, relayParams.GasPricePercent,
 		privateKey, relayParams.RegistrationBlockRate, relayParams.EthereumNodeURL,
 		client, txStore, nil, relayParams.DevMode)
@@ -247,8 +252,8 @@ func refreshBlockchainView() {
 		return
 	}
 	waitForOwnerActions()
-	_, err := relay.BlockCountSinceRegistration()
-	for ; err != nil; _, err = relay.BlockCountSinceRegistration() {
+	_, err := relay.BlockCountSinceLastEvent()
+	for ; err != nil; _, err = relay.BlockCountSinceLastEvent() {
 		if err != nil {
 			log.Println(err)
 		}
@@ -317,14 +322,14 @@ func keepAlive() {
 		return
 	}
 	waitForOwnerActions()
-	count, err := relay.BlockCountSinceRegistration()
+	count, err := relay.BlockCountSinceLastEvent()
 	if err != nil {
 		log.Println(err)
 	} else if count < relay.GetRegistrationBlockRate() {
 		return
 	}
 	log.Println("Registering relay...")
-	
+
 	err = relay.RegisterRelay()
 	if err == nil {
 		log.Println("Done registering")
