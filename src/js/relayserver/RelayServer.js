@@ -73,6 +73,7 @@ class RelayServer extends EventEmitter {
     this.lastScannedBlock = 0
     this.ready = false
     this.removed = false
+    this.nonce = 0
     debug('gasPriceFactor', gasPriceFactor)
   }
 
@@ -119,8 +120,9 @@ class RelayServer extends EventEmitter {
     }
 
     // Check that max nonce is valid
-    if (this.nonce > relayMaxNonce) {
-      throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}`)
+    const nonce = await this._getNonce()
+    if (nonce > relayMaxNonce) {
+      throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`)
     }
 
     // Check canRelay view function to see if we'll get paid for relaying this tx
@@ -362,7 +364,7 @@ class RelayServer extends EventEmitter {
     debug('gasPrice', gasPrice)
     const gas = (gasLimit && parseInt(gasLimit)) || await method.estimateGas({ from: this.address }) + 21000
     debug('gasLimit', gas)
-    const nonce = await this.web3.eth.getTransactionCount(this.address)
+    const nonce = await this._getNonce()
     debug('nonce', nonce)
     // TODO: change to eip155 chainID
     const txToSign = new Transaction({
@@ -388,6 +390,7 @@ class RelayServer extends EventEmitter {
       attempts: 1
     })
     await this.txStoreManager.putTx({ tx: storedTx })
+    this.nonce++
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
@@ -435,6 +438,14 @@ class RelayServer extends EventEmitter {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
     return { receipt, signedTx }
+  }
+
+  async _getNonce() {
+    const nonce = await this.web3.eth.getTransactionCount(this.address, 'pending')
+    if (nonce > this.nonce) {
+      this.nonce = nonce
+    }
+    return this.nonce
   }
 
   _parseEvent (event) {

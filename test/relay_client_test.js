@@ -199,7 +199,7 @@ contract('RelayClient', function (accounts) {
     relayClient.httpSend.send = function (url, jsonRequestData, callback) {
       if (url.includes('/relay')) {
         // Otherwise, server will return an error if asked to sign with a low nonce.
-        jsonRequestData.RelayMaxNonce = 1000000
+        jsonRequestData.relayMaxNonce = 1000000
       }
       origSend.bind(relayClient.httpSend)(url, jsonRequestData, callback)
     }
