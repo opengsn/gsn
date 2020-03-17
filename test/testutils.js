@@ -178,6 +178,7 @@ module.exports = {
       })
     })
   },
+
   evmMine: function () {
     return new Promise((resolve, reject) => {
       web3.currentProvider.send({
@@ -191,6 +192,33 @@ module.exports = {
         } else {
           resolve(r)
         }
+      })
+    })
+  },
+
+  snapshot: function () {
+    return new Promise((resolve, reject) => {
+      web3.currentProvider.send({
+        jsonrpc: '2.0',
+        method: 'evm_snapshot',
+        id: Date.now()
+      }, (err, snapshotId) => {
+        if (err) { return reject(err) }
+        return resolve(snapshotId)
+      })
+    })
+  },
+
+  revert: function (id) {
+    return new Promise((resolve, reject) => {
+      web3.currentProvider.send({
+        jsonrpc: '2.0',
+        method: 'evm_revert',
+        params: [id],
+        id: Date.now()
+      }, (err, result) => {
+        if (err) { return reject(err) }
+        return resolve(result)
       })
     })
   },

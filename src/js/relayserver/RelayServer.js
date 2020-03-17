@@ -21,7 +21,7 @@ const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const blockTimeMS = 10000
 const maxGasPrice = 100e9
 const retryGasPriceFactor = 1.2
-const DEBUG = true
+const DEBUG = false
 const SPAM = false
 const gtxdatanonzero = 68
 const gtxdatazero = 4
@@ -324,7 +324,7 @@ class RelayServer extends EventEmitter {
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
     let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
-
+    debug('Removing confirmed txs until nonce', nonce)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
     await this.txStoreManager.removeTxsUntilNonce({ nonce })
 
@@ -343,16 +343,16 @@ class RelayServer extends EventEmitter {
 
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
     if (Date.now()  - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
-      console.log('UpdateUnconfirmedTransactions: awaiting transaction to be mined', nonce, sortedTxs.txId)
+      console.log('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
       return
     }
-    const { signedTx: newTx } = await this._resendTransaction({ tx: sortedTxs[0] })
-    console.log('UpdateUnconfirmedTransactions: resent transaction', sortedTxs.nonce, sortedTxs.txId, 'as',
-      ethUtils.bufferToHex(newTx.hash()))
+    const { receipt, signedTx } = await this._resendTransaction({ tx: sortedTxs[0] })
+    console.log('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
+      receipt.transactionHash)
     if (sortedTxs[0].attempts > 2) {
       console.log(`Sent tx ${sortedTxs[0].attempts} times already`)
     }
-    return newTx
+    return signedTx
   }
 
   async _sendTransaction ({ method, destination, value, gasLimit, gasPrice }) {
@@ -453,6 +453,7 @@ class RelayServer extends EventEmitter {
     }
   }
 
+  // TODO extract to utils
   _correctGasCost (buffer, nonzerocost, zerocost) {
     let gasCost = 0
     for (let i = 0; i < buffer.length; i++) {

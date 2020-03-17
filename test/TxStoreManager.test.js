@@ -102,6 +102,9 @@ contract('TxStoreManager', function (accounts) {
   })
 
   it('should clear txstore', async function () {
+    await txmanager.putTx({ tx })
+    await txmanager.putTx({ tx: tx2 })
+    await txmanager.putTx({ tx: tx3 })
     await txmanager.clearAll()
     assert.deepEqual([], await txmanager.getAll())
   })

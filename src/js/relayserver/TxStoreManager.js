@@ -87,7 +87,7 @@ class TxStoreManager {
   }
 
   async clearAll () {
-    return this.txstore.asyncRemove({})
+    return this.txstore.asyncRemove({}, { multi: true })
   }
 
   async getAll () {
