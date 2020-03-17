@@ -1,10 +1,5 @@
-// import Wallet from 'ethereumjs-wallet'
 const Wallet = require('ethereumjs-wallet')
-// import { Transaction } from 'ethereumjs-tx'
-const Transaction = require('ethereumjs-tx')
-// import abi from 'ethereumjs-abi'
 const abi = require('ethereumjs-abi')
-// import fs from 'fs'
 const fs = require('fs')
 
 const ethUtils = require('ethereumjs-util')
@@ -49,16 +44,7 @@ class KeyManager {
     return this.ecdsaKeyPair.address
   }
 
-  signTransaction ({ to, value, gas, gasPrice, data, nonce }) {
-    const tx = new Transaction({
-      from: this.address(),
-      to,
-      value,
-      gas,
-      gasPrice,
-      data,
-      nonce
-    })
+  signTransaction (tx) {
     tx.sign(this.ecdsaKeyPair.privateKey)
     const rawTx = tx.serialize().toString('hex')
     return rawTx

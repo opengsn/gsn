@@ -1,18 +1,20 @@
 const Nedb = require('nedb-async').AsyncNedb
 const Transaction = require('ethereumjs-tx')
+const ethUtils = require('ethereumjs-util')
 
 class StoredTx {
   constructor (tx) {
-    assert.ok(tx.from !== undefined &&
-      tx.to !== undefined &&
-      tx.value !== undefined &&
-      tx.gas !== undefined &&
-      tx.gasPrice !== undefined &&
-      tx.data !== undefined &&
-      tx.nonce !== undefined &&
-      tx.txId !== undefined&&
-      tx.attempts !== undefined)
-    Object.assign(this, { ...tx })
+    // Object.keys(tx).forEach(key => {
+    //   this[key] = ethUtils.bufferToHex(tx[key])
+    // })
+    this.from = ethUtils.bufferToHex(tx.from)
+    this.to = ethUtils.bufferToHex(tx.to)
+    this.gas = ethUtils.bufferToInt(tx.gas)
+    this.gasPrice = ethUtils.bufferToInt(tx.gasPrice)
+    this.data = ethUtils.bufferToHex(tx.data)
+    this.nonce = ethUtils.bufferToInt(tx.nonce)
+    this.txId = tx.txId
+    this.attempts = tx.attempts
   }
 }
 
@@ -44,11 +46,11 @@ class TxStoreManager {
   }
 
   async putTx ({ tx }) {
-    if (!tx || !tx.txId || !tx.attempts) {
-      throw new Error('Invalid tx:' + tx)
+    if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
+      throw new Error('Invalid tx:' + JSON.stringify(tx))
     }
     this._toLowerCase({ tx })
-    const existing = await this.txstore.asyncFindOne({ txId: tx.txId })
+    const existing = await this.txstore.asyncFindOne({ nonce: tx.nonce })
     if (existing) {
       await this.txstore.asyncUpdate({ txId: existing.txId }, { $set: tx })
     } else {
@@ -89,7 +91,9 @@ class TxStoreManager {
   }
 
   async getAll () {
-    return this.txstore.asyncFind({})
+    return (await this.txstore.asyncFind({})).sort(function (tx1, tx2) {
+      return tx1.nonce > tx2.nonce
+    })
   }
 }
 

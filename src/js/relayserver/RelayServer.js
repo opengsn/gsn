@@ -2,18 +2,25 @@ const EventEmitter = require('events')
 const Web3 = require('web3')
 const abiDecoder = require('abi-decoder')
 const abi = require('ethereumjs-abi')
+const Transaction = require('ethereumjs-tx')
+const ethUtils = require('ethereumjs-util')
 // import { URL } from 'url'
 // import querystring from 'querystring'
 const RelayHubABI = require('../relayclient/interfaces/IRelayHub')
 const utils = require('../relayclient/utils')
 const getDataToSign = require('../relayclient/EIP712/Eip712Helper')
+const StoredTx = require('./TxStoreManager').StoredTx
 
 // const RelayHub = web3.eth.contract(RelayHubABI)
 abiDecoder.addABI(RelayHubABI)
 
 const VERSION = '0.0.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
+const confirmationsNeeded = 12
+const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const blockTimeMS = 10000
+const maxGasPrice = 100e9
+const retryGasPriceFactor = 1.2
 const DEBUG = true
 const SPAM = false
 const gtxdatanonzero = 68
@@ -134,7 +141,7 @@ class RelayServer extends EventEmitter {
     if (!canRelayRet || canRelayRet.status !== '0') {
       throw new Error('canRelay failed in server:' + (canRelayRet ? canRelayRet.status : 'jsonrpc call failed'))
     }
-    // TODO: Send relayed transaction
+    // Send relayed transaction
     const maxCharge = parseInt(
       await this.relayHubContract.methods.maxPossibleCharge(gasLimit, gasPrice, relayFee).call())
     const sponsorBalance = parseInt(await this.relayHubContract.methods.balanceOf(gasSponsor).call())
@@ -171,7 +178,7 @@ class RelayServer extends EventEmitter {
   }
 
   async _worker (blockHeader) {
-    try {
+    // try {
       if (!this.chainId) {
         this.chainId = await this.web3.eth.net.getId()
       }
@@ -225,11 +232,11 @@ class RelayServer extends EventEmitter {
         this.lastScannedBlock = logs[logs.length - 1].blockNumber
       }
       this.ready = true
-      this._resendUnconfirmedTransactions()
+      await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
-    } catch (e) {
-      console.log('error in worker:', e.message)
-    }
+    // } catch (e) {
+    //   console.log('error in worker:', e.message)
+    // }
   }
 
   async getBalance () {
@@ -307,8 +314,45 @@ class RelayServer extends EventEmitter {
     return receipt
   }
 
-  async _resendUnconfirmedTransactions () {
+  async _resendUnconfirmedTransactions (blockHeader) {
+    // Load unconfirmed transactions from store, and bail if there are none
+    let sortedTxs = await this.txStoreManager.getAll()
+    if (sortedTxs.length === 0) {
+      return
+    }
+    console.log('resending unconfirmed transactions')
+    // Get nonce at confirmationsNeeded blocks ago
+    const confirmedBlock = blockHeader.number - confirmationsNeeded
+    let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
 
+    // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
+    await this.txStoreManager.removeTxsUntilNonce({ nonce })
+
+    // Load unconfirmed transactions from store again
+    sortedTxs = await this.txStoreManager.getAll()
+    if (sortedTxs.length === 0) {
+      return
+    }
+
+    // Check if the tx was mined by comparing its nonce against the latest one
+    nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
+    if (sortedTxs[0].nonce < nonce) {
+      console.log('awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
+      return
+    }
+
+    // If the tx is still pending, check how long ago we sent it, and resend it if needed
+    if (Date.now()  - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
+      console.log('UpdateUnconfirmedTransactions: awaiting transaction to be mined', nonce, sortedTxs.txId)
+      return
+    }
+    const { signedTx: newTx } = await this._resendTransaction({ tx: sortedTxs[0] })
+    console.log('UpdateUnconfirmedTransactions: resent transaction', sortedTxs.nonce, sortedTxs.txId, 'as',
+      ethUtils.bufferToHex(newTx.hash()))
+    if (sortedTxs[0].attempts > 2) {
+      console.log(`Sent tx ${sortedTxs[0].attempts} times already`)
+    }
+    return newTx
   }
 
   async _sendTransaction ({ method, destination, value, gasLimit, gasPrice }) {
@@ -320,19 +364,76 @@ class RelayServer extends EventEmitter {
     debug('gasLimit', gas)
     const nonce = await this.web3.eth.getTransactionCount(this.address)
     debug('nonce', nonce)
-    const txToSign = {
+    // TODO: change to eip155 chainID
+    const txToSign = new Transaction({
+      from: this.address,
       to: destination,
       value: value || 0,
-      gasPrice: gasPrice,
-      gas: gas,
+      gas,
+      gasPrice,
       data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
       nonce
+    })
+    debug('txToSign', txToSign)
+    const signedTx = this.keyManager.signTransaction(txToSign)
+    const storedTx = new StoredTx({
+      from: txToSign.from,
+      to: txToSign.to,
+      value: txToSign.value,
+      gas: txToSign.gas,
+      gasPrice: txToSign.gasPrice,
+      data: txToSign.data,
+      nonce: txToSign.nonce,
+      txId: ethUtils.bufferToHex(txToSign.hash()),
+      attempts: 1
+    })
+    await this.txStoreManager.putTx({ tx: storedTx })
+    const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
+    console.log('\ntxhash is', receipt.transactionHash)
+    if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
+      throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
+    return { receipt, signedTx }
+  }
+
+  async _resendTransaction ({ tx }) {
+    // Calculate new gas price as a % increase over the previous one
+    let newGasPrice = parseInt(tx.gasPrice * retryGasPriceFactor)
+    // Sanity check to ensure we are not burning all our balance in gas fees
+    if (newGasPrice > maxGasPrice) {
+      console.log('Capping gas price to max value of', maxGasPrice)
+      newGasPrice = maxGasPrice
+    }
+    // Resend transaction with exactly the same values except for gas price
+    const txToSign = new Transaction({
+      from: tx.from,
+      to: tx.to,
+      value: tx.value,
+      gas: tx.gas,
+      gasPrice: newGasPrice,
+      data: tx.data,
+      nonce: tx.nonce
+    })
     debug('txToSign', txToSign)
     // TODO: change to eip155 chainID
     const signedTx = this.keyManager.signTransaction(txToSign)
+    const storedTx = new StoredTx({
+      from: txToSign.from,
+      to: txToSign.to,
+      value: txToSign.value,
+      gas: txToSign.gas,
+      gasPrice: txToSign.gasPrice,
+      data: txToSign.data,
+      nonce: txToSign.nonce,
+      txId: ethUtils.bufferToHex(txToSign.hash()),
+      attempts: tx.attempts + 1
+    })
+    await this.txStoreManager.putTx({ tx: storedTx })
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
+    if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
+      throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
+    }
     return { receipt, signedTx }
   }
 

@@ -16,7 +16,6 @@ contract('TxStoreManager', function (accounts) {
     assert.isFalse(fs.existsSync(workdir), 'test txstore dir should not exist yet')
     txmanager = new TxStoreManager({ workdir })
     await txmanager.clearAll()
-    // await txmanager.putTx({ tx: { txId: '123456', attempts: 1 } })
     assert.ok(txmanager, 'txstore uninitialized' + txmanager)
     assert.isTrue(fs.existsSync(workdir), 'test txstore dir should exist already')
     tx = new StoredTx(

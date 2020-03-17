@@ -86,6 +86,10 @@ contract('RelayServer', function (accounts) {
     assert.equal(stake, oneEther)
   })
 
+  after('txstore cleanup', async function () {
+    await relayServer.txStoreManager.clearAll()
+  })
+
   it('should initialize relay', async function () {
     const expectedGasPrice = (await web3.eth.getGasPrice()) * relayServer.gasPriceFactor
     const expectedBalance = await web3.eth.getBalance(relayServer.address)
@@ -94,7 +98,7 @@ contract('RelayServer', function (accounts) {
     assert.notEqual(relayServer.balance, expectedBalance)
     assert.notEqual(relayServer.chainId, chainId)
     assert.equal(relayServer.ready, false)
-    const receipt = await relayServer._worker()
+    const receipt = await relayServer._worker({number: await web3.eth.getBlockNumber()})
     assert.equal(relayServer.gasPrice, expectedGasPrice)
     assert.equal(relayServer.balance, expectedBalance)
     assert.equal(relayServer.chainId, chainId)
@@ -211,7 +215,7 @@ contract('RelayServer', function (accounts) {
     await rhub.removeRelayByOwner(relayServer.address, {
       from: relayOwner
     })
-    await relayServer._worker()
+    await relayServer._worker({number: await web3.eth.getBlockNumber()})
     assert.equal(relayServer.removed, true)
     assert.equal(relayServer.isReady(), false)
   })
@@ -221,7 +225,7 @@ contract('RelayServer', function (accounts) {
     assert.isTrue(relayBalanceBefore > 0)
     await increaseTime(weekInSec)
     await rhub.unstake(relayServer.address, { from: relayOwner })
-    await relayServer._worker()
+    await relayServer._worker({number: await web3.eth.getBlockNumber()})
     const relayBalanceAfter = await relayServer.getBalance()
     assert.isTrue(relayBalanceAfter === 0)
   })
