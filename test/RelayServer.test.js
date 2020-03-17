@@ -266,23 +266,85 @@ contract('RelayServer', function (accounts) {
     sortedTxs = await relayServer.txStoreManager.getAll()
     assert.equal(sortedTxs[0].txId, parsedTxHash)
     const confirmationsNeeded = 12
-    for (let i =0; i < confirmationsNeeded; i++) {
+    for (let i = 0; i < confirmationsNeeded; i++) {
       await testutils.evmMine()
     }
     resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
     assert.equal(null, resentTx)
     sortedTxs = await relayServer.txStoreManager.getAll()
-    assert.deepEqual([],sortedTxs)
+    assert.deepEqual([], sortedTxs)
 
     //revert for following tests
     await testutils.revert(id)
   })
 
   it('should resend multiple unconfirmed transactions', async function () {
+    // First clear db
+    await relayServer.txStoreManager.clearAll()
+    assert.deepEqual([], await relayServer.txStoreManager.getAll())
     // Send 3 transactions, separated by 1 min each, and revert the last 2
-    await relayTransactionThroughClient()
-    await relayTransactionThroughClient()
-    await relayTransactionThroughClient()
+    const signedTx1 = await relayTransactionThroughClient()
+    id = (await testutils.snapshot()).result
+    // Increase time by hooking Date
+    let constructorIncrease = 2 * 60 * 1000 // 1 minute in milliseconds
+    let nowIncrease = 0
+    const origDate = Date
+    const NewDate = class extends Date {
+      constructor () {
+        super(Date.origNow() + constructorIncrease)
+      }
+
+      static now () {
+        return super.now() + nowIncrease
+      }
+
+      static origNow () {
+        return super.now()
+      }
+    }
+    Date = NewDate
+    const signedTx2 = await relayTransactionThroughClient()
+    constructorIncrease = 4 * 60 * 1000 // 4 minutes in milliseconds
+    const signedTx3 = await relayTransactionThroughClient()
+    await testutils.revert(id)
+    const nonceBefore = parseInt(await web3.eth.getTransactionCount(relayServer.address))
+    // Check tx1 still went fine after revert
+    const parsedTxHash1 = ethUtils.bufferToHex((new Transaction(signedTx1)).hash())
+    await assertTransactionRelayed(parsedTxHash1)
+    // After 10 minutes, tx2 is not resent because tx1 is still unconfirmed
+    nowIncrease = 10 * 60 * 1000 // 10 minutes in milliseconds
+    constructorIncrease = 0
+    let sortedTxs = await relayServer.txStoreManager.getAll()
+    // console.log('times:', sortedTxs[0].createdAt, sortedTxs[1].createdAt, sortedTxs[2].createdAt )
+    assert.equal(sortedTxs[0].txId, parsedTxHash1)
+    let resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+    assert.equal(null, resentTx)
+    assert.equal(nonceBefore, parseInt(await web3.eth.getTransactionCount(relayServer.address)))
+    sortedTxs = await relayServer.txStoreManager.getAll()
+    // console.log('sortedTxs?', sortedTxs)
+    assert.equal(sortedTxs[0].txId, parsedTxHash1)
+    // Mine a bunch of blocks, so tx1 is confirmed and tx2 is resent
+    const confirmationsNeeded = 12
+    for (let i = 0; i < confirmationsNeeded; i++) {
+      await testutils.evmMine()
+    }
+    const resentTx2 = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+    const parsedTxHash2 = ethUtils.bufferToHex((new Transaction(resentTx2)).hash())
+    await assertTransactionRelayed(parsedTxHash2)
+    // Re-inject tx3 into the chain as if it were mined once tx2 goes through
+    await web3.eth.sendSignedTransaction(signedTx3)
+    const parsedTxHash3 = ethUtils.bufferToHex((new Transaction(signedTx3)).hash())
+    await assertTransactionRelayed(parsedTxHash3)
+    // Check that tx3 does not get resent, even after time passes or blocks get mined, and that store is empty
+    nowIncrease = 60 * 60 * 1000 // 60 minutes in milliseconds
+    for (let i = 0; i < confirmationsNeeded; i++) {
+      await testutils.evmMine()
+    }
+    resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+    assert.equal(null, resentTx)
+    assert.deepEqual([], await relayServer.txStoreManager.getAll())
+    // Release hook
+    Date = origDate
   })
 
   it('should handle RelayRemoved event', async function () {

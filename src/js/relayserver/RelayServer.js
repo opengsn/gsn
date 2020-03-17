@@ -326,9 +326,9 @@ class RelayServer extends EventEmitter {
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
     let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
-    debug('Removing confirmed txs until nonce', nonce)
+    debug(`Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}` )
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
-    await this.txStoreManager.removeTxsUntilNonce({ nonce })
+    await this.txStoreManager.removeTxsUntilNonce({ nonce:nonce - 1})
 
     // Load unconfirmed transactions from store again
     sortedTxs = await this.txStoreManager.getAll()
@@ -337,7 +337,7 @@ class RelayServer extends EventEmitter {
     }
 
     // Check if the tx was mined by comparing its nonce against the latest one
-    nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
+    nonce = await this.web3.eth.getTransactionCount(this.address)
     if (sortedTxs[0].nonce < nonce) {
       console.log('awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
       return
@@ -345,6 +345,8 @@ class RelayServer extends EventEmitter {
 
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
     if (Date.now()  - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
+      // console.log(Date.now(), (new Date()), (new Date()).getTime())
+      // console.log(sortedTxs[0].createdAt, (new Date(sortedTxs[0].createdAt)), (new Date(sortedTxs[0].createdAt)).getTime())
       console.log('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
       return
     }
@@ -376,7 +378,7 @@ class RelayServer extends EventEmitter {
       data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
       nonce
     })
-    debug('txToSign', txToSign)
+    spam('txToSign', txToSign)
     const signedTx = this.keyManager.signTransaction(txToSign)
     const storedTx = new StoredTx({
       from: txToSign.from,
@@ -417,7 +419,7 @@ class RelayServer extends EventEmitter {
       data: tx.data,
       nonce: tx.nonce
     })
-    debug('txToSign', txToSign)
+    spam('txToSign', txToSign)
     // TODO: change to eip155 chainID
     const signedTx = this.keyManager.signTransaction(txToSign)
     const storedTx = new StoredTx({
@@ -432,6 +434,8 @@ class RelayServer extends EventEmitter {
       attempts: tx.attempts + 1
     })
     await this.txStoreManager.putTx({ tx: storedTx })
+    debug('resending tx with nonce', txToSign.nonce)
+    debug('account nonce', await this.web3.eth.getTransactionCount(this.address))
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
