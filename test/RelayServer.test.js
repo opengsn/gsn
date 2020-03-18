@@ -31,8 +31,6 @@ const workdir = '/tmp/gsn/test/relayserver'
 const testutils = require('./testutils')
 const increaseTime = testutils.increaseTime
 
-const util = require('util')
-
 contract('RelayServer', function (accounts) {
   let rhub
   let sr
@@ -74,6 +72,7 @@ contract('RelayServer', function (accounts) {
       web3provider: serverWeb3provider,
       devMode: true
     })
+    relayServer.on('error', (e) => {console.log(e.message)})
     console.log('Relay Server Address', relayServer.address)
     await web3.eth.sendTransaction({
       to: relayServer.address,
@@ -345,6 +344,32 @@ contract('RelayServer', function (accounts) {
     assert.deepEqual([], await relayServer.txStoreManager.getAll())
     // Release hook
     Date = origDate
+  })
+
+  describe('listener task', async function () {
+    let origWorker
+    let started
+    beforeEach(async function () {
+      origWorker = relayServer._worker
+      started = false
+      relayServer._worker = async function () {
+        started = true
+        this.emit('error', new Error('GOTCHA'))
+      }
+    })
+    afterEach(async function () {
+      relayServer._worker = origWorker
+    })
+    it('should start block listener', async function () {
+      relayServer.start()
+      await testutils.evmMine()
+      assert.isTrue(started, 'could not start task correctly')
+    })
+    it('should stop block listener', async function () {
+      relayServer.stop()
+      await testutils.evmMine()
+      assert.isFalse(started, 'could not stop task correctly')
+    })
   })
 
   it('should handle RelayRemoved event', async function () {

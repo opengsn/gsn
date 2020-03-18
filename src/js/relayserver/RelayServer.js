@@ -180,7 +180,7 @@ class RelayServer extends EventEmitter {
   }
 
   async _worker (blockHeader) {
-    // try {
+    try {
       if (!this.chainId) {
         this.chainId = await this.web3.eth.net.getId()
       }
@@ -236,9 +236,10 @@ class RelayServer extends EventEmitter {
       this.ready = true
       await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
-    // } catch (e) {
-    //   console.log('error in worker:', e.message)
-    // }
+    } catch (e) {
+      this.emit('error', e)
+      console.error('error in worker:', e.message)
+    }
   }
 
   async getBalance () {
@@ -326,9 +327,10 @@ class RelayServer extends EventEmitter {
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
     let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
-    debug(`Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}` )
+    debug(
+      `Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
-    await this.txStoreManager.removeTxsUntilNonce({ nonce:nonce - 1})
+    await this.txStoreManager.removeTxsUntilNonce({ nonce: nonce - 1 })
 
     // Load unconfirmed transactions from store again
     sortedTxs = await this.txStoreManager.getAll()
@@ -344,7 +346,7 @@ class RelayServer extends EventEmitter {
     }
 
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
-    if (Date.now()  - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
+    if (Date.now() - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
       // console.log(Date.now(), (new Date()), (new Date()).getTime())
       // console.log(sortedTxs[0].createdAt, (new Date(sortedTxs[0].createdAt)), (new Date(sortedTxs[0].createdAt)).getTime())
       console.log('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
@@ -444,7 +446,7 @@ class RelayServer extends EventEmitter {
     return { receipt, signedTx }
   }
 
-  async _getNonce() {
+  async _getNonce () {
     const nonce = await this.web3.eth.getTransactionCount(this.address, 'pending')
     if (nonce > this.nonce) {
       this.nonce = nonce

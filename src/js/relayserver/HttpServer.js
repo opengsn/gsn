@@ -21,6 +21,7 @@ class HttpServer {
     this.app.post('/relay', this.relayHandler.bind(this))
     this.backend.once('removed', this.stop.bind(this))
     this.backend.once('unstaked', this.close.bind(this))
+    this.backend.on('error', console.error)
   }
 
   start () {
@@ -90,10 +91,10 @@ class HttpServer {
     console.log('creating relay tx')
     try {
       const signedTx = await this.backend.createRelayTransaction(req.body)
-      res.send({signedTx})
+      res.send({ signedTx })
       console.log('relay tx sent')
     } catch (e) {
-      res.send({error:e.message})
+      res.send({ error: e.message })
       console.log(`Error ${e.message} sent`)
     }
   }
