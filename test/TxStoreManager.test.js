@@ -1,4 +1,4 @@
-/* global artifacts BigInt describe */
+/* global */
 
 const fs = require('fs')
 const TxStoreManager = require('../src/js/relayserver/TxStoreManager').TxStoreManager
@@ -9,7 +9,6 @@ const StoredTx = require('../src/js/relayserver/TxStoreManager').StoredTx
 const workdir = '/tmp/gsn/test/txstore_manager'
 
 contract('TxStoreManager', function (accounts) {
-
   let txmanager, tx, tx2, tx3
 
   before('create txstore', async function () {
@@ -119,5 +118,4 @@ contract('TxStoreManager', function (accounts) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
     fs.rmdirSync(workdir)
   })
-
 })

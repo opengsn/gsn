@@ -1,13 +1,11 @@
-/* global artifacts BigInt describe */
+/* global artifacts describe */
 const Web3 = require('web3')
 const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayServer = require('../src/js/relayserver/RelayServer')
 const TxStoreManager = require('../src/js/relayserver/TxStoreManager').TxStoreManager
-const utils = require('../src/js/relayclient/utils')
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestEverythingAcceptedSponsor = artifacts.require('./test/TestSponsorEverythingAccepted.sol')
-const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 const KeyManager = require('../src/js/relayserver/KeyManager')
 const RelayHubABI = require('../src/js/relayclient/interfaces/IRelayHub')
 const GasSponsorABI = require('../src/js/relayclient/interfaces/IGasSponsor')
@@ -36,7 +34,6 @@ contract('RelayServer', function (accounts) {
   let sr
   let gasSponsor
   let gasLess
-  let gasPrice
   const relayOwner = accounts[1]
   const dayInSec = 24 * 60 * 60
   const weekInSec = dayInSec * 7
@@ -49,8 +46,6 @@ contract('RelayServer', function (accounts) {
   before(async function () {
     serverWeb3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
     web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
-    const gasPricePercent = 20
-    gasPrice = (await web3.eth.getGasPrice()) * (100 + gasPricePercent) / 100
 
     rhub = await RelayHub.deployed()
     sr = await SampleRecipient.deployed()
@@ -72,7 +67,7 @@ contract('RelayServer', function (accounts) {
       web3provider: serverWeb3provider,
       devMode: true
     })
-    relayServer.on('error', (e) => {console.log(e.message)})
+    relayServer.on('error', (e) => { console.log(e.message) })
     console.log('Relay Server Address', relayServer.address)
     await web3.eth.sendTransaction({
       to: relayServer.address,
@@ -253,11 +248,11 @@ contract('RelayServer', function (accounts) {
     resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
     parsedTxHash = ethUtils.bufferToHex((new Transaction(resentTx)).hash())
 
-    // validate relayed tx with increased gasPrice
+    // Validate relayed tx with increased gasPrice
     const minedTxAfter = await web3.eth.getTransaction(parsedTxHash)
     assert.equal(minedTxAfter.gasPrice, minedTxBefore.gasPrice * 1.2)
     await assertTransactionRelayed(parsedTxHash)
-    // release hook
+    // Release hook
     Date.now = Date.origNow
     // Check the tx is removed from the store only after enough blocks
     resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
@@ -273,7 +268,7 @@ contract('RelayServer', function (accounts) {
     sortedTxs = await relayServer.txStoreManager.getAll()
     assert.deepEqual([], sortedTxs)
 
-    //revert for following tests
+    // Revert for following tests
     await testutils.revert(id)
   })
 
@@ -302,7 +297,7 @@ contract('RelayServer', function (accounts) {
       }
     }
     Date = NewDate
-    const signedTx2 = await relayTransactionThroughClient()
+    await relayTransactionThroughClient()
     constructorIncrease = 4 * 60 * 1000 // 4 minutes in milliseconds
     const signedTx3 = await relayTransactionThroughClient()
     await testutils.revert(id)

@@ -9,9 +9,17 @@ const TxStoreManager = require('./TxStoreManager').TxStoreManager
 function error (err) { throw new Error(err) }
 
 const argv = parseArgs(process.argv.slice(2), {
-  string: ['Fee', 'Url', 'RelayHubAddress', 'DefaultGasPrice',
-           'GasPricePercent',
-           'RegistrationBlockRate', 'EthereumNodeUrl', 'Workdir'],
+  string:
+    [
+      'Fee',
+      'Url',
+      'RelayHubAddress',
+      'DefaultGasPrice',
+      'GasPricePercent',
+      'RegistrationBlockRate',
+      'EthereumNodeUrl',
+      'Workdir'
+    ],
   boolean: ['DevMode'],
   alias: {}
 })

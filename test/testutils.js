@@ -39,9 +39,7 @@ module.exports = {
     }
     const runServerPath = path.resolve(__dirname, '../src/js/relayserver/runServer.js')
     const proc = childProcess.spawn('node',
-      [runServerPath,
-       ...args
-      ])
+      [runServerPath, ...args])
 
     let relaylog = function () {
     }

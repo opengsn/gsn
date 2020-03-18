@@ -1,13 +1,11 @@
 const EventEmitter = require('events')
 const Web3 = require('web3')
 const abiDecoder = require('abi-decoder')
-const abi = require('ethereumjs-abi')
 const Transaction = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
 // import { URL } from 'url'
 // import querystring from 'querystring'
 const RelayHubABI = require('../relayclient/interfaces/IRelayHub')
-const utils = require('../relayclient/utils')
 const getDataToSign = require('../relayclient/EIP712/Eip712Helper')
 const StoredTx = require('./TxStoreManager').StoredTx
 
@@ -18,7 +16,6 @@ const VERSION = '0.0.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
-const blockTimeMS = 10000
 const maxGasPrice = 100e9
 const retryGasPriceFactor = 1.2
 const DEBUG = false
@@ -103,7 +100,7 @@ class RelayServer extends EventEmitter {
     // Check that the relayhub is the correct one
     if (relayHubAddress !== this.relayHubContract.options.address) {
       throw new Error(
-        `Wrong hub address.\nRelay server\'s hub address: ${this.relayHubContract.options.address}, request\'s hub address: ${relayHubAddress}\n`)
+        `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract.options.address}, request's hub address: ${relayHubAddress}\n`)
     }
 
     // Check that the fee is acceptable
@@ -155,7 +152,7 @@ class RelayServer extends EventEmitter {
     requiredGas += this._correctGasCost(Buffer.from(approvalData.slice(2), 'hex'), gtxdatanonzero, gtxdatazero)
     console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
-    const { receipt, signedTx } = await this._sendTransaction(
+    const { signedTx } = await this._sendTransaction(
       { method, destination: relayHubAddress, gasLimit: requiredGas, gasPrice })
     return signedTx
   }
@@ -200,7 +197,7 @@ class RelayServer extends EventEmitter {
       if (!(await this.getBalance()) || this.balance < minimumRelayBalance) {
         this.ready = false
         throw new Error(
-          `Server\'s balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
+          `Server's balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
       }
       const options = {
         fromBlock: this.lastScannedBlock + 1,
@@ -258,7 +255,6 @@ class RelayServer extends EventEmitter {
       if (!this.owner) {
         this.owner = relayInfo.owner
         console.log(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
-
       }
       this.unstakeDelay = relayInfo.unstakeDelay
       this.unstakeTime = relayInfo.unstakeTime
@@ -307,7 +303,7 @@ class RelayServer extends EventEmitter {
     if (this.balance < gasLimit * gasPrice) {
       throw new Error(`balance too low: ${this.balance}, tx cost: ${gasLimit * gasPrice}`)
     }
-    const { receipt, signedTx } = await this._sendTransaction({
+    const { receipt } = await this._sendTransaction({
       destination: this.owner,
       gasLimit,
       gasPrice,

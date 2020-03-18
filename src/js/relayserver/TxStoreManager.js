@@ -1,5 +1,4 @@
 const Nedb = require('nedb-async').AsyncNedb
-const Transaction = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
 
 class StoredTx {
@@ -20,15 +19,6 @@ class StoredTx {
 
 const TXSTORE_FILENAME = 'txstore.db'
 
-/*
-	ListTransactions() (txs []*TimestampedTransaction, err error)
-	GetFirstTransaction() (tx *TimestampedTransaction, err error)
-	SaveTransaction(tx *types.Transaction) (err error)
-	UpdateTransactionByNonce(tx *types.Transaction) (err error)
-	RemoveTransactionsLessThanNonce(nonce uint64) (err error)
-	Clear() (err error)
-	Close() (err error)
- */
 class TxStoreManager {
   constructor ({ workdir = '/tmp/test/' }) {
     this.txstore = new Nedb({
