@@ -5,10 +5,10 @@ const RelayServer = require('../src/js/relayserver/RelayServer')
 const TxStoreManager = require('../src/js/relayserver/TxStoreManager').TxStoreManager
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
-const TestEverythingAcceptedSponsor = artifacts.require('./test/TestSponsorEverythingAccepted.sol')
+const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 const KeyManager = require('../src/js/relayserver/KeyManager')
 const RelayHubABI = require('../src/js/relayclient/interfaces/IRelayHub')
-const GasSponsorABI = require('../src/js/relayclient/interfaces/IGasSponsor')
+const PayMasterABI = require('../src/js/relayclient/interfaces/IPaymaster')
 
 const ethUtils = require('ethereumjs-util')
 const Transaction = require('ethereumjs-tx')
@@ -18,9 +18,9 @@ const chai = require('chai')
 const sinonChai = require('sinon-chai')
 chai.use(sinonChai)
 abiDecoder.addABI(RelayHubABI)
-abiDecoder.addABI(GasSponsorABI)
+abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(SampleRecipient.abi)
-abiDecoder.addABI(TestEverythingAcceptedSponsor.abi)
+abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 
 const localhostOne = 'http://localhost:8090'
 const ethereumNodeUrl = 'http://localhost:8545'
@@ -32,7 +32,7 @@ const increaseTime = testutils.increaseTime
 contract('RelayServer', function (accounts) {
   let rhub
   let sr
-  let gasSponsor
+  let paymaster
   let gasLess
   const relayOwner = accounts[1]
   const dayInSec = 24 * 60 * 60
@@ -49,9 +49,9 @@ contract('RelayServer', function (accounts) {
 
     rhub = await RelayHub.deployed()
     sr = await SampleRecipient.deployed()
-    gasSponsor = await TestEverythingAcceptedSponsor.deployed()
+    paymaster = await TestPaymasterEverythingAccepted.deployed()
 
-    await gasSponsor.deposit({ value: web3.utils.toWei('1', 'ether') })
+    await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
     gasLess = await web3.eth.personal.newAccount('password')
     const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair() })
     const txStoreManager = new TxStoreManager({ workdir })
@@ -61,7 +61,8 @@ contract('RelayServer', function (accounts) {
       // owner: relayOwner,
       hubAddress: rhub.address,
       url: localhostOne,
-      txFee: 0,
+      baseRelayFee: 0,
+      pctRelayFee: 0,
       gasPriceFactor: 1,
       ethereumNodeUrl,
       web3provider: serverWeb3provider,
@@ -96,7 +97,7 @@ contract('RelayServer', function (accounts) {
     assert.equal(decodedLogs[3].args.relay.toLowerCase(), relayServer.address.toLowerCase())
     assert.equal(decodedLogs[3].args.from.toLowerCase(), gasLess.toLowerCase())
     assert.equal(decodedLogs[3].args.to.toLowerCase(), sr.address.toLowerCase())
-    assert.equal(decodedLogs[3].args.sponsor.toLowerCase(), gasSponsor.address.toLowerCase())
+    assert.equal(decodedLogs[3].args.paymaster.toLowerCase(), paymaster.address.toLowerCase())
     return receipt
   }
 
@@ -106,9 +107,9 @@ contract('RelayServer', function (accounts) {
       // approveFunction: approveFunction,
       from: gasLess,
       to: sr.address,
-      txfee: 0,
+      pctRelayFee: 0,
       gas_limit: 1000000,
-      gasSponsor: gasSponsor.address
+      paymaster: paymaster.address
     }
     console.log('server address', relayServer.address)
     const relayClientConfig = {
@@ -140,10 +141,11 @@ contract('RelayServer', function (accounts) {
         from,
         to,
         encodedFunction,
-        relayFee,
+        baseRelayFee,
+        pctRelayFee,
         gasPrice,
         gasLimit,
-        gasSponsor,
+        paymaster,
         senderNonce,
         signature,
         approvalData,
@@ -158,10 +160,11 @@ contract('RelayServer', function (accounts) {
           from,
           to,
           encodedFunction,
-          relayFee,
+          baseRelayFee,
+          pctRelayFee,
           gasPrice,
           gasLimit,
-          gasSponsor,
+          paymaster,
           senderNonce,
           signature,
           approvalData,
@@ -176,7 +179,8 @@ contract('RelayServer', function (accounts) {
           return {
             RelayServerAddress: relayServer.address,
             relayUrl: localhostOne,
-            transactionFee: 0
+            pctRelayFee: 0,
+            baseRelayFee: 0
           }
         }
       }
@@ -191,16 +195,19 @@ contract('RelayServer', function (accounts) {
   it('should initialize relay', async function () {
     const expectedGasPrice = (await web3.eth.getGasPrice()) * relayServer.gasPriceFactor
     const expectedBalance = await web3.eth.getBalance(relayServer.address)
-    const chainId = await web3.eth.net.getId()
+    const chainId = await web3.eth.getChainId()
+    const networkId = await web3.eth.net.getId()
     assert.notEqual(relayServer.gasPrice, expectedGasPrice)
     assert.notEqual(relayServer.balance, expectedBalance)
     assert.notEqual(relayServer.chainId, chainId)
+    assert.notEqual(relayServer.networkId, networkId)
     assert.equal(relayServer.ready, false)
     const receipt = await relayServer._worker({ number: await web3.eth.getBlockNumber() })
     assert.equal(relayServer.gasPrice, expectedGasPrice)
     assert.equal(relayServer.balance, expectedBalance)
     assert.equal(relayServer.chainId, chainId)
-    assert.equal(relayServer.ready, true)
+    assert.equal(relayServer.networkId, networkId)
+    assert.equal(relayServer.ready, true, 'relay no ready?')
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(relayServer._parseEvent)
     assert.equal(decodedLogs.length, 1)
     assert.equal(decodedLogs[0].name, 'RelayAdded')

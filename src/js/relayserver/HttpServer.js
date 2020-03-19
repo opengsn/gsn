@@ -95,7 +95,7 @@ class HttpServer {
       console.log('relay tx sent')
     } catch (e) {
       res.send({ error: e.message })
-      console.log(`Error ${e.message} sent`)
+      console.log(e)
     }
   }
 }

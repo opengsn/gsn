@@ -11,7 +11,8 @@ function error (err) { throw new Error(err) }
 const argv = parseArgs(process.argv.slice(2), {
   string:
     [
-      'Fee',
+      'BaseFee',
+      'PercentFee',
       'Url',
       'RelayHubAddress',
       'DefaultGasPrice',
@@ -27,7 +28,8 @@ const argv = parseArgs(process.argv.slice(2), {
 if (argv._.length) error('unknown extra params: ' + argv._)
 
 console.log('runServer start. args', argv)
-const fee = argv.Fee || 70
+const baseRelayFee = argv.BaseFee || 70
+const pctRelayFee = argv.PercentFee || 0
 const url = argv.Url || 'http://localhost:8090'
 const port = argv.Port || 8090
 const relayHubAddress = argv.RelayHubAddress || '0xD216153c06E857cD7f72665E0aF1d7D82172F494'
@@ -56,11 +58,13 @@ const relay = new RelayServer({
   hubAddress: relayHubAddress,
   web3provider,
   url,
-  txFee: fee,
+  baseRelayFee: baseRelayFee,
+  pctRelayFee: pctRelayFee,
   devMode,
   gasPriceFactor: gasPriceFactor,
   ethereumNodeUrl
 })
 console.log('Starting server.')
+console.log(`server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)
 const httpServer = new HttpServer({ port, backend: relay })
 httpServer.start()

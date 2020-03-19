@@ -167,7 +167,6 @@ class RelayClient {
       relayMaxNonce
     }) {
     var self = this
-
     return new Promise(function (resolve, reject) {
       const jsonRequestData = {
         encodedFunction: encodedFunction,
@@ -178,7 +177,7 @@ class RelayClient {
         gasPrice,
         gasLimit,
         paymaster,
-        percentRelayFee: parseInt(pctRelayFee),
+        pctRelayFee: parseInt(pctRelayFee),
         baseRelayFee: parseInt(baseRelayFee),
         senderNonce: parseInt(senderNonce),
         relayMaxNonce: parseInt(relayMaxNonce),
@@ -571,7 +570,6 @@ class RelayClient {
     }
 
     if (relayClientOptions.verbose) { console.log('RR: ', payload.id, relayOptions) }
-
     this.relayTransaction(params.data, relayOptions)
       .then(validTransaction => {
         var hash = '0x' + validTransaction.hash(true).toString('hex')

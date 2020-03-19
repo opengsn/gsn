@@ -33,7 +33,7 @@
   "scripts": {
     "test": "npm run test-server && npm run test-js",
     "test-server": "make test-server",
-    "test-js": "make build-server && run-with-testrpc --hardfork 'constantinople' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic --allowUnlimitedContractSize 'npx truffle --network npmtest test'",
+    "test-js": "make build-server && run-with-testrpc --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic --allowUnlimitedContractSize 'npx truffle --network npmtest test'",
     "quick-test-js": "npx truffle test",
     "truffle-compile": "truffle compile",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",

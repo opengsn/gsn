@@ -6,11 +6,16 @@ const ethUtils = require('ethereumjs-util')
 // import { URL } from 'url'
 // import querystring from 'querystring'
 const RelayHubABI = require('../relayclient/interfaces/IRelayHub')
+const PayMasterABI = require('../relayclient/interfaces/IPaymaster')
 const getDataToSign = require('../relayclient/EIP712/Eip712Helper')
+const RelayRequest = require('../relayclient/EIP712/RelayRequest')
+const utils = require('../relayclient/utils')
+// const Environments = require('./Environments')
 const StoredTx = require('./TxStoreManager').StoredTx
 
 // const RelayHub = web3.eth.contract(RelayHubABI)
 abiDecoder.addABI(RelayHubABI)
+abiDecoder.addABI(PayMasterABI)
 
 const VERSION = '0.0.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
@@ -39,7 +44,8 @@ class RelayServer extends EventEmitter {
       owner,
       hubAddress,
       url,
-      txFee,
+      baseRelayFee,
+      pctRelayFee,
       gasPriceFactor,
       ethereumNodeUrl,
       web3provider,
@@ -56,7 +62,8 @@ class RelayServer extends EventEmitter {
         owner,
         hubAddress,
         url,
-        txFee,
+        baseRelayFee,
+        pctRelayFee,
         gasPriceFactor,
         ethereumNodeUrl,
         web3provider,
@@ -65,6 +72,7 @@ class RelayServer extends EventEmitter {
     this.web3 = new Web3(web3provider)
     this.address = keyManager.address()
     this.relayHubContract = new this.web3.eth.Contract(RelayHubABI, hubAddress)
+    this.paymasterContract = new this.web3.eth.Contract(PayMasterABI)
     const relayHubTopics = [Object.keys(this.relayHubContract.events).filter(x => (x.includes('0x')))]
     this.topics = relayHubTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
     this.lastScannedBlock = 0
@@ -89,14 +97,32 @@ class RelayServer extends EventEmitter {
       signature,
       from,
       to,
-      gasSponsor,
+      paymaster,
       gasPrice,
       gasLimit,
       senderNonce,
       relayMaxNonce,
-      relayFee,
+      baseRelayFee,
+      pctRelayFee,
       relayHubAddress
     }) {
+    debug('dump request params',
+      {
+        encodedFunction,
+        approvalData,
+        signature,
+        from,
+        to,
+        paymaster,
+        gasPrice,
+        gasLimit,
+        senderNonce,
+        relayMaxNonce,
+        baseRelayFee,
+        pctRelayFee,
+        relayHubAddress
+      }
+    )
     // Check that the relayhub is the correct one
     if (relayHubAddress !== this.relayHubContract.options.address) {
       throw new Error(
@@ -104,8 +130,8 @@ class RelayServer extends EventEmitter {
     }
 
     // Check that the fee is acceptable
-    if (relayFee < this.txFee) {
-      throw new Error(`Unacceptable fee: ${relayFee}`)
+    if (!pctRelayFee || pctRelayFee < this.pctRelayFee) {
+      throw new Error(`Unacceptable fee: ${pctRelayFee}`)
     }
 
     // Check that the gasPrice is initialized & acceptable
@@ -123,35 +149,68 @@ class RelayServer extends EventEmitter {
     }
 
     // Check canRelay view function to see if we'll get paid for relaying this tx
-    const signedData = getDataToSign({
-      senderAccount: from,
-      senderNonce,
+    const relayRequest = new RelayRequest({
+      senderAddress: from,
+      senderNonce: senderNonce.toString(),
       target: to,
       encodedFunction,
-      pctRelayFee: relayFee,
-      gasPrice,
-      gasLimit,
-      gasSponsor,
+      baseRelayFee: baseRelayFee.toString(),
+      pctRelayFee: pctRelayFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      paymaster: paymaster,
       relayHub: relayHubAddress,
       relayAddress: this.address
     })
-    const canRelayRet = await this.relayHubContract.methods.canRelay(signedData.message, signature, approvalData).call()
+    const signedData = getDataToSign({
+      chainId: this.chainId,
+      relayHub: relayHubAddress,
+      relayRequest
+    })
+
+    const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
+    const calldataSize =
+      signedData.message.encodedFunction.length +
+      signature.length +
+      approvalData.length +
+      relayCallExtraBytes
+
+    this.paymasterContract.options.address = paymaster
+    const gasLimits = await this.paymasterContract.methods.getGasLimits().call()
+    const hubOverhead = parseInt(await this.relayHubContract.methods.getHubOverhead().call())
+    const maxPossibleGas = utils.calculateTransactionMaxPossibleGas({
+      gasLimits,
+      hubOverhead,
+      relayCallGasLimit: gasLimit,
+      calldataSize,
+      gtxdatanonzero: gtxdatanonzero
+    })
+
+    const canRelayRet = await this.relayHubContract.methods.canRelay(
+      signedData.message,
+      maxPossibleGas,
+      gasLimits.acceptRelayedCallGasLimit,
+      signature,
+      approvalData).call()
     console.log('canRelayRet', canRelayRet)
     if (!canRelayRet || canRelayRet.status !== '0') {
       throw new Error('canRelay failed in server:' + (canRelayRet ? canRelayRet.status : 'jsonrpc call failed'))
     }
     // Send relayed transaction
-    const maxCharge = parseInt(
-      await this.relayHubContract.methods.maxPossibleCharge(gasLimit, gasPrice, relayFee).call())
-    const sponsorBalance = parseInt(await this.relayHubContract.methods.balanceOf(gasSponsor).call())
-    if (sponsorBalance < maxCharge) {
-      throw new Error(`sponsor balance too low: ${sponsorBalance}, maxCharge: ${maxCharge}`)
-    }
-    let requiredGas = parseInt(await this.relayHubContract.methods.requiredGas(gasLimit).call())
-    requiredGas += this._correctGasCost(Buffer.from(encodedFunction.slice(2), 'hex'), gtxdatanonzero, gtxdatazero)
-    requiredGas += this._correctGasCost(Buffer.from(approvalData.slice(2), 'hex'), gtxdatanonzero, gtxdatazero)
-    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
+    const requiredGas = maxPossibleGas + this._correctGasCost(method.encodeABI().slice(2), gtxdatanonzero, gtxdatazero)
+    const maxCharge = parseInt(
+      await this.relayHubContract.methods.calculateCharge(requiredGas, {
+        gasPrice,
+        pctRelayFee,
+        baseRelayFee,
+        gasLimit: 0
+      }).call())
+    const paymasterBalance = parseInt(await this.relayHubContract.methods.balanceOf(paymaster).call())
+    if (paymasterBalance < maxCharge) {
+      throw new Error(`paymaster balance too low: ${paymasterBalance}, maxCharge: ${maxCharge}`)
+    }
+    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
     const { signedTx } = await this._sendTransaction(
       { method, destination: relayHubAddress, gasLimit: requiredGas, gasPrice })
     return signedTx
@@ -179,14 +238,21 @@ class RelayServer extends EventEmitter {
   async _worker (blockHeader) {
     try {
       if (!this.chainId) {
-        this.chainId = await this.web3.eth.net.getId()
+        this.chainId = await this.web3.eth.getChainId()
       }
       if (!this.chainId) {
         this.ready = false
         throw new Error('Could not get chainId from node')
       }
-      if (this.devMode && this.chainId < 1000) {
-        console.log('Don\'t use real network\'s chainId while in devMode.')
+      if (!this.networkId) {
+        this.networkId = await this.web3.eth.net.getId()
+      }
+      if (!this.networkId) {
+        this.ready = false
+        throw new Error('Could not get networkId from node')
+      }
+      if (this.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
+        console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
         process.exit(-1)
       }
       this.gasPrice = Math.floor(parseInt(await this.web3.eth.getGasPrice()) * this.gasPriceFactor)
@@ -227,6 +293,7 @@ class RelayServer extends EventEmitter {
         this.ready = false
         throw new Error('Waiting for stake...')
       }
+      // todo check if registered!!
       if (logs[0] && logs[0].blockNumber) {
         this.lastScannedBlock = logs[logs.length - 1].blockNumber
       }
@@ -282,7 +349,7 @@ class RelayServer extends EventEmitter {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
     // register on chain
-    const registerMethod = this.relayHubContract.methods.registerRelay(this.txFee, this.url)
+    const registerMethod = this.relayHubContract.methods.registerRelay(this.baseRelayFee, this.pctRelayFee, this.url)
     const { receipt } = await this._sendTransaction(
       { method: registerMethod, destination: this.relayHubContract.options.address })
     console.log(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
@@ -343,8 +410,8 @@ class RelayServer extends EventEmitter {
 
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
     if (Date.now() - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
-      // console.log(Date.now(), (new Date()), (new Date()).getTime())
-      // console.log(sortedTxs[0].createdAt, (new Date(sortedTxs[0].createdAt)), (new Date(sortedTxs[0].createdAt)).getTime())
+      spam(Date.now(), (new Date()), (new Date()).getTime())
+      spam(sortedTxs[0].createdAt, (new Date(sortedTxs[0].createdAt)), (new Date(sortedTxs[0].createdAt)).getTime())
       console.log('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
       return
     }
