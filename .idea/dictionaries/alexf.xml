@@ -3,19 +3,26 @@
     <words>
       <w>blockchain</w>
       <w>calldata</w>
+      <w>calldatagascost</w>
       <w>dapp</w>
       <w>dapps</w>
+      <w>ecrecover</w>
       <w>ethereum</w>
       <w>gasleft</w>
+      <w>gtransaction</w>
+      <w>gtxdatanonzero</w>
       <w>ierc</w>
       <w>keccak</w>
       <w>mixedcase</w>
+      <w>multiplicator</w>
+      <w>nonces</w>
       <w>offchain</w>
       <w>openeth</w>
       <w>openzeppelin</w>
       <w>ownable</w>
       <w>penalizable</w>
       <w>penalizations</w>
+      <w>privkey</w>
       <w>relaydata</w>
       <w>solhint</w>
       <w>typehash</w>

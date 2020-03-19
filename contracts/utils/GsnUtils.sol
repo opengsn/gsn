@@ -1,8 +1,19 @@
+/* solhint-disable no-inline-assembly */
 pragma solidity ^0.5.16;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
+import "./GSNTypes.sol";
+
 library GsnUtils {
+
+    function getChainID() internal pure returns (uint256) {
+        uint256 id;
+        assembly {
+            id := chainid()
+        }
+        return id;
+    }
 
     /**
      * extract method sig from encoded function call

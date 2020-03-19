@@ -17,7 +17,8 @@ interface IRelayHub {
     event RelayAdded(
         address indexed relay,
         address indexed owner,
-        uint256 transactionFee,
+        uint256 baseRelayFee,
+        uint256 pctRelayFee,
         uint256 stake,
         uint256 unstakeDelay,
         string url
@@ -44,7 +45,7 @@ interface IRelayHub {
 
     // Emitted when depositFor is called, including the amount and account that was funded.
     event Deposited(
-        address indexed sponsor,
+        address indexed paymaster,
         address indexed from,
         uint256 amount
     );
@@ -52,13 +53,13 @@ interface IRelayHub {
     // Emitted when an attempt to relay a call failed. This can happen due to incorrect relayCall arguments, or the
     // recipient not accepting the relayed call.
     // The actual relayed call was not executed, and the recipient not charged.
-    // The reason field contains an error code: values 1-10 correspond to PreconditionCheck entries, and values over 10
+    // The reason field contains an error code: values 1-10 correspond to CanRelayStatus entries, and values over 10
     // are custom recipient error codes returned from acceptRelayedCall.
     event CanRelayFailed(
         address indexed relay,
         address indexed from,
         address indexed to,
-        address sponsor,
+        address paymaster,
         bytes4 selector,
         uint256 reason);
 
@@ -70,7 +71,7 @@ interface IRelayHub {
         address indexed relay,
         address indexed from,
         address indexed to,
-        address sponsor,
+        address paymaster,
         bytes4 selector,
         RelayCallStatus status,
         uint256 charge);
@@ -78,7 +79,7 @@ interface IRelayHub {
     event Penalized(
         address indexed relay,
         address sender,
-        uint256 amount
+        uint256 reward
     );
 
     /// Reason error codes for the TransactionRelayed event
@@ -115,7 +116,7 @@ interface IRelayHub {
     /// @param WrongNonce - the provided nonce has already been used by the sender
     /// @param AcceptRelayedCallReverted - the recipient rejected this call via acceptRelayedCall
     /// @param InvalidRecipientStatusCode - the recipient returned an invalid (reserved) status code
-    enum PreconditionCheck {
+    enum CanRelayStatus {
         OK,
         WrongSignature,
         WrongNonce,
@@ -138,7 +139,7 @@ interface IRelayHub {
     // Emits a RelayAdded event.
     // This function can be called multiple times, emitting new RelayAdded events. Note that the received transactionFee
     // is not enforced by relayCall.
-    function registerRelay(uint256 transactionFee, string calldata url) external;
+    function registerRelay(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
 
 
     // Removes (deregisters) a relay. Unregistered (but staked for) relays can also be removed. Can only be called by
@@ -183,10 +184,12 @@ interface IRelayHub {
     //  - all arguments must be signed for by the sender (from)
     //  - the sender's nonce must be the current one
     //  - the recipient must accept this transaction (via acceptRelayedCall)
-    // Returns a PreconditionCheck value (OK when the transaction can be relayed), or a recipient-specific error code if
+    // Returns a CanRelayStatus value (OK when the transaction can be relayed), or a recipient-specific error code if
     // it returns one in acceptRelayedCall.
     function canRelay(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
+        uint256 maxPossibleGas,
+        uint256 acceptRelayedCallGasLimit,
         bytes calldata signature,
         bytes calldata approvalData
     )
@@ -194,49 +197,27 @@ interface IRelayHub {
     view
     returns (uint256 status, bytes memory recipientContext);
 
-    // Relays a transaction. For this to succeed, multiple conditions must be met:
-    //  - canRelay must return PreconditionCheck.OK
-    //  - the sender must be a registered relay
-    //  - the transaction's gas price must be larger or equal to the one that was requested by the sender
-    //  - the transaction must have enough gas to not run out of gas if all internal transactions (calls to the
-    // recipient) use all gas available to them
-    //  - the recipient must have enough balance to pay the relay for the worst-case scenario (i.e. when all gas is
-    // spent)
-    //
-    // If all conditions are met, the call will be relayed and the recipient charged. preRelayedCall, the encoded
-    // function and postRelayedCall will be called in order.
-    //
-    // Arguments:
-    //  - from: the client originating the request
-    //  - recipient: the target IRelayRecipient contract
-    //  - encodedFunction: the function call to relay, including data
-    //  - transactionFee: fee (%) the relay takes over actual gas cost
-    //  - gasPrice: gas price the client is willing to pay
-    //  - gasLimit: gas to forward when calling the encoded function
-    //  - nonce: client's nonce
-    //  - signature: client's signature over all previous params, plus the relay and RelayHub addresses
-    //  - approvalData: dapp-specific data forwarded to acceptRelayedCall. This value is *not* verified by the Hub, but
-    //    it still can be used for e.g. a signature.
-    //
-    // Emits a TransactionRelayed event.
+    /// Relays a transaction. For this to succeed, multiple conditions must be met:
+    ///  - canRelay must return CanRelayStatus.OK
+    ///  - the sender must be a registered relay
+    ///  - the transaction's gas price must be larger or equal to the one that was requested by the sender
+    ///  - the transaction must have enough gas to run all internal transactions if they use all gas available to them
+    ///  - the sponsor must have enough balance to pay the relay for the scenario when all gas is spent
+    ///
+    /// If all conditions are met, the call will be relayed and the recipient charged.
+    ///
+    /// Arguments:
+    /// @param relayRequest - all details of the requested relay call
+    /// @param signature - client's signature over all previous params, plus the relay and RelayHub addresses
+    /// @param approvalData: dapp-specific data forwarded to acceptRelayedCall.
+    ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the sponsor.
+    ///
+    /// Emits a TransactionRelayed event.
     function relayCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
     ) external;
-
-    // Returns how much gas should be forwarded to a call to relayCall, in order to relay a transaction that will spend
-    // up to relayedCallStipend gas.
-    function requiredGas(uint256 relayedCallStipend) external view returns (uint256);
-
-    // Returns the maximum recipient charge, given the amount of gas forwarded, gas price and relay fee.
-    function maxPossibleCharge(
-        uint256 relayedCallStipend,
-        uint256 gasPrice,
-        uint256 transactionFee)
-    external
-    view
-    returns (uint256);
 
     // Relay penalization. Any account can penalize relays, removing them from the system immediately, and rewarding the
     // reporter with half of the relay's stake. The other half is burned so that, even if the relay penalizes itself, it
@@ -256,5 +237,12 @@ interface IRelayHub {
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
 
     function getNonce(address from) external view returns (uint256);
+
+    function getHubOverhead() external view returns (uint256);
+
+    /// The fee is expressed as a base fee in wei plus percentage on actual charge.
+    /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
+    /// charged for 1.4 times the spent amount.
+    function calculateCharge(uint256 gasUsed, GSNTypes.GasData calldata gasData) external view returns (uint256);
 }
 

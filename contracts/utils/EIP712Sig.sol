@@ -2,6 +2,7 @@ pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+import "./GSNTypes.sol";
 
 // https://github.com/ethereum/EIPs/blob/master/assets/eip-712/Example.sol
 contract EIP712Sig {
@@ -15,38 +16,18 @@ contract EIP712Sig {
         address verifyingContract;
     }
 
-    struct CallData {
-        address target;
-        uint256 gasLimit;
-        uint256 gasPrice;
-        bytes encodedFunction;
-    }
-
-    struct RelayData {
-        address senderAccount;
-        uint256 senderNonce;
-        address relayAddress;
-        uint256 pctRelayFee;
-        address gasSponsor;
-    }
-
-    struct RelayRequest {
-        CallData callData;
-        RelayData relayData;
-    }
-
     bytes32 public constant EIP712DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,address verifyingContract)"
     );
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(CallData callData,RelayData relayData)CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
+    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,bytes encodedFunction,GasData gasData,RelayData relayData)GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address senderAddress,uint256 senderNonce,address relayAddress,address paymaster)");
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant CALLDATA_TYPEHASH = keccak256("CallData(address target,uint256 gasLimit,uint256 gasPrice,bytes encodedFunction)");
+    bytes32 public constant CALLDATA_TYPEHASH = keccak256("GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)");
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAccount,uint256 senderNonce,address relayAddress,uint256 pctRelayFee,address gasSponsor)");
+    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAddress,uint256 senderNonce,address relayAddress,address paymaster)");
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
@@ -70,41 +51,42 @@ contract EIP712Sig {
             ));
     }
 
-    function hash(RelayRequest memory req) internal pure returns (bytes32) {
+    function hash(GSNTypes.RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
-                    hash(req.callData),
+                    req.target,
+                    keccak256(req.encodedFunction),
+                    hash(req.gasData),
                     hash(req.relayData)
             ));
     }
 
-    function hash(CallData memory req) internal pure returns (bytes32) {
+    function hash(GSNTypes.GasData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 CALLDATA_TYPEHASH,
-                req.target,
                 req.gasLimit,
                 req.gasPrice,
-                keccak256(req.encodedFunction)
+                req.pctRelayFee,
+                req.baseRelayFee
             ));
     }
 
-    function hash(RelayData memory req) internal pure returns (bytes32) {
+    function hash(GSNTypes.RelayData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
-                req.senderAccount,
+                req.senderAddress,
                 req.senderNonce,
                 req.relayAddress,
-                req.pctRelayFee,
-                req.gasSponsor
+                req.paymaster
             ));
     }
 
-    function verify(RelayRequest memory req, bytes memory signature) public view returns (bool) {
+    function verify(GSNTypes.RelayRequest memory req, bytes memory signature) public view returns (bool) {
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hash(req)
             ));
-        return digest.recover(signature) == req.relayData.senderAccount;
+        return digest.recover(signature) == req.relayData.senderAddress;
     }
 
     function getChainID() internal pure returns (uint256) {

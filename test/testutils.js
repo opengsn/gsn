@@ -15,7 +15,7 @@ module.exports = {
   // rhub - relay hub contract
   // options:
   //  verbose: enable background process logging.
-  //  stake, delay, txfee, url, relayOwner: parameters to pass to register_new_relay, to stake and register it.
+  //  stake, delay, pctRelayFee, url, relayOwner: parameters to pass to registerNewRelay, to stake and register it.
   //
   startRelay: async function (rhub, options) {
     // eslint-disable-next-line no-path-concat
@@ -34,8 +34,11 @@ module.exports = {
     if (options.GasPricePercent) {
       args.push('--GasPricePercent', options.GasPricePercent)
     }
-    if (options.txfee) {
-      args.push('--Fee', options.txfee)
+    if (options.pctRelayFee) {
+      args.push('--PercentFee', options.pctRelayFee)
+    }
+    if (options.baseRelayFee) {
+      args.push('--BaseFee', options.baseRelayFee)
     }
     const runServerPath = path.resolve(__dirname, '../src/js/relayserver/runServer.js')
     const proc = childProcess.spawn('node',
@@ -116,15 +119,34 @@ module.exports = {
     proc && proc.kill()
   },
 
-  register_new_relay: async function (relayHub, stake, delay, txFee, url, relayAccount, ownerAccount) {
+  registerNewRelay: async function ({
+    relayHub,
+    stake,
+    delay,
+    baseRelayFee,
+    pctRelayFee,
+    url,
+    relayAccount,
+    ownerAccount
+  }) {
     await relayHub.stake(relayAccount, delay, {
       from: ownerAccount,
       value: stake
     })
-    return relayHub.registerRelay(txFee, url, { from: relayAccount })
+    return relayHub.registerRelay(baseRelayFee, pctRelayFee, url, { from: relayAccount })
   },
 
-  register_new_relay_with_privkey: async function (relayHub, stake, delay, txFee, url, ownerAccount, web3, privKey) {
+  registerNewRelayWithPrivkey: async function ({
+    relayHub,
+    stake,
+    delay,
+    baseRelayFee,
+    pctRelayFee,
+    url,
+    ownerAccount,
+    web3,
+    privKey
+  }) {
     const address = '0x' + EthUtils.privateToAddress(privKey).toString('hex')
     await relayHub.stake(address, delay, {
       from: ownerAccount,
@@ -136,7 +158,7 @@ module.exports = {
       value: web3.utils.toWei('1', 'ether')
     })
     const nonce = await web3.eth.getTransactionCount(address)
-    const registerData = relayHub.contract.methods.registerRelay(txFee, url).encodeABI()
+    const registerData = relayHub.contract.methods.registerRelay(baseRelayFee, pctRelayFee, url).encodeABI()
     const validTransaction = new Transaction({
       nonce: nonce,
       gasPrice: 1,
@@ -158,7 +180,7 @@ module.exports = {
       })
     })
     const res = await promise
-    console.log('register_new_relay_with_privkey', res)
+    console.log('registerNewRelayWithPrivkey', res)
   },
 
   increaseTime: function (time) {

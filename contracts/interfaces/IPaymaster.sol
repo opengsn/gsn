@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "../utils/EIP712Sig.sol";
 
-interface IGasSponsor {
+interface IPaymaster {
 
     /**
      * return the relayHub of this contract.
@@ -12,41 +12,33 @@ interface IGasSponsor {
 
     /**
      * Can be used to determine if the contract can pay for incoming calls before making any.
-     * @return the sponsor's deposit in the RelayHub.
+     * @return the paymaster's deposit in the RelayHub.
      */
     function getRelayHubDeposit() external view returns (uint256);
 
-//    function getGasLimitsForSponsorCalls()
-//    external
-//    view
-//    returns (
-//        uint256 acceptRelayCallMaxGas,
-//        uint256 preRelayCallMaxGas,
-//        uint256 postRelayCallMaxGas
-//    );
+    /**
+     * The RelayHub will call accept-, pre-, and post-, RelayCall methods with these values for their gas limits.
+     */
+    function getGasLimits()
+    external
+    view
+    returns (
+        GSNTypes.GasLimits memory limits
+    );
 
-    /*
+    /**
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
      * Note: Accepting this call means paying for the tx whether the relayed call reverted or not.
-     *
-     *  @return "0" if the the contract is willing to accept the charges from this sender, for this function call.
-     *      any other value is a failure. actual value is for diagnostics only.
-     *      ** Note: values below 10 are reserved by canRelay
-
-     *  @param relay the relay that attempts to relay this function call.
-     *          the contract may restrict some encoded functions to specific known relays.
-     *  @param from the sender (signer) of this function call.
-     *  @param encodedFunction the encoded function call (without any ethereum signature).
-     *          the contract may check the method-id for valid methods
-     *  @param gasPrice - the gas price for this transaction
-     *  @param transactionFee - the relay compensation (in %) for this transaction
-     *  @param signature - sender's signature over all parameters except approvalData
+     *  @param relayRequest - the full relay request structure
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
+     *  @param maxPossibleGas - based on values returned from {@link getGasLimits},
+     *         the RelayHub will calculate the maximum possible amount of gas the user may be charged for.
+     *         In order to convert this value to wei, the Paymaster has to call "relayHub.calculateCharge()"
      */
     function acceptRelayedCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
-        uint256 maxPossibleCharge
+        uint256 maxPossibleGas
     )
     external
     view
@@ -67,7 +59,8 @@ interface IGasSponsor {
      */
     function preRelayedCall(bytes calldata context) external returns (bytes32);
 
-    /** this method is called after the actual relayed function call.
+    /**
+     * This method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
      * the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
      *
@@ -77,14 +70,20 @@ interface IGasSponsor {
      *
      *
      * @param success - true if the relayed call succeeded, false if it reverted
-     * @param actualCharge - estimation of how much the recipient will be charged.
-     *   This information may be used to perform local booking and
-     *   charge the sender for this call (e.g. in tokens).
+     * @param gasUseWithoutPost - the actual amount of gas used by the entire transaction.
+              Does not included any estimate of how much gas PostRelayCall itself will consume.
+              NOTE: The gas overhead estimation is included in this number.
      * @param preRetVal - preRelayedCall() return value passed back to the recipient
      *
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
      */
-    function postRelayedCall(bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal) external;
+    function postRelayedCall(
+        bytes calldata context,
+        bool success,
+        bytes32 preRetVal,
+        uint256 gasUseWithoutPost,
+        GSNTypes.GasData calldata gasData
+    ) external;
 
 }

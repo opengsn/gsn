@@ -14,12 +14,13 @@ ETHVERSION=v1.9.10
 
 GEN_FILE=$(buildpath)/src/gen/librelay/relay_hub_sol.go
 GEN_FILE_REC=$(buildpath)/src/gen/testcontracts/test_rec_sol.go
+GEN_FILE_TYPES=$(buildpath)/src/gen/librelay/gsn_types_sol.go
 GEN_FILE_SPONSOR=$(buildpath)/src/gen/testcontracts/test_sponsor_sol.go
 RELAYHUB_BIN=$(buildpath)/../contracts/RelayHub.json
-RELAYHUB_ABI=$(buildpath)/../contracts/IRelayHub.json
+RELAYHUB_ABI=$(buildpath)/../contracts/RelayHub.json
 TRUFFLE_OUT_REC=$(buildpath)/../contracts/TestRecipient.json
-TRUFFLE_OUT_SPONSOR=$(buildpath)/../contracts/TestSponsorEverythingAccepted.json
-
+TRUFFLE_OUT_TYPES=$(buildpath)/../contracts/GSNTypes.json
+TRUFFLE_OUT_SPONSOR=$(buildpath)/../contracts/TestPaymasterEverythingAccepted.json
 
 $(server_exe): $(GEN_FILE) $(GEN_FILE_REC) $(GEN_FILE_TYPES) $(GEN_FILE_SPONSOR) $(ETHFILE) $() $(shell find . -maxdepth 3 -name '*.go') Makefile
 	@echo "Using GOPATH=$(GOPATH)"
@@ -54,11 +55,15 @@ $(GEN_FILE): ../contracts/interfaces/IRelayHub.sol $(RELAYHUB_BIN) $(RELAYHUB_AB
 	mkdir -p $(buildpath)/src/gen/librelay
 	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(RELAYHUB_ABI:json=abi)) --bin $(subst contracts,server/contracts,$(RELAYHUB_BIN:json=bin)) --pkg librelay --type IRelayHub --out $@
 
+$(GEN_FILE_TYPES): ../contracts/utils/GSNTypes.sol $(TRUFFLE_OUT_TYPES)
+	mkdir -p $(buildpath)/src/gen/librelay
+	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT_TYPES:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT_TYPES:json=bin)) --pkg librelay --type GSNTypes --out $@
+
 $(GEN_FILE_REC): ../contracts/test/TestRecipient.sol $(TRUFFLE_OUT_REC)
 	mkdir -p $(buildpath)/src/gen/testcontracts
 	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT_REC:json=bin)) --pkg testcontracts --type SampleRecipient --out $@
 
-$(GEN_FILE_SPONSOR): ../contracts/test/TestSponsorEverythingAccepted.sol $(TRUFFLE_OUT_SPONSOR)
+$(GEN_FILE_SPONSOR): ../contracts/test/TestPaymasterEverythingAccepted.sol $(TRUFFLE_OUT_SPONSOR)
 	mkdir -p $(buildpath)/src/gen/testcontracts
 	abigen --solc ../node_modules/.bin/solcjs --abi $(subst contracts,server/contracts,$(TRUFFLE_OUT_SPONSOR:json=abi)) --bin $(subst contracts,server/contracts,$(TRUFFLE_OUT_SPONSOR:json=bin)) --pkg testcontracts --type TestSponsor --out $@
 

@@ -19,4 +19,5 @@
 /server/pkg/
 /.eslintcache
 /src/js/relayclient/interfaces/
+/ganache.pid
 serverdock/

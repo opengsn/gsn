@@ -1,15 +1,15 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../BaseGasSponsor.sol";
+import "../BasePaymaster.sol";
 
-contract TestSponsorEverythingAccepted is BaseGasSponsor {
+contract TestPaymasterEverythingAccepted is BasePaymaster {
 
     event SampleRecipientPreCall();
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
 
     function acceptRelayedCall(
-        EIP712Sig.RelayRequest calldata relayRequest,
+        GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )
@@ -32,13 +32,17 @@ contract TestSponsorEverythingAccepted is BaseGasSponsor {
     }
 
     function postRelayedCall(
-        bytes calldata context, bool success, uint actualCharge, bytes32 preRetVal
+        bytes calldata context,
+        bool success,
+        bytes32 preRetVal,
+        uint256 gasUseWithoutPost,
+        GSNTypes.GasData calldata gasData
     )
     external
     relayHubOnly
     {
-        (context);
-        emit SampleRecipientPostCall(success, actualCharge, preRetVal);
+        (context, gasUseWithoutPost, gasData);
+        emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
     }
 
     function setHub(IRelayHub _relayHub) public {
