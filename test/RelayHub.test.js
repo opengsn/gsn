@@ -29,7 +29,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
     AcceptRelayedCallReverted: new BN('3'),
     InvalidRecipientStatusCode: new BN('4')
   }
-  const chainId = Environments.default.chainId
+  const chainId = Environments.defEnv.chainId
 
   let relayHub
   let relayHubContract
@@ -39,7 +39,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
   let paymaster
 
   beforeEach(async function () {
-    relayHubContract = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
+    relayHubContract = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
 
@@ -240,7 +240,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
               hubOverhead,
               relayCallGasLimit: '1000000',
               calldataSize: '123',
-              gtxdatanonzero: Environments.default.gtxdatanonzero
+              gtxdatanonzero: Environments.defEnv.gtxdatanonzero
             }
           )
         })

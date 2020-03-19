@@ -6,6 +6,7 @@
       <w>calldatagascost</w>
       <w>dapp</w>
       <w>dapps</w>
+      <w>deauthorization</w>
       <w>ecrecover</w>
       <w>ethereum</w>
       <w>gasleft</w>
@@ -23,9 +24,13 @@
       <w>penalizable</w>
       <w>penalizations</w>
       <w>privkey</w>
+      <w>registree</w>
+      <w>registrees</w>
       <w>relaydata</w>
       <w>solhint</w>
+      <w>typechain</w>
       <w>typehash</w>
+      <w>unauthorize</w>
       <w>uniswap</w>
       <w>unstake</w>
       <w>unstaked</w>

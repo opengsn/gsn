@@ -473,7 +473,7 @@ class RelayClient {
           hubOverhead,
           relayCallGasLimit: gasLimit,
           calldataSize,
-          gtxdatanonzero: options.gtxdatanonzero || Environments.default.gtxdatanonzero
+          gtxdatanonzero: options.gtxdatanonzero || Environments.defEnv.gtxdatanonzero
         })
         try {
           res = await relayHub.methods.canRelay(

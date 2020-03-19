@@ -14,6 +14,6 @@ const environments = {
   }
 }
 
-environments.default = environments.istanbul
+environments.defEnv = environments.istanbul
 
 module.exports = environments
