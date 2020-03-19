@@ -59,7 +59,7 @@ module.exports = {
       proc.stdout.on('data', listener)
       proc.stderr.on('data', listener)
       const doaListener = (code) => {
-        if (!this.alreadystarted) {
+        if (!proc.alreadystarted) {
           relaylog('died before init code=' + code)
           reject(lastresponse)
         }
