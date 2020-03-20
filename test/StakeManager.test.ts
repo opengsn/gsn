@@ -1,4 +1,3 @@
-
 import { balance, ether, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers'
 import { expect } from 'chai'
 import { evmMineMany } from './testutils'
@@ -64,15 +63,6 @@ contract('StakeManager', function ([_, registree, anyRelayHub, owner, nonOwner])
     })
   }
 
-  function testCannotPenalizeFromHub (): void {
-    it('should not allow to penalize hub', async function () {
-      await expectRevert(
-        stakeManager.penalizeRegistree(registree, nonOwner, initialStake, { from: anyRelayHub }),
-        'hub not authorized'
-      )
-    })
-  }
-
   describe('with no stake for relay server', function () {
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
@@ -109,7 +99,12 @@ contract('StakeManager', function ([_, registree, anyRelayHub, owner, nonOwner])
       })
     })
 
-    testCannotPenalizeFromHub()
+    it('should not allow to penalize hub', async function () {
+      await expectRevert(
+        stakeManager.penalizeRegistree(registree, nonOwner, initialStake, { from: anyRelayHub }),
+        'hub not authorized'
+      )
+    })
 
     it('should allow querying owner\'s registree', async function () {
       const actualRegistree = await stakeManager.registrees(owner)
@@ -309,7 +304,13 @@ contract('StakeManager', function ([_, registree, anyRelayHub, owner, nonOwner])
       beforeEach(async function () {
         await evmMineMany(initialUnstakeDelay)
       })
-      testCannotPenalizeFromHub()
+
+      it('should not allow to penalize hub', async function () {
+        await expectRevert(
+          stakeManager.penalizeRegistree(registree, nonOwner, initialStake, { from: anyRelayHub }),
+          'hub authorization expired'
+        )
+      })
     })
   })
 

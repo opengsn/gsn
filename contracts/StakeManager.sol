@@ -148,7 +148,9 @@ contract StakeManager {
     /// @param beneficiary - address that receives half of the penalty amount
     /// @param amount - amount to withdraw from stake
     function penalizeRegistree(address registree, address payable beneficiary, uint256 amount) external {
-        require(authorizedHubs[registree][msg.sender].removalBlock > block.number, "hub not authorized");
+        uint256 removalBlock =  authorizedHubs[registree][msg.sender].removalBlock;
+        require(removalBlock != 0, "hub not authorized");
+        require(removalBlock > block.number, "hub authorization expired");
 
         // Half of the stake will be burned (sent to address 0)
         require(stakes[registree].stake >= amount, "penalty exceeds stake");
