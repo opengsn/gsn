@@ -28,6 +28,14 @@ const SPAM = false
 const gtxdatanonzero = 68
 const gtxdatazero = 4
 
+const RelayState = {
+  Unknown: '0',
+  Staked: '1',
+  Registered: '2',
+  Removed: '3'
+
+}
+
 function debug () {
   if (DEBUG) console.log(...arguments)
 }
@@ -294,9 +302,11 @@ class RelayServer extends EventEmitter {
         throw new Error('Waiting for stake...')
       }
       // todo check if registered!!
-      if (logs[0] && logs[0].blockNumber) {
-        this.lastScannedBlock = logs[logs.length - 1].blockNumber
+      if (this.blockchainState !== RelayState.Registered) {
+        this.ready = false
+        throw new Error('Not registered yet...')
       }
+      this.lastScannedBlock = parseInt(blockHeader.number)
       this.ready = true
       await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
@@ -312,21 +322,20 @@ class RelayServer extends EventEmitter {
   }
 
   async getStake () {
+    const relayInfo = await this.relayHubContract.methods.getRelay(this.address).call()
+    this.stake = parseInt(relayInfo.totalStake)
     if (!this.stake) {
-      const relayInfo = await this.relayHubContract.methods.getRelay(this.address).call()
-      this.stake = relayInfo.totalStake
-      if (!this.stake) {
-        return 0
-      }
-      // first time getting stake, setting owner
-      if (!this.owner) {
-        this.owner = relayInfo.owner
-        console.log(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
-      }
-      this.unstakeDelay = relayInfo.unstakeDelay
-      this.unstakeTime = relayInfo.unstakeTime
-      this.blockchainState = relayInfo.state
+      return 0
     }
+    // first time getting stake, setting owner
+    if (!this.owner) {
+      this.owner = relayInfo.owner
+      console.log(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
+    }
+    this.unstakeDelay = relayInfo.unstakeDelay
+    this.unstakeTime = relayInfo.unstakeTime
+    this.blockchainState = relayInfo.state
+    console.log('WTF IS STAKE', relayInfo)
     return this.stake
   }
 
