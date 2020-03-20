@@ -397,7 +397,7 @@ contract('RelayServer', function (accounts) {
           return super.now()
         }
       }
-      Date = NewDate
+      Date = NewDate // eslint-disable-line no-global-assign
       await relayTransactionThroughClient()
       constructorIncrease = 4 * 60 * 1000 // 4 minutes in milliseconds
       const signedTx3 = await relayTransactionThroughClient()
@@ -439,7 +439,7 @@ contract('RelayServer', function (accounts) {
       assert.equal(null, resentTx)
       assert.deepEqual([], await relayServer.txStoreManager.getAll())
       // Release hook
-      Date = origDate
+      Date = origDate // eslint-disable-line no-global-assign
     })
   })
 
@@ -490,5 +490,7 @@ contract('RelayServer', function (accounts) {
       const relayBalanceAfter = await relayServer.getBalance()
       assert.isTrue(relayBalanceAfter === 0)
     })
+
+    // TODO add failure tests
   })
 })

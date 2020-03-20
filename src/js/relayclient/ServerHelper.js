@@ -82,7 +82,7 @@ class ActiveRelayPinger {
           reject(Error('Relay not ready ' + JSON.stringify(body)))
           return
         }
-        if ( body.MinGasPrice > gasPrice) {
+        if (body.MinGasPrice > gasPrice) {
           reject(Error(`Proposed gas price too low: ${gasPrice}, relay's gasPrice: ${body.MinGasPrice}`))
           return
         }

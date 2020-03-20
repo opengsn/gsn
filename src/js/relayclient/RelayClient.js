@@ -2,7 +2,6 @@ const utils = require('./utils')
 const getEip712Signature = utils.getEip712Signature
 const parseHexString = utils.parseHexString
 const removeHexPrefix = utils.removeHexPrefix
-const padTo64 = utils.padTo64
 
 const ServerHelper = require('./ServerHelper')
 const HttpWrapper = require('./HttpWrapper')
@@ -99,7 +98,7 @@ class RelayClient {
    * @returns a signed {@link Transaction} instance for broadcasting, or null if returned
    * transaction is not valid.
    */
-   
+
   validateRelayResponse (
     returnedTx, addressRelay,
     senderAddress, target, encodedFunction, baseRelayFee, pctRelayFee, gasPrice, gasLimit, paymaster, senderNonce,
@@ -634,11 +633,13 @@ class RelayClient {
     try {
       relayHubAddress = await relayRecipient.methods.getHubAddr().call()
     } catch (err) {
-      throw new Error(`Could not get relay hub address from paymaster at ${paymasterAddress} (${err.message}). Make sure it is a valid paymaster contract.`)
+      throw new Error(
+        `Could not get relay hub address from paymaster at ${paymasterAddress} (${err.message}). Make sure it is a valid paymaster contract.`)
     }
 
     if (!relayHubAddress || ethUtils.isZeroAddress(relayHubAddress)) {
-      throw new Error(`The relay hub address is set to zero in paymaster at ${paymasterAddress}. Make sure it is a valid paymaster contract.`)
+      throw new Error(
+        `The relay hub address is set to zero in paymaster at ${paymasterAddress}. Make sure it is a valid paymaster contract.`)
     }
 
     const relayHub = this.createRelayHub(relayHubAddress)

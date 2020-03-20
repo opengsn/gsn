@@ -17,7 +17,7 @@ const StoredTx = require('./TxStoreManager').StoredTx
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 
-const VERSION = '0.0.1'
+const VERSION = '0.0.1' // eslint-disable-line no-unused-vars
 const minimumRelayBalance = 1e17 // 0.1 eth
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
@@ -335,7 +335,6 @@ class RelayServer extends EventEmitter {
     this.unstakeDelay = relayInfo.unstakeDelay
     this.unstakeTime = relayInfo.unstakeTime
     this.blockchainState = relayInfo.state
-    console.log('WTF IS STAKE', relayInfo)
     return this.stake
   }
 
