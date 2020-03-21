@@ -23,7 +23,7 @@ abiDecoder.addABI(SampleRecipient.abi)
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 
 const localhostOne = 'http://localhost:8090'
-const ethereumNodeUrl = 'http://localhost:8545'
+const ethereumNodeUrl = 'http://localhost:8544'
 const workdir = '/tmp/gsn/test/relayserver'
 
 const testutils = require('./testutils')
