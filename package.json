@@ -51,6 +51,7 @@
     "clean-coverage": "shx rm -rf coverage coverage.json",
     "generate": "rm -rf ./build/contracts && truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json'",
     "tsc": "tsc --noEmit",
+    "postinstall": "patch-package",
     "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage"
   },
   "dependencies": {
@@ -82,6 +83,7 @@
     "@types/chai": "4.2.11",
     "@types/mocha": "7.0.2",
     "@types/node": "13.9.1",
+    "@types/source-map-support": "0.5.1",
     "@typescript-eslint/eslint-plugin": "2.23.0",
     "bignumber.js": "9.0.0",
     "browser-request": "0.3.3",
@@ -100,6 +102,8 @@
     "istanbul": "0.4.5",
     "lodash": "4.17.13",
     "opn-cli": "4.0.0",
+    "patch-package": "^6.2.1",
+    "postinstall-postinstall": "^2.0.0",
     "promisify": "0.0.3",
     "rlp": "2.2.3",
     "run-with-testrpc": "0.3.1",
