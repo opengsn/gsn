@@ -62,9 +62,6 @@ contract StakeManager {
         uint256 removalBlock;
     }
 
-    /// maps owners to their registrees
-    mapping(address => address) public registrees;
-
     /// maps registrees to their stakes
     mapping(address => StakeInfo) public stakes;
 
@@ -77,49 +74,45 @@ contract StakeManager {
     /// @param registree - address that represents a stake entry and controls relay registrations on relay hubs
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
     function stakeForAddress(address registree, uint256 unstakeDelay) external payable {
-        require(registrees[msg.sender] == address(0) || registrees[msg.sender] == registree, "different stake exists");
         require(stakes[registree].owner == address(0) || stakes[registree].owner == msg.sender, "not owner");
         require(unstakeDelay >= stakes[registree].unstakeDelay, "unstakeDelay cannot be decreased");
         require(msg.sender != registree, "registree cannot stake for itself");
         require(stakes[msg.sender].owner == address(0), "sender is a registree itself");
-        registrees[msg.sender] = registree;
         stakes[registree].owner = msg.sender;
         stakes[registree].stake += msg.value;
         stakes[registree].unstakeDelay = unstakeDelay;
         emit StakeAdded(registree, stakes[registree].owner, stakes[registree].stake, stakes[registree].unstakeDelay);
     }
 
-    function unlockStake() external {
-        address registree = registrees[msg.sender];
+    function unlockStake(address registree) external {
         StakeInfo storage info = stakes[registree];
-        require(registree != address(0), "not owner");
+        require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock == 0, "already pending");
         info.withdrawBlock = block.number + info.unstakeDelay;
         emit StakeUnlocked(registree, msg.sender, info.withdrawBlock);
     }
 
-    function withdrawStake() external {
-        address registree = registrees[msg.sender];
-        require(registree != address(0), "not owner");
-        require(stakes[registree].withdrawBlock > 0, "Withdrawal is not scheduled");
-        require(stakes[registree].withdrawBlock <= block.number, "Withdrawal is not due");
-        uint256 amount = stakes[registree].stake;
+    function withdrawStake(address registree) external {
+        StakeInfo storage info = stakes[registree];
+        require(info.owner == msg.sender, "not owner");
+        require(info.withdrawBlock > 0, "Withdrawal is not scheduled");
+        require(info.withdrawBlock <= block.number, "Withdrawal is not due");
+        uint256 amount = info.stake;
         delete stakes[registree];
-        delete registrees[msg.sender];
         msg.sender.transfer(amount);
         emit StakeWithdrawn(registree, msg.sender, amount);
     }
 
-    function authorizeHub(address relayHub) external {
-        address registree = registrees[msg.sender];
-        require(registree != address(0), "not owner");
+    function authorizeHub(address registree, address relayHub) external {
+        StakeInfo storage info = stakes[registree];
+        require(info.owner == msg.sender, "not owner");
         authorizedHubs[registree][relayHub].removalBlock = uint(-1);
         emit HubAuthorized(registree, relayHub);
     }
 
-    function unauthorizeHub(address relayHub) external {
-        address registree = registrees[msg.sender];
-        require(registree != address(0), "not owner");
+    function unauthorizeHub(address registree, address relayHub) external {
+        StakeInfo storage info = stakes[registree];
+        require(info.owner == msg.sender, "not owner");
         RelayHubInfo storage hubInfo = authorizedHubs[registree][relayHub];
         require(hubInfo.removalBlock == uint(-1), "hub not authorized");
         uint256 removalBlock = block.number + stakes[registree].unstakeDelay;
