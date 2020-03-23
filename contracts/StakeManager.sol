@@ -65,7 +65,7 @@ contract StakeManager {
     /// maps registrees to their stakes
     mapping(address => StakeInfo) public stakes;
 
-    /// maps registrees to their authorized hubs map
+    /// maps registrees to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
 
     /// Put a stake for a registree and set its unstake delay.

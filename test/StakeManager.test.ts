@@ -1,16 +1,9 @@
-import sourceMapSupport from 'source-map-support'
 import { balance, ether, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers'
 import { expect } from 'chai'
 import { evmMineMany } from './testutils'
 import BN from 'bn.js'
 
 import { StakeManagerInstance } from '../types/truffle-contracts'
-
-// There seems to be a bug/conflict between libraries trying to install source map support.
-// This patch can ensure the right one is the lats one to be applied.
-// Be careful as this can have unpredicted consequences.
-// @ts-ignore (this is a value I patched into the sourceMapSupport, it does not exist in type declaration)
-sourceMapSupport.install({ errorFormatterForce: true })
 
 const StakeManager = artifacts.require('StakeManager')
 
