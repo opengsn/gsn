@@ -360,9 +360,7 @@ contract('RelayServer', function (accounts) {
       sortedTxs = await relayServer.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
       const confirmationsNeeded = 12
-      for (let i = 0; i < confirmationsNeeded; i++) {
-        await testutils.evmMine()
-      }
+      await testutils.evmMineMany(confirmationsNeeded)
       resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
       assert.equal(null, resentTx)
       sortedTxs = await relayServer.txStoreManager.getAll()
@@ -419,9 +417,7 @@ contract('RelayServer', function (accounts) {
       assert.equal(sortedTxs[0].txId, parsedTxHash1)
       // Mine a bunch of blocks, so tx1 is confirmed and tx2 is resent
       const confirmationsNeeded = 12
-      for (let i = 0; i < confirmationsNeeded; i++) {
-        await testutils.evmMine()
-      }
+      await testutils.evmMineMany(confirmationsNeeded)
       const resentTx2 = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
       const parsedTxHash2 = ethUtils.bufferToHex((new Transaction(resentTx2)).hash())
       await assertTransactionRelayed(parsedTxHash2)
@@ -431,9 +427,7 @@ contract('RelayServer', function (accounts) {
       await assertTransactionRelayed(parsedTxHash3)
       // Check that tx3 does not get resent, even after time passes or blocks get mined, and that store is empty
       nowIncrease = 60 * 60 * 1000 // 60 minutes in milliseconds
-      for (let i = 0; i < confirmationsNeeded; i++) {
-        await testutils.evmMine()
-      }
+      await testutils.evmMineMany(confirmationsNeeded)
       resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
       assert.equal(null, resentTx)
       assert.deepEqual([], await relayServer.txStoreManager.getAll())

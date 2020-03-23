@@ -12,7 +12,7 @@ const EIP712Sig = artifacts.require('./EIP712Sig.sol')
 contract('Utils', async function (accounts) {
   describe('#getEip712Signature()', async function () {
     it('should generate a valid EIP-712 compatible signature', async function () {
-      const chainId = Environments.default.chainId
+      const chainId = Environments.defEnv.chainId
       const senderAddress = accounts[0]
       const senderNonce = '5'
       const target = accounts[5]

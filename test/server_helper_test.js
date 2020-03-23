@@ -13,7 +13,7 @@ const gasPricePercent = 20
 
 // ServerHelper adds "noise" to shuffle requests with the same score.
 // this will prevent this randomness, to make tests deterministic.
-const noRandomness = () => 0
+const noRandomness = () => 0.5
 
 function mockserver (port, data) {
   const s = http.createServer(function (req, res) {
@@ -295,7 +295,9 @@ contract('ServerHelper', function (accounts) {
       assert.deepEqual(relays.map(r => r.address), ['6', '7', '5'])
     })
 
-    it('should use randomness to shuffle results with same score', async function () {
+    // TODO: this tests depend on Node 10.x implementation of 'sort', and break on later versions:
+    // https://github.com/nodejs/node/issues/27871
+    it.skip('should use randomness to shuffle results with same score', async function () {
       var seed = 2
 
       function myRandom () {

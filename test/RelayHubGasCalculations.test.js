@@ -25,9 +25,9 @@ function correctGasCost (buffer, nonzerocost, zerocost) {
 contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddress, __, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = time.duration.weeks(4)
-  const chainId = Environments.default.chainId
-  const gtxdatanonzero = Environments.default.gtxdatanonzero
-  const gtxdatazero = Environments.default.gtxdatazero
+  const chainId = Environments.defEnv.chainId
+  const gtxdatanonzero = Environments.defEnv.gtxdatanonzero
+  const gtxdatazero = Environments.defEnv.gtxdatazero
   const baseFee = new BN('300')
   const fee = new BN('10')
   const gasPrice = new BN('10')

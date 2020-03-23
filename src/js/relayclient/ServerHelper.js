@@ -232,7 +232,6 @@ class ServerHelper {
    * initializes an array {@link filteredRelays} of relays curently registered on given RelayHub contract
    */
   async fetchRelaysAdded () {
-    this.verbose = true
     const fromBlock = this.fromBlock || 2
     const eventTopics = event2topic(this.relayHubInstance,
       ['RelayAdded', 'RelayRemoved', 'TransactionRelayed', 'CanRelayFailed'])

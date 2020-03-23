@@ -20,4 +20,5 @@
 /.eslintcache
 /src/js/relayclient/interfaces/
 /ganache.pid
+/types/truffle-contracts/
 serverdock/

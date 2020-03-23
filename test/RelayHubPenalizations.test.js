@@ -14,13 +14,13 @@ const SampleRecipient = artifacts.require('./test/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted')
 
 contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, sender, other]) { // eslint-disable-line no-unused-vars
-  const chainId = Environments.default.chainId
+  const chainId = Environments.defEnv.chainId
   let relayHub
   let recipient
   let paymaster
 
   before(async function () {
-    relayHub = await RelayHub.new(Environments.default.gtxdatanonzero, { gas: 10000000 })
+    relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
     recipient = await SampleRecipient.new()
     paymaster = await TestPaymasterEverythingAccepted.new()
     await recipient.setHub(relayHub.address)

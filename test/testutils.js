@@ -64,7 +64,7 @@ module.exports = {
       proc.stdout.on('data', listener)
       proc.stderr.on('data', listener)
       const doaListener = (code) => {
-        if (!this.alreadystarted) {
+        if (!proc.alreadystarted) {
           relaylog('died before init code=' + code)
           reject(lastresponse)
         }
@@ -170,7 +170,7 @@ module.exports = {
     validTransaction.sign(privKey)
     const rawTx = '0x' + validTransaction.serialize().toString('hex')
 
-    const promise = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       web3.eth.sendSignedTransaction(rawTx, (err, res) => {
         if (err) {
           reject(err)
@@ -179,8 +179,6 @@ module.exports = {
         }
       })
     })
-    const res = await promise
-    console.log('registerNewRelayWithPrivkey', res)
   },
 
   increaseTime: function (time) {
@@ -197,6 +195,12 @@ module.exports = {
           .catch(e => reject(e))
       })
     })
+  },
+
+  evmMineMany: async function (count) {
+    for (let i = 0; i < count; i++) {
+      await this.evmMine()
+    }
   },
 
   evmMine: function () {
