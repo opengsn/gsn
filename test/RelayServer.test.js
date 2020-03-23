@@ -165,7 +165,6 @@ contract('RelayServer', function (accounts) {
       console.log('hooked!')
       return relayServer.createRelayTransaction(
         {
-          relayAddress,
           from,
           to,
           encodedFunction,

@@ -167,7 +167,6 @@ class RelayServer extends EventEmitter {
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster: paymaster,
-      relayHub: relayHubAddress,
       relayAddress: this.address
     })
     const signedData = getDataToSign({
