@@ -9,14 +9,8 @@ const exposeGanachePort = false
 
 const ProviderEngine = require('web3-provider-engine')
 const RpcProvider = require('web3-provider-engine/subproviders/rpc.js')
-const { TruffleArtifactAdapter } = require('@0x/sol-trace')
 
 const ganacheHttpServer = require('ganache-core/lib/httpServer')
-const { GanacheSubprovider } = require('@0x/subproviders')
-
-const { ProfilerSubprovider } = require('@0x/sol-profiler')
-const { CoverageSubprovider } = require('@0x/sol-coverage')
-const { RevertTraceSubprovider } = require('@0x/sol-trace')
 
 const projectRoot = ''
 const solcVersion = packageJson.devDependencies.solc
@@ -28,34 +22,28 @@ const ignoreFilesGlobs = ['**/node_modules/**/*', '**/Migrations.sol', '**/Test*
   '**/IRelay*', '**/RLPReader.sol'
 ]
 
-const artifactAdapter = new TruffleArtifactAdapter(projectRoot, solcVersion)
-const provider = new ProviderEngine()
+function createCovProvider () {
+  const { TruffleArtifactAdapter } = require('@0x/sol-trace')
+  const { GanacheSubprovider } = require('@0x/subproviders')
+  const { ProfilerSubprovider } = require('@0x/sol-profiler')
+  const { CoverageSubprovider } = require('@0x/sol-coverage')
+  const { RevertTraceSubprovider } = require('@0x/sol-trace')
 
-async function writeCoverageOnExit () {
-  if (mode === 'profile') {
-    console.log('==== writing profile data')
-    await global.profilerSubprovider.writeProfilerOutputAsync()
-  } else if (mode === 'coverage') {
-    console.log('==== writing coverage data')
-    await global.coverageSubprovider.writeCoverageAsync()
-  }
-}
+  const artifactAdapter = new TruffleArtifactAdapter(projectRoot, solcVersion)
+  const provider = new ProviderEngine()
 
-if (mode === 'profile') {
-  global.profilerSubprovider = new ProfilerSubprovider(
-    artifactAdapter,
-    defaultFromAddress,
-    {
-      ignoreFilesGlobs,
-      isVerbose
+  async function writeCoverageOnExit () {
+    if (mode === 'profile') {
+      console.log('==== writing profile data')
+      await global.profilerSubprovider.writeProfilerOutputAsync()
+    } else if (mode === 'coverage') {
+      console.log('==== writing coverage data')
+      await global.coverageSubprovider.writeCoverageAsync()
     }
-  )
-  global.profilerSubprovider.stop()
-  provider.addProvider(global.profilerSubprovider)
-  provider.addProvider(new RpcProvider({ rpcUrl: 'http://localhost:8545' }))
-} else {
-  if (mode === 'coverage') {
-    global.coverageSubprovider = new CoverageSubprovider(
+  }
+
+  if (mode === 'profile') {
+    global.profilerSubprovider = new ProfilerSubprovider(
       artifactAdapter,
       defaultFromAddress,
       {
@@ -63,54 +51,76 @@ if (mode === 'profile') {
         isVerbose
       }
     )
-    provider.addProvider(global.coverageSubprovider)
-    // hooking the "exit" method (we can't use process.on("exit"), since its for synch operations)
-    // (and we can't use process.on("beforeExit") since it doesn't work when calling "exit()")
-    const saveExit = process.exit
-    process.exit = async function (code) {
-      await writeCoverageOnExit()
-      saveExit(code)
-    }
-  } else if (mode === 'trace') {
-    const revertTraceSubprovider = new RevertTraceSubprovider(
-      artifactAdapter,
-      defaultFromAddress,
-      isVerbose
-    )
-    provider.addProvider(revertTraceSubprovider)
-  }
-  if (useInProcessGanache) {
-    const ganahceSubprovider = new GanacheSubprovider({
-      // Generate the same set of addresses as ganache-cli --deterministic
-      gasLimit: 10000000,
-      allowUnlimitedContractSize: true,
-      mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect'
-    })
-
-    provider.addProvider(ganahceSubprovider)
-
-    if (exposeGanachePort) {
-      const s = ganacheHttpServer(provider, { log: () => {} })
-
-      s.listen({ port: exposeGanachePort, host: 'localhost' })
-      console.log('Started in-process Ganache, on port ' + exposeGanachePort)
-    }
+    global.profilerSubprovider.stop()
+    provider.addProvider(global.profilerSubprovider)
+    provider.addProvider(new RpcProvider({ rpcUrl: 'http://localhost:8545' }))
   } else {
-    // use external provider
-    provider.addProvider(new RpcProvider({ rpcUrl: 'http://localhost:8544' }))
+    if (mode === 'coverage') {
+      global.coverageSubprovider = new CoverageSubprovider(
+        artifactAdapter,
+        defaultFromAddress,
+        {
+          ignoreFilesGlobs,
+          isVerbose
+        }
+      )
+      provider.addProvider(global.coverageSubprovider)
+      // hooking the "exit" method (we can't use process.on("exit"), since its for synch operations)
+      // (and we can't use process.on("beforeExit") since it doesn't work when calling "exit()")
+      const saveExit = process.exit
+      process.exit = async function (code) {
+        await writeCoverageOnExit()
+        saveExit(code)
+      }
+    } else if (mode === 'trace') {
+      const revertTraceSubprovider = new RevertTraceSubprovider(
+        artifactAdapter,
+        defaultFromAddress,
+        isVerbose
+      )
+      provider.addProvider(revertTraceSubprovider)
+    }
+    if (useInProcessGanache) {
+      const ganahceSubprovider = new GanacheSubprovider({
+        // Generate the same set of addresses as ganache-cli --deterministic
+        gasLimit: 10000000,
+        allowUnlimitedContractSize: true,
+        mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect'
+      })
+
+      provider.addProvider(ganahceSubprovider)
+
+      if (exposeGanachePort) {
+        const s = ganacheHttpServer(provider, { log: () => {} })
+
+        s.listen({
+          port: exposeGanachePort,
+          host: 'localhost'
+        })
+        console.log('Started in-process Ganache, on port ' + exposeGanachePort)
+      }
+    } else {
+      // use external provider
+      provider.addProvider(new RpcProvider({ rpcUrl: 'http://localhost:8544' }))
+    }
   }
+  provider.start(err => {
+    if (err !== undefined) {
+      console.log('err:', err)
+      process.exit(1)
+    }
+  })
+
+  /**
+   * HACK: Truffle providers should have `send` function, while `ProviderEngine` creates providers with `sendAsync`,
+   * but it can be easily fixed by assigning `sendAsync` to `send`.
+   */
+  provider.send = provider.sendAsync.bind(provider)
+  return provider
 }
-provider.start(err => {
-  if (err !== undefined) {
-    console.log('err:', err)
-    process.exit(1)
-  }
-})
 
-/**
- * HACK: Truffle providers should have `send` function, while `ProviderEngine` creates providers with `sendAsync`,
- * but it can be easily fixed by assigning `sendAsync` to `send`.
- */
-provider.send = provider.sendAsync.bind(provider)
-
-module.exports = provider
+if (!mode) {
+  module.exports = {}
+} else {
+  module.exports = createCovProvider()
+}

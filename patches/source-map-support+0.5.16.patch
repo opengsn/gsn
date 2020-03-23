@@ -1,0 +1,13 @@
+diff --git a/node_modules/source-map-support/source-map-support.js b/node_modules/source-map-support/source-map-support.js
+index 1561cee..1f753ff 100644
+--- a/node_modules/source-map-support/source-map-support.js
++++ b/node_modules/source-map-support/source-map-support.js
+@@ -552,7 +553,7 @@ exports.install = function(options) {
+   }
+ 
+   // Install the error reformatter
+-  if (!errorFormatterInstalled) {
++  if (!errorFormatterInstalled || options.errorFormatterForce) {
+     errorFormatterInstalled = true;
+     Error.prepareStackTrace = prepareStackTrace;
+   }

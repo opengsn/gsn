@@ -15,7 +15,7 @@ const registerNewRelayWithPrivkey = testutils.registerNewRelayWithPrivkey
 const assertErrorMessageCorrect = testutils.assertErrorMessageCorrect
 
 const RelayHub = artifacts.require('./RelayHub.sol')
-contract('RelayHub', function (accounts) {
+contract('RelayHub 2', function (accounts) {
   let rhub
   let sr
   let paymaster
@@ -164,7 +164,6 @@ contract('RelayHub', function (accounts) {
       destination: sr.address
     }]
     await asyncForEach(illegalTransactions, async function (tx) {
-      console.log('will try: ' + tx.data.slice(0, 10) + ' ' + tx.destination)
       await registerNewRelayWithPrivkey(
         {
           relayHub: rhub,
