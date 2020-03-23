@@ -3,17 +3,15 @@ const Web3 = require('web3')
 const abiDecoder = require('abi-decoder')
 const Transaction = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
-// import { URL } from 'url'
-// import querystring from 'querystring'
 const RelayHubABI = require('../relayclient/interfaces/IRelayHub')
 const PayMasterABI = require('../relayclient/interfaces/IPaymaster')
 const getDataToSign = require('../relayclient/EIP712/Eip712Helper')
 const RelayRequest = require('../relayclient/EIP712/RelayRequest')
 const utils = require('../relayclient/utils')
-// const Environments = require('./Environments')
+const Environments = require('../relayclient/Environments')
+const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
 const StoredTx = require('./TxStoreManager').StoredTx
 
-// const RelayHub = web3.eth.contract(RelayHubABI)
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 
@@ -22,11 +20,10 @@ const minimumRelayBalance = 1e17 // 0.1 eth
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const maxGasPrice = 100e9
+const GAS_RESERVE = 100000
 const retryGasPriceFactor = 1.2
 const DEBUG = false
 const SPAM = false
-const gtxdatanonzero = 68
-const gtxdatazero = 4
 
 const RelayState = {
   Unknown: '0',
@@ -114,23 +111,7 @@ class RelayServer extends EventEmitter {
       pctRelayFee,
       relayHubAddress
     }) {
-    debug('dump request params',
-      {
-        encodedFunction,
-        approvalData,
-        signature,
-        from,
-        to,
-        paymaster,
-        gasPrice,
-        gasLimit,
-        senderNonce,
-        relayMaxNonce,
-        baseRelayFee,
-        pctRelayFee,
-        relayHubAddress
-      }
-    )
+    debug('dump request params', arguments[0])
     // Check that the relayhub is the correct one
     if (relayHubAddress !== this.relayHubContract.options.address) {
       throw new Error(
@@ -177,10 +158,13 @@ class RelayServer extends EventEmitter {
 
     const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
     const calldataSize =
-      signedData.message.encodedFunction.length +
+      encodedFunction.length +
       signature.length +
       approvalData.length +
       relayCallExtraBytes
+    debug('encodedFunction', encodedFunction, encodedFunction.length)
+    debug('signature', signature, signature.length)
+    debug('approvalData', approvalData, approvalData.length)
 
     this.paymasterContract.options.address = paymaster
     const gasLimits = await this.paymasterContract.methods.getGasLimits().call()
@@ -205,7 +189,9 @@ class RelayServer extends EventEmitter {
     }
     // Send relayed transaction
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
-    const requiredGas = maxPossibleGas + this._correctGasCost(method.encodeABI().slice(2), gtxdatanonzero, gtxdatazero)
+    const requiredGas = maxPossibleGas + GAS_RESERVE
+    debug('maxPossibleGas', maxPossibleGas)
+    debug('requiredGas', requiredGas)
     const maxCharge = parseInt(
       await this.relayHubContract.methods.calculateCharge(requiredGas, {
         gasPrice,
@@ -267,7 +253,8 @@ class RelayServer extends EventEmitter {
         this.ready = false
         throw new Error('Could not get gasPrice from node')
       }
-      if (!(await this.getBalance()) || this.balance < minimumRelayBalance) {
+      await this.getBalance()
+      if (!this.balance || this.balance < minimumRelayBalance) {
         this.ready = false
         throw new Error(
           `Server's balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
@@ -538,19 +525,6 @@ class RelayServer extends EventEmitter {
       address: event.address,
       args: args
     }
-  }
-
-  // TODO extract to utils
-  _correctGasCost (buffer, nonzerocost, zerocost) {
-    let gasCost = 0
-    for (let i = 0; i < buffer.length; i++) {
-      if (buffer[i] === 0) {
-        gasCost += zerocost
-      } else {
-        gasCost += nonzerocost
-      }
-    }
-    return gasCost
   }
 }
 
