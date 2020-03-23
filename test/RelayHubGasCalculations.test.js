@@ -27,6 +27,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
   const unstakeDelay = time.duration.weeks(4)
   const chainId = Environments.defEnv.chainId
   const gtxdatanonzero = Environments.defEnv.gtxdatanonzero
+  const gtxdatazero = Environments.defEnv.gtxdatazero
   const baseFee = new BN('300')
   const fee = new BN('10')
   const gasPrice = new BN('10')
@@ -187,7 +188,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
     const calldata = relayHub.contract.methods.relayCall(relayRequest, signature, '0x').encodeABI()
     const calldataSize = calldata.length / 2 - 1
     const calldataBuffer = Buffer.from(calldata.slice(2), 'hex')
-    const correctGasCost1 = correctGasCost(calldataBuffer, gtxdatanonzero, 4, 3)
+    const correctGasCost1 = correctGasCost(calldataBuffer, gtxdatanonzero, gtxdatazero, 3)
     return new BN(calldataSize * gtxdatanonzero - correctGasCost1).mul(gasPrice)
   }
 

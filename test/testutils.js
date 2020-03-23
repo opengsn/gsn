@@ -1,4 +1,5 @@
 const childProcess = require('child_process')
+const path = require('path')
 
 const Transaction = require('ethereumjs-tx')
 const EthUtils = require('ethereumjs-util')
@@ -18,32 +19,36 @@ module.exports = {
   //
   startRelay: async function (rhub, options) {
     // eslint-disable-next-line no-path-concat
-    const server = __dirname + '/../build/server/bin/RelayHttpServer'
+    // const server = __dirname + '/../src/js/relayserver/runServer.js'
 
     options = options || {}
     const args = []
-    args.push('-Workdir', './build/server')
-    args.push('-DevMode')
+    args.push('--Workdir', '/tmp/server')
+    args.push('--DevMode')
     if (rhub) {
-      args.push('-RelayHubAddress', rhub.address)
+      args.push('--RelayHubAddress', rhub.address)
     }
     if (options.EthereumNodeUrl) {
-      args.push('-EthereumNodeUrl', options.EthereumNodeUrl)
+      args.push('--EthereumNodeUrl', options.EthereumNodeUrl)
     }
     if (options.GasPricePercent) {
-      args.push('-GasPricePercent', options.GasPricePercent)
+      args.push('--GasPricePercent', options.GasPricePercent)
     }
     if (options.pctRelayFee) {
-      args.push('-PercentFee', options.pctRelayFee)
+      args.push('--PercentFee', options.pctRelayFee)
     }
     if (options.baseRelayFee) {
-      args.push('-BaseFee', options.baseRelayFee)
+      args.push('--BaseFee', options.baseRelayFee)
     }
-    const proc = childProcess.spawn(server, args)
+    const runServerPath = path.resolve(__dirname, '../src/js/relayserver/runServer.js')
+    const proc = childProcess.spawn('node',
+      [runServerPath, ...args])
 
     let relaylog = function () {
     }
-    if (process.env.relaylog) { relaylog = (msg) => msg.split('\n').forEach(line => console.log('relay-' + proc.pid + '> ' + line)) }
+    if (process.env.relaylog) {
+      relaylog = (msg) => msg.split('\n').forEach(line => console.log('relay-' + proc.pid + '> ' + line))
+    }
 
     await new Promise((resolve, reject) => {
       let lastresponse
@@ -81,6 +86,7 @@ module.exports = {
       await module.exports.sleep(1000)
     }
     assert.ok(res, 'can\'t ping server')
+    assert.ok(res.RelayServerAddress, `server returned unknown response ${res}`)
     const relayServerAddress = res.RelayServerAddress
     console.log('Relay Server Address', relayServerAddress)
     await web3.eth.sendTransaction({
@@ -181,7 +187,7 @@ module.exports = {
         jsonrpc: '2.0',
         method: 'evm_increaseTime',
         params: [time],
-        id: new Date().getSeconds()
+        id: Date.now()
       }, (err) => {
         if (err) return reject(err)
         module.exports.evmMine()
@@ -203,13 +209,40 @@ module.exports = {
         jsonrpc: '2.0',
         method: 'evm_mine',
         params: [],
-        id: new Date().getSeconds()
+        id: Date.now()
       }, (e, r) => {
         if (e) {
           reject(e)
         } else {
           resolve(r)
         }
+      })
+    })
+  },
+
+  snapshot: function () {
+    return new Promise((resolve, reject) => {
+      web3.currentProvider.send({
+        jsonrpc: '2.0',
+        method: 'evm_snapshot',
+        id: Date.now()
+      }, (err, snapshotId) => {
+        if (err) { return reject(err) }
+        return resolve(snapshotId)
+      })
+    })
+  },
+
+  revert: function (id) {
+    return new Promise((resolve, reject) => {
+      web3.currentProvider.send({
+        jsonrpc: '2.0',
+        method: 'evm_revert',
+        params: [id],
+        id: Date.now()
+      }, (err, result) => {
+        if (err) { return reject(err) }
+        return resolve(result)
       })
     })
   },

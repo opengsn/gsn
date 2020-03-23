@@ -164,5 +164,9 @@ module.exports = {
 
   isSameAddress: function (address1, address2) {
     return address1.toLowerCase() === address2.toLowerCase()
+  },
+
+  sleep: function (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 }
