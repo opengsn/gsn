@@ -1,16 +1,23 @@
-const Big = require('big.js')
-const { BN, ether, expectEvent, time } = require('@openzeppelin/test-helpers')
+import Big from 'big.js'
+import BN from 'bn.js'
+import { ether, expectEvent, time } from '@openzeppelin/test-helpers'
 
-const { calculateTransactionMaxPossibleGas, getEip712Signature } = require('../src/js/relayclient/utils')
-const Environments = require('../src/js/relayclient/Environments')
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/js/relayclient/utils'
+import Environments from '../src/js/relayclient/Environments'
+import RelayRequest from '../src/js/relayclient/EIP712/RelayRequest'
+
+import {
+  RelayHubInstance,
+  TestRecipientInstance,
+  TestPaymasterVariableGasLimitsInstance
+} from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('./TestPaymasterVariableGasLimits.sol')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('./test/TestPaymasterConfigurableMisbehavior.sol')
 
-function correctGasCost (buffer, nonzerocost, zerocost) {
+function correctGasCost (buffer: Buffer, nonzerocost: number, zerocost: number): number {
   let gasCost = 0
   for (let i = 0; i < buffer.length; i++) {
     if (buffer[i] === 0) {
@@ -22,7 +29,7 @@ function correctGasCost (buffer, nonzerocost, zerocost) {
   return gasCost
 }
 
-contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddress, __, senderAddress, other]) {
+contract.only('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = time.duration.weeks(4)
   const chainId = Environments.defEnv.chainId
@@ -39,14 +46,14 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
     post: 2080
   }
 
-  let relayHub
-  let recipient
-  let paymaster
+  let relayHub: RelayHubInstance
+  let recipient: TestRecipientInstance
+  let paymaster: TestPaymasterVariableGasLimitsInstance
   let encodedFunction
-  let signature
-  let relayRequest
+  let signature: string
+  let relayRequest: RelayRequest
 
-  async function prepareForHub () {
+  async function prepareForHub (): Promise<void> {
     recipient = await TestRecipient.new()
     paymaster = await TestPaymasterVariableGasLimits.new()
     await paymaster.setHub(relayHub.address)
@@ -85,7 +92,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
     await prepareForHub()
   })
 
-  describe('#calculateCharge()', async function () {
+  describe('#calculateCharge()', function () {
     it('should calculate fee correctly', async function () {
       const gasUsed = 1e8
       const gasPrice = 1e9
@@ -103,7 +110,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
     })
   })
 
-  describe('#relayCall()', async function () {
+  describe('#relayCall()', function () {
     it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'acceptRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
@@ -115,7 +122,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
         const calldata = relayHub.contract.methods.relayCall(relayRequest, signature, '0x').encodeABI()
         const calldataSize = calldata.length / 2 - 1
         const gasLimits = await paymaster.getGasLimits()
-        const hubOverhead = parseInt(await relayHub.getHubOverhead())
+        const hubOverhead = (await relayHub.getHubOverhead()).toNumber()
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasLimits,
           hubOverhead,
@@ -126,12 +133,12 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
-          gasleft: (gasLimits.preRelayedCallGasLimit - magicNumbers.pre).toString(),
-          arcGasleft: (gasLimits.acceptRelayedCallGasLimit - magicNumbers.arc).toString(),
+          gasleft: (parseInt(gasLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
+          arcGasleft: (parseInt(gasLimits.acceptRelayedCallGasLimit) - magicNumbers.arc).toString(),
           maxPossibleGas: maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPostCallWithValues', {
-          gasleft: (gasLimits.postRelayedCallGasLimit - magicNumbers.post).toString()
+          gasleft: (parseInt(gasLimits.postRelayedCallGasLimit) - magicNumbers.post).toString()
         })
       })
 
@@ -161,6 +168,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
       const maxPossibleGasIrrelevantValue = 8000000
       const acceptRelayedCallGasLimit = 50000
       const canRelayResponse = await relayHub.canRelay(relayRequestMisbehaving, maxPossibleGasIrrelevantValue, acceptRelayedCallGasLimit, signature, '0x')
+      // @ts-ignore
       assert.equal(AcceptRelayedCallReverted, canRelayResponse.status)
 
       const res = await relayHub.relayCall(relayRequestMisbehaving, signature, '0x', {
@@ -173,8 +181,13 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
     })
   })
 
-  async function getBalances () {
+  async function getBalances (): Promise<{
+    relayRecipient: BN
+    relay: Big
+    relayOwners: BN
+  }> {
     const relayRecipient = await relayHub.balanceOf(paymaster.address)
+    // @ts-ignore
     const relay = new Big(await web3.eth.getBalance(relayAddress))
     const relayOwners = await relayHub.balanceOf(relayOwner)
     return {
@@ -184,15 +197,15 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
     }
   }
 
-  function calculateOverchargeForCalldata (relayRequest, signature) {
+  function calculateOverchargeForCalldata (relayRequest: RelayRequest, signature: string): BN {
     const calldata = relayHub.contract.methods.relayCall(relayRequest, signature, '0x').encodeABI()
     const calldataSize = calldata.length / 2 - 1
     const calldataBuffer = Buffer.from(calldata.slice(2), 'hex')
-    const correctGasCost1 = correctGasCost(calldataBuffer, gtxdatanonzero, gtxdatazero, 3)
+    const correctGasCost1 = correctGasCost(calldataBuffer, gtxdatanonzero, gtxdatazero)
     return new BN(calldataSize * gtxdatanonzero - correctGasCost1).mul(gasPrice)
   }
 
-  function logOverhead (weiActualCharge, overchargeForCalldata, weiGasUsed) {
+  function logOverhead (weiActualCharge: BN, overchargeForCalldata: BN, weiGasUsed: BN): void {
     const actualChargeWithoutOvercharge = weiActualCharge.sub(overchargeForCalldata)
     const gasDiff = weiGasUsed.sub(actualChargeWithoutOvercharge).div(gasPrice).toString()
     if (gasDiff !== '0') {
@@ -200,9 +213,9 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
     }
   }
 
-  describe('check calculation does not for different fees', async function () {
+  describe('check calculation does not break for different fees', function () {
     before(async function () {
-      await relayHub.depositFor(relayOwner, { value: 1 })
+      await relayHub.depositFor(relayOwner, { value: (1).toString() })
     });
 
     [0, 100, 1000, 50000]
@@ -213,7 +226,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
             if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return
             // 50k tests take more then 10 seconds to complete so will run once for sanity
             if (messageLength === 50000 && requestedFee !== 10) return
-            it(`should compensate relay with requested fee of ${requestedFee}% with ${messageLength} calldata size`, async function () {
+            it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`, async function () {
               const beforeBalances = await getBalances()
               const pctRelayFee = requestedFee.toString()
               const senderNonce = (await relayHub.getNonce(senderAddress)).toString()
@@ -244,23 +257,29 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
               assert.notEqual(beforeBalances.relayOwners.toString(), afterBalances.relayOwners.toString(), 'transaction must have failed')
               const weiActualCharge = afterBalances.relayOwners.sub(beforeBalances.relayOwners)
               const weiGasUsed = beforeBalances.relay.sub(afterBalances.relay)
+              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               assert.equal((res.receipt.gasUsed * gasPrice).toString(), weiGasUsed.toString(), 'where else did the money go?')
 
               // the paymaster will always pay more for the transaction because the calldata is assumed to be nonzero
               const overchargeForCalldata = calculateOverchargeForCalldata(relayRequest, signature)
+              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               if (requestedFee === 0) logOverhead(weiActualCharge, overchargeForCalldata, weiGasUsed)
 
               // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
+              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               const chargeBase = weiGasUsed.add(overchargeForCalldata)
+              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               const expectedActualCharge = chargeBase.mul(new BN(requestedFee).add(new BN(100))).div(new BN(100))
               const diffBN = expectedActualCharge.sub(weiActualCharge)
               const diff = Math.floor(parseInt(diffBN.abs().toString()))
               assert.equal(diff, 0)
               // Check that relay did pay it's gas fee by himself.
+              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               const expectedBalanceAfter = beforeBalances.relay.sub(res.receipt.gasUsed * gasPrice)
               assert.equal(expectedBalanceAfter.cmp(afterBalances.relay), 0, 'relay did not pay the expected gas fees')
 
               // Check that relay's weiActualCharge is deducted from recipient's stake.
+              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               const expectedRecipientBalance = beforeBalances.relayRecipient.sub(weiActualCharge)
               assert.equal(expectedRecipientBalance.toString(), afterBalances.relayRecipient.toString())
             })

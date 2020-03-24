@@ -654,6 +654,11 @@
     source-map-support "^0.5.16"
     web3 "1.2.1"
 
+"@types/big.js@^4.0.5":
+  version "4.0.5"
+  resolved "https://registry.yarnpkg.com/@types/big.js/-/big.js-4.0.5.tgz#62c61697646269e39191f24e55e8272f05f21fc0"
+  integrity sha512-D9KFrAt05FDSqLo7PU9TDHfDgkarlwdkuwFsg7Zm4xl62tTNaz+zN+Tkcdx2wGLBbSMf8BnoMhOVeUGUaJfLKg==
+
 "@types/bignumber.js@5.0.0", "@types/bignumber.js@^5.0.0":
   version "5.0.0"
   resolved "https://registry.yarnpkg.com/@types/bignumber.js/-/bignumber.js-5.0.0.tgz#d9f1a378509f3010a3255e9cc822ad0eeb4ab969"
@@ -10416,10 +10421,10 @@ type@^2.0.0:
   resolved "https://registry.yarnpkg.com/type/-/type-2.0.0.tgz#5f16ff6ef2eb44f260494dae271033b29c09a9c3"
   integrity sha512-KBt58xCHry4Cejnc2ISQAF7QY+ORngsWfxezO68+12hKV6lQY8P/psIkcbjeHWn7MqcgciWJyCCevFMJdIXpow==
 
-typechain-target-trufflehotfix@0.0.2-alpha:
-  version "0.0.2-alpha"
-  resolved "https://registry.yarnpkg.com/typechain-target-trufflehotfix/-/typechain-target-trufflehotfix-0.0.2-alpha.tgz#de7e6379338a8b6a371972be1263c967efc5e458"
-  integrity sha512-nWlkXfmtGI/VEAlf1rJUuSzbWQZaLT2x0N/W9huFdlOXkkfMyLRvfuxrKAzEv/7ZNUWbL5i7AN8olaa0O90XDA==
+typechain-target-trufflehotfix@0.0.4-alpha:
+  version "0.0.4-alpha"
+  resolved "https://registry.yarnpkg.com/typechain-target-trufflehotfix/-/typechain-target-trufflehotfix-0.0.4-alpha.tgz#3a1286a9640245723e71b041ccf27ca8af73219e"
+  integrity sha512-fabI25L8rsMUFiHiptEdwnDx1qzRQddoDwslwxFeO8SCyCrc5ozwl79RwG3qwR0qRy0h9I0YnWJfEAdcMLCpsg==
   dependencies:
     lodash "^4.17.15"
 
