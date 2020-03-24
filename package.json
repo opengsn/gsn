@@ -47,7 +47,7 @@
     "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache",
     "web": "./restart-relay.sh web",
     "trace": "MODE=trace truffle test",
-    "coverage": "./scripts/run-coverage",
+    "coverage": "yarn generate && ./scripts/run-coverage",
     "clean-coverage": "shx rm -rf coverage coverage.json",
     "generate": "rm -rf ./build/contracts && truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json'",
     "tsc": "tsc --noEmit",
