@@ -29,7 +29,7 @@ function correctGasCost (buffer: Buffer, nonzerocost: number, zerocost: number):
   return gasCost
 }
 
-contract.only('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __, senderAddress, other]) {
+contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = time.duration.weeks(4)
   const chainId = Environments.defEnv.chainId
