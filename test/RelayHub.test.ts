@@ -357,7 +357,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             gasPrice
           })
           const nonceAfter = await relayHubInstance.getNonce(senderAddress)
-          assert.equal(nonceBefore.toNumber() + 1, nonceAfter.toNumber())
+          assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
             message,
