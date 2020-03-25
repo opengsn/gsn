@@ -146,7 +146,6 @@ contract('RelayServer', function (accounts) {
     const relayClient = new RelayClient(web3, relayClientConfig)
     relayClient.sendViaRelay = async function (
       {
-        relayAddress,
         from,
         to,
         encodedFunction,

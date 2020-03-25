@@ -26,7 +26,7 @@ const RelayRequest = [
   { name: 'relayData', type: 'RelayData' }
 ]
 
-module.exports = function (
+module.exports = function getDataToSign (
   {
     chainId,
     relayHub,

@@ -6,6 +6,7 @@ const { recoverTypedSignature_v4 } = require('eth-sig-util')
 const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
 const Environments = require('../src/js/relayclient/Environments')
 const { getEip712Signature } = require('../src/js/relayclient/utils')
+const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 
 const EIP712Sig = artifacts.require('./EIP712Sig.sol')
 
@@ -38,21 +39,24 @@ contract('Utils', async function (accounts) {
         paymaster
       })
 
-      const { signature: sig, data } = await getEip712Signature({
-        web3,
+      const dataToSign = await getDataToSign({
         chainId,
         relayHub,
         relayRequest
       })
+      const sig = await getEip712Signature({
+        web3,
+        dataToSign
+      })
 
       const recoveredAccount = recoverTypedSignature_v4({
-        data,
+        data: dataToSign,
         sig
       })
       assert.strictEqual(senderAddress.toLowerCase(), recoveredAccount.toLowerCase())
 
       const eip712Sig = await EIP712Sig.new(relayHub)
-      const verify = await eip712Sig.verify(data.message, sig, { from: senderAddress })
+      const verify = await eip712Sig.verify(dataToSign.message, sig, { from: senderAddress })
       assert.strictEqual(verify, true)
     })
   })
