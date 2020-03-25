@@ -191,7 +191,7 @@ contract('RelayClient', function (accounts) {
           assert.equal('Error: canRelay failed: 13: test: not approved', error.toString())
         } else {
           // error checked by relay:
-          assert.include(error.otherErrors[0], 'canRelay() view function returned error code=' + expectedError)
+          assert.include(error.otherErrors[0], 'canRelay failed in server:' + expectedError)
         }
       }
     }))
@@ -217,7 +217,7 @@ contract('RelayClient', function (accounts) {
     relayClient.httpSend.send = function (url, jsonRequestData, callback) {
       if (url.includes('/relay')) {
         // Otherwise, server will return an error if asked to sign with a low nonce.
-        jsonRequestData.RelayMaxNonce = 1000000
+        jsonRequestData.relayMaxNonce = 1000000
       }
       origSend.bind(relayClient.httpSend)(url, jsonRequestData, callback)
     }
@@ -371,8 +371,8 @@ contract('RelayClient', function (accounts) {
         } else {
           const callbackWrap = function (e, r) {
             assert.equal(null, e)
-            assert.ok(r.input)
-            assert.include(r.input, messageHex)
+            assert.ok(r.signedTx)
+            assert.include(r.signedTx, messageHex)
             callback(e, r)
           }
           origHttpSend.send(url, jsonRequestData, callbackWrap)
@@ -578,8 +578,8 @@ contract('RelayClient', function (accounts) {
 
     it('should send relay balance to owner only after unstaked', async function () {
       beforeOwnerBalance = await web3.eth.getBalance(relayOwner)
-      const unstakeDelay = (await rhub.getRelay(relayServerAddress)).unstakeDelay
-      await increaseTime(unstakeDelay.toNumber())
+      const unstakeDelay = (await rhub.getRelay(relayServerAddress)).unstakeDelay.toNumber()
+      await increaseTime(unstakeDelay)
       const res = await rhub.unstake(relayServerAddress, { from: relayOwner })
       assert.equal('Unstaked', res.logs[0].event)
       assert.equal(relayServerAddress.toLowerCase(), res.logs[0].args.relay.toLowerCase())
