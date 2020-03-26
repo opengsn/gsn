@@ -1,5 +1,7 @@
 /* global contract artifacts before it */
 
+const Environments = require('../src/js/relayclient/Environments')
+
 const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
 const TestUniswap = artifacts.require('TestUniswap.sol')
@@ -130,7 +132,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         baseRelayFee: '0'
       })
 
-      const chainId = await web3.eth.net.getId()
+      const chainId = Environments.defEnv.chainId
       const { signature } = await getEip712Signature({
         web3,
         chainId,

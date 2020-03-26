@@ -33,7 +33,7 @@ contract TokenPaymaster is BasePaymaster {
      * You can use TokenGasCalculator to calculate these values (they depend on actual code of postRelayedCall,
      * but also the gas usage of the token and of Uniswap)
      */
-    function setPostGasUsage(uint _gasUsedByPostWithPreCharge, uint _gasUsedByPostWithoutPreCharge ) external onlyOwner {
+    function setPostGasUsage(uint _gasUsedByPostWithPreCharge, uint _gasUsedByPostWithoutPreCharge) external onlyOwner {
         gasUsedByPostWithPreCharge = _gasUsedByPostWithPreCharge;
         gasUsedByPostWithoutPreCharge = _gasUsedByPostWithoutPreCharge;
     }
