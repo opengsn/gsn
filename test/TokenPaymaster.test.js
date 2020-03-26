@@ -20,31 +20,13 @@ async function retcode (func) {
   }
 }
 
-function getLogs (receipt) {
-  let logs = receipt.logs || receipt
-  // retfirst = x => x[0]
-  if (!Array.isArray(logs)) {
-    logs = [logs]
-    // let retfirst = x => x
-  }
-  return (logs.map(log => ({
-    event: log.event,
-    ...Object.entries(log.args)
-      .filter(e => !/^[0-9_]/.test(e[0]))
-      .reduce((map, [key, val]) => ({
-        ...map,
-        [key]: val.toString()
-      }), {})
-  })))
-}
-
 contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let paymaster, uniswap, token, recipient, hub
   let sharedRelayRequestData
 
   async function calculatePostGas (paymaster) {
     const testpaymaster = await TokenPaymaster.new(await paymaster.uniswap())
-    const calc = await TokenGasCalculator.new()
+    const calc = await TokenGasCalculator.new({ gas: 10000000 })
     await testpaymaster.transferOwnership(calc.address)
     // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
     await token.mint(1000)
@@ -62,8 +44,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     paymaster = await TokenPaymaster.new(uniswap.address)
     await calculatePostGas(paymaster)
     await paymaster.setRelayHub(hub.address)
-    console.log('withpre=', (await paymaster.gasUsedByPostWithPreCharge()).toString(), 'withoutpre=',
-      (await paymaster.gasUsedByPostWithoutPreCharge()).toString())
 
     recipient = await TestProxy.new()
     await recipient.setRelayHub(hub.address)
@@ -85,41 +65,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     }
   })
 
-  context('#TestUniswap', () => {
-    it('check exchange rate', async () => {
-      assert.equal((await uniswap.getTokenToEthOutputPrice(2e10)).toString(), 4e10)
-      assert.equal((await uniswap.getTokenToEthInputPrice(2e10)).toString(), 1e10)
-    })
-
-    it.skip('swap token to eth', async () => {
-      await token.mint(10e18.toString())
-      const ethBefore = await web3.eth.getBalance(from)
-      const tokensBefore = await token.balanceOf(from)
-      // zero price for easier calculation
-      await uniswap.tokenToEthSwapOutput(2e18.toString(), -1, -1, { gasPrice: 0 })
-      const ethAfter = await web3.eth.getBalance(from)
-      const tokensAfter = await token.balanceOf(from)
-
-      assert.equal((tokensAfter - tokensBefore) / 1e18, -4)
-      assert.equal((ethAfter - ethBefore) / 1e18, 2)
-    })
-
-    it('swap and transfer', async () => {
-      await token.mint(10e18.toString())
-      const target = '0x' + '1'.repeat(40)
-      const tokensBefore = await token.balanceOf(from)
-      const ethBefore = await web3.eth.getBalance(target)
-      await uniswap.tokenToEthTransferOutput(2e18.toString(), -1, -1, target)
-      const tokensAfter = await token.balanceOf(from)
-
-      const ethAfter = await web3.eth.getBalance(target)
-      assert.equal((tokensAfter - tokensBefore) / 1e18, -4)
-      assert.equal((ethAfter - ethBefore) / 1e18, 2)
-    })
-  })
-
   context('#acceptRelayedCall', async () => {
-    it('fail if not enough balance', async () => {
+    it('should fail if not enough balance', async () => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData
       })
@@ -129,12 +76,12 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       })
     })
 
-    it('fund recipient', async () => {
+    it('should fund recipient', async () => {
       await token.mint(5e18.toString())
       await token.transfer(recipient.address, 5e18.toString())
     })
 
-    it('fail if no approval', async () => {
+    it('should fail if no approval', async () => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData
       })
@@ -144,11 +91,11 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       })
     })
 
-    it('recipient.approve', async () => {
+    it('should recipient.approve', async () => {
       await recipient.execute(token.address, token.contract.methods.approve(paymaster.address, -1).encodeABI())
     })
 
-    it('succeed?', async () => {
+    it('should succeed acceptRelayedCall', async () => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData
       })
@@ -157,7 +104,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     })
   })
 
-  context('relayedCall', () => {
+  context('#relayedCall', () => {
     const paymasterDeposit = 1e18.toString()
 
     before(async () => {
@@ -208,12 +155,11 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         gasPrice: 1,
         gas: 1.516181e6
       })
-      console.log('rh.deposit before', (await hub.balanceOf(paymaster.address)).toString())
 
       // console.log(getLogs(ret))
       const relayed = ret.logs.find(log => log.event === 'TransactionRelayed')
       const events = await paymaster.getPastEvents()
-      console.log(getLogs(events))
+      // console.log(getLogs(events))
       const chargedEvent = events.find(e => e.event === 'TokensCharged')
 
       assert.equal(relayed.args.status, 0)

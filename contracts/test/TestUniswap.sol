@@ -32,15 +32,6 @@ contract TestUniswap is IUniswap {
         return address(token);
     }
 
-    function addLiquidity(uint256 min_liquidity, uint256 max_tokens, uint256 deadline) external payable returns (uint256 out) {
-        min_liquidity;
-        max_tokens;
-        deadline;
-        return 0;
-    }
-
-    event SwapTokensToEth(address msgsender, uint tokensToSell, uint tokAllowance, uint eth_bought, uint ethbal, int tokbal);
-
     function tokenToEthSwapOutput(uint256 eth_bought, uint256 max_tokens, uint256 deadline) public returns (uint256 out) {
         (max_tokens, deadline);
         uint tokensToSell = getTokenToEthOutputPrice(eth_bought);
@@ -57,10 +48,11 @@ contract TestUniswap is IUniswap {
 
     function tokenToEthTransferOutput(uint256 eth_bought, uint256 max_tokens, uint256 deadline, address payable recipient) external returns (uint256 out) {
         (max_tokens, deadline, recipient);
+        require(address(this).balance > eth_bought, "not enough liquidity");
+
         uint tokensToSell = getTokenToEthOutputPrice(eth_bought);
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
-        require(address(this).balance > eth_bought, "not enough liquidity");
         recipient.transfer(eth_bought);
         return tokensToSell;
     }
