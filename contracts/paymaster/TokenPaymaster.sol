@@ -15,17 +15,27 @@ import "../BasePaymaster.sol";
  */
 contract TokenPaymaster is BasePaymaster {
 
-    //TODO: just expose them for debugging..
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-
     IUniswap public uniswap;
     IERC20 public token;
+
+    //filled by calculatePostGas()
+    uint public gasUsedByPostWithPreCharge;
+    uint public gasUsedByPostWithoutPreCharge;
 
     constructor(IUniswap _uniswap) public {
         uniswap = _uniswap;
         token = IERC20(uniswap.tokenAddress());
         token.approve(address(uniswap), uint(-1));
+    }
+
+    /**
+     * set gas used by postRelayedCall, for proper gas calculation.
+     * You can use TokenGasCalculator to calculate these values (they depend on actual code of postRelayedCall,
+     * but also the gas usage of the token and of Uniswap)
+     */
+    function setPostGasUsage(uint _gasUsedByPostWithPreCharge, uint _gasUsedByPostWithoutPreCharge ) external onlyOwner {
+        gasUsedByPostWithPreCharge = _gasUsedByPostWithPreCharge;
+        gasUsedByPostWithoutPreCharge = _gasUsedByPostWithoutPreCharge;
     }
 
     //return the payer of this request.
@@ -40,6 +50,12 @@ contract TokenPaymaster is BasePaymaster {
     }
 
     /**
+     * verify that payer can pay for the transaction: must have balance, and also allownce for
+     * this paymaster to use it.
+     * NOTE: A sub-class can also allow transactions that can't be pre-paid, e.g. create transaction or
+     *  a proxy call to token.approve.
+     *  In this case, sub-class the acceptRelayedCall to verify the transaction, and set a tokenPreCharge to zero.
+     *  The methods preRelayedCall, postRelayedCall already handle such zero tokenPreCharge.
      */
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
@@ -61,8 +77,6 @@ contract TokenPaymaster is BasePaymaster {
         if (tokenPreCharge > token.allowance(payer, address(this))) {
             return (99, "allowance too low");
         }
-        tokenPreCharge = 0;
-
         return (0, abi.encode(payer, tokenPreCharge));
     }
 
@@ -81,10 +95,9 @@ contract TokenPaymaster is BasePaymaster {
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GSNTypes.GasData calldata gasData
-    ) external {
+    ) external relayHubOnly {
         (success, preRetVal);
-        //allow self for gas estimate.
-        require(msg.sender == address(relayHub) || msg.sender == address(this));
+
         (address payer, uint tokenPrecharge) = abi.decode(context, (address, uint));
         uint ethActualCharge;
         uint justPost;
@@ -112,36 +125,4 @@ contract TokenPaymaster is BasePaymaster {
     }
 
     event TokensCharged(uint gasUseWithoutPost, uint ethActualCharge, uint tokenActualCharge);
-
-    //filled by calculatePostGas()
-    uint public gasUsedByPostWithPreCharge;
-    uint public gasUsedByPostWithoutPreCharge;
-
-    //calculate actual cost of postRelayedCall.
-    // to do so, we actually move funds, so the Paymaster must have some token balance, which can be withdrawn later.
-    // note that actual charge depends on Uniswap and Token implementations
-    // assumptions:
-    // transfer, transferFrom where both sender and recipient are the same doesn't change gas usage.
-    // we assume target's original balance is non-zero (otherwise, the transfer will cost more)
-    function calculatePostGas() public onlyOwner {
-
-        gasUsedByPostWithPreCharge = 0;
-        gasUsedByPostWithoutPreCharge = 0;
-        //strange: can't transferFrom(this) without approval..
-        token.approve(address(this), uint(-1));
-
-        GSNTypes.GasData memory gasData = GSNTypes.GasData(0, 1, 0, 0);
-        bytes memory ctx0 = abi.encode(this, uint(0));
-        //no precharge
-        bytes memory ctx1 = abi.encode(this, uint(200));
-        //with precharge
-        uint gasinit = gasleft();
-        this.postRelayedCall(ctx0, true, bytes32(0), 100, gasData);
-        uint gas0 = gasleft();
-        this.postRelayedCall(ctx1, true, bytes32(0), 100, gasData);
-        uint gas1 = gasleft();
-
-        gasUsedByPostWithoutPreCharge = gasinit - gas0;
-        gasUsedByPostWithPreCharge = gas0 - gas1;
-    }
 }

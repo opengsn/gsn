@@ -1,6 +1,7 @@
 /* global contract artifacts before it */
 
 const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
+const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
 const TestUniswap = artifacts.require('TestUniswap.sol')
 const TestToken = artifacts.require('TestToken.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
@@ -41,18 +42,26 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let paymaster, uniswap, token, recipient, hub
   let sharedRelayRequestData
 
+  async function calculatePostGas (paymaster) {
+    const testpaymaster = await TokenPaymaster.new(await paymaster.uniswap())
+    const calc = await TokenGasCalculator.new()
+    await testpaymaster.transferOwnership(calc.address)
+    // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
+    await token.mint(1000)
+    await token.transfer(calc.address, 1000)
+    const ret = await calc.calculatePostGas.call(testpaymaster.address)
+    await paymaster.setPostGasUsage(ret[0], ret[1])
+  }
+
   before(async () => {
     // exchange rate 2 tokens per eth.
     uniswap = await TestUniswap.new(2, 1, { value: 5e18 })
     hub = await RelayHub.new(16)
     token = await TestToken.at(await uniswap.tokenAddress())
-    paymaster = await TokenPaymaster.new(uniswap.address)
-    await paymaster.setRelayHub(hub.address)
 
-    // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
-    await token.mint(1e18.toString())
-    await token.transfer(paymaster.address, 1e18.toString())
-    await paymaster.calculatePostGas()
+    paymaster = await TokenPaymaster.new(uniswap.address)
+    await calculatePostGas(paymaster)
+    await paymaster.setRelayHub(hub.address)
     console.log('withpre=', (await paymaster.gasUsedByPostWithPreCharge()).toString(), 'withoutpre=',
       (await paymaster.gasUsedByPostWithoutPreCharge()).toString())
 
