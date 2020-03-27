@@ -137,6 +137,7 @@ var clk *fakeclock.FakeClock
 var sampleRecipient common.Address
 var testSponsor common.Address
 var rhaddr common.Address
+var forwarder common.Address
 
 var boundHub *bind.BoundContract
 var boundRecipient *bind.BoundContract
@@ -218,7 +219,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	_,err = sr.SetHub(auth, rhaddr)
+
+	callOpt := &bind.CallOpts{}
+	forwarder,err = sr.GetTrustedForwarder(callOpt)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -270,7 +273,7 @@ func TestMain(m *testing.M) {
 	}
 	_, _ = client.TransactionReceipt(context.Background(), tx.Hash())
 
-	callOpt := &bind.CallOpts{}
+	callOpt = &bind.CallOpts{}
 	toBalance, err := rhub.BalanceOf(callOpt, testSponsor)
 	if err != nil {
 		log.Println(err)
@@ -329,9 +332,9 @@ func printSignature(txb string, baseFee int64, txFee int64, gasPrice int64, gasL
 	fmt.Println("const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')")
 	fmt.Printf(
 		"=====\n" +
-			"utils.getEip712Signature({web3, chainId: 1, relayHub: '%v', relayRequest: new RelayRequest({web3, senderAddress: '%v', senderNonce: '%v', target: '%v', encodedFunction: '%v', baseRelayFee: '%v', pctRelayFee: '%v', gasPrice: '%v', gasLimit: '%v', paymaster: '%v', relayAddress: '%v'}) })\n" +
+			"utils.getEip712Signature({web3, chainId: 1, verifier: '%v', relayRequest: new RelayRequest({web3, senderAddress: '%v', senderNonce: '%v', target: '%v', encodedFunction: '%v', baseRelayFee: '%v', pctRelayFee: '%v', gasPrice: '%v', gasLimit: '%v', paymaster: '%v', relayAddress: '%v'}) })\n" +
 			"======\n",
-		rhaddr.Hex(), crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), senderNonce, sampleRecipient.Hex(), txb, baseFee, txFee, gasPrice, gasLimit, testSponsor.Hex(), relay.Address().Hex(),
+		forwarder.Hex(), crypto.PubkeyToAddress(gaslessKey2.PublicKey).Hex(), senderNonce, sampleRecipient.Hex(), txb, baseFee, txFee, gasPrice, gasLimit, testSponsor.Hex(), relay.Address().Hex(),
 	)
 }
 

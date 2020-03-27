@@ -8,8 +8,9 @@ import "../TrustedForwarder.sol";
 
 contract TestRecipient is BaseRelayRecipient {
 
-    constructor(address forwarder) public {
-        trustedForwarder = forwarder;
+    constructor() public {
+        //should be a singleton, since Paymaster should (eventually) trust it.
+        trustedForwarder = address(new TrustedForwarder());
     }
 
     event Reverting(string message);

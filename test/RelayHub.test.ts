@@ -15,7 +15,6 @@ import {
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
@@ -50,9 +49,8 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
   beforeEach(async function () {
     relayHubInstance = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
-    const forwarderContract = await TrustedForwarder.new()
-    forwarder = forwarderContract.address
-    recipientContract = await TestRecipient.new(forwarder)
+    recipientContract = await TestRecipient.new()
+    forwarder = await recipientContract.getTrustedForwarder()
 
     target = recipientContract.address
     paymaster = paymasterContract.address

@@ -14,7 +14,6 @@ import {
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
-const TrustedForwarder = artifacts.require('./TrustedForwarder.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('./TestPaymasterVariableGasLimits.sol')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('./test/TestPaymasterConfigurableMisbehavior.sol')
@@ -57,8 +56,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
   let forwarder: TrustForwarderInstance
 
   async function prepareForHub (): Promise<void> {
-    forwarder = await TrustedForwarder.new()
-    recipient = await TestRecipient.new(forwarder.address)
+    recipient = await TestRecipient.new()
+    forwarder = await recipient.getTrustedForwarder()
     paymaster = await TestPaymasterVariableGasLimits.new()
     await paymaster.setHub(relayHub.address)
     await relayHub.depositFor(paymaster.address, {
@@ -86,7 +85,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
     ({ signature } = await getEip712Signature({
       web3,
       chainId,
-      verifier: forwarder.address,
+      verifier: forwarder,
       relayRequest
     }))
   }
@@ -166,7 +165,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       const { signature } = await getEip712Signature({
         web3,
         chainId,
-        verifier: forwarder.address,
+        verifier: forwarder,
         relayRequest: relayRequestMisbehaving
       })
       const maxPossibleGasIrrelevantValue = 8000000
@@ -250,7 +249,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
               const { signature } = await getEip712Signature({
                 web3,
                 chainId,
-                verifier: forwarder.address,
+                verifier: forwarder,
                 relayRequest
               })
               const res = await relayHub.relayCall(relayRequest, signature, '0x', {
