@@ -20,7 +20,7 @@ contract TrustedForwarder is ITrustedForwarder {
         return nonces[from];
     }
 
-    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) view public returns (bool){
+    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) public view returns (bool) {
         return eip712sig.verify(req, sig);
     }
 
@@ -33,8 +33,4 @@ contract TrustedForwarder is ITrustedForwarder {
         return req.target.call.gas(req.gasData.gasLimit)
         (abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
     }
-}
-
-library asd {
-    function dsa() internal {new TrustedForwarder();}
 }

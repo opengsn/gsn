@@ -22,7 +22,7 @@ contract('Utils', async function (accounts) {
       const gasPrice = '10000000'
       const gasLimit = '500000'
       const paymaster = accounts[7]
-      const relayHub = accounts[8]
+      const verifier = accounts[8]
       const relayAddress = accounts[9]
 
       const relayRequest = new RelayRequest({
@@ -41,7 +41,7 @@ contract('Utils', async function (accounts) {
       const { signature: sig, data } = await getEip712Signature({
         web3,
         chainId,
-        relayHub,
+        verifier,
         relayRequest
       })
 
@@ -51,7 +51,7 @@ contract('Utils', async function (accounts) {
       })
       assert.strictEqual(senderAddress.toLowerCase(), recoveredAccount.toLowerCase())
 
-      const eip712Sig = await EIP712Sig.new(relayHub)
+      const eip712Sig = await EIP712Sig.new(verifier)
       const verify = await eip712Sig.verify(data.message, sig, { from: senderAddress })
       assert.strictEqual(verify, true)
     })

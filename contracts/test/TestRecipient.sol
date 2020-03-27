@@ -2,14 +2,14 @@
 pragma solidity ^0.5.16;
 
 import "../utils/GsnUtils.sol";
-import "../interfaces/IRelayHub.sol";
 import "../BaseRelayRecipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
+import "../TrustedForwarder.sol";
 
 contract TestRecipient is BaseRelayRecipient {
 
-    function setHub(IRelayHub _relayHub) public {
-        relayHub = _relayHub;
+    constructor(address forwarder) public {
+        trustedForwarder = forwarder;
     }
 
     event Reverting(string message);

@@ -6,6 +6,7 @@
 
 var testutils = require('./testutils.js')
 
+const TrustedForwarder = artifacts.require('./TrustedForwarder.sol')
 const SampleRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
 const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymasterPreconfiguredApproval')
@@ -59,9 +60,8 @@ options.forEach(params => {
         rhub = await RelayHub.deployed()
       }
 
-      sr = await SampleRecipient.new()
+      sr = await SampleRecipient.new((await TrustedForwarder.deployed()).address)
       paymaster = await TestPaymasterEverythingAccepted.new()
-      await sr.setHub(rhub.address)
       await paymaster.setHub(rhub.address)
     })
 

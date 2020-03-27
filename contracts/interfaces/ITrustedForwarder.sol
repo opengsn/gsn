@@ -7,7 +7,7 @@ contract ITrustedForwarder {
 
     // verify the signature matches the request.
     //  that is, the senderAccount is the signer
-    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) view public returns (bool);
+    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) public view returns (bool);
 
     function getNonce(address from) external view returns (uint256);
 

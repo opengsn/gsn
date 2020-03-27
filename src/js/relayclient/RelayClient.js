@@ -322,16 +322,8 @@ class RelayClient {
     const paymaster = options.paymaster || options.to
     const relayHub = await this.createRelayHubFromPaymaster(paymaster)
 
-    // TODO: refactor! wrong instance is created for accidentally same method!
-    if (!utils.isSameAddress(paymaster, options.to)) {
-      const recipientHub = await this.createPaymaster(options.to).methods.getHubAddr().call()
-
-      if (!utils.isSameAddress(relayHub._address, recipientHub)) {
-        throw Error('Paymaster\'s and recipient\'s RelayHub addresses do not match')
-      }
-    }
-
-    const senderNonce = (await relayHub.methods.getNonce(options.from).call()).toString()
+    const senderNonce = (await relayHub.methods.getNonce(options.to, options.from).call()).toString()
+    const forwarderAddress = await relayHub.methods.getForwarder(options.to).call()
 
     this.serverHelper.setHub(relayHub)
 
@@ -399,7 +391,7 @@ class RelayClient {
       if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
         signedData = await getDataToSign({
           chainId,
-          relayHub: relayHub._address,
+          verifier: forwarderAddress,
           relayRequest
         })
         signature = sigUtil.signTypedData_v4(self.ephemeralKeypair.privateKey, { data: signedData })
@@ -409,7 +401,7 @@ class RelayClient {
             web3: this.web3,
             methodSuffix: options.methodSuffix || '',
             jsonStringifyRequest: options.jsonStringifyRequest || false,
-            relayHub: relayHub._address,
+            verifier: forwarderAddress,
             chainId,
             relayRequest
           })
@@ -511,7 +503,7 @@ class RelayClient {
           relayMaxNonce
         })
       } catch (error) {
-        console.log('error??', error)
+        // console.log('error??', error)
         errors.push(error)
         if (self.config.verbose) {
           console.log('relayTransaction: req:', {

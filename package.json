@@ -43,7 +43,7 @@
     "lint:fix": "yarn run lint:js:fix",
     "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore .",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
-    "lint:js:fix": "eslint --ext .js,.ts --ignore-path .gitignore . --fix",
+    "lint:js:fix": "eslint --ext .js,.ts -f unix --ignore-path .gitignore . --fix",
     "gsn-dock-relay": "./scripts/gsn-dock-relay",
     "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache",
     "web": "./restart-relay.sh web",
