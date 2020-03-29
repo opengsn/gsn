@@ -33,7 +33,8 @@
   "scripts": {
     "test": "yarn generate && yarn tsc && npm run test-server && npm run test-js",
     "test-server": "make test-server",
-    "test-js": "make build-server && run-with-testrpc --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic --allowUnlimitedContractSize 'npx truffle --network npmtest test'",
+    "ganache": "ganache-cli --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --allowUnlimitedContractSize",
+    "test-js": "run-with-testrpc --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic --allowUnlimitedContractSize 'npx truffle --network npmtest test'",
     "truffle-test": "yarn tsc && npx truffle test",
     "truffle-compile": "truffle compile",
     "webtools-pack": "webpack-cli --config ./webtools.webpack.js",
@@ -41,7 +42,7 @@
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:fix": "yarn run lint:js:fix",
     "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore .",
-    "lint:sol": "solhint \"contracts/**/*.sol\" --max-warnings 0",
+    "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "lint:js:fix": "eslint --ext .js,.ts --ignore-path .gitignore . --fix",
     "gsn-dock-relay": "./scripts/gsn-dock-relay",
     "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache",
