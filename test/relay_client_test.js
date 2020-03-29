@@ -370,7 +370,7 @@ contract('RelayClient', function (accounts) {
           setTimeout(callback(null, JSON.stringify({})), 100)
         } else {
           const callbackWrap = function (e, r) {
-            assert.equal(null, e)
+            assert.equal(null, e, e)
             assert.ok(r.signedTx)
             assert.include(r.signedTx, messageHex)
             callback(e, r)
@@ -401,19 +401,19 @@ contract('RelayClient', function (accounts) {
     const filteredRelays = [
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: 'localhost1',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: 'localhost2',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: localhostOne,
         RelayServerAddress: relayServerAddress
       }

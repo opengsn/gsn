@@ -128,11 +128,11 @@ class RelayServer extends EventEmitter {
     }
 
     // Check that the fee is acceptable
-    if (!pctRelayFee || pctRelayFee < this.pctRelayFee) {
-      throw new Error(`Unacceptable pctRelayFee: ${pctRelayFee}`)
+    if (isNaN(parseInt(pctRelayFee)) || parseInt(pctRelayFee) < this.pctRelayFee) {
+      throw new Error(`Unacceptable pctRelayFee: ${pctRelayFee} relayServer's pctRelayFee: ${this.pctRelayFee}`)
     }
-    if (!baseRelayFee || baseRelayFee < this.baseRelayFee) {
-      throw new Error(`Unacceptable baseRelayFee: ${baseRelayFee}`)
+    if (isNaN(parseInt(baseRelayFee)) || parseInt(baseRelayFee) < this.baseRelayFee) {
+      throw new Error(`Unacceptable baseRelayFee: ${baseRelayFee} relayServer's baseRelayFee: ${this.baseRelayFee}`)
     }
 
     // Check that the gasPrice is initialized & acceptable
