@@ -184,8 +184,7 @@ class RelayServer extends EventEmitter {
       gasLimits = await this.paymasterContract.methods.getGasLimits().call()
     } catch (e) {
       if (
-        e.message.includes
-        (
+        e.message.includes(
           'Returned values aren\'t valid, did it run Out of Gas? You might also see this error if you are not using the correct ABI for the contract you are retrieving data from, requesting data from a block number that does not exist, or querying a node which is not fully synced.'
         )
       ) {
@@ -211,15 +210,10 @@ class RelayServer extends EventEmitter {
       approvalData).call()
     debug('canRelayRet', canRelayRet)
     if (!canRelayRet || canRelayRet.status !== '0') {
-      throw new Error(
-        'canRelay failed in server: ' +
-        (
-          canRelayRet ?
-            `status: ${canRelayRet.status} description: ${Buffer.from(
-              utils.removeHexPrefix(canRelayRet.recipientContext), 'hex').toString('utf8')}`
-            : 'jsonrpc call failed'
-        )
-      )
+      const message = canRelayRet ? `status: ${canRelayRet.status} description: ${Buffer.from(
+        utils.removeHexPrefix(canRelayRet.recipientContext), 'hex').toString('utf8')}`
+        : 'jsonrpc call failed'
+      throw new Error('canRelay failed in server: ' + message)
     }
     // Send relayed transaction
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)

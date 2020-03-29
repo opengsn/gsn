@@ -72,7 +72,7 @@ contract('RelayHub gas calculations', async function ([_, relayOwner, relayAddre
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster: paymaster.address
-    });
+    })
     const dataToSign = await getDataToSign({
       chainId,
       relayHub: relayHub.address,

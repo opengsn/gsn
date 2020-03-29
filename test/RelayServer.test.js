@@ -1,11 +1,6 @@
 /* global artifacts describe */
 const Web3 = require('web3')
 const RelayClient = require('../src/js/relayclient/RelayClient')
-const { getEip712Signature, calculateTransactionMaxPossibleGas } =
-  require('../src/js/relayclient/utils')
-const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
-const Environments = require('../src/js/relayclient/Environments')
 const RelayServer = require('../src/js/relayserver/RelayServer')
 const TxStoreManager = require('../src/js/relayserver/TxStoreManager').TxStoreManager
 const RelayHub = artifacts.require('./RelayHub.sol')
@@ -160,7 +155,6 @@ contract('RelayServer', function (accounts) {
         pctRelayFee: relayRequest.gasData.pctRelayFee,
         relayHubAddress: rhub.address,
         ...badArgs
-
       })
 
     // const signedTx = await relayClient.relayTransaction(encoded, options)
@@ -172,13 +166,13 @@ contract('RelayServer', function (accounts) {
   async function prepareRelayRequest () {
     const { relayRequest, relayMaxNonce, approvalData, signature } = await relayClient._prepareRelayHttpRequest(
       encodedFunction,
-      /*relayAddress: */relayServer.address,
-      /*pctRelayFee: */0,
-      /*baseRelayFee: */0,
-      /*gasPrice: */parseInt(await web3.eth.getGasPrice()),
-      /*gasLimit: */1000000,
-      /*paymaster: */paymaster.address,
-      /*relayHub: */rhub.contract,
+      /* relayAddress: */relayServer.address,
+      /* pctRelayFee: */0,
+      /* baseRelayFee: */0,
+      /* gasPrice: */parseInt(await web3.eth.getGasPrice()),
+      /* gasLimit: */1000000,
+      /* paymaster: */paymaster.address,
+      /* relayHub: */rhub.contract,
       options)
     return { relayRequest, relayMaxNonce, approvalData, signature }
   }
@@ -449,9 +443,11 @@ contract('RelayServer', function (accounts) {
         await relayTransaction({ relayHubAddress: '0xdeadface' })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes(
-          `Wrong hub address.\nRelay server's hub address: ${relayServer.hubAddress}, request's hub address: 0xdeadface\n`),
-          e.message)
+        assert.isTrue(
+          e.message.includes(
+            `Wrong hub address.\nRelay server's hub address: ${relayServer.hubAddress}, request's hub address: 0xdeadface\n`),
+          e.message
+        )
       }
     })
   })
