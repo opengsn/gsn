@@ -34,14 +34,14 @@ module.exports = {
     {
       web3,
       chainId,
-      relayHub,
+      verifier,
       relayRequest,
       methodSuffix = '',
       jsonStringifyRequest = false
     }) {
     let data = getDataToSign({
       chainId,
-      relayHub,
+      verifier,
       relayRequest
     })
     if (jsonStringifyRequest) {

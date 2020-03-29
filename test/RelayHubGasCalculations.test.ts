@@ -52,9 +52,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
   let encodedFunction
   let signature: string
   let relayRequest: RelayRequest
+  let forwarder: string
 
   async function prepareForHub (): Promise<void> {
     recipient = await TestRecipient.new()
+    forwarder = await recipient.getTrustedForwarder()
     paymaster = await TestPaymasterVariableGasLimits.new()
     await paymaster.setHub(relayHub.address)
     await relayHub.depositFor(paymaster.address, {
@@ -82,7 +84,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
     ({ signature } = await getEip712Signature({
       web3,
       chainId,
-      relayHub: relayHub.address,
+      verifier: forwarder,
       relayRequest
     }))
   }
@@ -155,14 +157,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       const AcceptRelayedCallReverted = 3
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
-      const senderNonce = (await relayHub.getNonce(senderAddress)).toString()
+      const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
       const relayRequestMisbehaving = relayRequest.clone()
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
       relayRequestMisbehaving.relayData.senderNonce = senderNonce
       const { signature } = await getEip712Signature({
         web3,
         chainId,
-        relayHub: relayHub.address,
+        verifier: forwarder,
         relayRequest: relayRequestMisbehaving
       })
       const maxPossibleGasIrrelevantValue = 8000000
@@ -229,7 +231,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
             it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`, async function () {
               const beforeBalances = await getBalances()
               const pctRelayFee = requestedFee.toString()
-              const senderNonce = (await relayHub.getNonce(senderAddress)).toString()
+              const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
               const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
               const relayRequest = new RelayRequest({
                 senderAddress,
@@ -246,7 +248,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
               const { signature } = await getEip712Signature({
                 web3,
                 chainId,
-                relayHub: relayHub.address,
+                verifier: forwarder,
                 relayRequest
               })
               const res = await relayHub.relayCall(relayRequest, signature, '0x', {

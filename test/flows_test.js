@@ -61,7 +61,6 @@ options.forEach(params => {
 
       sr = await SampleRecipient.new()
       paymaster = await TestPaymasterEverythingAccepted.new()
-      await sr.setHub(rhub.address)
       await paymaster.setHub(rhub.address)
     })
 

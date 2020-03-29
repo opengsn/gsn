@@ -6,8 +6,8 @@ const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterE
 
 module.exports = async function (deployer) {
   await deployer.deploy(RelayHub, Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
-  const testRecipient = await deployer.deploy(TestRecipient)
+
+  await deployer.deploy(TestRecipient)
   const testPaymaster = await deployer.deploy(TestPaymasterEverythingAccepted)
-  await testRecipient.setHub(RelayHub.address)
   await testPaymaster.setHub(RelayHub.address)
 }

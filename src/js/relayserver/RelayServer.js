@@ -150,9 +150,10 @@ class RelayServer extends EventEmitter {
       paymaster: paymaster,
       relayAddress: this.address
     })
+    // TODO: should not use signedData at all. only the relayRequest.
     const signedData = getDataToSign({
       chainId: this.chainId,
-      relayHub: relayHubAddress,
+      verifier: relayHubAddress,
       relayRequest
     })
 

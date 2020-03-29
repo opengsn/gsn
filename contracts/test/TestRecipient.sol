@@ -2,14 +2,15 @@
 pragma solidity ^0.5.16;
 
 import "../utils/GsnUtils.sol";
-import "../interfaces/IRelayHub.sol";
 import "../BaseRelayRecipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
+import "../TrustedForwarder.sol";
 
 contract TestRecipient is BaseRelayRecipient {
 
-    function setHub(IRelayHub _relayHub) public {
-        relayHub = _relayHub;
+    constructor() public {
+        //should be a singleton, since Paymaster should (eventually) trust it.
+        trustedForwarder = address(new TrustedForwarder());
     }
 
     event Reverting(string message);
