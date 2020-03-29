@@ -240,16 +240,21 @@ contract RelayHub is IRelayHub {
     view
     returns (uint256 status, bytes memory recipientContext)
     {
-        // Verify the sender's signature on the transaction - note that approvalData is *not* signed
-        ITrustedForwarder forwarder = ITrustedForwarder(BaseRelayRecipient(relayRequest.target).getTrustedForwarder());
-        if (!forwarder.verify(relayRequest, signature)) {
-            return (uint256(CanRelayStatus.WrongSignature), "");
-        }
-
-        //TODO: this check should be embedded in the "verify", above - once we use revert instead of error codes.
-        // Verify the transaction is not being replayed
-        if (forwarder.getNonce(relayRequest.relayData.senderAddress) != relayRequest.relayData.senderNonce) {
-            return (uint256(CanRelayStatus.WrongNonce), "");
+        {
+            // Verify the sender's request: signature and nonce.
+            ITrustedForwarder forwarder = ITrustedForwarder(BaseRelayRecipient(relayRequest.target).getTrustedForwarder());
+            (bool success, bytes memory ret) = address(forwarder).staticcall(abi.encodeWithSelector(
+                    forwarder.verify.selector,
+                    relayRequest, signature
+                ));
+            if (!success) {
+                ret = bytes(GsnUtils.getError(ret));
+                //temporary check (until we get rid of the status codes, and rely only on description)
+                if (ret[0] == "n")
+                    return (uint256(CanRelayStatus.WrongNonce), ret);
+                else
+                    return (uint256(CanRelayStatus.WrongSignature), ret);
+            }
         }
 
         bytes memory encodedTx = abi.encodeWithSelector(IPaymaster(address(0)).acceptRelayedCall.selector,

@@ -20,17 +20,32 @@ contract TrustedForwarder is ITrustedForwarder {
         return nonces[from];
     }
 
-    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) public view returns (bool) {
-        return eip712sig.verify(req, sig);
+    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) public view {
+        _verify(req, sig);
     }
 
     function verifyAndCall(GSNTypes.RelayRequest memory req, bytes memory sig) public returns (bool success, bytes memory ret) {
-        if (!verify(req, sig))
-            return (false, "can't call: wrong signature");
-
-        nonces[req.relayData.senderAddress]++;
+        _verify(req, sig);
+        _updateNonce(req);
 
         return req.target.call.gas(req.gasData.gasLimit)
         (abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
+    }
+
+    function _verify(GSNTypes.RelayRequest memory req, bytes memory sig) internal view {
+        _verifyNonce(req);
+        _verifySig(req, sig);
+    }
+
+    function _verifyNonce(GSNTypes.RelayRequest memory req) internal view {
+        require(nonces[req.relayData.senderAddress] == req.relayData.senderNonce, "nonce mismatch");
+    }
+
+    function _updateNonce(GSNTypes.RelayRequest memory req) internal {
+        nonces[req.relayData.senderAddress]++;
+    }
+
+    function _verifySig(GSNTypes.RelayRequest memory req, bytes memory sig) internal view {
+        require(eip712sig.verify(req, sig), "signature mismatch");
     }
 }
