@@ -15,6 +15,7 @@ import "./utils/GsnUtils.sol";
 import "./utils/RLPReader.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
+import "./StakeManager.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -25,10 +26,8 @@ contract RelayHub is IRelayHub {
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
     uint256 constant private MINIMUM_STAKE = 1 ether;
 
-    // Minimum unstake delay. A relay needs to wait for this time to elapse after deregistering to retrieve its stake.
-    uint256 constant private MINIMUM_UNSTAKE_DELAY = 1 weeks;
-    // Maximum unstake delay. Prevents relays from locking their funds into the RelayHub for too long.
-    uint256 constant private MAXIMUM_UNSTAKE_DELAY = 12 weeks;
+    // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
+    uint256 constant private MINIMUM_UNSTAKE_DELAY = 1000;
 
     // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
     // will not be able to immediatly start serving requests.
@@ -43,7 +42,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 21717;
+    uint256 constant private GAS_OVERHEAD = 36713;
 
     function getHubOverhead() external view returns (uint256) {
         return GAS_OVERHEAD;
@@ -54,34 +53,29 @@ contract RelayHub is IRelayHub {
     uint256 public gtxdatanonzero;
     uint256 constant public GTRANSACTION = 21000;
 
-
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
 
     enum AtomicRecipientCallsStatus {OK, CanRelayFailed, RelayedCallFailed, PreRelayedFailed, PostRelayedFailed}
 
-    /// @param stake - ether staked for this relay
-    /// @param unstakeDelay - time that must elapse before the owner can retrieve the stake after calling remove
-    /// @param unstakeTime - time when unstake will be callable.
-    ///        A value of zero indicates the relay has not been removed.
-    /// @param owner - relay's owner, will receive revenue and manage it (call stake, remove and unstake).
-    struct Relay {
-        uint256 stake;
-        uint256 unstakeDelay;
-        uint256 unstakeTime;
-        address payable owner;
-        RelayState state;
-    }
+    // maps relay worker's address to its manager's address
+    mapping(address => address) private workerToManager;
 
-    mapping(address => Relay) private relays;
+    // maps relay managers to the number of their workers
+    mapping(address => uint256) private workerCount;
+
+    uint256 constant public MAX_WORKER_COUNT = 10;
+
     mapping(address => uint256) private balances;
 
     string public version = "1.0.0";
 
     EIP712Sig private eip712sig;
+    StakeManager private stakeManager;
 
-    constructor (uint256 _gtxdatanonzero) public {
+    constructor (uint256 _gtxdatanonzero, StakeManager _stakeManager) public {
         eip712sig = new EIP712Sig(address(this));
+        stakeManager = _stakeManager;
         gtxdatanonzero = _gtxdatanonzero;
     }
 
@@ -89,103 +83,34 @@ contract RelayHub is IRelayHub {
         return GTRANSACTION + msg.data.length * gtxdatanonzero;
     }
 
-    function stake(address relay, uint256 unstakeDelay) external payable {
-        if (relays[relay].state == RelayState.Unknown) {
-            require(msg.sender != relay, "relay cannot stake for itself");
-            relays[relay].owner = msg.sender;
-            relays[relay].state = RelayState.Staked;
+    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external {
+        address relayManager = msg.sender;
+        require(
+            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            "relay manager not staked"
+        );
+        require(workerCount[relayManager] > 0, "no relay workers");
+        emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
+    }
 
-        } else if ((relays[relay].state == RelayState.Staked) || (relays[relay].state == RelayState.Registered)) {
-            require(relays[relay].owner == msg.sender, "not owner");
+    function addRelayWorkers(address[] calldata newRelayWorkers) external {
+        address relayManager = msg.sender;
+        workerCount[relayManager] = workerCount[relayManager] + newRelayWorkers.length;
+        require(workerCount[relayManager] <= MAX_WORKER_COUNT, "too many workers");
 
-        } else {
-            revert("wrong state for stake");
+        require(
+            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            "relay manager not staked"
+        );
+
+        for (uint256 i = 0; i < newRelayWorkers.length; i++) {
+            require(workerToManager[newRelayWorkers[i]] == address(0), "this worker has a manager");
+            workerToManager[newRelayWorkers[i]] = relayManager;
         }
 
-        // Increase the stake
-
-        uint256 addedStake = msg.value;
-        relays[relay].stake += addedStake;
-
-        // The added stake may be e.g. zero when only the unstake delay is being updated
-        require(relays[relay].stake >= MINIMUM_STAKE, "stake lower than minimum");
-
-        // Increase the unstake delay
-
-        require(unstakeDelay >= MINIMUM_UNSTAKE_DELAY, "delay lower than minimum");
-        require(unstakeDelay <= MAXIMUM_UNSTAKE_DELAY, "delay higher than maximum");
-
-        require(unstakeDelay >= relays[relay].unstakeDelay, "unstakeDelay cannot be decreased");
-        relays[relay].unstakeDelay = unstakeDelay;
-
-        emit Staked(relay, relays[relay].stake, relays[relay].unstakeDelay);
-    }
-    function registerRelay(uint256 baseRelayFee, uint256 pctRelayFee, string memory url) public {
-        address relay = msg.sender;
-
-        // solhint-disable-next-line avoid-tx-origin
-        require(relay == tx.origin, "Contracts cannot register as relays");
-        require(
-            relays[relay].state == RelayState.Staked ||
-            relays[relay].state == RelayState.Registered,
-            "wrong state for register");
-        require(relay.balance >= MINIMUM_RELAY_BALANCE, "balance lower than minimum");
-
-        if (relays[relay].state != RelayState.Registered) {
-            relays[relay].state = RelayState.Registered;
-        }
-
-        emit RelayAdded(
-            relay, relays[relay].owner, baseRelayFee, pctRelayFee, relays[relay].stake, relays[relay].unstakeDelay, url);
+        emit RelayWorkersAdded(relayManager, newRelayWorkers, workerCount[relayManager]);
     }
 
-    function removeRelayByOwner(address relay) public {
-        require(relays[relay].owner == msg.sender, "not owner");
-        require(
-            relays[relay].state == RelayState.Staked ||
-            relays[relay].state == RelayState.Registered,
-            "already removed");
-
-        // Start the unstake counter
-        // TODO: I tend to agree with solhint here - lets use some number of blocks instead
-        // solhint-disable-next-line not-rely-on-time
-        relays[relay].unstakeTime = relays[relay].unstakeDelay + now;
-        relays[relay].state = RelayState.Removed;
-
-        emit RelayRemoved(relay, relays[relay].unstakeTime);
-    }
-
-    function unstake(address relay) public {
-        requireCanUnstake(relay);
-        require(relays[relay].owner == msg.sender, "not owner");
-
-        address payable owner = msg.sender;
-        uint256 amount = relays[relay].stake;
-
-        delete relays[relay];
-
-        owner.transfer(amount);
-        emit Unstaked(relay, amount);
-    }
-
-    function getRelay(address relay)
-    external
-    view
-    returns (uint256 totalStake, uint256 unstakeDelay, uint256 unstakeTime, address payable owner, RelayState state) {
-        totalStake = relays[relay].stake;
-        unstakeDelay = relays[relay].unstakeDelay;
-        unstakeTime = relays[relay].unstakeTime;
-        owner = relays[relay].owner;
-        state = relays[relay].state;
-    }
-
-    /**
-     * deposit ether for a contract.
-     * This ether will be used to repay relay calls into this contract.
-     * Contract owner should monitor the balance of his contract, and make sure
-     * to deposit more, otherwise the contract won't be able to receive relayed calls.
-     * Unused deposited can be withdrawn with `withdraw()`
-     */
     function depositFor(address target) public payable {
         uint256 amount = msg.value;
         require(amount <= MAXIMUM_RECIPIENT_DEPOSIT, "deposit too big");
@@ -195,18 +120,10 @@ contract RelayHub is IRelayHub {
         emit Deposited(target, msg.sender, amount);
     }
 
-    //check the deposit balance of a contract.
     function balanceOf(address target) external view returns (uint256) {
         return balances[target];
     }
 
-    /**
-     * withdraw funds.
-     * caller is either a relay owner, withdrawing collected transaction fees.
-     * or a IRelayRecipient contract, withdrawing its deposit.
-     * note that while everyone can `depositFor()` a contract, only
-     * the contract itself can withdraw its funds.
-     */
     function withdraw(uint256 amount, address payable dest) public {
         address payable account = msg.sender;
         require(balances[account] >= amount, "insufficient funds");
@@ -219,14 +136,6 @@ contract RelayHub is IRelayHub {
 
     function getNonce(address from) external view returns (uint256) {
         return nonces[from];
-    }
-
-    function requireCanUnstake(address relay) public view {
-        require(relays[relay].unstakeTime > 0, "Relay is not pending unstake");
-        // TODO: I tend to agree with solhint here - lets use some number of blocks instead
-        // solhint-disable-next-line not-rely-on-time
-        require(relays[relay].unstakeTime <= now, "Unstake is not due");
-        // Finished the unstaking delay period?
     }
 
     function canRelay(
@@ -323,10 +232,13 @@ contract RelayHub is IRelayHub {
         uint256 initialGas = gasleft();
         bytes4 functionSelector = LibBytes.readBytes4(relayRequest.encodedFunction, 0);
         // Initial soundness checks - the relay must make sure these pass, or it will pay for a reverted transaction.
-
-        // The relay must be registered
-        require(relays[msg.sender].state == RelayState.Registered, "Unknown relay");
-
+        address relayManager = workerToManager[msg.sender];
+        // The worker must be controlled by a manager with a locked stake
+        require(relayManager != address(0), "Unknown relay worker");
+        require(
+            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            "relay manager not staked"
+        );
         // A relay may use a higher gas price than the one requested by the signer (to e.g. get the transaction in a
         // block faster), but it must not be lower. The recipient will be charged for the requested gas price, not the
         // one used in the transaction.
@@ -391,7 +303,7 @@ contract RelayHub is IRelayHub {
         // a sanity check to prevent overflows in case of bugs.
         require(balances[relayRequest.relayData.paymaster] >= charge, "Should not get here");
         balances[relayRequest.relayData.paymaster] -= charge;
-        balances[relays[msg.sender].owner] += charge;
+        balances[workerToManager[msg.sender]] += charge;
 
         emit TransactionRelayed(
             msg.sender,
@@ -567,10 +479,8 @@ contract RelayHub is IRelayHub {
         Transaction memory decodedTx = decodeTransaction(unsignedTx);
         if (decodedTx.to == address(this)) {
             bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
-            // Note: If RelayHub's relay API is extended, the selectors must be added to the ones listed here
             require(
-                selector != this.relayCall.selector &&
-                selector != this.registerRelay.selector,
+                selector != this.relayCall.selector,
                 "Legal relay transaction");
         }
 
@@ -580,28 +490,15 @@ contract RelayHub is IRelayHub {
         penalize(relay);
     }
 
-    function penalize(address relay) private {
-        require((relays[relay].state == RelayState.Staked) ||
-        (relays[relay].state == RelayState.Registered) ||
-            (relays[relay].state == RelayState.Removed), "Unstaked relay");
-
-        // Half of the stake will be burned (sent to address 0)
-        uint256 totalStake = relays[relay].stake;
-        uint256 toBurn = SafeMath.div(totalStake, 2);
-        uint256 reward = SafeMath.sub(totalStake, toBurn);
-
-        if (relays[relay].state == RelayState.Registered) {
-            emit RelayRemoved(relay, now);
-        }
-
-        // The relay is deleted
-        delete relays[relay];
-
-        // Ether is burned and transferred
-        address(0).transfer(toBurn);
-        address payable reporter = msg.sender;
-        reporter.transfer(reward);
-
-        emit Penalized(relay, reporter, reward);
+    function penalize(address relayWorker) private {
+        address relayManager = workerToManager[relayWorker];
+        // The worker must be controlled by a manager with a locked stake
+        require(relayManager != address(0), "Unknown relay worker");
+        require(
+            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            "relay manager not staked"
+        );
+        (uint256 totalStake,,,) = stakeManager.stakes(relayManager);
+        stakeManager.penalizeRelayManager(relayManager, msg.sender, totalStake);
     }
 }

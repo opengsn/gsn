@@ -9,7 +9,7 @@ contract StakeManager {
 
     /// Emitted when a stake or unstakeDelay are initialized or increased
     event StakeAdded(
-        address indexed registree,
+        address indexed relayManager,
         address indexed owner,
         uint256 stake,
         uint256 unstakeDelay
@@ -17,32 +17,32 @@ contract StakeManager {
 
     /// Emitted once a stake is scheduled for withdrawal
     event StakeUnlocked(
-        address indexed registree,
+        address indexed relayManager,
         address indexed owner,
         uint256 withdrawBlock
     );
 
-    /// Emitted when owner withdraws registree funds
+    /// Emitted when owner withdraws relayManager funds
     event StakeWithdrawn(
-        address indexed registree,
+        address indexed relayManager,
         address indexed owner,
         uint256 amount
     );
 
-    /// Emitted when an authorized Relay Hub penalizes a registree
+    /// Emitted when an authorized Relay Hub penalizes a relayManager
     event StakePenalized(
-        address indexed registree,
+        address indexed relayManager,
         address indexed beneficiary,
         uint256 reward
     );
 
     event HubAuthorized(
-        address indexed registree,
+        address indexed relayManager,
         address indexed relayHub
     );
 
     event HubUnauthorized(
-        address indexed registree,
+        address indexed relayManager,
         address indexed relayHub,
         uint256 removalBlock
     );
@@ -50,7 +50,7 @@ contract StakeManager {
     /// @param stake - amount of ether staked for this relay
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
     /// @param withdrawBlock - first block number 'withdraw' will be callable, or zero if the unlock has not been called
-    /// @param owner - address that receives revenue and manages registree's stake
+    /// @param owner - address that receives revenue and manages relayManager's stake
     struct StakeInfo {
         uint256 stake;
         uint256 unstakeDelay;
@@ -62,73 +62,73 @@ contract StakeManager {
         uint256 removalBlock;
     }
 
-    /// maps registrees to their stakes
+    /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
 
-    /// maps registrees to a map of addressed of their authorized hubs to the information on that hub
+    /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
 
-    /// Put a stake for a registree and set its unstake delay.
+    /// Put a stake for a relayManager and set its unstake delay.
     /// If the entry does not exist, it is created, and the caller of this function becomes its owner.
     /// If the entry already exists, only the owner can call this function.
-    /// @param registree - address that represents a stake entry and controls relay registrations on relay hubs
+    /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
-    function stakeForAddress(address registree, uint256 unstakeDelay) external payable {
-        require(stakes[registree].owner == address(0) || stakes[registree].owner == msg.sender, "not owner");
-        require(unstakeDelay >= stakes[registree].unstakeDelay, "unstakeDelay cannot be decreased");
-        require(msg.sender != registree, "registree cannot stake for itself");
-        require(stakes[msg.sender].owner == address(0), "sender is a registree itself");
-        stakes[registree].owner = msg.sender;
-        stakes[registree].stake += msg.value;
-        stakes[registree].unstakeDelay = unstakeDelay;
-        emit StakeAdded(registree, stakes[registree].owner, stakes[registree].stake, stakes[registree].unstakeDelay);
+    function stakeForAddress(address relayManager, uint256 unstakeDelay) external payable {
+        require(stakes[relayManager].owner == address(0) || stakes[relayManager].owner == msg.sender, "not owner");
+        require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
+        require(msg.sender != relayManager, "relayManager cannot stake for itself");
+        require(stakes[msg.sender].owner == address(0), "sender is a relayManager itself");
+        stakes[relayManager].owner = msg.sender;
+        stakes[relayManager].stake += msg.value;
+        stakes[relayManager].unstakeDelay = unstakeDelay;
+        emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
     }
 
-    function unlockStake(address registree) external {
-        StakeInfo storage info = stakes[registree];
+    function unlockStake(address relayManager) external {
+        StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock == 0, "already pending");
         info.withdrawBlock = block.number + info.unstakeDelay;
-        emit StakeUnlocked(registree, msg.sender, info.withdrawBlock);
+        emit StakeUnlocked(relayManager, msg.sender, info.withdrawBlock);
     }
 
-    function withdrawStake(address registree) external {
-        StakeInfo storage info = stakes[registree];
+    function withdrawStake(address relayManager) external {
+        StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock > 0, "Withdrawal is not scheduled");
         require(info.withdrawBlock <= block.number, "Withdrawal is not due");
         uint256 amount = info.stake;
-        delete stakes[registree];
+        delete stakes[relayManager];
         msg.sender.transfer(amount);
-        emit StakeWithdrawn(registree, msg.sender, amount);
+        emit StakeWithdrawn(relayManager, msg.sender, amount);
     }
 
-    function authorizeHub(address registree, address relayHub) external {
-        StakeInfo storage info = stakes[registree];
+    function authorizeHub(address relayManager, address relayHub) external {
+        StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
-        authorizedHubs[registree][relayHub].removalBlock = uint(-1);
-        emit HubAuthorized(registree, relayHub);
+        authorizedHubs[relayManager][relayHub].removalBlock = uint(-1);
+        emit HubAuthorized(relayManager, relayHub);
     }
 
-    function unauthorizeHub(address registree, address relayHub) external {
-        StakeInfo storage info = stakes[registree];
+    function unauthorizeHub(address relayManager, address relayHub) external {
+        StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
-        RelayHubInfo storage hubInfo = authorizedHubs[registree][relayHub];
+        RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
         require(hubInfo.removalBlock == uint(-1), "hub not authorized");
-        uint256 removalBlock = block.number + stakes[registree].unstakeDelay;
+        uint256 removalBlock = block.number + stakes[relayManager].unstakeDelay;
         hubInfo.removalBlock = removalBlock;
-        emit HubUnauthorized(registree, relayHub, removalBlock);
+        emit HubUnauthorized(relayManager, relayHub, removalBlock);
     }
 
-    function isRegistreeStaked(address registree, uint256 minAmount, uint256 minUnstakeDelay)
+    function isRelayManagerStaked(address relayManager, uint256 minAmount, uint256 minUnstakeDelay)
     external
     view
     returns (bool) {
-        StakeInfo storage info = stakes[registree];
-        bool isAmountSufficient = info.stake > minAmount;
-        bool isDelaySufficient = info.unstakeDelay > minUnstakeDelay;
+        StakeInfo storage info = stakes[relayManager];
+        bool isAmountSufficient = info.stake >= minAmount;
+        bool isDelaySufficient = info.unstakeDelay >= minUnstakeDelay;
         bool isStakeLocked = info.withdrawBlock == 0;
-        bool isHubAuthorized = authorizedHubs[registree][msg.sender].removalBlock == uint(-1);
+        bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalBlock == uint(-1);
         return
         isAmountSufficient &&
         isDelaySufficient &&
@@ -136,18 +136,18 @@ contract StakeManager {
         isHubAuthorized;
     }
 
-    /// Slash the stake of the relay registree. In order to prevent stake kidnapping, burns half of stake on the way.
-    /// @param registree - entry to penalize
+    /// Slash the stake of the relay relayManager. In order to prevent stake kidnapping, burns half of stake on the way.
+    /// @param relayManager - entry to penalize
     /// @param beneficiary - address that receives half of the penalty amount
     /// @param amount - amount to withdraw from stake
-    function penalizeRegistree(address registree, address payable beneficiary, uint256 amount) external {
-        uint256 removalBlock =  authorizedHubs[registree][msg.sender].removalBlock;
+    function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external {
+        uint256 removalBlock =  authorizedHubs[relayManager][msg.sender].removalBlock;
         require(removalBlock != 0, "hub not authorized");
         require(removalBlock > block.number, "hub authorization expired");
 
         // Half of the stake will be burned (sent to address 0)
-        require(stakes[registree].stake >= amount, "penalty exceeds stake");
-        stakes[registree].stake = SafeMath.sub(stakes[registree].stake, amount);
+        require(stakes[relayManager].stake >= amount, "penalty exceeds stake");
+        stakes[relayManager].stake = SafeMath.sub(stakes[relayManager].stake, amount);
 
         uint256 toBurn = SafeMath.div(amount, 2);
         uint256 reward = SafeMath.sub(amount, toBurn);
@@ -155,6 +155,6 @@ contract StakeManager {
         // Ether is burned and transferred
         address(0).transfer(toBurn);
         beneficiary.transfer(reward);
-        emit StakePenalized(registree, beneficiary, reward);
+        emit StakePenalized(relayManager, beneficiary, reward);
     }
 }

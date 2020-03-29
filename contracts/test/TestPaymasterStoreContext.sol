@@ -43,7 +43,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     view
     returns (uint256, bytes memory) {
         return (0, abi.encode(
-            relayRequest.relayData.relayAddress,
+            relayRequest.relayData.relayWorker,
             relayRequest.relayData.senderAddress,
             relayRequest.encodedFunction,
             relayRequest.gasData.baseRelayFee,

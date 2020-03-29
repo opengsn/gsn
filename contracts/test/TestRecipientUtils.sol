@@ -10,9 +10,6 @@ contract TestRecipientUtils {
         emit Unused();  //just to avoid warnings..
     }
 
-    function registerAsRelay(IRelayHub relayhub) public payable {
-        relayhub.registerRelay(10, 10, "string memory url");
-    }
     function() external payable {}
 
     /****** these methods are internal in 'GsnUtils' and cannot be accessed from JS *******/

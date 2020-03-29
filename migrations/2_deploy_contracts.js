@@ -1,13 +1,10 @@
-const Environments = require('../src/js/relayclient/Environments')
+var RelayHub = artifacts.require('./RelayHub.sol')
+var RLPReader = artifacts.require('./RLPReader.sol')
+var StakeManager = artifacts.require('./StakeManager.sol')
 
-const RelayHub = artifacts.require('./RelayHub.sol')
-const TestRecipient = artifacts.require('./test/TestRecipient.sol')
-const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
-
-module.exports = async function (deployer) {
-  await deployer.deploy(RelayHub, Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
-  const testRecipient = await deployer.deploy(TestRecipient)
-  const testPaymaster = await deployer.deploy(TestPaymasterEverythingAccepted)
-  await testRecipient.setHub(RelayHub.address)
-  await testPaymaster.setHub(RelayHub.address)
+module.exports = function (deployer) {
+  deployer.deploy(RLPReader)
+  deployer.link(RLPReader, RelayHub)
+  deployer.deploy(RelayHub, 16, '0x0000000000000000000000000000000000000000')
+  deployer.deploy(StakeManager)
 }
