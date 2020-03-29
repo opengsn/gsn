@@ -7,7 +7,7 @@
 #	- circle-ci should cache the resulting covsig.txt file
 
 report=coverage/report.txt
-tests="test/relay_hub_test.js test/recipient_utils_test.js test/RelayHub.test.js"
+tests="test/relay_hub_test.js test/recipient_utils_test.js test/RelayHub.test.ts"
 
 sigfile=coverage/covsig.txt
 
