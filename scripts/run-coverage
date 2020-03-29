@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 report=coverage/report.txt
-tests="test/relay_hub_test.js test/recipient_utils_test.js test/RelayHub.test.js"
+tests="test/relay_hub_test.js test/recipient_utils_test.js test/RelayHub.test.ts"
 
 echo "=== Running coverage of tests: $tests"
 

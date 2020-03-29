@@ -1,17 +1,23 @@
-const { balance, BN, ether, expectEvent, expectRevert, time } = require('@openzeppelin/test-helpers')
+import { balance, ether, expectEvent, expectRevert, time } from '@openzeppelin/test-helpers'
+import BN from 'bn.js'
+import { expect } from 'chai'
 
-const { getEip712Signature, calculateTransactionMaxPossibleGas } =
-  require('../src/js/relayclient/utils')
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+import { getEip712Signature, calculateTransactionMaxPossibleGas } from '../src/js/relayclient/utils'
+import RelayRequest from '../src/js/relayclient/EIP712/RelayRequest'
+import Environments from '../src/js/relayclient/Environments'
+
+import {
+  RelayHubInstance,
+  TestRecipientInstance,
+  TestPaymasterEverythingAcceptedInstance,
+  TestPaymasterConfigurableMisbehaviorInstance
+} from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
-const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted')
-const TestRecipient = artifacts.require('./test/TestRecipient')
-const TestPaymasterStoreContext = artifacts.require('./test/TestPaymasterStoreContext')
-const TestPaymasterConfigurableMisbehavior = artifacts.require('./test/TestPaymasterConfigurableMisbehavior')
-
-const { expect } = require('chai')
-const Environments = require('../src/js/relayclient/Environments')
+const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const TestRecipient = artifacts.require('TestRecipient')
+const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
+const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, other, dest]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
@@ -31,37 +37,37 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
   }
   const chainId = Environments.defEnv.chainId
 
-  let relayHub
-  let relayHubContract
-  let recipientContract
-  let paymasterContract
-  let target
-  let paymaster
+  let relayHub: string
+  let relayHubInstance: RelayHubInstance
+  let recipientContract: TestRecipientInstance
+  let paymasterContract: TestPaymasterEverythingAcceptedInstance
+  let target: string
+  let paymaster: string
 
   beforeEach(async function () {
-    relayHubContract = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
+    relayHubInstance = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
 
     target = recipientContract.address
     paymaster = paymasterContract.address
-    relayHub = relayHubContract.address
+    relayHub = relayHubInstance.address
 
     await recipientContract.setHub(relayHub)
     await paymasterContract.setHub(relayHub)
   })
 
   it('should retrieve version number', async function () {
-    const version = await relayHubContract.version()
+    const version = await relayHubInstance.version()
     assert.equal(version, '1.0.0')
   })
 
   describe('balances', function () {
-    async function testDeposit (sender, paymaster, amount) {
+    async function testDeposit (sender: string, paymaster: string, amount: BN): Promise<void> {
       const senderBalanceTracker = await balance.tracker(sender)
       const relayHubBalanceTracker = await balance.tracker(relayHub)
 
-      const { logs } = await relayHubContract.depositFor(paymaster, {
+      const { logs } = await relayHubInstance.depositFor(paymaster, {
         from: sender,
         value: amount,
         gasPrice: 0
@@ -72,9 +78,9 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         amount
       })
 
-      expect(await relayHubContract.balanceOf(paymaster)).to.be.bignumber.equals(amount)
-      expect(await senderBalanceTracker.delta()).to.be.bignumber.equals(amount.neg())
-      expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equals(amount)
+      expect(await relayHubInstance.balanceOf(paymaster)).to.be.bignumber.equal(amount)
+      expect(await senderBalanceTracker.delta()).to.be.bignumber.equal(amount.neg())
+      expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equal(amount)
     }
 
     it('can deposit for self', async function () {
@@ -87,7 +93,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
 
     it('cannot deposit amounts larger than the limit', async function () {
       await expectRevert(
-        relayHubContract.depositFor(target, {
+        relayHubInstance.depositFor(target, {
           from: other,
           value: ether('3'),
           gasPrice: 0
@@ -97,30 +103,30 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
     })
 
     it('can deposit multiple times and have a total deposit larger than the limit', async function () {
-      await relayHubContract.depositFor(target, {
+      await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
         gasPrice: 0
       })
-      await relayHubContract.depositFor(target, {
+      await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
         gasPrice: 0
       })
-      await relayHubContract.depositFor(target, {
+      await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
         gasPrice: 0
       })
 
-      expect(await relayHubContract.balanceOf(target)).to.be.bignumber.equals(ether('3'))
+      expect(await relayHubInstance.balanceOf(target)).to.be.bignumber.equals(ether('3'))
     })
 
     it('accounts with deposits can withdraw partially', async function () {
       const amount = ether('1')
       await testDeposit(other, other, amount)
 
-      const { logs } = await relayHubContract.withdraw(amount.divn(2), dest, { from: other })
+      const { logs } = await relayHubInstance.withdraw(amount.divn(2), dest, { from: other })
       expectEvent.inLogs(logs, 'Withdrawn', {
         account: other,
         dest,
@@ -132,7 +138,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
       const amount = ether('1')
       await testDeposit(other, other, amount)
 
-      const { logs } = await relayHubContract.withdraw(amount, dest, { from: other })
+      const { logs } = await relayHubInstance.withdraw(amount, dest, { from: other })
       expectEvent.inLogs(logs, 'Withdrawn', {
         account: other,
         dest,
@@ -144,7 +150,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
       const amount = ether('1')
       await testDeposit(other, other, amount)
 
-      await expectRevert(relayHubContract.withdraw(amount.addn(1), dest, { from: other }), 'insufficient funds')
+      await expectRevert(relayHubInstance.withdraw(amount.addn(1), dest, { from: other }), 'insufficient funds')
     })
   })
 
@@ -154,7 +160,8 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
     const gasPrice = '10'
     const gasLimit = '1000000'
     const senderNonce = '0'
-    let sharedRelayRequestData
+    // TODO: create class
+    let sharedRelayRequestData: any
 
     beforeEach(function () {
       sharedRelayRequestData = {
@@ -170,7 +177,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
       }
     })
 
-    context('with unknown address trying to relay', async function () {
+    context('with unknown address trying to relay', function () {
       it('should not accept a relay call', async function () {
         const relayRequest = new RelayRequest(
           {
@@ -178,7 +185,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             ...sharedRelayRequestData
           })
         await expectRevert(
-          relayHubContract.relayCall(relayRequest, '0xdeadbeef', '0x', {
+          relayHubInstance.relayCall(relayRequest, '0xdeadbeef', '0x', {
             from: relayAddress,
             gasPrice
           }),
@@ -192,12 +199,12 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
       const message = 'GSN RelayHub'
       const messageWithNoParams = 'Method with no parameters'
 
-      let relayRequest
-      let encodedFunction
-      let signatureWithPermissivePaymaster
+      let relayRequest: RelayRequest
+      let encodedFunction: string
+      let signatureWithPermissivePaymaster: string
 
       beforeEach(async function () {
-        await relayHubContract.stake(relayAddress, unstakeDelay, {
+        await relayHubInstance.stake(relayAddress, unstakeDelay, {
           value: ether('2'),
           from: relayOwner
         })
@@ -205,7 +212,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         // truffle-contract doesn't let us create method data from the class, we need an actual instance
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()
 
-        await relayHubContract.registerRelay(baseRelayFee, pctRelayFee, url, { from: relayAddress })
+        await relayHubInstance.registerRelay(baseRelayFee, pctRelayFee, url, { from: relayAddress })
         relayRequest = new RelayRequest({
           ...sharedRelayRequestData,
           encodedFunction
@@ -218,21 +225,21 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           relayRequest
         }))
 
-        await relayHubContract.depositFor(paymaster, {
+        await relayHubInstance.depositFor(paymaster, {
           value: ether('1'),
           from: other
         })
       })
 
-      context('with view functions only', async function () {
-        let acceptRelayedCallGasLimit
-        let maxPossibleGas
+      context('with view functions only', function () {
+        let acceptRelayedCallGasLimit: BN
+        let maxPossibleGas: number
 
         beforeEach(async function () {
           const gasLimits = await paymasterContract.getGasLimits()
-          const hubOverhead = (await relayHubContract.getHubOverhead()).toNumber()
+          const hubOverhead = (await relayHubInstance.getHubOverhead()).toNumber()
 
-          acceptRelayedCallGasLimit = gasLimits.acceptRelayedCallGasLimit
+          acceptRelayedCallGasLimit = new BN(gasLimits.acceptRelayedCallGasLimit)
 
           maxPossibleGas = await calculateTransactionMaxPossibleGas(
             {
@@ -246,20 +253,22 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         })
 
         it('should get \'0\' (Success Code) from \'canRelay\' for a valid transaction', async function () {
-          const canRelay = await relayHubContract.canRelay(
+          const canRelay = await relayHubInstance.canRelay(
             relayRequest,
             maxPossibleGas,
             acceptRelayedCallGasLimit,
             signatureWithPermissivePaymaster, '0x')
+          // @ts-ignore (again, typechain does not know names of return values)
           assert.equal(0, canRelay.status.valueOf())
         })
 
         it('should get \'1\' (Wrong Signature) from \'canRelay\' for a transaction with a wrong signature', async function () {
           const wrongSig = '0xaaaa6ad4b4fab03bb2feaea2d54c690206e40036e4baa930760e72479da0cc5575779f9db9ef801e144b5e6af48542107f2f094649334b030e2bb44f054429b451'
-          const canRelay = await relayHubContract.canRelay(relayRequest,
+          const canRelay = await relayHubInstance.canRelay(relayRequest,
             maxPossibleGas,
             acceptRelayedCallGasLimit,
             wrongSig, '0x')
+          // @ts-ignore (again, typechain does not know names of return values)
           assert.equal(1, canRelay.status.valueOf())
         })
 
@@ -276,12 +285,13 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             relayRequest: relayRequestWrongNonce
           })
 
-          const canRelay = await relayHubContract.canRelay(
+          const canRelay = await relayHubInstance.canRelay(
             relayRequestWrongNonce,
             maxPossibleGas,
             acceptRelayedCallGasLimit,
             signature,
             '0x')
+          // @ts-ignore (again, typechain does not know names of return values)
           assert.equal(2, canRelay.status.valueOf())
         })
       })
@@ -290,24 +300,24 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         let signature
 
         let paymasterWithContext
-        let misbehavingPaymaster
+        let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
 
-        let relayRequestPaymasterWithContext
-        let signatureWithContextPaymaster
+        let relayRequestPaymasterWithContext: RelayRequest
+        let signatureWithContextPaymaster: string
 
-        let signatureWithMisbehavingPaymaster
-        let relayRequestMisbehavingPaymaster
+        let signatureWithMisbehavingPaymaster: string
+        let relayRequestMisbehavingPaymaster: RelayRequest
 
         beforeEach(async function () {
           paymasterWithContext = await TestPaymasterStoreContext.new()
           misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
           await paymasterWithContext.setHub(relayHub)
           await misbehavingPaymaster.setHub(relayHub)
-          await relayHubContract.depositFor(paymasterWithContext.address, {
+          await relayHubInstance.depositFor(paymasterWithContext.address, {
             value: ether('1'),
             from: other
           })
-          await relayHubContract.depositFor(misbehavingPaymaster.address, {
+          await relayHubInstance.depositFor(misbehavingPaymaster.address, {
             value: ether('1'),
             from: other
           });
@@ -340,14 +350,14 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         })
 
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
-          const nonceBefore = await relayHubContract.getNonce(senderAddress)
+          const nonceBefore = await relayHubInstance.getNonce(senderAddress)
 
-          const { tx } = await relayHubContract.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', {
+          const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', {
             from: relayAddress,
             gasPrice
           })
-          const nonceAfter = await relayHubContract.getNonce(senderAddress)
-          assert.equal(nonceBefore.toNumber() + 1, nonceAfter.toNumber())
+          const nonceAfter = await relayHubInstance.getNonce(senderAddress)
+          assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
             message,
@@ -368,7 +378,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             relayHub: relayHub,
             relayRequest: relayRequestNoCallData
           }))
-          const { tx } = await relayHubContract.relayCall(relayRequestNoCallData, signature, '0x', {
+          const { tx } = await relayHubInstance.relayCall(relayRequestNoCallData, signature, '0x', {
             from: relayAddress,
             gasPrice
           })
@@ -381,7 +391,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         })
 
         it('preRelayedCall receives values returned in acceptRelayedCall', async function () {
-          const { tx } = await relayHubContract.relayCall(relayRequestPaymasterWithContext, signatureWithContextPaymaster, '0x', {
+          const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext, signatureWithContextPaymaster, '0x', {
             from: relayAddress,
             gasPrice
           })
@@ -400,7 +410,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         })
 
         it('postRelayedCall receives values returned in acceptRelayedCall', async function () {
-          const { tx } = await relayHubContract.relayCall(relayRequestPaymasterWithContext, signatureWithContextPaymaster, '0x', {
+          const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext, signatureWithContextPaymaster, '0x', {
             from: relayAddress,
             gasPrice
           })
@@ -420,7 +430,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
 
         it('relaying is aborted if the recipient returns an invalid status code', async function () {
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-          const { logs } = await relayHubContract.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
+          const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
             from: relayAddress,
             gasPrice
           })
@@ -432,7 +442,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
           const gasReserve = 99999
           await expectRevert(
-            relayHubContract.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
+            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
               from: relayAddress,
               gasPrice,
               gas: parseInt(gasLimit) + gasReserve
@@ -443,7 +453,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         it('should not accept relay requests with gas price lower then user specified', async function () {
           // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
           await expectRevert(
-            relayHubContract.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
+            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
               from: relayAddress,
               gasPrice: parseInt(gasPrice) - 1
             }),
@@ -453,19 +463,19 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it', async function () {
           const paymaster2 = await TestPaymasterEverythingAccepted.new()
           await paymaster2.setHub(relayHub)
-          const maxPossibleCharge = (await relayHubContract.calculateCharge(gasLimit, {
+          const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
             gasPrice,
             pctRelayFee,
             baseRelayFee,
             gasLimit: 0
           })).toNumber()
-          await paymaster2.deposit({ value: maxPossibleCharge - 1 }) // TODO: replace with correct margin calculation
+          await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation
 
           const relayRequestPaymaster2 = relayRequest.clone()
           relayRequestPaymaster2.relayData.paymaster = paymaster2.address
 
           await expectRevert(
-            relayHubContract.relayCall(relayRequestPaymaster2, signatureWithMisbehavingPaymaster, '0x', {
+            relayHubInstance.relayCall(relayRequestPaymaster2, signatureWithMisbehavingPaymaster, '0x', {
               from: relayAddress,
               gasPrice
             }),
@@ -474,9 +484,10 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
 
         it('should not execute the \'relayedCall\' if \'preRelayedCall\' reverts', async function () {
           await misbehavingPaymaster.setRevertPreRelayCall(true)
+          // @ts-ignore (there is a problem with web3 types annotations that must be solved)
           const startBlock = await web3.eth.getBlockNumber()
 
-          const { logs } = await relayHubContract.relayCall(relayRequestMisbehavingPaymaster,
+          const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
             signatureWithMisbehavingPaymaster, '0x', {
               from: relayAddress,
               gasPrice: gasPrice
@@ -493,12 +504,13 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
 
         it('should revert the \'relayedCall\' if \'postRelayedCall\' reverts', async function () {
           await misbehavingPaymaster.setRevertPostRelayCall(true)
-          const { logs } = await relayHubContract.relayCall(relayRequestMisbehavingPaymaster,
+          const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
             signatureWithMisbehavingPaymaster, '0x', {
               from: relayAddress,
               gasPrice: gasPrice
             })
 
+          // @ts-ignore (there is a problem with web3 types annotations that must be solved)
           const startBlock = await web3.eth.getBlockNumber()
           // There should not be an event emitted, which means the result of 'relayCall' was indeed reverted
           const logsMessages = await recipientContract.contract.getPastEvents('SampleRecipientEmitted', {
@@ -510,13 +522,13 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         })
 
         describe('recipient balance withdrawal ban', function () {
-          let misbehavingPaymaster
-          let relayRequestMisbehavingPaymaster
-          let signature
+          let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
+          let relayRequestMisbehavingPaymaster: RelayRequest
+          let signature: string
           beforeEach(async function () {
             misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
             await misbehavingPaymaster.setHub(relayHub)
-            await relayHubContract.depositFor(misbehavingPaymaster.address, {
+            await relayHubInstance.depositFor(misbehavingPaymaster.address, {
               value: ether('1'),
               from: other
             })
@@ -547,8 +559,8 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             await assertRevertWithRecipientBalanceChanged()
           })
 
-          async function assertRevertWithRecipientBalanceChanged () {
-            const { logs } = await relayHubContract.relayCall(relayRequestMisbehavingPaymaster, signature, '0x', {
+          async function assertRevertWithRecipientBalanceChanged (): Promise<void> {
+            const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signature, '0x', {
               from: relayAddress,
               gasPrice
             })
