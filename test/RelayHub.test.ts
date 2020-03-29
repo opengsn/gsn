@@ -8,7 +8,6 @@ import Environments from '../src/js/relayclient/Environments'
 
 import {
   RelayHubInstance,
-  TrustForwarderInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance
@@ -44,7 +43,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
   let target: string
   let paymaster: string
-  let forwarder: TrustForwarderInstance
+  let forwarder: string
 
   beforeEach(async function () {
     relayHubInstance = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })

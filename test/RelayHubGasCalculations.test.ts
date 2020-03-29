@@ -8,7 +8,6 @@ import RelayRequest from '../src/js/relayclient/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,
-  TrustForwarderInstance,
   TestRecipientInstance,
   TestPaymasterVariableGasLimitsInstance
 } from '../types/truffle-contracts'
@@ -53,7 +52,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
   let encodedFunction
   let signature: string
   let relayRequest: RelayRequest
-  let forwarder: TrustForwarderInstance
+  let forwarder: string
 
   async function prepareForHub (): Promise<void> {
     recipient = await TestRecipient.new()
