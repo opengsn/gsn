@@ -191,7 +191,7 @@ contract('RelayClient', function (accounts) {
           assert.equal('Error: canRelay failed: 13: test: not approved', error.toString())
         } else {
           // error checked by relay:
-          assert.include(error.otherErrors[0], 'canRelay failed in server:' + expectedError)
+          assert.include(error.otherErrors[0], 'canRelay failed in server: status: ' + expectedError)
         }
       }
     }))

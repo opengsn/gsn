@@ -216,7 +216,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           relayHub: relayHub,
           relayRequest
         })
-        signature: signatureWithPermissivePaymaster  = await getEip712Signature({
+        signatureWithPermissivePaymaster  = await getEip712Signature({
           web3,
           dataToSign
         })

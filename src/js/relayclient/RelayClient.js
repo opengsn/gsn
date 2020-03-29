@@ -165,7 +165,6 @@ class RelayClient {
       relayHubAddress,
       relayMaxNonce
     }) {
-    console.log('sendViaRelay args:', arguments[0])
     var self = this
     return new Promise(function (resolve, reject) {
       const jsonRequestData = {
@@ -330,8 +329,6 @@ class RelayClient {
       }
     }
 
-    const senderNonce = (await relayHub.methods.getNonce(options.from).call()).toString()
-
     this.serverHelper.setHub(relayHub)
 
     // gas-price multiplicator: either default (10%) or configuration factor
@@ -373,8 +370,7 @@ class RelayClient {
       const relayUrl = activeRelay.relayUrl
       const pctRelayFee = (options.pctRelayFee || activeRelay.pctRelayFee).toString()
       const baseRelayFee = (options.baseRelayFee || activeRelay.baseRelayFee).toString()
-      const { relayRequest, relayMaxNonce, approvalData, signature } = await this.prepareRelayHttpRequest(
-        senderNonce,
+      const { relayRequest, relayMaxNonce, approvalData, signature } = await this._prepareRelayHttpRequest(
         encodedFunction,
         relayAddress,
         pctRelayFee,
@@ -384,84 +380,7 @@ class RelayClient {
         paymaster,
         relayHub,
         options)
-      /*const relayRequest = new RelayRequest({
-        senderAddress: options.from,
-        target: options.to,
-        encodedFunction,
-        senderNonce,
-        pctRelayFee,
-        baseRelayFee,
-        gasPrice: gasPrice.toString(),
-        gasLimit: gasLimit.toString(),
-        paymaster,
-        relayHub: relayHub._address,
-        relayAddress
-      })
-
-      if (this.web3.eth.getChainId === undefined) {
-        throw new Error(`getChainId is undefined. Web3 version is ${this.web3.version}, minimum required is 1.2.2`)
-      }
-      const chainId = await this.web3.eth.getChainId()
-
-      // let signature
-      let signedData
-      // TODO: refactor so signedData is created regardless of ephemeral key used or not
-      if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
-        signedData = await getDataToSign({
-          chainId,
-          relayHub: relayHub._address,
-          relayRequest
-        })
-        signature = sigUtil.signTypedData_v4(self.ephemeralKeypair.privateKey, { data: signedData })
-      } else {
-        const eip712Sig = await getEip712Signature(
-          {
-            web3: this.web3,
-            methodSuffix: options.methodSuffix || '',
-            jsonStringifyRequest: options.jsonStringifyRequest || false,
-            relayHub: relayHub._address,
-            chainId,
-            relayRequest
-          })
-        signature = eip712Sig.signature
-        signedData = eip712Sig.data
-      }
-
-      let approvalData = options.approvalData || '0x'
-      if (typeof options.approveFunction === 'function') {
-        approvalData = '0x' + await options.approveFunction({
-          from: options.from,
-          to: options.to,
-          encodedFunctionCall: encodedFunction,
-          pctRelayFee: options.pctRelayFee,
-          gas_price: gasPrice,
-          gas_limit: gasLimit,
-          nonce: senderNonce,
-          relay_hub_address: relayHub._address,
-          relay_address: relayAddress
-        })
-      }
-
-      if (self.config.verbose) {
-        console.log('relayTransaction', 'from: ', options.from, 'sig: ', signature)
-        const rec = sigUtil.recoverTypedSignature_v4({
-          data: signedData,
-          sig: signature
-        })
-        if (rec.toLowerCase() === options.from.toLowerCase()) {
-          console.log('relayTransaction recovered:', rec, 'signature is correct')
-        } else {
-          console.error('relayTransaction recovered:', rec, 'signature error')
-        }
-      }
-
-      // max nonce is not signed, as contracts cannot access addresses' nonces.
-      let allowedRelayNonceGap = this.config.allowed_relay_nonce_gap
-      if (typeof allowedRelayNonceGap === 'undefined') {
-        allowedRelayNonceGap = 3
-      }
-      const relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowedRelayNonceGap
-*/      // on first found relay, call canRelay to make sure that on-chain this request can pass
+      // on first found relay, call canRelay to make sure that on-chain this request can pass
       if (options.validateCanRelay && firstTry) {
         firstTry = false
         let res
@@ -501,9 +420,7 @@ class RelayClient {
           throw new Error('canRelay failed: ' + status + ': ' + errorMsg)
         }
       }
-
       try {
-        console.log('wtf is senderNonce??', senderNonce, typeof senderNonce)
         return await this.sendViaRelay({
           relayAddress,
           from: options.from,
@@ -533,7 +450,7 @@ class RelayClient {
             baseRelayFee: options.baseRelayFee,
             gasPrice,
             gasLimit,
-            nonce: senderNonce,
+            nonce: relayRequest.relayData.senderNonce,
             relayhub: relayHub._address,
             relayAddress
           })
@@ -670,8 +587,7 @@ class RelayClient {
     return relayHub
   }
 
-  async prepareRelayHttpRequest (
-    senderNonce,
+  async _prepareRelayHttpRequest (
     encodedFunction,
     relayAddress,
     pctRelayFee,
@@ -681,14 +597,14 @@ class RelayClient {
     paymaster,
     relayHub,
     options) {
-    console.log('senderNonce is ', senderNonce, typeof senderNonce)
+    const senderNonce = (await relayHub.methods.getNonce(options.from).call()).toString()
     const relayRequest = new RelayRequest({
       senderAddress: options.from,
       target: options.to,
       encodedFunction,
-      senderNonce,
-      pctRelayFee,
-      baseRelayFee,
+      senderNonce: senderNonce.toString(),
+      pctRelayFee: pctRelayFee.toString(),
+      baseRelayFee: baseRelayFee.toString(),
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster,
@@ -696,30 +612,6 @@ class RelayClient {
     })
 
     const signature = await this._prepareSignature(relayHub, relayRequest, options)
-
- /*   if (this.web3.eth.getChainId === undefined) {
-      throw new Error(`getChainId is undefined. Web3 version is ${this.web3.version}, minimum required is 1.2.2`)
-    }
-    const chainId = await this.web3.eth.getChainId()
-
-    let signature
-    const signedData = await getDataToSign({
-      chainId,
-      relayHub: relayHub._address,
-      relayRequest
-    })
-    if (typeof this.ephemeralKeypair === 'object' && this.ephemeralKeypair !== null) {
-      signature = sigUtil.signTypedData_v4(this.ephemeralKeypair.privateKey, { data: signedData })
-    } else {
-      signature = await getEip712Signature(
-        {
-          web3: this.web3,
-          methodSuffix: options.methodSuffix || '',
-          jsonStringifyRequest: options.jsonStringifyRequest || false,
-          dataToSign: signedData
-        })
-    }*/
-
     let approvalData = options.approvalData || '0x'
     if (typeof options.approveFunction === 'function') {
       approvalData = '0x' + await options.approveFunction({
@@ -734,20 +626,6 @@ class RelayClient {
         relay_address: relayAddress
       })
     }
-
-/*    if (this.config.verbose) {
-      console.log('relayTransaction', 'from: ', options.from, 'sig: ', signature)
-      const rec = sigUtil.recoverTypedSignature_v4({
-        data: signedData,
-        sig: signature
-      })
-      if (rec.toLowerCase() === options.from.toLowerCase()) {
-        console.log('relayTransaction recovered:', rec, 'signature is correct')
-      } else {
-        console.error('relayTransaction recovered:', rec, 'signature error')
-      }
-    }*/
-
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     let allowedRelayNonceGap = this.config.allowed_relay_nonce_gap
     if (typeof allowedRelayNonceGap === 'undefined') {
@@ -757,7 +635,7 @@ class RelayClient {
     return { relayRequest, relayMaxNonce, approvalData, signature }
   }
 
-  async _prepareSignature(relayHub, relayRequest, options) {
+  async _prepareSignature (relayHub, relayRequest, options) {
     if (this.web3.eth.getChainId === undefined) {
       throw new Error(`getChainId is undefined. Web3 version is ${this.web3.version}, minimum required is 1.2.2`)
     }
