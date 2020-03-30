@@ -203,7 +203,7 @@ class RelayServer extends EventEmitter {
       gtxdatanonzero: gtxdatanonzero
     })
 
-    let canRelayRet, errorMessage, message
+    let canRelayRet, errorMessage
     try {
       canRelayRet = await this.relayHubContract.methods.canRelay(
         signedData.message,
@@ -214,13 +214,12 @@ class RelayServer extends EventEmitter {
       debug('canRelayRet', canRelayRet)
     } catch (e) {
       errorMessage = e.message
-    } finally {
-      if (!canRelayRet || canRelayRet.status !== '0') {
-        const message = canRelayRet ? `status: ${canRelayRet.status} description: ${Buffer.from(
-          utils.removeHexPrefix(canRelayRet.recipientContext), 'hex').toString('utf8')}`
-          : 'jsonrpc call failed: ' + errorMessage
-        throw new Error('canRelay failed in server: ' + message)
-      }
+    }
+    if (!canRelayRet || canRelayRet.status !== '0') {
+      const message = canRelayRet ? `status: ${canRelayRet.status} description: ${Buffer.from(
+        utils.removeHexPrefix(canRelayRet.recipientContext), 'hex').toString('utf8')}`
+        : 'jsonrpc call failed: ' + errorMessage
+      throw new Error('canRelay failed in server: ' + message)
     }
     // Send relayed transaction
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)

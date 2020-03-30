@@ -18,7 +18,7 @@
 /singleton/
 /server/pkg/
 /.eslintcache
-/src/js/relayclient/interfaces/
+/src/js/common/interfaces/
 /ganache.pid
 /types/truffle-contracts/
 serverdock/
