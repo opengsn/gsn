@@ -39,7 +39,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     )
     external
     view
-    returns (uint256, bytes memory) {
+    returns (bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
         if (overspendAcceptGas) {
             uint i = 0;
@@ -48,9 +48,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
             }
         }
 
-        if (returnInvalidErrorCode) return (10, "");
+        require(!returnInvalidErrorCode, "invalid code");
 
-        return (0, "");
+        return "";
     }
 
     function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {

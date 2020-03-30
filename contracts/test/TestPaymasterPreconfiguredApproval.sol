@@ -18,13 +18,11 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
     )
     external
     view
-    returns (uint256, bytes memory) {
+    returns (bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
-        if (keccak256(expectedApprovalData) != keccak256(approvalData)) {
-            return (14,
-            abi.encodePacked(
-                "test: unexpected approvalData: '", approvalData, "' instead of '", expectedApprovalData, "'"));
-        }
-        return (0, "");
+        require(keccak256(expectedApprovalData) == keccak256(approvalData),
+            string(abi.encodePacked(
+                "test: unexpected approvalData: '", approvalData, "' instead of '", expectedApprovalData, "'")));
+        return "";
     }
 }
