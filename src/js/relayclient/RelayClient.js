@@ -36,13 +36,6 @@ const Environments = require('./Environments')
 // default gas price (unless client specifies one): the web3.eth.gasPrice*(100+GASPRICE_PERCENT)/100
 const GASPRICE_PERCENT = 20
 
-const canRelayStatus = {
-  1: '1 WrongSignature', // The transaction to relay is not signed by requested sender
-  2: '2 WrongNonce', // The provided nonce has already been used by the sender
-  3: '3 AcceptRelayedCallReverted', // The recipient rejected this call via acceptRelayedCall
-  4: '4 InvalidRecipientStatusCode' // The recipient returned an invalid (reserved) status code
-}
-
 class RelayClient {
   /**
    * create a RelayClient library object, to force contracts to go through a relay.
@@ -476,11 +469,8 @@ class RelayClient {
         } catch (e) {
           throw new Error('canRelay reverted (should not happen): ' + e)
         }
-        if (res.status !== '0') {
-          // in case of error, the context is an error message.
-          const errorMsg = res.recipientContext ? Buffer.from(res.recipientContext.slice(2), 'hex').toString() : ''
-          const status = canRelayStatus[res.status] || res.status
-          throw new Error('canRelay failed: ' + status + ': ' + errorMsg)
+        if (!res.success) {
+          throw new Error('canRelay failed: ' + res.returnValue)
         }
       }
 

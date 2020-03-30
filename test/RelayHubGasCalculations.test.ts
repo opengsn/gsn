@@ -41,7 +41,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
   const gasLimit = new BN('1000000')
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 805,
+    arc: 805 - 6,
     pre: 1839,
     post: 2080
   }
@@ -154,7 +154,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       const misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: 1e17 })
-      const AcceptRelayedCallReverted = 3
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
       const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
@@ -170,8 +169,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       const maxPossibleGasIrrelevantValue = 8000000
       const acceptRelayedCallGasLimit = 50000
       const canRelayResponse = await relayHub.canRelay(relayRequestMisbehaving, maxPossibleGasIrrelevantValue, acceptRelayedCallGasLimit, signature, '0x')
-      // @ts-ignore
-      assert.equal(AcceptRelayedCallReverted, canRelayResponse.status)
+      assert.equal(canRelayResponse[0], false)
+      assert.equal(canRelayResponse[1], '') // no revert string on out-of-gas
 
       const res = await relayHub.relayCall(relayRequestMisbehaving, signature, '0x', {
         from: relayAddress,
@@ -179,7 +178,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       })
 
       assert.equal('CanRelayFailed', res.logs[0].event)
-      assert.equal(AcceptRelayedCallReverted, res.logs[0].args.reason)
+      assert.equal(res.logs[0].args.reason, '')
     })
   })
 

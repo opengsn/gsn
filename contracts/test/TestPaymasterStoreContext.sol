@@ -41,8 +41,8 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     )
     external
     view
-    returns (uint256, bytes memory) {
-        return (0, abi.encode(
+    returns (bytes memory) {
+        return abi.encode(
             relayRequest.relayData.relayAddress,
             relayRequest.relayData.senderAddress,
             relayRequest.encodedFunction,
@@ -52,7 +52,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
             relayRequest.gasData.gasLimit,
             relayRequest.relayData.senderNonce,
             approvalData,
-            maxPossibleGas));
+            maxPossibleGas);
     }
 
     function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {

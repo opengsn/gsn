@@ -161,7 +161,7 @@ contract('RelayClient', function (accounts) {
       await approvalPaymaster.setHub(rhub.address)
       await rhub.depositFor(approvalPaymaster.address, { value: 1e18 })
 
-      const expectedError = 13
+      const expectedError = 'test: not approved'
       const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
       const to = sr.address
       const options = {
@@ -189,10 +189,10 @@ contract('RelayClient', function (accounts) {
       } catch (error) {
         if (validateCanRelay) {
           // error checked by relayTransaction:
-          assert.equal('Error: canRelay failed: 13: test: not approved', error.toString())
+          assert.equal('Error: canRelay failed: test: not approved', error.toString())
         } else {
           // error checked by relay:
-          assert.include(error.otherErrors[0], 'canRelay failed in server:' + expectedError)
+          assert.include(error.otherErrors[0], 'canRelay failed in server: ' + expectedError)
         }
       }
     }))

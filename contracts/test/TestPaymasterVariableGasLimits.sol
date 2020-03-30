@@ -23,11 +23,11 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
     )
     external
     view
-    returns (uint256, bytes memory) {
+    returns (bytes memory) {
         (relayRequest, approvalData);
-        return (0, abi.encode(
+        return abi.encode(
             gasleft(),
-            maxPossibleGas));
+            maxPossibleGas);
     }
 
     function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {

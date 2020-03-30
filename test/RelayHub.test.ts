@@ -28,13 +28,6 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
     RecipientBalanceChanged: new BN('4')
   }
 
-  const CanRelayStatus = {
-    OK: new BN('0'),
-    WrongSignature: new BN('1'),
-    WrongNonce: new BN('2'),
-    AcceptRelayedCallReverted: new BN('3'),
-    InvalidRecipientStatusCode: new BN('4')
-  }
   const chainId = Environments.defEnv.chainId
 
   let relayHub: string
@@ -260,20 +253,20 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             acceptRelayedCallGasLimit,
             signatureWithPermissivePaymaster, '0x')
           // @ts-ignore (again, typechain does not know names of return values)
-          assert.equal(0, canRelay.status.valueOf())
+          assert.equal(canRelay.success, true)
         })
 
-        it('should get \'1\' (Wrong Signature) from \'canRelay\' for a transaction with a wrong signature', async function () {
+        it('should get "Wrong Signature" from \'canRelay\' for a transaction with a wrong signature', async function () {
           const wrongSig = '0xaaaa6ad4b4fab03bb2feaea2d54c690206e40036e4baa930760e72479da0cc5575779f9db9ef801e144b5e6af48542107f2f094649334b030e2bb44f054429b451'
           const canRelay = await relayHubInstance.canRelay(relayRequest,
             maxPossibleGas,
             acceptRelayedCallGasLimit,
             wrongSig, '0x')
-          // @ts-ignore (again, typechain does not know names of return values)
-          assert.equal(1, canRelay.status.valueOf())
+          assert.equal(canRelay[0], false)
+          assert.include(canRelay[1], 'signature')
         })
 
-        it('should get \'2\' (Wrong Nonce) from \'canRelay\' for a transaction with a wrong nonce', async function () {
+        it('should get "Wrong Nonce" from \'canRelay\' for a transaction with a wrong nonce', async function () {
           const wrongNonce = '777'
 
           const relayRequestWrongNonce = relayRequest.clone()
@@ -292,8 +285,8 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             acceptRelayedCallGasLimit,
             signature,
             '0x')
-          // @ts-ignore (again, typechain does not know names of return values)
-          assert.equal(2, canRelay.status.valueOf())
+          assert.equal(canRelay[0], false)
+          assert.include(canRelay[1], 'nonce')
         })
       })
 
@@ -436,7 +429,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             gasPrice
           })
 
-          expectEvent.inLogs(logs, 'CanRelayFailed', { reason: CanRelayStatus.InvalidRecipientStatusCode })
+          expectEvent.inLogs(logs, 'CanRelayFailed', { reason: 'invalid code' })
         })
 
         it('should not accept relay requests if gas limit is too low for a relayed transaction', async function () {

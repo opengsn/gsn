@@ -15,9 +15,9 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     )
     external
     view
-    returns (uint256, bytes memory) {
+    returns (bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
-        return (0, "");
+        return "";
     }
 
     function preRelayedCall(
