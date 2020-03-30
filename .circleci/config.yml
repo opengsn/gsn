@@ -19,24 +19,9 @@ jobs: # a collection of steps
           paths:
             - ./node_modules
 
-      - restore_cache: # special step to restore the dependency cache
-          key: dependency-cache-go-get1
-      - run:
-          name: preload go-sources
-          command: make -C server go-get
-      - save_cache: # special step to save the dependency cache
-          key: dependency-cache-go-get1
-          paths:
-            - ./server/src/github.com/ethereum
-            - ./server/src/code.cloudfoundry.org
-
       - run:
           name: lint
           command: npm run lint
-
-      - run:
-          name: compile
-          command: make
 
       - run: # run tests
           name: test
