@@ -3,10 +3,10 @@ const assert = require('chai').use(require('chai-as-promised')).assert
 // eslint-disable-next-line camelcase
 const { recoverTypedSignature_v4 } = require('eth-sig-util')
 
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
 const Environments = require('../src/js/relayclient/Environments')
-const { getEip712Signature } = require('../src/js/relayclient/utils')
-const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
+const { getEip712Signature } = require('../src/js/common/utils')
+const getDataToSign = require('../src/js/common/EIP712/Eip712Helper')
 
 const EIP712Sig = artifacts.require('./EIP712Sig.sol')
 

@@ -1,6 +1,6 @@
 /* global contract artifacts before it */
 
-import getDataToSign from '../src/js/relayclient/EIP712/Eip712Helper'
+import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
 
 const Environments = require('../src/js/relayclient/Environments')
 
@@ -11,9 +11,9 @@ const TestToken = artifacts.require('TestToken.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
 const TrustedForwarder = artifacts.require('./TrustedForwarder.sol')
 const TestProxy = artifacts.require('TestProxy')
-const { getEip712Signature } = require('../src/js/relayclient/utils')
+const { getEip712Signature } = require('../src/js/common/utils')
 
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
 
 async function retcode (func) {
   const ret = await func

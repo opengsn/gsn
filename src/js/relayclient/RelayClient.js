@@ -1,4 +1,4 @@
-const utils = require('./utils')
+const utils = require('../common/utils')
 const getEip712Signature = utils.getEip712Signature
 const parseHexString = utils.parseHexString
 const removeHexPrefix = utils.removeHexPrefix
@@ -11,15 +11,15 @@ const Transaction = require('ethereumjs-tx')
 const abiDecoder = require('abi-decoder')
 const sigUtil = require('eth-sig-util')
 
-const getDataToSign = require('./EIP712/Eip712Helper')
-const RelayRequest = require('./EIP712/RelayRequest')
-const relayHubAbi = require('./interfaces/IRelayHub')
+const getDataToSign = require('../common/EIP712/Eip712Helper')
+const RelayRequest = require('../common/EIP712/RelayRequest')
+const relayHubAbi = require('../common/interfaces/IRelayHub')
 // This file is only needed so we don't change IRelayHub code, which would affect RelayHub expected deployed address
 // TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove IRelayHubVersionAbi.json
 const versionAbi = require('./IRelayHubVersionAbi')
 relayHubAbi.push(versionAbi)
 
-const paymasterAbi = require('./interfaces/IPaymaster')
+const paymasterAbi = require('../common/interfaces/IPaymaster')
 
 const SecondsPerBlock = 12
 

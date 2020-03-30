@@ -3,11 +3,11 @@ const Web3 = require('web3')
 const abiDecoder = require('abi-decoder')
 const Transaction = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
-const RelayHubABI = require('../relayclient/interfaces/IRelayHub')
-const PayMasterABI = require('../relayclient/interfaces/IPaymaster')
-const getDataToSign = require('../relayclient/EIP712/Eip712Helper')
-const RelayRequest = require('../relayclient/EIP712/RelayRequest')
-const utils = require('../relayclient/utils')
+const RelayHubABI = require('../common/interfaces/IRelayHub')
+const PayMasterABI = require('../common/interfaces/IPaymaster')
+const getDataToSign = require('../common/EIP712/Eip712Helper')
+const RelayRequest = require('../common/EIP712/RelayRequest')
+const utils = require('../common/utils')
 const Environments = require('../relayclient/Environments')
 const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
 const StoredTx = require('./TxStoreManager').StoredTx
@@ -203,7 +203,7 @@ class RelayServer extends EventEmitter {
       gtxdatanonzero: gtxdatanonzero
     })
 
-    let canRelayRet, errorMessage
+    let canRelayRet, errorMessage, message
     try {
       canRelayRet = await this.relayHubContract.methods.canRelay(
         signedData.message,
