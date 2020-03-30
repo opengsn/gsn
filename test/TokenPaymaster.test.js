@@ -24,7 +24,7 @@ async function revertReason (func) {
   }
 }
 
-contract.only('TokenPaymaster', ([from, relay, relayOwner]) => {
+contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let paymaster, uniswap, token, recipient, hub, forwarder
   let sharedRelayRequestData
 
