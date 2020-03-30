@@ -44,17 +44,18 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
   let target: string
   let paymaster: string
+  let forwarder: string
 
   beforeEach(async function () {
     relayHubInstance = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
+    forwarder = await recipientContract.getTrustedForwarder()
 
     target = recipientContract.address
     paymaster = paymasterContract.address
     relayHub = relayHubInstance.address
 
-    await recipientContract.setHub(relayHub)
     await paymasterContract.setHub(relayHub)
   })
 
@@ -220,7 +221,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         })
         const dataToSign = await getDataToSign({
           chainId,
-          relayHub: relayHub,
+          verifier: forwarder,
           relayRequest
         })
         signatureWithPermissivePaymaster = await getEip712Signature({
@@ -283,7 +284,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           relayRequestWrongNonce.relayData.senderNonce = wrongNonce
           const dataToSign = await getDataToSign({
             chainId,
-            relayHub,
+            verifier: forwarder,
             relayRequest: relayRequestWrongNonce
           })
           const signature = await getEip712Signature({
@@ -329,7 +330,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           })
           let dataToSign = await getDataToSign({
             chainId,
-            relayHub,
+            verifier: forwarder,
             relayRequest
           })
 
@@ -343,7 +344,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
 
           dataToSign = await getDataToSign({
             chainId,
-            relayHub,
+            verifier: forwarder,
             relayRequest: relayRequestMisbehavingPaymaster
           })
           signatureWithMisbehavingPaymaster = await getEip712Signature({
@@ -355,7 +356,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           relayRequestPaymasterWithContext.relayData.paymaster = paymasterWithContext.address
           dataToSign = await getDataToSign({
             chainId,
-            relayHub,
+            verifier: forwarder,
             relayRequest: relayRequestPaymasterWithContext
           })
           signatureWithContextPaymaster = await getEip712Signature({
@@ -365,19 +366,19 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
         })
 
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
-          const nonceBefore = await relayHubInstance.getNonce(senderAddress)
+          const nonceBefore = await relayHubInstance.getNonce(target, senderAddress)
 
           const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', {
             from: relayAddress,
             gasPrice
           })
-          const nonceAfter = await relayHubInstance.getNonce(senderAddress)
+          const nonceAfter = await relayHubInstance.getNonce(target, senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
             message,
             realSender: senderAddress,
-            msgSender: relayHub,
+            msgSender: forwarder,
             origin: relayAddress
           })
         })
@@ -389,7 +390,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           relayRequestNoCallData.encodedFunction = encodedFunction
           const dataToSign = await getDataToSign({
             chainId,
-            relayHub,
+            verifier: forwarder,
             relayRequest: relayRequestNoCallData
           })
           signature = await getEip712Signature({
@@ -403,7 +404,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
             message: messageWithNoParams,
             realSender: senderAddress,
-            msgSender: relayHub,
+            msgSender: forwarder,
             origin: relayAddress
           })
         })
@@ -559,7 +560,7 @@ contract('RelayHub', function ([_, relayOwner, relayAddress, __, senderAddress, 
             relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
             const dataToSign = await getDataToSign({
               chainId,
-              relayHub,
+              verifier: forwarder,
               relayRequest: relayRequestMisbehavingPaymaster
             })
             signature = await getEip712Signature({

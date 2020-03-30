@@ -320,15 +320,6 @@ class RelayClient {
     const paymaster = options.paymaster || options.to
     const relayHub = await this.createRelayHubFromPaymaster(paymaster)
 
-    // TODO: refactor! wrong instance is created for accidentally same method!
-    if (!utils.isSameAddress(paymaster, options.to)) {
-      const recipientHub = await this.createPaymaster(options.to).methods.getHubAddr().call()
-
-      if (!utils.isSameAddress(relayHub._address, recipientHub)) {
-        throw Error('Paymaster\'s and recipient\'s RelayHub addresses do not match')
-      }
-    }
-
     this.serverHelper.setHub(relayHub)
 
     // gas-price multiplicator: either default (10%) or configuration factor
@@ -439,7 +430,7 @@ class RelayClient {
           relayMaxNonce
         })
       } catch (error) {
-        console.log('error??', error)
+        // console.log('error??', error)
         errors.push(error)
         if (this.config.verbose) {
           console.log('relayTransaction: req:', {
@@ -597,7 +588,7 @@ class RelayClient {
     paymaster,
     relayHub,
     options) {
-    const senderNonce = (await relayHub.methods.getNonce(options.from).call()).toString()
+    const senderNonce = (await relayHub.methods.getNonce(options.to, options.from).call()).toString()
     const relayRequest = new RelayRequest({
       senderAddress: options.from,
       target: options.to,
@@ -640,11 +631,11 @@ class RelayClient {
       throw new Error(`getChainId is undefined. Web3 version is ${this.web3.version}, minimum required is 1.2.2`)
     }
     const chainId = await this.web3.eth.getChainId()
-
+    const forwarderAddress = await relayHub.methods.getForwarder(options.to).call()
     let signature
     const signedData = await getDataToSign({
       chainId,
-      relayHub: relayHub._address,
+      verifier: forwarderAddress,
       relayRequest
     })
     if (typeof this.ephemeralKeypair === 'object' && this.ephemeralKeypair !== null) {

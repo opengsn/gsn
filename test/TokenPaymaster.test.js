@@ -9,6 +9,7 @@ const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
 const TestUniswap = artifacts.require('TestUniswap.sol')
 const TestToken = artifacts.require('TestToken.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
+const TrustedForwarder = artifacts.require('./TrustedForwarder.sol')
 const TestProxy = artifacts.require('TestProxy')
 const { getEip712Signature } = require('../src/js/relayclient/utils')
 
@@ -25,7 +26,7 @@ async function retcode (func) {
 }
 
 contract('TokenPaymaster', ([from, relay, relayOwner]) => {
-  let paymaster, uniswap, token, recipient, hub
+  let paymaster, uniswap, token, recipient, hub, forwarder
   let sharedRelayRequestData
 
   async function calculatePostGas (paymaster) {
@@ -49,8 +50,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     await calculatePostGas(paymaster)
     await paymaster.setRelayHub(hub.address)
 
-    recipient = await TestProxy.new({ gas: 1e7 })
-    await recipient.setRelayHub(hub.address)
+    forwarder = await TrustedForwarder.new({ gas: 1e7 })
+    recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
 
     // approve uniswap to take our tokens.
     await token.approve(uniswap.address, -1)
@@ -128,7 +129,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData,
         senderAddress: from,
-        senderNonce: (await hub.getNonce(from)).toString(),
+        senderNonce: (await hub.getNonce(recipient.address, from)).toString(),
         gasPrice: '1',
         pctRelayFee: '0',
         baseRelayFee: '0'
@@ -137,7 +138,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const chainId = Environments.defEnv.chainId
       const dataToSign = await getDataToSign({
         chainId,
-        relayHub: hub.address,
+        verifier: forwarder.address,
         relayRequest
       })
       const signature = await getEip712Signature({

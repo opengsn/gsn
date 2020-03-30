@@ -335,7 +335,8 @@ contract('RelayServer', function (accounts) {
           { signature: '0xdeadface00000a58b757da7dea5678548be5ff9b16e9d1d87c6157aff6889c0f6a406289908add9ea6c3ef06d033a058de67d057e2c0ae5a02b36854be13b0731c' })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 1 description: WrongSignature'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: status: 1 description: signature mismatch'),
+          e.message)
       }
     })
     it('should fail to relay with wrong from', async function () {
@@ -343,7 +344,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction({ from: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 1 description: WrongSignature'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: status: 2 description: nonce mismatch'), e.message)
       }
     })
     it('should fail to relay with wrong recipient', async function () {
@@ -351,7 +352,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction({ to: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 1 description: WrongSignature'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: jsonrpc call failed'), e.message)
       }
     })
     it('should fail to relay with invalid paymaster', async function () {
@@ -396,12 +397,12 @@ contract('RelayServer', function (accounts) {
       }
     })
     it('should fail to relay with wrong senderNonce', async function () {
-      // First we change the senderNonce and see signature failure
+      // First we change the senderNonce and see nonce failure
       try {
         await relayTransaction({ senderNonce: 123456 })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 1 description: WrongSignature'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: status: 2 description: nonce mismatch'), e.message)
       }
       // Now we replay the same transaction so we get WrongNonce
       const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest()
@@ -411,7 +412,7 @@ contract('RelayServer', function (accounts) {
           { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 2 description: WrongNonce'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: status: 2 description: nonce mismatch'), e.message)
       }
     })
     it('should fail to relay with wrong relayMaxNonce', async function () {

@@ -19,12 +19,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
   let relayHub
   let recipient
   let paymaster
+  let forwarder
 
   before(async function () {
     relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
     recipient = await SampleRecipient.new()
+    forwarder = await recipient.getTrustedForwarder()
+
     paymaster = await TestPaymasterEverythingAccepted.new()
-    await recipient.setHub(relayHub.address)
     await paymaster.setHub(relayHub.address)
   })
 
@@ -232,7 +234,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
           })
           const dataToSign = await getDataToSign({
             chainId,
-            relayHub: relayHub.address,
+            verifier: forwarder,
             relayRequest
           })
           const signature = await getEip712Signature({

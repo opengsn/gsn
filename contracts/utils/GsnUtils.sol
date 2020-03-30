@@ -16,6 +16,17 @@ library GsnUtils {
     }
 
     /**
+     * extract error string from revert bytes
+     */
+    function getError(bytes memory err) internal pure returns (string memory ret) {
+        if (err.length < 4 + 32) {
+            //not a valid revert with error. return as-is.
+            return string(err);
+        }
+        (ret) = abi.decode(LibBytes.slice(err, 4, err.length), (string));
+    }
+
+    /**
      * extract method sig from encoded function call
      */
     function getMethodSig(bytes memory msgData) internal pure returns (bytes4) {
@@ -30,6 +41,14 @@ library GsnUtils {
      */
     function getParam(bytes memory msgData, uint index) internal pure returns (uint) {
         return LibBytes.readUint256(msgData, 4 + index * 32);
+    }
+
+    function getAddressParam(bytes memory msgData, uint index) internal pure returns (address) {
+        return address(getParam(msgData, index));
+    }
+
+    function getBytes32Param(bytes memory msgData, uint index) internal pure returns (bytes32) {
+        return bytes32(getParam(msgData, index));
     }
 
     /**

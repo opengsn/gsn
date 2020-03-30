@@ -162,9 +162,10 @@ class RelayServer extends EventEmitter {
       paymaster: paymaster,
       relayAddress: this.address
     })
+    // TODO: should not use signedData at all. only the relayRequest.
     const signedData = getDataToSign({
       chainId: this.chainId,
-      relayHub: relayHubAddress,
+      verifier: relayHubAddress,
       relayRequest
     })
 
@@ -202,18 +203,24 @@ class RelayServer extends EventEmitter {
       gtxdatanonzero: gtxdatanonzero
     })
 
-    const canRelayRet = await this.relayHubContract.methods.canRelay(
-      signedData.message,
-      maxPossibleGas,
-      gasLimits.acceptRelayedCallGasLimit,
-      signature,
-      approvalData).call()
-    debug('canRelayRet', canRelayRet)
-    if (!canRelayRet || canRelayRet.status !== '0') {
-      const message = canRelayRet ? `status: ${canRelayRet.status} description: ${Buffer.from(
-        utils.removeHexPrefix(canRelayRet.recipientContext), 'hex').toString('utf8')}`
-        : 'jsonrpc call failed'
-      throw new Error('canRelay failed in server: ' + message)
+    let canRelayRet, errorMessage
+    try {
+      canRelayRet = await this.relayHubContract.methods.canRelay(
+        signedData.message,
+        maxPossibleGas,
+        gasLimits.acceptRelayedCallGasLimit,
+        signature,
+        approvalData).call()
+      debug('canRelayRet', canRelayRet)
+    } catch (e) {
+      errorMessage = e.message
+    } finally {
+      if (!canRelayRet || canRelayRet.status !== '0') {
+        const message = canRelayRet ? `status: ${canRelayRet.status} description: ${Buffer.from(
+          utils.removeHexPrefix(canRelayRet.recipientContext), 'hex').toString('utf8')}`
+          : 'jsonrpc call failed: ' + errorMessage
+        throw new Error('canRelay failed in server: ' + message)
+      }
     }
     // Send relayed transaction
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)

@@ -12,7 +12,6 @@ const RelayProvider = require('../src/js/relayclient/RelayProvider')
 const utils = require('../src/js/relayclient/utils')
 const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
 const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
-
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
@@ -48,6 +47,7 @@ contract('RelayClient', function (accounts) {
   let relayproc
   let gasPrice
   let relayClientConfig
+  let forwarderAddress
   const relayOwner = accounts[1]
   let relayAccount
   const dayInSec = 24 * 60 * 60
@@ -60,6 +60,7 @@ contract('RelayClient', function (accounts) {
 
     rhub = await RelayHub.deployed()
     sr = await SampleRecipient.deployed()
+    forwarderAddress = await rhub.getForwarder(sr.address)
     paymaster = await TestPaymasterEverythingAccepted.deployed()
 
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
@@ -281,7 +282,7 @@ contract('RelayClient', function (accounts) {
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello world')
     assert.equal(res.logs[0].args.realSender, gasLess)
-    assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
+    assert.equal(res.logs[0].args.msgSender.toLowerCase(), forwarderAddress.toLowerCase())
     res = await sr.emitMessage('hello again', {
       from: accounts[3],
       paymaster: paymaster.address
@@ -318,7 +319,7 @@ contract('RelayClient', function (accounts) {
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello world'.repeat(1000))
     assert.equal(res.logs[0].args.realSender, gasLess)
-    assert.equal(res.logs[0].args.msgSender.toLowerCase(), rhub.address.toLowerCase())
+    assert.equal(res.logs[0].args.msgSender.toLowerCase(), forwarderAddress.toLowerCase())
     res = await sr.emitMessage('hello again'.repeat(1000), {
       from: accounts[3],
       paymaster: paymaster.address
@@ -483,7 +484,7 @@ contract('RelayClient', function (accounts) {
         })
         const data = getDataToSign({
           chainId: 7,
-          relayHub: relayHubAddress,
+          verifier: forwarderAddress,
           relayRequest
         })
         const recoveredAccount = sigUtil.recoverTypedSignature_v4({
@@ -670,23 +671,5 @@ contract('RelayClient', function (accounts) {
         assert.include(error.message, 'wrong version')
       }
     })
-  })
-
-  it('should fail to relay if provided Paymaster and Relay Recipient do not use same Relay Hub', async function () {
-    // TODO: all tests rely on 'SampleRecipient.web3.setProvider(relayProvider)' being called in other test!!!
-    const recipient = await SampleRecipient.deployed()
-    await recipient.setHub(accounts[4], {
-      from: accounts[0],
-      useGSN: false
-    })
-    try {
-      await recipient.emitMessage('ain\'t gonna work mate', {
-        from: accounts[0],
-        paymaster: paymaster.address
-      })
-      assert.fail()
-    } catch (error) {
-      assert.include(error.message, 'Paymaster\'s and recipient\'s RelayHub addresses do not match')
-    }
   })
 })
