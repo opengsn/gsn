@@ -209,7 +209,7 @@ class RelayServer extends EventEmitter {
       gasLimits.acceptRelayedCallGasLimit,
       signature,
       approvalData).call()
-      debug('canRelayRet', canRelayRet)
+    debug('canRelayRet', canRelayRet)
     if (!canRelayRet) {
       canRelayRet = {}
     }

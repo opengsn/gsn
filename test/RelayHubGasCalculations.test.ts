@@ -43,7 +43,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
   const senderNonce = new BN('0')
   const magicNumbers = {
     arc: 805 - 6,
-    pre: 1839,
+    pre: 1839 + 22,
     post: 2080
   }
 

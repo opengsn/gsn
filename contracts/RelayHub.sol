@@ -240,9 +240,15 @@ contract RelayHub is IRelayHub {
     view
     returns (bool success, string memory returnValue)
     {
-        // Verify the sender's request: signature and nonce.
-        ITrustedForwarder forwarder = ITrustedForwarder(BaseRelayRecipient(relayRequest.target).getTrustedForwarder());
         bytes memory ret;
+        (success, ret) = relayRequest.target.staticcall(abi.encodeWithSelector(
+            BaseRelayRecipient(relayRequest.target).getTrustedForwarder.selector
+        ));
+        if (!success || ret.length != 32) {
+            return (false, 'getTrustedForwarder failed');
+        }
+        // Verify the sender's request: signature and nonce.
+        ITrustedForwarder forwarder = ITrustedForwarder(abi.decode(ret, (address)));
         (success, ret) = address(forwarder).staticcall(abi.encodeWithSelector(
                 forwarder.verify.selector,
                 relayRequest, signature
