@@ -53,4 +53,10 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         require(address(relayHub) != address(0), "relay hub address not set");
         relayHub.depositFor.value(msg.value)(address(this));
     }
+
+    function withdraw(address payable destination) public {
+        require(address(relayHub) != address(0), "relay hub address not set");
+        uint256 amount = relayHub.balanceOf(address(this));
+        relayHub.withdraw(amount, destination);
+    }
 }

@@ -33,7 +33,7 @@ contract RelayHub is IRelayHub {
     uint256 constant private MAXIMUM_UNSTAKE_DELAY = 12 weeks;
 
     // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
-    // will not be able to immediatly start serving requests.
+    // will not be able to immediately start serving requests.
     uint256 constant private MINIMUM_RELAY_BALANCE = 0.1 ether;
 
     // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.

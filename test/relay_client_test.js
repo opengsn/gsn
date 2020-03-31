@@ -9,9 +9,9 @@ const Web3 = require('web3')
 
 const RelayClient = require('../src/js/relayclient/RelayClient')
 const RelayProvider = require('../src/js/relayclient/RelayProvider')
-const utils = require('../src/js/relayclient/utils')
-const getDataToSign = require('../src/js/relayclient/EIP712/Eip712Helper')
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+const utils = require('../src/js/common/utils')
+const getDataToSign = require('../src/js/common/EIP712/Eip712Helper')
+const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
 const RelayHub = artifacts.require('./RelayHub.sol')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
@@ -371,7 +371,7 @@ contract('RelayClient', function (accounts) {
           setTimeout(callback(null, JSON.stringify({})), 100)
         } else {
           const callbackWrap = function (e, r) {
-            assert.equal(null, e)
+            assert.equal(null, e, e)
             assert.ok(r.signedTx)
             assert.include(r.signedTx, messageHex)
             callback(e, r)
@@ -402,19 +402,19 @@ contract('RelayClient', function (accounts) {
     const filteredRelays = [
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: 'localhost1',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: 'localhost2',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: localhostOne,
         RelayServerAddress: relayServerAddress
       }

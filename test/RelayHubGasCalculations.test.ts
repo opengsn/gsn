@@ -2,9 +2,10 @@ import Big from 'big.js'
 import BN from 'bn.js'
 import { ether, expectEvent, time } from '@openzeppelin/test-helpers'
 
-import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/js/relayclient/utils'
+import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/js/common/utils'
+import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
 import Environments from '../src/js/relayclient/Environments'
-import RelayRequest from '../src/js/relayclient/EIP712/RelayRequest'
+import RelayRequest from '../src/js/common/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,
@@ -80,13 +81,16 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster: paymaster.address
-    });
-    ({ signature } = await getEip712Signature({
-      web3,
+    })
+    const dataToSign = await getDataToSign({
       chainId,
       verifier: forwarder,
       relayRequest
-    }))
+    })
+    signature = await getEip712Signature({
+      web3,
+      dataToSign
+    })
   }
 
   before(async function () {
@@ -160,11 +164,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       const relayRequestMisbehaving = relayRequest.clone()
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
       relayRequestMisbehaving.relayData.senderNonce = senderNonce
-      const { signature } = await getEip712Signature({
-        web3,
+      const dataToSign = await getDataToSign({
         chainId,
         verifier: forwarder,
         relayRequest: relayRequestMisbehaving
+      })
+      const signature = await getEip712Signature({
+        web3,
+        dataToSign
       })
       const maxPossibleGasIrrelevantValue = 8000000
       const acceptRelayedCallGasLimit = 50000
@@ -244,11 +251,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
                 relayAddress,
                 paymaster: paymaster.address
               })
-              const { signature } = await getEip712Signature({
-                web3,
+              const dataToSign = await getDataToSign({
                 chainId,
                 verifier: forwarder,
                 relayRequest
+              })
+              const signature = await getEip712Signature({
+                web3,
+                dataToSign
               })
               const res = await relayHub.relayCall(relayRequest, signature, '0x', {
                 from: relayAddress,

@@ -1,4 +1,4 @@
-const ow = require('ow')
+const ow = require('ow/dist/source/index')
 
 const GasData = require('./GasData')
 const RelayData = require('./RelayData')

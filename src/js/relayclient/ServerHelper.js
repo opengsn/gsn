@@ -1,6 +1,6 @@
 const BN = require('web3').utils.toBN
 
-const { event2topic } = require('./utils')
+const { event2topic } = require('../common/utils')
 // relays are "down-scored" in case they timed out a request.
 // they are "forgiven" after this timeout.
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 60 * 30
