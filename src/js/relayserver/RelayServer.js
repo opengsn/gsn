@@ -235,7 +235,12 @@ class RelayServer extends EventEmitter {
     }
     console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
     const { signedTx } = await this._sendTransaction(
-      { method, destination: relayHubAddress, gasLimit: requiredGas, gasPrice })
+      {
+        method,
+        destination: relayHubAddress,
+        gasLimit: requiredGas,
+        gasPrice
+      })
     return signedTx
   }
 
@@ -375,7 +380,10 @@ class RelayServer extends EventEmitter {
     // register on chain
     const registerMethod = this.relayHubContract.methods.registerRelay(this.baseRelayFee, this.pctRelayFee, this.url)
     const { receipt } = await this._sendTransaction(
-      { method: registerMethod, destination: this.relayHubContract.options.address })
+      {
+        method: registerMethod,
+        destination: this.relayHubContract.options.address
+      })
     console.log(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
     return receipt
   }
@@ -415,7 +423,8 @@ class RelayServer extends EventEmitter {
     const confirmedBlock = blockHeader.number - confirmationsNeeded
     let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
     debug(
-      `Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
+      `Removing confirmed txs until nonce ${nonce -
+      1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
     await this.txStoreManager.removeTxsUntilNonce({ nonce: nonce - 1 })
 
@@ -487,7 +496,10 @@ class RelayServer extends EventEmitter {
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
-    return { receipt, signedTx }
+    return {
+      receipt,
+      signedTx
+    }
   }
 
   async _resendTransaction ({ tx }) {
@@ -530,7 +542,10 @@ class RelayServer extends EventEmitter {
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
-    return { receipt, signedTx }
+    return {
+      receipt,
+      signedTx
+    }
   }
 
   async _pollNonce () {
