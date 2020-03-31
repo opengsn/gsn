@@ -1,8 +1,6 @@
 const ethUtils = require('ethereumjs-util')
 const web3Utils = require('web3-utils')
 
-const getDataToSign = require('./EIP712/Eip712Helper')
-
 const abi = require('web3-eth-abi')
 function removeHexPrefix (hex) {
   return hex.replace(/^0x/, '')
@@ -33,34 +31,24 @@ module.exports = {
   getEip712Signature: async function (
     {
       web3,
-      chainId,
-      verifier,
-      relayRequest,
+      dataToSign,
       methodSuffix = '',
       jsonStringifyRequest = false
     }) {
-    let data = getDataToSign({
-      chainId,
-      verifier,
-      relayRequest
-    })
+    const senderAddress = dataToSign.message.relayData.senderAddress
     if (jsonStringifyRequest) {
-      data = JSON.stringify(data)
+      dataToSign = JSON.stringify(dataToSign)
     }
-    const senderAddress = relayRequest.relayData.senderAddress
     return new Promise((resolve, reject) => {
       web3.currentProvider.send({
         method: 'eth_signTypedData' + methodSuffix,
-        params: [senderAddress, data],
+        params: [senderAddress, dataToSign],
         from: senderAddress
       }, (err, res) => {
         if (err) {
           reject(err)
         } else {
-          resolve({
-            signature: res.result,
-            data
-          })
+          resolve(res.result)
         }
       })
     })

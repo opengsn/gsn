@@ -82,7 +82,7 @@ class TxStoreManager {
 
   async getAll () {
     return (await this.txstore.asyncFind({})).sort(function (tx1, tx2) {
-      return tx1.nonce > tx2.nonce
+      return tx1.nonce - tx2.nonce
     })
   }
 }

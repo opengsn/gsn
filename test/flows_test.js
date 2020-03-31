@@ -94,7 +94,13 @@ options.forEach(params => {
 
     it(params.title + 'send normal transaction', async () => {
       console.log('running emitMessage (should succeed')
-      const res = await sr.emitMessage('hello', { from: from, paymaster: paymaster.address })
+      let res
+      try {
+        res = await sr.emitMessage('hello', { from: from, paymaster: paymaster.address })
+      } catch (e) {
+        console.log('error is ', e.message)
+        throw e
+      }
       assert.equal('hello', res.logs[0].args.message)
     })
 

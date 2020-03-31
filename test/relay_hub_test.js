@@ -4,8 +4,8 @@ const Transaction = require('ethereumjs-tx')
 const rlp = require('rlp')
 
 const testutils = require('./testutils')
-const utils = require('../src/js/relayclient/utils')
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+const utils = require('../src/js/common/utils')
+const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
 
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')

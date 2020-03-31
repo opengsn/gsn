@@ -33,7 +33,7 @@ contract RelayHub is IRelayHub {
     uint256 constant private MAXIMUM_UNSTAKE_DELAY = 12 weeks;
 
     // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
-    // will not be able to immediatly start serving requests.
+    // will not be able to immediately start serving requests.
     uint256 constant private MINIMUM_RELAY_BALANCE = 0.1 ether;
 
     // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
@@ -265,7 +265,7 @@ contract RelayHub is IRelayHub {
         relayRequest.relayData.paymaster.staticcall.gas(acceptRelayedCallGasLimit)(encodedTx);
 
         if (!success) {
-            return (uint256(CanRelayStatus.AcceptRelayedCallReverted), "");
+            return (uint256(CanRelayStatus.AcceptRelayedCallReverted), "AcceptRelayedCallReverted");
         } else {
             (status, recipientContext) = abi.decode(returndata, (uint256, bytes));
 
@@ -274,7 +274,7 @@ contract RelayHub is IRelayHub {
                 return (status, recipientContext);
             } else {
                 // Error codes [1-10] are reserved to RelayHub
-                return (uint256(CanRelayStatus.InvalidRecipientStatusCode), "");
+                return (uint256(CanRelayStatus.InvalidRecipientStatusCode), "InvalidRecipientStatusCode");
             }
         }
     }
