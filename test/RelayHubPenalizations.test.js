@@ -5,8 +5,9 @@ const { privateToAddress, stripZeros, toBuffer } = require('ethereumjs-util')
 const rlp = require('rlp')
 const { expect } = require('chai')
 
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
-const { getEip712Signature } = require('../src/js/relayclient/utils')
+const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
+const { getEip712Signature } = require('../src/js/common/utils')
+const getDataToSign = require('../src/js/common/EIP712/Eip712Helper')
 const Environments = require('../src/js/relayclient/Environments')
 
 const RelayHub = artifacts.require('RelayHub')
@@ -231,11 +232,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relay, otherRelay, 
             relayAddress: relay,
             paymaster: paymaster.address
           })
-          const { signature } = await getEip712Signature({
-            web3,
+          const dataToSign = await getDataToSign({
             chainId,
             verifier: forwarder,
             relayRequest
+          })
+          const signature = await getEip712Signature({
+            web3,
+            dataToSign
           })
           await relayHub.depositFor(paymaster.address, {
             from: other,

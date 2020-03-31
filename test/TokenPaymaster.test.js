@@ -1,5 +1,7 @@
 /* global contract artifacts before it */
 
+import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
+
 const Environments = require('../src/js/relayclient/Environments')
 
 const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
@@ -9,9 +11,9 @@ const TestToken = artifacts.require('TestToken.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
 const TrustedForwarder = artifacts.require('./TrustedForwarder.sol')
 const TestProxy = artifacts.require('TestProxy')
-const { getEip712Signature } = require('../src/js/relayclient/utils')
+const { getEip712Signature } = require('../src/js/common/utils')
 
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
 
 async function retcode (func) {
   const ret = await func
@@ -28,7 +30,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let sharedRelayRequestData
 
   async function calculatePostGas (paymaster) {
-    const testpaymaster = await TokenPaymaster.new(await paymaster.uniswap())
+    const testpaymaster = await TokenPaymaster.new(await paymaster.uniswap(), { gas: 1e7 })
     const calc = await TokenGasCalculator.new({ gas: 10000000 })
     await testpaymaster.transferOwnership(calc.address)
     // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
@@ -40,16 +42,16 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
 
   before(async () => {
     // exchange rate 2 tokens per eth.
-    uniswap = await TestUniswap.new(2, 1, { value: 5e18 })
-    hub = await RelayHub.new(16)
+    uniswap = await TestUniswap.new(2, 1, { value: 5e18, gas: 1e7 })
+    hub = await RelayHub.new(16, { gas: 1e7 })
     token = await TestToken.at(await uniswap.tokenAddress())
 
-    paymaster = await TokenPaymaster.new(uniswap.address)
+    paymaster = await TokenPaymaster.new(uniswap.address, { gas: 1e7 })
     await calculatePostGas(paymaster)
     await paymaster.setRelayHub(hub.address)
 
-    forwarder = await TrustedForwarder.new()
-    recipient = await TestProxy.new(forwarder.address)
+    forwarder = await TrustedForwarder.new({ gas: 1e7 })
+    recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
 
     // approve uniswap to take our tokens.
     await token.approve(uniswap.address, -1)
@@ -134,11 +136,14 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       })
 
       const chainId = Environments.defEnv.chainId
-      const { signature } = await getEip712Signature({
-        web3,
+      const dataToSign = await getDataToSign({
         chainId,
         verifier: forwarder.address,
         relayRequest
+      })
+      const signature = await getEip712Signature({
+        web3,
+        dataToSign
       })
       const maxGas = 1e6
       const arcGasLimit = 1e6

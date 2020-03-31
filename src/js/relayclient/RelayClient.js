@@ -1,4 +1,4 @@
-const utils = require('./utils')
+const utils = require('../common/utils')
 const getEip712Signature = utils.getEip712Signature
 const parseHexString = utils.parseHexString
 const removeHexPrefix = utils.removeHexPrefix
@@ -11,15 +11,15 @@ const Transaction = require('ethereumjs-tx')
 const abiDecoder = require('abi-decoder')
 const sigUtil = require('eth-sig-util')
 
-const getDataToSign = require('./EIP712/Eip712Helper')
-const RelayRequest = require('./EIP712/RelayRequest')
-const relayHubAbi = require('./interfaces/IRelayHub')
+const getDataToSign = require('../common/EIP712/Eip712Helper')
+const RelayRequest = require('../common/EIP712/RelayRequest')
+const relayHubAbi = require('../common/interfaces/IRelayHub')
 // This file is only needed so we don't change IRelayHub code, which would affect RelayHub expected deployed address
 // TODO: Once we change RelayHub version, we should add abstract method "function version() external returns (string memory);" to IRelayHub.sol and remove IRelayHubVersionAbi.json
 const versionAbi = require('./IRelayHubVersionAbi')
 relayHubAbi.push(versionAbi)
 
-const paymasterAbi = require('./interfaces/IPaymaster')
+const paymasterAbi = require('../common/interfaces/IPaymaster')
 
 const SecondsPerBlock = 12
 
@@ -314,16 +314,11 @@ class RelayClient {
    * return value is the same as from sendTransaction
    */
   async relayTransaction (encodedFunction, options) {
-    const self = this
-
     // validateCanRelay defaults (in config). to disable, explicitly set options.validateCanRelay=false
     options = Object.assign({ validateCanRelay: this.config.validateCanRelay }, options)
 
     const paymaster = options.paymaster || options.to
     const relayHub = await this.createRelayHubFromPaymaster(paymaster)
-
-    const senderNonce = (await relayHub.methods.getNonce(options.to, options.from).call()).toString()
-    const forwarderAddress = await relayHub.methods.getForwarder(options.to).call()
 
     this.serverHelper.setHub(relayHub)
 
@@ -366,83 +361,16 @@ class RelayClient {
       const relayUrl = activeRelay.relayUrl
       const pctRelayFee = (options.pctRelayFee || activeRelay.pctRelayFee).toString()
       const baseRelayFee = (options.baseRelayFee || activeRelay.baseRelayFee).toString()
-      const relayRequest = new RelayRequest({
-        senderAddress: options.from,
-        target: options.to,
+      const { relayRequest, relayMaxNonce, approvalData, signature } = await this._prepareRelayHttpRequest(
         encodedFunction,
-        senderNonce,
+        relayAddress,
         pctRelayFee,
         baseRelayFee,
-        gasPrice: gasPrice.toString(),
-        gasLimit: gasLimit.toString(),
+        gasPrice,
+        gasLimit,
         paymaster,
-        relayHub: relayHub._address,
-        relayAddress
-      })
-
-      if (this.web3.eth.getChainId === undefined) {
-        throw new Error(`getChainId is undefined. Web3 version is ${this.web3.version}, minimum required is 1.2.2`)
-      }
-      const chainId = await this.web3.eth.getChainId()
-
-      let signature
-      let signedData
-      // TODO: refactor so signedData is created regardless of ephemeral key used or not
-      if (typeof self.ephemeralKeypair === 'object' && self.ephemeralKeypair !== null) {
-        signedData = await getDataToSign({
-          chainId,
-          verifier: forwarderAddress,
-          relayRequest
-        })
-        signature = sigUtil.signTypedData_v4(self.ephemeralKeypair.privateKey, { data: signedData })
-      } else {
-        const eip712Sig = await getEip712Signature(
-          {
-            web3: this.web3,
-            methodSuffix: options.methodSuffix || '',
-            jsonStringifyRequest: options.jsonStringifyRequest || false,
-            verifier: forwarderAddress,
-            chainId,
-            relayRequest
-          })
-        signature = eip712Sig.signature
-        signedData = eip712Sig.data
-      }
-
-      let approvalData = options.approvalData || '0x'
-      if (typeof options.approveFunction === 'function') {
-        approvalData = '0x' + await options.approveFunction({
-          from: options.from,
-          to: options.to,
-          encodedFunctionCall: encodedFunction,
-          pctRelayFee: options.pctRelayFee,
-          gas_price: gasPrice,
-          gas_limit: gasLimit,
-          nonce: senderNonce,
-          relay_hub_address: relayHub._address,
-          relay_address: relayAddress
-        })
-      }
-
-      if (self.config.verbose) {
-        console.log('relayTransaction', 'from: ', options.from, 'sig: ', signature)
-        const rec = sigUtil.recoverTypedSignature_v4({
-          data: signedData,
-          sig: signature
-        })
-        if (rec.toLowerCase() === options.from.toLowerCase()) {
-          console.log('relayTransaction recovered:', rec, 'signature is correct')
-        } else {
-          console.error('relayTransaction recovered:', rec, 'signature error')
-        }
-      }
-
-      // max nonce is not signed, as contracts cannot access addresses' nonces.
-      let allowedRelayNonceGap = this.config.allowed_relay_nonce_gap
-      if (typeof allowedRelayNonceGap === 'undefined') {
-        allowedRelayNonceGap = 3
-      }
-      const relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowedRelayNonceGap
+        relayHub,
+        options)
       // on first found relay, call canRelay to make sure that on-chain this request can pass
       if (options.validateCanRelay && firstTry) {
         firstTry = false
@@ -451,7 +379,7 @@ class RelayClient {
         // TODO: validate this calculation in a test. Or, better, make '.encodeABI()' here with stub data.
         const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
         const calldataSize =
-          signedData.message.encodedFunction.length +
+          relayRequest.encodedFunction.length +
           signature.length +
           approvalData.length +
           relayCallExtraBytes
@@ -467,7 +395,7 @@ class RelayClient {
         })
         try {
           res = await relayHub.methods.canRelay(
-            signedData.message,
+            relayRequest,
             maxPossibleGas,
             gasLimits.acceptRelayedCallGasLimit,
             signature,
@@ -483,9 +411,8 @@ class RelayClient {
           throw new Error('canRelay failed: ' + status + ': ' + errorMsg)
         }
       }
-
       try {
-        return await self.sendViaRelay({
+        return await this.sendViaRelay({
           relayAddress,
           from: options.from,
           to: options.to,
@@ -495,7 +422,7 @@ class RelayClient {
           gasPrice,
           gasLimit,
           paymaster,
-          senderNonce: senderNonce,
+          senderNonce: relayRequest.relayData.senderNonce,
           signature,
           approvalData,
           relayUrl,
@@ -505,7 +432,7 @@ class RelayClient {
       } catch (error) {
         // console.log('error??', error)
         errors.push(error)
-        if (self.config.verbose) {
+        if (this.config.verbose) {
           console.log('relayTransaction: req:', {
             from: options.from,
             to: options.to,
@@ -514,7 +441,7 @@ class RelayClient {
             baseRelayFee: options.baseRelayFee,
             gasPrice,
             gasLimit,
-            nonce: senderNonce,
+            nonce: relayRequest.relayData.senderNonce,
             relayhub: relayHub._address,
             relayAddress
           })
@@ -649,6 +576,92 @@ class RelayClient {
     }
 
     return relayHub
+  }
+
+  async _prepareRelayHttpRequest (
+    encodedFunction,
+    relayAddress,
+    pctRelayFee,
+    baseRelayFee,
+    gasPrice,
+    gasLimit,
+    paymaster,
+    relayHub,
+    options) {
+    const senderNonce = (await relayHub.methods.getNonce(options.to, options.from).call()).toString()
+    const relayRequest = new RelayRequest({
+      senderAddress: options.from,
+      target: options.to,
+      encodedFunction,
+      senderNonce: senderNonce.toString(),
+      pctRelayFee: pctRelayFee.toString(),
+      baseRelayFee: baseRelayFee.toString(),
+      gasPrice: gasPrice.toString(),
+      gasLimit: gasLimit.toString(),
+      paymaster,
+      relayAddress
+    })
+
+    const signature = await this._prepareSignature(relayHub, relayRequest, options)
+    let approvalData = options.approvalData || '0x'
+    if (typeof options.approveFunction === 'function') {
+      approvalData = '0x' + await options.approveFunction({
+        from: options.from,
+        to: options.to,
+        encodedFunctionCall: encodedFunction,
+        pctRelayFee: options.pctRelayFee,
+        gas_price: gasPrice,
+        gas_limit: gasLimit,
+        nonce: senderNonce,
+        relay_hub_address: relayHub._address,
+        relay_address: relayAddress
+      })
+    }
+    // max nonce is not signed, as contracts cannot access addresses' nonces.
+    let allowedRelayNonceGap = this.config.allowed_relay_nonce_gap
+    if (typeof allowedRelayNonceGap === 'undefined') {
+      allowedRelayNonceGap = 3
+    }
+    const relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowedRelayNonceGap
+    return { relayRequest, relayMaxNonce, approvalData, signature }
+  }
+
+  async _prepareSignature (relayHub, relayRequest, options) {
+    if (this.web3.eth.getChainId === undefined) {
+      throw new Error(`getChainId is undefined. Web3 version is ${this.web3.version}, minimum required is 1.2.2`)
+    }
+    const chainId = await this.web3.eth.getChainId()
+    const forwarderAddress = await relayHub.methods.getForwarder(options.to).call()
+    let signature
+    const signedData = await getDataToSign({
+      chainId,
+      verifier: forwarderAddress,
+      relayRequest
+    })
+    if (typeof this.ephemeralKeypair === 'object' && this.ephemeralKeypair !== null) {
+      signature = sigUtil.signTypedData_v4(this.ephemeralKeypair.privateKey, { data: signedData })
+    } else {
+      signature = await getEip712Signature(
+        {
+          web3: this.web3,
+          methodSuffix: options.methodSuffix || '',
+          jsonStringifyRequest: options.jsonStringifyRequest || false,
+          dataToSign: signedData
+        })
+    }
+    if (this.config.verbose) {
+      console.log('relayTransaction', 'from: ', options.from, 'sig: ', signature)
+      const rec = sigUtil.recoverTypedSignature_v4({
+        data: signedData,
+        sig: signature
+      })
+      if (rec.toLowerCase() === options.from.toLowerCase()) {
+        console.log('relayTransaction recovered:', rec, 'signature is correct')
+      } else {
+        console.error('relayTransaction recovered:', rec, 'signature error')
+      }
+    }
+    return signature
   }
 }
 
