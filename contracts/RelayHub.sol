@@ -245,7 +245,7 @@ contract RelayHub is IRelayHub {
             BaseRelayRecipient(relayRequest.target).getTrustedForwarder.selector
         ));
         if (!success || ret.length != 32) {
-            return (false, 'getTrustedForwarder failed');
+            return (false, "getTrustedForwarder failed");
         }
         // Verify the sender's request: signature and nonce.
         ITrustedForwarder forwarder = ITrustedForwarder(abi.decode(ret, (address)));
