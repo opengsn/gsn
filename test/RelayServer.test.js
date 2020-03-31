@@ -22,7 +22,6 @@ abiDecoder.addABI(SampleRecipient.abi)
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 
 const localhostOne = 'http://localhost:8090'
-const ethereumNodeUrl = 'http://localhost:8544'
 const workdir = '/tmp/gsn/test/relayserver'
 
 const testutils = require('./testutils')
@@ -39,7 +38,8 @@ contract('RelayServer', function (accounts) {
   const oneEther = 1e18
   let relayServer, defunctRelayServer
   let serverWeb3provider
-  let web3
+  let ethereumNodeUrl
+  let _web3
   let id
   let serverError
   let encodedFunction
@@ -47,15 +47,16 @@ contract('RelayServer', function (accounts) {
   let options
 
   before(async function () {
+    ethereumNodeUrl = web3.currentProvider.host
     serverWeb3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
-    web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
+    _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 
     rhub = await RelayHub.deployed()
     sr = await SampleRecipient.deployed()
     paymaster = await TestPaymasterEverythingAccepted.deployed()
 
-    await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
-    gasLess = await web3.eth.personal.newAccount('password')
+    await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
+    gasLess = await _web3.eth.personal.newAccount('password')
     const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair() })
     const txStoreManager = new TxStoreManager({ workdir })
     relayServer = new RelayServer({
@@ -86,7 +87,7 @@ contract('RelayServer', function (accounts) {
       verbose: process.env.DEBUG
     }
 
-    relayClient = new RelayClient(web3, relayClientConfig)
+    relayClient = new RelayClient(_web3, relayClientConfig)
 
     options = {
       // approveFunction: approveFunction,
@@ -108,7 +109,7 @@ contract('RelayServer', function (accounts) {
   })
 
   async function assertTransactionRelayed (txhash) {
-    const receipt = await web3.eth.getTransactionReceipt(txhash)
+    const receipt = await _web3.eth.getTransactionReceipt(txhash)
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(relayServer._parseEvent)
     assert.equal(decodedLogs[1].name, 'SampleRecipientEmitted')
     assert.equal(decodedLogs[1].args.message, 'hello world')
@@ -169,7 +170,7 @@ contract('RelayServer', function (accounts) {
       /* relayAddress: */relayServer.address,
       /* pctRelayFee: */0,
       /* baseRelayFee: */0,
-      /* gasPrice: */parseInt(await web3.eth.getGasPrice()),
+      /* gasPrice: */parseInt(await _web3.eth.getGasPrice()),
       /* gasLimit: */1000000,
       /* paymaster: */paymaster.address,
       /* relayHub: */rhub.contract,
@@ -180,14 +181,14 @@ contract('RelayServer', function (accounts) {
   // When running server before staking/funding it, or when balance gets too low
   describe('multi-step server initialization ', async function () {
     it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
-      const expectedGasPrice = (await web3.eth.getGasPrice()) * relayServer.gasPriceFactor
-      const chainId = await web3.eth.getChainId()
-      const networkId = await web3.eth.net.getId()
+      const expectedGasPrice = (await _web3.eth.getGasPrice()) * relayServer.gasPriceFactor
+      const chainId = await _web3.eth.getChainId()
+      const networkId = await _web3.eth.net.getId()
       assert.notEqual(relayServer.gasPrice, expectedGasPrice)
       assert.notEqual(relayServer.chainId, chainId)
       assert.notEqual(relayServer.networkId, networkId)
       assert.equal(relayServer.ready, false)
-      await relayServer._worker({ number: await web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       assert.isTrue(serverError.message.includes('Server\'s balance too low'), 'relay should throw on low balance')
       assert.equal(relayServer.gasPrice, expectedGasPrice)
       assert.equal(relayServer.chainId, chainId)
@@ -196,16 +197,16 @@ contract('RelayServer', function (accounts) {
     })
 
     it('should wait for balance', async function () {
-      await relayServer._worker({ number: await web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       assert.isTrue(serverError.message.includes('Server\'s balance too low'), 'relay should throw on low balance')
-      const expectedBalance = web3.utils.toWei('2', 'ether')
+      const expectedBalance = _web3.utils.toWei('2', 'ether')
       assert.notEqual(relayServer.balance, expectedBalance)
-      await web3.eth.sendTransaction({
+      await _web3.eth.sendTransaction({
         to: relayServer.address,
         from: relayOwner,
         value: expectedBalance
       })
-      await relayServer._worker({ number: await web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       assert.isTrue(serverError.message.includes('Waiting for stake...'), 'relay should throw on no stake')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
       assert.equal(relayServer.balance, expectedBalance)
@@ -213,14 +214,14 @@ contract('RelayServer', function (accounts) {
 
     it('should wait for stake and then register', async function () {
       assert.equal(relayServer.lastScannedBlock, 0)
-      await relayServer._worker({ number: await web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       assert.isTrue(serverError.message.includes('Waiting for stake...'), 'relay should throw on low balance')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
       await rhub.stake(relayServer.address, weekInSec, {
         from: relayOwner,
         value: oneEther
       })
-      const expectedLastScannedBlock = await web3.eth.getBlockNumber()
+      const expectedLastScannedBlock = await _web3.eth.getBlockNumber()
       const receipt = await relayServer._worker({ number: expectedLastScannedBlock })
       assert.equal(relayServer.lastScannedBlock, expectedLastScannedBlock)
       assert.equal(relayServer.stake, oneEther)
@@ -251,10 +252,10 @@ contract('RelayServer', function (accounts) {
         console.log(e.message)
         serverError = e
       })
-      await web3.eth.sendTransaction({
+      await _web3.eth.sendTransaction({
         to: defunctRelayServer.address,
         from: relayOwner,
-        value: web3.utils.toWei('2', 'ether')
+        value: _web3.utils.toWei('2', 'ether')
       })
       await rhub.stake(defunctRelayServer.address, weekInSec, {
         from: relayOwner,
@@ -263,16 +264,16 @@ contract('RelayServer', function (accounts) {
       const stake = await defunctRelayServer.refreshStake()
       assert.equal(stake, oneEther)
 
-      const expectedGasPrice = (await web3.eth.getGasPrice()) * defunctRelayServer.gasPriceFactor
-      const expectedBalance = await web3.eth.getBalance(defunctRelayServer.address)
-      const chainId = await web3.eth.getChainId()
-      const networkId = await web3.eth.net.getId()
+      const expectedGasPrice = (await _web3.eth.getGasPrice()) * defunctRelayServer.gasPriceFactor
+      const expectedBalance = await _web3.eth.getBalance(defunctRelayServer.address)
+      const chainId = await _web3.eth.getChainId()
+      const networkId = await _web3.eth.net.getId()
       assert.notEqual(defunctRelayServer.gasPrice, expectedGasPrice)
       assert.notEqual(defunctRelayServer.balance, expectedBalance)
       assert.notEqual(defunctRelayServer.chainId, chainId)
       assert.notEqual(defunctRelayServer.networkId, networkId)
       assert.equal(defunctRelayServer.ready, false)
-      const expectedLastScannedBlock = await web3.eth.getBlockNumber()
+      const expectedLastScannedBlock = await _web3.eth.getBlockNumber()
       assert.equal(defunctRelayServer.lastScannedBlock, 0)
       const receipt = await defunctRelayServer._worker({ number: expectedLastScannedBlock })
       assert.equal(defunctRelayServer.lastScannedBlock, expectedLastScannedBlock)
@@ -335,7 +336,7 @@ contract('RelayServer', function (accounts) {
           { signature: '0xdeadface00000a58b757da7dea5678548be5ff9b16e9d1d87c6157aff6889c0f6a406289908add9ea6c3ef06d033a058de67d057e2c0ae5a02b36854be13b0731c' })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 1 description: signature mismatch'),
+        assert.isTrue(e.message.includes('canRelay failed in server: signature mismatch'),
           e.message)
       }
     })
@@ -344,7 +345,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction({ from: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 2 description: nonce mismatch'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: nonce mismatch'), e.message)
       }
     })
     it('should fail to relay with wrong recipient', async function () {
@@ -352,7 +353,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction({ to: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: jsonrpc call failed'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: getTrustedForwarder failed'), e.message)
       }
     })
     it('should fail to relay with invalid paymaster', async function () {
@@ -402,7 +403,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction({ senderNonce: 123456 })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 2 description: nonce mismatch'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: nonce mismatch'), e.message)
       }
       // Now we replay the same transaction so we get WrongNonce
       const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest()
@@ -412,7 +413,7 @@ contract('RelayServer', function (accounts) {
           { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature })
         assert.fail()
       } catch (e) {
-        assert.isTrue(e.message.includes('canRelay failed in server: status: 2 description: nonce mismatch'), e.message)
+        assert.isTrue(e.message.includes('canRelay failed in server: nonce mismatch'), e.message)
       }
     })
     it('should fail to relay with wrong relayMaxNonce', async function () {
@@ -462,17 +463,17 @@ contract('RelayServer', function (accounts) {
       id = (await testutils.snapshot()).result
       const signedTx = await relayTransaction()
       let parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx)).hash())
-      const receiptBefore = await web3.eth.getTransactionReceipt(parsedTxHash)
-      const minedTxBefore = await web3.eth.getTransaction(parsedTxHash)
+      const receiptBefore = await _web3.eth.getTransactionReceipt(parsedTxHash)
+      const minedTxBefore = await _web3.eth.getTransaction(parsedTxHash)
       assert.equal(parsedTxHash, receiptBefore.transactionHash)
       await testutils.revert(id)
       // Ensure tx is removed by the revert
-      const receiptAfter = await web3.eth.getTransactionReceipt(parsedTxHash)
+      const receiptAfter = await _web3.eth.getTransactionReceipt(parsedTxHash)
       assert.equal(null, receiptAfter)
       // Should not do anything, as not enough time has passed
       let sortedTxs = await relayServer.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
-      let resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+      let resentTx = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
       assert.equal(null, resentTx)
       sortedTxs = await relayServer.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
@@ -484,11 +485,11 @@ contract('RelayServer', function (accounts) {
           return Date.origNow() + pendingTransactionTimeout
         }
         // Resend tx, now should be ok
-        resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+        resentTx = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
         parsedTxHash = ethUtils.bufferToHex((new Transaction(resentTx)).hash())
 
         // Validate relayed tx with increased gasPrice
-        const minedTxAfter = await web3.eth.getTransaction(parsedTxHash)
+        const minedTxAfter = await _web3.eth.getTransaction(parsedTxHash)
         assert.equal(minedTxAfter.gasPrice, minedTxBefore.gasPrice * 1.2)
         await assertTransactionRelayed(parsedTxHash)
       } finally {
@@ -496,13 +497,13 @@ contract('RelayServer', function (accounts) {
         Date.now = Date.origNow
       }
       // Check the tx is removed from the store only after enough blocks
-      resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+      resentTx = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
       assert.equal(null, resentTx)
       sortedTxs = await relayServer.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
       const confirmationsNeeded = 12
       await testutils.evmMineMany(confirmationsNeeded)
-      resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+      resentTx = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
       assert.equal(null, resentTx)
       sortedTxs = await relayServer.txStoreManager.getAll()
       assert.deepEqual([], sortedTxs)
@@ -541,7 +542,7 @@ contract('RelayServer', function (accounts) {
         constructorIncrease = 4 * 60 * 1000 // 4 minutes in milliseconds
         const signedTx3 = await relayTransaction()
         await testutils.revert(id)
-        const nonceBefore = parseInt(await web3.eth.getTransactionCount(relayServer.address))
+        const nonceBefore = parseInt(await _web3.eth.getTransactionCount(relayServer.address))
         // Check tx1 still went fine after revert
         const parsedTxHash1 = ethUtils.bufferToHex((new Transaction(signedTx1)).hash())
         await assertTransactionRelayed(parsedTxHash1)
@@ -551,26 +552,26 @@ contract('RelayServer', function (accounts) {
         let sortedTxs = await relayServer.txStoreManager.getAll()
         // console.log('times:', sortedTxs[0].createdAt, sortedTxs[1].createdAt, sortedTxs[2].createdAt )
         assert.equal(sortedTxs[0].txId, parsedTxHash1)
-        let resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+        let resentTx = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
         assert.equal(null, resentTx)
-        assert.equal(nonceBefore, parseInt(await web3.eth.getTransactionCount(relayServer.address)))
+        assert.equal(nonceBefore, parseInt(await _web3.eth.getTransactionCount(relayServer.address)))
         sortedTxs = await relayServer.txStoreManager.getAll()
         // console.log('sortedTxs?', sortedTxs)
         assert.equal(sortedTxs[0].txId, parsedTxHash1)
         // Mine a bunch of blocks, so tx1 is confirmed and tx2 is resent
         const confirmationsNeeded = 12
         await testutils.evmMineMany(confirmationsNeeded)
-        const resentTx2 = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+        const resentTx2 = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
         const parsedTxHash2 = ethUtils.bufferToHex((new Transaction(resentTx2)).hash())
         await assertTransactionRelayed(parsedTxHash2)
         // Re-inject tx3 into the chain as if it were mined once tx2 goes through
-        await web3.eth.sendSignedTransaction(signedTx3)
+        await _web3.eth.sendSignedTransaction(signedTx3)
         const parsedTxHash3 = ethUtils.bufferToHex((new Transaction(signedTx3)).hash())
         await assertTransactionRelayed(parsedTxHash3)
         // Check that tx3 does not get resent, even after time passes or blocks get mined, and that store is empty
         nowIncrease = 60 * 60 * 1000 // 60 minutes in milliseconds
         await testutils.evmMineMany(confirmationsNeeded)
-        resentTx = await relayServer._resendUnconfirmedTransactions({ number: await web3.eth.getBlockNumber() })
+        resentTx = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
         assert.equal(null, resentTx)
         assert.deepEqual([], await relayServer.txStoreManager.getAll())
       } finally {
@@ -613,7 +614,7 @@ contract('RelayServer', function (accounts) {
       await rhub.removeRelayByOwner(relayServer.address, {
         from: relayOwner
       })
-      await relayServer._worker({ number: await web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       assert.equal(relayServer.removed, true)
       assert.equal(relayServer.isReady(), false)
     })
@@ -623,7 +624,7 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(relayBalanceBefore > 0)
       await increaseTime(weekInSec)
       await rhub.unstake(relayServer.address, { from: relayOwner })
-      await relayServer._worker({ number: await web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       const relayBalanceAfter = await relayServer.refreshBalance()
       assert.isTrue(relayBalanceAfter === 0)
     })

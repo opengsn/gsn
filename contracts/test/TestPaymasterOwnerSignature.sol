@@ -18,15 +18,13 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
     )
     external
     view
-    returns (uint256, bytes memory) {
+    returns (bytes memory) {
         (maxPossibleCharge);
         address signer =
             keccak256(abi.encodePacked("I approve", relayRequest.relayData.senderAddress))
             .toEthSignedMessageHash()
             .recover(approvalData);
-        if (signer != owner()) {
-            return (13, "test: not approved");
-        }
-        return (0, "");
+        require(signer == owner(), "test: not approved");
+        return "";
     }
 }

@@ -28,12 +28,14 @@ interface IPaymaster {
 
     /**
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
+     * revert to signal the paymaster will NOT pay for this call.
      * Note: Accepting this call means paying for the tx whether the relayed call reverted or not.
      *  @param relayRequest - the full relay request structure
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      *  @param maxPossibleGas - based on values returned from {@link getGasLimits},
      *         the RelayHub will calculate the maximum possible amount of gas the user may be charged for.
      *         In order to convert this value to wei, the Paymaster has to call "relayHub.calculateCharge()"
+     *  @return a context to be passed to preRelayedCall and postRelayedCall.
      */
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
@@ -42,7 +44,7 @@ interface IPaymaster {
     )
     external
     view
-    returns (uint256, bytes memory);
+    returns (bytes memory);
 
     /** this method is called before the actual relayed function call.
      * It may be used to charge the caller before

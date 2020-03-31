@@ -15,13 +15,12 @@ const { getEip712Signature } = require('../src/js/common/utils')
 
 const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
 
-async function retcode (func) {
-  const ret = await func
-  const code = ret[0].toNumber()
-  const msg = code === 0 ? '' : ret[1] ? Buffer.from(ret[1].slice(2), 'hex').toString() : null
-  return {
-    code,
-    msg
+async function revertReason (func) {
+  try {
+    await func
+    return 'ok' // no revert
+  } catch (e) {
+    return e.message.replace(/.*revert /, '')
   }
 }
 
@@ -75,10 +74,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData
       })
-      assert.deepEqual(await retcode(paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)), {
-        code: 99,
-        msg: 'balance too low'
-      })
+      assert.equal(await revertReason(paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)), 'balance too low')
     })
 
     it('should fund recipient', async () => {
@@ -90,10 +86,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData
       })
-      assert.deepEqual(await retcode(paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)), {
-        code: 99,
-        msg: 'allowance too low'
-      })
+      assert.include(await revertReason(paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)), 'allowance too low')
     })
 
     it('should recipient.approve', async () => {
@@ -104,8 +97,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData
       })
-      const ret = await retcode(paymaster.acceptRelayedCall(relayRequest, '0x', 1e6))
-      assert.equal(ret.code, 0, ret)
+      await paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)
     })
   })
 
@@ -148,14 +140,13 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const maxGas = 1e6
       const arcGasLimit = 1e6
 
-      // not really required.
-      assert.deepEqual(await retcode(hub.canRelay(relayRequest, maxGas, arcGasLimit, signature, '0x', {
+      // not really required: verify there's no revert
+      const canRelayRet = await hub.canRelay(relayRequest, maxGas, arcGasLimit, signature, '0x', {
         from: relay,
         gasPrice: 1
-      })), {
-        code: 0,
-        msg: ''
       })
+      assert.equal(canRelayRet[0], true)
+
       const preBalance = await hub.balanceOf(paymaster.address)
 
       const ret = await hub.relayCall(relayRequest, signature, '0x', {
