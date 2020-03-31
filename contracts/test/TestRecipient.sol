@@ -13,6 +13,10 @@ contract TestRecipient is BaseRelayRecipient {
         trustedForwarder = address(new TrustedForwarder());
     }
 
+    function setTrustedForwarder(address forwarder) external {
+        trustedForwarder = forwarder;
+    }
+
     event Reverting(string message);
 
     function testRevert() public {

@@ -5,7 +5,7 @@ import fs from 'fs'
 describe('RelayServer-webpack', () => {
   let oneFileRelayer: string
   before('create webpack', function () {
-    this.timeout(5000)
+    this.timeout(10000)
     const jsrelayDir = path.join(__dirname, '..', 'jsrelay')
     fs.rmdirSync(path.join(jsrelayDir, 'dist'), { recursive: true })
     childProcess.execSync('npx webpack', { cwd: jsrelayDir })
