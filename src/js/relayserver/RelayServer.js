@@ -214,8 +214,8 @@ class RelayServer extends EventEmitter {
     } catch (e) {
       errorMessage = e.message
     }
-    if (!canRelayRet.success) {
-      throw new Error('canRelay failed in server: ' + canRelayRet.returnValue)
+    if (!canRelayRet || !canRelayRet.success) {
+      throw new Error('canRelay failed in server: ' + (errorMessage || canRelayRet.returnValue))
     }
     // Send relayed transaction
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
