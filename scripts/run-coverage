@@ -1,11 +1,11 @@
 #!/bin/bash -e
 
 report=coverage/report.txt
-tests="test/relay_hub_test.js test/recipient_utils_test.js test/RelayHub.test.ts"
+tests="test/recipient_utils_test.js test/RelayHub.test.ts"
 
 echo "=== Running coverage of tests: $tests"
 
-npm run clean-coverage 
+npm run clean-coverage
 MODE=coverage npx truffle --network coverage test $tests
 exitcode=$?
 
@@ -16,7 +16,7 @@ istanbul report text --color > $report
 if grep -q "[.]sol" $report; then
 
 cat $report
-istanbul report html 
+istanbul report html
 echo to view: open coverage/index.html
 
 fi
