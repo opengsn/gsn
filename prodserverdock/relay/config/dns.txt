@@ -1,9 +1,0 @@
-#URL to connect (after appending hostname) to register a dynamic-dns name
-DNSREG_URL="https://www.duckdns.org/update?token=<token-here>&domains="
-
-#regex of valid response from above URL
-DNSREG_OK=OK
-
-#suffix for current hostname. 
-DNS_SUFFIX=.duckdns.org
-
