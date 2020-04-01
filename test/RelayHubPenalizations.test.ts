@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/require-await */
+// This rule seems to be flickering and buggy - does not understand async arrow functions correctly
 import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
