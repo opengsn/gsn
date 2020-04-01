@@ -26,13 +26,14 @@ const RelayRequest = [
   { name: 'relayData', type: 'RelayData' }
 ]
 
-module.exports = function (
+module.exports = function getDataToSign (
   {
     chainId,
-    relayHub,
+    verifier,
     relayRequest
   }
 ) {
+  if (!verifier) throw new Error('missing "verifier"')
   // TODO: enable ChainID opcode in the EIP712Sig
   return {
     types: {
@@ -45,7 +46,7 @@ module.exports = function (
       name: 'GSN Relayed Transaction',
       version: '1',
       chainId: chainId,
-      verifyingContract: relayHub
+      verifyingContract: verifier
     },
     primaryType: 'RelayRequest',
     message: relayRequest

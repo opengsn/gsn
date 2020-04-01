@@ -3,12 +3,12 @@ const Web3 = require('web3')
 const abiDecoder = require('abi-decoder')
 const { Transaction } = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
-const RelayHubABI = require('../relayclient/interfaces/IRelayHub')
-const PayMasterABI = require('../relayclient/interfaces/IPaymaster')
-const StakeManagerABI = require('../relayclient/interfaces/IStakeManager')
-const getDataToSign = require('../relayclient/EIP712/Eip712Helper')
-const RelayRequest = require('../relayclient/EIP712/RelayRequest')
-const utils = require('../relayclient/utils')
+const RelayHubABI = require('../common/interfaces/IRelayHub')
+const PayMasterABI = require('../common/interfaces/IPaymaster')
+const StakeManagerABI = require('../common/interfaces/IStakeManager')
+const getDataToSign = require('../common/EIP712/Eip712Helper')
+const RelayRequest = require('../common/EIP712/RelayRequest')
+const utils = require('../common/utils')
 const Environments = require('../relayclient/Environments')
 const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
 const StoredTx = require('./TxStoreManager').StoredTx
@@ -109,6 +109,15 @@ class RelayServer extends EventEmitter {
       relayHubAddress
     }) {
     debug('dump request params', arguments[0])
+    if (!encodedFunction) {
+      throw new Error(`invalid encodedFunction given: ${encodedFunction}`)
+    }
+    if (!approvalData) {
+      throw new Error(`invalid approvalData given: ${approvalData}`)
+    }
+    if (!signature) {
+      throw new Error(`invalid signature given: ${signature}`)
+    }
     // Check that the relayhub is the correct one
     if (relayHubAddress !== this.relayHubContract.options.address) {
       throw new Error(
@@ -116,8 +125,11 @@ class RelayServer extends EventEmitter {
     }
 
     // Check that the fee is acceptable
-    if (!pctRelayFee || pctRelayFee < this.pctRelayFee) {
-      throw new Error(`Unacceptable fee: ${pctRelayFee}`)
+    if (isNaN(parseInt(pctRelayFee)) || parseInt(pctRelayFee) < this.pctRelayFee) {
+      throw new Error(`Unacceptable pctRelayFee: ${pctRelayFee} relayServer's pctRelayFee: ${this.pctRelayFee}`)
+    }
+    if (isNaN(parseInt(baseRelayFee)) || parseInt(baseRelayFee) < this.baseRelayFee) {
+      throw new Error(`Unacceptable baseRelayFee: ${baseRelayFee} relayServer's baseRelayFee: ${this.baseRelayFee}`)
     }
 
     // Check that the gasPrice is initialized & acceptable
@@ -125,11 +137,11 @@ class RelayServer extends EventEmitter {
       throw new Error('gasPrice not initialized')
     }
     if (this.gasPrice > gasPrice) {
-      throw new Error(`Unacceptable gasPrice: ${gasPrice}`)
+      throw new Error(`Unacceptable gasPrice: relayServer's gasPrice:${this.gasPrice} request's gasPrice: ${gasPrice}`)
     }
 
     // Check that max nonce is valid
-    const nonce = await this._getNonce()
+    const nonce = await this._pollNonce()
     if (nonce > relayMaxNonce) {
       throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`)
     }
@@ -147,15 +159,16 @@ class RelayServer extends EventEmitter {
       paymaster: paymaster,
       relayWorker: this.address
     })
+    // TODO: should not use signedData at all. only the relayRequest.
     const signedData = getDataToSign({
       chainId: this.chainId,
-      relayHub: relayHubAddress,
+      verifier: relayHubAddress,
       relayRequest
     })
 
     const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
     const calldataSize =
-      encodedFunction.length +
+      (encodedFunction ? encodedFunction.length : 1) +
       signature.length +
       approvalData.length +
       relayCallExtraBytes
@@ -163,32 +176,48 @@ class RelayServer extends EventEmitter {
     debug('signature', signature, signature.length)
     debug('approvalData', approvalData, approvalData.length)
 
-    this.paymasterContract.options.address = paymaster
-    const gasLimits = await this.paymasterContract.methods.getGasLimits().call()
+    let gasLimits
+    try {
+      this.paymasterContract.options.address = paymaster
+      gasLimits = await this.paymasterContract.methods.getGasLimits().call()
+    } catch (e) {
+      if (
+        e.message.includes(
+          'Returned values aren\'t valid, did it run Out of Gas? You might also see this error if you are not using the correct ABI for the contract you are retrieving data from, requesting data from a block number that does not exist, or querying a node which is not fully synced.'
+        )
+      ) {
+        throw new Error(`non-existent or incompatible paymaster contract: ${paymaster}`)
+      }
+      throw new Error(`unknown paymaster error: ${e.message}`)
+    }
+
     const hubOverhead = parseInt(await this.relayHubContract.methods.getHubOverhead().call())
     const maxPossibleGas = utils.calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: gasLimit,
+      relayCallGasLimit: parseInt(gasLimit),
       calldataSize,
       gtxdatanonzero: gtxdatanonzero
     })
 
-    const canRelayRet = await this.relayHubContract.methods.canRelay(
+    let canRelayRet = await this.relayHubContract.methods.canRelay(
       signedData.message,
       maxPossibleGas,
       gasLimits.acceptRelayedCallGasLimit,
       signature,
       approvalData).call()
-    console.log('canRelayRet', canRelayRet)
-    if (!canRelayRet || canRelayRet.status !== '0') {
-      throw new Error('canRelay failed in server:' + (canRelayRet ? canRelayRet.status : 'jsonrpc call failed'))
+    debug('canRelayRet', canRelayRet)
+    if (!canRelayRet) {
+      canRelayRet = {}
+    }
+    if (!canRelayRet.success) {
+      throw new Error('canRelay failed in server: ' + canRelayRet.returnValue)
     }
     // Send relayed transaction
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
     const requiredGas = maxPossibleGas + GAS_RESERVE
-    debug('maxPossibleGas', maxPossibleGas)
-    debug('requiredGas', requiredGas)
+    debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
+    debug('requiredGas is', typeof requiredGas, requiredGas)
     const maxCharge = parseInt(
       await this.relayHubContract.methods.calculateCharge(requiredGas, {
         gasPrice,
@@ -271,7 +300,7 @@ class RelayServer extends EventEmitter {
         this.ready = false
         throw new Error('Could not get gasPrice from node')
       }
-      await this.getBalance()
+      await this.refreshBalance()
       if (!this.balance || this.balance < minimumRelayBalance) {
         this.ready = false
         throw new Error(
@@ -304,7 +333,7 @@ class RelayServer extends EventEmitter {
             break
         }
       }
-      if (!(await this.getStake())) {
+      if (!(await this.refreshStake())) {
         this.ready = false
         throw new Error('Waiting for stake...')
       }
@@ -325,12 +354,12 @@ class RelayServer extends EventEmitter {
     }
   }
 
-  async getBalance () {
+  async refreshBalance () {
     this.balance = parseInt(await this.web3.eth.getBalance(this.address))
     return this.balance
   }
 
-  async getStake () {
+  async refreshStake () {
     const stakeInfo = await this.stakeManagerContract.methods.getStakeInfo(this.address).call()
     this.stake = parseInt(stakeInfo.stake)
     if (!this.stake) {
@@ -457,7 +486,7 @@ class RelayServer extends EventEmitter {
     debug('gasPrice', gasPrice)
     const gas = (gasLimit && parseInt(gasLimit)) || await method.estimateGas({ from: this.address }) + 21000
     debug('gasLimit', gas)
-    const nonce = await this._getNonce()
+    const nonce = await this._pollNonce()
     debug('nonce', nonce)
     // TODO: change to eip155 chainID
     const txToSign = new Transaction({
@@ -541,7 +570,7 @@ class RelayServer extends EventEmitter {
     }
   }
 
-  async _getNonce () {
+  async _pollNonce () {
     const nonce = await this.web3.eth.getTransactionCount(this.address, 'pending')
     if (nonce > this.nonce) {
       this.nonce = nonce

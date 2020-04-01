@@ -1,9 +1,10 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
-import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/js/relayclient/utils'
+import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/js/common/utils'
+import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
 import Environments from '../src/js/relayclient/Environments'
-import RelayRequest from '../src/js/relayclient/EIP712/RelayRequest'
+import RelayRequest from '../src/js/common/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,
@@ -41,8 +42,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const gasLimit = new BN('1000000')
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 805,
-    pre: 1839,
+    arc: 805 - 6,
+    pre: 1839 + 22,
     post: 2080
   }
 
@@ -53,9 +54,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let encodedFunction
   let signature: string
   let relayRequest: RelayRequest
+  let forwarder: string
 
   beforeEach(async function prepareForHub () {
     recipient = await TestRecipient.new()
+    forwarder = await recipient.getTrustedForwarder()
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
@@ -83,13 +86,16 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster: paymaster.address
-    });
-    ({ signature } = await getEip712Signature({
-      web3,
+    })
+    const dataToSign = await getDataToSign({
       chainId,
-      relayHub: relayHub.address,
+      verifier: forwarder,
       relayRequest
-    }))
+    })
+    signature = await getEip712Signature({
+      web3,
+      dataToSign
+    })
   })
 
   describe('#calculateCharge()', function () {
@@ -152,24 +158,26 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: ether('0.1') })
-      const AcceptRelayedCallReverted = 3
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
-      const senderNonce = (await relayHub.getNonce(senderAddress)).toString()
+      const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
       const relayRequestMisbehaving = relayRequest.clone()
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
       relayRequestMisbehaving.relayData.senderNonce = senderNonce
-      const { signature } = await getEip712Signature({
-        web3,
+      const dataToSign = await getDataToSign({
         chainId,
-        relayHub: relayHub.address,
+        verifier: forwarder,
         relayRequest: relayRequestMisbehaving
+      })
+      const signature = await getEip712Signature({
+        web3,
+        dataToSign
       })
       const maxPossibleGasIrrelevantValue = 8000000
       const acceptRelayedCallGasLimit = 50000
       const canRelayResponse = await relayHub.canRelay(relayRequestMisbehaving, maxPossibleGasIrrelevantValue, acceptRelayedCallGasLimit, signature, '0x')
-      // @ts-ignore
-      assert.equal(AcceptRelayedCallReverted, canRelayResponse.status)
+      assert.equal(canRelayResponse[0], false)
+      assert.equal(canRelayResponse[1], '') // no revert string on out-of-gas
 
       const res = await relayHub.relayCall(relayRequestMisbehaving, signature, '0x', {
         from: relayWorker,
@@ -177,7 +185,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       })
 
       assert.equal('CanRelayFailed', res.logs[0].event)
-      assert.equal(AcceptRelayedCallReverted, res.logs[0].args.reason)
+      assert.equal(res.logs[0].args.reason, '')
     })
   })
 
@@ -229,7 +237,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`, async function () {
               const beforeBalances = await getBalances()
               const pctRelayFee = requestedFee.toString()
-              const senderNonce = (await relayHub.getNonce(senderAddress)).toString()
+              const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
               const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
               const relayRequest = new RelayRequest({
                 senderAddress,
@@ -243,11 +251,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                 relayWorker,
                 paymaster: paymaster.address
               })
-              const { signature } = await getEip712Signature({
-                web3,
+              const dataToSign = await getDataToSign({
                 chainId,
-                relayHub: relayHub.address,
+                verifier: forwarder,
                 relayRequest
+              })
+              const signature = await getEip712Signature({
+                web3,
+                dataToSign
               })
               const res = await relayHub.relayCall(relayRequest, signature, '0x', {
                 from: relayWorker,

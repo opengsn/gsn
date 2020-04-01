@@ -5,13 +5,11 @@ import Environments from '../src/js/relayclient/Environments'
 import {
   RelayHubInstance,
   StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance
+  TestPaymasterEverythingAcceptedInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
-const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
 contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, relayWorker1, relayWorker2, relayWorker3]) {
@@ -20,16 +18,13 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
   const url = 'http://new-relay.com'
 
   let relayHub: RelayHubInstance
-  let recipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let stakeManager: StakeManagerInstance
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
-    recipient = await TestRecipient.new()
     paymaster = await TestPaymasterEverythingAccepted.new()
-    await recipient.setHub(relayHub.address)
     await paymaster.setHub(relayHub.address)
   })
 

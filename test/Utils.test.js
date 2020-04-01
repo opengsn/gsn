@@ -3,9 +3,10 @@ const assert = require('chai').use(require('chai-as-promised')).assert
 // eslint-disable-next-line camelcase
 const { recoverTypedSignature_v4 } = require('eth-sig-util')
 
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
+const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
 const Environments = require('../src/js/relayclient/Environments')
-const { getEip712Signature } = require('../src/js/relayclient/utils')
+const { getEip712Signature } = require('../src/js/common/utils')
+const getDataToSign = require('../src/js/common/EIP712/Eip712Helper')
 
 const EIP712Sig = artifacts.require('./EIP712Sig.sol')
 
@@ -22,7 +23,7 @@ contract('Utils', async function (accounts) {
       const gasPrice = '10000000'
       const gasLimit = '500000'
       const paymaster = accounts[7]
-      const relayHub = accounts[8]
+      const verifier = accounts[8]
       const relayWorker = accounts[9]
 
       const relayRequest = new RelayRequest({
@@ -38,21 +39,24 @@ contract('Utils', async function (accounts) {
         paymaster
       })
 
-      const { signature: sig, data } = await getEip712Signature({
-        web3,
+      const dataToSign = await getDataToSign({
         chainId,
-        relayHub,
+        verifier,
         relayRequest
+      })
+      const sig = await getEip712Signature({
+        web3,
+        dataToSign
       })
 
       const recoveredAccount = recoverTypedSignature_v4({
-        data,
+        data: dataToSign,
         sig
       })
       assert.strictEqual(senderAddress.toLowerCase(), recoveredAccount.toLowerCase())
 
-      const eip712Sig = await EIP712Sig.new(relayHub)
-      const verify = await eip712Sig.verify(data.message, sig, { from: senderAddress })
+      const eip712Sig = await EIP712Sig.new(verifier)
+      const verify = await eip712Sig.verify(dataToSign.message, sig, { from: senderAddress })
       assert.strictEqual(verify, true)
     })
   })

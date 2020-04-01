@@ -1,13 +1,9 @@
 /build/
 .DS_Store
 /node_modules/
-/server/src/github.com/ethereum/go-ethereum/
 /.vscode/settings.json
 /.idea/*
 !/.idea/dictionaries/
-/server/pkg/darwin_amd64/
-/server/pkg/linux_amd64/
-/server/bin/
 /serverdock/version
 /secret_mnemonic
 /.0x-artifacts/
@@ -16,10 +12,8 @@
 /artifacts/
 /webtools/openeth-webtools.pack.js
 /singleton/
-/server/pkg/
 /.eslintcache
-/src/js/relayclient/interfaces/
+/src/js/common/interfaces/
 /ganache.pid
 /types/truffle-contracts/
 serverdock/
-/dist/

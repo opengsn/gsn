@@ -8,8 +8,9 @@ import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 import { encode } from 'rlp'
 import { expect } from 'chai'
 
-import RelayRequest from '../src/js/relayclient/EIP712/RelayRequest'
-import { getEip712Signature } from '../src/js/relayclient/utils'
+import RelayRequest from '../src/js/common/EIP712/RelayRequest'
+import { getEip712Signature } from '../src/js/common/utils'
+import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
 import Environments from '../src/js/relayclient/Environments'
 import {
   RelayHubInstance, StakeManagerInstance,
@@ -31,18 +32,20 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
 
+  let forwarder: string
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
     recipient = await TestRecipient.new()
+    forwarder = await recipient.getTrustedForwarder()
+
     paymaster = await TestPaymasterEverythingAccepted.new()
     await stakeManager.stakeForAddress(relayManager, 1000, {
       from: relayOwner,
       value: ether('1')
     })
     await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
-    await recipient.setHub(relayHub.address)
     await paymaster.setHub(relayHub.address)
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     // @ts-ignore
@@ -254,11 +257,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             relayWorker,
             paymaster: paymaster.address
           })
-          const { signature } = await getEip712Signature({
-            web3,
+          const dataToSign = await getDataToSign({
             chainId,
-            relayHub: relayHub.address,
+            verifier: forwarder,
             relayRequest
+          })
+          const signature = await getEip712Signature({
+            web3,
+            dataToSign
           })
           await relayHub.depositFor(paymaster.address, {
             from: other,

@@ -6,12 +6,12 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 contract TestProxy is Ownable, BaseRelayRecipient {
 
-    function isOwner() public view returns (bool) {
-        return getSender() == owner();
+    constructor(address forwarder) public {
+        trustedForwarder = forwarder;
     }
 
-    function setRelayHub(IRelayHub _relayHub) public onlyOwner {
-        relayHub = _relayHub;
+    function isOwner() public view returns (bool) {
+        return getSender() == owner();
     }
 
     event Test(address getSender, address msg_sender);

@@ -64,20 +64,16 @@ contract TokenPaymaster is BasePaymaster {
     )
     external
     view
-    returns (uint256, bytes memory) {
+    returns (bytes memory context) {
         (approvalData);
         address payer = this.getPayer(relayRequest);
         uint ethMaxCharge = IRelayHub(getHubAddr()).calculateCharge(maxPossibleGas, relayRequest.gasData);
         uint tokenPreCharge = uniswap.getTokenToEthOutputPrice(ethMaxCharge);
 
-        if (tokenPreCharge > token.balanceOf(payer)) {
-            return (99, "balance too low");
-        }
+        require(tokenPreCharge < token.balanceOf(payer), "balance too low");
 
-        if (tokenPreCharge > token.allowance(payer, address(this))) {
-            return (99, "allowance too low");
-        }
-        return (0, abi.encode(payer, tokenPreCharge));
+        require(tokenPreCharge < token.allowance(payer, address(this)), "allowance too low");
+        return abi.encode(payer, tokenPreCharge);
     }
 
     function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {

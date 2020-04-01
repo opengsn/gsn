@@ -47,7 +47,7 @@ interface IRelayHub {
         address to,
         address paymaster,
         bytes4 selector,
-        uint256 reason);
+        string reason);
 
     // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
     // indicated in the status field.
@@ -83,20 +83,6 @@ interface IRelayHub {
         RecipientBalanceChanged
     }
 
-    /// Preconditions for relaying, checked by canRelay and returned as the corresponding numeric values.
-    /// @param OK - all checks passed, the call can be relayed
-    /// @param WrongSignature - the transaction to relay is not signed by requested sender
-    /// @param WrongNonce - the provided nonce has already been used by the sender
-    /// @param AcceptRelayedCallReverted - the recipient rejected this call via acceptRelayedCall
-    /// @param InvalidRecipientStatusCode - the recipient returned an invalid (reserved) status code
-    enum CanRelayStatus {
-        OK,
-        WrongSignature,
-        WrongNonce,
-        AcceptRelayedCallReverted,
-        InvalidRecipientStatusCode
-    }
-
     /// Add new worker addresses controlled by sender who must be a staked Relay Manager address.
     /// Emits a RelayWorkersAdded event.
     /// This function can be called multiple times, emitting new events
@@ -126,7 +112,7 @@ interface IRelayHub {
     //  - all arguments must be signed for by the sender (from)
     //  - the sender's nonce must be the current one
     //  - the recipient must accept this transaction (via acceptRelayedCall)
-    // Returns a CanRelayStatus value (OK when the transaction can be relayed), or a recipient-specific error code if
+    // Returns true on success (and recipient context), or false with error string
     // it returns one in acceptRelayedCall.
     function canRelay(
         GSNTypes.RelayRequest calldata relayRequest,
@@ -137,7 +123,7 @@ interface IRelayHub {
     )
     external
     view
-    returns (uint256 status, bytes memory recipientContext);
+    returns (bool success, string memory returnValue);
 
     /// Relays a transaction. For this to succeed, multiple conditions must be met:
     ///  - canRelay must return CanRelayStatus.OK
@@ -178,7 +164,8 @@ interface IRelayHub {
     // Penalize a relayWorker that sent a transaction that didn't target RelayHub's registerRelay or relayCall.
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
 
-    function getNonce(address from) external view returns (uint256);
+    function getNonce(address target, address from) external view returns (uint256);
+    function getForwarder(address target) external view returns(address);
 
     function getHubOverhead() external view returns (uint256);
 

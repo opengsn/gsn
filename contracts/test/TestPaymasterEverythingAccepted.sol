@@ -15,9 +15,9 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     )
     external
     view
-    returns (uint256, bytes memory) {
+    returns (bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
-        return (0, "");
+        return "";
     }
 
     function preRelayedCall(
@@ -53,5 +53,11 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     function deposit() public payable {
         require(address(relayHub) != address(0), "relay hub address not set");
         relayHub.depositFor.value(msg.value)(address(this));
+    }
+
+    function withdraw(address payable destination) public {
+        require(address(relayHub) != address(0), "relay hub address not set");
+        uint256 amount = relayHub.balanceOf(address(this));
+        relayHub.withdraw(amount, destination);
     }
 }

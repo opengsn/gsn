@@ -14,12 +14,11 @@ import BN from 'bn.js'
 
 import RelayClient from '../src/js/relayclient/RelayClient'
 import RelayProvider from '../src/js/relayclient/RelayProvider'
-import { removeHexPrefix, getTransactionSignature } from '../src/js/relayclient/utils'
-import getDataToSign from '../src/js/relayclient/EIP712/Eip712Helper'
-import RelayRequest from '../src/js/relayclient/EIP712/RelayRequest'
+import { removeHexPrefix, getTransactionSignature } from '../src/js/common/utils'
+import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
+import RelayRequest from '../src/js/common/EIP712/RelayRequest'
 import Environments from '../src/js/relayclient/Environments'
 import { assertErrorMessageCorrect, registerNewRelay, sleep, startRelay, stopRelay } from './TestUtils'
-
 import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
@@ -52,6 +51,7 @@ contract('RelayClient', function (accounts) {
   let relayproc: ChildProcessWithoutNullStreams
   let gasPrice: number
   let relayClientConfig: any
+  let forwarderAddress: string
   const relayOwner = accounts[1]
   let relayManager
   let relayWorker
@@ -67,9 +67,9 @@ contract('RelayClient', function (accounts) {
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
     sr = await TestRecipient.new()
+    forwarderAddress = await relayHub.getForwarder(sr.address)
     paymaster = await TestPaymasterEverythingAccepted.new()
 
-    await sr.setHub(relayHub.address)
     await paymaster.setHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
     gasLess = await web3.eth.personal.newAccount('password')
@@ -184,7 +184,7 @@ contract('RelayClient', function (accounts) {
       await approvalPaymaster.setHub(relayHub.address)
       await relayHub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
 
-      const expectedError = 13
+      const expectedError = 'test: not approved'
       const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
       const to = sr.address
       const options = {
@@ -213,10 +213,10 @@ contract('RelayClient', function (accounts) {
       } catch (error) {
         if (validateCanRelay) {
           // error checked by relayTransaction:
-          assert.equal('Error: canRelay failed: 13: test: not approved', error.toString())
+          assert.equal('Error: canRelay failed: test: not approved', error.toString())
         } else {
           // error checked by relay:
-          assert.include(error.otherErrors[0], `canRelay failed in server:${expectedError.toString()}`)
+          assert.include(error.otherErrors[0], 'canRelay failed in server: ' + expectedError)
         }
       }
     }))
@@ -310,7 +310,7 @@ contract('RelayClient', function (accounts) {
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello world')
     assert.equal(res.logs[0].args.realSender, gasLess)
-    assert.equal(res.logs[0].args.msgSender.toLowerCase(), relayHub.address.toLowerCase())
+    assert.equal(res.logs[0].args.msgSender.toLowerCase(), forwarderAddress.toLowerCase())
     res = await sr.emitMessage('hello again', {
       from: accounts[3],
       // @ts-ignore
@@ -350,7 +350,7 @@ contract('RelayClient', function (accounts) {
     assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
     assert.equal(res.logs[0].args.message, 'hello world'.repeat(1000))
     assert.equal(res.logs[0].args.realSender, gasLess)
-    assert.equal(res.logs[0].args.msgSender.toLowerCase(), relayHub.address.toLowerCase())
+    assert.equal(res.logs[0].args.msgSender.toLowerCase(), forwarderAddress.toLowerCase())
     res = await sr.emitMessage('hello again'.repeat(1000), {
       from: accounts[3],
       // @ts-ignore
@@ -436,19 +436,19 @@ contract('RelayClient', function (accounts) {
     const filteredRelays = [
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: 'localhost1',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: 'localhost2',
         RelayServerAddress: '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1'
       },
       {
         pctRelayFee: 0,
-        baseRelayFee: 0,
+        baseRelayFee: 300,
         relayUrl: localhostOne,
         RelayServerAddress: relayServerAddress
       }
@@ -519,7 +519,7 @@ contract('RelayClient', function (accounts) {
         })
         const data = getDataToSign({
           chainId: 7,
-          relayHub: relayHubAddress,
+          verifier: forwarderAddress,
           relayRequest
         })
         const recoveredAccount = recoverTypedSignature_v4({
@@ -668,30 +668,5 @@ contract('RelayClient', function (accounts) {
         assert.include(error.message, 'wrong version')
       }
     })
-  })
-
-  it('should fail to relay if provided Paymaster and Relay Recipient do not use same Relay Hub', async function () {
-    // @ts-ignore
-    const relayProvider = TestRecipient.web3.currentProvider
-    // @ts-ignore
-    TestRecipient.web3.setProvider(relayProvider.origProvider)
-    const recipient = await TestRecipient.new()
-    // @ts-ignore
-    TestRecipient.web3.setProvider(relayProvider)
-    await recipient.setHub(accounts[4], {
-      from: accounts[0],
-      // @ts-ignore
-      useGSN: false
-    })
-    try {
-      await recipient.emitMessage('ain\'t gonna work mate', {
-        from: accounts[0],
-        // @ts-ignore
-        paymaster: paymaster.address
-      })
-      assert.fail()
-    } catch (error) {
-      assert.include(error.message, 'Paymaster\'s and recipient\'s RelayHub addresses do not match')
-    }
   })
 })
