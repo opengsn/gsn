@@ -23,7 +23,7 @@ contract('Utils', async function (accounts) {
       const gasLimit = '500000'
       const paymaster = accounts[7]
       const relayHub = accounts[8]
-      const relayAddress = accounts[9]
+      const relayWorker = accounts[9]
 
       const relayRequest = new RelayRequest({
         senderAddress,
@@ -34,7 +34,7 @@ contract('Utils', async function (accounts) {
         pctRelayFee,
         baseRelayFee,
         senderNonce,
-        relayAddress,
+        relayWorker,
         paymaster
       })
 

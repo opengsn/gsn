@@ -15,6 +15,7 @@ const argv = parseArgs(process.argv.slice(2), {
       'PercentFee',
       'Url',
       'RelayHubAddress',
+      'StakeManagerAddress',
       'DefaultGasPrice',
       'GasPricePercent',
       'RegistrationBlockRate',
@@ -33,6 +34,7 @@ const pctRelayFee = argv.PercentFee || 0
 const url = argv.Url || 'http://localhost:8090'
 const port = argv.Port || 8090
 const relayHubAddress = argv.RelayHubAddress || '0xD216153c06E857cD7f72665E0aF1d7D82172F494'
+const stakeManagerAddress = argv.StakeManagerAddress || '0x0000000000000000000000000000000000000000'
 // const defaultGasPrice = argv.DefaultGasPrice || 1e9 // 1 Gwei
 const gasPricePercent = argv.GasPricePercent || 10
 // const registrationBlockRate = argv.RegistrationBlockRate || 6000 - 200
@@ -56,6 +58,7 @@ const relay = new RelayServer({
   txStoreManager,
   keyManager,
   hubAddress: relayHubAddress,
+  stakeManagerAddress,
   web3provider,
   url,
   baseRelayFee: baseRelayFee,

@@ -1,6 +1,6 @@
 import { balance, ether, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers'
 import { expect } from 'chai'
-import { evmMineMany } from './testutils'
+import { evmMineMany } from './TestUtils'
 import BN from 'bn.js'
 
 import { StakeManagerInstance } from '../types/truffle-contracts'
@@ -292,7 +292,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     describe('after grace period elapses', function () {
       beforeEach(async function () {
-        await evmMineMany(initialUnstakeDelay)
+        await evmMineMany(initialUnstakeDelay.toNumber())
       })
 
       it('should not allow to penalize hub', async function () {
@@ -330,7 +330,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     testCanPenalize()
 
     it('should allow to withdraw stake after unstakeDelay', async function () {
-      await evmMineMany(initialUnstakeDelay)
+      await evmMineMany(initialUnstakeDelay.toNumber())
       const relayOwnerBalanceTracker = await balance.tracker(owner)
       const stakeManagerBalanceTracker = await balance.tracker(stakeManager.address)
 
@@ -352,7 +352,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     describe('with stake withdrawn', function () {
       beforeEach(async function () {
-        await evmMineMany(initialUnstakeDelay)
+        await evmMineMany(initialUnstakeDelay.toNumber())
         await stakeManager.withdrawStake(relayManager, { from: owner })
       })
 

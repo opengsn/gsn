@@ -42,7 +42,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 36713;
+    uint256 constant private GAS_OVERHEAD = 36713 + 1328;
 
     function getHubOverhead() external view returns (uint256) {
         return GAS_OVERHEAD;
@@ -232,11 +232,10 @@ contract RelayHub is IRelayHub {
         uint256 initialGas = gasleft();
         bytes4 functionSelector = LibBytes.readBytes4(relayRequest.encodedFunction, 0);
         // Initial soundness checks - the relay must make sure these pass, or it will pay for a reverted transaction.
-        address relayManager = workerToManager[msg.sender];
         // The worker must be controlled by a manager with a locked stake
-        require(relayManager != address(0), "Unknown relay worker");
+        require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(
-            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            stakeManager.isRelayManagerStaked(workerToManager[msg.sender], MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
             "relay manager not staked"
         );
         // A relay may use a higher gas price than the one requested by the signer (to e.g. get the transaction in a
@@ -264,6 +263,7 @@ contract RelayHub is IRelayHub {
 
             if (canRelayStatus != uint256(CanRelayStatus.OK)) {
                 emit CanRelayFailed(
+                    workerToManager[msg.sender],
                     msg.sender,
                     relayRequest.relayData.senderAddress,
                     relayRequest.target,
@@ -306,6 +306,7 @@ contract RelayHub is IRelayHub {
         balances[workerToManager[msg.sender]] += charge;
 
         emit TransactionRelayed(
+            workerToManager[msg.sender],
             msg.sender,
             relayRequest.relayData.senderAddress,
             relayRequest.target,
@@ -498,7 +499,7 @@ contract RelayHub is IRelayHub {
             stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
             "relay manager not staked"
         );
-        (uint256 totalStake,,,) = stakeManager.stakes(relayManager);
+        (uint256 totalStake, , , ) = stakeManager.stakes(relayManager);
         stakeManager.penalizeRelayManager(relayManager, msg.sender, totalStake);
     }
 }

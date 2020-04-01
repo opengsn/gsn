@@ -1,16 +1,18 @@
 /* global contract artifacts before it */
 
+import { constants } from '@openzeppelin/test-helpers'
+
 const Environments = require('../src/js/relayclient/Environments')
+const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
 
 const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
 const TestUniswap = artifacts.require('TestUniswap.sol')
 const TestToken = artifacts.require('TestToken.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
+const StakeManager = artifacts.require('StakeManager')
 const TestProxy = artifacts.require('TestProxy')
 const { getEip712Signature } = require('../src/js/relayclient/utils')
-
-const RelayRequest = require('../src/js/relayclient/EIP712/RelayRequest')
 
 async function retcode (func) {
   const ret = await func
@@ -24,11 +26,12 @@ async function retcode (func) {
 
 contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let paymaster, uniswap, token, recipient, hub
+  let stakeManager
   let sharedRelayRequestData
 
   async function calculatePostGas (paymaster) {
     const testpaymaster = await TokenPaymaster.new(await paymaster.uniswap())
-    const calc = await TokenGasCalculator.new({ gas: 10000000 })
+    const calc = await TokenGasCalculator.new(Environments.defEnv.gtxdatanonzero, constants.ZERO_ADDRESS, { gas: 10000000 })
     await testpaymaster.transferOwnership(calc.address)
     // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
     await token.mint(1000)
@@ -40,7 +43,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   before(async () => {
     // exchange rate 2 tokens per eth.
     uniswap = await TestUniswap.new(2, 1, { value: 5e18 })
-    hub = await RelayHub.new(16)
+    stakeManager = await StakeManager.new()
+    hub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
     token = await TestToken.at(await uniswap.tokenAddress())
 
     paymaster = await TokenPaymaster.new(uniswap.address)
@@ -62,7 +66,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       baseRelayFee: '0',
       gasPrice: await web3.eth.getGasPrice(),
       gasLimit: 1e6.toString(),
-      relayAddress: from,
+      relayWorker: from,
       paymaster: paymaster.address
     }
   })
@@ -110,11 +114,13 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     const paymasterDeposit = 1e18.toString()
 
     before(async () => {
-      await hub.stake(relay, 7 * 24 * 3600, {
+      await stakeManager.stakeForAddress(relay, 7 * 24 * 3600, {
         from: relayOwner,
         value: 2e18
       })
-      await hub.registerRelay(2e16.toString(), '10', 'url', { from: relay })
+      await stakeManager.authorizeHub(relay, hub.address, { from: relayOwner })
+      await hub.addRelayWorkers([relay], { from: relay })
+      await hub.registerRelayServer(2e16.toString(), '10', 'url', { from: relay })
       await hub.depositFor(paymaster.address, { value: paymasterDeposit })
     })
 

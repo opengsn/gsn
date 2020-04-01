@@ -41,9 +41,10 @@ interface IRelayHub {
     // The reason field contains an error code: values 1-10 correspond to CanRelayStatus entries, and values over 10
     // are custom recipient error codes returned from acceptRelayedCall.
     event CanRelayFailed(
+        address indexed relayManager,
         address indexed relayWorker,
         address indexed from,
-        address indexed to,
+        address to,
         address paymaster,
         bytes4 selector,
         uint256 reason);
@@ -53,9 +54,10 @@ interface IRelayHub {
     // Useful when monitoring a relay's operation and relayed calls to a contract.
     // Charge is the ether value deducted from the recipient's balance, paid to the relay's manager.
     event TransactionRelayed(
+        address indexed relayManager,
         address indexed relayWorker,
         address indexed from,
-        address indexed to,
+        address to,
         address paymaster,
         bytes4 selector,
         RelayCallStatus status,

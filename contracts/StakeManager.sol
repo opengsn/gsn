@@ -3,67 +3,15 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-import "./interfaces/IRelayHub.sol";
+import "./interfaces/IStakeManager.sol";
 
-contract StakeManager {
-
-    /// Emitted when a stake or unstakeDelay are initialized or increased
-    event StakeAdded(
-        address indexed relayManager,
-        address indexed owner,
-        uint256 stake,
-        uint256 unstakeDelay
-    );
-
-    /// Emitted once a stake is scheduled for withdrawal
-    event StakeUnlocked(
-        address indexed relayManager,
-        address indexed owner,
-        uint256 withdrawBlock
-    );
-
-    /// Emitted when owner withdraws relayManager funds
-    event StakeWithdrawn(
-        address indexed relayManager,
-        address indexed owner,
-        uint256 amount
-    );
-
-    /// Emitted when an authorized Relay Hub penalizes a relayManager
-    event StakePenalized(
-        address indexed relayManager,
-        address indexed beneficiary,
-        uint256 reward
-    );
-
-    event HubAuthorized(
-        address indexed relayManager,
-        address indexed relayHub
-    );
-
-    event HubUnauthorized(
-        address indexed relayManager,
-        address indexed relayHub,
-        uint256 removalBlock
-    );
-
-    /// @param stake - amount of ether staked for this relay
-    /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
-    /// @param withdrawBlock - first block number 'withdraw' will be callable, or zero if the unlock has not been called
-    /// @param owner - address that receives revenue and manages relayManager's stake
-    struct StakeInfo {
-        uint256 stake;
-        uint256 unstakeDelay;
-        uint256 withdrawBlock;
-        address payable owner;
-    }
-
-    struct RelayHubInfo {
-        uint256 removalBlock;
-    }
+contract StakeManager is IStakeManager {
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
+    function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo) {
+        return stakes[relayManager];
+    }
 
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
