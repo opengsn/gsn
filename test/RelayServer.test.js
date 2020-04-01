@@ -59,7 +59,6 @@ contract('RelayServer', function (accounts) {
     sr = await TestRecipient.new()
     paymaster = await TestPaymasterEverythingAccepted.new()
 
-    await sr.setHub(rhub.address)
     await paymaster.setHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
     gasLess = await _web3.eth.personal.newAccount('password')

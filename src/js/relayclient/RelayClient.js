@@ -365,7 +365,6 @@ class RelayClient {
         gasLimit,
         paymaster,
         relayHub,
-        relayWorker,
         options)
       // on first found relay, call canRelay to make sure that on-chain this request can pass
       if (options.validateCanRelay && firstTry) {
@@ -581,7 +580,8 @@ class RelayClient {
     paymaster,
     relayHub,
     options) {
-    const senderNonce = (await relayHub.methods.getNonce(options.to, options.from).call()).toString()
+    const nonce = await relayHub.methods.getNonce(options.to, options.from).call()
+    const senderNonce = nonce.toString()
     const relayRequest = new RelayRequest({
       senderAddress: options.from,
       target: options.to,

@@ -109,10 +109,8 @@ export async function startRelay (
   res = ''
   let count = 25
   while (count-- > 0) {
-    console.log('will getaddr')
     res = await http.sendPromise(localhostOne + '/getaddr')
     if (res?.Ready) break
-    console.log('did getaddr, not ready')
     await sleep(1500)
   }
   assert.ok(res.Ready, 'Timed out waiting for relay to get staked and registered')
