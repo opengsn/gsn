@@ -1,6 +1,5 @@
-import Big from 'big.js'
 import BN from 'bn.js'
-import { ether, expectEvent, time } from '@openzeppelin/test-helpers'
+import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/js/common/utils'
 import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
@@ -10,13 +9,14 @@ import RelayRequest from '../src/js/common/EIP712/RelayRequest'
 import {
   RelayHubInstance,
   TestRecipientInstance,
-  TestPaymasterVariableGasLimitsInstance
+  TestPaymasterVariableGasLimitsInstance, StakeManagerInstance
 } from '../types/truffle-contracts'
 
-const RelayHub = artifacts.require('./RelayHub.sol')
-const TestRecipient = artifacts.require('./test/TestRecipient')
-const TestPaymasterVariableGasLimits = artifacts.require('./TestPaymasterVariableGasLimits.sol')
-const TestPaymasterConfigurableMisbehavior = artifacts.require('./test/TestPaymasterConfigurableMisbehavior.sol')
+const RelayHub = artifacts.require('RelayHub')
+const StakeManager = artifacts.require('StakeManager')
+const TestRecipient = artifacts.require('TestRecipient')
+const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
+const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 function correctGasCost (buffer: Buffer, nonzerocost: number, zerocost: number): number {
   let gasCost = 0
@@ -30,9 +30,9 @@ function correctGasCost (buffer: Buffer, nonzerocost: number, zerocost: number):
   return gasCost
 }
 
-contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __, senderAddress, other]) {
+contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
-  const unstakeDelay = time.duration.weeks(4)
+  const unstakeDelay = 1000
   const chainId = Environments.defEnv.chainId
   const gtxdatanonzero = Environments.defEnv.gtxdatanonzero
   const gtxdatazero = Environments.defEnv.gtxdatazero
@@ -48,6 +48,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
   }
 
   let relayHub: RelayHubInstance
+  let stakeManager: StakeManagerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterVariableGasLimitsInstance
   let encodedFunction
@@ -55,24 +56,28 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
   let relayRequest: RelayRequest
   let forwarder: string
 
-  async function prepareForHub (): Promise<void> {
+  beforeEach(async function prepareForHub () {
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
     paymaster = await TestPaymasterVariableGasLimits.new()
+    stakeManager = await StakeManager.new()
+    relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
     await paymaster.setHub(relayHub.address)
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
       from: other
     })
-    await relayHub.stake(relayAddress, unstakeDelay, {
+    await stakeManager.stakeForAddress(relayManager, unstakeDelay, {
       value: ether('2'),
       from: relayOwner
     })
-    await relayHub.registerRelay(0, fee, '', { from: relayAddress })
+    await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+    await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
+    await relayHub.registerRelayServer(0, fee, '', { from: relayManager })
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
     relayRequest = new RelayRequest({
       senderAddress,
-      relayAddress,
+      relayWorker,
       encodedFunction,
       senderNonce: senderNonce.toString(),
       target: recipient.address,
@@ -91,11 +96,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       web3,
       dataToSign
     })
-  }
-
-  before(async function () {
-    relayHub = await RelayHub.deployed()
-    await prepareForHub()
   })
 
   describe('#calculateCharge()', function () {
@@ -121,7 +121,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
         const { tx } = await relayHub.relayCall(relayRequest, signature, '0x', {
-          from: relayAddress,
+          from: relayWorker,
           gas: transactionGasLimit.toString(),
           gasPrice
         })
@@ -157,7 +157,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       // TODO: extract preparation to 'before' block
       const misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setHub(relayHub.address)
-      await misbehavingPaymaster.deposit({ value: 1e17 })
+      await misbehavingPaymaster.deposit({ value: ether('0.1') })
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
       const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
@@ -180,7 +180,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
       assert.equal(canRelayResponse[1], '') // no revert string on out-of-gas
 
       const res = await relayHub.relayCall(relayRequestMisbehaving, signature, '0x', {
-        from: relayAddress,
+        from: relayWorker,
         gasPrice: gasPrice
       })
 
@@ -191,17 +191,17 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
 
   async function getBalances (): Promise<{
     relayRecipient: BN
-    relay: Big
-    relayOwners: BN
+    relayWorkers: BN
+    relayManagers: BN
   }> {
     const relayRecipient = await relayHub.balanceOf(paymaster.address)
     // @ts-ignore
-    const relay = new Big(await web3.eth.getBalance(relayAddress))
-    const relayOwners = await relayHub.balanceOf(relayOwner)
+    const relayWorkers = new BN(await web3.eth.getBalance(relayWorker))
+    const relayManagers = await relayHub.balanceOf(relayManager)
     return {
       relayRecipient,
-      relay,
-      relayOwners
+      relayWorkers,
+      relayManagers
     }
   }
 
@@ -248,7 +248,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
                 gasPrice: gasPrice.toString(),
                 gasLimit: gasLimit.toString(),
                 senderNonce,
-                relayAddress,
+                relayWorker,
                 paymaster: paymaster.address
               })
               const dataToSign = await getDataToSign({
@@ -261,13 +261,13 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
                 dataToSign
               })
               const res = await relayHub.relayCall(relayRequest, signature, '0x', {
-                from: relayAddress,
+                from: relayWorker,
                 gasPrice: gasPrice
               })
               const afterBalances = await getBalances()
-              assert.notEqual(beforeBalances.relayOwners.toString(), afterBalances.relayOwners.toString(), 'transaction must have failed')
-              const weiActualCharge = afterBalances.relayOwners.sub(beforeBalances.relayOwners)
-              const weiGasUsed = beforeBalances.relay.sub(afterBalances.relay)
+              assert.notEqual(beforeBalances.relayManagers.toString(), afterBalances.relayManagers.toString(), 'transaction must have failed')
+              const weiActualCharge = afterBalances.relayManagers.sub(beforeBalances.relayManagers)
+              const weiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
               // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               assert.equal((res.receipt.gasUsed * gasPrice).toString(), weiGasUsed.toString(), 'where else did the money go?')
 
@@ -286,8 +286,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayAddress, __
               assert.equal(diff, 0)
               // Check that relay did pay it's gas fee by himself.
               // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-              const expectedBalanceAfter = beforeBalances.relay.sub(res.receipt.gasUsed * gasPrice)
-              assert.equal(expectedBalanceAfter.cmp(afterBalances.relay), 0, 'relay did not pay the expected gas fees')
+              const expectedBalanceAfter = beforeBalances.relayWorkers.subn(res.receipt.gasUsed * gasPrice)
+              assert.equal(expectedBalanceAfter.cmp(afterBalances.relayWorkers), 0, 'relay did not pay the expected gas fees')
 
               // Check that relay's weiActualCharge is deducted from recipient's stake.
               // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)

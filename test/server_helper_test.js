@@ -2,7 +2,7 @@ const assert = require('chai').use(require('chai-as-promised')).assert
 const ServerHelper = require('../src/js/relayclient/ServerHelper')
 const HttpWrapper = require('../src/js/relayclient/HttpWrapper')
 const http = require('http')
-const testutils = require('./testutils')
+const testutils = require('./TestUtils')
 const registerNewRelay = testutils.registerNewRelay
 const increaseTime = testutils.increaseTime
 
@@ -25,7 +25,7 @@ function mockserver (port, data) {
   return s
 }
 
-contract('ServerHelper', function (accounts) {
+contract.skip('ServerHelper', function (accounts) {
   const minStake = 1.5e18
   const minDelay = 3600 * 24 * 10
   const httpWrapper = new HttpWrapper()

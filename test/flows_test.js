@@ -4,7 +4,7 @@
 // succeed in gasless)
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
 
-var testutils = require('./testutils.js')
+var testutils = require('./TestUtils')
 
 const SampleRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -21,7 +21,7 @@ const options = [
 ]
 
 options.forEach(params => {
-  contract(params.title + 'Flow', async (acc) => {
+  contract.skip(params.title + 'Flow', async (acc) => {
     let from
     let sr
     let paymaster

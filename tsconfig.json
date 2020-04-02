@@ -11,6 +11,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
     "lib": [
       "es2015",
       "esnext.asynciterable"

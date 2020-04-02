@@ -234,7 +234,7 @@ class ServerHelper {
   async fetchRelaysAdded () {
     const fromBlock = this.fromBlock || 2
     const eventTopics = event2topic(this.relayHubInstance,
-      ['RelayAdded', 'RelayRemoved', 'TransactionRelayed', 'CanRelayFailed'])
+      ['RelayServerRegistered', 'TransactionRelayed', 'CanRelayFailed'])
 
     const relayEvents = await this.relayHubInstance.getPastEvents('allEvents', {
       fromBlock: fromBlock,
@@ -244,20 +244,20 @@ class ServerHelper {
     if (this.verbose) {
       console.log('fetchRelaysAdded: found ', relayEvents.length + ' events')
     }
-    const foundRelays = new Set()
+    const foundRelayManagers = new Set()
     relayEvents.forEach(event => {
-      if (event.event === 'RelayRemoved') {
-        foundRelays.delete(event.returnValues.relay)
-      } else {
-        foundRelays.add(event.returnValues.relay)
-      }
+      // TODO: remove relay managers who are not staked
+      // if (event.event === 'RelayRemoved') {
+      //   foundRelays.delete(event.returnValues.relay)
+      // } else {
+      foundRelayManagers.add(event.returnValues.relayManager)
     })
 
     if (this.verbose) {
-      console.log('fetchRelaysAdded: found', Object.keys(foundRelays).length, 'unique relays')
+      console.log('fetchRelaysAdded: found', Object.keys(foundRelayManagers).length, 'unique relays')
     }
 
-    const relayAddedTopic = event2topic(this.relayHubInstance, 'RelayAdded')
+    const relayServerRegisteredTopic = event2topic(this.relayHubInstance, 'RelayServerRegistered')
 
     function toBytes32 (addr) {
       return '0x' + addr.replace(/^0x/, '').padStart(64, '0').toLowerCase()
@@ -267,28 +267,26 @@ class ServerHelper {
     // we _could_ optimize for that, but since at least _some_ relays
     // were found by the TransactionRelayed event, we are forced to search them
     // for actual address.
-    const relayAddedEvents = await this.relayHubInstance.getPastEvents('RelayAdded', {
+    const relayServerRegisteredEvents = await this.relayHubInstance.getPastEvents('RelayServerRegistered', {
       fromBlock: 1,
-      topics: [relayAddedTopic, Array.from(foundRelays, toBytes32)]
+      topics: [relayServerRegisteredTopic, Array.from(foundRelayManagers, toBytes32)]
     })
 
     if (this.verbose) {
-      console.log('== fetchRelaysAdded: found ', relayAddedEvents.length + ' unique RelayAdded events (should have at least as unique relays, above)')
+      console.log('== fetchRelaysAdded: found ', relayServerRegisteredEvents.length + ' unique RelayAdded events (should have at least as unique relays, above)')
     }
 
     const activeRelays = {}
-    relayAddedEvents.forEach(event => {
+    relayServerRegisteredEvents.forEach(event => {
       const args = event.returnValues
       const relay = {
-        address: args.relay,
+        relayManager: args.relayManager,
         relayUrl: args.url,
         baseRelayFee: args.baseRelayFee,
-        pctRelayFee: args.pctRelayFee,
-        stake: args.stake,
-        unstakeDelay: args.unstakeDelay
+        pctRelayFee: args.pctRelayFee
       }
       relay.score = this.calculateRelayScore(relay)
-      activeRelays[args.relay] = relay
+      activeRelays[args.relayManager] = relay
     })
     const origRelays = Object.values(activeRelays)
     const filteredRelays = origRelays.filter(this.relayFilter).sort(this.compareRelayScores.bind(this))

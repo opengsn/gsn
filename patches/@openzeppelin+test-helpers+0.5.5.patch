@@ -1,0 +1,13 @@
+diff --git a/node_modules/@openzeppelin/test-helpers/src/expectEvent.js b/node_modules/@openzeppelin/test-helpers/src/expectEvent.js
+index fedd41a..4db5481 100644
+--- a/node_modules/@openzeppelin/test-helpers/src/expectEvent.js
++++ b/node_modules/@openzeppelin/test-helpers/src/expectEvent.js
+@@ -132,7 +132,7 @@ function contains (args, key, value) {
+     expect(args[key]).to.be.bignumber.equal(value,
+       `expected event argument '${key}' to have value ${expected} but got ${actual}`);
+   } else {
+-    expect(args[key]).to.be.equal(value,
++    expect(args[key]).to.be.eql(value,
+       `expected event argument '${key}' to have value ${value} but got ${args[key]}`);
+   }
+ }

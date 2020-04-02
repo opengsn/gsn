@@ -13,7 +13,7 @@ class RelayRequest {
     baseRelayFee,
     pctRelayFee,
     senderNonce,
-    relayAddress,
+    relayWorker,
     paymaster
   }) {
     // TODO: define ow predicates for addresses, signatures etc.
@@ -25,7 +25,7 @@ class RelayRequest {
     ow(pctRelayFee, ow.string)
     ow(baseRelayFee, ow.string)
     ow(senderNonce, ow.string)
-    ow(relayAddress, ow.string)
+    ow(relayWorker, ow.string)
     ow(paymaster, ow.string)
     this.target = target
     this.encodedFunction = encodedFunction
@@ -40,7 +40,7 @@ class RelayRequest {
       new RelayData({
         senderAddress,
         senderNonce,
-        relayAddress,
+        relayWorker,
         paymaster
       })
   }
@@ -51,7 +51,7 @@ class RelayRequest {
       encodedFunction: this.encodedFunction,
       senderAddress: this.relayData.senderAddress,
       senderNonce: this.relayData.senderNonce,
-      relayAddress: this.relayData.relayAddress,
+      relayWorker: this.relayData.relayWorker,
       paymaster: this.relayData.paymaster,
       gasLimit: this.gasData.gasLimit,
       gasPrice: this.gasData.gasPrice,

@@ -45,6 +45,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
     }
 
+    // TODO: this 'overrides' existing setRelayHub method
     function setHub(IRelayHub _relayHub) public {
         relayHub = _relayHub;
     }

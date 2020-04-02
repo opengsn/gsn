@@ -7,7 +7,7 @@ const ServerHelper = require('./ServerHelper')
 const HttpWrapper = require('./HttpWrapper')
 const ethUtils = require('ethereumjs-util')
 const ethWallet = require('ethereumjs-wallet')
-const Transaction = require('ethereumjs-tx')
+const { Transaction } = require('ethereumjs-tx')
 const abiDecoder = require('abi-decoder')
 const sigUtil = require('eth-sig-util')
 
@@ -93,9 +93,9 @@ class RelayClient {
    */
 
   validateRelayResponse (
-    returnedTx, addressRelay,
+    returnedTx,
     senderAddress, target, encodedFunction, baseRelayFee, pctRelayFee, gasPrice, gasLimit, paymaster, senderNonce,
-    relayHubAddress, relayAddress, sig, approvalData) {
+    relayHubAddress, relayWorker, sig, approvalData, chainId) {
     const tx = new Transaction(returnedTx)
 
     const message = tx.hash(false)
@@ -103,7 +103,8 @@ class RelayClient {
       console.log('returnedTx is', tx.v, tx.r, tx.s, tx.to, tx.data, tx.gasLimit, tx.gasPrice, tx.value)
     }
 
-    const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, tx.v[0], tx.r, tx.s)))
+    // TODO TODO TODO: pass valid chainID for ecrecover
+    const signer = ethUtils.bufferToHex(ethUtils.pubToAddress(ethUtils.ecrecover(message, tx.v[0], tx.r, tx.s, chainId || 1)))
 
     const relayRequestOrig = new RelayRequest({
       senderAddress,
@@ -114,7 +115,7 @@ class RelayClient {
       baseRelayFee,
       pctRelayFee,
       senderNonce,
-      relayAddress,
+      relayWorker,
       paymaster
     })
 
@@ -124,14 +125,14 @@ class RelayClient {
     if (
       utils.isSameAddress(ethUtils.bufferToHex(tx.to), relayHubAddress) &&
       relayRequestAbiEncode === ethUtils.bufferToHex(tx.data) &&
-      utils.isSameAddress(addressRelay, signer)
+      utils.isSameAddress(relayWorker, signer)
     ) {
       if (this.config.verbose) {
         console.log('validateRelayResponse - valid transaction response')
       }
       return tx
     } else {
-      console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, addressRelay)
+      console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, relayWorker)
       console.error('validateRelayResponse: rsp', ethUtils.bufferToHex(tx.data), ethUtils.bufferToHex(tx.to), signer)
     }
   }
@@ -142,7 +143,7 @@ class RelayClient {
    */
   async sendViaRelay (
     {
-      relayAddress,
+      relayWorker,
       from,
       to,
       encodedFunction,
@@ -156,7 +157,8 @@ class RelayClient {
       approvalData,
       relayUrl,
       relayHubAddress,
-      relayMaxNonce
+      relayMaxNonce,
+      chainId
     }) {
     var self = this
     return new Promise(function (resolve, reject) {
@@ -181,7 +183,7 @@ class RelayClient {
           if (error.error && error.error.indexOf('timeout') !== -1) {
             self.failedRelays[relayUrl] = {
               lastError: new Date().getTime(),
-              address: relayAddress,
+              address: relayWorker,
               url: relayUrl
             }
           }
@@ -210,10 +212,10 @@ class RelayClient {
         // TODO: this 'try/catch' is concealing all errors and makes development harder. Fix.
         try {
           validTransaction = self.validateRelayResponse(
-            body.signedTx, relayAddress, from, to, encodedFunction,
+            body.signedTx, from, to, encodedFunction,
             baseRelayFee,
             pctRelayFee, gasPrice.toString(), gasLimit.toString(), paymaster, senderNonce,
-            relayHubAddress, relayAddress, signature, approvalData)
+            relayHubAddress, relayWorker, signature, approvalData, chainId)
         } catch (error) {
           console.error('validateRelayResponse threw error:\n', error, error.stack)
         }
@@ -350,13 +352,13 @@ class RelayClient {
         error.otherErrors = errors
         throw error
       }
-      const relayAddress = activeRelay.RelayServerAddress
+      const relayWorker = activeRelay.RelayServerAddress
       const relayUrl = activeRelay.relayUrl
       const pctRelayFee = (options.pctRelayFee || activeRelay.pctRelayFee).toString()
       const baseRelayFee = (options.baseRelayFee || activeRelay.baseRelayFee).toString()
       const { relayRequest, relayMaxNonce, approvalData, signature } = await this._prepareRelayHttpRequest(
         encodedFunction,
-        relayAddress,
+        relayWorker,
         pctRelayFee,
         baseRelayFee,
         gasPrice,
@@ -403,7 +405,7 @@ class RelayClient {
       }
       try {
         return await this.sendViaRelay({
-          relayAddress,
+          relayWorker,
           from: options.from,
           to: options.to,
           encodedFunction: encodedFunction,
@@ -433,7 +435,7 @@ class RelayClient {
             gasLimit,
             nonce: relayRequest.relayData.senderNonce,
             relayhub: relayHub._address,
-            relayAddress
+            relayWorker
           })
           console.log('relayTransaction:', ('' + error).replace(/ (\w+:)/g, '\n$1 '))
         }
@@ -570,7 +572,7 @@ class RelayClient {
 
   async _prepareRelayHttpRequest (
     encodedFunction,
-    relayAddress,
+    relayWorker,
     pctRelayFee,
     baseRelayFee,
     gasPrice,
@@ -578,7 +580,8 @@ class RelayClient {
     paymaster,
     relayHub,
     options) {
-    const senderNonce = (await relayHub.methods.getNonce(options.to, options.from).call()).toString()
+    const nonce = await relayHub.methods.getNonce(options.to, options.from).call()
+    const senderNonce = nonce.toString()
     const relayRequest = new RelayRequest({
       senderAddress: options.from,
       target: options.to,
@@ -589,7 +592,7 @@ class RelayClient {
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster,
-      relayAddress
+      relayWorker
     })
 
     const signature = await this._prepareSignature(relayHub, relayRequest, options)
@@ -604,7 +607,7 @@ class RelayClient {
         gas_limit: gasLimit,
         nonce: senderNonce,
         relay_hub_address: relayHub._address,
-        relay_address: relayAddress
+        relay_address: relayWorker
       })
     }
     // max nonce is not signed, as contracts cannot access addresses' nonces.
@@ -612,7 +615,7 @@ class RelayClient {
     if (typeof allowedRelayNonceGap === 'undefined') {
       allowedRelayNonceGap = 3
     }
-    const relayMaxNonce = (await this.web3.eth.getTransactionCount(relayAddress)) + allowedRelayNonceGap
+    const relayMaxNonce = (await this.web3.eth.getTransactionCount(relayWorker)) + allowedRelayNonceGap
     return { relayRequest, relayMaxNonce, approvalData, signature }
   }
 

@@ -15,7 +15,7 @@ const GasDataType = [
 const RelayDataType = [
   { name: 'senderAddress', type: 'address' },
   { name: 'senderNonce', type: 'uint256' },
-  { name: 'relayAddress', type: 'address' },
+  { name: 'relayWorker', type: 'address' },
   { name: 'paymaster', type: 'address' }
 ]
 

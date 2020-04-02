@@ -1,10 +1,11 @@
 const EventEmitter = require('events')
 const Web3 = require('web3')
 const abiDecoder = require('abi-decoder')
-const Transaction = require('ethereumjs-tx')
+const { Transaction } = require('ethereumjs-tx')
 const ethUtils = require('ethereumjs-util')
 const RelayHubABI = require('../common/interfaces/IRelayHub')
 const PayMasterABI = require('../common/interfaces/IPaymaster')
+const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
@@ -14,6 +15,7 @@ const StoredTx = require('./TxStoreManager').StoredTx
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
+abiDecoder.addABI(StakeManagerABI)
 
 const VERSION = '0.0.1' // eslint-disable-line no-unused-vars
 const minimumRelayBalance = 1e17 // 0.1 eth
@@ -24,14 +26,6 @@ const GAS_RESERVE = 100000
 const retryGasPriceFactor = 1.2
 const DEBUG = false
 const SPAM = false
-
-const RelayState = {
-  Unknown: '0',
-  Staked: '1',
-  Registered: '2',
-  Removed: '3'
-
-}
 
 function debug () {
   if (DEBUG) console.log(...arguments)
@@ -48,6 +42,7 @@ class RelayServer extends EventEmitter {
       keyManager,
       owner,
       hubAddress,
+      stakeManagerAddress,
       url,
       baseRelayFee,
       pctRelayFee,
@@ -66,6 +61,7 @@ class RelayServer extends EventEmitter {
         keyManager,
         owner,
         hubAddress,
+        stakeManagerAddress,
         url,
         baseRelayFee,
         pctRelayFee,
@@ -76,10 +72,11 @@ class RelayServer extends EventEmitter {
       })
     this.web3 = new Web3(web3provider)
     this.address = keyManager.address()
+    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
     this.relayHubContract = new this.web3.eth.Contract(RelayHubABI, hubAddress)
     this.paymasterContract = new this.web3.eth.Contract(PayMasterABI)
-    const relayHubTopics = [Object.keys(this.relayHubContract.events).filter(x => (x.includes('0x')))]
-    this.topics = relayHubTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
+    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
+    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
     this.lastScannedBlock = 0
     this.ready = false
     this.removed = false
@@ -160,7 +157,7 @@ class RelayServer extends EventEmitter {
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster: paymaster,
-      relayAddress: this.address
+      relayWorker: this.address
     })
     // TODO: should not use signedData at all. only the relayRequest.
     const signedData = getDataToSign({
@@ -234,7 +231,12 @@ class RelayServer extends EventEmitter {
     }
     console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
     const { signedTx } = await this._sendTransaction(
-      { method, destination: relayHubAddress, gasLimit: requiredGas, gasPrice })
+      {
+        method,
+        destination: relayHubAddress,
+        gasLimit: requiredGas,
+        gasPrice
+      })
     return signedTx
   }
 
@@ -244,7 +246,7 @@ class RelayServer extends EventEmitter {
       if (error) {
         console.error(error)
       }
-    }).on('data', this._worker.bind(this)).on('error', console.error)
+    }).on('data', this._workerSemaphore.bind(this)).on('error', console.error)
   }
 
   stop () {
@@ -255,6 +257,21 @@ class RelayServer extends EventEmitter {
         throw error
       }
     })
+  }
+
+  _workerSemaphore (blockHeader) {
+    if (this._workerSemaphoreOn) {
+      console.log('Different worker is not finished yet')
+      return
+    }
+    this._workerSemaphoreOn = true
+    this._worker(blockHeader)
+      .then(() => {
+        this._workerSemaphoreOn = false
+      })
+      .catch(() => {
+        this._workerSemaphoreOn = false
+      })
   }
 
   async _worker (blockHeader) {
@@ -277,7 +294,8 @@ class RelayServer extends EventEmitter {
         console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
         process.exit(-1)
       }
-      this.gasPrice = Math.floor(parseInt(await this.web3.eth.getGasPrice()) * this.gasPriceFactor)
+      const gasPriceString = await this.web3.eth.getGasPrice()
+      this.gasPrice = Math.floor(parseInt(gasPriceString) * this.gasPriceFactor)
       if (!this.gasPrice) {
         this.ready = false
         throw new Error('Could not get gasPrice from node')
@@ -291,7 +309,7 @@ class RelayServer extends EventEmitter {
       const options = {
         fromBlock: this.lastScannedBlock + 1,
         toBlock: 'latest',
-        address: this.relayHubContract.options.address,
+        address: this.stakeManagerContract.options.address,
         topics: this.topics
       }
       const logs = await this.web3.eth.getPastLogs(options)
@@ -299,15 +317,18 @@ class RelayServer extends EventEmitter {
       spam('options? ', options)
       const decodedLogs = abiDecoder.decodeLogs(logs).map(this._parseEvent)
       let receipt
+      // TODO: what about 'penalize' events? should send balance to owner, I assume
+      // TODO TODO TODO 'StakeAdded' is not the event you want to cat upon if there was no 'HubAuthorized' event
       for (const dlog of decodedLogs) {
         switch (dlog.name) {
-          case 'Staked':
+          case 'StakeAdded':
             receipt = await this._handleStakedEvent(dlog)
             break
-          case 'RelayRemoved':
-            await this._handleRelayRemovedEvent(dlog)
-            break
-          case 'Unstaked':
+          // There is no such event now
+          // case 'RelayRemoved':
+          //   await this._handleRelayRemovedEvent(dlog)
+          //   break
+          case 'StakeUnlocked':
             receipt = await this._handleUnstakedEvent(dlog)
             break
         }
@@ -317,11 +338,13 @@ class RelayServer extends EventEmitter {
         throw new Error('Waiting for stake...')
       }
       // todo check if registered!!
-      if (this.blockchainState !== RelayState.Registered) {
+      // TODO: now even more todo then before. This is a hotfix.
+      if (!this.isAddressAdded) {
         this.ready = false
         throw new Error('Not registered yet...')
       }
       this.lastScannedBlock = parseInt(blockHeader.number)
+      console.log('READY!')
       this.ready = true
       await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
@@ -337,19 +360,18 @@ class RelayServer extends EventEmitter {
   }
 
   async refreshStake () {
-    const relayInfo = await this.relayHubContract.methods.getRelay(this.address).call()
-    this.stake = parseInt(relayInfo.totalStake)
+    const stakeInfo = await this.stakeManagerContract.methods.getStakeInfo(this.address).call()
+    this.stake = parseInt(stakeInfo.stake)
     if (!this.stake) {
       return 0
     }
     // first time getting stake, setting owner
     if (!this.owner) {
-      this.owner = relayInfo.owner
+      this.owner = stakeInfo.owner
       console.log(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
     }
-    this.unstakeDelay = relayInfo.unstakeDelay
-    this.unstakeTime = relayInfo.unstakeTime
-    this.blockchainState = relayInfo.state
+    this.unstakeDelay = stakeInfo.unstakeDelay
+    this.withdrawBlock = stakeInfo.withdrawBlock
     return this.stake
   }
 
@@ -368,14 +390,24 @@ class RelayServer extends EventEmitter {
     // todo
     console.log('handle relay staked. Registering relay...')
     // sanity checks
-    if (dlog.name !== 'Staked' || dlog.args.relay.toLowerCase() !== this.address.toLowerCase()) {
+    if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
     // register on chain
-    const registerMethod = this.relayHubContract.methods.registerRelay(this.baseRelayFee, this.pctRelayFee, this.url)
+    const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.address])
+    await this._sendTransaction(
+      {
+        method: addRelayWorkerMethod,
+        destination: this.relayHubContract.options.address
+      })
+    const registerMethod = this.relayHubContract.methods.registerRelayServer(this.baseRelayFee, this.pctRelayFee, this.url)
     const { receipt } = await this._sendTransaction(
-      { method: registerMethod, destination: this.relayHubContract.options.address })
+      {
+        method: registerMethod,
+        destination: this.relayHubContract.options.address
+      })
     console.log(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
+    this.isAddressAdded = true
     return receipt
   }
 
@@ -383,7 +415,7 @@ class RelayServer extends EventEmitter {
     // todo: send balance to owner
     console.log('handle Unstaked event', dlog)
     // sanity checks
-    if (dlog.name !== 'Unstaked' || dlog.args.relay.toLowerCase() !== this.address.toLowerCase()) {
+    if (dlog.name !== 'StakeUnlocked' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
     this.balance = await this.web3.eth.getBalance(this.address)
@@ -486,7 +518,10 @@ class RelayServer extends EventEmitter {
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
-    return { receipt, signedTx }
+    return {
+      receipt,
+      signedTx
+    }
   }
 
   async _resendTransaction ({ tx }) {
@@ -529,7 +564,10 @@ class RelayServer extends EventEmitter {
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
-    return { receipt, signedTx }
+    return {
+      receipt,
+      signedTx
+    }
   }
 
   async _pollNonce () {

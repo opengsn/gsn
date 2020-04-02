@@ -21,13 +21,13 @@ contract EIP712Sig {
     );
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,bytes encodedFunction,GasData gasData,RelayData relayData)GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address senderAddress,uint256 senderNonce,address relayAddress,address paymaster)");
+    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,bytes encodedFunction,GasData gasData,RelayData relayData)GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address senderAddress,uint256 senderNonce,address relayWorker,address paymaster)");
 
     // solhint-disable-next-line max-line-length
     bytes32 public constant CALLDATA_TYPEHASH = keccak256("GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)");
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAddress,uint256 senderNonce,address relayAddress,address paymaster)");
+    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAddress,uint256 senderNonce,address relayWorker,address paymaster)");
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
@@ -76,7 +76,7 @@ contract EIP712Sig {
                 RELAYDATA_TYPEHASH,
                 req.senderAddress,
                 req.senderNonce,
-                req.relayAddress,
+                req.relayWorker,
                 req.paymaster
             ));
     }

@@ -1,8 +1,8 @@
 class RelayData {
-  constructor ({ senderAddress, senderNonce, relayAddress, paymaster }) {
+  constructor ({ senderAddress, senderNonce, relayWorker, paymaster }) {
     this.senderAddress = senderAddress
     this.senderNonce = senderNonce
-    this.relayAddress = relayAddress
+    this.relayWorker = relayWorker
     this.paymaster = paymaster
   }
 }
