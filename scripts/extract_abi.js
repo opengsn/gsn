@@ -8,7 +8,7 @@ const path = require('path')
 
 // TODO: pass all these things as parameters
 const contractsFolder = 'contracts'
-const outAbiFolder = 'src/js/common'
+const outAbiFolder = 'src/common'
 
 const contractsToExtract = ['interfaces/IRelayHub', 'interfaces/IPaymaster', 'interfaces/IStakeManager']
 

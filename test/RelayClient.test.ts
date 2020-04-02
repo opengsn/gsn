@@ -12,12 +12,12 @@ import request from 'request'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import BN from 'bn.js'
 
-import RelayClient from '../src/js/relayclient/RelayClient'
-import RelayProvider from '../src/js/relayclient/RelayProvider'
-import { removeHexPrefix, getTransactionSignature } from '../src/js/common/utils'
-import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
-import RelayRequest from '../src/js/common/EIP712/RelayRequest'
-import Environments from '../src/js/relayclient/Environments'
+import RelayClient from '../src/relayclient/RelayClient'
+import RelayProvider from '../src/relayclient/RelayProvider'
+import { removeHexPrefix, getTransactionSignature } from '../src/common/utils'
+import getDataToSign from '../src/common/EIP712/Eip712Helper'
+import RelayRequest from '../src/common/EIP712/RelayRequest'
+import Environments from '../src/relayclient/Environments'
 import { assertErrorMessageCorrect, registerNewRelay, sleep, startRelay, stopRelay } from './TestUtils'
 import {
   RelayHubInstance, StakeManagerInstance,

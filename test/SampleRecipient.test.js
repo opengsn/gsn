@@ -1,6 +1,6 @@
 const Big = require('big.js')
 
-const Environments = require('../src/js/relayclient/Environments')
+const Environments = require('../src/relayclient/Environments')
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const StakeManager = artifacts.require('StakeManager')

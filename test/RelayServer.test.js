@@ -1,16 +1,16 @@
 /* global artifacts describe */
 const Web3 = require('web3')
-const RelayClient = require('../src/js/relayclient/RelayClient')
-const RelayServer = require('../src/js/relayserver/RelayServer')
-const TxStoreManager = require('../src/js/relayserver/TxStoreManager').TxStoreManager
+const RelayClient = require('../src/relayclient/RelayClient')
+const RelayServer = require('../src/relayserver/RelayServer')
+const TxStoreManager = require('../src/relayserver/TxStoreManager').TxStoreManager
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
-const KeyManager = require('../src/js/relayserver/KeyManager')
-const RelayHubABI = require('../src/js/common/interfaces/IRelayHub')
-const PayMasterABI = require('../src/js/common/interfaces/IPaymaster')
-const Environments = require('../src/js/relayclient/Environments')
+const KeyManager = require('../src/relayserver/KeyManager')
+const RelayHubABI = require('../src/common/interfaces/IRelayHub')
+const PayMasterABI = require('../src/common/interfaces/IPaymaster')
+const Environments = require('../src/relayclient/Environments')
 
 const ethUtils = require('ethereumjs-util')
 const { Transaction } = require('ethereumjs-tx')
