@@ -3,7 +3,7 @@ import childProcess, { ChildProcessWithoutNullStreams } from 'child_process'
 import path from 'path'
 
 import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contracts'
-import HttpWrapper from '../src/js/relayclient/HttpWrapper'
+import HttpWrapper from '../src/relayclient/HttpWrapper'
 
 const localhostOne = 'http://localhost:8090'
 
@@ -16,9 +16,6 @@ export async function startRelay (
   relayHubAddress: string,
   stakeManager: StakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
-  // eslint-disable-next-line no-path-concat
-  // const server = __dirname + '/../src/js/relayserver/runServer.js'
-
   const args = []
   args.push('--Workdir', '/tmp/server')
   args.push('--DevMode')
@@ -37,7 +34,7 @@ export async function startRelay (
   if (options.baseRelayFee) {
     args.push('--BaseFee', options.baseRelayFee)
   }
-  const runServerPath = path.resolve(__dirname, '../src/js/relayserver/runServer.js')
+  const runServerPath = path.resolve(__dirname, '../src/relayserver/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('node',
     [runServerPath, ...args])
 

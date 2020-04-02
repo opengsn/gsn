@@ -1,7 +1,7 @@
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
-import Environments from '../src/js/relayclient/Environments'
+import Environments from '../src/relayclient/Environments'
 import {
   RelayHubInstance,
   StakeManagerInstance,

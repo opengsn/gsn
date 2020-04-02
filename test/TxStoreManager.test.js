@@ -1,9 +1,9 @@
 /* global */
 
 const fs = require('fs')
-const TxStoreManager = require('../src/js/relayserver/TxStoreManager').TxStoreManager
-const TXSTORE_FILENAME = require('../src/js/relayserver/TxStoreManager').TXSTORE_FILENAME
-const StoredTx = require('../src/js/relayserver/TxStoreManager').StoredTx
+const TxStoreManager = require('../src/relayserver/TxStoreManager').TxStoreManager
+const TXSTORE_FILENAME = require('../src/relayserver/TxStoreManager').TXSTORE_FILENAME
+const StoredTx = require('../src/relayserver/TxStoreManager').StoredTx
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'

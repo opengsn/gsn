@@ -5,7 +5,7 @@ const promisify = require('util').promisify
 
 const request = promisify(require('request'))
 
-const irelayhub = require('../src/js/relayclient/IRelayHub')
+const irelayhub = require('../src/relayclient/IRelayHub')
 
 async function fundrelay (hubaddr, relayaddr, fromaddr, fund, stake, unstakeDelay, web3) {
   const rhub = new web3.eth.Contract(irelayhub, hubaddr)

@@ -13,7 +13,7 @@
 /webtools/openeth-webtools.pack.js
 /singleton/
 /.eslintcache
-/src/js/common/interfaces/
+/src/common/interfaces/
 /ganache.pid
 /types/truffle-contracts/
 serverdock/

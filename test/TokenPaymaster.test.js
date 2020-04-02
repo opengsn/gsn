@@ -2,10 +2,10 @@
 
 import { constants } from '@openzeppelin/test-helpers'
 
-const Environments = require('../src/js/relayclient/Environments')
-const RelayRequest = require('../src/js/common/EIP712/RelayRequest')
+const Environments = require('../src/relayclient/Environments')
+const RelayRequest = require('../src/common/EIP712/RelayRequest')
 
-const getDataToSign = require('../src/js/common/EIP712/Eip712Helper')
+const getDataToSign = require('../src/common/EIP712/Eip712Helper')
 
 const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
@@ -15,7 +15,7 @@ const RelayHub = artifacts.require('RelayHub.sol')
 const TrustedForwarder = artifacts.require('./TrustedForwarder.sol')
 const StakeManager = artifacts.require('StakeManager')
 const TestProxy = artifacts.require('TestProxy')
-const { getEip712Signature } = require('../src/js/common/utils')
+const { getEip712Signature } = require('../src/common/utils')
 
 async function revertReason (func) {
   try {

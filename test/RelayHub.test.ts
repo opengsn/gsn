@@ -2,10 +2,10 @@ import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-he
 import BN from 'bn.js'
 import { expect } from 'chai'
 
-import { getEip712Signature, calculateTransactionMaxPossibleGas } from '../src/js/common/utils'
-import RelayRequest from '../src/js/common/EIP712/RelayRequest'
-import Environments from '../src/js/relayclient/Environments'
-import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
+import { getEip712Signature, calculateTransactionMaxPossibleGas } from '../src/common/utils'
+import RelayRequest from '../src/common/EIP712/RelayRequest'
+import Environments from '../src/relayclient/Environments'
+import getDataToSign from '../src/common/EIP712/Eip712Helper'
 
 import {
   RelayHubInstance,

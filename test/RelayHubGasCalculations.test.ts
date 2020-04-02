@@ -1,10 +1,10 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
-import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/js/common/utils'
-import getDataToSign from '../src/js/common/EIP712/Eip712Helper'
-import Environments from '../src/js/relayclient/Environments'
-import RelayRequest from '../src/js/common/EIP712/RelayRequest'
+import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/utils'
+import getDataToSign from '../src/common/EIP712/Eip712Helper'
+import Environments from '../src/relayclient/Environments'
+import RelayRequest from '../src/common/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,

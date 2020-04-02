@@ -12,8 +12,8 @@ const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymaste
 
 const RelayHub = artifacts.require('RelayHub')
 
-const RelayProvider = require('../src/js/relayclient/RelayProvider')
-const Environments = require('../src/js/relayclient/Environments')
+const RelayProvider = require('../src/relayclient/RelayProvider')
+const Environments = require('../src/relayclient/Environments')
 
 const options = [
   { title: 'Direct-', relay: 0 },

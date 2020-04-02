@@ -45,8 +45,6 @@
     "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore .",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "lint:js:fix": "eslint --ext .js,.ts -f unix --ignore-path .gitignore . --fix",
-    "gsn-dock-relay": "./scripts/gsn-dock-relay",
-    "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache",
     "web": "./restart-relay.sh web",
     "trace": "MODE=trace truffle test",
     "coverage": "yarn generate && ./scripts/run-coverage",
@@ -143,5 +141,5 @@
     "scripts/gsn*",
     "webtools.webpack.js"
   ],
-  "main": "src/js/relayclient/index.js"
+  "main": "src/relayclient/index.js"
 }
