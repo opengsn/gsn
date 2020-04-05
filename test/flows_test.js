@@ -11,6 +11,7 @@ const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEv
 const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymasterPreconfiguredApproval')
 
 const RelayHub = artifacts.require('RelayHub')
+const StakeManager = artifacts.require('StakeManager')
 
 const RelayProvider = require('../src/relayclient/RelayProvider')
 const Environments = require('../src/relayclient/Environments')
@@ -41,8 +42,9 @@ options.forEach(params => {
 
       if (params.relay) {
         // rhub = await RelayHub.deployed()
-        rhub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, { gas: 10000000 })
-        relayproc = await testutils.startRelay(rhub, {
+        const sm = await StakeManager.new()
+        rhub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, sm.address, { gas: 10000000 })
+        relayproc = await testutils.startRelay(rhub.address, sm, {
           stake: 1e18,
           delay: 3600 * 24 * 7,
           pctRelayFee: 12,
