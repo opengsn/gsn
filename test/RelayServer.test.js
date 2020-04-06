@@ -247,7 +247,6 @@ contract('RelayServer', function (accounts) {
         keyManager,
         // owner: relayOwner,
         hubAddress: rhub.address,
-        stakeManagerAddress: stakeManager.address,
         url: localhostOne,
         baseRelayFee: 0,
         pctRelayFee: 0,
