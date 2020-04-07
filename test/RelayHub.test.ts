@@ -4,7 +4,7 @@ import { expect } from 'chai'
 
 import { getEip712Signature, calculateTransactionMaxPossibleGas } from '../src/common/utils'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import Environments from '../src/relayclient/Environments'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import getDataToSign from '../src/common/EIP712/Eip712Helper'
 
 import {
@@ -30,7 +30,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     RecipientBalanceChanged: new BN('4')
   }
 
-  const chainId = Environments.defEnv.chainId
+  const chainId = defaultEnvironment.chainId
 
   let relayHub: string
   let stakeManager: StakeManagerInstance
@@ -43,7 +43,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
-    relayHubInstance = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
+    relayHubInstance = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
     forwarder = await recipientContract.getTrustedForwarder()
@@ -275,7 +275,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               hubOverhead,
               relayCallGasLimit: '1000000',
               calldataSize: '123',
-              gtxdatanonzero: Environments.defEnv.gtxdatanonzero
+              gtxdatanonzero: defaultEnvironment.gtxdatanonzero
             }
           )
         })

@@ -10,7 +10,7 @@ const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterE
 const KeyManager = require('../src/relayserver/KeyManager')
 const RelayHubABI = require('../src/common/interfaces/IRelayHub')
 const PayMasterABI = require('../src/common/interfaces/IPaymaster')
-const Environments = require('../src/relayclient/Environments')
+const Environments = require('../src/relayclient/types/Environments')
 
 const ethUtils = require('ethereumjs-util')
 const { Transaction } = require('ethereumjs-tx')
@@ -55,7 +55,7 @@ contract('RelayServer', function (accounts) {
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 
     stakeManager = await StakeManager.new()
-    rhub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
+    rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address)
     sr = await TestRecipient.new()
     paymaster = await TestPaymasterEverythingAccepted.new()
 

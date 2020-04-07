@@ -3,7 +3,7 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/utils'
 import getDataToSign from '../src/common/EIP712/Eip712Helper'
-import Environments from '../src/relayclient/Environments'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 
 import {
@@ -33,9 +33,9 @@ function correctGasCost (buffer: Buffer, nonzerocost: number, zerocost: number):
 contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 1000
-  const chainId = Environments.defEnv.chainId
-  const gtxdatanonzero = Environments.defEnv.gtxdatanonzero
-  const gtxdatazero = Environments.defEnv.gtxdatazero
+  const chainId = defaultEnvironment.chainId
+  const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
+  const gtxdatazero = defaultEnvironment.gtxdatazero
   const baseFee = new BN('300')
   const fee = new BN('10')
   const gasPrice = new BN('10')
@@ -61,7 +61,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     forwarder = await recipient.getTrustedForwarder()
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address)
     await paymaster.setHub(relayHub.address)
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),

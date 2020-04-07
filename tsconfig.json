@@ -13,18 +13,21 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
     "lib": [
+      "dom",
       "es2015",
       "esnext.asynciterable"
     ],
     "sourceMap": true,
     "typeRoots": [
       "./node_modules/@types",
+      "./node_modules/@0x/typescript-typings/types",
       "./types"
     ],
     "types": [
       "node",
       "truffle-contracts",
       "openzeppelin__test-helpers",
+      "ganache-core",
       "chai-bn"
     ]
   },

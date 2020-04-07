@@ -3,19 +3,30 @@
  * So far the only conflict we will have is migration to Istanbul, as ETC does not integrate it as of this writing.
  * TODO: see the differences between networks we want to support and make project structure multi-chain
  */
-const environments = {
-  istanbul: {
-    gtxdatanonzero: 16,
-    gtxdatazero: 4,
-    chainId: 1
-  },
-  constantinople: {
-    gtxdatanonzero: 68,
-    gtxdatazero: 4,
-    chainId: 1
+
+class Environment {
+  public gtxdatanonzero: number
+  public gtxdatazero: number
+  public chainId: number
+
+  constructor (env: Environment) {
+    this.gtxdatanonzero = env.gtxdatanonzero
+    this.gtxdatazero = env.gtxdatazero
+    this.chainId = env.chainId
   }
 }
 
-environments.defEnv = environments.istanbul
+export const environments = {
+  istanbul: new Environment({
+    gtxdatanonzero: 16,
+    gtxdatazero: 4,
+    chainId: 1
+  }),
+  constantinople: new Environment({
+    gtxdatanonzero: 68,
+    gtxdatazero: 4,
+    chainId: 1
+  })
+}
 
-module.exports = environments
+export const defaultEnvironment = environments.istanbul
