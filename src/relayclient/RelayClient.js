@@ -472,6 +472,7 @@ class RelayClient {
 
     const { pctRelayFee, baseRelayFee, gas, gasPrice } = params
     const relayOptions = {
+      paymaster: relayClientOptions.paymaster,
       ...params,
       pctRelayFee: pctRelayFee || relayClientOptions.pctRelayFee,
       baseRelayFee: baseRelayFee || relayClientOptions.baseRelayFee,
@@ -538,11 +539,11 @@ class RelayClient {
   }
 
   async createRelayHubFromPaymaster (paymasterAddress) {
-    const relayRecipient = this.createPaymaster(paymasterAddress)
+    const paymaster = this.createPaymaster(paymasterAddress)
 
     let relayHubAddress
     try {
-      relayHubAddress = await relayRecipient.methods.getHubAddr().call()
+      relayHubAddress = await paymaster.methods.getHubAddr().call()
     } catch (err) {
       throw new Error(
         `Could not get relay hub address from paymaster at ${paymasterAddress} (${err.message}). Make sure it is a valid paymaster contract.`)

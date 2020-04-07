@@ -83,19 +83,17 @@ class HttpServer {
   }
 
   async relayHandler (req, res) {
-    console.log('relayHandler')
     if (!this.backend.isReady()) {
       res.send('Error: relay not ready')
       return
     }
-    console.log('creating relay tx')
+
     try {
       const signedTx = await this.backend.createRelayTransaction(req.body)
       res.send({ signedTx })
-      console.log('relay tx sent')
     } catch (e) {
       res.send({ error: e.message })
-      console.log(e)
+      console.log('tx failed:', e)
     }
   }
 }

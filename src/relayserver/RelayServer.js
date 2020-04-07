@@ -230,7 +230,7 @@ class RelayServer extends EventEmitter {
     if (paymasterBalance < maxCharge) {
       throw new Error(`paymaster balance too low: ${paymasterBalance}, maxCharge: ${maxCharge}`)
     }
-    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
+    debug(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
     const { signedTx } = await this._sendTransaction(
       {
         method,
@@ -242,7 +242,7 @@ class RelayServer extends EventEmitter {
   }
 
   start () {
-    console.log('Subscribing to new blocks')
+    debug('Subscribing to new blocks')
     this.subscription = this.web3.eth.subscribe('newBlockHeaders', function (error, result) {
       if (error) {
         console.error(error)
@@ -253,7 +253,7 @@ class RelayServer extends EventEmitter {
   stop () {
     this.subscription.unsubscribe(function (error, success) {
       if (success) {
-        console.log('Successfully unsubscribed!')
+        debug('Successfully unsubscribed!')
       } else if (error) {
         throw error
       }
@@ -262,7 +262,7 @@ class RelayServer extends EventEmitter {
 
   _workerSemaphore (blockHeader) {
     if (this._workerSemaphoreOn) {
-      console.log('Different worker is not finished yet')
+      debug('Different worker is not finished yet')
       return
     }
     this._workerSemaphoreOn = true
@@ -295,7 +295,7 @@ class RelayServer extends EventEmitter {
         throw new Error('Could not get networkId from node')
       }
       if (this.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
-        console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
+        console.error('Don\'t use real network\'s chainId & networkId while in devMode.')
         process.exit(-1)
       }
       const gasPriceString = await this.web3.eth.getGasPrice()
@@ -348,7 +348,7 @@ class RelayServer extends EventEmitter {
         throw new Error('Not registered yet...')
       }
       this.lastScannedBlock = parseInt(blockHeader.number)
-      console.log('READY!')
+      debug('READY!')
       this.ready = true
       await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
@@ -375,7 +375,7 @@ class RelayServer extends EventEmitter {
     // first time getting stake, setting owner
     if (!this.owner) {
       this.owner = stakeInfo.owner
-      console.log(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
+      debug(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
     }
     this.unstakeDelay = stakeInfo.unstakeDelay
     this.withdrawBlock = stakeInfo.withdrawBlock
@@ -395,7 +395,7 @@ class RelayServer extends EventEmitter {
 
   async _handleStakedEvent (dlog) {
     // todo
-    console.log('handle relay staked. Registering relay...')
+    debug('handle relay staked. Registering relay...')
     // sanity checks
     if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
@@ -413,14 +413,14 @@ class RelayServer extends EventEmitter {
         method: registerMethod,
         destination: this.relayHubContract.options.address
       })
-    console.log(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
+    debug(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
     this.isAddressAdded = true
     return receipt
   }
 
   async _handleUnstakedEvent (dlog) {
     // todo: send balance to owner
-    console.log('handle Unstaked event', dlog)
+    debug('handle Unstaked event', dlog)
     // sanity checks
     if (dlog.name !== 'StakeUnlocked' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
@@ -428,7 +428,7 @@ class RelayServer extends EventEmitter {
     this.balance = await this.web3.eth.getBalance(this.address)
     const gasPrice = await this.web3.eth.getGasPrice()
     const gasLimit = 21000
-    console.log(`Sending balance ${this.balance} to owner`)
+    debug(`Sending balance ${this.balance} to owner`)
     if (this.balance < gasLimit * gasPrice) {
       throw new Error(`balance too low: ${this.balance}, tx cost: ${gasLimit * gasPrice}`)
     }
@@ -448,7 +448,7 @@ class RelayServer extends EventEmitter {
     if (sortedTxs.length === 0) {
       return
     }
-    console.log('resending unconfirmed transactions')
+    debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
     let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
@@ -466,7 +466,7 @@ class RelayServer extends EventEmitter {
     // Check if the tx was mined by comparing its nonce against the latest one
     nonce = await this.web3.eth.getTransactionCount(this.address)
     if (sortedTxs[0].nonce < nonce) {
-      console.log('awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
+      debug('awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
       return
     }
 
@@ -474,14 +474,14 @@ class RelayServer extends EventEmitter {
     if (Date.now() - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
       spam(Date.now(), (new Date()), (new Date()).getTime())
       spam(sortedTxs[0].createdAt, (new Date(sortedTxs[0].createdAt)), (new Date(sortedTxs[0].createdAt)).getTime())
-      console.log('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
+      debug('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
       return
     }
     const { receipt, signedTx } = await this._resendTransaction({ tx: sortedTxs[0] })
-    console.log('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
+    debug('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
       receipt.transactionHash)
     if (sortedTxs[0].attempts > 2) {
-      console.log(`Sent tx ${sortedTxs[0].attempts} times already`)
+      debug(`Sent tx ${sortedTxs[0].attempts} times already`)
     }
     return signedTx
   }
@@ -521,7 +521,7 @@ class RelayServer extends EventEmitter {
     await this.txStoreManager.putTx({ tx: storedTx })
     this.nonce++
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
-    console.log('\ntxhash is', receipt.transactionHash)
+    debug('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
@@ -536,7 +536,7 @@ class RelayServer extends EventEmitter {
     let newGasPrice = parseInt(tx.gasPrice * retryGasPriceFactor)
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newGasPrice > maxGasPrice) {
-      console.log('Capping gas price to max value of', maxGasPrice)
+      debug('Capping gas price to max value of', maxGasPrice)
       newGasPrice = maxGasPrice
     }
     // Resend transaction with exactly the same values except for gas price
@@ -567,7 +567,7 @@ class RelayServer extends EventEmitter {
     debug('resending tx with nonce', txToSign.nonce)
     debug('account nonce', await this.web3.eth.getTransactionCount(this.address))
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
-    console.log('\ntxhash is', receipt.transactionHash)
+    debug('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }

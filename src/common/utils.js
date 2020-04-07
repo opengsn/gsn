@@ -43,7 +43,8 @@ module.exports = {
       web3.currentProvider.send({
         method: 'eth_signTypedData' + methodSuffix,
         params: [senderAddress, dataToSign],
-        from: senderAddress
+        from: senderAddress,
+        id: Date.now()
       }, (err, res) => {
         if (err) {
           reject(err)
