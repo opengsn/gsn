@@ -1,10 +1,11 @@
 /* global artifacts describe */
 const Web3 = require('web3')
-const RelayClient = require('../src/relayclient/RelayClient')
+const RelayClient = require('./TmpLegacyRelayClient')
 const RelayServer = require('../src/relayserver/RelayServer')
 const TxStoreManager = require('../src/relayserver/TxStoreManager').TxStoreManager
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
+const TrustedForwarder = artifacts.require('TrustedForwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 const KeyManager = require('../src/relayserver/KeyManager')
@@ -31,6 +32,7 @@ const increaseTime = testutils.increaseTime
 
 contract('RelayServer', function (accounts) {
   let rhub
+  let forwarder
   let stakeManager
   let sr
   let paymaster
@@ -57,6 +59,8 @@ contract('RelayServer', function (accounts) {
     stakeManager = await StakeManager.new()
     rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address)
     sr = await TestRecipient.new()
+    const forwarderAddress = await sr.getTrustedForwarder()
+    forwarder = await TrustedForwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setHub(rhub.address)
@@ -178,6 +182,7 @@ contract('RelayServer', function (accounts) {
       /* gasLimit: */1000000,
       /* paymaster: */paymaster.address,
       /* relayHub: */rhub.contract,
+      forwarder.contract,
       options)
     return { relayRequest, relayMaxNonce, approvalData, signature }
   }

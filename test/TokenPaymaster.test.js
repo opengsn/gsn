@@ -127,7 +127,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const relayRequest = new RelayRequest({
         ...sharedRelayRequestData,
         senderAddress: from,
-        senderNonce: (await hub.getNonce(recipient.address, from)).toString(),
+        senderNonce: (await forwarder.getNonce(from)).toString(),
         gasPrice: '1',
         pctRelayFee: '0',
         baseRelayFee: '0'

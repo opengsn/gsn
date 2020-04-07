@@ -9,7 +9,7 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
-const Environments = require('../relayclient/types/Environments')
+const Environments = require('../relayclient/types/Environments').environments
 const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
 const StoredTx = require('./TxStoreManager').StoredTx
 

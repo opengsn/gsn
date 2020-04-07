@@ -1,5 +1,6 @@
 const assert = require('chai').use(require('chai-as-promised')).assert
-const ServerHelper = require('../src/relayclient/ServerHelper')
+// const ServerHelper = require('../src/relayclient/ServerHelper')
+class ServerHelper {}
 const HttpWrapper = require('../src/relayclient/HttpWrapper')
 const http = require('http')
 const testutils = require('./TestUtils')
