@@ -10,7 +10,7 @@ const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
 const Environments = require('../relayclient/Environments')
-const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
+const gtxdatanonzero = Environments.defEnv.gtxdatanonzero
 const StoredTx = require('./TxStoreManager').StoredTx
 const Mutex = require('async-mutex').Mutex
 
@@ -169,13 +169,9 @@ class RelayServer extends EventEmitter {
       verifier: relayHubAddress,
       relayRequest
     })
-
-    const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
-    const calldataSize =
-      (encodedFunction ? encodedFunction.length : 1) +
-      signature.length +
-      approvalData.length +
-      relayCallExtraBytes
+    const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
+    const calldataSize = method.encodeABI().length/2
+    debug('calldatasize', calldataSize)
     let gasLimits
     try {
       this.paymasterContract.options.address = paymaster
@@ -192,7 +188,7 @@ class RelayServer extends EventEmitter {
     }
 
     const hubOverhead = parseInt(await this.relayHubContract.methods.getHubOverhead().call())
-    const maxPossibleGas = utils.calculateTransactionMaxPossibleGas({
+    const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
       relayCallGasLimit: parseInt(gasLimit),
@@ -214,12 +210,10 @@ class RelayServer extends EventEmitter {
       throw new Error('canRelay failed in server: ' + canRelayRet.returnValue)
     }
     // Send relayed transaction
-    const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
-    const requiredGas = maxPossibleGas + GAS_RESERVE
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
-    debug('requiredGas is', typeof requiredGas, requiredGas)
+    // debug('requiredGas is', typeof requiredGas, requiredGas)
     const maxCharge = parseInt(
-      await this.relayHubContract.methods.calculateCharge(requiredGas, {
+      await this.relayHubContract.methods.calculateCharge(maxPossibleGas, {
         gasPrice,
         pctRelayFee,
         baseRelayFee,
@@ -229,12 +223,12 @@ class RelayServer extends EventEmitter {
     if (paymasterBalance < maxCharge) {
       throw new Error(`paymaster balance too low: ${paymasterBalance}, maxCharge: ${maxCharge}`)
     }
-    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
+    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${maxPossibleGas}`)
     const { signedTx } = await this._sendTransaction(
       {
         method,
         destination: relayHubAddress,
-        gasLimit: requiredGas,
+        gasLimit: maxPossibleGas,
         gasPrice
       })
     return signedTx

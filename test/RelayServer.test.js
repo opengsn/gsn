@@ -632,7 +632,6 @@ contract('RelayServer', function (accounts) {
     before(async function () {
       relayServer._pollNonceOrig = relayServer._pollNonce
       relayServer._pollNonce = async function () {
-        await testutils.sleep(200)
         const nonce = await this.web3.eth.getTransactionCount(this.address, 'pending')
         return nonce
       }
@@ -641,8 +640,6 @@ contract('RelayServer', function (accounts) {
       relayServer._pollNonce = relayServer._pollNonceOrig
     })
     it('should fail if nonce is not mutexed', async function () {
-      console.log('gaslesses', gasLess, gasLess2)
-      console.log('optionses', options, options2)
       relayServer.nonceMutexOrig = relayServer.nonceMutex
       relayServer.nonceMutex = {
         acquire: function () {
