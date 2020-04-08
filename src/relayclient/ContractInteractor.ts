@@ -1,29 +1,28 @@
+import { provider } from 'web3-core'
+import { PrefixedHexString } from 'ethereumjs-tx'
+
 import RelayRequest from '../common/EIP712/RelayRequest'
 import paymasterAbi from '../common/interfaces/IPaymaster'
 import relayHubAbi from '../common/interfaces/IRelayHub'
 import forwarderAbi from '../common/interfaces/ITrustedForwarder'
 import {
-  BasePaymasterInstance,
+  IPaymasterInstance,
   IRelayHubInstance,
   ITrustedForwarderInstance
 } from '../../types/truffle-contracts'
 
 import { calculateTransactionMaxPossibleGas } from '../common/utils'
-import { provider } from 'web3-core'
 import { Address, IntString } from './types/Aliases'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { ContractInteractorConfig } from './GSNConfigurator'
+import { EventData, PastEventOptions } from 'web3-eth-contract'
 
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
+import Contract = Truffle.Contract
 
-let IPaymasterContract: any
-let IRelayHubContract: any
-let IForwarderContract: any
-
-export interface ContractInteractorConfig {
-  gtxdatanonzero: number
-  verbose: boolean
-}
+let IPaymasterContract: Contract<IPaymasterInstance>
+let IRelayHubContract: Contract<IRelayHubInstance>
+let IForwarderContract: Contract<ITrustedForwarderInstance>
 
 export default class ContractInteractor {
   private readonly provider: provider
@@ -38,22 +37,22 @@ export default class ContractInteractor {
       abi: paymasterAbi
     })
     // @ts-ignore
-    const IRelayHubContract = TruffleContract({
+    IRelayHubContract = TruffleContract({
       contractName: 'IRelayHub',
       abi: relayHubAbi
     })
     // @ts-ignore
-    const IForwarderContract = TruffleContract({
+    IForwarderContract = TruffleContract({
       contractName: 'ITrustedForwarder',
       abi: forwarderAbi
     })
-    IRelayHubContract.setProvider(this.provider)
-    IPaymasterContract.setProvider(this.provider)
-    IForwarderContract.setProvider(this.provider)
+    IRelayHubContract.setProvider(this.provider, undefined)
+    IPaymasterContract.setProvider(this.provider, undefined)
+    IForwarderContract.setProvider(this.provider, undefined)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createPaymaster (address: Address): Promise<BasePaymasterInstance> {
+  async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
     return IPaymasterContract.at(address)
   }
 
@@ -66,52 +65,6 @@ export default class ContractInteractor {
   async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
     return IForwarderContract.at(address)
   }
-
-  // async _createRelayHubFromPaymaster (paymasterAddress: string): Promise<IRelayHubInstance> {
-  //   const relayRecipient = await this._createPaymaster(paymasterAddress)
-  //
-  //   let relayHubAddress: string
-  //   try {
-  //     relayHubAddress = await relayRecipient.getHubAddr()
-  //   } catch (err) {
-  //     throw new Error(
-  //       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  //       `Could not get relay hub address from paymaster at ${paymasterAddress} (${err.message}). Make sure it is a valid paymaster contract.`)
-  //   }
-  //
-  //   if (relayHubAddress === null || isZeroAddress(relayHubAddress)) {
-  //     throw new Error(
-  //       `The relay hub address is set to zero in paymaster at ${paymasterAddress}. Make sure it is a valid paymaster contract.`)
-  //   }
-  //
-  //   const relayHub = await this._createRelayHub(relayHubAddress)
-  //
-  //   let hubVersion: string
-  //   try {
-  //     hubVersion = await relayHub.getVersion()
-  //   } catch (err) {
-  //     throw new Error(
-  //       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  //       `Could not query relay hub version at ${relayHubAddress} (${err.message}). Make sure the address corresponds to a relay hub.`)
-  //   }
-  //
-  //   if (!hubVersion.startsWith('1')) {
-  //     throw new Error(`Unsupported relay hub version '${hubVersion}'.`)
-  //   }
-  //
-  //   return relayHub
-  // }
-
-  /**
-   * check the balance of the given target contract.
-   * the method will fail if the target is not a RelayRecipient.
-   * (not strictly a client operation, but without a balance, the target contract can't accept calls)
-   */
-  // async balanceOf (target: string): Promise<BN> {
-  //   const relayHub = await this._createRelayHubFromPaymaster(target)
-  //   // note that the returned value is a promise too, returning BigNumber
-  //   return relayHub.balanceOf(target)
-  // }
 
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
     const forwarder = await this._createForwarder(forwarderAddress) // TODO: this is temoporary, add Forwarder API
@@ -143,7 +96,8 @@ export default class ContractInteractor {
     let success: boolean
     let returnValue: string
     try {
-      ([success, returnValue] = await relayHub.canRelay(
+      // @ts-ignore
+      ({ success, returnValue } = await relayHub.canRelay(
         relayRequest,
         maxPossibleGas,
         gasLimits.acceptRelayedCallGasLimit,
@@ -162,7 +116,13 @@ export default class ContractInteractor {
 
   encodeABI (relayRequestOrig: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString): PrefixedHexString {
     // TODO: check this works as expected
+    // @ts-ignore
     const relayHub = new IRelayHubContract('')
-    return relayHub.methods.relayCall(relayRequestOrig, sig, approvalData).encodeABI()
+    return relayHub.contract.methods.relayCall(relayRequestOrig, sig, approvalData).encodeABI()
+  }
+
+  async getPastEventsForHub (relayHubAddress: Address, event: string | 'allEvents', options: PastEventOptions): Promise<EventData[]> {
+    const relayHub = await this._createRelayHub(relayHubAddress)
+    return relayHub.contract.getPastEvents(event, options)
   }
 }

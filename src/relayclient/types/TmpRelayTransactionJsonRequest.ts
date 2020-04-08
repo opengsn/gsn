@@ -6,8 +6,8 @@ export default interface TmpRelayTransactionJsonRequest {
   encodedFunction: PrefixedHexString
   approvalData: PrefixedHexString
   signature: PrefixedHexString
-  senderAddress: Address
-  target: Address
+  from: Address
+  to: Address
   paymaster: Address
   gasPrice: IntString
   gasLimit: IntString

@@ -2,18 +2,11 @@ import Web3 from 'web3'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import RelayClient, { RelayingResult } from './RelayClient'
 import { provider } from 'web3-core'
-import RelayClientConfig from './types/RelayClientConfig'
 import relayHubAbi from '../common/interfaces/IRelayHub'
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
-import ContractInteractor, { ContractInteractorConfig } from './ContractInteractor'
-import HttpClient from './HttpClient'
-import HttpWrapper from './HttpWrapper'
-import KnownRelaysManager, { createEmptyFilter, KnownRelaysManagerConfig } from './KnownRelaysManager'
-import AccountManager, { AccountManagerConfig } from './AccountManager'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { Address, AsyncApprove } from './types/Aliases'
-import RelayedTransactionValidator from './RelayedTransactionValidator'
+import { GSNConfig, RelayProviderConfig } from './GSNConfigurator'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -22,45 +15,28 @@ export interface BaseTransactionReceipt {
   status: number
 }
 
-export interface GSNConfig {
-  contractInteractorConfig: ContractInteractorConfig
-  relayClientConfig: RelayClientConfig
-  knownRelaysManagerConfig: KnownRelaysManagerConfig
-  verbose: boolean
-}
-
 export default class RelayProvider {
-  private readonly gsnConfig: GSNConfig
   private readonly origProvider: provider
   private readonly origProviderSend: any
   private readonly relayClient: RelayClient
+  private readonly config: RelayProviderConfig
 
   /**
    * create a proxy provider, to relay transaction
    * @param web3
    * @param origProvider - the underlying web3 provider
    * @param gsnConfig
-   * @param accountManagerConfig
-   * @param relayHubAddress
-   * @param chainId
-   * @param asyncApprove
    */
-  constructor (web3: Web3, origProvider: provider | RelayProvider, gsnConfig: GSNConfig, accountManagerConfig: AccountManagerConfig, relayHubAddress: Address, chainId: number, asyncApprove: AsyncApprove) {
+  constructor (web3: Web3, origProvider: provider | RelayProvider, gsnConfig: GSNConfig) {
     if (origProvider instanceof RelayProvider ||
       origProvider == null ||
       typeof origProvider === 'string') {
       throw new Error('Missing underlying provider')
     }
     this.origProvider = origProvider
-    this.gsnConfig = gsnConfig
+    this.config = gsnConfig.relayProviderConfig
     this.origProviderSend = this.origProvider.send.bind(this.origProvider)
-    const httpWrapper = new HttpWrapper()
-    const httpClient = new HttpClient(httpWrapper, { verbose: gsnConfig.verbose })
-    const contractInteractor = new ContractInteractor(origProvider, gsnConfig.contractInteractorConfig)
-    const knownRelaysManager = new KnownRelaysManager(relayHubAddress, contractInteractor, createEmptyFilter(), gsnConfig.knownRelaysManagerConfig)
-    const accountManager = new AccountManager(web3, chainId, accountManagerConfig)
-    const transactionValidator = new RelayedTransactionValidator(contractInteractor, relayHubAddress, chainId, { verbose: gsnConfig.verbose })
-    this.relayClient = new RelayClient(new Web3(origProvider), httpClient, contractInteractor, knownRelaysManager, accountManager, transactionValidator, gsnConfig.relayClientConfig, relayHubAddress, asyncApprove)
+    this.relayClient = RelayClient.new(web3, gsnConfig)
   }
 
   send (payload: JsonRpcPayload, callback: any): void {
@@ -81,7 +57,7 @@ export default class RelayProvider {
   }
 
   _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: any): void {
-    if (this.gsnConfig.verbose) {
+    if (this.config.verbose) {
       console.log('calling sendAsync' + JSON.stringify(payload))
     }
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
@@ -98,11 +74,11 @@ export default class RelayProvider {
   }
 
   _ethSendTransaction (payload: JsonRpcPayload, callback: any): void {
-    if (this.gsnConfig.verbose) {
+    if (this.config.verbose) {
       console.log('calling sendAsync' + JSON.stringify(payload))
     }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
-    this.relayClient.runRelay(gsnTransactionDetails)
+    this.relayClient.relayTransaction(gsnTransactionDetails)
       .then((relayingResult) => {
         if (relayingResult.transaction != null) {
           const txHash: string = relayingResult.transaction.hash(true).toString('hex')

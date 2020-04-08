@@ -74,7 +74,7 @@ export async function startRelay (
   let count1 = 3
   while (count1-- > 0) {
     try {
-      res = await http.getPingResponse(localhostOne + '/getaddr')
+      res = await http.getPingResponse(localhostOne)
       if (res) break
     } catch (e) {
       console.log('startRelay getaddr error', e)

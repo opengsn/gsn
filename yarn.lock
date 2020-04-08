@@ -453,10 +453,10 @@
   dependencies:
     bignumber.js "^4.0.2"
 
-"@openeth/truffle-typings@0.0.3":
-  version "0.0.3"
-  resolved "https://registry.yarnpkg.com/@openeth/truffle-typings/-/truffle-typings-0.0.3.tgz#2cd9558a52225665a73a066015534d714bf48055"
-  integrity sha512-wTIoUUZIJ1pWMgSmzuxxOOSNJfNIIdiFeSFdsE8MIwYmvOmtN/CTQJhRKAU3AuToKYQkeVa2H1NLpMxskg1EMw==
+"@openeth/truffle-typings@0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@openeth/truffle-typings/-/truffle-typings-0.0.4.tgz#f663fdb3be3fc56115998247c0e01f2ffa3e4f91"
+  integrity sha512-SvAi9WUv3FL3b6pKyym1ZxpvnvEQY78msGOtRFBLb4ydXxHwkjRJQ+wrI4MHOtDJSr9ihh5tAhzI719p1atxqA==
   dependencies:
     "@types/chai" "^4.1.4"
     "@types/mocha" "^5.2.5"

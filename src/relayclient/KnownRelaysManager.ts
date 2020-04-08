@@ -4,18 +4,10 @@ import { Address, RelayFilter } from './types/Aliases'
 import { IRelayHubInstance } from '../../types/truffle-contracts'
 import RelayFailureInfo from './types/RelayFailureInfo'
 import ContractInteractor from './ContractInteractor'
+import { KnownRelaysManagerConfig } from './GSNConfigurator'
 
-const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 60 * 30
-
-export interface KnownRelaysManagerConfig {
-  verbose: boolean
-  relayTimeoutGrace?: number
-}
-
-export function createEmptyFilter (): RelayFilter {
-  return (): boolean => {
-    return true
-  }
+export const EmptyFilter: RelayFilter = (): boolean => {
+  return true
 }
 
 export default class KnownRelaysManager {
@@ -25,18 +17,19 @@ export default class KnownRelaysManager {
   private readonly config: KnownRelaysManagerConfig
   private readonly relayFilter: RelayFilter
   private readonly relayHubAddress: Address
+  private readonly web3: Web3
 
   private latestScannedBlock: number = 0
 
-  constructor (relayHubAddress: Address, contractInteractor: ContractInteractor, relayFilter: RelayFilter, config: KnownRelaysManagerConfig) {
+  constructor (web3: Web3, relayHubAddress: Address, contractInteractor: ContractInteractor, relayFilter: RelayFilter, config: KnownRelaysManagerConfig) {
     this.relayHubAddress = relayHubAddress
     this.config = config
+    this.web3 = web3
     this.relayFilter = relayFilter
     this.contractInteractor = contractInteractor
   }
 
   compareRelayScores (r1: RelayRegisteredEventInfo, r2: RelayRegisteredEventInfo): number {
-    // TODO: get score from cache mapping. do not put score into object, this data is external to RelayInfo
     return this.calculateRelayScore(r2) - this.calculateRelayScore(r1)
   }
 
@@ -51,7 +44,7 @@ export default class KnownRelaysManager {
     if (latestRelayFailure != null) {
       const elapsed = (new Date().getTime() - latestRelayFailure.lastErrorTime) / 1000
       // relay failed to answer lately and it's score will be downgraded
-      const timeoutGrace = this.config.relayTimeoutGrace ?? DEFAULT_RELAY_TIMEOUT_GRACE_SEC
+      const timeoutGrace = this.config.relayTimeoutGrace
       if (elapsed < timeoutGrace) {
         score -= 10
       } else {
@@ -68,7 +61,7 @@ export default class KnownRelaysManager {
   async refresh (): Promise<void> {
     const relayHub = await this.contractInteractor._createRelayHub(this.relayHubAddress)
     const relayManagers = await this._fetchRecentlyActiveRelayManagers(relayHub)
-    const relayServerRegisteredTopic = event2topic(relayHub, 'RelayServerRegistered')
+    const relayServerRegisteredTopic = event2topic(relayHub.contract, 'RelayServerRegistered')
 
     // found all addresses. 2nd round to get the RelayAdded event for each of those relays.
     // TODO: at least some of the found relays above was due to "RelayAdded" event,
@@ -78,7 +71,7 @@ export default class KnownRelaysManager {
     const relayServerRegisteredEvents: any[] = await relayHub.contract.getPastEvents('RelayServerRegistered', {
       fromBlock: 1,
       topics: [relayServerRegisteredTopic,
-        Array.from(relayManagers,
+        Array.from(relayManagers.values(),
           (address: Address) => `0x${address.replace(/^0x/, '').padStart(64, '0').toLowerCase()}`
         )]
     })
@@ -96,22 +89,20 @@ export default class KnownRelaysManager {
         baseRelayFee: args.baseRelayFee,
         pctRelayFee: args.pctRelayFee
       }
-      // relay.score = this.calculateRelayScore(relay)
       activeRelays.set(args.relayManager, relay)
     })
-    const origRelays = Object.values(activeRelays)
+    const origRelays = Array.from(activeRelays.values())
     const filteredRelays = origRelays.filter(this.relayFilter)
     filteredRelays.forEach(relay => this.activeRelays.add(relay))
   }
 
   async _fetchRecentlyActiveRelayManagers (relayHub: IRelayHubInstance): Promise<Set<Address>> {
     const fromBlock = this.latestScannedBlock
-    const toBlock = await web3.eth.getBlockNumber()
-    const eventTopics = event2topic(relayHub,
+    const toBlock = await this.web3.eth.getBlockNumber()
+    const eventTopics = event2topic(relayHub.contract,
       ['RelayServerRegistered', 'TransactionRelayed', 'CanRelayFailed'])
 
-    // @ts-ignore
-    const relayEvents: any[] = await this.relayHub.contract.getPastEvents('allEvents', {
+    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(this.relayHubAddress, 'allEvents', {
       fromBlock,
       toBlock,
       topics: [eventTopics]

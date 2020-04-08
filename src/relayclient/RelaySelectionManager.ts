@@ -3,6 +3,7 @@ import KnownRelaysManager from './KnownRelaysManager'
 import HttpClient from './HttpClient'
 import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
 import { PingFilter } from './types/Aliases'
+import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 interface RaceResult {
   winner?: RelayInfo
@@ -14,12 +15,14 @@ export default class RelaySelectionManager {
   private readonly httpClient: HttpClient
   private readonly verbose: boolean
   private readonly pingFilter: PingFilter
+  private readonly gsnTransactionDetails: GsnTransactionDetails
 
   private remainingRelays: RelayRegisteredEventInfo[] | undefined
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
-  constructor (knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, verbose: boolean) {
+  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, verbose: boolean) {
+    this.gsnTransactionDetails = gsnTransactionDetails
     this.knownRelaysManager = knownRelaysManager
     this.httpClient = httpClient
     this.pingFilter = pingFilter
@@ -89,7 +92,7 @@ export default class RelaySelectionManager {
     if (pingResponse.Ready == null) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
     }
-    this.pingFilter(pingResponse)
+    this.pingFilter(pingResponse, this.gsnTransactionDetails)
     return {
       pingResponse,
       eventInfo

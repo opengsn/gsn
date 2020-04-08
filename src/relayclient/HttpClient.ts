@@ -28,10 +28,10 @@ export default class HttpClient {
     if (this.config.verbose) {
       console.log('relayTransaction response:', signedTx, error)
     }
-    if (error !== null) {
+    if (error != null) {
       throw new Error(`Got error response from relay: ${error}`)
     }
-    if (signedTx === null) {
+    if (signedTx == null) {
       throw new Error('body.signedTx field missing.')
     }
     return signedTx

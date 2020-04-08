@@ -1,172 +1,112 @@
-// @ts-ignore
-// eslint-disable-next-line @typescript-eslint/camelcase
-import { recoverTypedSignature_v4 } from 'eth-sig-util'
-import { Transaction } from 'ethereumjs-tx'
-import { privateToAddress } from 'ethereumjs-util'
 import chai from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import Web3 from 'web3'
-import util from 'util'
-import request from 'request'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import BN from 'bn.js'
 
-import RelayClient from '../src/relayclient/RelayClient'
-import RelayProvider from '../src/relayclient/RelayProvider'
-import { removeHexPrefix, getTransactionSignature } from '../src/common/utils'
-import getDataToSign from '../src/common/EIP712/Eip712Helper'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import Environments from '../src/relayclient/Environments'
-import { assertErrorMessageCorrect, registerNewRelay, sleep, startRelay, stopRelay } from './TestUtils'
+import RelayClient from '../src/relayclient/RelayClient'
+import { removeHexPrefix, getTransactionSignature } from '../src/common/utils'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { startRelay, stopRelay } from './TestUtils'
 import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
+import { Address, AsyncApprove } from '../src/relayclient/types/Aliases'
+import { PrefixedHexString } from 'ethereumjs-tx'
+import { configureGSN } from '../src/relayclient/GSNConfigurator'
+import replaceErrors from '../src/common/ErrorReplacerJSON'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
-const TestPaymasterOwnerSignature = artifacts.require('TestPaymasterOwnerSignature')
 
 const expect = chai.expect
 chai.use(sinonChai)
 
-const relayAddress = '0x610bb1573d1046fcb8a70bbbd395754cd57c2b60'
-
 const localhostOne = 'http://localhost:8090'
+const underlyingProvider = web3.currentProvider
 
-const requestPromisified = util.promisify(request)
-const _web3 = web3
-
-contract('RelayClient', function (accounts) {
+contract.only('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
-  let sr: TestRecipientInstance
+  let testRecipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
-  let gasLess: string
-  let relayproc: ChildProcessWithoutNullStreams
-  let gasPrice: number
-  let relayClientConfig: any
-  let forwarderAddress: string
-  const relayOwner = accounts[1]
-  let relayManager
-  let relayWorker
-  const dayInSec = 24 * 60 * 60
-  const weekInSec = dayInSec * 7
-  const oneEther = new BN((1e18).toString())
+  let gasLess: Address
+  let relayProcess: ChildProcessWithoutNullStreams
+  let forwarderAddress: Address
+
   before(async function () {
-    // @ts-ignore
-    web3 = new Web3(_web3.currentProvider)
+    web3 = new Web3(underlyingProvider)
     const gasPricePercent = 20
-    const gasPriceWeb3 = await web3.eth.getGasPrice()
-    gasPrice = (parseInt(gasPriceWeb3)) * (100 + gasPricePercent) / 100
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
-    sr = await TestRecipient.new()
-    forwarderAddress = await relayHub.getForwarder(sr.address)
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    testRecipient = await TestRecipient.new()
+    forwarderAddress = await testRecipient.getTrustedForwarder()
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
     gasLess = await web3.eth.personal.newAccount('password')
-    console.log('gasLess = ' + gasLess)
-    console.log('starting relay')
 
-    relayproc = await startRelay(relayHub.address, stakeManager, {
+    relayProcess = await startRelay(relayHub.address, stakeManager, {
       stake: 1e18,
       delay: 3600 * 24 * 7,
       baseRelayFee: 300,
       pctRelayFee: 12,
       url: 'asd',
-      relayOwner: relayOwner,
+      relayOwner: accounts[1],
       // @ts-ignore
-      EthereumNodeUrl: web3.currentProvider.host,
+      EthereumNodeUrl: underlyingProvider.host,
       GasPricePercent: gasPricePercent
-    })
-
-    relayManager = await web3.eth.personal.newAccount('asdgasfd2r43')
-    relayWorker = await web3.eth.personal.newAccount('asdgasfd2r43')
-    // @ts-ignore
-    await web3.eth.personal.unlockAccount(relayManager, 'asdgasfd2r43')
-    // @ts-ignore
-    await web3.eth.personal.unlockAccount(relayWorker, 'asdgasfd2r43')
-    await web3.eth.sendTransaction({
-      from: accounts[0],
-      to: relayManager,
-      value: oneEther
-    })
-    await web3.eth.sendTransaction({
-      from: accounts[0],
-      to: relayWorker,
-      value: oneEther
-    })
-    await registerNewRelay({
-      relayHub: relayHub,
-      stakeManager,
-      stake: oneEther,
-      delay: weekInSec,
-      baseRelayFee: 0,
-      pctRelayFee: 120,
-      url: 'hello',
-      relayManager,
-      relayWorker,
-      ownerAccount: relayOwner
     })
   })
 
   after(async function () {
-    await stopRelay(relayproc)
+    await stopRelay(relayProcess)
   })
 
-  it('should query hub deposit of a paymaster contract on every call', async () => {
-    const relayclient = new RelayClient(web3, {})
-    const b1 = new BN(await relayclient.balanceOf(paymaster.address))
-    const added = new BN('200000')
-    await paymaster.deposit({ value: added })
-    const b2 = new BN(await relayclient.balanceOf(paymaster.address))
-    assert.equal(b2.sub(b1).toString(), added.toString())
-  })
-
-  var func = async function ({ from/*, to, tx, txfee, gasPrice, gasLimit, nonce, relay_hub_address, relay_address */ }: { from: string }): Promise<string> {
-    const fromNoPrefix: string = removeHexPrefix(from)
+  const asyncApprove: AsyncApprove = async function (relayRequest: RelayRequest): Promise<PrefixedHexString> {
+    const fromNoPrefix: string = removeHexPrefix(relayRequest.relayData.senderAddress)
     const toSign = web3.utils.sha3(`0x${Buffer.from('I approve').toString('hex')}${fromNoPrefix}`)
     const sign = await getTransactionSignature(web3, accounts[0], toSign)
     return sign.slice(2)
   }
-  var arr = [null, func]
-  arr.forEach(approveFunction => {
-    it('should send transaction to a relay and receive a response (' + (((typeof approveFunction === 'function') ? 'with' : 'without') + ' approveFunction)'), async function () {
-      const encoded = sr.contract.methods.emitMessage('hello world').encodeABI()
-      const to = sr.address
+  // happy flow
+  describe('configuration', function () {
+    it('should use the correct configuration (check each field, Alex!)', async function () {})
+  })
+
+  describe('#_prepareRelayHttpRequest()', function () {
+    it('should ', async function () {})
+  })
+
+  describe('#relayTransaction()', function () {
+    it.only('should send transaction to a relay and receive a signed transaction in response', async function () {
+      const relayClient = RelayClient.new(web3, configureGSN({ relayHubAddress: relayHub.address }))
+      const to = testRecipient.address
       const options = {
-        approveFunction: approveFunction,
         from: gasLess,
         to: to,
-        pctRelayFee: 12,
-        gas_limit: 1000000,
+        data: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
+        gas: '1000000',
+        gasPrice: '1',
+        forwarder: forwarderAddress,
         paymaster: paymaster.address
       }
-      const relayClientConfig = {
-        relayUrl: localhostOne,
-        relayAddress: relayAddress,
-        allowed_relay_nonce_gap: 0,
-        verbose: process.env.DEBUG
+      const relayingResult = await relayClient.relayTransaction(options)
+      const validTransaction = relayingResult.transaction
+      if (validTransaction == null) {
+        assert.fail(`validTransaction is null: ${JSON.stringify(relayingResult, replaceErrors)}`)
+        return
       }
-
-      const relayClient = new RelayClient(web3, relayClientConfig)
-
-      const validTransaction = await relayClient.relayTransaction(encoded, options)
       const validTransactionHash: string = validTransaction.hash(true).toString('hex')
       const txhash = `0x${validTransactionHash}`
-      let res
-      do {
-        res = await web3.eth.getTransactionReceipt(txhash)
-        await sleep(500)
-      } while (res === null)
+      const res = await web3.eth.getTransactionReceipt(txhash)
 
       // validate we've got the "SampleRecipientEmitted" event
       const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address)') ?? ''
@@ -174,7 +114,6 @@ contract('RelayClient', function (accounts) {
 
       const destination: string = validTransaction.to.toString('hex')
       assert.equal(`0x${destination}`, relayHub.address.toString().toLowerCase())
-      assert.equal(parseInt(validTransaction.gasPrice.toString('hex'), 16), gasPrice)
     })
   });
 

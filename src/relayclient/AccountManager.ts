@@ -1,23 +1,16 @@
+// @ts-ignore
+import ethWallet from 'ethereumjs-wallet'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import getDataToSign from '../common/EIP712/Eip712Helper'
 import sigUtil from 'eth-sig-util'
 import { getEip712Signature, isSameAddress } from '../common/utils'
 import { Address } from './types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
+import { AccountManagerConfig } from './GSNConfigurator'
 
 export interface AccountKeypair {
   privateKey: Buffer
   address: Address
-}
-
-/**
- * @field methodSuffix - allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask
- * @field jsonStringifyRequest - should be 'true' for Metamask, false for ganache
- */
-export interface AccountManagerConfig {
-  verbose: boolean
-  methodSuffix: string
-  jsonStringifyRequest: boolean
 }
 
 export default class AccountManager {
@@ -34,6 +27,17 @@ export default class AccountManager {
 
   addAccount (keypair: AccountKeypair): void {
     this.accounts.push(keypair)
+  }
+
+  newAccount (): AccountKeypair {
+    const a = ethWallet.generate()
+    const keypair = {
+      privateKey: a.privKey,
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      address: `0x${a.getAddress().toString('hex')}`
+    }
+    this.addAccount(keypair)
+    return keypair
   }
 
   // TODO: make forwarder part of RelayRequest, why is it dangling??

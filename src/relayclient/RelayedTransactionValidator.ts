@@ -5,14 +5,15 @@ import { isSameAddress } from '../common/utils'
 import ContractInteractor from './ContractInteractor'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import { Address } from './types/Aliases'
+import { TransactionValidatorConfig } from './GSNConfigurator'
 
 export default class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
   private readonly chainId: number
-  private readonly config: { verbose: boolean }
+  private readonly config: TransactionValidatorConfig
   private readonly relayHubAddress: Address
 
-  constructor (contractInteractor: ContractInteractor, relayHubAddress: Address, chainId: number, config: { verbose: boolean }) {
+  constructor (contractInteractor: ContractInteractor, relayHubAddress: Address, chainId: number, config: TransactionValidatorConfig) {
     this.contractInteractor = contractInteractor
     this.config = config
     this.chainId = chainId
@@ -39,8 +40,8 @@ export default class RelayedTransactionValidator {
     const signer = bufferToHex(pubToAddress(ecrecover(message, transaction.v[0], transaction.r, transaction.s, this.chainId)))
 
     const relayRequestOrig = new RelayRequest({
-      senderAddress: transactionJsonRequest.senderAddress,
-      target: transactionJsonRequest.target,
+      senderAddress: transactionJsonRequest.from,
+      target: transactionJsonRequest.to,
       encodedFunction: transactionJsonRequest.encodedFunction,
       gasPrice: transactionJsonRequest.gasPrice,
       gasLimit: transactionJsonRequest.gasLimit,
