@@ -5,6 +5,7 @@ const HttpServer = require('./HttpServer')
 const RelayServer = require('./RelayServer')
 const KeyManager = require('./KeyManager')
 const TxStoreManager = require('./TxStoreManager').TxStoreManager
+const TXSTORE_FILENAME = require('./TxStoreManager').TXSTORE_FILENAME
 
 function error (err) { throw new Error(err) }
 
@@ -41,7 +42,9 @@ const gasPricePercent = argv.GasPricePercent || 10
 const ethereumNodeUrl = argv.EthereumNodeUrl || 'http://localhost:8545'
 const workdir = argv.Workdir || error('missing Workdir')
 const devMode = argv.DevMode || false
-
+if (devMode) {
+  fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
+}
 let keypair
 try {
   keypair = JSON.parse(fs.readFileSync(`${workdir}/keystore`)).ecdsaKeyPair

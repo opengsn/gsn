@@ -356,6 +356,8 @@ class RelayClient {
       const relayUrl = activeRelay.relayUrl
       const pctRelayFee = (options.pctRelayFee || activeRelay.pctRelayFee).toString()
       const baseRelayFee = (options.baseRelayFee || activeRelay.baseRelayFee).toString()
+      const nonce = await relayHub.methods.getNonce(options.to, options.from).call()
+      const senderNonce = nonce.toString()
       const { relayRequest, relayMaxNonce, approvalData, signature } = await this._prepareRelayHttpRequest(
         encodedFunction,
         relayWorker,
@@ -363,6 +365,7 @@ class RelayClient {
         baseRelayFee,
         gasPrice,
         gasLimit,
+        senderNonce,
         paymaster,
         relayHub,
         options)
@@ -577,11 +580,10 @@ class RelayClient {
     baseRelayFee,
     gasPrice,
     gasLimit,
+    senderNonce,
     paymaster,
     relayHub,
     options) {
-    const nonce = await relayHub.methods.getNonce(options.to, options.from).call()
-    const senderNonce = nonce.toString()
     const relayRequest = new RelayRequest({
       senderAddress: options.from,
       target: options.to,

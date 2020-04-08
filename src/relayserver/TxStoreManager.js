@@ -35,13 +35,13 @@ class TxStoreManager {
     tx.txId = tx.txId.toLowerCase()
   }
 
-  async putTx ({ tx }) {
+  async putTx ({ tx, updateExisting }) {
     if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
       throw new Error('Invalid tx:' + JSON.stringify(tx))
     }
     this._toLowerCase({ tx })
     const existing = await this.txstore.asyncFindOne({ nonce: tx.nonce })
-    if (existing) {
+    if (existing && updateExisting) {
       await this.txstore.asyncUpdate({ txId: existing.txId }, { $set: tx })
     } else {
       await this.txstore.asyncInsert(tx)

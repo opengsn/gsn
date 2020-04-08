@@ -85,7 +85,8 @@ contract('RelayClient', function (accounts) {
       relayOwner: relayOwner,
       // @ts-ignore
       EthereumNodeUrl: web3.currentProvider.host,
-      GasPricePercent: gasPricePercent
+      GasPricePercent: gasPricePercent,
+      relaylog: process.env.relaylog
     })
 
     relayManager = await web3.eth.personal.newAccount('asdgasfd2r43')
