@@ -15,6 +15,7 @@ import { calculateTransactionMaxPossibleGas } from '../common/utils'
 import { Address, IntString } from './types/Aliases'
 import { ContractInteractorConfig } from './GSNConfigurator'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
+import replaceErrors from '../common/ErrorReplacerJSON'
 
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
@@ -74,11 +75,12 @@ export default class ContractInteractor {
 
   // TODO: currently the name is incorrect, as we call to 'canRelay'
   //  but the plan is to remove 'canRelay' and move all decision-making to Paymaster and Forwarder
+  //  Also, as ARC does not return a value, `reverted` flag is unnecessary. This will be addressed soon.
   async validateAcceptRelayCall (
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString,
-    relayHubAddress: Address): Promise<{ success: boolean, returnValue: string }> {
+    relayHubAddress: Address): Promise<{ success: boolean, returnValue: string, reverted: boolean }> {
     const paymaster = await this._createPaymaster(relayRequest.relayData.paymaster)
     const relayHub = await this._createRelayHub(relayHubAddress)
     const relayRequestAbiEncode = this.encodeABI(relayRequest, signature, approvalData)
@@ -105,12 +107,17 @@ export default class ContractInteractor {
         approvalData
       ))
     } catch (e) {
-      const message = e instanceof Error ? e.message : JSON.stringify(e)
-      throw new Error(`canRelay reverted (should not happen): ${message}`)
+      const message = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
+      return {
+        success: false,
+        reverted: true,
+        returnValue: `canRelay reverted (should not happen): ${message}`
+      }
     }
     return {
       success,
-      returnValue
+      returnValue,
+      reverted: false
     }
   }
 

@@ -5,9 +5,9 @@
  */
 
 class Environment {
-  public gtxdatanonzero: number
-  public gtxdatazero: number
-  public chainId: number
+  public readonly gtxdatanonzero: number
+  public readonly gtxdatazero: number
+  public readonly chainId: number
 
   constructor (env: Environment) {
     this.gtxdatanonzero = env.gtxdatanonzero

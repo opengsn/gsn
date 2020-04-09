@@ -131,7 +131,11 @@ export default class KnownRelaysManager {
     return Array.from(this.activeRelays.values()).sort(this.compareRelayScores.bind(this))
   }
 
-  saveRelayFailure (relayFailureInfo: RelayFailureInfo): void {
-    this.latestRelayFailures.set(relayFailureInfo.relayUrl, relayFailureInfo)
+  saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void {
+    this.latestRelayFailures.set(relayUrl, {
+      lastErrorTime,
+      relayManager,
+      relayUrl
+    })
   }
 }

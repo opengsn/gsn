@@ -4,6 +4,7 @@ import HttpClient from './HttpClient'
 import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
 import { PingFilter } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
+import replaceErrors from '../common/ErrorReplacerJSON'
 
 interface RaceResult {
   winner?: RelayInfo
@@ -60,7 +61,7 @@ export default class RelaySelectionManager {
       })
     const raceResult = await this._raceToSuccess(filterRelayPingPromises)
     if (this.verbose) {
-      console.log(`race finished with a result: ${raceResult.toString()}`)
+      console.log(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
     }
     this._handleRaceResults(raceResult)
     return raceResult.winner
@@ -127,6 +128,6 @@ export default class RelaySelectionManager {
     this.errors = new Map([...this.errors, ...raceResult.errors])
     this.remainingRelays = this.remainingRelays
       ?.filter(eventInfo => eventInfo.relayUrl !== raceResult.winner?.eventInfo.relayUrl)
-      ?.filter(eventInfo => Array.from(raceResult.errors.keys()).includes(eventInfo.relayUrl))
+      ?.filter(eventInfo => !Array.from(raceResult.errors.keys()).includes(eventInfo.relayUrl))
   }
 }

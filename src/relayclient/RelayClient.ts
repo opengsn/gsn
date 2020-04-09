@@ -5,7 +5,6 @@ import Web3 from 'web3'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import RelayFailureInfo from './types/RelayFailureInfo'
 import RelayInfo from './types/RelayInfo'
 import { Address, AsyncApprove, IntString, PingFilter } from './types/Aliases'
 import { defaultEnvironment } from './types/Environments'
@@ -126,8 +125,8 @@ export default class RelayClient {
       return { receipt }
     } catch (broadcastError) {
       // don't display error for the known-good cases
-      if (broadcastError != null && broadcastError.message.match(/the tx doesn't have the correct nonce|known transaction/) == null) {
-        return { wrongNonce: true }
+      if (broadcastError?.message.match(/the tx doesn't have the correct nonce|known transaction/) != null) {
+        return { wrongNonce: true, broadcastError }
       }
       return { broadcastError }
     }
@@ -136,8 +135,14 @@ export default class RelayClient {
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
     // TODO: should have a better strategy to decide how often to refresh known relays
     await this.knownRelaysManager.refresh()
-    gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateDefaultGasPrice()
-
+    gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
+    if (gsnTransactionDetails.gasPrice == null) {
+      gsnTransactionDetails.gas = await this._calculateGasPrice()
+    }
+    if (gsnTransactionDetails.gas == null) {
+      const estimated = await this.web3.eth.estimateGas(gsnTransactionDetails)
+      gsnTransactionDetails.gas = estimated.toString()
+    }
     const relaySelectionManager = new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config.verbose)
     const relayingErrors = new Map<string, Error>()
     while (true) {
@@ -158,7 +163,7 @@ export default class RelayClient {
     }
   }
 
-  async _calculateDefaultGasPrice (): Promise<IntString> {
+  async _calculateGasPrice (): Promise<IntString> {
     const pct: number = this.config.gasPriceFactorPercent
     const networkGasPrice = await this.web3.eth.getGasPrice()
     let gasPrice = Math.round(parseInt(networkGasPrice) * (pct + 100) / 100).toString()
@@ -183,9 +188,7 @@ export default class RelayClient {
       hexTransaction = await this.httpClient.relayTransaction(relayInfo.eventInfo.relayUrl, httpRequest)
     } catch (error) {
       if (error?.message == null || error.message.indexOf('timeout') !== -1) {
-        this.knownRelaysManager.saveRelayFailure(
-          new RelayFailureInfo(new Date().getTime(), relayInfo.eventInfo.relayManager, relayInfo.eventInfo.relayUrl)
-        )
+        this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.eventInfo.relayManager, relayInfo.eventInfo.relayUrl)
       }
       if (this.config.verbose) {
         console.log('relayTransaction: ', JSON.stringify(httpRequest))
@@ -194,6 +197,7 @@ export default class RelayClient {
     }
     const transaction = new Transaction(hexTransaction)
     if (!this.relayedTransactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
+      this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.eventInfo.relayManager, relayInfo.eventInfo.relayUrl)
       return { error: new Error('Returned transaction did not pass validation') }
     }
     await this._broadcastRawTx(transaction)
@@ -208,6 +212,11 @@ export default class RelayClient {
   ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
     const senderNonce = await this.contractInteractor.getSenderNonce(gsnTransactionDetails.from, gsnTransactionDetails.forwarder)
     const relayWorker = relayInfo.pingResponse.RelayServerAddress
+    const gasPrice = gsnTransactionDetails.gasPrice
+    const gasLimit = gsnTransactionDetails.gas
+    if (gasPrice == null || gasLimit == null) {
+      throw new Error('RelayClient internal exception. Gas price or gas limit still not calculated. Cannot happen.')
+    }
     const relayRequest = new RelayRequest({
       senderAddress: gsnTransactionDetails.from,
       target: gsnTransactionDetails.to,
@@ -215,8 +224,8 @@ export default class RelayClient {
       senderNonce,
       pctRelayFee: relayInfo.eventInfo.pctRelayFee,
       baseRelayFee: relayInfo.eventInfo.baseRelayFee,
-      gasPrice: gsnTransactionDetails.gasPrice,
-      gasLimit: gsnTransactionDetails.gas,
+      gasPrice: gasPrice,
+      gasLimit: gasLimit,
       paymaster: gsnTransactionDetails.paymaster,
       relayWorker
     })
@@ -236,8 +245,8 @@ export default class RelayClient {
       to: gsnTransactionDetails.to,
       pctRelayFee: relayInfo.eventInfo.pctRelayFee,
       baseRelayFee: relayInfo.eventInfo.baseRelayFee,
-      gasPrice: gsnTransactionDetails.gasPrice,
-      gasLimit: gsnTransactionDetails.gas,
+      gasPrice,
+      gasLimit,
       paymaster: gsnTransactionDetails.paymaster,
       signature,
       approvalData,

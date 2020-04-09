@@ -6,9 +6,13 @@ export default interface GsnTransactionDetails {
   readonly from: Address
   readonly data: PrefixedHexString
   readonly to: Address
-  readonly gas: PrefixedHexString
 
-  gasPrice: PrefixedHexString
+  /**
+   * TODO: this is horrible. Think about it some more
+   * Do not set this value manually as this value will be overwritten. Use {@link forceGasPrice} instead.
+   */
+  gas?: PrefixedHexString
+  gasPrice?: PrefixedHexString
 
   // Required parameters for GSN:
   readonly forwarder: Address

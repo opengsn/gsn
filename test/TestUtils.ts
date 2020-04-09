@@ -70,7 +70,7 @@ export async function startRelay (
   })
 
   let res: any
-  const http = new HttpClient(new HttpWrapper(), { verbose: true })
+  const http = new HttpClient(new HttpWrapper(), { verbose: false })
   let count1 = 3
   while (count1-- > 0) {
     try {

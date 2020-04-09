@@ -34,6 +34,7 @@ const defaultGsnConfig: GSNConfig = {
   chainId: defaultEnvironment.chainId,
   relayHubAddress: '0x0000000000000000000000000000000000000000'
 }
+
 /**
  * All classes in GSN must be configured correctly with non-null values.
  * Yet it is tedious to provide default values to all configuration fields on new instance creation.
@@ -52,7 +53,7 @@ type RecursivePartial<T> = {
  * @param item
  * @returns {boolean}
  */
-export function isObject (item: any): boolean {
+function isObject (item: any): boolean {
   return (item != null && typeof item === 'object' && !Array.isArray(item))
 }
 
@@ -62,7 +63,9 @@ export function isObject (item: any): boolean {
  * @param sources
  */
 function mergeDeep (target: any, ...sources: any[]): Object {
-  if (sources.length === 0) return target
+  if (sources.length === 0) {
+    return target
+  }
   const source = sources.shift()
 
   if (isObject(target) && isObject(source)) {

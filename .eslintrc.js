@@ -31,7 +31,8 @@ module.exports = {
       rules: {
         'no-unused-expressions': 'off',
         // chai assertions trigger this rule
-        '@typescript-eslint/no-unused-expressions': 'off'
+        '@typescript-eslint/no-unused-expressions': 'off',
+        '@typescript-eslint/no-non-null-assertion': 'off'
       }
     },
     {
