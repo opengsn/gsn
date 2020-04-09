@@ -82,6 +82,10 @@ contract RelayHub is IRelayHub {
         gtxdatanonzero = _gtxdatanonzero;
     }
 
+    function getStakeManager() external view returns(address) {
+        return address(stakeManager);
+    }
+
     function calldatagascost() private view returns (uint256) {
         return GTRANSACTION + msg.data.length * gtxdatanonzero;
     }

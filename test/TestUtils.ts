@@ -21,7 +21,6 @@ export async function startRelay (
   args.push('--Workdir', '/tmp/server')
   args.push('--DevMode')
   args.push('--RelayHubAddress', relayHubAddress)
-  args.push('--StakeManagerAddress', stakeManager.address)
 
   if (options.EthereumNodeUrl) {
     args.push('--EthereumNodeUrl', options.EthereumNodeUrl)

@@ -46,12 +46,10 @@ class RelayServer extends EventEmitter {
       keyManager,
       owner,
       hubAddress,
-      stakeManagerAddress,
       url,
       baseRelayFee,
       pctRelayFee,
       gasPriceFactor,
-      ethereumNodeUrl,
       web3provider,
       devMode
     }) {
@@ -65,27 +63,30 @@ class RelayServer extends EventEmitter {
         keyManager,
         owner,
         hubAddress,
-        stakeManagerAddress,
         url,
         baseRelayFee,
         pctRelayFee,
         gasPriceFactor,
-        ethereumNodeUrl,
         web3provider,
         devMode
       })
     this.web3 = new Web3(web3provider)
     this.address = keyManager.address()
-    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
     this.relayHubContract = new this.web3.eth.Contract(RelayHubABI, hubAddress)
+
     this.paymasterContract = new this.web3.eth.Contract(PayMasterABI)
-    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
-    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
     this.lastScannedBlock = 0
     this.ready = false
     this.removed = false
     this.nonce = 0
     debug('gasPriceFactor', gasPriceFactor)
+  }
+
+  async _initStakeManager () {
+    const stakeManagerAddress = await this.relayHubContract.methods.getStakeManager().call()
+    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
+    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
+    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
   }
 
   getMinGasPrice () {
@@ -280,6 +281,9 @@ class RelayServer extends EventEmitter {
 
   async _worker (blockHeader) {
     try {
+      if (!this.stakeManagerContract) {
+        await this._initStakeManager()
+      }
       if (!this.chainId) {
         this.chainId = await this.web3.eth.getChainId()
       }
@@ -364,6 +368,9 @@ class RelayServer extends EventEmitter {
   }
 
   async refreshStake () {
+    if (!this.stakeManagerContract) {
+      await this._initStakeManager()
+    }
     const stakeInfo = await this.stakeManagerContract.methods.getStakeInfo(this.address).call()
     this.stake = parseInt(stakeInfo.stake)
     if (!this.stake) {

@@ -83,6 +83,9 @@ interface IRelayHub {
         RecipientBalanceChanged
     }
 
+    //return the stake manager of this RelayHub
+    function getStakeManager() external view returns(address);
+
     /// Add new worker addresses controlled by sender who must be a staked Relay Manager address.
     /// Emits a RelayWorkersAdded event.
     /// This function can be called multiple times, emitting new events
