@@ -9,12 +9,13 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import {
   RelayHubInstance,
   TestRecipientInstance,
-  TestPaymasterVariableGasLimitsInstance, StakeManagerInstance, ITrustedForwarderInstance
+  TestPaymasterVariableGasLimitsInstance, StakeManagerInstance, ITrustedForwarderInstance, PenalizerInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
 const TrustedForwarder = artifacts.require('TrustedForwarder')
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
@@ -50,6 +51,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
+  let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterVariableGasLimitsInstance
   let forwarderInstance: ITrustedForwarderInstance
@@ -64,7 +66,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     forwarderInstance = await TrustedForwarder.at(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    penalizer = await Penalizer.new()
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
     await paymaster.setHub(relayHub.address)
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),

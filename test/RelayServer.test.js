@@ -7,6 +7,7 @@ const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
 const TrustedForwarder = artifacts.require('TrustedForwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
+const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 const KeyManager = require('../src/relayserver/KeyManager')
 const RelayHubABI = require('../src/common/interfaces/IRelayHub')
@@ -34,6 +35,7 @@ contract('RelayServer', function (accounts) {
   let rhub
   let forwarder
   let stakeManager
+  let penalizer
   let sr
   let paymaster
   let gasLess, gasLess2
@@ -57,7 +59,8 @@ contract('RelayServer', function (accounts) {
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 
     stakeManager = await StakeManager.new()
-    rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    penalizer = await Penalizer.new()
+    rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
     sr = await TestRecipient.new()
     const forwarderAddress = await sr.getTrustedForwarder()
     forwarder = await TrustedForwarder.at(forwarderAddress)

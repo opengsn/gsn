@@ -16,7 +16,7 @@ contract TokenGasCalculator is RelayHub, Ownable {
     //(The Paymaster calls back calculateCharge, deposotFor in the relayHub,
     //so the calculator has to implement them just like a real RelayHub
     // solhint-disable-next-line no-empty-blocks
-    constructor(uint256 _gtxdatanonzero, StakeManager _stakeManager) public RelayHub(_gtxdatanonzero, _stakeManager) {}
+    constructor(uint256 _gtxdatanonzero, StakeManager _stakeManager, Penalizer _penalizer) public RelayHub(_gtxdatanonzero, _stakeManager, _penalizer) {}
 
     /**
      * calculate actual cost of postRelayedCall.

@@ -10,7 +10,8 @@ import {
   RelayHubInstance,
   StakeManagerInstance,
   TestRecipientInstance,
-  TestPaymasterEverythingAcceptedInstance
+  TestPaymasterEverythingAcceptedInstance,
+  PenalizerInstance
 } from '../types/truffle-contracts'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
@@ -36,6 +37,7 @@ import { startRelay, stopRelay } from './TestUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
@@ -49,6 +51,7 @@ contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
+  let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let gasLess: Address
@@ -70,7 +73,8 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    penalizer = await Penalizer.new()
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
     testRecipient = await TestRecipient.new()
     forwarderAddress = await testRecipient.getTrustedForwarder()
     paymaster = await TestPaymasterEverythingAccepted.new()
