@@ -4,18 +4,19 @@ import { expect } from 'chai'
 
 import { getEip712Signature, calculateTransactionMaxPossibleGas } from '../src/common/utils'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import Environments from '../src/relayclient/Environments'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import getDataToSign from '../src/common/EIP712/Eip712Helper'
 
 import {
   RelayHubInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance
+  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, TrustedForwarderInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
+const TrustedForwarder = artifacts.require('TrustedForwarder')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
@@ -30,23 +31,25 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     RecipientBalanceChanged: new BN('4')
   }
 
-  const chainId = Environments.defEnv.chainId
+  const chainId = defaultEnvironment.chainId
 
   let relayHub: string
   let stakeManager: StakeManagerInstance
   let relayHubInstance: RelayHubInstance
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
+  let forwarderInstance: TrustedForwarderInstance
   let target: string
   let paymaster: string
   let forwarder: string
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
-    relayHubInstance = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
+    relayHubInstance = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
     forwarder = await recipientContract.getTrustedForwarder()
+    forwarderInstance = await TrustedForwarder.at(forwarder)
 
     target = recipientContract.address
     paymaster = paymasterContract.address
@@ -275,7 +278,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               hubOverhead,
               relayCallGasLimit: '1000000',
               calldataSize: '123',
-              gtxdatanonzero: Environments.defEnv.gtxdatanonzero
+              gtxdatanonzero: defaultEnvironment.gtxdatanonzero
             }
           )
         })
@@ -389,13 +392,13 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
 
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
-          const nonceBefore = await relayHubInstance.getNonce(target, senderAddress)
+          const nonceBefore = await forwarderInstance.getNonce(senderAddress)
 
           const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', {
             from: relayWorker,
             gasPrice
           })
-          const nonceAfter = await relayHubInstance.getNonce(target, senderAddress)
+          const nonceAfter = await forwarderInstance.getNonce(senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {

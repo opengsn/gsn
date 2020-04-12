@@ -1,16 +1,14 @@
 const HttpWrapper = require('../src/relayclient/HttpWrapper')
-const assert = require('chai').use(require('chai-as-promised')).assert
+const { expect, assert } = require('chai').use(require('chai-as-promised'))
 
 describe('HttpWrapper', () => {
   it('connect to node, get version', async () => {
     const http = new HttpWrapper()
-    const res = await new Promise((resolve) => {
-      const url = web3.currentProvider.host
-
-      http.send(url, { jsonrpc: '2.0', method: 'net_version', id: 123 }, (e, r) => {
-        if (e) resolve('err: ' + JSON.stringify(e))
-        resolve(r)
-      })
+    const url = web3.currentProvider.host
+    const res = await http.sendPromise(url, {
+      jsonrpc: '2.0',
+      method: 'net_version',
+      id: 123
     })
 
     assert.equal(123, res.id, JSON.stringify(res)) // just verify its a valid response
@@ -18,13 +16,8 @@ describe('HttpWrapper', () => {
 
   it('should fail on connection refused', async () => {
     const http = new HttpWrapper()
-    const res = await new Promise((resolve) => {
-      http.send('http://localhost:44321', { jsonrpc: '2.0', method: 'net_version', id: 123 }, (e, r) => {
-        if (e) resolve('err: ' + JSON.stringify(e))
-        resolve(r)
-      })
-    })
-    assert.equal('err: {"error":"connect ECONNREFUSED 127.0.0.1:44321"}', res)
+    const res = http.sendPromise('http://localhost:44321', { jsonrpc: '2.0', method: 'net_version', id: 123 })
+    return expect(res).to.be.eventually.rejectedWith({ error: 'connect ECONNREFUSED 127.0.0.1:44321' })
   })
 
   it('should timeout after specified time', async () => {

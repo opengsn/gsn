@@ -1,6 +1,7 @@
 <component name="ProjectDictionaryState">
   <dictionary name="alexf">
     <words>
+      <w>axios</w>
       <w>blockchain</w>
       <w>calldata</w>
       <w>calldatagascost</w>
@@ -14,7 +15,9 @@
       <w>gtransaction</w>
       <w>gtxdatanonzero</w>
       <w>ierc</w>
+      <w>interactor</w>
       <w>keccak</w>
+      <w>metamask</w>
       <w>mixedcase</w>
       <w>multiplicator</w>
       <w>nonces</w>
