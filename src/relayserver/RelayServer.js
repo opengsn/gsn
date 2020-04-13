@@ -14,8 +14,9 @@ cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
 const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
  */
-const gtxdatanonzero = 68
+const gtxdatanonzero = 16
 const StoredTx = require('./TxStoreManager').StoredTx
+const Mutex = require('async-mutex').Mutex
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -79,6 +80,7 @@ class RelayServer extends EventEmitter {
     this.ready = false
     this.removed = false
     this.nonce = 0
+    this.nonceMutex = new Mutex()
     debug('gasPriceFactor', gasPriceFactor)
   }
 
@@ -170,17 +172,9 @@ class RelayServer extends EventEmitter {
       verifier: relayHubAddress,
       relayRequest
     })
-
-    const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
-    const calldataSize =
-      (encodedFunction ? encodedFunction.length : 1) +
-      signature.length +
-      approvalData.length +
-      relayCallExtraBytes
-    debug('encodedFunction', encodedFunction, encodedFunction.length)
-    debug('signature', signature, signature.length)
-    debug('approvalData', approvalData, approvalData.length)
-
+    const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
+    const calldataSize = method.encodeABI().length / 2
+    debug('calldatasize', calldataSize)
     let gasLimits
     try {
       this.paymasterContract.options.address = paymaster
@@ -197,7 +191,7 @@ class RelayServer extends EventEmitter {
     }
 
     const hubOverhead = parseInt(await this.relayHubContract.methods.getHubOverhead().call())
-    const maxPossibleGas = utils.calculateTransactionMaxPossibleGas({
+    const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
       relayCallGasLimit: parseInt(gasLimit),
@@ -219,12 +213,9 @@ class RelayServer extends EventEmitter {
       throw new Error('canRelay failed in server: ' + canRelayRet.returnValue)
     }
     // Send relayed transaction
-    const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
-    const requiredGas = maxPossibleGas + GAS_RESERVE
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
-    debug('requiredGas is', typeof requiredGas, requiredGas)
     const maxCharge = parseInt(
-      await this.relayHubContract.methods.calculateCharge(requiredGas, {
+      await this.relayHubContract.methods.calculateCharge(maxPossibleGas, {
         gasPrice,
         pctRelayFee,
         baseRelayFee,
@@ -234,12 +225,12 @@ class RelayServer extends EventEmitter {
     if (paymasterBalance < maxCharge) {
       throw new Error(`paymaster balance too low: ${paymasterBalance}, maxCharge: ${maxCharge}`)
     }
-    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
+    debug(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${maxPossibleGas}`)
     const { signedTx } = await this._sendTransaction(
       {
         method,
         destination: relayHubAddress,
-        gasLimit: requiredGas,
+        gasLimit: maxPossibleGas,
         gasPrice
       })
     return signedTx
@@ -411,7 +402,8 @@ class RelayServer extends EventEmitter {
         method: addRelayWorkerMethod,
         destination: this.relayHubContract.options.address
       })
-    const registerMethod = this.relayHubContract.methods.registerRelayServer(this.baseRelayFee, this.pctRelayFee, this.url)
+    const registerMethod = this.relayHubContract.methods.registerRelayServer(this.baseRelayFee, this.pctRelayFee,
+      this.url)
     const { receipt } = await this._sendTransaction(
       {
         method: registerMethod,
@@ -497,6 +489,8 @@ class RelayServer extends EventEmitter {
     debug('gasPrice', gasPrice)
     const gas = (gasLimit && parseInt(gasLimit)) || await method.estimateGas({ from: this.address }) + 21000
     debug('gasLimit', gas)
+    debug('nonceMutex locked?', this.nonceMutex.isLocked())
+    const releaseMutex = await this.nonceMutex.acquire()
     const nonce = await this._pollNonce()
     debug('nonce', nonce)
     // TODO: change to eip155 chainID
@@ -522,8 +516,9 @@ class RelayServer extends EventEmitter {
       txId: ethUtils.bufferToHex(txToSign.hash()),
       attempts: 1
     })
-    await this.txStoreManager.putTx({ tx: storedTx })
     this.nonce++
+    await this.txStoreManager.putTx({ tx: storedTx })
+    releaseMutex()
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
@@ -567,7 +562,7 @@ class RelayServer extends EventEmitter {
       txId: ethUtils.bufferToHex(txToSign.hash()),
       attempts: tx.attempts + 1
     })
-    await this.txStoreManager.putTx({ tx: storedTx })
+    await this.txStoreManager.putTx({ tx: storedTx, updateExisting: true })
     debug('resending tx with nonce', txToSign.nonce)
     debug('account nonce', await this.web3.eth.getTransactionCount(this.address))
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
@@ -584,6 +579,7 @@ class RelayServer extends EventEmitter {
   async _pollNonce () {
     const nonce = await this.web3.eth.getTransactionCount(this.address, 'pending')
     if (nonce > this.nonce) {
+      debug('NONCE FIX', nonce, this.nonce)
       this.nonce = nonce
     }
     return this.nonce

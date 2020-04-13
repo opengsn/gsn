@@ -84,7 +84,9 @@ contract('RelayClient', function (accounts) {
       url: 'asd',
       relayOwner: accounts[1],
       // @ts-ignore
-      EthereumNodeUrl: underlyingProvider.host
+      EthereumNodeUrl: underlyingProvider.host,
+      GasPricePercent: 20,
+      relaylog: process.env.relaylog
     })
 
     gsnConfig = configureGSN({ relayHubAddress: relayHub.address })

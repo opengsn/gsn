@@ -183,7 +183,7 @@ contract RelayHub is IRelayHub {
         returnValue = abi.decode(ret, (string));
     }
 
-    function getAndValidateGasLimits(GSNTypes.GasData memory gasData, address paymaster)
+    function getAndValidateGasLimits(uint256 initialGas, GSNTypes.GasData memory gasData, address paymaster)
     private
     view
     returns (uint256 maxPossibleGas, GSNTypes.GasLimits memory gasLimits)
@@ -200,7 +200,7 @@ contract RelayHub is IRelayHub {
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
         require(
-            gasleft() >= GAS_RESERVE + requiredGas,
+            initialGas >= GAS_RESERVE + requiredGas,
             "Not enough gas left for recipientCallsAtomic to complete");
 
         // The maximum possible charge is the cost of transaction assuming all bytes of calldata are non-zero and
@@ -248,7 +248,7 @@ contract RelayHub is IRelayHub {
         GSNTypes.GasLimits memory gasLimits;
         {
             uint256 maxPossibleGas;
-            (maxPossibleGas, gasLimits) = getAndValidateGasLimits(relayRequest.gasData, relayRequest.relayData.paymaster);
+            (maxPossibleGas, gasLimits) = getAndValidateGasLimits(initialGas, relayRequest.gasData, relayRequest.relayData.paymaster);
 
             // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed),
             // and that the paymaster will agree to be charged for it.
