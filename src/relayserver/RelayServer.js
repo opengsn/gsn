@@ -9,8 +9,12 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
-// const Environments = require('../relayclient/types/Environments')
-const gtxdatanonzero = 16 // Environments.defaultEnvironment.gtxdatanonzero
+/*
+cannot read TS module if executed by node. Use ts-node to run or, better, fix.
+const Environments = require('../relayclient/types/Environments').environments
+const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
+ */
+const gtxdatanonzero = 16
 const StoredTx = require('./TxStoreManager').StoredTx
 const Mutex = require('async-mutex').Mutex
 
@@ -144,9 +148,7 @@ class RelayServer extends EventEmitter {
     }
 
     // Check that max nonce is valid
-    // const releaseMutex = await this.nonceMutex.acquire()
     const nonce = await this._pollNonce()
-    // releaseMutex()
     if (nonce > relayMaxNonce) {
       throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`)
     }
@@ -212,7 +214,6 @@ class RelayServer extends EventEmitter {
     }
     // Send relayed transaction
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
-    // debug('requiredGas is', typeof requiredGas, requiredGas)
     const maxCharge = parseInt(
       await this.relayHubContract.methods.calculateCharge(maxPossibleGas, {
         gasPrice,
