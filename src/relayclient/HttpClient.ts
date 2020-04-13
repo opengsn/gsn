@@ -1,7 +1,8 @@
+import { PrefixedHexString } from 'ethereumjs-tx'
+
 import PingResponse from '../common/PingResponse'
 import HttpWrapper from './HttpWrapper'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
-import { PrefixedHexString } from 'ethereumjs-tx'
 
 export default class HttpClient {
   private readonly httpWrapper: HttpWrapper

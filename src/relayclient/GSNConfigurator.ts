@@ -12,7 +12,7 @@ const defaultGsnConfig: GSNConfig = {
   },
   relayClientConfig: {
     gasPriceFactorPercent: GAS_PRICE_PERCENT,
-    minGasPrice: '0',
+    minGasPrice: 0,
     maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
     verbose: false
   },
@@ -116,7 +116,7 @@ export interface RelayProviderConfig {
 export interface RelayClientConfig {
   verbose: boolean
   gasPriceFactorPercent: number
-  minGasPrice: IntString
+  minGasPrice: number
   maxRelayNonceGap: number
 }
 

@@ -17,14 +17,12 @@ export default class KnownRelaysManager {
   private readonly config: KnownRelaysManagerConfig
   private readonly relayFilter: RelayFilter
   private readonly relayHubAddress: Address
-  private readonly web3: Web3
 
   private latestScannedBlock: number = 0
 
-  constructor (web3: Web3, relayHubAddress: Address, contractInteractor: ContractInteractor, relayFilter: RelayFilter, config: KnownRelaysManagerConfig) {
+  constructor (relayHubAddress: Address, contractInteractor: ContractInteractor, relayFilter: RelayFilter, config: KnownRelaysManagerConfig) {
     this.relayHubAddress = relayHubAddress
     this.config = config
-    this.web3 = web3
     this.relayFilter = relayFilter
     this.contractInteractor = contractInteractor
   }
@@ -98,7 +96,7 @@ export default class KnownRelaysManager {
 
   async _fetchRecentlyActiveRelayManagers (relayHub: IRelayHubInstance): Promise<Set<Address>> {
     const fromBlock = this.latestScannedBlock
-    const toBlock = await this.web3.eth.getBlockNumber()
+    const toBlock = await this.contractInteractor.getBlockNumber()
     const eventTopics = event2topic(relayHub.contract,
       ['RelayServerRegistered', 'TransactionRelayed', 'CanRelayFailed'])
 

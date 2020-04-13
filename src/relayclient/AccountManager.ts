@@ -7,6 +7,8 @@ import { getEip712Signature, isSameAddress } from '../common/utils'
 import { Address } from './types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { AccountManagerConfig } from './GSNConfigurator'
+import { HttpProvider } from 'web3-core'
+import Web3 from 'web3'
 
 export interface AccountKeypair {
   privateKey: Buffer
@@ -19,8 +21,8 @@ export default class AccountManager {
   private readonly config: AccountManagerConfig
   private readonly chainId: number
 
-  constructor (web3: Web3, chainId: number, config: AccountManagerConfig) {
-    this.web3 = web3
+  constructor (provider: HttpProvider, chainId: number, config: AccountManagerConfig) {
+    this.web3 = new Web3(provider)
     this.chainId = chainId
     this.config = config
   }
