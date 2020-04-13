@@ -9,8 +9,8 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
-const Environments = require('../relayclient/Environments')
-const gtxdatanonzero = Environments.defEnv.gtxdatanonzero
+// const Environments = require('../relayclient/types/Environments')
+const gtxdatanonzero = 16 // Environments.defaultEnvironment.gtxdatanonzero
 const StoredTx = require('./TxStoreManager').StoredTx
 const Mutex = require('async-mutex').Mutex
 
@@ -43,12 +43,10 @@ class RelayServer extends EventEmitter {
       keyManager,
       owner,
       hubAddress,
-      stakeManagerAddress,
       url,
       baseRelayFee,
       pctRelayFee,
       gasPriceFactor,
-      ethereumNodeUrl,
       web3provider,
       devMode
     }) {
@@ -62,28 +60,31 @@ class RelayServer extends EventEmitter {
         keyManager,
         owner,
         hubAddress,
-        stakeManagerAddress,
         url,
         baseRelayFee,
         pctRelayFee,
         gasPriceFactor,
-        ethereumNodeUrl,
         web3provider,
         devMode
       })
     this.web3 = new Web3(web3provider)
     this.address = keyManager.address()
-    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
     this.relayHubContract = new this.web3.eth.Contract(RelayHubABI, hubAddress)
+
     this.paymasterContract = new this.web3.eth.Contract(PayMasterABI)
-    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
-    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
     this.lastScannedBlock = 0
     this.ready = false
     this.removed = false
     this.nonce = 0
     this.nonceMutex = new Mutex()
     debug('gasPriceFactor', gasPriceFactor)
+  }
+
+  async _initStakeManager () {
+    const stakeManagerAddress = await this.relayHubContract.methods.getStakeManager().call()
+    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
+    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
+    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
   }
 
   getMinGasPrice () {
@@ -170,7 +171,7 @@ class RelayServer extends EventEmitter {
       relayRequest
     })
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
-    const calldataSize = method.encodeABI().length/2
+    const calldataSize = method.encodeABI().length / 2
     debug('calldatasize', calldataSize)
     let gasLimits
     try {
@@ -223,7 +224,7 @@ class RelayServer extends EventEmitter {
     if (paymasterBalance < maxCharge) {
       throw new Error(`paymaster balance too low: ${paymasterBalance}, maxCharge: ${maxCharge}`)
     }
-    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${maxPossibleGas}`)
+    debug(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${maxPossibleGas}`)
     const { signedTx } = await this._sendTransaction(
       {
         method,
@@ -270,6 +271,9 @@ class RelayServer extends EventEmitter {
 
   async _worker (blockHeader) {
     try {
+      if (!this.stakeManagerContract) {
+        await this._initStakeManager()
+      }
       if (!this.chainId) {
         this.chainId = await this.web3.eth.getChainId()
       }
@@ -354,6 +358,9 @@ class RelayServer extends EventEmitter {
   }
 
   async refreshStake () {
+    if (!this.stakeManagerContract) {
+      await this._initStakeManager()
+    }
     const stakeInfo = await this.stakeManagerContract.methods.getStakeInfo(this.address).call()
     this.stake = parseInt(stakeInfo.stake)
     if (!this.stake) {

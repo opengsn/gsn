@@ -1,16 +1,17 @@
 /* global artifacts describe */
 const Web3 = require('web3')
-const RelayClient = require('../src/relayclient/RelayClient')
+const RelayClient = require('./TmpLegacyRelayClient')
 const RelayServer = require('../src/relayserver/RelayServer')
 const TxStoreManager = require('../src/relayserver/TxStoreManager').TxStoreManager
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
+const TrustedForwarder = artifacts.require('TrustedForwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 const KeyManager = require('../src/relayserver/KeyManager')
 const RelayHubABI = require('../src/common/interfaces/IRelayHub')
 const PayMasterABI = require('../src/common/interfaces/IPaymaster')
-const Environments = require('../src/relayclient/Environments')
+const Environments = require('../src/relayclient/types/Environments')
 
 const ethUtils = require('ethereumjs-util')
 const { Transaction } = require('ethereumjs-tx')
@@ -31,6 +32,7 @@ const increaseTime = testutils.increaseTime
 
 contract('RelayServer', function (accounts) {
   let rhub
+  let forwarder
   let stakeManager
   let sr
   let paymaster
@@ -55,8 +57,10 @@ contract('RelayServer', function (accounts) {
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 
     stakeManager = await StakeManager.new()
-    rhub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
+    rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address)
     sr = await TestRecipient.new()
+    const forwarderAddress = await sr.getTrustedForwarder()
+    forwarder = await TrustedForwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setHub(rhub.address)
@@ -180,9 +184,10 @@ contract('RelayServer', function (accounts) {
       /* baseRelayFee: */0,
       /* gasPrice: */parseInt(await _web3.eth.getGasPrice()),
       /* gasLimit: */1000000,
-      /* senderNonce: */(await rhub.getNonce(sr.address, options.from)).toString(),
+      /* senderNonce: */(await forwarder.getNonce(options.from)).toString(),
       /* paymaster: */paymaster.address,
       /* relayHub: */rhub.contract,
+      forwarder.contract,
       options)
     return { relayRequest, relayMaxNonce, approvalData, signature }
   }
@@ -252,7 +257,6 @@ contract('RelayServer', function (accounts) {
         keyManager,
         // owner: relayOwner,
         hubAddress: rhub.address,
-        stakeManagerAddress: stakeManager.address,
         url: localhostOne,
         baseRelayFee: 0,
         pctRelayFee: 0,

@@ -1,7 +1,7 @@
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
-import Environments from '../src/relayclient/Environments'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   RelayHubInstance,
   StakeManagerInstance,
@@ -23,7 +23,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setHub(relayHub.address)
   })

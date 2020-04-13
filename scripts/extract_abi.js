@@ -10,7 +10,7 @@ const path = require('path')
 const contractsFolder = 'contracts'
 const outAbiFolder = 'src/common'
 
-const contractsToExtract = ['interfaces/IRelayHub', 'interfaces/IPaymaster', 'interfaces/IStakeManager']
+const contractsToExtract = ['interfaces/IRelayHub', 'interfaces/IPaymaster', 'interfaces/IStakeManager', 'interfaces/ITrustedForwarder']
 
 function compileFile (contractFile, c) {
   console.log('compiling ' + contractFile)

@@ -3,16 +3,17 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/utils'
 import getDataToSign from '../src/common/EIP712/Eip712Helper'
-import Environments from '../src/relayclient/Environments'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,
   TestRecipientInstance,
-  TestPaymasterVariableGasLimitsInstance, StakeManagerInstance
+  TestPaymasterVariableGasLimitsInstance, StakeManagerInstance, ITrustedForwarderInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
+const TrustedForwarder = artifacts.require('TrustedForwarder')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
@@ -33,9 +34,9 @@ function correctGasCost (buffer: Buffer, nonzerocost: number, zerocost: number):
 contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 1000
-  const chainId = Environments.defEnv.chainId
-  const gtxdatanonzero = Environments.defEnv.gtxdatanonzero
-  const gtxdatazero = Environments.defEnv.gtxdatazero
+  const chainId = defaultEnvironment.chainId
+  const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
+  const gtxdatazero = defaultEnvironment.gtxdatazero
   const baseFee = new BN('300')
   const fee = new BN('10')
   const gasPrice = new BN('10')
@@ -51,6 +52,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let stakeManager: StakeManagerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterVariableGasLimitsInstance
+  let forwarderInstance: ITrustedForwarderInstance
   let encodedFunction
   let signature: string
   let relayRequest: RelayRequest
@@ -59,9 +61,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   beforeEach(async function prepareForHub () {
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
+    forwarderInstance = await TrustedForwarder.at(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address)
     await paymaster.setHub(relayHub.address)
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
@@ -160,7 +163,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       await misbehavingPaymaster.deposit({ value: ether('0.1') })
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
-      const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
+      const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
       const relayRequestMisbehaving = relayRequest.clone()
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
       relayRequestMisbehaving.relayData.senderNonce = senderNonce
@@ -237,7 +240,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`, async function () {
               const beforeBalances = await getBalances()
               const pctRelayFee = requestedFee.toString()
-              const senderNonce = (await relayHub.getNonce(recipient.address, senderAddress)).toString()
+              const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
               const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
               const relayRequest = new RelayRequest({
                 senderAddress,

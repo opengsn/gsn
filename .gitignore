@@ -17,3 +17,4 @@
 /ganache.pid
 /types/truffle-contracts/
 serverdock/
+/dist/

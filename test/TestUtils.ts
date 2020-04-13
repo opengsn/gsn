@@ -4,6 +4,7 @@ import path from 'path'
 
 import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contracts'
 import HttpWrapper from '../src/relayclient/HttpWrapper'
+import HttpClient from '../src/relayclient/HttpClient'
 
 const localhostOne = 'http://localhost:8090'
 
@@ -20,7 +21,6 @@ export async function startRelay (
   args.push('--Workdir', '/tmp/server')
   args.push('--DevMode')
   args.push('--RelayHubAddress', relayHubAddress)
-  args.push('--StakeManagerAddress', stakeManager.address)
 
   if (options.EthereumNodeUrl) {
     args.push('--EthereumNodeUrl', options.EthereumNodeUrl)
@@ -69,11 +69,11 @@ export async function startRelay (
   })
 
   let res: any
-  const http = new HttpWrapper()
+  const http = new HttpClient(new HttpWrapper(), { verbose: false })
   let count1 = 3
   while (count1-- > 0) {
     try {
-      res = await http.sendPromise(localhostOne + '/getaddr')
+      res = await http.getPingResponse(localhostOne)
       if (res) break
     } catch (e) {
       console.log('startRelay getaddr error', e)
@@ -106,7 +106,7 @@ export async function startRelay (
   res = ''
   let count = 25
   while (count-- > 0) {
-    res = await http.sendPromise(localhostOne + '/getaddr')
+    res = await http.getPingResponse(localhostOne)
     if (res?.Ready) break
     await sleep(1500)
   }

@@ -11,7 +11,7 @@ import { expect } from 'chai'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/utils'
 import getDataToSign from '../src/common/EIP712/Eip712Helper'
-import Environments from '../src/relayclient/Environments'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
@@ -25,7 +25,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
 contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker]) { // eslint-disable-line no-unused-vars
-  const chainId = Environments.defEnv.chainId
+  const chainId = defaultEnvironment.chainId
 
   let stakeManager: StakeManagerInstance
   let relayHub: RelayHubInstance
@@ -36,7 +36,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
 
@@ -373,14 +373,17 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       // @ts-ignore
       const rpcTx = await web3.eth.getTransaction(txHash)
       // eslint: this is stupid how many checks for 0 there are
+      // @ts-ignore
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
       if (!chainId && parseInt(rpcTx.v, 16) > 28) {
         throw new Error('Missing ChainID for EIP-155 signature')
       }
+      // @ts-ignore
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
       if (chainId && parseInt(rpcTx.v, 16) <= 28) {
         throw new Error('Passed ChainID for non-EIP-155 signature')
       }
+      // @ts-ignore
       const tx = new Transaction({
         nonce: new BN(rpcTx.nonce),
         gasPrice: new BN(rpcTx.gasPrice),
@@ -388,8 +391,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         to: rpcTx.to,
         value: new BN(rpcTx.value),
         data: rpcTx.input,
+        // @ts-ignore
         v: rpcTx.v,
+        // @ts-ignore
         r: rpcTx.r,
+        // @ts-ignore
         s: rpcTx.s
       })
 

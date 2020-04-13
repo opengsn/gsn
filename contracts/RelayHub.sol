@@ -68,6 +68,10 @@ contract RelayHub is IRelayHub {
     mapping(address => uint256) private balances;
 
     string public version = "1.0.0";
+    // TODO: remove with 0.6 solc
+    function getVersion() external view returns (string memory) {
+        return version;
+    }
 
 
     EIP712Sig private eip712sig;
@@ -76,6 +80,10 @@ contract RelayHub is IRelayHub {
         eip712sig = new EIP712Sig(address(this));
         stakeManager = _stakeManager;
         gtxdatanonzero = _gtxdatanonzero;
+    }
+
+    function getStakeManager() external view returns(address) {
+        return address(stakeManager);
     }
 
     function calldatagascost() private view returns (uint256) {
@@ -132,14 +140,6 @@ contract RelayHub is IRelayHub {
         dest.transfer(amount);
 
         emit Withdrawn(account, dest, amount);
-    }
-
-    function getNonce(address target, address from) external view returns (uint256) {
-        return ITrustedForwarder(BaseRelayRecipient(target).getTrustedForwarder()).getNonce(from);
-    }
-
-    function getForwarder(address target) external view returns (address) {
-        return BaseRelayRecipient(target).getTrustedForwarder();
     }
 
     function canRelay(
