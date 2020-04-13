@@ -670,6 +670,22 @@ contract('RelayServer', function (accounts) {
       const promises = [relayTransaction(options), relayTransaction(options2)]
       await Promise.all(promises)
     })
+    it('should not deadlock if server returned error while locked', async function () {
+      try {
+        relayServer.keyManager.signTransactionOrig = relayServer.keyManager.signTransaction
+        relayServer.keyManager.signTransaction = function () {
+          throw new Error('no tx for you')
+        }
+        try {
+          await relayTransaction(options)
+        } catch (e) {
+          assert.equal(e.message, 'no tx for you', e.message)
+          assert.isFalse(relayServer.nonceMutex.isLocked(), 'nonce mutex not released after exception')
+        }
+      } finally {
+        relayServer.keyManager.signTransaction = relayServer.keyManager.signTransactionOrig
+      }
+    })
   })
 
   describe('event handlers', async function () {
