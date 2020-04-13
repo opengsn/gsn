@@ -58,7 +58,7 @@ module.exports = {
         evmVersion: 'istanbul',
         optimizer: {
           enabled: true,
-          runs: 200   // Optimize for how many times you intend to run the code
+          runs: 200 // Optimize for how many times you intend to run the code
         }
       }
     }
