@@ -167,8 +167,6 @@ interface IRelayHub {
     // Penalize a relayWorker that sent a transaction that didn't target RelayHub's registerRelay or relayCall.
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
 
-    function getNonce(address target, address from) external view returns (uint256);
-    function getForwarder(address target) external view returns(address);
 
     function getHubOverhead() external view returns (uint256);
 
@@ -176,5 +174,8 @@ interface IRelayHub {
     /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
     /// charged for 1.4 times the spent amount.
     function calculateCharge(uint256 gasUsed, GSNTypes.GasData calldata gasData) external view returns (uint256);
+
+    function getVersion() external view returns (string memory);
+
 }
 

@@ -1,6 +1,6 @@
 const Big = require('big.js')
 
-const Environments = require('../src/relayclient/Environments')
+const Environments = require('../src/relayclient/types/Environments')
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const StakeManager = artifacts.require('StakeManager')
@@ -32,7 +32,7 @@ contract('SampleRecipient', function (accounts) {
   it('should allow owner to withdraw balance from RelayHub', async function () {
     const deposit = new Big('100000000000000000')
     const stakeManager = await StakeManager.new()
-    const rhub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address)
+    const rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address)
     await paymaster.setHub(rhub.address)
     await rhub.depositFor(paymaster.address, {
       from: accounts[0],

@@ -14,7 +14,7 @@ const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 
 const RelayProvider = require('../src/relayclient/RelayProvider')
-const Environments = require('../src/relayclient/Environments')
+const Environments = require('../src/relayclient/types/Environments')
 
 const options = [
   { title: 'Direct-', relay: 0 },
@@ -43,8 +43,8 @@ options.forEach(params => {
       if (params.relay) {
         // rhub = await RelayHub.deployed()
         const sm = await StakeManager.new()
-        rhub = await RelayHub.new(Environments.defEnv.gtxdatanonzero, sm.address, { gas: 10000000 })
-        relayproc = await testutils.startRelay(rhub.address, sm, {
+        rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, sm.address, { gas: 10000000 })
+        relayproc = await testutils.startRelay(rhub, {
           stake: 1e18,
           delay: 3600 * 24 * 7,
           pctRelayFee: 12,

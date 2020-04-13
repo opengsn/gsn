@@ -1,5 +1,6 @@
 const assert = require('chai').use(require('chai-as-promised')).assert
-const ServerHelper = require('../src/relayclient/ServerHelper')
+// const ServerHelper = require('../src/relayclient/ServerHelper')
+class ServerHelper {}
 const HttpWrapper = require('../src/relayclient/HttpWrapper')
 const http = require('http')
 const testutils = require('./TestUtils')
@@ -201,7 +202,7 @@ contract.skip('ServerHelper', function (accounts) {
       }
     }
 
-    it('ActiveRelayPinger should keep trying find a relay after 6 broken (high gas, not ready) relays', async function () {
+    it('RelaySelectionManager should keep trying find a relay after 6 broken (high gas, not ready) relays', async function () {
       const mockRelays = [
         { relayUrl: 'url1', error: 'failed relay1', stake: 1, unstakeDelay: 1 },
         { relayUrl: 'url2', Ready: false, stake: 1, unstakeDelay: 1 },
