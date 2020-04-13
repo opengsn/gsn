@@ -7,6 +7,7 @@ const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
 const TrustedForwarder = artifacts.require('TrustedForwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
+const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 const KeyManager = require('../src/relayserver/KeyManager')
 const RelayHubABI = require('../src/common/interfaces/IRelayHub')
@@ -34,6 +35,7 @@ contract('RelayServer', function (accounts) {
   let rhub
   let forwarder
   let stakeManager
+  let penalizer
   let sr
   let paymaster
   let gasLess, gasLess2
@@ -57,7 +59,8 @@ contract('RelayServer', function (accounts) {
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 
     stakeManager = await StakeManager.new()
-    rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    penalizer = await Penalizer.new()
+    rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
     sr = await TestRecipient.new()
     const forwarderAddress = await sr.getTrustedForwarder()
     forwarder = await TrustedForwarder.at(forwarderAddress)
@@ -666,6 +669,22 @@ contract('RelayServer', function (accounts) {
     it('should handle nonce atomically', async function () {
       const promises = [relayTransaction(options), relayTransaction(options2)]
       await Promise.all(promises)
+    })
+    it('should not deadlock if server returned error while locked', async function () {
+      try {
+        relayServer.keyManager.signTransactionOrig = relayServer.keyManager.signTransaction
+        relayServer.keyManager.signTransaction = function () {
+          throw new Error('no tx for you')
+        }
+        try {
+          await relayTransaction(options)
+        } catch (e) {
+          assert.equal(e.message, 'no tx for you', e.message)
+          assert.isFalse(relayServer.nonceMutex.isLocked(), 'nonce mutex not released after exception')
+        }
+      } finally {
+        relayServer.keyManager.signTransaction = relayServer.keyManager.signTransactionOrig
+      }
     })
   })
 

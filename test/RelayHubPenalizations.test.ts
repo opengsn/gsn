@@ -13,6 +13,7 @@ import { getEip712Signature } from '../src/common/utils'
 import getDataToSign from '../src/common/EIP712/Eip712Helper'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
+  PenalizerInstance,
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
@@ -21,6 +22,7 @@ import TransactionResponse = Truffle.TransactionResponse
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
@@ -29,6 +31,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
   let stakeManager: StakeManagerInstance
   let relayHub: RelayHubInstance
+  let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
 
@@ -36,7 +39,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
+    penalizer = await Penalizer.new()
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
 
@@ -52,6 +56,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     Object.keys(StakeManager.events).forEach(function (topic) {
       // @ts-ignore
       RelayHub.network.events[topic] = StakeManager.events[topic]
+    })
+    // @ts-ignore
+    Object.keys(StakeManager.events).forEach(function (topic) {
+      // @ts-ignore
+      Penalizer.network.events[topic] = StakeManager.events[topic]
     })
   })
 
@@ -128,9 +137,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         it('penalizes transactions with same nonce and different data', async function () {
           const txDataSigA = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, relayCallArgs), chainId)
           const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(Object.assign({}, encodedCallArgs, { data: '0xabcd' }), relayCallArgs), chainId)
-
           await expectPenalization(async (opts) =>
-            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
+            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
           )
         })
 
@@ -139,7 +147,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, Object.assign({}, relayCallArgs, { gasLimit: 100 })), chainId)
 
           await expectPenalization(async (opts) =>
-            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
+            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
           )
         })
 
@@ -148,7 +156,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, Object.assign({}, relayCallArgs, { value: 100 })), chainId)
 
           await expectPenalization(async (opts) =>
-            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, opts)
+            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
           )
         })
 
@@ -160,7 +168,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           ), chainId)
 
           await expectRevert(
-            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature),
+            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address),
             'tx is equal'
           )
         })
@@ -173,7 +181,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           ), chainId)
 
           await expectRevert(
-            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature),
+            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address),
             'Different nonce'
           )
         })
@@ -186,7 +194,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           ), chainId)
 
           await expectRevert(
-            relayHub.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature),
+            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address),
             'Different signer'
           )
         })
@@ -199,7 +207,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const { transactionHash } = await send.ether(relayWorker, other, ether('0.5'))
           const { data, signature } = await getDataAndSignatureFromHash(transactionHash, chainId)
 
-          await expectPenalization(async (opts) => relayHub.penalizeIllegalTransaction(data, signature, opts))
+          await expectPenalization(async (opts) => penalizer.penalizeIllegalTransaction(data, signature, relayHub.address, opts))
         })
 
         it('penalizes relay worker transactions to illegal RelayHub functions (stake)', async function () {
@@ -210,7 +218,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           })
           const { data, signature } = await getDataAndSignatureFromHash(tx, chainId)
 
-          await expectPenalization(async (opts) => relayHub.penalizeIllegalTransaction(data, signature, opts))
+          await expectPenalization(async (opts) => penalizer.penalizeIllegalTransaction(data, signature, relayHub.address, opts))
         })
 
         it('penalizes relay worker transactions to illegal RelayHub functions (penalize)', async function () {
@@ -227,14 +235,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
           // A relay penalizes it
           const stakeTxDataSig = await getDataAndSignatureFromHash(stakeTx.transactionHash, chainId)
-          const penalizeTx = await relayHub.penalizeIllegalTransaction(
-            stakeTxDataSig.data, stakeTxDataSig.signature, { from: relayWorker }
+          const penalizeTx = await penalizer.penalizeIllegalTransaction(
+            stakeTxDataSig.data, stakeTxDataSig.signature, relayHub.address, { from: relayWorker }
           )
 
           // It can now be penalized for that
           const penalizeTxDataSig = await getDataAndSignatureFromHash(penalizeTx.tx, chainId)
           await expectPenalization(async (opts) =>
-            relayHub.penalizeIllegalTransaction(penalizeTxDataSig.data, penalizeTxDataSig.signature, opts))
+            penalizer.penalizeIllegalTransaction(penalizeTxDataSig.data, penalizeTxDataSig.signature, relayHub.address, opts))
         })
 
         it('does not penalize legal relay transactions', async function () {
@@ -277,7 +285,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
           const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx, chainId)
           await expectRevert(
-            relayHub.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature),
+            penalizer.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address),
             'Legal relay transaction'
           )
         })
@@ -300,7 +308,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
         // All of these tests use the same penalization function (we one we set up in the beforeEach block)
         async function penalize (): Promise<TransactionResponse> {
-          return expectPenalization(async (opts) => relayHub.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, opts))
+          return expectPenalization(async (opts) => penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, opts))
         }
 
         context('with not owned relay worker', function () {

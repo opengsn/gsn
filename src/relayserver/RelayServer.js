@@ -491,34 +491,39 @@ class RelayServer extends EventEmitter {
     debug('gasLimit', gas)
     debug('nonceMutex locked?', this.nonceMutex.isLocked())
     const releaseMutex = await this.nonceMutex.acquire()
-    const nonce = await this._pollNonce()
-    debug('nonce', nonce)
-    // TODO: change to eip155 chainID
-    const txToSign = new Transaction({
-      from: this.address,
-      to: destination,
-      value: value || 0,
-      gas,
-      gasPrice,
-      data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
-      nonce
-    })
-    spam('txToSign', txToSign)
-    const signedTx = this.keyManager.signTransaction(txToSign)
-    const storedTx = new StoredTx({
-      from: txToSign.from,
-      to: txToSign.to,
-      value: txToSign.value,
-      gas: txToSign.gas,
-      gasPrice: txToSign.gasPrice,
-      data: txToSign.data,
-      nonce: txToSign.nonce,
-      txId: ethUtils.bufferToHex(txToSign.hash()),
-      attempts: 1
-    })
-    this.nonce++
-    await this.txStoreManager.putTx({ tx: storedTx })
-    releaseMutex()
+    let signedTx
+    let storedTx
+    try {
+      const nonce = await this._pollNonce()
+      debug('nonce', nonce)
+      // TODO: change to eip155 chainID
+      const txToSign = new Transaction({
+        from: this.address,
+        to: destination,
+        value: value || 0,
+        gas,
+        gasPrice,
+        data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
+        nonce
+      })
+      spam('txToSign', txToSign)
+      signedTx = this.keyManager.signTransaction(txToSign)
+      storedTx = new StoredTx({
+        from: txToSign.from,
+        to: txToSign.to,
+        value: txToSign.value,
+        gas: txToSign.gas,
+        gasPrice: txToSign.gasPrice,
+        data: txToSign.data,
+        nonce: txToSign.nonce,
+        txId: ethUtils.bufferToHex(txToSign.hash()),
+        attempts: 1
+      })
+      this.nonce++
+      await this.txStoreManager.putTx({ tx: storedTx })
+    } finally {
+      releaseMutex()
+    }
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {

@@ -3,6 +3,7 @@ import BN from 'bn.js'
 
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
+  PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance
@@ -10,6 +11,7 @@ import {
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
 contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, relayWorker1, relayWorker2, relayWorker3]) {
@@ -20,10 +22,12 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
   let relayHub: RelayHubInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let stakeManager: StakeManagerInstance
+  let penalizer: PenalizerInstance
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
+    penalizer = await Penalizer.new()
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setHub(relayHub.address)
   })
