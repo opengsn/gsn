@@ -11,12 +11,13 @@ import {
   RelayHubInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, TrustedForwarderInstance
+  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, TrustedForwarderInstance, PenalizerInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
@@ -35,6 +36,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
   let relayHub: string
   let stakeManager: StakeManagerInstance
+  let penalizer: PenalizerInstance
   let relayHubInstance: RelayHubInstance
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
@@ -45,7 +47,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
-    relayHubInstance = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
+    penalizer = await Penalizer.new()
+    relayHubInstance = await RelayHub.new(Environments.defEnv.gtxdatanonzero, stakeManager.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
     forwarder = await recipientContract.getTrustedForwarder()

@@ -4,6 +4,7 @@ const Environments = require('../src/relayclient/types/Environments')
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const SampleRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 
@@ -32,7 +33,9 @@ contract('SampleRecipient', function (accounts) {
   it('should allow owner to withdraw balance from RelayHub', async function () {
     const deposit = new Big('100000000000000000')
     const stakeManager = await StakeManager.new()
-    const rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    const penalizer = await Penalizer.new()
+    const rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address,
+      penalizer.address)
     await paymaster.setHub(rhub.address)
     await rhub.depositFor(paymaster.address, {
       from: accounts[0],

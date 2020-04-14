@@ -14,8 +14,9 @@ cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
 const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
  */
-const gtxdatanonzero = 68
+const gtxdatanonzero = 16
 const StoredTx = require('./TxStoreManager').StoredTx
+const Mutex = require('async-mutex').Mutex
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -46,12 +47,10 @@ class RelayServer extends EventEmitter {
       keyManager,
       owner,
       hubAddress,
-      stakeManagerAddress,
       url,
       baseRelayFee,
       pctRelayFee,
       gasPriceFactor,
-      ethereumNodeUrl,
       web3provider,
       devMode
     }) {
@@ -65,27 +64,31 @@ class RelayServer extends EventEmitter {
         keyManager,
         owner,
         hubAddress,
-        stakeManagerAddress,
         url,
         baseRelayFee,
         pctRelayFee,
         gasPriceFactor,
-        ethereumNodeUrl,
         web3provider,
         devMode
       })
     this.web3 = new Web3(web3provider)
     this.address = keyManager.address()
-    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
     this.relayHubContract = new this.web3.eth.Contract(RelayHubABI, hubAddress)
+
     this.paymasterContract = new this.web3.eth.Contract(PayMasterABI)
-    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
-    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
     this.lastScannedBlock = 0
     this.ready = false
     this.removed = false
     this.nonce = 0
+    this.nonceMutex = new Mutex()
     debug('gasPriceFactor', gasPriceFactor)
+  }
+
+  async _initStakeManager () {
+    const stakeManagerAddress = await this.relayHubContract.methods.getStakeManager().call()
+    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
+    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
+    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
   }
 
   getMinGasPrice () {
@@ -169,17 +172,9 @@ class RelayServer extends EventEmitter {
       verifier: relayHubAddress,
       relayRequest
     })
-
-    const relayCallExtraBytes = 32 * 8 // there are 8 parameters in RelayRequest now
-    const calldataSize =
-      (encodedFunction ? encodedFunction.length : 1) +
-      signature.length +
-      approvalData.length +
-      relayCallExtraBytes
-    debug('encodedFunction', encodedFunction, encodedFunction.length)
-    debug('signature', signature, signature.length)
-    debug('approvalData', approvalData, approvalData.length)
-
+    const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
+    const calldataSize = method.encodeABI().length / 2
+    debug('calldatasize', calldataSize)
     let gasLimits
     try {
       this.paymasterContract.options.address = paymaster
@@ -196,7 +191,7 @@ class RelayServer extends EventEmitter {
     }
 
     const hubOverhead = parseInt(await this.relayHubContract.methods.getHubOverhead().call())
-    const maxPossibleGas = utils.calculateTransactionMaxPossibleGas({
+    const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
       relayCallGasLimit: parseInt(gasLimit),
@@ -218,12 +213,9 @@ class RelayServer extends EventEmitter {
       throw new Error('canRelay failed in server: ' + canRelayRet.returnValue)
     }
     // Send relayed transaction
-    const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
-    const requiredGas = maxPossibleGas + GAS_RESERVE
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
-    debug('requiredGas is', typeof requiredGas, requiredGas)
     const maxCharge = parseInt(
-      await this.relayHubContract.methods.calculateCharge(requiredGas, {
+      await this.relayHubContract.methods.calculateCharge(maxPossibleGas, {
         gasPrice,
         pctRelayFee,
         baseRelayFee,
@@ -233,12 +225,12 @@ class RelayServer extends EventEmitter {
     if (paymasterBalance < maxCharge) {
       throw new Error(`paymaster balance too low: ${paymasterBalance}, maxCharge: ${maxCharge}`)
     }
-    console.log(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${requiredGas}`)
+    debug(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${maxPossibleGas}`)
     const { signedTx } = await this._sendTransaction(
       {
         method,
         destination: relayHubAddress,
-        gasLimit: requiredGas,
+        gasLimit: maxPossibleGas,
         gasPrice
       })
     return signedTx
@@ -280,6 +272,9 @@ class RelayServer extends EventEmitter {
 
   async _worker (blockHeader) {
     try {
+      if (!this.stakeManagerContract) {
+        await this._initStakeManager()
+      }
       if (!this.chainId) {
         this.chainId = await this.web3.eth.getChainId()
       }
@@ -364,6 +359,9 @@ class RelayServer extends EventEmitter {
   }
 
   async refreshStake () {
+    if (!this.stakeManagerContract) {
+      await this._initStakeManager()
+    }
     const stakeInfo = await this.stakeManagerContract.methods.getStakeInfo(this.address).call()
     this.stake = parseInt(stakeInfo.stake)
     if (!this.stake) {
@@ -404,7 +402,8 @@ class RelayServer extends EventEmitter {
         method: addRelayWorkerMethod,
         destination: this.relayHubContract.options.address
       })
-    const registerMethod = this.relayHubContract.methods.registerRelayServer(this.baseRelayFee, this.pctRelayFee, this.url)
+    const registerMethod = this.relayHubContract.methods.registerRelayServer(this.baseRelayFee, this.pctRelayFee,
+      this.url)
     const { receipt } = await this._sendTransaction(
       {
         method: registerMethod,
@@ -490,33 +489,41 @@ class RelayServer extends EventEmitter {
     debug('gasPrice', gasPrice)
     const gas = (gasLimit && parseInt(gasLimit)) || await method.estimateGas({ from: this.address }) + 21000
     debug('gasLimit', gas)
-    const nonce = await this._pollNonce()
-    debug('nonce', nonce)
-    // TODO: change to eip155 chainID
-    const txToSign = new Transaction({
-      from: this.address,
-      to: destination,
-      value: value || 0,
-      gas,
-      gasPrice,
-      data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
-      nonce
-    })
-    spam('txToSign', txToSign)
-    const signedTx = this.keyManager.signTransaction(txToSign)
-    const storedTx = new StoredTx({
-      from: txToSign.from,
-      to: txToSign.to,
-      value: txToSign.value,
-      gas: txToSign.gas,
-      gasPrice: txToSign.gasPrice,
-      data: txToSign.data,
-      nonce: txToSign.nonce,
-      txId: ethUtils.bufferToHex(txToSign.hash()),
-      attempts: 1
-    })
-    await this.txStoreManager.putTx({ tx: storedTx })
-    this.nonce++
+    debug('nonceMutex locked?', this.nonceMutex.isLocked())
+    const releaseMutex = await this.nonceMutex.acquire()
+    let signedTx
+    let storedTx
+    try {
+      const nonce = await this._pollNonce()
+      debug('nonce', nonce)
+      // TODO: change to eip155 chainID
+      const txToSign = new Transaction({
+        from: this.address,
+        to: destination,
+        value: value || 0,
+        gas,
+        gasPrice,
+        data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
+        nonce
+      })
+      spam('txToSign', txToSign)
+      signedTx = this.keyManager.signTransaction(txToSign)
+      storedTx = new StoredTx({
+        from: txToSign.from,
+        to: txToSign.to,
+        value: txToSign.value,
+        gas: txToSign.gas,
+        gasPrice: txToSign.gasPrice,
+        data: txToSign.data,
+        nonce: txToSign.nonce,
+        txId: ethUtils.bufferToHex(txToSign.hash()),
+        attempts: 1
+      })
+      this.nonce++
+      await this.txStoreManager.putTx({ tx: storedTx })
+    } finally {
+      releaseMutex()
+    }
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
@@ -560,7 +567,7 @@ class RelayServer extends EventEmitter {
       txId: ethUtils.bufferToHex(txToSign.hash()),
       attempts: tx.attempts + 1
     })
-    await this.txStoreManager.putTx({ tx: storedTx })
+    await this.txStoreManager.putTx({ tx: storedTx, updateExisting: true })
     debug('resending tx with nonce', txToSign.nonce)
     debug('account nonce', await this.web3.eth.getTransactionCount(this.address))
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
@@ -577,6 +584,7 @@ class RelayServer extends EventEmitter {
   async _pollNonce () {
     const nonce = await this.web3.eth.getTransactionCount(this.address, 'pending')
     if (nonce > this.nonce) {
+      debug('NONCE FIX', nonce, this.nonce)
       this.nonce = nonce
     }
     return this.nonce

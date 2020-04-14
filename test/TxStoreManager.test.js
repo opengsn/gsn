@@ -101,16 +101,24 @@ contract('TxStoreManager', function (accounts) {
   })
 
   it('should clear txstore', async function () {
-    await txmanager.putTx({ tx })
-    await txmanager.putTx({ tx: tx2 })
-    await txmanager.putTx({ tx: tx3 })
+    await txmanager.putTx({ tx, updateExisting: true })
+    await txmanager.putTx({ tx: tx2, updateExisting: true })
+    await txmanager.putTx({ tx: tx3, updateExisting: true })
     await txmanager.clearAll()
     assert.deepEqual([], await txmanager.getAll())
   })
 
   it('should NOT store tx twice', async function () {
+    await txmanager.clearAll()
     await txmanager.putTx({ tx })
-    await txmanager.putTx({ tx })
+    await txmanager.putTx({ tx, updateExisting: true })
+    assert.deepEqual(1, (await txmanager.getAll()).length)
+    try {
+      await txmanager.putTx({ tx, updateExisting: false })
+      assert.fail()
+    } catch (e) {
+      assert.isTrue(e.message.includes('violates the unique constraint'), e.message)
+    }
     assert.deepEqual(1, (await txmanager.getAll()).length)
   })
 

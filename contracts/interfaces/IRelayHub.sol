@@ -83,6 +83,9 @@ interface IRelayHub {
         RecipientBalanceChanged
     }
 
+    //return the stake manager of this RelayHub
+    function getStakeManager() external view returns(address);
+
     /// Add new worker addresses controlled by sender who must be a staked Relay Manager address.
     /// Emits a RelayWorkersAdded event.
     /// This function can be called multiple times, emitting new events
@@ -154,7 +157,7 @@ interface IRelayHub {
     // Penalize a relayWorker that signed two transactions using the same nonce (making only the first one valid) and
     // different data (gas price, gas limit, etc. may be different). The (unsigned) transaction data and signature for
     // both transactions must be provided.
-    function penalizeRepeatedNonce(
+    /*function penalizeRepeatedNonce(
         bytes calldata unsignedTx1,
         bytes calldata signature1,
         bytes calldata unsignedTx2,
@@ -163,7 +166,7 @@ interface IRelayHub {
 
     // Penalize a relayWorker that sent a transaction that didn't target RelayHub's registerRelay or relayCall.
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
-
+*/
 
     function getHubOverhead() external view returns (uint256);
 

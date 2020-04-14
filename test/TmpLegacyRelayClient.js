@@ -16,12 +16,11 @@ class TmpLegacyRelayClient {
     baseRelayFee,
     gasPrice,
     gasLimit,
+    senderNonce,
     paymaster,
     relayHub,
     forwarder,
     options) {
-    const nonce = await forwarder.methods.getNonce(options.from).call()
-    const senderNonce = nonce.toString()
     const relayRequest = new RelayRequest({
       senderAddress: options.from,
       target: options.to,
@@ -34,7 +33,6 @@ class TmpLegacyRelayClient {
       paymaster,
       relayWorker
     })
-
     const signature = await this._prepareSignature(relayHub, relayRequest, options, forwarder._address)
     let approvalData = options.approvalData || '0x'
     if (typeof options.approveFunction === 'function') {

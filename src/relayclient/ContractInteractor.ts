@@ -63,7 +63,6 @@ export default class ContractInteractor {
   async _createRelayHub (address: Address): Promise<IRelayHubInstance> {
     return IRelayHubContract.at(address)
   }
-
   async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
     return IForwarderContract.at(address)
   }
