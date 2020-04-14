@@ -51,7 +51,7 @@ export default class AccountManager {
     const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.relayData.senderAddress))
     if (keypair != null) {
       // @ts-ignore
-      signature = sigUtil.signTypedData_v4(this.ephemeralKeypair.privateKey, { data: signedData })
+      signature = sigUtil.signTypedData_v4(keypair.privateKey, { data: signedData })
     } else {
       signature = await getEip712Signature(
         {

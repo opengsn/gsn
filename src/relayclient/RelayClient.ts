@@ -43,13 +43,13 @@ export interface RelayingResult {
 }
 
 export default class RelayClient {
-  private readonly config: RelayClientConfig
-  private readonly web3: Web3
+  readonly config: RelayClientConfig
+  readonly web3: Web3
   private readonly httpClient: HttpClient
-  private readonly contractInteractor: ContractInteractor
-  private readonly knownRelaysManager: KnownRelaysManager
-  private readonly accountManager: AccountManager
-  private readonly relayHub: Address
+  readonly contractInteractor: ContractInteractor
+  readonly knownRelaysManager: KnownRelaysManager
+  readonly accountManager: AccountManager
+  readonly relayHub: Address
   private readonly asyncApprove: AsyncApprove
   private readonly relayedTransactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
