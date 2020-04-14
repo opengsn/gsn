@@ -87,7 +87,7 @@
     "@0x/sol-trace": "3.0.8",
     "@0x/subproviders": "4.1.0",
     "@0x/typescript-typings": "5.0.2",
-    "@openeth/truffle-typings": "0.0.1",
+    "@openeth/truffle-typings": "0.0.5",
     "@openzeppelin/test-helpers": "0.5.5",
     "@truffle-types/abi-decoder": "^0.1.1",
     "@types/big.js": "4.0.5",

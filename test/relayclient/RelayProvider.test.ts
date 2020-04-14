@@ -16,7 +16,7 @@ import BadRelayClient from '../dummies/BadRelayClient'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
 import chaiAsPromised from 'chai-as-promised'
-import { ether } from '@openzeppelin/test-helpers'
+import { constants, ether } from '@openzeppelin/test-helpers'
 import getDataToSign from '../../src/common/EIP712/Eip712Helper'
 import { getEip712Signature } from '../../src/common/utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
@@ -43,7 +43,7 @@ contract('RelayProvider', function (accounts) {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
     const paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address
     await paymasterInstance.setHub(relayHub.address)

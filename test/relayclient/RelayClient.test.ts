@@ -27,6 +27,7 @@ import BadHttpClient from '../dummies/BadHttpClient'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionValidator'
 import { startRelay, stopRelay } from '../TestUtils'
+import { constants } from '@openzeppelin/test-helpers'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -59,7 +60,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address)
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
     testRecipient = await TestRecipient.new()
     forwarderAddress = await testRecipient.getTrustedForwarder()
     paymaster = await TestPaymasterEverythingAccepted.new()
@@ -191,10 +192,6 @@ contract('RelayClient', function (accounts) {
         gasPrice: '0x51f4d5c00'
       })
     })
-    //
-    // beforeEach(function () {
-    //   sinon.resetHistory()
-    // })
 
     it('should return error if canRelay/acceptRelayedCall fail', async function () {
       const badContractInteractor = new BadContractInteractor(web3.currentProvider, gsnConfig.contractInteractorConfig, true)

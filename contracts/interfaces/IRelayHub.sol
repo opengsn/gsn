@@ -167,6 +167,7 @@ interface IRelayHub {
     // Penalize a relayWorker that sent a transaction that didn't target RelayHub's registerRelay or relayCall.
     function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
 */
+    function penalize(address relayWorker, address payable beneficiary) external;
 
     function getHubOverhead() external view returns (uint256);
 

@@ -9,9 +9,9 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import {
   RelayHubInstance,
   TestRecipientInstance,
-  TestPaymasterVariableGasLimitsInstance, 
-  StakeManagerInstance, 
-  ITrustedForwarderInstance, 
+  TestPaymasterVariableGasLimitsInstance,
+  StakeManagerInstance,
+  ITrustedForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
 
