@@ -17,11 +17,11 @@ import {
 
 import { Address, IntString } from './types/Aliases'
 import { ContractInteractorConfig } from './GSNConfigurator'
+import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
-import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 let IPaymasterContract: Contract<IPaymasterInstance>
 let IRelayHubContract: Contract<IRelayHubInstance>

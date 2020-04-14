@@ -1,45 +1,46 @@
-import Web3 from 'web3'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
-import RelayClient, { RelayingResult } from './RelayClient'
-import { provider } from 'web3-core'
-import relayHubAbi from '../common/interfaces/IRelayHub'
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
+import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import { HttpProvider } from 'web3-core'
+
+import relayHubAbi from '../common/interfaces/IRelayHub'
+import RelayClient, { RelayingResult } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { GSNConfig, RelayProviderConfig } from './GSNConfigurator'
+import { Transaction } from 'ethereumjs-tx'
 
 abiDecoder.addABI(relayHubAbi)
 
 export interface BaseTransactionReceipt {
   logs: any[]
-  status: number
+  status: boolean
 }
 
-export default class RelayProvider {
-  private readonly origProvider: provider
+export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
+
+export default class RelayProvider implements HttpProvider {
+  private readonly origProvider: HttpProvider
   private readonly origProviderSend: any
   private readonly relayClient: RelayClient
   private readonly config: RelayProviderConfig
 
   /**
    * create a proxy provider, to relay transaction
-   * @param web3
+   * @param relayClient
    * @param origProvider - the underlying web3 provider
    * @param gsnConfig
    */
-  constructor (web3: Web3, origProvider: provider | RelayProvider, gsnConfig: GSNConfig) {
-    if (origProvider instanceof RelayProvider ||
-      origProvider == null ||
-      typeof origProvider === 'string') {
-      throw new Error('Missing underlying provider')
-    }
+  constructor (relayClient: RelayClient | undefined, origProvider: HttpProvider, gsnConfig: GSNConfig) {
+    this.host = origProvider.host
+    this.connected = origProvider.connected
+
     this.origProvider = origProvider
     this.config = gsnConfig.relayProviderConfig
     this.origProviderSend = this.origProvider.send.bind(this.origProvider)
-    this.relayClient = RelayClient.new(web3, gsnConfig)
+    this.relayClient = relayClient ?? RelayClient.new(origProvider, gsnConfig)
   }
 
-  send (payload: JsonRpcPayload, callback: any): void {
+  send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
         this._ethSendTransaction(payload, callback)
@@ -56,7 +57,7 @@ export default class RelayProvider {
     })
   }
 
-  _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: any): void {
+  _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (this.config.verbose) {
       console.log('calling sendAsync' + JSON.stringify(payload))
     }
@@ -73,7 +74,7 @@ export default class RelayProvider {
     })
   }
 
-  _ethSendTransaction (payload: JsonRpcPayload, callback: any): void {
+  _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (this.config.verbose) {
       console.log('calling sendAsync' + JSON.stringify(payload))
     }
@@ -81,21 +82,30 @@ export default class RelayProvider {
     this.relayClient.relayTransaction(gsnTransactionDetails)
       .then((relayingResult) => {
         if (relayingResult.transaction != null) {
-          const txHash: string = relayingResult.transaction.hash(true).toString('hex')
-          const hash = `0x${txHash}`
-          const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
-          callback(null, {
-            jsonrpc: '2.0',
-            id,
-            result: hash
-          })
+          const jsonRpcSendResult = this._convertTransactionToRpcSendResponse(relayingResult.transaction, payload)
+          callback(null, jsonRpcSendResult)
         } else {
-          console.log(`Failed to relay call. Results:\n${this._dumpRelayingResult(relayingResult)}`)
+          const message = `Failed to relay call. Results:\n${this._dumpRelayingResult(relayingResult)}`
+          if (this.config.verbose) {
+            console.error(message)
+          }
+          callback(new Error(message))
         }
       }, (reason: any) => {
         const reasonStr = reason instanceof Error ? reason.toString() : JSON.stringify(reason)
-        throw new Error(`Rejected runRelay call - should not happen. Reason: ${reasonStr}`)
+        callback(new Error(`Rejected relayTransaction call - should not happen. Reason: ${reasonStr}`))
       })
+  }
+
+  _convertTransactionToRpcSendResponse (transaction: Transaction, request: JsonRpcPayload): JsonRpcResponse {
+    const txHash: string = transaction.hash(true).toString('hex')
+    const hash = `0x${txHash}`
+    const id = (typeof request.id === 'string' ? parseInt(request.id) : request.id) ?? -1
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: hash
+    }
   }
 
   _getTranslatedGsnResponseResult (respResult: BaseTransactionReceipt): BaseTransactionReceipt {
@@ -109,8 +119,10 @@ export default class RelayProvider {
     if (canRelayFailed !== null && canRelayFailed !== undefined) {
       const canRelayFailedReason: { value: string } = canRelayFailed.events.find((e: any) => e.name === 'reason')
       if (canRelayFailedReason !== undefined) {
-        console.log(`canRelay failed: ${canRelayFailedReason.value}. changing status to zero`)
-        fixedTransactionReceipt.status = 0
+        if (this.config.verbose) {
+          console.log(`canRelay failed: ${canRelayFailedReason.value}. changing status to zero`)
+        }
+        fixedTransactionReceipt.status = false
       }
       return fixedTransactionReceipt
     }
@@ -122,8 +134,10 @@ export default class RelayProvider {
         const status: string = transactionRelayedStatus.value.toString()
         // 0 signifies success
         if (status !== '0') {
-          console.log(`reverted relayed transaction, status code ${status}. changing status to zero`)
-          fixedTransactionReceipt.status = 0
+          if (this.config.verbose) {
+            console.log(`reverted relayed transaction, status code ${status}. changing status to zero`)
+          }
+          fixedTransactionReceipt.status = false
         }
       }
     }
@@ -136,16 +150,29 @@ export default class RelayProvider {
   }
 
   private _dumpRelayingResult (relayingResult: RelayingResult): string {
-    let str = 'Ping errors:\n'
+    let str = `Ping errors (${relayingResult.pingErrors.size}):`
     Array.from(relayingResult.pingErrors.keys()).forEach(e => {
       const error = relayingResult.pingErrors.get(e)?.toString() ?? ''
-      str += `${e}: ${error}\n`
+      str += `\n${e} => ${error}\n`
     })
-    str += '\nRelaying errors:\n'
+    str += `Relaying errors (${relayingResult.relayingErrors.size}):\n`
     Array.from(relayingResult.relayingErrors.keys()).forEach(e => {
       const error = relayingResult.relayingErrors.get(e)?.toString() ?? ''
-      str += `${e}: ${error}`
+      str += `${e} => ${error}`
     })
     return str
+  }
+
+  /* wrapping HttpProvider interface */
+
+  host: string
+  connected: boolean
+
+  supportsSubscriptions (): boolean {
+    return this.origProvider.supportsSubscriptions()
+  }
+
+  disconnect (): boolean {
+    return this.origProvider.disconnect()
   }
 }

@@ -1,4 +1,4 @@
-import { Address, IntString } from './types/Aliases'
+import { Address } from './types/Aliases'
 import { defaultEnvironment } from './types/Environments'
 
 const GAS_PRICE_PERCENT = 20
