@@ -56,13 +56,17 @@ export default class ContractInteractor {
     IForwarderContract.setProvider(this.provider, undefined)
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
     return IPaymasterContract.at(address)
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async _createRelayHub (address: Address): Promise<IRelayHubInstance> {
     return IRelayHubContract.at(address)
   }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
   async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
     return IForwarderContract.at(address)
   }
