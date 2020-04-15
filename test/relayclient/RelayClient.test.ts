@@ -4,40 +4,33 @@ import chai from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import { PromiEvent, TransactionReceipt } from 'web3-core'
+import { HttpProvider } from 'web3-core'
 
 import {
   RelayHubInstance,
   StakeManagerInstance,
   TestRecipientInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  PenalizerInstance
-} from '../types/truffle-contracts'
+  TestPaymasterEverythingAcceptedInstance
+} from '../../types/truffle-contracts'
 
-import RelayRequest from '../src/common/EIP712/RelayRequest'
-import RelayClient, { EmptyApprove, GasPricePingFilter } from '../src/relayclient/RelayClient'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
-import { Address, AsyncApprove } from '../src/relayclient/types/Aliases'
+import RelayRequest from '../../src/common/EIP712/RelayRequest'
+import RelayClient from '../../src/relayclient/RelayClient'
+import { defaultEnvironment } from '../../src/relayclient/types/Environments'
+import { Address, AsyncApprove } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { configureGSN, GSNConfig } from '../src/relayclient/GSNConfigurator'
-import replaceErrors from '../src/common/ErrorReplacerJSON'
-import GsnTransactionDetails from '../src/relayclient/types/GsnTransactionDetails'
-import ContractInteractor from '../src/relayclient/ContractInteractor'
-import KnownRelaysManager, { EmptyFilter } from '../src/relayclient/KnownRelaysManager'
-import AccountManager from '../src/relayclient/AccountManager'
-import RelayedTransactionValidator from '../src/relayclient/RelayedTransactionValidator'
-import RelayInfo from '../src/relayclient/types/RelayInfo'
-import HttpClient from '../src/relayclient/HttpClient'
-import HttpWrapper from '../src/relayclient/HttpWrapper'
+import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import replaceErrors from '../../src/common/ErrorReplacerJSON'
+import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
+import RelayInfo from '../../src/relayclient/types/RelayInfo'
 
-import BadHttpClient from './dummies/BadHttpClient'
-import BadContractInteractor from './dummies/BadContractInteractor'
-import BadRelayedTransactionValidator from './dummies/BadRelayedTransactionValidator'
-import { startRelay, stopRelay } from './TestUtils'
+import BadHttpClient from '../dummies/BadHttpClient'
+import BadContractInteractor from '../dummies/BadContractInteractor'
+import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionValidator'
+import { startRelay, stopRelay } from '../TestUtils'
+import { constants } from '@openzeppelin/test-helpers'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
-const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
@@ -45,13 +38,12 @@ const expect = chai.expect
 chai.use(sinonChai)
 
 const localhostOne = 'http://localhost:8090'
-const underlyingProvider = web3.currentProvider
+const underlyingProvider = web3.currentProvider as HttpProvider
 
 contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
-  let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let gasLess: Address
@@ -59,11 +51,6 @@ contract('RelayClient', function (accounts) {
   let forwarderAddress: Address
 
   let relayClient: RelayClient
-  let httpClient: HttpClient
-  let contractInteractor: ContractInteractor
-  let knownRelaysManager: KnownRelaysManager
-  let accountManager: AccountManager
-  let transactionValidator: RelayedTransactionValidator
   let gsnConfig: GSNConfig
   let options: GsnTransactionDetails
   let to: Address
@@ -73,8 +60,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
+    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
     testRecipient = await TestRecipient.new()
     forwarderAddress = await testRecipient.getTrustedForwarder()
     paymaster = await TestPaymasterEverythingAccepted.new()
@@ -87,20 +73,11 @@ contract('RelayClient', function (accounts) {
       stake: 1e18,
       url: 'asd',
       relayOwner: accounts[1],
-      // @ts-ignore
-      EthereumNodeUrl: underlyingProvider.host,
-      GasPricePercent: 20,
-      relaylog: process.env.relaylog
+      EthereumNodeUrl: underlyingProvider.host
     })
 
     gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-    relayClient = RelayClient.new(web3, gsnConfig)
-    const httpWrapper = new HttpWrapper()
-    httpClient = new HttpClient(httpWrapper, { verbose: false })
-    contractInteractor = new ContractInteractor(web3.currentProvider, gsnConfig.contractInteractorConfig)
-    knownRelaysManager = new KnownRelaysManager(web3, gsnConfig.relayHubAddress, contractInteractor, EmptyFilter, gsnConfig.knownRelaysManagerConfig)
-    accountManager = new AccountManager(web3, defaultEnvironment.chainId, gsnConfig.accountManagerConfig)
-    transactionValidator = new RelayedTransactionValidator(contractInteractor, gsnConfig.relayHubAddress, defaultEnvironment.chainId, gsnConfig.transactionValidatorConfig)
+    relayClient = RelayClient.new(underlyingProvider, gsnConfig)
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()
@@ -138,17 +115,20 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should use forceGasPrice if provided', async function () {
-      const forceGasPrice = '77777777777'
+      const forceGasPrice = '0x777777777'
       const optionsForceGas = Object.assign({}, options, { forceGasPrice })
-      const { transaction } = await relayClient.relayTransaction(optionsForceGas)
+      const { transaction, pingErrors, relayingErrors } = await relayClient.relayTransaction(optionsForceGas)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 0)
       assert.equal(parseInt(transaction!.gasPrice.toString('hex'), 16), parseInt(forceGasPrice))
     })
 
     it('should return errors encountered in ping', async function () {
       const badHttpClient = new BadHttpClient(true, false, false)
+      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      dependencyTree.httpClient = badHttpClient
       const relayClient =
-        new RelayClient(web3, badHttpClient, contractInteractor, knownRelaysManager, accountManager,
-          transactionValidator, relayHub.address, GasPricePingFilter, EmptyApprove, gsnConfig.relayClientConfig)
+        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(relayingErrors.size, 0)
@@ -158,9 +138,10 @@ contract('RelayClient', function (accounts) {
 
     it('should return errors encountered in relaying', async function () {
       const badHttpClient = new BadHttpClient(false, true, false)
+      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      dependencyTree.httpClient = badHttpClient
       const relayClient =
-        new RelayClient(web3, badHttpClient, contractInteractor, knownRelaysManager, accountManager,
-          transactionValidator, relayHub.address, GasPricePingFilter, EmptyApprove, gsnConfig.relayClientConfig)
+        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -171,16 +152,16 @@ contract('RelayClient', function (accounts) {
 
   describe('#_calculateDefaultGasPrice()', function () {
     it('should use minimum gas price if calculated is to low', async function () {
-      const minGasPrice = (1e18).toString()
+      const minGasPrice = 1e18
       const gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
         relayClientConfig: {
           minGasPrice
         }
       })
-      const relayClient = RelayClient.new(web3, gsnConfig)
+      const relayClient = RelayClient.new(underlyingProvider, gsnConfig)
       const calculatedGasPrice = await relayClient._calculateGasPrice()
-      assert.equal(calculatedGasPrice, minGasPrice)
+      assert.equal(calculatedGasPrice, `0x${minGasPrice.toString(16)}`)
     })
   })
 
@@ -207,22 +188,17 @@ contract('RelayClient', function (accounts) {
 
     before(function () {
       optionsWithGas = Object.assign({}, options, {
-        gas: '1000000',
-        gasPrice: '22000000000'
+        gas: '0xf4240',
+        gasPrice: '0x51f4d5c00'
       })
-      // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
-      sinon.spy(knownRelaysManager)
-    })
-
-    beforeEach(function () {
-      sinon.resetHistory()
     })
 
     it('should return error if canRelay/acceptRelayedCall fail', async function () {
       const badContractInteractor = new BadContractInteractor(web3.currentProvider, gsnConfig.contractInteractorConfig, true)
+      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      dependencyTree.contractInteractor = badContractInteractor
       const relayClient =
-        new RelayClient(web3, httpClient, badContractInteractor, knownRelaysManager, accountManager,
-          transactionValidator, relayHub.address, GasPricePingFilter, EmptyApprove, gsnConfig.relayClientConfig)
+        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
       assert.equal(error!.message, `canRelay failed: ${BadContractInteractor.message}`)
@@ -230,32 +206,42 @@ contract('RelayClient', function (accounts) {
 
     it('should report relays that timeout to the Known Relays Manager', async function () {
       const badHttpClient = new BadHttpClient(false, false, true)
+      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      dependencyTree.httpClient = badHttpClient
       const relayClient =
-        new RelayClient(web3, badHttpClient, contractInteractor, knownRelaysManager, accountManager,
-          transactionValidator, relayHub.address, GasPricePingFilter, EmptyApprove, gsnConfig.relayClientConfig)
+        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+      // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
+      sinon.spy(dependencyTree.knownRelaysManager)
       await relayClient._attemptRelay(relayInfo, optionsWithGas)
-      expect(knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
+      expect(dependencyTree.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
 
     it('should not report relays if error is not timeout', async function () {
       const badHttpClient = new BadHttpClient(false, true, false)
+      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      dependencyTree.httpClient = badHttpClient
       const relayClient =
-        new RelayClient(web3, badHttpClient, contractInteractor, knownRelaysManager, accountManager,
-          transactionValidator, relayHub.address, GasPricePingFilter, EmptyApprove, gsnConfig.relayClientConfig)
+        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+      // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
+      sinon.spy(dependencyTree.knownRelaysManager)
       await relayClient._attemptRelay(relayInfo, optionsWithGas)
-      expect(knownRelaysManager.saveRelayFailure).to.have.not.been.called
+      expect(dependencyTree.knownRelaysManager.saveRelayFailure).to.have.not.been.called
     })
 
     it('should return error if transaction returned by a relay does not pass validation', async function () {
       const badHttpClient = new BadHttpClient(false, false, false, pingResponse, '0x123')
-      const badTransactionValidator = new BadRelayedTransactionValidator(true, contractInteractor, gsnConfig.relayHubAddress, defaultEnvironment.chainId, gsnConfig.transactionValidatorConfig)
+      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      const badTransactionValidator = new BadRelayedTransactionValidator(true, dependencyTree.contractInteractor, gsnConfig.relayHubAddress, defaultEnvironment.chainId, gsnConfig.transactionValidatorConfig)
+      dependencyTree.httpClient = badHttpClient
+      dependencyTree.transactionValidator = badTransactionValidator
       const relayClient =
-        new RelayClient(web3, badHttpClient, contractInteractor, knownRelaysManager, accountManager,
-          badTransactionValidator, relayHub.address, GasPricePingFilter, EmptyApprove, gsnConfig.relayClientConfig)
+        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+      // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
+      sinon.spy(dependencyTree.knownRelaysManager)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
       assert.equal(error!.message, 'Returned transaction did not pass validation')
-      expect(knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
+      expect(dependencyTree.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
 
     describe('#_prepareRelayHttpRequest()', function () {
@@ -264,9 +250,10 @@ contract('RelayClient', function (accounts) {
       }
 
       it('should use provided approval function', async function () {
+        const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+        dependencyTree.asyncApprove = asyncApprove
         const relayClient =
-          new RelayClient(web3, httpClient, contractInteractor, knownRelaysManager, accountManager,
-            transactionValidator, relayHub.address, GasPricePingFilter, asyncApprove, gsnConfig.relayClientConfig)
+          new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
         const { httpRequest } = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
         assert.equal(httpRequest.approvalData, '0x1234567890')
       })
@@ -276,18 +263,16 @@ contract('RelayClient', function (accounts) {
   describe('#_broadcastRawTx()', function () {
     // TODO: TBD: there has to be other behavior then that. Maybe query the transaction with the nonce somehow?
     it('should return \'wrongNonce\' if broadcast fails with nonce error', async function () {
-      const message = 'the tx doesn\'t have the correct nonce'
-      const web3 = new Web3(underlyingProvider)
-      // eslint-disable-next-line @typescript-eslint/promise-function-async
-      web3.eth.sendSignedTransaction = function (_: string, __?: (error: Error, hash: string) => void): PromiEvent<TransactionReceipt> {
-        throw new Error(message)
-      }
+      const badContractInteractor = new BadContractInteractor(underlyingProvider, gsnConfig.contractInteractorConfig, true)
+      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      dependencyTree.contractInteractor = badContractInteractor
       const transaction = new Transaction('0x')
-      const relayClient = RelayClient.new(web3, gsnConfig)
+      const relayClient =
+        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
       const { receipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
       assert.isUndefined(receipt)
       assert.isTrue(wrongNonce)
-      assert.equal(broadcastError?.message, message)
+      assert.equal(broadcastError?.message, BadContractInteractor.wrongNonceMessage)
     })
   })
 })

@@ -453,10 +453,10 @@
   dependencies:
     bignumber.js "^4.0.2"
 
-"@openeth/truffle-typings@0.0.4":
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/@openeth/truffle-typings/-/truffle-typings-0.0.4.tgz#f663fdb3be3fc56115998247c0e01f2ffa3e4f91"
-  integrity sha512-SvAi9WUv3FL3b6pKyym1ZxpvnvEQY78msGOtRFBLb4ydXxHwkjRJQ+wrI4MHOtDJSr9ihh5tAhzI719p1atxqA==
+"@openeth/truffle-typings@0.0.5":
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/@openeth/truffle-typings/-/truffle-typings-0.0.5.tgz#96710167a9fe92b402e301b19ce6c2c8955c36cd"
+  integrity sha512-Jx7/QpxgEGOoBIClx+p7YxxjVorrbPo8uk31phokeRRckjcUL356kKmAWhwk58OxRfnbF/KrR3ZLFQxVnsVI6A==
   dependencies:
     "@types/chai" "^4.1.4"
     "@types/mocha" "^5.2.5"
@@ -675,6 +675,13 @@
   version "0.12.2"
   resolved "https://registry.yarnpkg.com/@types/caseless/-/caseless-0.12.2.tgz#f65d3d6389e01eeb458bd54dc8f52b95a9463bc8"
   integrity sha512-6ckxMjBBD8URvjB6J3NcnuAn5Pkl7t3TizAg+xdlzzQGSPSmBcXf8KoIH0ua/i+tio+ZRUHEXp0HEmvaR4kt0w==
+
+"@types/chai-as-promised@^7.1.2":
+  version "7.1.2"
+  resolved "https://registry.yarnpkg.com/@types/chai-as-promised/-/chai-as-promised-7.1.2.tgz#2f564420e81eaf8650169e5a3a6b93e096e5068b"
+  integrity sha512-PO2gcfR3Oxa+u0QvECLe1xKXOqYTzCmWf0FhLhjREoW3fPAVamjihL7v1MOVLJLsnAMdLcjkfrs01yvDMwVK4Q==
+  dependencies:
+    "@types/chai" "*"
 
 "@types/chai@*", "@types/chai@4.2.11", "@types/chai@^4.1.4":
   version "4.2.11"

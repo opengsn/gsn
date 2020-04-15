@@ -56,6 +56,7 @@
   },
   "dependencies": {
     "@0x/contracts-utils": "4.4.3",
+    "@types/chai-as-promised": "^7.1.2",
     "abi-decoder": "2.2.2",
     "async-mutex": "^0.2.1",
     "axios": "0.18.1",
@@ -86,7 +87,7 @@
     "@0x/sol-trace": "3.0.8",
     "@0x/subproviders": "4.1.0",
     "@0x/typescript-typings": "5.0.2",
-    "@openeth/truffle-typings": "0.0.4",
+    "@openeth/truffle-typings": "0.0.5",
     "@openzeppelin/test-helpers": "0.5.5",
     "@truffle-types/abi-decoder": "^0.1.1",
     "@types/big.js": "4.0.5",

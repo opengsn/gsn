@@ -72,7 +72,7 @@ module.exports = {
     return 21000 +
       hubOverhead +
       calldataSize * gtxdatanonzero +
-      relayCallGasLimit +
+      parseInt(relayCallGasLimit) +
       parseInt(gasLimits.acceptRelayedCallGasLimit) +
       parseInt(gasLimits.preRelayedCallGasLimit) +
       parseInt(gasLimits.postRelayedCallGasLimit)

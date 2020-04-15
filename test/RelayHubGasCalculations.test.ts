@@ -9,7 +9,10 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import {
   RelayHubInstance,
   TestRecipientInstance,
-  TestPaymasterVariableGasLimitsInstance, StakeManagerInstance, ITrustedForwarderInstance, PenalizerInstance
+  TestPaymasterVariableGasLimitsInstance,
+  StakeManagerInstance,
+  ITrustedForwarderInstance,
+  PenalizerInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
