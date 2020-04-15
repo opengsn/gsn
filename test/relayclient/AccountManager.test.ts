@@ -88,7 +88,7 @@ contract('AccountManager', function (accounts) {
       })
       assert.ok(isSameAddress(relayRequest.relayData.senderAddress.toLowerCase(), rec))
       expect(accountManager._signWithControlledKey).to.have.been.calledWith(keypair, signedData)
-      expect(accountManager._signWithExternallyControlledKey).to.have.not.been.called
+      expect(accountManager._signWithProvider).to.have.not.been.called
     })
     it('should ask provider to sign if key is not controlled', async function () {
       relayRequest.relayData.senderAddress = accounts[0]
@@ -104,7 +104,7 @@ contract('AccountManager', function (accounts) {
         sig: signature
       })
       assert.ok(isSameAddress(relayRequest.relayData.senderAddress.toLowerCase(), rec))
-      expect(accountManager._signWithExternallyControlledKey).to.have.been.calledWith(signedData)
+      expect(accountManager._signWithProvider).to.have.been.calledWith(signedData)
       expect(accountManager._signWithControlledKey).to.have.not.been.called
     })
     it('should throw if web3 fails to sign with requested address', async function () {

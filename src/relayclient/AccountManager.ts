@@ -63,7 +63,7 @@ export default class AccountManager {
     if (keypair != null) {
       signature = this._signWithControlledKey(keypair, signedData)
     } else {
-      signature = await this._signWithExternallyControlledKey(signedData)
+      signature = await this._signWithProvider(signedData)
     }
 
     // Sanity check
@@ -88,7 +88,7 @@ export default class AccountManager {
   // These methods is extracted to
   // a) allow different implementations in the future, and
   // b) allow spying on Account Manager in tests
-  async _signWithExternallyControlledKey (signedData: any): Promise<string> {
+  async _signWithProvider (signedData: any): Promise<string> {
     return getEip712Signature(
       {
         web3: this.web3,
