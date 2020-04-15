@@ -107,10 +107,10 @@ contract('AccountManager', function (accounts) {
       expect(accountManager._signWithExternallyControlledKey).to.have.been.calledWith(signedData)
       expect(accountManager._signWithControlledKey).to.have.not.been.called
     })
-    it('should throw if web3 fails to sign with requested address', function () {
+    it('should throw if web3 fails to sign with requested address', async function () {
       relayRequest.relayData.senderAddress = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
       const promise = accountManager.sign(relayRequest, constants.ZERO_ADDRESS)
-      return expect(promise).to.be.eventually.rejectedWith('Failed to sign relayed transaction for 0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee')
+      await expect(promise).to.be.eventually.rejectedWith('Failed to sign relayed transaction for 0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee')
     })
   })
 })

@@ -119,22 +119,22 @@ contract('RelayProvider', function (accounts) {
       }
     })
 
-    it('should call callback with error if relayTransaction throws', function () {
+    it('should call callback with error if relayTransaction throws', async function () {
       const badRelayClient = new BadRelayClient(true, false, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
       const relayProvider = new RelayProvider(badRelayClient, underlyingProvider, gsnConfig)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
-      return expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call - should not happen. Reason: Error: ${BadRelayClient.message}`)
+      await expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call - should not happen. Reason: Error: ${BadRelayClient.message}`)
     })
 
-    it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', function () {
+    it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
       const badRelayClient = new BadRelayClient(false, true, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
       const relayProvider = new RelayProvider(badRelayClient, underlyingProvider, gsnConfig)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
-      return expect(promisified).to.be.eventually.rejectedWith('Failed to relay call. Results:')
+      await expect(promisified).to.be.eventually.rejectedWith('Failed to relay call. Results:')
     })
 
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {

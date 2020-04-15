@@ -17,7 +17,7 @@ describe('HttpWrapper', () => {
   it('should fail on connection refused', async () => {
     const http = new HttpWrapper()
     const res = http.sendPromise('http://localhost:44321', { jsonrpc: '2.0', method: 'net_version', id: 123 })
-    return expect(res).to.be.eventually.rejectedWith({ error: 'connect ECONNREFUSED 127.0.0.1:44321' })
+    await expect(res).to.be.eventually.rejectedWith({ error: 'connect ECONNREFUSED 127.0.0.1:44321' })
   })
 
   it('should timeout after specified time', async () => {
