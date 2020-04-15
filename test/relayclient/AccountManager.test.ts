@@ -90,7 +90,7 @@ contract('AccountManager', function (accounts) {
       expect(accountManager._signWithControlledKey).to.have.been.calledWith(keypair, signedData)
       expect(accountManager._signWithExternallyControlledKey).to.have.not.been.called
     })
-    it('should ask web3 to sign if key is not controlled', async function () {
+    it('should ask provider to sign if key is not controlled', async function () {
       relayRequest.relayData.senderAddress = accounts[0]
       const signedData = getDataToSign({
         chainId: defaultEnvironment.chainId,

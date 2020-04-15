@@ -111,7 +111,7 @@ contract('RelayProvider', function (accounts) {
             paymaster,
             forwarder,
             to: testRecipient.address,
-            data: '0x2ac0df260000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b68656c6c6f20776f726c64000000000000000000000000000000000000000000'
+            data: testRecipient.contract.methods.emitMessage('hello world').encodeABI()
           }
         ]
       }
