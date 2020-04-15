@@ -16,7 +16,7 @@ import BadRelayClient from '../dummies/BadRelayClient'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
 import chaiAsPromised from 'chai-as-promised'
-import { constants, ether } from '@openzeppelin/test-helpers'
+import { constants, ether, expectEvent } from '@openzeppelin/test-helpers'
 import getDataToSign from '../../src/common/EIP712/Eip712Helper'
 import { getEip712Signature } from '../../src/common/utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
@@ -79,9 +79,11 @@ contract('RelayProvider', function (accounts) {
       paymaster,
       forwarder
     })
-    assert.equal(res.logs[0].event, 'SampleRecipientEmitted')
-    assert.equal(res.logs[0].args.message, 'hello world')
-    assert.equal(res.logs[0].args.realSender, gasLess)
+
+    expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
+      message: 'hello world',
+      realSender: gasLess
+    })
   })
 
   describe('_ethSendTransaction', function () {
@@ -217,7 +219,7 @@ contract('RelayProvider', function (accounts) {
         from: accounts[0],
         gasPrice: '1'
       })
-      assert.equal(canRelayFailedReceiptTruffle.logs[0].event, 'CanRelayFailed')
+      expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'CanRelayFailed')
       canRelayFailedTxReceipt = await web3.eth.getTransactionReceipt(canRelayFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)
@@ -227,8 +229,9 @@ contract('RelayProvider', function (accounts) {
         from: accounts[0],
         gasPrice: '1'
       })
-      assert.equal(innerTxFailedReceiptTruffle.logs[0].event, 'TransactionRelayed')
-      assert.equal(innerTxFailedReceiptTruffle.logs[0].args.status.toString(), '2') // PreRelayFailed
+      expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRelayed', {
+        status: '2'
+      })
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setRevertPreRelayCall(false)
@@ -236,14 +239,15 @@ contract('RelayProvider', function (accounts) {
         from: accounts[0],
         gasPrice: '1'
       })
-      assert.equal(innerTxSuccessReceiptTruffle.logs[0].event, 'SampleRecipientEmitted')
-      assert.equal(innerTxSuccessReceiptTruffle.logs[1].event, 'TransactionRelayed')
-      assert.equal(innerTxSuccessReceiptTruffle.logs[1].args.status.toString(), '0')
+      expectEvent.inLogs(innerTxSuccessReceiptTruffle.logs, 'SampleRecipientEmitted')
+      expectEvent.inLogs(innerTxSuccessReceiptTruffle.logs, 'TransactionRelayed', {
+        status: '0'
+      })
       innerTxSucceedReceipt = await web3.eth.getTransactionReceipt(innerTxSuccessReceiptTruffle.tx)
 
       const notRelayedTxReceiptTruffle = await testRecipient.emitMessage('hello world with gas')
       assert.equal(notRelayedTxReceiptTruffle.logs.length, 1)
-      assert.equal(notRelayedTxReceiptTruffle.logs[0].event, 'SampleRecipientEmitted')
+      expectEvent.inLogs(notRelayedTxReceiptTruffle.logs, 'SampleRecipientEmitted')
       notRelayedTxReceipt = await web3.eth.getTransactionReceipt(notRelayedTxReceiptTruffle.tx)
     })
 
