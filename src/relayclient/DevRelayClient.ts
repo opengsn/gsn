@@ -38,7 +38,7 @@ async function waitForRelay (url: string, timeout: number, waitFunction: (res: a
     }
     await sleep(400)
   }
-  throw new Error('timed-out')
+  throw new Error('waitForRelay: timed-out')
 }
 
 interface RunServerReturn {
@@ -111,7 +111,7 @@ class DevKnownRelays { // extends  KnownRelaysManager {
   devRelay?: RelayRegisteredEventInfo
 }
 
-interface DevClientConfig {
+export interface DevClientConfig {
   relayOwner: Address
   workdir?: string
   listenPort?: number
@@ -124,7 +124,7 @@ interface DevClientConfig {
   devMode?: boolean
 }
 
-export default class DevRelayClient extends RelayClient {
+export class DevRelayClient extends RelayClient {
   serverStarted: boolean = false
   httpServer?: HttpServer
   relayServer?: RelayServer
@@ -158,7 +158,7 @@ export default class DevRelayClient extends RelayClient {
   }
 
   // stop background relay
-  stop (): void{
+  async stopRelay (): Promise<void> {
     if (!this.serverStarted) {
       return
     }
@@ -167,6 +167,8 @@ export default class DevRelayClient extends RelayClient {
       this.httpServer = undefined
     }
     if (this.relayServer !== undefined) {
+      // @ts-ignore
+      await this.relayServer.txStoreManager.clearAll()
       this.relayServer.stop()
       this.relayServer = undefined
     }

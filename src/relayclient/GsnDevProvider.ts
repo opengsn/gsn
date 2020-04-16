@@ -1,30 +1,28 @@
 import RelayProvider from './RelayProvider'
-import DevRelayClient from './DevRelayClient'
+import {DevRelayClient, DevClientConfig} from './DevRelayClient'
 import RelayClient from './RelayClient'
 import { HttpProvider } from 'web3-core'
 import { GSNConfig } from './GSNConfigurator'
 
 export default class GsnDevProvider extends RelayProvider {
+
+  devRelayClient : DevRelayClient
+
   /**
-   * create a dev provider.
-   * @param origProvider - the underlying web3 provider
-   * @param relayOptions:
-   *      relayHub - RelayHub address (must be already deployed)
-   *      paymaster - a paymaster to use (must be already deployed)
-   *      (and other RelayProvider options, if needed)
+   * Create a dev provider.
+   * Create a provider that brings up an in-process relay.
    */
+  constructor (origProvider: HttpProvider, gsnConfig: GSNConfig, devConfig: DevClientConfig, devRelayClient?: DevRelayClient) {
 
-  constructor (relayClient: RelayClient | undefined, origProvider: HttpProvider, gsnConfig: GSNConfig) {
-    // @ts-ignore
-    super(origProvider, relayOptions)
-
-    // @ts-ignore
-    this.relayClient = new DevRelayClient(this.relayClient.web3, this.relayClient.config)
+    const client = devRelayClient ?? new DevRelayClient(
+        RelayClient.getDefaultDependencies(origProvider, gsnConfig),
+        gsnConfig.relayHubAddress,
+        gsnConfig.relayClientConfig, devConfig)
+    super(origProvider, gsnConfig, client)
+    this.devRelayClient = client
   }
 
-  // @ts-ignore
-  stop (): void {
-    // @ts-ignore
-    this.relayClient.stop()
+  async stopRelay (): Promise<void> {
+    await this.devRelayClient.stopRelay()
   }
 }

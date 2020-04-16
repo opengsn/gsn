@@ -30,7 +30,7 @@ export default class RelayProvider implements HttpProvider {
    * @param origProvider - the underlying web3 provider
    * @param gsnConfig
    */
-  constructor (relayClient: RelayClient | undefined, origProvider: HttpProvider, gsnConfig: GSNConfig) {
+  constructor (origProvider: HttpProvider, gsnConfig: GSNConfig, relayClient?: RelayClient) {
     this.host = origProvider.host
     this.connected = origProvider.connected
 

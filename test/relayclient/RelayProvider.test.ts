@@ -65,7 +65,7 @@ contract('RelayProvider', function (accounts) {
     const testRecipient = await TestRecipient.new()
     const forwarder = await testRecipient.getTrustedForwarder()
     const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-    const relayProvider = new RelayProvider(undefined, underlyingProvider, gsnConfig)
+    const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
     // NOTE: in real application its enough to set the provider in web3.
     // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
     // so changing the global one is not enough.
@@ -121,7 +121,7 @@ contract('RelayProvider', function (accounts) {
 
     it('should call callback with error if relayTransaction throws', async function () {
       const badRelayClient = new BadRelayClient(true, false, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
-      const relayProvider = new RelayProvider(badRelayClient, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, badRelayClient)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -130,7 +130,7 @@ contract('RelayProvider', function (accounts) {
 
     it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
       const badRelayClient = new BadRelayClient(false, true, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
-      const relayProvider = new RelayProvider(badRelayClient, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, badRelayClient)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -139,7 +139,7 @@ contract('RelayProvider', function (accounts) {
 
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
       const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-      const relayProvider = new RelayProvider(undefined, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
         if (error != null) {
           reject(error)
@@ -174,7 +174,7 @@ contract('RelayProvider', function (accounts) {
         // @ts-ignore
         RelayHub.network.events[topic] = TestRecipient.events[topic]
       })
-      relayProvider = new RelayProvider(undefined, underlyingProvider, gsnConfig)
+      relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
 
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
       await stakeManager.stakeForAddress(accounts[1], 1000, {
