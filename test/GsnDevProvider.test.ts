@@ -13,9 +13,11 @@ import {
   RelayHubInstance,
   TestPaymasterEverythingAcceptedInstance, TestRecipientInstance
 } from '../types/truffle-contracts'
-import {HttpProvider, WebsocketProvider} from 'web3-core'
+import { HttpProvider, WebsocketProvider } from 'web3-core'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
-import RelayClient from "../src/relayclient/RelayClient";
+import RelayClient from '../src/relayclient/RelayClient'
+
+import GsnDevProvider from '../src/relayclient/GsnDevProvider'
 
 const SampleRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -24,11 +26,9 @@ const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 
-const GsnDevProvider = require('../src/relayclient/GsnDevProvider')
-
 const verbose = false
 
-contract('GsnDevProvider', async ([from, relayOwner]) => {
+contract('GsnDevProvider', ([from, relayOwner]) => {
   let sr: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let relayHub: RelayHubInstance
@@ -37,7 +37,7 @@ contract('GsnDevProvider', async ([from, relayOwner]) => {
   before(async () => {
     const sm = await StakeManager.new()
     const penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(16, sm.address,penalizer.address, { gas: 10000000 })
+    relayHub = await RelayHub.new(16, sm.address, penalizer.address, { gas: 10000000 })
 
     sr = await SampleRecipient.new()
 
@@ -50,39 +50,39 @@ contract('GsnDevProvider', async ([from, relayOwner]) => {
     // @ts-ignore
     wssProvider = new Web3.providers.WebsocketProvider(web3.currentProvider.host)
   })
-  context.only('just with DevRelayClient', () => {
+  context('just with DevRelayClient', () => {
     let sender: string
     let relayClient: DevRelayClient
-    before(async () => {
+    before(() => {
       const gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
         relayClientConfig: {
-          minGasPrice:0
+          minGasPrice: 0
         }
       })
 
-      //TODO: should be able to start without workdir - so relay is completely
+      // TODO: should be able to start without workdir - so relay is completely
       // in-memory (or in a real temporary folder..)
       const workdir = '/tmp/gsn.devprovider.test'
-      fs.rmdirSync(workdir, {recursive: true})
+      fs.rmdirSync(workdir, { recursive: true })
 
-      let provider = wssProvider as unknown as HttpProvider
+      const provider = wssProvider as unknown as HttpProvider
       const dependencyTree = RelayClient.getDefaultDependencies(provider, gsnConfig)
       relayClient = new DevRelayClient(
-          dependencyTree, relayHub.address, gsnConfig.relayClientConfig, {
-            workdir,
-        listenPort: 12345,
-        relayOwner,
-        gasPriceFactor: 1,
-        pctRelayFee: 0,
-        baseRelayFee: 0
-      })
+        dependencyTree, relayHub.address, gsnConfig.relayClientConfig, {
+          workdir,
+          listenPort: 12345,
+          relayOwner,
+          gasPriceFactor: 1,
+          pctRelayFee: 0,
+          baseRelayFee: 0
+        })
 
       const keypair = relayClient.accountManager.newAccount()
       sender = keypair.address
     })
 
-    after(async () => {
+    after(() => {
       relayClient.stop()
     })
 
@@ -92,7 +92,7 @@ contract('GsnDevProvider', async ([from, relayOwner]) => {
         to: sr.address,
         forwarder: await sr.getTrustedForwarder(),
         paymaster: paymaster.address,
-        gas: '0x'+1e6.toString(16),
+        gas: '0x' + 1e6.toString(16),
         data: sr.contract.methods.emitMessage('hello').encodeABI()
       })
       const events = await sr.contract.getPastEvents()
@@ -102,7 +102,8 @@ contract('GsnDevProvider', async ([from, relayOwner]) => {
   })
   context('using GsnDevProvider', () => {
     let devProvider: any
-    before(async () => {
+    before(() => {
+      // @ts-ignore
       devProvider = new GsnDevProvider(wssProvider, {
         verbose,
         relayOwner,
@@ -112,7 +113,7 @@ contract('GsnDevProvider', async ([from, relayOwner]) => {
 
       SampleRecipient.web3.setProvider(devProvider)
     })
-    after(async () => {
+    after(() => {
       devProvider.stop()
     })
 
