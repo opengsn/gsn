@@ -1,9 +1,11 @@
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { ContractInteractorConfig } from '../../src/relayclient/GSNConfigurator'
+import { TransactionReceipt } from 'web3-core'
 
 export default class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'
+  static readonly wrongNonceMessage = 'the tx doesn\'t have the correct nonce'
 
   private readonly failValidateARC: boolean
 
@@ -21,5 +23,10 @@ export default class BadContractInteractor extends ContractInteractor {
       }
     }
     return super.validateAcceptRelayCall(relayRequest, signature, approvalData, relayHubAddress)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
+    throw new Error(BadContractInteractor.wrongNonceMessage)
   }
 }

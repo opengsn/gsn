@@ -1,4 +1,4 @@
-import RelayProvider from "./RelayProvider";
+import RelayProvider from './RelayProvider'
 import DevRelayClient from './DevRelayClient'
 
 class GsnDevProvider extends RelayProvider {

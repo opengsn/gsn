@@ -7,23 +7,20 @@ pragma experimental ABIEncoderV2;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 import "./utils/EIP712Sig.sol";
 import "./utils/GSNTypes.sol";
 import "./utils/GsnUtils.sol";
-import "./utils/RLPReader.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/ITrustedForwarder.sol";
 import "./BaseRelayRecipient.sol";
 import "./StakeManager.sol";
+import "./Penalizer.sol";
 
 contract RelayHub is IRelayHub {
 
     string constant public COMMIT_ID = "$Id$";
-
-    using ECDSA for bytes32;
 
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
     uint256 constant private MINIMUM_STAKE = 1 ether;
@@ -44,7 +41,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 38063;
+    uint256 constant private GAS_OVERHEAD = 37770;
 
     function getHubOverhead() external view returns (uint256) {
         return GAS_OVERHEAD;
@@ -74,11 +71,13 @@ contract RelayHub is IRelayHub {
     }
 
 
-    EIP712Sig private eip712sig;
-    StakeManager private stakeManager;
-    constructor (uint256 _gtxdatanonzero, StakeManager _stakeManager) public {
+    EIP712Sig public eip712sig;
+    StakeManager public stakeManager;
+    Penalizer public penalizer;
+    constructor (uint256 _gtxdatanonzero, StakeManager _stakeManager, Penalizer _penalizer) public {
         eip712sig = new EIP712Sig(address(this));
         stakeManager = _stakeManager;
+        penalizer = _penalizer;
         gtxdatanonzero = _gtxdatanonzero;
     }
 
@@ -183,7 +182,7 @@ contract RelayHub is IRelayHub {
         returnValue = abi.decode(ret, (string));
     }
 
-    function getAndValidateGasLimits(GSNTypes.GasData memory gasData, address paymaster)
+    function getAndValidateGasLimits(uint256 initialGas, GSNTypes.GasData memory gasData, address paymaster)
     private
     view
     returns (uint256 maxPossibleGas, GSNTypes.GasLimits memory gasLimits)
@@ -200,7 +199,7 @@ contract RelayHub is IRelayHub {
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
         require(
-            gasleft() >= GAS_RESERVE + requiredGas,
+            initialGas >= GAS_RESERVE + requiredGas,
             "Not enough gas left for recipientCallsAtomic to complete");
 
         // The maximum possible charge is the cost of transaction assuming all bytes of calldata are non-zero and
@@ -248,7 +247,7 @@ contract RelayHub is IRelayHub {
         GSNTypes.GasLimits memory gasLimits;
         {
             uint256 maxPossibleGas;
-            (maxPossibleGas, gasLimits) = getAndValidateGasLimits(relayRequest.gasData, relayRequest.relayData.paymaster);
+            (maxPossibleGas, gasLimits) = getAndValidateGasLimits(initialGas, relayRequest.gasData, relayRequest.relayData.paymaster);
 
             // We now verify the legitimacy of the transaction (it must be signed by the sender, and not be replayed),
             // and that the paymaster will agree to be charged for it.
@@ -413,85 +412,12 @@ contract RelayHub is IRelayHub {
         return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
     }
 
-    struct Transaction {
-        uint256 nonce;
-        uint256 gasPrice;
-        uint256 gasLimit;
-        address to;
-        uint256 value;
-        bytes data;
+    modifier penalizerOnly () {
+        require(msg.sender == address(penalizer), "Not penalizer");
+        _;
     }
 
-    function decodeTransaction(bytes memory rawTransaction) private pure returns (Transaction memory transaction) {
-        (transaction.nonce,
-        transaction.gasPrice,
-        transaction.gasLimit,
-        transaction.to,
-        transaction.value,
-        transaction.data) = RLPReader.decodeTransaction(rawTransaction);
-        return transaction;
-
-    }
-
-    function penalizeRepeatedNonce(
-        bytes memory unsignedTx1,
-        bytes memory signature1,
-        bytes memory unsignedTx2,
-        bytes memory signature2)
-    public
-    {
-        // Can be called by anyone.
-        // If a relay attacked the system by signing multiple transactions with the same nonce
-        // (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
-        // Check whether unsignedTx1 != unsignedTx2, that both are signed by the same address,
-        // and that unsignedTx1.nonce == unsignedTx2.nonce.
-        // If all conditions are met, relay is considered an "offending relay".
-        // The offending relay will be unregistered immediately, its stake will be forfeited and given
-        // to the address who reported it (msg.sender), thus incentivizing anyone to report offending relays.
-        // If reported via a relay, the forfeited stake is split between
-        // msg.sender (the relay used for reporting) and the address that reported it.
-
-        address addr1 = keccak256(abi.encodePacked(unsignedTx1)).recover(signature1);
-        address addr2 = keccak256(abi.encodePacked(unsignedTx2)).recover(signature2);
-
-        require(addr1 == addr2, "Different signer");
-        require(addr1 != address(0), "ecrecover failed");
-
-        Transaction memory decodedTx1 = decodeTransaction(unsignedTx1);
-        Transaction memory decodedTx2 = decodeTransaction(unsignedTx2);
-
-        // checking that the same nonce is used in both transaction, with both signed by the same address
-        // and the actual data is different
-        // note: we compare the hash of the tx to save gas over iterating both byte arrays
-        require(decodedTx1.nonce == decodedTx2.nonce, "Different nonce");
-
-        bytes memory dataToCheck1 =
-        abi.encodePacked(decodedTx1.data, decodedTx1.gasLimit, decodedTx1.to, decodedTx1.value);
-
-        bytes memory dataToCheck2 =
-        abi.encodePacked(decodedTx2.data, decodedTx2.gasLimit, decodedTx2.to, decodedTx2.value);
-
-        require(keccak256(dataToCheck1) != keccak256(dataToCheck2), "tx is equal");
-
-        penalize(addr1);
-    }
-
-    function penalizeIllegalTransaction(bytes memory unsignedTx, bytes memory signature) public {
-        Transaction memory decodedTx = decodeTransaction(unsignedTx);
-        if (decodedTx.to == address(this)) {
-            bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
-            require(
-                selector != this.relayCall.selector,
-                "Legal relay transaction");
-        }
-
-        address relay = keccak256(abi.encodePacked(unsignedTx)).recover(signature);
-        require(relay != address(0), "ecrecover failed");
-
-        penalize(relay);
-    }
-
-    function penalize(address relayWorker) private {
+    function penalize(address relayWorker, address payable beneficiary) external penalizerOnly {
         address relayManager = workerToManager[relayWorker];
         // The worker must be controlled by a manager with a locked stake
         require(relayManager != address(0), "Unknown relay worker");
@@ -500,6 +426,6 @@ contract RelayHub is IRelayHub {
             "relay manager not staked"
         );
         (uint256 totalStake, , , ) = stakeManager.stakes(relayManager);
-        stakeManager.penalizeRelayManager(relayManager, msg.sender, totalStake);
+        stakeManager.penalizeRelayManager(relayManager, beneficiary, totalStake);
     }
 }

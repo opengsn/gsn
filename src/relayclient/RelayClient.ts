@@ -1,12 +1,11 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
-import { TransactionReceipt } from 'web3-core'
-import Web3 from 'web3'
+import { HttpProvider, TransactionReceipt } from 'web3-core'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import RelayInfo from './types/RelayInfo'
-import { Address, AsyncApprove, IntString, PingFilter } from './types/Aliases'
+import { Address, AsyncApprove, PingFilter } from './types/Aliases'
 import { defaultEnvironment } from './types/Environments'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
@@ -23,7 +22,6 @@ export const EmptyApprove: AsyncApprove = async (): Promise<string> => {
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
   if (
-    pingResponse.MinGasPrice != null &&
     gsnTransactionDetails.gasPrice != null &&
     parseInt(pingResponse.MinGasPrice) > parseInt(gsnTransactionDetails.gasPrice)
   ) {
@@ -42,68 +40,71 @@ export interface RelayingResult {
   relayingErrors: Map<string, Error>
 }
 
+export interface TmpDependencyTree {
+  httpClient: HttpClient
+  contractInteractor: ContractInteractor
+  knownRelaysManager: KnownRelaysManager
+  accountManager: AccountManager
+  transactionValidator: RelayedTransactionValidator
+  pingFilter: PingFilter
+  asyncApprove: AsyncApprove
+}
 export default class RelayClient {
   readonly config: RelayClientConfig
-  readonly web3: Web3
   private readonly httpClient: HttpClient
   readonly contractInteractor: ContractInteractor
   readonly knownRelaysManager: KnownRelaysManager
   readonly accountManager: AccountManager
   readonly relayHub: Address
   private readonly asyncApprove: AsyncApprove
-  private readonly relayedTransactionValidator: RelayedTransactionValidator
+  private readonly transactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
 
   /**
    * create a RelayClient library object, to force contracts to go through a relay.
-   * @param web3  - the web3 instance to use.
-   * @param httpClient
-   * @param contractInteractor
-   * @param knownRelaysManager
-   * @param accountManager
-   * @param relayedTransactionValidator
-   * @param pingFilter
-   * @param config options
-   * @param relayHub
-   * @param asyncApprove
    */
   constructor (
-    web3: Web3,
-    httpClient: HttpClient,
-    contractInteractor: ContractInteractor,
-    knownRelaysManager: KnownRelaysManager,
-    accountManager: AccountManager,
-    relayedTransactionValidator: RelayedTransactionValidator,
+    dependencyTree: TmpDependencyTree,
     relayHub: Address,
-    pingFilter: PingFilter,
-    asyncApprove: AsyncApprove,
     config: RelayClientConfig
   ) {
     this.config = config
-    this.web3 = web3
-    this.httpClient = httpClient
-    this.contractInteractor = contractInteractor
-    this.knownRelaysManager = knownRelaysManager
-    this.relayedTransactionValidator = relayedTransactionValidator
-    this.accountManager = accountManager
-    this.pingFilter = pingFilter
+    this.httpClient = dependencyTree.httpClient
+    this.contractInteractor = dependencyTree.contractInteractor
+    this.knownRelaysManager = dependencyTree.knownRelaysManager
+    this.transactionValidator = dependencyTree.transactionValidator
+    this.accountManager = dependencyTree.accountManager
+    this.pingFilter = dependencyTree.pingFilter
     this.relayHub = relayHub
-    this.asyncApprove = asyncApprove
+    this.asyncApprove = dependencyTree.asyncApprove
+  }
+
+  static getDefaultDependencies (provider: HttpProvider, gsnConfig: GSNConfig): TmpDependencyTree {
+    const httpWrapper = new HttpWrapper()
+    const httpClient = new HttpClient(httpWrapper, { verbose: false })
+    const accountManager = new AccountManager(provider, defaultEnvironment.chainId, gsnConfig.accountManagerConfig)
+    const contractInteractor = new ContractInteractor(provider, gsnConfig.contractInteractorConfig)
+    const knownRelaysManager = new KnownRelaysManager(gsnConfig.relayHubAddress, contractInteractor, EmptyFilter, gsnConfig.knownRelaysManagerConfig)
+    const transactionValidator = new RelayedTransactionValidator(contractInteractor, gsnConfig.relayHubAddress, defaultEnvironment.chainId, gsnConfig.transactionValidatorConfig)
+    return {
+      httpClient,
+      contractInteractor,
+      knownRelaysManager,
+      accountManager,
+      transactionValidator,
+      pingFilter: GasPricePingFilter,
+      asyncApprove: EmptyApprove
+    }
   }
 
   /**
    * Create an instance of {@link RelayClient} with all default implementations of its dependencies.
-   * @param web3
+   * @param provider
    * @param gsnConfig
    */
-  static new (web3: Web3, gsnConfig: GSNConfig): RelayClient {
-    const httpWrapper = new HttpWrapper()
-    const httpClient = new HttpClient(httpWrapper, { verbose: false })
-    const contractInteractor = new ContractInteractor(web3.currentProvider, gsnConfig.contractInteractorConfig)
-    const knownRelaysManager = new KnownRelaysManager(web3, gsnConfig.relayHubAddress, contractInteractor, EmptyFilter, gsnConfig.knownRelaysManagerConfig)
-    const accountManager = new AccountManager(web3, defaultEnvironment.chainId, gsnConfig.accountManagerConfig)
-    const transactionValidator = new RelayedTransactionValidator(contractInteractor, gsnConfig.relayHubAddress, defaultEnvironment.chainId, gsnConfig.transactionValidatorConfig)
-    return new RelayClient(web3, httpClient, contractInteractor, knownRelaysManager, accountManager, transactionValidator, gsnConfig.relayHubAddress, GasPricePingFilter, EmptyApprove, gsnConfig.relayClientConfig)
+  static new (provider: HttpProvider, gsnConfig: GSNConfig): RelayClient {
+    const dependencyTree = RelayClient.getDefaultDependencies(provider, gsnConfig)
+    return new RelayClient(dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
   }
 
   /**
@@ -121,12 +122,15 @@ export default class RelayClient {
       console.log('txHash= ' + txHash)
     }
     try {
-      const receipt = await this.web3.eth.sendSignedTransaction(rawTx)
+      const receipt = await this.contractInteractor.sendSignedTransaction(rawTx)
       return { receipt }
     } catch (broadcastError) {
       // don't display error for the known-good cases
       if (broadcastError?.message.match(/the tx doesn't have the correct nonce|known transaction/) != null) {
-        return { wrongNonce: true, broadcastError }
+        return {
+          wrongNonce: true,
+          broadcastError
+        }
       }
       return { broadcastError }
     }
@@ -136,12 +140,9 @@ export default class RelayClient {
     // TODO: should have a better strategy to decide how often to refresh known relays
     await this.knownRelaysManager.refresh()
     gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
-    if (gsnTransactionDetails.gasPrice == null) {
-      gsnTransactionDetails.gas = await this._calculateGasPrice()
-    }
     if (gsnTransactionDetails.gas == null) {
-      const estimated = await this.web3.eth.estimateGas(gsnTransactionDetails)
-      gsnTransactionDetails.gas = estimated.toString()
+      const estimated = await this.contractInteractor.estimateGas(gsnTransactionDetails)
+      gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
     const relaySelectionManager = new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config.verbose)
     const relayingErrors = new Map<string, Error>()
@@ -163,14 +164,14 @@ export default class RelayClient {
     }
   }
 
-  async _calculateGasPrice (): Promise<IntString> {
+  async _calculateGasPrice (): Promise<PrefixedHexString> {
     const pct: number = this.config.gasPriceFactorPercent
-    const networkGasPrice = await this.web3.eth.getGasPrice()
-    let gasPrice = Math.round(parseInt(networkGasPrice) * (pct + 100) / 100).toString()
-    if (this.config.minGasPrice != null && parseInt(gasPrice) < parseInt(this.config.minGasPrice)) {
+    const networkGasPrice = await this.contractInteractor.getGasPrice()
+    let gasPrice = Math.round(parseInt(networkGasPrice) * (pct + 100) / 100)
+    if (this.config.minGasPrice != null && gasPrice < this.config.minGasPrice) {
       gasPrice = this.config.minGasPrice
     }
-    return gasPrice
+    return `0x${gasPrice.toString(16)}`
   }
 
   async _attemptRelay (
@@ -196,7 +197,7 @@ export default class RelayClient {
       return { error }
     }
     const transaction = new Transaction(hexTransaction)
-    if (!this.relayedTransactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
+    if (!this.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
       this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.eventInfo.relayManager, relayInfo.eventInfo.relayUrl)
       return { error: new Error('Returned transaction did not pass validation') }
     }
@@ -212,11 +213,16 @@ export default class RelayClient {
   ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
     const senderNonce = await this.contractInteractor.getSenderNonce(gsnTransactionDetails.from, gsnTransactionDetails.forwarder)
     const relayWorker = relayInfo.pingResponse.RelayServerAddress
-    const gasPrice = gsnTransactionDetails.gasPrice
-    const gasLimit = gsnTransactionDetails.gas
-    if (gasPrice == null || gasLimit == null) {
+    const gasPriceHex = gsnTransactionDetails.gasPrice
+    const gasLimitHex = gsnTransactionDetails.gas
+    if (gasPriceHex == null || gasLimitHex == null) {
       throw new Error('RelayClient internal exception. Gas price or gas limit still not calculated. Cannot happen.')
     }
+    if (gasPriceHex.indexOf('0x') !== 0 || gasLimitHex.indexOf('0x') !== 0) {
+      throw new Error(`Invalid hex string: ${gasPriceHex} | ${gasLimitHex}`)
+    }
+    const gasLimit = parseInt(gasLimitHex, 16).toString()
+    const gasPrice = parseInt(gasPriceHex, 16).toString()
     const relayRequest = new RelayRequest({
       senderAddress: gsnTransactionDetails.from,
       target: gsnTransactionDetails.to,
@@ -224,8 +230,8 @@ export default class RelayClient {
       senderNonce,
       pctRelayFee: relayInfo.eventInfo.pctRelayFee,
       baseRelayFee: relayInfo.eventInfo.baseRelayFee,
-      gasPrice: gasPrice,
-      gasLimit: gasLimit,
+      gasPrice,
+      gasLimit,
       paymaster: gsnTransactionDetails.paymaster,
       relayWorker
     })
@@ -233,7 +239,7 @@ export default class RelayClient {
     const signature = await this.accountManager.sign(relayRequest, gsnTransactionDetails.forwarder)
     const approvalData = await this.asyncApprove(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
-    const transactionCount = await this.web3.eth.getTransactionCount(relayWorker)
+    const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
