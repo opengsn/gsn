@@ -4,20 +4,15 @@ import RelayRequest from '../common/EIP712/RelayRequest'
 import { isSameAddress } from '../common/utils'
 import ContractInteractor from './ContractInteractor'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
-import { Address } from './types/Aliases'
-import { TransactionValidatorConfig } from './GSNConfigurator'
+import { GSNConfig } from './GSNConfigurator'
 
 export default class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
-  private readonly chainId: number
-  private readonly config: TransactionValidatorConfig
-  private readonly relayHubAddress: Address
+  private readonly config: GSNConfig
 
-  constructor (contractInteractor: ContractInteractor, relayHubAddress: Address, chainId: number, config: TransactionValidatorConfig) {
+  constructor (contractInteractor: ContractInteractor, config: GSNConfig) {
     this.contractInteractor = contractInteractor
     this.config = config
-    this.chainId = chainId
-    this.relayHubAddress = relayHubAddress
   }
 
   /**
@@ -37,7 +32,7 @@ export default class RelayedTransactionValidator {
     }
 
     const message = transaction.hash(false)
-    const signer = bufferToHex(pubToAddress(ecrecover(message, transaction.v[0], transaction.r, transaction.s, this.chainId)))
+    const signer = bufferToHex(pubToAddress(ecrecover(message, transaction.v[0], transaction.r, transaction.s, this.config.chainId)))
 
     const relayRequestOrig = new RelayRequest({
       senderAddress: transactionJsonRequest.from,
@@ -55,7 +50,7 @@ export default class RelayedTransactionValidator {
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData)
 
     if (
-      isSameAddress(bufferToHex(transaction.to), this.relayHubAddress) &&
+      isSameAddress(bufferToHex(transaction.to), this.config.relayHubAddress) &&
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(transactionJsonRequest.relayWorker, signer)
     ) {
@@ -74,7 +69,7 @@ export default class RelayedTransactionValidator {
 
       return true
     } else {
-      console.error('validateRelayResponse: req', relayRequestAbiEncode, this.relayHubAddress, transactionJsonRequest.relayWorker)
+      console.error('validateRelayResponse: req', relayRequestAbiEncode, this.config.relayHubAddress, transactionJsonRequest.relayWorker)
       console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to), signer)
       return false
     }

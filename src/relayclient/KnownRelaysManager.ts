@@ -4,7 +4,7 @@ import { Address, RelayFilter } from './types/Aliases'
 import { IRelayHubInstance } from '../../types/truffle-contracts'
 import RelayFailureInfo from './types/RelayFailureInfo'
 import ContractInteractor from './ContractInteractor'
-import { KnownRelaysManagerConfig } from './GSNConfigurator'
+import { GSNConfig } from './GSNConfigurator'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -14,14 +14,12 @@ export default class KnownRelaysManager {
   private readonly latestRelayFailures = new Map<string, RelayFailureInfo>()
   private readonly activeRelays = new Set<RelayRegisteredEventInfo>()
   private readonly contractInteractor: ContractInteractor
-  private readonly config: KnownRelaysManagerConfig
+  private readonly config: GSNConfig
   private readonly relayFilter: RelayFilter
-  private readonly relayHubAddress: Address
 
   private latestScannedBlock: number = 0
 
-  constructor (relayHubAddress: Address, contractInteractor: ContractInteractor, relayFilter: RelayFilter, config: KnownRelaysManagerConfig) {
-    this.relayHubAddress = relayHubAddress
+  constructor (contractInteractor: ContractInteractor, relayFilter: RelayFilter, config: GSNConfig) {
     this.config = config
     this.relayFilter = relayFilter
     this.contractInteractor = contractInteractor
@@ -57,7 +55,7 @@ export default class KnownRelaysManager {
    * initializes an array {@link activeRelays}
    */
   async refresh (): Promise<void> {
-    const relayHub = await this.contractInteractor._createRelayHub(this.relayHubAddress)
+    const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
     const relayManagers = await this._fetchRecentlyActiveRelayManagers(relayHub)
     const relayServerRegisteredTopic = event2topic(relayHub.contract, 'RelayServerRegistered')
 
@@ -100,7 +98,7 @@ export default class KnownRelaysManager {
     const eventTopics = event2topic(relayHub.contract,
       ['RelayServerRegistered', 'TransactionRelayed', 'CanRelayFailed'])
 
-    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(this.relayHubAddress, 'allEvents', {
+    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(this.config.relayHubAddress, 'allEvents', {
       fromBlock,
       toBlock,
       topics: [eventTopics]

@@ -1,9 +1,9 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
 import { HttpProvider } from 'web3-core'
-import RelayClient, { GasPricePingFilter } from '../../src/relayclient/RelayClient'
+import { GasPricePingFilter } from '../../src/relayclient'
 import RelaySelectionManager from '../../src/relayclient/RelaySelectionManager'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import { configureGSN, getDependencies } from '../../src/relayclient/GSNConfigurator'
 import { PingFilter } from '../../src/relayclient/types/Aliases'
 import RelayInfo from '../../src/relayclient/types/RelayInfo'
 
@@ -12,13 +12,13 @@ const { expect, assert } = require('chai').use(chaiAsPromised)
 contract('RelaySelectionManager', function () {
   const sliceSize = 3
   const verbose = false
-  const dependencyTree = RelayClient.getDefaultDependencies(web3.currentProvider as HttpProvider, configureGSN({}))
+  const dependencyTree = getDependencies(configureGSN({}), web3.currentProvider as HttpProvider)
   const stubGetRelaysSorted = sinon.stub(dependencyTree.knownRelaysManager, 'getRelaysSorted')
   const errors = new Map<string, Error>()
-  const config = {
+  const config = configureGSN({
     sliceSize,
     verbose
-  }
+  })
   const eventInfo = {
     relayManager: '',
     relayUrl: '',
@@ -92,10 +92,10 @@ contract('RelaySelectionManager', function () {
     it('should return \'relaySliceSize\' relays if available', function () {
       stubGetRelaysSorted.returns([winner.eventInfo, winner.eventInfo, winner.eventInfo, winner.eventInfo, winner.eventInfo])
       for (let i = 1; i < 5; i++) {
-        const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, {
+        const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
           sliceSize: i,
           verbose
-        })
+        }))
         const returned = rsm._getNextSlice()
         assert.equal(returned.length, i)
       }
@@ -104,10 +104,10 @@ contract('RelaySelectionManager', function () {
     it('should return all remaining relays if less then \'relaySliceSize\' remains', function () {
       const relaysLeft = [winner.eventInfo, winner.eventInfo]
       stubGetRelaysSorted.returns(relaysLeft)
-      const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, {
+      const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
         sliceSize: 7,
         verbose
-      })
+      }))
       const returned = rsm._getNextSlice()
       assert.deepEqual(returned, relaysLeft)
     })

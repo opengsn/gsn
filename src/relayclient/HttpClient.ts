@@ -3,12 +3,13 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import PingResponse from '../common/PingResponse'
 import HttpWrapper from './HttpWrapper'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
+import { GSNConfig } from './GSNConfigurator'
 
 export default class HttpClient {
   private readonly httpWrapper: HttpWrapper
-  private readonly config: { verbose: boolean }
+  private readonly config: GSNConfig
 
-  constructor (httpWrapper: HttpWrapper, config: { verbose: boolean }) {
+  constructor (httpWrapper: HttpWrapper, config: GSNConfig) {
     this.httpWrapper = httpWrapper
     this.config = config
   }

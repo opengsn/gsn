@@ -11,7 +11,6 @@ import Web3 from 'web3'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { startRelay, stopRelay } from '../TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import RelayClient, { TmpDependencyTree } from '../../src/relayclient/RelayClient'
 import BadRelayClient from '../dummies/BadRelayClient'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
@@ -65,7 +64,7 @@ contract('RelayProvider', function (accounts) {
     const testRecipient = await TestRecipient.new()
     const forwarder = await testRecipient.getTrustedForwarder()
     const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-    const relayProvider = new RelayProvider(undefined, underlyingProvider, gsnConfig)
+    const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
     // NOTE: in real application its enough to set the provider in web3.
     // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
     // so changing the global one is not enough.
@@ -91,14 +90,12 @@ contract('RelayProvider', function (accounts) {
     let testRecipient: TestRecipientInstance
     let gsnConfig: GSNConfig
     let jsonRpcPayload: JsonRpcPayload
-    let dependencyTree: TmpDependencyTree
 
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new()
       const forwarder = await testRecipient.getTrustedForwarder()
       gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-      dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
       // call to emitMessage('hello world')
       jsonRpcPayload = {
         jsonrpc: '2.0',
@@ -120,8 +117,8 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should call callback with error if relayTransaction throws', async function () {
-      const badRelayClient = new BadRelayClient(true, false, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
-      const relayProvider = new RelayProvider(badRelayClient, underlyingProvider, gsnConfig)
+      const badRelayClient = new BadRelayClient(true, false, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, {}, badRelayClient)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -129,8 +126,8 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
-      const badRelayClient = new BadRelayClient(false, true, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
-      const relayProvider = new RelayProvider(badRelayClient, underlyingProvider, gsnConfig)
+      const badRelayClient = new BadRelayClient(false, true, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, {}, badRelayClient)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -139,7 +136,7 @@ contract('RelayProvider', function (accounts) {
 
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
       const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-      const relayProvider = new RelayProvider(undefined, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
         if (error != null) {
           reject(error)
@@ -164,7 +161,7 @@ contract('RelayProvider', function (accounts) {
     let notRelayedTxReceipt: BaseTransactionReceipt
     let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
     let relayRequest: RelayRequest
-    // It is not stirctly necessary to make this test against actual tx receipt, but I prefer to do it anyway
+    // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new()
@@ -174,7 +171,7 @@ contract('RelayProvider', function (accounts) {
         // @ts-ignore
         RelayHub.network.events[topic] = TestRecipient.events[topic]
       })
-      relayProvider = new RelayProvider(undefined, underlyingProvider, gsnConfig)
+      relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
 
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
       await stakeManager.stakeForAddress(accounts[1], 1000, {
