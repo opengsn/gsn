@@ -5,6 +5,7 @@ import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
 import { PingFilter } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import replaceErrors from '../common/ErrorReplacerJSON'
+import { RelaySelectionManagerConfig } from './GSNConfigurator'
 
 interface RaceResult {
   winner?: RelayInfo
@@ -14,7 +15,7 @@ interface RaceResult {
 export default class RelaySelectionManager {
   private readonly knownRelaysManager: KnownRelaysManager
   private readonly httpClient: HttpClient
-  private readonly verbose: boolean
+  private readonly config: RelaySelectionManagerConfig
   private readonly pingFilter: PingFilter
   private readonly gsnTransactionDetails: GsnTransactionDetails
 
@@ -22,12 +23,12 @@ export default class RelaySelectionManager {
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
-  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, verbose: boolean) {
+  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, config: RelaySelectionManagerConfig) {
     this.gsnTransactionDetails = gsnTransactionDetails
     this.knownRelaysManager = knownRelaysManager
     this.httpClient = httpClient
     this.pingFilter = pingFilter
-    this.verbose = verbose
+    this.config = config
   }
 
   /**
@@ -49,7 +50,7 @@ export default class RelaySelectionManager {
   }
 
   async _nextRelayInternal (relays: RelayRegisteredEventInfo[]): Promise<RelayInfo | undefined> {
-    if (this.verbose) {
+    if (this.config.verbose) {
       console.log('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
     }
     const filterRelayPingPromises = relays
@@ -60,7 +61,7 @@ export default class RelaySelectionManager {
         }
       })
     const raceResult = await this._raceToSuccess(filterRelayPingPromises)
-    if (this.verbose) {
+    if (this.config.verbose) {
       console.log(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
     }
     this._handleRaceResults(raceResult)
@@ -71,7 +72,7 @@ export default class RelaySelectionManager {
     if (this.remainingRelays == null) {
       this.remainingRelays = this.knownRelaysManager.getRelaysSorted()
     }
-    const bulkSize = Math.min(3, this.remainingRelays.length)
+    const bulkSize = Math.min(this.config.sliceSize, this.remainingRelays.length)
     const slice = this.remainingRelays.slice(0, bulkSize)
     // we must verify uniqueness of URLs as they are used as keys in maps
     // https://stackoverflow.com/a/45125209
@@ -85,12 +86,12 @@ export default class RelaySelectionManager {
    * @returns JSON response from the relay server, but adds the requested URL to it :'-(
    */
   async _getRelayAddressPing (eventInfo: RelayRegisteredEventInfo): Promise<RelayInfo> {
-    if (this.verbose) {
+    if (this.config.verbose) {
       console.log(`getRelayAddressPing URL: ${eventInfo.relayUrl}`)
     }
     const pingResponse = await this.httpClient.getPingResponse(eventInfo.relayUrl)
 
-    if (pingResponse.Ready == null) {
+    if (!pingResponse.Ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
     }
     this.pingFilter(pingResponse, this.gsnTransactionDetails)

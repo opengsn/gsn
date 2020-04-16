@@ -145,7 +145,7 @@ export default class RelayClient {
       const estimated = await this.contractInteractor.estimateGas(gsnTransactionDetails)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
-    const relaySelectionManager = new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config.verbose)
+    const relaySelectionManager = new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config.relaySelectionManagerConfig)
     const relayingErrors = new Map<string, Error>()
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined

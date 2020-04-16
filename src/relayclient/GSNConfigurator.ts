@@ -14,7 +14,11 @@ const defaultGsnConfig: GSNConfig = {
     gasPriceFactorPercent: GAS_PRICE_PERCENT,
     minGasPrice: 0,
     maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
-    verbose: false
+    verbose: false,
+    relaySelectionManagerConfig: {
+      sliceSize: 3,
+      verbose: false
+    }
   },
   knownRelaysManagerConfig: {
     relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
@@ -113,11 +117,17 @@ export interface RelayProviderConfig {
   verbose: boolean
 }
 
+export interface RelaySelectionManagerConfig {
+  verbose: boolean
+  sliceSize: number
+}
+
 export interface RelayClientConfig {
   verbose: boolean
   gasPriceFactorPercent: number
   minGasPrice: number
   maxRelayNonceGap: number
+  relaySelectionManagerConfig: RelaySelectionManagerConfig
 }
 
 export interface GSNConfig {
