@@ -32,50 +32,8 @@ const defaultGsnConfig: GSNConfig = {
  * Yet it is tedious to provide default values to all configuration fields on new instance creation.
  * This helper allows users to provide only the overrides and the remainder of values will be set automatically.
  */
-export function configureGSN (partialConfig: RecursivePartial<GSNConfig>): GSNConfig {
-  return mergeDeep({}, defaultGsnConfig, partialConfig) as GSNConfig
-}
-
-type RecursivePartial<T> = {
-  [P in keyof T]?: RecursivePartial<T[P]>;
-}
-
-/**
- * Simple object check.
- * @param item
- * @returns {boolean}
- */
-function isObject (item: any): boolean {
-  return (item != null && typeof item === 'object' && !Array.isArray(item))
-}
-
-/**
- * Deep merge two objects.
- * @param target
- * @param sources
- */
-function mergeDeep (target: any, ...sources: any[]): Object {
-  if (sources.length === 0) {
-    return target
-  }
-  const source = sources.shift()
-  if (source != null) {
-    if (isObject(target) && isObject(source)) {
-      for (const key in source) {
-        if (Object.prototype.hasOwnProperty.call(source, key)) {
-          if (isObject(source[key])) {
-            if (target[key] == null) {
-              Object.assign(target, { [key]: {} })
-            }
-            mergeDeep(target[key], source[key])
-          } else {
-            Object.assign(target, { [key]: source[key] })
-          }
-        }
-      }
-    }
-  }
-  return mergeDeep(target, ...sources)
+export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
+  return Object.assign({}, defaultGsnConfig, partialConfig) as GSNConfig
 }
 
 /**
