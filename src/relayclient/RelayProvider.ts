@@ -6,7 +6,7 @@ import { HttpProvider } from 'web3-core'
 import relayHubAbi from '../common/interfaces/IRelayHub'
 import RelayClient, { RelayingResult } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { GSNConfig, RelayProviderConfig } from './GSNConfigurator'
+import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Transaction } from 'ethereumjs-tx'
 
 abiDecoder.addABI(relayHubAbi)
@@ -22,22 +22,24 @@ export default class RelayProvider implements HttpProvider {
   private readonly origProvider: HttpProvider
   private readonly origProviderSend: any
   private readonly relayClient: RelayClient
-  private readonly config: RelayProviderConfig
+  private readonly config: GSNConfig
 
   /**
    * create a proxy provider, to relay transaction
+   * @param overrideDependencies
    * @param relayClient
    * @param origProvider - the underlying web3 provider
    * @param gsnConfig
    */
-  constructor (origProvider: HttpProvider, gsnConfig: GSNConfig, relayClient?: RelayClient) {
+  constructor (origProvider: HttpProvider, gsnConfig: Partial<GSNConfig>, overrideDependencies?: Partial<GSNDependencies>, relayClient?: RelayClient) {
+    const config = configureGSN(gsnConfig)
     this.host = origProvider.host
     this.connected = origProvider.connected
 
     this.origProvider = origProvider
-    this.config = gsnConfig.relayProviderConfig
+    this.config = config
     this.origProviderSend = this.origProvider.send.bind(this.origProvider)
-    this.relayClient = relayClient ?? RelayClient.new(origProvider, gsnConfig)
+    this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
   }
 
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {

@@ -5,16 +5,14 @@ import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import RelayInfo from './types/RelayInfo'
-import { Address, AsyncApprove, PingFilter } from './types/Aliases'
-import { defaultEnvironment } from './types/Environments'
+import { AsyncApprove, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import RelaySelectionManager from './RelaySelectionManager'
-import KnownRelaysManager, { EmptyFilter } from './KnownRelaysManager'
+import KnownRelaysManager from './KnownRelaysManager'
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
-import HttpWrapper from './HttpWrapper'
-import { GSNConfig, RelayClientConfig } from './GSNConfigurator'
+import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
 export const EmptyApprove: AsyncApprove = async (): Promise<string> => {
   return Promise.resolve('0x')
@@ -40,22 +38,13 @@ export interface RelayingResult {
   relayingErrors: Map<string, Error>
 }
 
-export interface TmpDependencyTree {
-  httpClient: HttpClient
-  contractInteractor: ContractInteractor
-  knownRelaysManager: KnownRelaysManager
-  accountManager: AccountManager
-  transactionValidator: RelayedTransactionValidator
-  pingFilter: PingFilter
-  asyncApprove: AsyncApprove
-}
+
 export default class RelayClient {
-  readonly config: RelayClientConfig
+  readonly config: GSNConfig
   private readonly httpClient: HttpClient
   readonly contractInteractor: ContractInteractor
   readonly knownRelaysManager: KnownRelaysManager
   readonly accountManager: AccountManager
-  readonly relayHub: Address
   private readonly asyncApprove: AsyncApprove
   private readonly transactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
@@ -64,47 +53,20 @@ export default class RelayClient {
    * create a RelayClient library object, to force contracts to go through a relay.
    */
   constructor (
-    dependencyTree: TmpDependencyTree,
-    relayHub: Address,
-    config: RelayClientConfig
+    provider: HttpProvider,
+    configOverride: Partial<GSNConfig>,
+    overrideDependencies?: Partial<GSNDependencies>
   ) {
-    this.config = config
-    this.httpClient = dependencyTree.httpClient
-    this.contractInteractor = dependencyTree.contractInteractor
-    this.knownRelaysManager = dependencyTree.knownRelaysManager
-    this.transactionValidator = dependencyTree.transactionValidator
-    this.accountManager = dependencyTree.accountManager
-    this.pingFilter = dependencyTree.pingFilter
-    this.relayHub = relayHub
-    this.asyncApprove = dependencyTree.asyncApprove
-  }
-
-  static getDefaultDependencies (provider: HttpProvider, gsnConfig: GSNConfig): TmpDependencyTree {
-    const httpWrapper = new HttpWrapper()
-    const httpClient = new HttpClient(httpWrapper, { verbose: false })
-    const accountManager = new AccountManager(provider, defaultEnvironment.chainId, gsnConfig.accountManagerConfig)
-    const contractInteractor = new ContractInteractor(provider, gsnConfig.contractInteractorConfig)
-    const knownRelaysManager = new KnownRelaysManager(gsnConfig.relayHubAddress, contractInteractor, EmptyFilter, gsnConfig.knownRelaysManagerConfig)
-    const transactionValidator = new RelayedTransactionValidator(contractInteractor, gsnConfig.relayHubAddress, defaultEnvironment.chainId, gsnConfig.transactionValidatorConfig)
-    return {
-      httpClient,
-      contractInteractor,
-      knownRelaysManager,
-      accountManager,
-      transactionValidator,
-      pingFilter: GasPricePingFilter,
-      asyncApprove: EmptyApprove
-    }
-  }
-
-  /**
-   * Create an instance of {@link RelayClient} with all default implementations of its dependencies.
-   * @param provider
-   * @param gsnConfig
-   */
-  static new (provider: HttpProvider, gsnConfig: GSNConfig): RelayClient {
-    const dependencyTree = RelayClient.getDefaultDependencies(provider, gsnConfig)
-    return new RelayClient(dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
+    const config = configureGSN(configOverride)
+    const dependencies = getDependencies(config, provider, overrideDependencies)
+    this.config = dependencies.config
+    this.httpClient = dependencies.httpClient
+    this.contractInteractor = dependencies.contractInteractor
+    this.knownRelaysManager = dependencies.knownRelaysManager
+    this.transactionValidator = dependencies.transactionValidator
+    this.accountManager = dependencies.accountManager
+    this.pingFilter = dependencies.pingFilter
+    this.asyncApprove = dependencies.asyncApprove
   }
 
   /**
@@ -144,7 +106,7 @@ export default class RelayClient {
       const estimated = await this.contractInteractor.estimateGas(gsnTransactionDetails)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
-    const relaySelectionManager = new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config.relaySelectionManagerConfig)
+    const relaySelectionManager = new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config)
     const relayingErrors = new Map<string, Error>()
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
@@ -180,7 +142,7 @@ export default class RelayClient {
   ): Promise<RelayingAttempt> {
     const { relayRequest, approvalData, signature, httpRequest } =
       await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
-    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(relayRequest, signature, approvalData, this.relayHub)
+    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(relayRequest, signature, approvalData)
     if (!acceptRelayCallResult.success) {
       return { error: new Error(`canRelay failed: ${acceptRelayCallResult.returnValue}`) }
     }
@@ -256,7 +218,7 @@ export default class RelayClient {
       paymaster: gsnTransactionDetails.paymaster,
       signature,
       approvalData,
-      relayHubAddress: this.relayHub,
+      relayHubAddress: this.config.relayHubAddress,
       relayMaxNonce
     }
     return {

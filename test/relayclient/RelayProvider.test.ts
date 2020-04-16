@@ -11,7 +11,6 @@ import Web3 from 'web3'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { startRelay, stopRelay } from '../TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import RelayClient, { TmpDependencyTree } from '../../src/relayclient/RelayClient'
 import BadRelayClient from '../dummies/BadRelayClient'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
@@ -91,14 +90,12 @@ contract('RelayProvider', function (accounts) {
     let testRecipient: TestRecipientInstance
     let gsnConfig: GSNConfig
     let jsonRpcPayload: JsonRpcPayload
-    let dependencyTree: TmpDependencyTree
 
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new()
       const forwarder = await testRecipient.getTrustedForwarder()
       gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-      dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
       // call to emitMessage('hello world')
       jsonRpcPayload = {
         jsonrpc: '2.0',
@@ -120,8 +117,8 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should call callback with error if relayTransaction throws', async function () {
-      const badRelayClient = new BadRelayClient(true, false, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
-      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, badRelayClient)
+      const badRelayClient = new BadRelayClient(true, false, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, {}, badRelayClient)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -129,8 +126,8 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
-      const badRelayClient = new BadRelayClient(false, true, dependencyTree, gsnConfig.relayHubAddress, gsnConfig.relayClientConfig)
-      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, badRelayClient)
+      const badRelayClient = new BadRelayClient(false, true, underlyingProvider, gsnConfig)
+      const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, {}, badRelayClient)
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))

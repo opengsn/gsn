@@ -6,7 +6,7 @@ import sigUtil from 'eth-sig-util'
 import { getEip712Signature, isSameAddress } from '../common/utils'
 import { Address } from './types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { AccountManagerConfig } from './GSNConfigurator'
+import { GSNConfig } from './GSNConfigurator'
 import { HttpProvider } from 'web3-core'
 import Web3 from 'web3'
 
@@ -22,10 +22,10 @@ function toAddress (wallet: any): string {
 export default class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
-  private readonly config: AccountManagerConfig
+  private readonly config: GSNConfig
   private readonly chainId: number
 
-  constructor (provider: HttpProvider, chainId: number, config: AccountManagerConfig) {
+  constructor (provider: HttpProvider, chainId: number, config: GSNConfig) {
     this.web3 = new Web3(provider)
     this.chainId = chainId
     this.config = config
