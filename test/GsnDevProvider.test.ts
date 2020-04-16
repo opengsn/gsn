@@ -28,7 +28,7 @@ const Penalizer = artifacts.require('Penalizer')
 
 // const verbose = true
 
-contract.only('GsnDevProvider', ([from, relayOwner]) => {
+contract('GsnDevProvider', ([from, relayOwner]) => {
   let sr: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let relayHub: RelayHubInstance
@@ -122,7 +122,7 @@ contract.only('GsnDevProvider', ([from, relayOwner]) => {
       await devProvider.stopRelay()
     })
 
-    it.only('should send relayed transaction through devProvider', async () => {
+    it('should send relayed transaction through devProvider', async () => {
       // @ts-ignore
       const txDetails = {
         from,
