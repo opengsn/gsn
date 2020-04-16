@@ -1,6 +1,6 @@
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import { ContractInteractorConfig } from '../../src/relayclient/GSNConfigurator'
+import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { TransactionReceipt } from 'web3-core'
 
 export default class BadContractInteractor extends ContractInteractor {
@@ -9,12 +9,12 @@ export default class BadContractInteractor extends ContractInteractor {
 
   private readonly failValidateARC: boolean
 
-  constructor (provider: provider, config: ContractInteractorConfig, failValidateARC: boolean) {
+  constructor (provider: provider, config: GSNConfig, failValidateARC: boolean) {
     super(provider, config)
     this.failValidateARC = failValidateARC
   }
 
-  async validateAcceptRelayCall (relayRequest: RelayRequest, signature: string, approvalData: string, relayHubAddress: string): Promise<{ success: boolean, returnValue: string, reverted: boolean }> {
+  async validateAcceptRelayCall (relayRequest: RelayRequest, signature: string, approvalData: string): Promise<{ success: boolean, returnValue: string, reverted: boolean }> {
     if (this.failValidateARC) {
       return {
         success: false,
@@ -22,7 +22,7 @@ export default class BadContractInteractor extends ContractInteractor {
         returnValue: BadContractInteractor.message
       }
     }
-    return super.validateAcceptRelayCall(relayRequest, signature, approvalData, relayHubAddress)
+    return super.validateAcceptRelayCall(relayRequest, signature, approvalData)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await

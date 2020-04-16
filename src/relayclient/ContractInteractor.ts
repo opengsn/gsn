@@ -16,7 +16,7 @@ import {
 } from '../../types/truffle-contracts'
 
 import { Address, IntString } from './types/Aliases'
-import { ContractInteractorConfig } from './GSNConfigurator'
+import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 // Truffle Contract typings seem to be completely out of their minds
@@ -30,9 +30,9 @@ let IForwarderContract: Contract<ITrustedForwarderInstance>
 export default class ContractInteractor {
   private readonly web3: Web3
   private readonly provider: provider
-  private readonly config: ContractInteractorConfig
+  private readonly config: GSNConfig
 
-  constructor (provider: provider, config: ContractInteractorConfig) {
+  constructor (provider: provider, config: GSNConfig) {
     this.web3 = new Web3(provider)
     this.config = config
     this.provider = provider
@@ -83,10 +83,9 @@ export default class ContractInteractor {
   async validateAcceptRelayCall (
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
-    approvalData: PrefixedHexString,
-    relayHubAddress: Address): Promise<{ success: boolean, returnValue: string, reverted: boolean }> {
+    approvalData: PrefixedHexString): Promise<{ success: boolean, returnValue: string, reverted: boolean }> {
     const paymaster = await this._createPaymaster(relayRequest.relayData.paymaster)
-    const relayHub = await this._createRelayHub(relayHubAddress)
+    const relayHub = await this._createRelayHub(this.config.relayHubAddress)
     const relayRequestAbiEncode = this.encodeABI(relayRequest, signature, approvalData)
     const calldataSize = relayRequestAbiEncode.length
 

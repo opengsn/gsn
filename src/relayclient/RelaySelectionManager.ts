@@ -5,7 +5,7 @@ import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
 import { PingFilter } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import replaceErrors from '../common/ErrorReplacerJSON'
-import { RelaySelectionManagerConfig } from './GSNConfigurator'
+import { GSNConfig } from './GSNConfigurator'
 
 interface RaceResult {
   winner?: RelayInfo
@@ -15,7 +15,7 @@ interface RaceResult {
 export default class RelaySelectionManager {
   private readonly knownRelaysManager: KnownRelaysManager
   private readonly httpClient: HttpClient
-  private readonly config: RelaySelectionManagerConfig
+  private readonly config: GSNConfig
   private readonly pingFilter: PingFilter
   private readonly gsnTransactionDetails: GsnTransactionDetails
 
@@ -23,7 +23,7 @@ export default class RelaySelectionManager {
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
-  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, config: RelaySelectionManagerConfig) {
+  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, config: GSNConfig) {
     this.gsnTransactionDetails = gsnTransactionDetails
     this.knownRelaysManager = knownRelaysManager
     this.httpClient = httpClient

@@ -1,7 +1,7 @@
-import RelayClient, { RelayingResult, TmpDependencyTree } from '../../src/relayclient/RelayClient'
+import RelayClient, { RelayingResult } from '../../src/relayclient/RelayClient'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
-import { Address } from '../../src/relayclient/types/Aliases'
-import { RelayClientConfig } from '../../src/relayclient/GSNConfigurator'
+import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { HttpProvider } from 'web3-core'
 
 export default class BadRelayClient extends RelayClient {
   static readonly message = 'This is not the transaction you are looking for'
@@ -12,11 +12,10 @@ export default class BadRelayClient extends RelayClient {
   constructor (
     failRelay: boolean,
     returnNullTransaction: boolean,
-    dependencyTree: TmpDependencyTree,
-    relayHub: Address,
-    config: RelayClientConfig
+    provider: HttpProvider,
+    config: GSNConfig
   ) {
-    super(dependencyTree, relayHub, config)
+    super(provider, config)
     this.failRelay = failRelay
     this.returnUndefindedTransaction = returnNullTransaction
   }

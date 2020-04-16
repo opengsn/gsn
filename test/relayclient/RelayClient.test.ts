@@ -18,7 +18,7 @@ import RelayClient from '../../src/relayclient/RelayClient'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { Address, AsyncApprove } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import replaceErrors from '../../src/common/ErrorReplacerJSON'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
 import RelayInfo from '../../src/relayclient/types/RelayInfo'
@@ -51,7 +51,7 @@ contract('RelayClient', function (accounts) {
   let forwarderAddress: Address
 
   let relayClient: RelayClient
-  let gsnConfig: GSNConfig
+  let gsnConfig: Partial<GSNConfig>
   let options: GsnTransactionDetails
   let to: Address
   let from: Address
@@ -76,8 +76,8 @@ contract('RelayClient', function (accounts) {
       EthereumNodeUrl: underlyingProvider.host
     })
 
-    gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
-    relayClient = RelayClient.new(underlyingProvider, gsnConfig)
+    gsnConfig = { relayHubAddress: relayHub.address }
+    relayClient = new RelayClient(underlyingProvider, gsnConfig)
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()
@@ -124,11 +124,9 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return errors encountered in ping', async function () {
-      const badHttpClient = new BadHttpClient(true, false, false)
-      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
-      dependencyTree.httpClient = badHttpClient
+      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), true, false, false)
       const relayClient =
-        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+        new RelayClient(underlyingProvider, gsnConfig, { httpClient: badHttpClient })
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(relayingErrors.size, 0)
@@ -137,11 +135,9 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return errors encountered in relaying', async function () {
-      const badHttpClient = new BadHttpClient(false, true, false)
-      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
-      dependencyTree.httpClient = badHttpClient
+      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, true, false)
       const relayClient =
-        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+        new RelayClient(underlyingProvider, gsnConfig, { httpClient: badHttpClient })
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -153,13 +149,11 @@ contract('RelayClient', function (accounts) {
   describe('#_calculateDefaultGasPrice()', function () {
     it('should use minimum gas price if calculated is to low', async function () {
       const minGasPrice = 1e18
-      const gsnConfig = configureGSN({
+      const gsnConfig = {
         relayHubAddress: relayHub.address,
-        relayClientConfig: {
-          minGasPrice
-        }
-      })
-      const relayClient = RelayClient.new(underlyingProvider, gsnConfig)
+        minGasPrice
+      }
+      const relayClient = new RelayClient(underlyingProvider, gsnConfig)
       const calculatedGasPrice = await relayClient._calculateGasPrice()
       assert.equal(calculatedGasPrice, `0x${minGasPrice.toString(16)}`)
     })
@@ -194,22 +188,19 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return error if canRelay/acceptRelayedCall fail', async function () {
-      const badContractInteractor = new BadContractInteractor(web3.currentProvider, gsnConfig.contractInteractorConfig, true)
-      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
-      dependencyTree.contractInteractor = badContractInteractor
+      const badContractInteractor = new BadContractInteractor(web3.currentProvider, configureGSN(gsnConfig), true)
       const relayClient =
-        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+        new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
       assert.equal(error!.message, `canRelay failed: ${BadContractInteractor.message}`)
     })
 
     it('should report relays that timeout to the Known Relays Manager', async function () {
-      const badHttpClient = new BadHttpClient(false, false, true)
-      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
-      dependencyTree.httpClient = badHttpClient
+      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, false, true)
+      const dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, { httpClient: badHttpClient })
       const relayClient =
-        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+        new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
       await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -217,11 +208,11 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should not report relays if error is not timeout', async function () {
-      const badHttpClient = new BadHttpClient(false, true, false)
-      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
+      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, true, false)
+      const dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, { httpClient: badHttpClient })
       dependencyTree.httpClient = badHttpClient
       const relayClient =
-        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+        new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
       await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -229,13 +220,15 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return error if transaction returned by a relay does not pass validation', async function () {
-      const badHttpClient = new BadHttpClient(false, false, false, pingResponse, '0x123')
-      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
-      const badTransactionValidator = new BadRelayedTransactionValidator(true, dependencyTree.contractInteractor, gsnConfig.relayHubAddress, defaultEnvironment.chainId, gsnConfig.transactionValidatorConfig)
-      dependencyTree.httpClient = badHttpClient
-      dependencyTree.transactionValidator = badTransactionValidator
+      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, false, false, pingResponse, '0x123')
+      let dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider)
+      const badTransactionValidator = new BadRelayedTransactionValidator(true, dependencyTree.contractInteractor, configureGSN(gsnConfig))
+      dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, {
+        httpClient: badHttpClient,
+        transactionValidator: badTransactionValidator
+      })
       const relayClient =
-        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+        new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -250,10 +243,8 @@ contract('RelayClient', function (accounts) {
       }
 
       it('should use provided approval function', async function () {
-        const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
-        dependencyTree.asyncApprove = asyncApprove
         const relayClient =
-          new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+          new RelayClient(underlyingProvider, gsnConfig, { asyncApprove })
         const { httpRequest } = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
         assert.equal(httpRequest.approvalData, '0x1234567890')
       })
@@ -263,12 +254,10 @@ contract('RelayClient', function (accounts) {
   describe('#_broadcastRawTx()', function () {
     // TODO: TBD: there has to be other behavior then that. Maybe query the transaction with the nonce somehow?
     it('should return \'wrongNonce\' if broadcast fails with nonce error', async function () {
-      const badContractInteractor = new BadContractInteractor(underlyingProvider, gsnConfig.contractInteractorConfig, true)
-      const dependencyTree = RelayClient.getDefaultDependencies(underlyingProvider, gsnConfig)
-      dependencyTree.contractInteractor = badContractInteractor
+      const badContractInteractor = new BadContractInteractor(underlyingProvider, configureGSN(gsnConfig), true)
       const transaction = new Transaction('0x')
       const relayClient =
-        new RelayClient(dependencyTree, relayHub.address, gsnConfig.relayClientConfig)
+        new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
       const { receipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
       assert.isUndefined(receipt)
       assert.isTrue(wrongNonce)
