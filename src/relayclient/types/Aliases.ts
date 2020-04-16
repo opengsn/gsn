@@ -7,7 +7,10 @@ import GsnTransactionDetails from './GsnTransactionDetails'
 
 export type Address = string
 export type IntString = string
-
+/**
+ * For legacy reasons, to filter out the relay this filter has to throw.
+ * TODO: make ping filtering sane!
+ */
 export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
 export type AsyncApprove = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
 export type RelayFilter = (registeredEventInfo: RelayRegisteredEventInfo) => boolean
