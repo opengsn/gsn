@@ -374,10 +374,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       })
 
       transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'))
-      // This doesn't work since they are read only for some reason
+      // This doesn't work since they are "read only"
       // transaction.r = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.r.length),'hex'), transaction.r])
       // transaction.s = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.s.length),'hex'), transaction.s])
-
+      // This does work, but is ugly and involves knowing the implementation details of ethereumjs-tx.Transaction class
+      transaction.raw[7] = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.r.length), 'hex'), transaction.r])
+      transaction.raw[8] = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.s.length), 'hex'), transaction.s])
       return transaction
     }
 
@@ -429,8 +431,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         v -= chainId * 2 + 8
       }
       const data = `0x${encode(input).toString('hex')}`
-      const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
-        32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
+      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${v.toString(16)}`
+      // const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
+      //   32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
       return {
         data,
         signature
