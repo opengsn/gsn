@@ -14,8 +14,6 @@ import {
 import { evmMineMany } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 import RelayRegisteredEventInfo from '../../src/relayclient/types/RelayRegisteredEventInfo'
-import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
-import RelayFailureInfo from '../../src/relayclient/types/RelayFailureInfo'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -42,25 +40,28 @@ contract('KnownRelaysManager', function (
     activeCanRelayFailed,
     activeTransactionRelayed,
     notActiveRelay,
-    workerRelayWorkersAdded,
-    workerRelayServerRegistered,
     workerCanRelayFailed,
     workerTransactionRelayed,
-    workerNotActive,
     owner,
     other
   ]) {
   const relayLookupWindowBlocks = 100
 
-  describe('#_fetchRecentlyActiveRelayManagers()', function () {
+  describe('#_fetchRecentlyActiveRelayManagers()', async function () {
     let config: GSNConfig
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
     let relayHub: RelayHubInstance
     let testRecipient: TestRecipientInstance
     let paymaster: TestPaymasterConfigurableMisbehaviorInstance
+    let workerRelayWorkersAdded
+    let workerRelayServerRegistered
+    let workerNotActive
 
     before(async function () {
+      workerRelayWorkersAdded = await web3.eth.personal.newAccount('password')
+      workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
+      workerNotActive = await web3.eth.personal.newAccount('password')
       stakeManager = await StakeManager.new()
       relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
       config = configureGSN({
@@ -158,10 +159,10 @@ contract('KnownRelaysManager 2', function (accounts) {
       await stake(stakeManager, relayHub, accounts[2], accounts[0])
       await stake(stakeManager, relayHub, accounts[3], accounts[0])
       await stake(stakeManager, relayHub, accounts[4], accounts[0])
-      await register(stakeManager, relayHub, accounts[1], accounts[11], 'stakeAndAuthorization1')
-      await register(stakeManager, relayHub, accounts[2], accounts[12], 'stakeAndAuthorization2')
-      await register(stakeManager, relayHub, accounts[3], accounts[13], 'stakeUnlocked')
-      await register(stakeManager, relayHub, accounts[4], accounts[14], 'hubUnauthorized')
+      await register(stakeManager, relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
+      await register(stakeManager, relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
+      await register(stakeManager, relayHub, accounts[3], accounts[8], 'stakeUnlocked')
+      await register(stakeManager, relayHub, accounts[4], accounts[9], 'hubUnauthorized')
 
       await stakeManager.unlockStake(accounts[3])
       await stakeManager.unauthorizeHub(accounts[4], relayHub.address)
@@ -250,7 +251,7 @@ contract('KnownRelaysManager 2', function (accounts) {
   })
 
   describe('getRelaysSortedForTransaction', function () {
-    const biasedRelayScore = async function (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]): Promise<number> {
+    const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<number> {
       if (relay.relayUrl === 'alex') {
         return Promise.resolve(1000)
       } else {
