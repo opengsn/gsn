@@ -9,6 +9,7 @@ import getDataToSign from '../../src/common/EIP712/Eip712Helper'
 import { isSameAddress } from '../../src/common/utils'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
+import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 
 const expect = chai.expect
 chai.use(sinonChai)
@@ -19,11 +20,11 @@ contract('AccountManager', function (accounts) {
     privateKey: Buffer.from('d353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c', 'hex'),
     address
   }
-  const config = {
+  const config = configureGSN({
     verbose: false,
     methodSuffix: '',
     jsonStringifyRequest: false
-  }
+  })
   const accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
   // @ts-ignore
   sinon.spy(accountManager)

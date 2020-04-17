@@ -5,6 +5,7 @@ import path from 'path'
 import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contracts'
 import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
+import { configureGSN } from '../src/relayclient/GSNConfigurator'
 
 const localhostOne = 'http://localhost:8090'
 
@@ -69,7 +70,7 @@ export async function startRelay (
   })
 
   let res: any
-  const http = new HttpClient(new HttpWrapper(), { verbose: false })
+  const http = new HttpClient(new HttpWrapper(), configureGSN({}))
   let count1 = 3
   while (count1-- > 0) {
     try {
