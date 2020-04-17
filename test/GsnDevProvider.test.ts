@@ -5,7 +5,7 @@
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
 
 import { expectEvent, ether } from '@openzeppelin/test-helpers'
-import { DevClientConfig, DevRelayClient } from '../src/relayclient/DevRelayClient'
+import { DevGSNConfig, DevRelayClient } from '../src/relayclient/DevRelayClient'
 import Web3 from 'web3'
 import fs from 'fs'
 
@@ -15,7 +15,6 @@ import {
 } from '../types/truffle-contracts'
 import { HttpProvider, WebsocketProvider } from 'web3-core'
 import { configureGSN, GSNConfig } from '../src/relayclient/GSNConfigurator'
-import RelayClient from '../src/relayclient/RelayClient'
 
 import GsnDevProvider from '../src/relayclient/GsnDevProvider'
 
@@ -25,8 +24,6 @@ const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEv
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-
-// const verbose = true
 
 contract('GsnDevProvider', ([from, relayOwner]) => {
   let sr: TestRecipientInstance
@@ -56,34 +53,25 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
     before(() => {
       const gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
-        relayClientConfig: {
-          minGasPrice: 0
-        }
+        minGasPrice: 0
       })
 
-      // TODO: should be able to start without workdir - so relay is completely
-      // in-memory (or in a real temporary folder..)
-      const workdir = '/tmp/gsn.devprovider.test'
-      fs.rmdirSync(workdir, { recursive: true })
-
       const provider = wssProvider as unknown as HttpProvider
-      const dependencyTree = RelayClient.getDefaultDependencies(provider, gsnConfig)
-      relayClient = new DevRelayClient(
-        dependencyTree, relayHub.address, gsnConfig.relayClientConfig, {
-          workdir,
-          listenPort: 12345,
-          relayOwner,
-          gasPriceFactor: 1,
-          pctRelayFee: 0,
-          baseRelayFee: 0
-        })
+      relayClient = new DevRelayClient(provider, {
+        relayHubAddress: relayHub.address,
+        relayListenPort: 12345,
+        relayOwner,
+        gasPriceFactor: 1,
+        pctRelayFee: 0,
+        baseRelayFee: 0
+      })
 
       const keypair = relayClient.accountManager.newAccount()
       sender = keypair.address
     })
 
     after(async () => {
-      await relayClient.stopRelay()
+      await relayClient?.stopRelay()
     })
 
     it('should relay using relayTransaction', async () => {
@@ -103,18 +91,15 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
   context('using GsnDevProvider', () => {
     let devProvider: any
     before(() => {
-      const gsnConfig: GSNConfig = configureGSN({
-        relayHubAddress: relayHub.address,
-        relayProviderConfig: { verbose: true }
-      })
-      const devConfig: DevClientConfig = {
-        listenPort: 12345,
+      const devConfig: DevGSNConfig = {
         relayOwner,
+        relayHubAddress: relayHub.address,
+        relayListenPort: 12345,
         gasPriceFactor: 1,
         baseRelayFee: 0,
         pctRelayFee: 0
       }
-      devProvider = new GsnDevProvider(wssProvider as unknown as HttpProvider, gsnConfig, devConfig)
+      devProvider = new GsnDevProvider(wssProvider as unknown as HttpProvider, devConfig)
 
       SampleRecipient.web3.setProvider(devProvider)
     })

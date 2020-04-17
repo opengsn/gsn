@@ -1,12 +1,12 @@
-import RelayClient, { RelayingResult, TmpDependencyTree } from './RelayClient'
+import RelayClient, { RelayingResult } from './RelayClient'
 import RelayServer from '../relayserver/RelayServer'
 import HttpServer from '../relayserver/HttpServer'
 import { sleep } from '../common/utils'
-import { provider } from 'web3-core'
+import {HttpProvider, provider} from 'web3-core'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import KnownRelaysManager from './KnownRelaysManager'
 import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
-import { RelayClientConfig } from './GSNConfigurator'
+import {GSNConfig, GSNDependencies} from './GSNConfigurator'
 import { Address } from './types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
 import { ether } from '@openzeppelin/test-helpers'
@@ -49,14 +49,14 @@ interface RunServerReturn {
 export function runServer (
   web3provider: provider,
   relayHub: string,
-  devConfig: DevClientConfig
+  devConfig: DevGSNConfig
 ): RunServerReturn {
-  const relayUrl = devConfig.relayUrl ?? `http://localhost:${devConfig.listenPort}`
+  const relayUrl = devConfig.relayUrl ?? `http://localhost:${devConfig.relayListenPort}`
 
   // TODO: read key-pair from temp file?
   // (otherwise, we deploy a new relay each time)
-  const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair(), workdir: devConfig.workdir })
-  const txStoreManager = new TxStoreManager({ workdir: devConfig.workdir })
+  const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair(), workdir: undefined })
+  const txStoreManager = new TxStoreManager({ inMemory:true })
 
   // @ts-ignore
   const relayServer = new RelayServer({
@@ -72,10 +72,10 @@ export function runServer (
     devMode: devConfig.devMode
   })
   relayServer.on('error', (e: any) => {
-    console.error('ERR:', e.message)
+    // console.error('ERR:', e.message)
   })
 
-  let listenPort = devConfig.listenPort
+  let listenPort = devConfig.relayListenPort
   if (listenPort === undefined) {
     const m = relayUrl.match(/(?:(https?):\/\/(\S+?)(?::(\d+))?)?$/)
     if (m != null) {
@@ -111,11 +111,11 @@ class DevKnownRelays { // extends  KnownRelaysManager {
   devRelay?: RelayRegisteredEventInfo
 }
 
-export interface DevClientConfig {
+export interface DevGSNConfig extends Partial<GSNConfig> {
   relayOwner: Address
-  workdir?: string
-  listenPort?: number
-  relayUrl?: string // defaults to http://localhost:{listenPort}
+  relayWorkdir?: string
+  relayListenPort?: number
+  relayUrl?: string // defaults to http://localhost:{relayListenPort}
 
   // TODO: this is actually relay config
   baseRelayFee?: number
@@ -128,19 +128,18 @@ export class DevRelayClient extends RelayClient {
   serverStarted: boolean = false
   httpServer?: HttpServer
   relayServer?: RelayServer
-  private readonly devConfig: DevClientConfig;
+  private readonly devConfig: DevGSNConfig;
 
   constructor (
-    dependencyTree: TmpDependencyTree,
-    relayHub: Address,
-    config: RelayClientConfig,
-    devConfig: DevClientConfig
+      provider: HttpProvider,
+      devConfig: Partial<DevGSNConfig>,
+      overrideDependencies?: Partial<GSNDependencies>
   ) {
-    super({
-      ...dependencyTree,
+    super(provider, devConfig,
+        { ...overrideDependencies,
       knownRelaysManager: new DevKnownRelays() as KnownRelaysManager
-    }, relayHub, config)
-    this.devConfig = devConfig
+    })
+    this.devConfig = this.config as DevGSNConfig
   }
 
   /**
@@ -183,7 +182,7 @@ export class DevRelayClient extends RelayClient {
       return
     }
 
-    const hub = await this.contractInteractor._createRelayHub(this.relayHub)
+    const hub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
     const stakeManagerAddress = await hub.getStakeManager()
 
     // flag early, so only the first call will try to bring up a relay
@@ -191,14 +190,14 @@ export class DevRelayClient extends RelayClient {
     this.serverStarted = true
 
     // const {
-    //   relayOwner, workdir, relayHub, listenPort,
+    //   relayOwner, relayWorkdir, relayHub, relayListenPort,
     //   baseRelayFee, pctRelayFee, gasPriceFactor, devMode
     // } = this.config
 
     const web3provider = this.contractInteractor.provider
     const { httpServer, relayServer } = await runServer(
       web3provider,
-      this.relayHub,
+      this.config.relayHubAddress,
       this.devConfig
     )
     this.relayServer = relayServer
@@ -222,7 +221,7 @@ export class DevRelayClient extends RelayClient {
       gas: estim
     })
     this.debug('== sending balance to relayServer', relayServer.address)
-    await stakeManager.authorizeHub(relayServer.address, this.relayHub, { from: this.devConfig.relayOwner })
+    await stakeManager.authorizeHub(relayServer.address, this.config.relayHubAddress, { from: this.devConfig.relayOwner })
     await this.contractInteractor.web3.eth.sendTransaction({
       from: this.devConfig.relayOwner,
       to: relayServer.address,

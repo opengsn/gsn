@@ -1,8 +1,7 @@
 import RelayProvider from './RelayProvider'
-import { DevRelayClient, DevClientConfig } from './DevRelayClient'
-import RelayClient from './RelayClient'
+import { DevRelayClient, DevGSNConfig } from './DevRelayClient'
 import { HttpProvider } from 'web3-core'
-import { GSNConfig } from './GSNConfigurator'
+import {configureGSN, GSNConfig, GSNDependencies} from './GSNConfigurator'
 
 export default class GsnDevProvider extends RelayProvider {
   devRelayClient: DevRelayClient
@@ -11,12 +10,10 @@ export default class GsnDevProvider extends RelayProvider {
    * Create a dev provider.
    * Create a provider that brings up an in-process relay.
    */
-  constructor (origProvider: HttpProvider, gsnConfig: GSNConfig, devConfig: DevClientConfig, devRelayClient?: DevRelayClient) {
-    const client = devRelayClient ?? new DevRelayClient(
-      RelayClient.getDefaultDependencies(origProvider, gsnConfig),
-      gsnConfig.relayHubAddress,
-      gsnConfig.relayClientConfig, devConfig)
-    super(origProvider, gsnConfig, client)
+  constructor (origProvider: HttpProvider, devConfig: DevGSNConfig, overrideDependencies?: Partial<GSNDependencies>, relayClient?: DevRelayClient) {
+    const gsnConfig = configureGSN(devConfig)
+    const client = relayClient ?? new DevRelayClient(origProvider, gsnConfig, overrideDependencies)
+    super(origProvider, gsnConfig, overrideDependencies, client)
     this.devRelayClient = client
   }
 

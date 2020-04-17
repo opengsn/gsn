@@ -38,7 +38,6 @@ export interface RelayingResult {
   relayingErrors: Map<string, Error>
 }
 
-
 export default class RelayClient {
   readonly config: GSNConfig
   private readonly httpClient: HttpClient
