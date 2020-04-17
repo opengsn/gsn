@@ -1,8 +1,9 @@
 const Wallet = require('ethereumjs-wallet')
 const abi = require('ethereumjs-abi')
 const fs = require('fs')
-
 const ethUtils = require('ethereumjs-util')
+
+const fixTransactionSignature = require('../common/utils').fixTransactionSignature
 
 class KeyManager {
   constructor ({ ecdsaKeyPair, workdir }) {
@@ -46,6 +47,8 @@ class KeyManager {
 
   signTransaction (tx) {
     tx.sign(this.ecdsaKeyPair.privateKey)
+    // This is ugly but needed since there's a bug in ethereumjs-tx.Transaction where r/s might be shorter than 32 bytes
+    fixTransactionSignature(tx)
     const rawTx = tx.serialize().toString('hex')
     return rawTx
   }
