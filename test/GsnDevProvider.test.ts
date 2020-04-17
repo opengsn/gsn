@@ -7,14 +7,12 @@
 import { expectEvent, ether } from '@openzeppelin/test-helpers'
 import { DevGSNConfig, DevRelayClient } from '../src/relayclient/DevRelayClient'
 import Web3 from 'web3'
-import fs from 'fs'
 
 import {
   RelayHubInstance,
   TestPaymasterEverythingAcceptedInstance, TestRecipientInstance
 } from '../types/truffle-contracts'
 import { HttpProvider, WebsocketProvider } from 'web3-core'
-import { configureGSN, GSNConfig } from '../src/relayclient/GSNConfigurator'
 
 import GsnDevProvider from '../src/relayclient/GsnDevProvider'
 
@@ -51,14 +49,11 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
     let sender: string
     let relayClient: DevRelayClient
     before(() => {
-      const gsnConfig = configureGSN({
-        relayHubAddress: relayHub.address,
-        minGasPrice: 0
-      })
-
       const provider = wssProvider as unknown as HttpProvider
       relayClient = new DevRelayClient(provider, {
         relayHubAddress: relayHub.address,
+        minGasPrice: 0,
+
         relayListenPort: 12345,
         relayOwner,
         gasPriceFactor: 1,

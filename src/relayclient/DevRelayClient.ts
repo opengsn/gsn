@@ -2,11 +2,11 @@ import RelayClient, { RelayingResult } from './RelayClient'
 import RelayServer from '../relayserver/RelayServer'
 import HttpServer from '../relayserver/HttpServer'
 import { sleep } from '../common/utils'
-import {HttpProvider, provider} from 'web3-core'
+import { HttpProvider, provider } from 'web3-core'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import KnownRelaysManager from './KnownRelaysManager'
 import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
-import {GSNConfig, GSNDependencies} from './GSNConfigurator'
+import { GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Address } from './types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
 import { ether } from '@openzeppelin/test-helpers'
@@ -56,7 +56,7 @@ export function runServer (
   // TODO: read key-pair from temp file?
   // (otherwise, we deploy a new relay each time)
   const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair(), workdir: undefined })
-  const txStoreManager = new TxStoreManager({ inMemory:true })
+  const txStoreManager = new TxStoreManager({ inMemory: true })
 
   // @ts-ignore
   const relayServer = new RelayServer({
@@ -131,14 +131,15 @@ export class DevRelayClient extends RelayClient {
   private readonly devConfig: DevGSNConfig;
 
   constructor (
-      provider: HttpProvider,
-      devConfig: Partial<DevGSNConfig>,
-      overrideDependencies?: Partial<GSNDependencies>
+    provider: HttpProvider,
+    devConfig: Partial<DevGSNConfig>,
+    overrideDependencies?: Partial<GSNDependencies>
   ) {
     super(provider, devConfig,
-        { ...overrideDependencies,
-      knownRelaysManager: new DevKnownRelays() as KnownRelaysManager
-    })
+      {
+        ...overrideDependencies,
+        knownRelaysManager: new DevKnownRelays() as KnownRelaysManager
+      })
     this.devConfig = this.config as DevGSNConfig
   }
 
