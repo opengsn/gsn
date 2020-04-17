@@ -47,7 +47,7 @@ contract('KnownRelaysManager', function (
   ]) {
   const relayLookupWindowBlocks = 100
 
-  describe('#_fetchRecentlyActiveRelayManagers()', async function () {
+  describe('#_fetchRecentlyActiveRelayManagers()', function () {
     let config: GSNConfig
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
