@@ -25,8 +25,8 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
-
-contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker]) { // eslint-disable-line no-unused-vars
+var fix = false
+contract.only('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
 
   let stakeManager: StakeManagerInstance
@@ -98,7 +98,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       return receipt
     }
 
-    describe('penalizable behaviors', function () {
+    describe.only('penalizable behaviors', function () {
       const encodedCallArgs = {
         sender,
         recipient: '0x1820b744B33945482C17Dc37218C01D858EBc714',
@@ -151,9 +151,38 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           )
         })
 
-        it('penalizes transactions with same nonce and different value', async function () {
-          const txDataSigA = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, relayCallArgs), chainId)
-          const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, Object.assign({}, relayCallArgs, { value: 100 })), chainId)
+        it.only('penalizes transactions with same nonce and different value', async function () {
+          let newArgs
+          let txDataSigA: any
+          let txDataSigB: any
+          let i = 0
+          do {
+            newArgs = {...encodedCallArgs, gasLimit: encodedCallArgs.gasLimit + i++}
+            txDataSigA = getDataAndSignature(encodeRelayCallEIP155(newArgs, relayCallArgs), chainId)
+            txDataSigB = getDataAndSignature(encodeRelayCallEIP155(newArgs, Object.assign({}, relayCallArgs, { value: 100 })), chainId)
+          } while (txDataSigA.signature.length === txDataSigB.signature.length)
+          // const txDataSigA = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, relayCallArgs), chainId)
+          // const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, Object.assign({}, relayCallArgs, { value: 100 })), chainId)
+
+          try {
+            await expectPenalization(async (opts) =>
+              penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
+            )
+          } catch (e) {
+            if (e.message.includes('Different signer')) {
+              console.log('TADA!')
+              console.log('encodedCallArgs', encodedCallArgs)
+              console.log('relayCallArgs', relayCallArgs)
+              console.log('txDataSigA', txDataSigA)
+              console.log('txDataSigB', txDataSigB)
+            } else {
+              assert.fail(e.message)
+            }
+          }
+          console.log('now FIX!')
+          fix = true
+          txDataSigA = getDataAndSignature(encodeRelayCallEIP155(newArgs, relayCallArgs), chainId)
+          txDataSigB = getDataAndSignature(encodeRelayCallEIP155(newArgs, Object.assign({}, relayCallArgs, { value: 100 })), chainId)
 
           await expectPenalization(async (opts) =>
             penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
@@ -374,6 +403,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       })
 
       transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'))
+      transaction.r = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.r.length),'hex'), transaction.r])
+      transaction.s = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.s.length),'hex'), transaction.s])
+
       return transaction
     }
 
@@ -425,8 +457,32 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         v -= chainId * 2 + 8
       }
       const data = `0x${encode(input).toString('hex')}`
-      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${v.toString(16)}`
-
+      let fixed = false
+      if (fix && tx.r.length !== 32) {
+        console.log('XXXXXXXXXXXXXXXXXXXXXXXXXX should fail here! r', tx.r.length, tx.r)
+        console.log('wtf zero buf', Buffer.from('00'.repeat(32 - tx.r.length),'hex'))
+        tx.r = Buffer.concat([Buffer.from('00'.repeat(32 - tx.r.length),'hex'), tx.r])
+        console.log('after length', tx.r.length, tx.r)
+        console.log('fuck me', Buffer.concat([Buffer.from('00'.repeat(32 - tx.r.length),'hex'), tx.r]))
+        console.log('again', tx.r)
+        fixed = true
+      }
+      if (fix && tx.s.length !== 32) {
+        console.log('XXXXXXXXXXXXXXXXXXXXXXXXXX should fail here! s', tx.s.length, tx.s)
+        console.log('wtf zero buf', Buffer.from('00'.repeat(32 - tx.s.length),'hex'))
+        tx.s = Buffer.concat([Buffer.from('00'.repeat(32 - tx.s.length),'hex'), tx.s])
+        console.log('after length', tx.s.length, tx.s)
+        console.log('fuck me', Buffer.concat([Buffer.from('00'.repeat(32 - tx.s.length),'hex'), tx.s]))
+        console.log('again', tx.s)
+        fixed = true
+      }
+      let signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${v.toString(16)}`
+      if (fixed) {
+        console.log('before sig', signature)
+        console.log('tx serialized', tx.serialize().toString('hex'))
+        signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
+        console.log('signature fixed', signature.length, signature)
+      }
       return {
         data,
         signature
