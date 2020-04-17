@@ -76,7 +76,10 @@ contract('RelayClient', function (accounts) {
       EthereumNodeUrl: underlyingProvider.host
     })
 
-    gsnConfig = { relayHubAddress: relayHub.address }
+    gsnConfig = {
+      relayHubAddress: relayHub.address,
+      stakeManagerAddress: stakeManager.address
+    }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
     from = gasLess
     to = testRecipient.address
