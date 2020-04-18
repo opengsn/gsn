@@ -425,8 +425,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         v -= chainId * 2 + 8
       }
       const data = `0x${encode(input).toString('hex')}`
-      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${v.toString(16)}`
-
+      const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
+        32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
       return {
         data,
         signature

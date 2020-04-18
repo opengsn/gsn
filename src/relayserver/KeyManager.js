@@ -1,7 +1,6 @@
 const Wallet = require('ethereumjs-wallet')
 const abi = require('ethereumjs-abi')
 const fs = require('fs')
-
 const ethUtils = require('ethereumjs-util')
 
 class KeyManager {

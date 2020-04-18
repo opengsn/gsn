@@ -13,7 +13,7 @@ contract('RelaySelectionManager', function () {
   const sliceSize = 3
   const verbose = false
   const dependencyTree = getDependencies(configureGSN({}), web3.currentProvider as HttpProvider)
-  const stubGetRelaysSorted = sinon.stub(dependencyTree.knownRelaysManager, 'getRelaysSorted')
+  const stubGetRelaysSorted = sinon.stub(dependencyTree.knownRelaysManager, 'getRelaysSortedForTransaction')
   const errors = new Map<string, Error>()
   const config = configureGSN({
     sliceSize,
@@ -71,7 +71,7 @@ contract('RelaySelectionManager', function () {
           winner,
           errors
         }))
-      const nextRelay = await relaySelectionManager.selectNextRelay()
+      const nextRelay = await relaySelectionManager.selectNextRelay(transactionDetails)
       assert.equal(nextRelay!, winner)
     })
 
@@ -83,34 +83,36 @@ contract('RelaySelectionManager', function () {
         .returns([])
       stubRaceToSuccess
         .returns(Promise.resolve({ errors }))
-      const nextRelay = await relaySelectionManager.selectNextRelay()
+      const nextRelay = await relaySelectionManager.selectNextRelay(transactionDetails)
       assert.isUndefined(nextRelay)
     })
   })
 
   describe('#_getNextSlice()', function () {
-    it('should return \'relaySliceSize\' relays if available', function () {
-      stubGetRelaysSorted.returns([winner.eventInfo, winner.eventInfo, winner.eventInfo, winner.eventInfo, winner.eventInfo])
+    it('should return \'relaySliceSize\' relays if available on the highest priority level', async function () {
+      stubGetRelaysSorted.returns(Promise.resolve([winner.eventInfo, winner.eventInfo, winner.eventInfo, winner.eventInfo, winner.eventInfo]))
       for (let i = 1; i < 5; i++) {
         const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
           sliceSize: i,
           verbose
         }))
-        const returned = rsm._getNextSlice()
+        const returned = await rsm._getNextSlice(transactionDetails)
         assert.equal(returned.length, i)
       }
     })
 
-    it('should return all remaining relays if less then \'relaySliceSize\' remains', function () {
+    it('should return all remaining relays if less then \'relaySliceSize\' remains on current priority level', async function () {
       const relaysLeft = [winner.eventInfo, winner.eventInfo]
-      stubGetRelaysSorted.returns(relaysLeft)
+      stubGetRelaysSorted.returns(Promise.resolve(relaysLeft))
       const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
         sliceSize: 7,
         verbose
       }))
-      const returned = rsm._getNextSlice()
+      const returned = await rsm._getNextSlice(transactionDetails)
       assert.deepEqual(returned, relaysLeft)
     })
+
+    it('should start returning relays from lower priority level if higher level is empty')
   })
 
   describe('#_getRelayAddressPing()', function () {
@@ -219,12 +221,12 @@ contract('RelaySelectionManager', function () {
     const message = 'some failure message'
     const failureRelayEventInfo = Object.assign({}, eventInfo, { relayUrl: failureRelayUrl })
     const otherRelayEventInfo = Object.assign({}, eventInfo, { relayUrl: otherRelayUrl })
-    it('should remove all relays featured in race results', function () {
+    it('should remove all relays featured in race results', async function () {
       sinon.stub(dependencyTree.knownRelaysManager, 'refresh')
-      stubGetRelaysSorted.returns([winner.eventInfo, failureRelayEventInfo, otherRelayEventInfo])
+      stubGetRelaysSorted.returns(Promise.resolve([winner.eventInfo, failureRelayEventInfo, otherRelayEventInfo]))
       const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, config)
       // initialize 'remainingRelays' field by calling '_getNextSlice'
-      rsm._getNextSlice()
+      await rsm._getNextSlice(transactionDetails)
       const errors = new Map<string, Error>()
       errors.set(failureRelayUrl, new Error(message))
       const raceResults = {

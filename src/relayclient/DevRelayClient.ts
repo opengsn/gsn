@@ -85,9 +85,9 @@ export function runServer (
 
 class DevKnownRelays implements IKnownRelaysManager {
   // noinspection JSUnusedGlobalSymbols
-  getRelaysSorted (): RelayRegisteredEventInfo[] {
+  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]> {
     // @ts-ignore
-    return [this.devRelay]
+    return Promise.resolve([this.devRelay])
   }
 
   // noinspection JSUnusedGlobalSymbols

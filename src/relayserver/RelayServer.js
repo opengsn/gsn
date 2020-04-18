@@ -172,11 +172,9 @@ class RelayServer extends EventEmitter {
       verifier: relayHubAddress,
       relayRequest
     })
-
     const method = this.relayHubContract.methods.relayCall(signedData.message, signature, approvalData)
     const calldataSize = method.encodeABI().length / 2
     debug('calldatasize', calldataSize)
-
     let gasLimits
     try {
       this.paymasterContract.options.address = paymaster
@@ -240,11 +238,11 @@ class RelayServer extends EventEmitter {
 
   start () {
     debug('Subscribing to new blocks')
-    this.subscription = this.web3.eth.subscribe('newBlockHeaders', function (error, result) {
+    this.subscription = this.web3.eth.subscribe('newBlockHeaders', (error, result) => {
       if (error) {
-        console.error(error)
+        console.error('web3 subscription:', error)
       }
-    }).on('data', this._workerSemaphore.bind(this)).on('error', console.error)
+    }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => { console.error('worker:', e) })
   }
 
   stop () {
