@@ -156,10 +156,5 @@ module.exports = {
 
   sleep: function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
-  },
-  // This is ugly but needed since there's a bug in ethereumjs-tx.Transaction where r/s might be shorter than 32 bytes
-  fixTransactionSignature: function (transaction) {
-    transaction.raw[7] = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.r.length), 'hex'), transaction.r])
-    transaction.raw[8] = Buffer.concat([Buffer.from('00'.repeat(32 - transaction.s.length), 'hex'), transaction.s])
   }
 }

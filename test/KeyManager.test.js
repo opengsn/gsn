@@ -1,7 +1,5 @@
 /* global */
 
-import { Transaction } from 'ethereumjs-tx'
-
 const fs = require('fs')
 const KeyManager = require('../src/relayserver/KeyManager')
 const KEYSTORE_FILENAME = 'keystore'
@@ -29,23 +27,6 @@ contract('KeyManager', function (accounts) {
     const ephemeral = KeyManager.newKeypair()
     assert.isTrue(web3.utils.isAddress(ephemeral.address))
     assert.equal(ephemeral.privateKey.length, 32)
-  })
-
-  it('should fix ill formatted transaction signature', async function () {
-    const tx = new Transaction({
-      nonce: 216,
-      gasLimit: 1e5,
-      gasPrice: 1e10,
-      to: accounts[9],
-      value: 1e18,
-      // @ts-ignore
-      chainId: 1,
-      data: '0x'
-    })
-    tx.sign(keyPair.privateKey)
-    assert.isTrue(tx.r.length !== 32 || tx.s.length !== 32, 'signature well formatted')
-    keyManager.signTransaction(tx)
-    assert.isFalse(tx.r.length !== 32 || tx.s.length !== 32, 'signature still ill formatted')
   })
 
   after('remove keystore', async function () {

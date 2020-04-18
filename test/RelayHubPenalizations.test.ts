@@ -9,7 +9,7 @@ import { encode } from 'rlp'
 import { expect } from 'chai'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import { getEip712Signature, fixTransactionSignature } from '../src/common/utils'
+import { getEip712Signature } from '../src/common/utils'
 import getDataToSign from '../src/common/EIP712/Eip712Helper'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
@@ -374,7 +374,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       })
 
       transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'))
-      fixTransactionSignature(transaction)
       return transaction
     }
 
@@ -426,7 +425,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         v -= chainId * 2 + 8
       }
       const data = `0x${encode(input).toString('hex')}`
-      const signature = `0x${tx.r.toString('hex')}${tx.s.toString('hex')}${v.toString(16)}`
+      const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
+        32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
       return {
         data,
         signature
