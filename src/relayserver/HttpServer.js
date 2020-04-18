@@ -21,7 +21,7 @@ class HttpServer {
     this.app.post('/relay', this.relayHandler.bind(this))
     this.backend.once('removed', this.stop.bind(this))
     this.backend.once('unstaked', this.close.bind(this))
-    this.backend.on('error', console.error)
+    this.backend.on('error', (e) => { console.error('httpServer:', e) })
   }
 
   start () {
