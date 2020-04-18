@@ -14,7 +14,7 @@ export const EmptyFilter: RelayFilter = (): boolean => {
  */
 export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]): Promise<number> {
   const gasLimit = parseInt(txDetails.gas ?? '0')
-  const gasPrice = parseInt(txDetails.gas ?? '0')
+  const gasPrice = parseInt(txDetails.gasPrice ?? '0')
   const pctFee = parseInt(relay.pctRelayFee)
   const baseFee = parseInt(relay.baseRelayFee)
   const transactionCost = baseFee + (gasLimit * gasPrice * pctFee) / 100
