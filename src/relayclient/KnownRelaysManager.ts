@@ -10,7 +10,14 @@ export const EmptyFilter: RelayFilter = (): boolean => {
   return true
 }
 
-export default class KnownRelaysManager {
+export interface IKnownRelaysManager {
+  refresh (): Promise<void>
+  getRelaysSorted (): RelayRegisteredEventInfo[]
+  saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void
+
+}
+
+export default class KnownRelaysManager implements IKnownRelaysManager {
   private readonly latestRelayFailures = new Map<string, RelayFailureInfo>()
   private readonly activeRelays = new Set<RelayRegisteredEventInfo>()
   private readonly contractInteractor: ContractInteractor

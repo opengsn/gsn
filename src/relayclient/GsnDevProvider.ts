@@ -4,7 +4,7 @@ import { HttpProvider } from 'web3-core'
 import { configureGSN, GSNDependencies } from './GSNConfigurator'
 
 export default class GsnDevProvider extends RelayProvider {
-  devRelayClient: DevRelayClient
+  private readonly devRelayClient: DevRelayClient
 
   /**
    * Create a dev provider.

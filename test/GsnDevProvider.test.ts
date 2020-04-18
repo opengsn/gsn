@@ -48,21 +48,19 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
   context('just with DevRelayClient', () => {
     let sender: string
     let relayClient: DevRelayClient
-    before(() => {
+    before(async () => {
       const provider = wssProvider as unknown as HttpProvider
       relayClient = new DevRelayClient(provider, {
         relayHubAddress: relayHub.address,
         minGasPrice: 0,
 
-        relayListenPort: 12345,
         relayOwner,
         gasPriceFactor: 1,
         pctRelayFee: 0,
         baseRelayFee: 0
       })
 
-      const keypair = relayClient.accountManager.newAccount()
-      sender = keypair.address
+      sender = await web3.eth.personal.newAccount('password')
     })
 
     after(async () => {
@@ -89,7 +87,6 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
       const devConfig: DevGSNConfig = {
         relayOwner,
         relayHubAddress: relayHub.address,
-        relayListenPort: 12345,
         gasPriceFactor: 1,
         baseRelayFee: 0,
         pctRelayFee: 0

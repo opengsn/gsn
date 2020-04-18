@@ -161,7 +161,7 @@ contract('RelayProvider', function (accounts) {
     let notRelayedTxReceipt: BaseTransactionReceipt
     let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
     let relayRequest: RelayRequest
-    // It is not stirctly necessary to make this test against actual tx receipt, but I prefer to do it anyway
+    // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new()

@@ -28,8 +28,8 @@ let IRelayHubContract: Contract<IRelayHubInstance>
 let IForwarderContract: Contract<ITrustedForwarderInstance>
 
 export default class ContractInteractor {
-  readonly web3: Web3
-  readonly provider: provider
+  private readonly web3: Web3
+  private readonly provider: provider
   private readonly config: GSNConfig
 
   constructor (provider: provider, config: GSNConfig) {
@@ -55,6 +55,9 @@ export default class ContractInteractor {
     IPaymasterContract.setProvider(this.provider, undefined)
     IForwarderContract.setProvider(this.provider, undefined)
   }
+
+  getProvider (): provider { return this.provider }
+  getWeb3 (): Web3 { return this.web3 }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {

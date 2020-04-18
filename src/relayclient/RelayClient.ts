@@ -9,7 +9,7 @@ import { AsyncApprove, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import RelaySelectionManager from './RelaySelectionManager'
-import KnownRelaysManager from './KnownRelaysManager'
+import { IKnownRelaysManager } from './KnownRelaysManager'
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
@@ -41,9 +41,9 @@ export interface RelayingResult {
 export default class RelayClient {
   readonly config: GSNConfig
   private readonly httpClient: HttpClient
-  readonly contractInteractor: ContractInteractor
-  readonly knownRelaysManager: KnownRelaysManager
-  readonly accountManager: AccountManager
+  protected contractInteractor: ContractInteractor
+  protected knownRelaysManager: IKnownRelaysManager
+  accountManager: AccountManager
   private readonly asyncApprove: AsyncApprove
   private readonly transactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
