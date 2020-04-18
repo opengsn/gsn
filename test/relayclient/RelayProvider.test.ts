@@ -30,6 +30,38 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 
 const underlyingProvider = web3.currentProvider as HttpProvider
 
+// TODO: once Utils.js is translated to TypeScript, move to Utils.ts
+export async function prepareTransaction (testRecipient: TestRecipientInstance, account: string, relayWorker: string, paymaster: string, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
+  const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
+  const testRecipientForwarder = await TrustedForwarder.at(testRecipientForwarderAddress)
+  const senderNonce = (await testRecipientForwarder.getNonce(account)).toString()
+  const relayRequest = new RelayRequest({
+    senderAddress: account,
+    encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
+    senderNonce,
+    target: testRecipient.address,
+    pctRelayFee: '1',
+    baseRelayFee: '1',
+    gasPrice: '1',
+    gasLimit: '10000',
+    relayWorker,
+    paymaster
+  })
+  const dataToSign = await getDataToSign({
+    chainId: defaultEnvironment.chainId,
+    verifier: testRecipientForwarderAddress,
+    relayRequest: relayRequest
+  })
+  const signature = await getEip712Signature({
+    web3,
+    dataToSign
+  })
+  return {
+    relayRequest,
+    signature
+  }
+}
+
 contract('RelayProvider', function (accounts) {
   let web3: Web3
   let gasLess: Address
@@ -63,7 +95,7 @@ contract('RelayProvider', function (accounts) {
     const TestRecipient = artifacts.require('TestRecipient')
     const testRecipient = await TestRecipient.new()
     const forwarder = await testRecipient.getTrustedForwarder()
-    const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
+    const gsnConfig = configureGSN({ relayHubAddress: relayHub.address, stakeManagerAddress: stakeManager.address })
     const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
     // NOTE: in real application its enough to set the provider in web3.
     // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
@@ -135,7 +167,7 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
-      const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
+      const gsnConfig = configureGSN({ relayHubAddress: relayHub.address, stakeManagerAddress: stakeManager.address })
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
         if (error != null) {
@@ -160,7 +192,6 @@ contract('RelayProvider', function (accounts) {
     let innerTxSucceedReceipt: BaseTransactionReceipt
     let notRelayedTxReceipt: BaseTransactionReceipt
     let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
-    let relayRequest: RelayRequest
     // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
@@ -187,30 +218,7 @@ contract('RelayProvider', function (accounts) {
       misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
-      const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
-      const testRecipientForwarder = await TrustedForwarder.at(testRecipientForwarderAddress)
-      const senderNonce = (await testRecipientForwarder.getNonce(accounts[0])).toString()
-      relayRequest = new RelayRequest({
-        senderAddress: accounts[0],
-        encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
-        senderNonce,
-        target: testRecipient.address,
-        pctRelayFee: '1',
-        baseRelayFee: '1',
-        gasPrice: '1',
-        gasLimit: '10000',
-        relayWorker: accounts[0],
-        paymaster: misbehavingPaymaster.address
-      })
-      const dataToSign = await getDataToSign({
-        chainId: defaultEnvironment.chainId,
-        verifier: testRecipientForwarderAddress,
-        relayRequest: relayRequest
-      })
-      const signature = await getEip712Signature({
-        web3,
-        dataToSign
-      })
+      const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
       const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', {
         from: accounts[0],

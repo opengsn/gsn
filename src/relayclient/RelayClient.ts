@@ -109,7 +109,7 @@ export default class RelayClient {
     const relayingErrors = new Map<string, Error>()
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
-      const activeRelay = await relaySelectionManager.selectNextRelay()
+      const activeRelay = await relaySelectionManager.selectNextRelay(gsnTransactionDetails)
       if (activeRelay != null) {
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
         if (relayingAttempt.transaction == null) {

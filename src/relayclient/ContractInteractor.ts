@@ -7,11 +7,12 @@ import RelayRequest from '../common/EIP712/RelayRequest'
 import paymasterAbi from '../common/interfaces/IPaymaster'
 import relayHubAbi from '../common/interfaces/IRelayHub'
 import forwarderAbi from '../common/interfaces/ITrustedForwarder'
-import { calculateTransactionMaxPossibleGas } from '../common/utils'
+import stakeManagerAbi from '../common/interfaces/IStakeManager'
+import { calculateTransactionMaxPossibleGas, event2topic } from '../common/utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import {
   IPaymasterInstance,
-  IRelayHubInstance,
+  IRelayHubInstance, IStakeManagerInstance,
   ITrustedForwarderInstance
 } from '../../types/truffle-contracts'
 
@@ -26,6 +27,7 @@ import Contract = Truffle.Contract
 let IPaymasterContract: Contract<IPaymasterInstance>
 let IRelayHubContract: Contract<IRelayHubInstance>
 let IForwarderContract: Contract<ITrustedForwarderInstance>
+let IStakeManager: Contract<IStakeManagerInstance>
 
 export default class ContractInteractor {
   private readonly web3: Web3
@@ -51,6 +53,12 @@ export default class ContractInteractor {
       contractName: 'ITrustedForwarder',
       abi: forwarderAbi
     })
+    // @ts-ignore
+    IStakeManager = TruffleContract({
+      contractName: 'IStakeManager',
+      abi: stakeManagerAbi
+    })
+    IStakeManager.setProvider(this.provider, undefined)
     IRelayHubContract.setProvider(this.provider, undefined)
     IPaymasterContract.setProvider(this.provider, undefined)
     IForwarderContract.setProvider(this.provider, undefined)
@@ -69,6 +77,11 @@ export default class ContractInteractor {
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
     return IForwarderContract.at(address)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
+    return IStakeManager.at(address)
   }
 
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
@@ -101,8 +114,12 @@ export default class ContractInteractor {
     let success: boolean
     let returnValue: string
     try {
-      // @ts-ignore
-      ({ success, returnValue } = await relayHub.canRelay(
+      ({
+        // @ts-ignore
+        success,
+        // @ts-ignore
+        returnValue
+      } = await relayHub.canRelay(
         relayRequest,
         maxPossibleGas,
         gasLimits.acceptRelayedCallGasLimit,
@@ -131,9 +148,25 @@ export default class ContractInteractor {
     return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData).encodeABI()
   }
 
-  async getPastEventsForHub (relayHubAddress: Address, event: string | 'allEvents', options: PastEventOptions): Promise<EventData[]> {
-    const relayHub = await this._createRelayHub(relayHubAddress)
-    return relayHub.contract.getPastEvents(event, options)
+  async getPastEventsForHub (names: string[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    const relayHub = await this._createRelayHub(this.config.relayHubAddress)
+    return this._getPastEvents(relayHub.contract, names, extraTopics, options)
+  }
+
+  async getPastEventsForStakeManager (names: string[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    const stakeManager = await this._createStakeManager(this.config.stakeManagerAddress)
+    return this._getPastEvents(stakeManager.contract, names, extraTopics, options)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async _getPastEvents (contract: any, names: string[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    const topics: string[][] = []
+    const eventTopic = event2topic(contract, names)
+    topics.push(eventTopic)
+    if (extraTopics.length > 0) {
+      topics.push(extraTopics)
+    }
+    return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
   }
 
   async getBlockNumber (): Promise<number> {

@@ -1,9 +1,9 @@
 import { HttpProvider } from 'web3-core'
-import { Address, AsyncApprove, PingFilter, RelayFilter } from './types/Aliases'
+import { Address, AsyncApprove, AsyncScoreCalculator, PingFilter, RelayFilter } from './types/Aliases'
 import { defaultEnvironment } from './types/Environments'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
-import KnownRelaysManager, { EmptyFilter } from './KnownRelaysManager'
+import KnownRelaysManager, { DefaultRelayScore, EmptyFilter } from './KnownRelaysManager'
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
@@ -14,6 +14,7 @@ const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
 
 const defaultGsnConfig: GSNConfig = {
+  relayLookupWindowBlocks: 6000,
   gtxdatanonzero: defaultEnvironment.gtxdatanonzero,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   minGasPrice: 0,
@@ -24,6 +25,7 @@ const defaultGsnConfig: GSNConfig = {
   jsonStringifyRequest: false,
   chainId: defaultEnvironment.chainId,
   relayHubAddress: '0x0000000000000000000000000000000000000000',
+  stakeManagerAddress: '0x0000000000000000000000000000000000000000',
   verbose: false
 }
 
@@ -41,6 +43,7 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
  * @field jsonStringifyRequest - should be 'true' for Metamask, false for ganache
  */
 export interface GSNConfig {
+  relayLookupWindowBlocks: number
   methodSuffix: string
   jsonStringifyRequest: boolean
   relayTimeoutGrace: number
@@ -51,6 +54,7 @@ export interface GSNConfig {
   minGasPrice: number
   maxRelayNonceGap: number
   relayHubAddress: Address
+  stakeManagerAddress: Address
   chainId: number
 }
 
@@ -63,6 +67,7 @@ export interface GSNDependencies {
   pingFilter: PingFilter
   relayFilter: RelayFilter
   asyncApprove: AsyncApprove
+  scoreCalculator: AsyncScoreCalculator
   config: GSNConfig
 }
 
@@ -89,7 +94,8 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
   const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
   const relayFilter = overrideDependencies?.relayFilter ?? EmptyFilter
   const asyncApprove = overrideDependencies?.asyncApprove ?? EmptyApprove
-  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, relayFilter, config)
+  const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
+  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, config, relayFilter)
   const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, config)
   return {
     httpClient,
@@ -100,6 +106,7 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
     pingFilter,
     relayFilter,
     asyncApprove,
+    scoreCalculator,
     config
   }
 }
