@@ -35,9 +35,9 @@ export default class RelaySelectionManager {
    * Ping those relays that were not pinged yet, and remove both the returned relay or relays re from {@link remainingRelays}
    * @returns the first relay to respond to a ping message. Note: will never return the same relay twice.
    */
-  async selectNextRelay (): Promise<RelayInfo | undefined> {
+  async selectNextRelay (txDetails: GsnTransactionDetails): Promise<RelayInfo | undefined> {
     while (true) {
-      const slice = this._getNextSlice()
+      const slice = await this._getNextSlice(txDetails)
       let relayInfo: RelayInfo | undefined
       if (slice.length > 0) {
         relayInfo = await this._nextRelayInternal(slice)
@@ -68,9 +68,9 @@ export default class RelaySelectionManager {
     return raceResult.winner
   }
 
-  _getNextSlice (): RelayRegisteredEventInfo[] {
+  async _getNextSlice (txDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]> {
     if (this.remainingRelays == null) {
-      this.remainingRelays = this.knownRelaysManager.getRelaysSorted()
+      this.remainingRelays = await this.knownRelaysManager.getRelaysSortedForTransaction(txDetails)
     }
     const bulkSize = Math.min(this.config.sliceSize, this.remainingRelays.length)
     const slice = this.remainingRelays.slice(0, bulkSize)
