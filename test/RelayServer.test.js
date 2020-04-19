@@ -52,6 +52,7 @@ contract('RelayServer', function (accounts) {
   let encodedFunction
   let relayClient
   let options, options2
+  let keyManager
 
   before(async function () {
     ethereumNodeUrl = web3.currentProvider.host
@@ -70,7 +71,7 @@ contract('RelayServer', function (accounts) {
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')
-    const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair() })
+    keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair() })
     const txStoreManager = new TxStoreManager({ workdir })
     relayServer = new RelayServer({
       txStoreManager,
@@ -122,7 +123,7 @@ contract('RelayServer', function (accounts) {
   })
 
   after('txstore cleanup', async function () {
-    await relayServer.txStoreManager.clearAll()
+    await relayServer?.txStoreManager.clearAll()
     assert.deepEqual([], await relayServer.txStoreManager.getAll())
   })
 
@@ -247,6 +248,28 @@ contract('RelayServer', function (accounts) {
       assert.equal(relayServer.stake, oneEther)
       assert.equal(relayServer.ready, true, 'relay not ready?')
       await assertRelayAdded(receipt, relayServer)
+    })
+
+    it('should start again after restarting process', async () => {
+      const newKeyManager = new KeyManager({ ecdsaKeyPair: keyManager.ecdsaKeyPair })
+      const txStoreManager = new TxStoreManager({ workdir })
+      const newRelayServer = new RelayServer({
+        txStoreManager,
+        keyManager: newKeyManager,
+        // owner: relayOwner,
+        hubAddress: rhub.address,
+        stakeManagerAddress: stakeManager.address,
+        url: localhostOne,
+        baseRelayFee: 0,
+        pctRelayFee: 0,
+        gasPriceFactor: 1,
+        ethereumNodeUrl,
+        web3provider: serverWeb3provider,
+        devMode: true
+      })
+
+      await newRelayServer._worker({ number: await _web3.eth.getBlockNumber() })
+      assert.equal(relayServer.ready, true, 'relay not ready?')
     })
   })
 

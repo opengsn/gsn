@@ -237,7 +237,7 @@ class RelayServer extends EventEmitter {
   }
 
   start () {
-    console.log('Subscribing to new blocks')
+    debug('Subscribing to new blocks')
     this.subscription = this.web3.eth.subscribe('newBlockHeaders', (error, result) => {
       if (error) {
         console.error('web3 subscription:', error)
@@ -257,7 +257,7 @@ class RelayServer extends EventEmitter {
 
   _workerSemaphore (blockHeader) {
     if (this._workerSemaphoreOn) {
-      console.log('Different worker is not finished yet')
+      debug('Different worker is not finished yet')
       return
     }
     this._workerSemaphoreOn = true
@@ -343,7 +343,7 @@ class RelayServer extends EventEmitter {
         throw new Error('Not registered yet...')
       }
       this.lastScannedBlock = parseInt(blockHeader.number)
-      console.log('READY!')
+      debug('READY!')
       this.ready = true
       await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
@@ -370,7 +370,7 @@ class RelayServer extends EventEmitter {
     // first time getting stake, setting owner
     if (!this.owner) {
       this.owner = stakeInfo.owner
-      console.log(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
+      debug(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake}`)
     }
     this.unstakeDelay = stakeInfo.unstakeDelay
     this.withdrawBlock = stakeInfo.withdrawBlock
@@ -395,13 +395,21 @@ class RelayServer extends EventEmitter {
     if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
-    // register on chain
-    const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.address])
-    await this._sendTransaction(
-      {
-        method: addRelayWorkerMethod,
-        destination: this.relayHubContract.options.address
-      })
+    const workersAddedEvents = await this.relayHubContract.getPastEvents('RelayWorkersAdded', {
+      fromBlock: 1,
+      filter: { relayManager: this.address }
+    })
+    console.log('worker events', workersAddedEvents)
+    // add worker only if not already added
+    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.address.toLowerCase()))) {
+      // register on chain
+      const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.address])
+      await this._sendTransaction(
+        {
+          method: addRelayWorkerMethod,
+          destination: this.relayHubContract.options.address
+        })
+    }
     const registerMethod = this.relayHubContract.methods.registerRelayServer(this.baseRelayFee, this.pctRelayFee,
       this.url)
     const { receipt } = await this._sendTransaction(
@@ -409,7 +417,7 @@ class RelayServer extends EventEmitter {
         method: registerMethod,
         destination: this.relayHubContract.options.address
       })
-    console.log(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
+    debug(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
     this.isAddressAdded = true
     return receipt
   }
@@ -444,7 +452,7 @@ class RelayServer extends EventEmitter {
     if (sortedTxs.length === 0) {
       return
     }
-    console.log('resending unconfirmed transactions')
+    debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
     let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
@@ -462,7 +470,7 @@ class RelayServer extends EventEmitter {
     // Check if the tx was mined by comparing its nonce against the latest one
     nonce = await this.web3.eth.getTransactionCount(this.address)
     if (sortedTxs[0].nonce < nonce) {
-      console.log('awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
+      debug('awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
       return
     }
 
@@ -470,14 +478,14 @@ class RelayServer extends EventEmitter {
     if (Date.now() - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
       spam(Date.now(), (new Date()), (new Date()).getTime())
       spam(sortedTxs[0].createdAt, (new Date(sortedTxs[0].createdAt)), (new Date(sortedTxs[0].createdAt)).getTime())
-      console.log('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
+      debug('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
       return
     }
     const { receipt, signedTx } = await this._resendTransaction({ tx: sortedTxs[0] })
-    console.log('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
+    debug('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
       receipt.transactionHash)
     if (sortedTxs[0].attempts > 2) {
-      console.log(`Sent tx ${sortedTxs[0].attempts} times already`)
+      debug(`Sent tx ${sortedTxs[0].attempts} times already`)
     }
     return signedTx
   }
@@ -525,7 +533,7 @@ class RelayServer extends EventEmitter {
       releaseMutex()
     }
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
-    console.log('\ntxhash is', receipt.transactionHash)
+    debug('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
@@ -540,7 +548,7 @@ class RelayServer extends EventEmitter {
     let newGasPrice = parseInt(tx.gasPrice * retryGasPriceFactor)
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newGasPrice > maxGasPrice) {
-      console.log('Capping gas price to max value of', maxGasPrice)
+      debug('Capping gas price to max value of', maxGasPrice)
       newGasPrice = maxGasPrice
     }
     // Resend transaction with exactly the same values except for gas price

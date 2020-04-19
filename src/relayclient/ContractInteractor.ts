@@ -64,6 +64,9 @@ export default class ContractInteractor {
     IForwarderContract.setProvider(this.provider, undefined)
   }
 
+  getProvider (): provider { return this.provider }
+  getWeb3 (): Web3 { return this.web3 }
+
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
     return IPaymasterContract.at(address)

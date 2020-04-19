@@ -25,7 +25,13 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
 
 const activeManagerEvents = ['RelayServerRegistered', 'TransactionRelayed', 'CanRelayFailed', 'RelayWorkersAdded']
 
-export default class KnownRelaysManager {
+export interface IKnownRelaysManager {
+  refresh (): Promise<void>
+  saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void
+  getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]>
+}
+
+export default class KnownRelaysManager implements IKnownRelaysManager {
   private relayFailures = new Map<string, RelayFailureInfo[]>()
   private readonly activeRelays = new Set<RelayRegisteredEventInfo>()
   private readonly contractInteractor: ContractInteractor
@@ -69,7 +75,6 @@ export default class KnownRelaysManager {
       }
       return blockNumberA - blockNumberB
     })
-
     const activeRelays = new Map<Address, RelayRegisteredEventInfo>()
     mergedEvents.forEach(event => {
       const args = event.returnValues
