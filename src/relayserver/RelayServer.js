@@ -395,13 +395,21 @@ class RelayServer extends EventEmitter {
     if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
-    // register on chain
-    const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.address])
-    await this._sendTransaction(
-      {
-        method: addRelayWorkerMethod,
-        destination: this.relayHubContract.options.address
-      })
+    let workersAddedEvents
+    workersAddedEvents = await this.relayHubContract.getPastEvents('RelayWorkersAdded', {
+      fromBlock: 1,
+      filter: { relayManager: this.address }
+    })
+    //add worker only if not already added
+    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.includes(this.address))) {
+      // register on chain
+      const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.address])
+      await this._sendTransaction(
+        {
+          method: addRelayWorkerMethod,
+          destination: this.relayHubContract.options.address
+        })
+    }
     const registerMethod = this.relayHubContract.methods.registerRelayServer(this.baseRelayFee, this.pctRelayFee,
       this.url)
     const { receipt } = await this._sendTransaction(
