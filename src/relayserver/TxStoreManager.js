@@ -20,15 +20,15 @@ class StoredTx {
 const TXSTORE_FILENAME = 'txstore.db'
 
 class TxStoreManager {
-  constructor ({ workdir = '/tmp/test/' }) {
+  constructor ({ workdir = '/tmp/test/', inMemory = false }) {
     this.txstore = new Nedb({
-      filename: `${workdir}/${TXSTORE_FILENAME}`,
+      filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
       autoload: true,
       timestampData: true
     })
     this.txstore.ensureIndex({ fieldName: 'txId', unique: true })
     this.txstore.ensureIndex({ fieldName: 'nonce', unique: true })
-    console.log('txstore created in ', `${workdir}/${TXSTORE_FILENAME}`)
+    console.log('txstore created in ', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
   _toLowerCase ({ tx }) {

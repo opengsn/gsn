@@ -3,7 +3,7 @@ import { Address, AsyncApprove, AsyncScoreCalculator, PingFilter, RelayFilter } 
 import { defaultEnvironment } from './types/Environments'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
-import KnownRelaysManager, { DefaultRelayScore, EmptyFilter } from './KnownRelaysManager'
+import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
@@ -61,7 +61,7 @@ export interface GSNConfig {
 export interface GSNDependencies {
   httpClient: HttpClient
   contractInteractor: ContractInteractor
-  knownRelaysManager: KnownRelaysManager
+  knownRelaysManager: IKnownRelaysManager
   accountManager: AccountManager
   transactionValidator: RelayedTransactionValidator
   pingFilter: PingFilter

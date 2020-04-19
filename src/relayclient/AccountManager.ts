@@ -19,7 +19,6 @@ function toAddress (wallet: any): string {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   return `0x${wallet.getAddress().toString('hex')}`
 }
-
 export default class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
@@ -65,8 +64,7 @@ export default class AccountManager {
     } else {
       signature = await this._signWithProvider(signedData)
     }
-
-    // Sanity check
+    // Sanity check only
     let rec: Address
     try {
       // @ts-ignore
