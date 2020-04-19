@@ -399,8 +399,9 @@ class RelayServer extends EventEmitter {
       fromBlock: 1,
       filter: { relayManager: this.address }
     })
+    console.log('worker events', workersAddedEvents)
     // add worker only if not already added
-    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.includes(this.address))) {
+    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.address.toLowerCase()))) {
       // register on chain
       const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.address])
       await this._sendTransaction(
