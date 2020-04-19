@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - '80:80'
+      - '443:443'
+    restart: always
+    environment:
+      DOMAINS: '${HOST} -> http://gsn'
+      STAGE: 'production'
+
+  gsn:
+    image: opengsn/jsrelay
+    restart: always
+    ports:
+      - '8090:80' #needed for debugging without https frontend
+
+    volumes:
+      - ./gsndata:/app/data    #can be left out, to keep private-key inside the docker
+    environment:
+      Url: https://${HOST}
+      Port: 80
+      EthereumNodeUrl: ${NODE_URL}
+      RelayHubAddress: ${RELAY_HUB}
+      GasPricePercent: ${GAS_PRICE_PERCENT}
+      BaseFee: ${BASE_FEE}
+      PercentFee: ${PERCENT_FEE}
+      DevMode: ${DEVMODE}
+
+

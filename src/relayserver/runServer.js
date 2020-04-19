@@ -8,6 +8,10 @@ const TxStoreManager = require('./TxStoreManager').TxStoreManager
 const TXSTORE_FILENAME = require('./TxStoreManager').TXSTORE_FILENAME
 
 function error (err) { throw new Error(err) }
+// use all camel-case entries from environment as defaults.
+const envDefaults = Object.entries(process.env)
+  .filter(([k]) => /^[A-Z][a-z][A-Za-z]*$/.test(k))
+  .reduce((obj, [k, v]) => ({ ...obj, [k]: v }), {})
 
 const argv = parseArgs(process.argv.slice(2), {
   string:
@@ -23,7 +27,8 @@ const argv = parseArgs(process.argv.slice(2), {
       'Workdir'
     ],
   boolean: ['DevMode'],
-  alias: {}
+  alias: {},
+  default: envDefaults
 })
 
 if (argv._.length) error('unknown extra params: ' + argv._)
