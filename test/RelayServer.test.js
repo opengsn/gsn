@@ -116,7 +116,7 @@ contract('RelayServer', function (accounts) {
     }
   })
 
-  beforeEach(async function () {
+  before(async function () {
     await relayServer?.txStoreManager.clearAll()
   })
 
