@@ -17,8 +17,7 @@ import net from 'net'
 
 import KeyManager = require('../relayserver/KeyManager')
 
-const dayInSec = 24 * 60 * 60
-const weekInSec = dayInSec * 7
+const unstakeDelay = 2000
 
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
@@ -208,17 +207,19 @@ export class DevRelayClient extends RelayClient {
 
     const stakeManager = await IStakeManagerContract.at(stakeManagerAddress)
 
-    await stakeManager.stakeForAddress(relayServer.address, weekInSec, {
-      from: this.devConfig.relayOwner,
-      value: ether('1')
-      // gas: estim
-    })
+    await stakeManager.contract.methods.stakeForAddress(relayServer.address, unstakeDelay).send({ from: this.devConfig.relayOwner, value: ether('1') })
+    // not sure why: the line below started to crash on: Number can only safely store up to 53 bits
+    // (and its not relayed - its a direct call)
+    // await stakeManager.stakeForAddress(relayServer.address, unstakeDelay, {
+    //   from: this.devConfig.relayOwner,
+    //   value: ether('1'),
+    // })
     this.debug('== sending balance to relayServer', relayServer.address)
     await stakeManager.authorizeHub(relayServer.address, this.config.relayHubAddress, { from: this.devConfig.relayOwner })
     await this.contractInteractor.getWeb3().eth.sendTransaction({
       from: this.devConfig.relayOwner,
       to: relayServer.address,
-      value: 1e18
+      value: ether('1')
     })
     this.debug('== waiting for relay')
     // @ts-ignore
