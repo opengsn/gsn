@@ -51,7 +51,7 @@ if (devMode) {
   }
 }
 
-const keyManager = new KeyManager({ count:2, workdir })
+const keyManager = new KeyManager({ count: 2, workdir })
 const txStoreManager = new TxStoreManager({ workdir })
 const web3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100

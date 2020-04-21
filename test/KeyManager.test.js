@@ -6,7 +6,7 @@ const KEYSTORE_FILENAME = 'keystore'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/key_manager'
-const keyStoreFilePath = workdir+"/"+KEYSTORE_FILENAME
+const keyStoreFilePath = workdir + '/' + KEYSTORE_FILENAME
 
 function cleanFolder () {
   if (fs.existsSync(keyStoreFilePath)) {
@@ -63,6 +63,6 @@ contract('KeyManager', function (accounts) {
       assert.equal(fkmA._privateKeys[addrA10].toString('hex'), fkmB._privateKeys[addrB10].toString('hex'))
     })
 
-    after('remove keystore',  cleanFolder)
+    after('remove keystore', cleanFolder)
   })
 })
