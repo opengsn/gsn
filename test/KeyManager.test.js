@@ -6,6 +6,16 @@ const KEYSTORE_FILENAME = 'keystore'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/key_manager'
+const keyStoreFilePath = workdir+"/"+KEYSTORE_FILENAME
+
+function cleanFolder () {
+  if (fs.existsSync(keyStoreFilePath)) {
+    fs.unlinkSync(keyStoreFilePath)
+  }
+  if (fs.existsSync(workdir)) {
+    fs.rmdirSync(workdir)
+  }
+}
 
 contract('KeyManager', function (accounts) {
   describe('in-memory', () => {
@@ -29,8 +39,7 @@ contract('KeyManager', function (accounts) {
     let fkmA
 
     before('create key manager', async function () {
-      fs.rmdirSync(workdir, { recursive: true })
-      assert.isFalse(fs.existsSync(workdir), 'test keystore dir should not exist yet')
+      cleanFolder()
       fkmA = new KeyManager({ count: 20, workdir })
       assert.isTrue(fs.existsSync(workdir), 'test keystore dir should exist already')
     })
@@ -54,9 +63,6 @@ contract('KeyManager', function (accounts) {
       assert.equal(fkmA._privateKeys[addrA10].toString('hex'), fkmB._privateKeys[addrB10].toString('hex'))
     })
 
-    after('remove keystore', async function () {
-      fs.unlinkSync(`${workdir}/${KEYSTORE_FILENAME}`)
-      fs.rmdirSync(workdir)
-    })
+    after('remove keystore',  cleanFolder)
   })
 })
