@@ -7,12 +7,22 @@ const StoredTx = require('../src/relayserver/TxStoreManager').StoredTx
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
+const txStoreFilePath = `${workdir}/${TXSTORE_FILENAME}`
+
+function cleanFolder () {
+  if (fs.existsSync(txStoreFilePath)) {
+    fs.unlinkSync(txStoreFilePath)
+  }
+  if (fs.existsSync(workdir)) {
+    fs.rmdirSync(workdir)
+  }
+}
 
 contract('TxStoreManager', function (accounts) {
   let txmanager, tx, tx2, tx3
 
   before('create txstore', async function () {
-    assert.isFalse(fs.existsSync(workdir), 'test txstore dir should not exist yet')
+    cleanFolder()
     txmanager = new TxStoreManager({ workdir })
     await txmanager.clearAll()
     assert.ok(txmanager, 'txstore uninitialized' + txmanager)
@@ -64,17 +74,17 @@ contract('TxStoreManager', function (accounts) {
   })
 
   it('should get tx by nonce', async function () {
-    assert.equal(null, await txmanager.getTxByNonce({ nonce: tx.nonce + 1234 }))
-    const txByNonce = await txmanager.getTxByNonce({ nonce: tx.nonce })
+    assert.equal(null, await txmanager.getTxByNonce({ signer: tx.from, nonce: tx.nonce + 1234 }))
+    const txByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx.nonce })
     assert.equal(tx.txId, txByNonce.txId)
   })
 
   it('should remove tx by nonce', async function () {
-    let txByNonce = await txmanager.getTxByNonce({ nonce: tx.nonce })
+    let txByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx.nonce })
     assert.equal(tx.txId, txByNonce.txId)
     assert.deepEqual(1, (await txmanager.getAll()).length)
-    await txmanager.removeTxByNonce({ nonce: tx.nonce })
-    txByNonce = await txmanager.getTxByNonce({ nonce: tx.nonce })
+    await txmanager.removeTxByNonce({ signer: tx.from, nonce: tx.nonce })
+    txByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx.nonce })
     assert.equal(null, txByNonce)
     assert.deepEqual([], await txmanager.getAll())
   })
@@ -83,19 +93,19 @@ contract('TxStoreManager', function (accounts) {
     await txmanager.putTx({ tx })
     await txmanager.putTx({ tx: tx2 })
     await txmanager.putTx({ tx: tx3 })
-    let txByNonce = await txmanager.getTxByNonce({ nonce: tx.nonce })
+    let txByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx.nonce })
     assert.equal(tx.txId, txByNonce.txId)
-    let tx2ByNonce = await txmanager.getTxByNonce({ nonce: tx2.nonce })
+    let tx2ByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx2.nonce })
     assert.equal(tx2.txId, tx2ByNonce.txId)
-    let tx3ByNonce = await txmanager.getTxByNonce({ nonce: tx3.nonce })
+    let tx3ByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx3.nonce })
     assert.equal(tx3.txId, tx3ByNonce.txId)
     assert.deepEqual(3, (await txmanager.getAll()).length)
-    await txmanager.removeTxsUntilNonce({ nonce: tx2.nonce })
-    txByNonce = await txmanager.getTxByNonce({ nonce: tx.nonce })
+    await txmanager.removeTxsUntilNonce({ signer: tx.from, nonce: tx2.nonce })
+    txByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx.nonce })
     assert.equal(null, txByNonce)
-    tx2ByNonce = await txmanager.getTxByNonce({ nonce: tx2.nonce })
+    tx2ByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx2.nonce })
     assert.equal(null, tx2ByNonce)
-    tx3ByNonce = await txmanager.getTxByNonce({ nonce: tx3.nonce })
+    tx3ByNonce = await txmanager.getTxByNonce({ signer: tx.from, nonce: tx3.nonce })
     assert.equal(tx3.txId, tx3ByNonce.txId)
     assert.deepEqual(1, (await txmanager.getAll()).length)
   })
@@ -115,15 +125,12 @@ contract('TxStoreManager', function (accounts) {
     assert.deepEqual(1, (await txmanager.getAll()).length)
     try {
       await txmanager.putTx({ tx, updateExisting: false })
-      assert.fail()
+      assert.fail('should fail storing twice')
     } catch (e) {
-      assert.isTrue(e.message.includes('violates the unique constraint'), e.message)
+      assert.include(e.message, 'violates the unique constraint')
     }
     assert.deepEqual(1, (await txmanager.getAll()).length)
   })
 
-  after('remove txstore', async function () {
-    fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
-    fs.rmdirSync(workdir)
-  })
+  after('remove txstore', cleanFolder)
 })

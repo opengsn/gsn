@@ -72,14 +72,7 @@ class HttpServer {
   }
 
   async pingHandler (req, res) {
-    const pingResponse = {
-      RelayServerAddress: this.backend.address,
-      RelayManagerAddress: this.backend.address,
-      RelayHubAddress: this.backend.relayHubContract.options.address,
-      MinGasPrice: this.backend.getMinGasPrice(),
-      Ready: this.backend.isReady(),
-      Version: this.backend.VERSION
-    }
+    const pingResponse = this.backend.pingHandler()
     res.send(pingResponse)
     console.log(`address ${this.backend.address} sent. ready: ${this.backend.isReady()}`)
   }

@@ -1,5 +1,6 @@
 const Nedb = require('nedb-async').AsyncNedb
 const ethUtils = require('ethereumjs-util')
+const ow = require('ow')
 
 class StoredTx {
   constructor (tx) {
@@ -27,57 +28,86 @@ class TxStoreManager {
       timestampData: true
     })
     this.txstore.ensureIndex({ fieldName: 'txId', unique: true })
-    this.txstore.ensureIndex({ fieldName: 'nonce', unique: true })
+    this.txstore.ensureIndex({ fieldName: 'nonceSigner', unique: true })
+
     console.log('txstore created in ', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
   _toLowerCase ({ tx }) {
-    tx.txId = tx.txId.toLowerCase()
+    return {
+      ...tx,
+      txId: tx.txId.toLowerCase()
+    }
   }
 
   async putTx ({ tx, updateExisting }) {
     if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
       throw new Error('Invalid tx:' + JSON.stringify(tx))
     }
-    this._toLowerCase({ tx })
-    const existing = await this.txstore.asyncFindOne({ nonce: tx.nonce })
+    const tx1 = {
+      ...tx,
+      txId: tx.txId.toLowerCase(),
+      nonceSigner: {
+        nonce: tx.nonce,
+        signer: tx.from
+      }
+    }
+    const existing = await this.txstore.asyncFindOne({ nonceSigner: tx1.nonceSigner })
     if (existing && updateExisting) {
-      await this.txstore.asyncUpdate({ txId: existing.txId }, { $set: tx })
+      await this.txstore.asyncUpdate({ txId: existing.txId }, { $set: tx1 })
     } else {
-      await this.txstore.asyncInsert(tx)
+      await this.txstore.asyncInsert(tx1)
     }
   }
 
-  async getTxByNonce ({ nonce }) {
-    if (nonce === undefined) {
-      throw new Error('must supply nonce')
-    }
-    return this.txstore.asyncFindOne({ nonce: nonce }, { _id: 0 })
+  async getTxByNonce ({ signer, nonce }) {
+    ow(nonce, ow.any(ow.number, ow.string))
+    ow(signer, ow.string)
+
+    return this.txstore.asyncFindOne({
+      nonceSigner: {
+        signer,
+        nonce
+      }
+    }, { _id: 0 })
   }
 
   async getTxById ({ txId }) {
-    if (!txId) {
-      throw new Error('must supply txId')
-    }
+    ow(txId, ow.string)
+
     return this.txstore.asyncFindOne({ txId: txId.toLowerCase() }, { _id: 0 })
   }
 
-  async removeTxByNonce ({ nonce }) {
-    if (nonce === undefined) {
-      throw new Error('must supply nonce')
-    }
-    return this.txstore.asyncRemove({ nonce: nonce }, { multi: true })
+  async removeTxByNonce ({ signer, nonce }) {
+    ow(nonce, ow.any(ow.string, ow.number))
+    ow(signer, ow.string)
+
+    return this.txstore.asyncRemove({
+      $and: [
+        { 'nonceSigner.nonce': nonce },
+        { 'nonceSigner.signer': signer }]
+    }, { multi: true })
   }
 
-  async removeTxsUntilNonce ({ nonce }) {
-    if (nonce === undefined) {
-      throw new Error('must supply nonce')
-    }
-    return this.txstore.asyncRemove({ nonce: { $lte: nonce } }, { multi: true })
+  async removeTxsUntilNonce ({ signer, nonce }) {
+    ow(nonce, ow.number)
+    ow(signer, ow.string)
+
+    return this.txstore.asyncRemove({
+      $and: [
+        { 'nonceSigner.nonce': { $lte: nonce } },
+        { 'nonceSigner.signer': signer }]
+    }, { multi: true })
   }
 
   async clearAll () {
     return this.txstore.asyncRemove({}, { multi: true })
+  }
+
+  async getAllBySigner (signer) {
+    return (await this.txstore.asyncFind({ 'nonceSigner.signer': signer })).sort(function (tx1, tx2) {
+      return tx1.nonce - tx2.nonce
+    })
   }
 
   async getAll () {
@@ -87,4 +117,8 @@ class TxStoreManager {
   }
 }
 
-module.exports = { TxStoreManager, StoredTx, TXSTORE_FILENAME }
+module.exports = {
+  TxStoreManager,
+  StoredTx,
+  TXSTORE_FILENAME
+}

@@ -1,50 +1,83 @@
 const Wallet = require('ethereumjs-wallet')
+const HDKey = require('ethereumjs-wallet/hdkey')
 const abi = require('ethereumjs-abi')
 const fs = require('fs')
 const ethUtils = require('ethereumjs-util')
+const ow = require('ow')
 
 class KeyManager {
-  constructor ({ ecdsaKeyPair, workdir }) {
-    this.ecdsaKeyPair = ecdsaKeyPair
+  // workdir - read seed from keystore file (or generate one and write it)
+  // seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
+  constructor ({ count, workdir = null, seed = null }) {
+    ow(count, ow.number)
+    if (seed && workdir) { throw new Error('Can\'t specify both seed and workdir') }
+
     if (workdir) {
-      this.workdir = workdir
       try {
         if (!fs.existsSync(workdir)) {
           fs.mkdirSync(workdir, { recursive: true })
         }
-        fs.writeFileSync(workdir + '/keystore', JSON.stringify({ ecdsaKeyPair }), { flag: 'w' })
+        let genseed
+        const keyStorePath = workdir + '/keystore'
+        if (fs.existsSync(keyStorePath)) {
+          genseed = JSON.parse(fs.readFileSync(keyStorePath).toString()).seed
+        } else {
+          genseed = Wallet.generate().getPrivateKey().toString('hex')
+          fs.writeFileSync(keyStorePath, JSON.stringify({ seed: genseed.toString('hex') }), { flag: 'w' })
+        }
+        this.hdkey = HDKey.fromMasterSeed(genseed)
       } catch (e) {
         if (!e.message.includes('file already exists')) {
           throw e
         }
       }
+    } else {
+      // no workdir: working in-memory
+      if (!seed) {
+        seed = Wallet.generate().getPrivateKey().toString('hex')
+      }
+      this.hdkey = HDKey.fromMasterSeed(seed)
+    }
+    this.generateKeys(count)
+  }
+
+  generateKeys (count) {
+    this._privateKeys = {}
+    for (let index = 0; index < count; index++) {
+      const w = this.hdkey.deriveChild(index).getWallet()
+      const address = '0x' + w.getAddress().toString('hex')
+      this._privateKeys[address] = w.privKey
     }
   }
 
-  static newKeypair () {
-    const a = Wallet.generate()
-    return {
-      privateKey: a.privKey,
-      address: '0x' + a.getAddress().toString('hex')
-    }
+  getAddress (index) {
+    return this.getAddresses()[index]
   }
 
-  ecSignWithPrefix ({ hash }) {
+  getAddresses () {
+    return Object.keys(this._privateKeys)
+  }
+
+  ecSignWithPrefix ({ signer, hash }) {
     const prefixedHash = abi.soliditySHA3(['string', 'bytes32'], ['\x19Ethereum Signed Message:\n32', hash])
-    return this.ecSignNoPrefix({ hash: prefixedHash })
+    return this.ecSignNoPrefix({ signer, hash: prefixedHash })
   }
 
-  ecSignNoPrefix ({ hash }) {
-    const sig = ethUtils.ecsign(hash, this.ecdsaKeyPair.privateKey)
+  ecSignNoPrefix ({ signer, hash }) {
+    ow(signer, ow.string)
+    ow(hash, ow.string)
+    const privateKey = this._privateKeys[signer]
+    if (privateKey === undefined) { throw new Error(`Can't sign: from=${signer} is not managed`) }
+    const sig = ethUtils.ecsign(hash, privateKey)
     return Buffer.concat([sig.r, sig.s, Buffer.from(sig.v.toString(16), 'hex')])
   }
 
-  address () {
-    return this.ecdsaKeyPair.address
-  }
+  signTransaction (signer, tx) {
+    ow(signer, ow.string)
+    const privateKey = this._privateKeys[signer]
+    if (privateKey === undefined) { throw new Error(`Can't sign: signer=${signer} is not managed`) }
 
-  signTransaction (tx) {
-    tx.sign(this.ecdsaKeyPair.privateKey)
+    tx.sign(privateKey)
     const rawTx = tx.serialize().toString('hex')
     return rawTx
   }
