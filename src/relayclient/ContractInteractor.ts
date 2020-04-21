@@ -24,6 +24,13 @@ import GsnTransactionDetails from './types/GsnTransactionDetails'
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
 
+type EventName = string
+
+export const RelayServerRegistered: EventName = 'RelayServerRegistered'
+export const StakeUnlocked: EventName = 'StakeUnlocked'
+export const HubUnauthorized: EventName = 'HubUnauthorized'
+export const StakePenalized: EventName = 'StakePenalized'
+
 let IPaymasterContract: Contract<IPaymasterInstance>
 let IRelayHubContract: Contract<IRelayHubInstance>
 let IForwarderContract: Contract<ITrustedForwarderInstance>
@@ -151,18 +158,24 @@ export default class ContractInteractor {
     return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData).encodeABI()
   }
 
-  async getPastEventsForHub (names: string[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  topicsForManagers (relayManagers: Address[]): string[] {
+    return Array.from(relayManagers.values(),
+      (address: Address) => `0x${address.replace(/^0x/, '').padStart(64, '0').toLowerCase()}`
+    )
+  }
+
+  async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
     return this._getPastEvents(relayHub.contract, names, extraTopics, options)
   }
 
-  async getPastEventsForStakeManager (names: string[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const stakeManager = await this._createStakeManager(this.config.stakeManagerAddress)
     return this._getPastEvents(stakeManager.contract, names, extraTopics, options)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _getPastEvents (contract: any, names: string[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async _getPastEvents (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const topics: string[][] = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)

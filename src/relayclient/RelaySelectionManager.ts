@@ -19,7 +19,8 @@ export default class RelaySelectionManager {
   private readonly pingFilter: PingFilter
   private readonly gsnTransactionDetails: GsnTransactionDetails
 
-  private remainingRelays: RelayRegisteredEventInfo[] | undefined
+  private remainingRelays: RelayRegisteredEventInfo[][] = []
+  private isInitialized = false
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
@@ -69,17 +70,24 @@ export default class RelaySelectionManager {
   }
 
   async _getNextSlice (txDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]> {
-    if (this.remainingRelays == null) {
+    if (!this.isInitialized) {
       this.remainingRelays = await this.knownRelaysManager.getRelaysSortedForTransaction(txDetails)
+      this.isInitialized = true
     }
-    const bulkSize = Math.min(this.config.sliceSize, this.remainingRelays.length)
-    const slice = this.remainingRelays.slice(0, bulkSize)
-    // we must verify uniqueness of URLs as they are used as keys in maps
-    // https://stackoverflow.com/a/45125209
-    slice.filter((e1, i) =>
-      slice.findIndex((e2) => e1.relayUrl === e2.relayUrl) === i
-    )
-    return slice
+    for (const relays of this.remainingRelays) {
+      const bulkSize = Math.min(this.config.sliceSize, relays.length)
+      const slice = relays.slice(0, bulkSize)
+      if (slice.length === 0) {
+        continue
+      }
+      // we must verify uniqueness of URLs as they are used as keys in maps
+      // https://stackoverflow.com/a/45125209
+      slice.filter((e1, i) =>
+        slice.findIndex((e2) => e1.relayUrl === e2.relayUrl) === i
+      )
+      return slice
+    }
+    return []
   }
 
   /**
@@ -127,8 +135,10 @@ export default class RelaySelectionManager {
 
   _handleRaceResults (raceResult: RaceResult): void {
     this.errors = new Map([...this.errors, ...raceResult.errors])
-    this.remainingRelays = this.remainingRelays
-      ?.filter(eventInfo => eventInfo.relayUrl !== raceResult.winner?.eventInfo.relayUrl)
-      ?.filter(eventInfo => !Array.from(raceResult.errors.keys()).includes(eventInfo.relayUrl))
+    this.remainingRelays = this.remainingRelays.map(relays =>
+      relays
+        .filter(eventInfo => eventInfo.relayUrl !== raceResult.winner?.eventInfo.relayUrl)
+        .filter(eventInfo => !Array.from(raceResult.errors.keys()).includes(eventInfo.relayUrl))
+    )
   }
 }

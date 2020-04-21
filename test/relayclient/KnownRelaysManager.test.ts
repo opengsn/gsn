@@ -11,9 +11,13 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance
 } from '../../types/truffle-contracts'
-import { evmMineMany } from '../TestUtils'
+import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 import RelayRegisteredEventInfo from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import HttpClient from '../../src/relayclient/HttpClient'
+import HttpWrapper from '../../src/relayclient/HttpWrapper'
+import sinon from 'sinon'
+import { ChildProcessWithoutNullStreams } from 'child_process'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -32,6 +36,8 @@ async function register (stakeManager: StakeManagerInstance, relayHub: RelayHubI
   await relayHub.addRelayWorkers([worker], { from: manager })
   await relayHub.registerRelayServer('0', '0', url, { from: manager })
 }
+
+const httpClient = new HttpClient(new HttpWrapper(), configureGSN({}))
 
 contract('KnownRelaysManager', function (
   [
@@ -115,7 +121,7 @@ contract('KnownRelaysManager', function (
     })
 
     it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks', async function () {
-      const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
+      const knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, config)
       const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
       const actual = Array.from(res.values())
       assert.equal(actual.length, 4)
@@ -140,6 +146,7 @@ contract('KnownRelaysManager 2', function (accounts) {
   }
 
   describe('#refresh()', function () {
+    let relayProcess: ChildProcessWithoutNullStreams
     let knownRelaysManager: KnownRelaysManager
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
@@ -150,11 +157,18 @@ contract('KnownRelaysManager 2', function (accounts) {
       stakeManager = await StakeManager.new()
       relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
       config = configureGSN({
+        preferredRelays: ['http://localhost:8090'],
         relayHubAddress: relayHub.address,
         stakeManagerAddress: stakeManager.address
       })
+      relayProcess = await startRelay(relayHub.address, stakeManager, {
+        stake: 1e18,
+        url: 'asd',
+        relayOwner: accounts[1],
+        EthereumNodeUrl: (web3.currentProvider as HttpProvider).host
+      })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
-      knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
+      knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, config)
       await stake(stakeManager, relayHub, accounts[1], accounts[0])
       await stake(stakeManager, relayHub, accounts[2], accounts[0])
       await stake(stakeManager, relayHub, accounts[3], accounts[0])
@@ -168,21 +182,29 @@ contract('KnownRelaysManager 2', function (accounts) {
       await stakeManager.unauthorizeHub(accounts[4], relayHub.address)
     })
 
+    after(async function () {
+      await stopRelay(relayProcess)
+    })
+
     it('should consider all relay managers with stake and authorization as active', async function () {
       await knownRelaysManager.refresh()
-      const relays = knownRelaysManager.getRelays()
-      assert.equal(relays.length, 2)
-      assert.equal(relays[0].relayUrl, 'stakeAndAuthorization1')
-      assert.equal(relays[1].relayUrl, 'stakeAndAuthorization2')
+      const preferredRelays = knownRelaysManager.knownRelays[0]
+      const activeRelays = knownRelaysManager.knownRelays[1]
+      assert.equal(preferredRelays.length, 1)
+      assert.equal(preferredRelays[0].relayUrl, 'http://localhost:8090')
+      assert.equal(activeRelays.length, 3)
+      assert.equal(activeRelays[0].relayUrl, 'http://localhost:8090')
+      assert.equal(activeRelays[1].relayUrl, 'stakeAndAuthorization1')
+      assert.equal(activeRelays[2].relayUrl, 'stakeAndAuthorization2')
     })
 
     it('should use \'relayFilter\' to remove unsuitable relays', async function () {
       const relayFilter = (registeredEventInfo: RelayRegisteredEventInfo): boolean => {
         return registeredEventInfo.relayUrl.includes('2')
       }
-      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, config, relayFilter)
+      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, httpClient, config, relayFilter)
       await knownRelaysManagerWithFilter.refresh()
-      const relays = knownRelaysManagerWithFilter.getRelays()
+      const relays = knownRelaysManagerWithFilter.knownRelays[1]
       assert.equal(relays.length, 1)
       assert.equal(relays[0].relayUrl, 'stakeAndAuthorization2')
     })
@@ -202,7 +224,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       pctRelayFee: '50'
     }
 
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}))
+    const knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, configureGSN({}))
 
     describe('#_refreshFailures()', function () {
       let lastErrorTime: number
@@ -258,28 +280,26 @@ contract('KnownRelaysManager 2', function (accounts) {
         return Promise.resolve(100)
       }
     }
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)
+    const knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, configureGSN({}), undefined, biasedRelayScore)
     before(function () {
-      const activeRelays = new Set<RelayRegisteredEventInfo>()
-      activeRelays.add({
+      const activeRelays: RelayRegisteredEventInfo[][] = [[], [{
         relayManager: accounts[0],
         relayUrl: 'alex',
         baseRelayFee: '100000000',
         pctRelayFee: '50'
-      })
-      activeRelays.add({
+      }, {
         relayManager: accounts[0],
         relayUrl: 'joe',
         baseRelayFee: '100',
         pctRelayFee: '5'
-      })
-      // @ts-ignore
-      knownRelaysManager.activeRelays = activeRelays
+      }]]
+      sinon.stub(knownRelaysManager, 'knownRelays').value(activeRelays)
     })
+
     it('should use provided score calculation method to sort the known relays', async function () {
       const sortedRelays = await knownRelaysManager.getRelaysSortedForTransaction(transactionDetails)
-      assert.equal(sortedRelays[0].relayUrl, 'alex')
-      assert.equal(sortedRelays[1].relayUrl, 'joe')
+      assert.equal(sortedRelays[1][0].relayUrl, 'alex')
+      assert.equal(sortedRelays[1][1].relayUrl, 'joe')
     })
   })
 })

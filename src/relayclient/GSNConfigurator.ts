@@ -14,6 +14,7 @@ const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
 
 const defaultGsnConfig: GSNConfig = {
+  preferredRelays: [],
   relayLookupWindowBlocks: 6000,
   gtxdatanonzero: defaultEnvironment.gtxdatanonzero,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
@@ -43,6 +44,7 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
  * @field jsonStringifyRequest - should be 'true' for Metamask, false for ganache
  */
 export interface GSNConfig {
+  preferredRelays: string[]
   relayLookupWindowBlocks: number
   methodSuffix: string
   jsonStringifyRequest: boolean
@@ -95,7 +97,7 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
   const relayFilter = overrideDependencies?.relayFilter ?? EmptyFilter
   const asyncApprove = overrideDependencies?.asyncApprove ?? EmptyApprove
   const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
-  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, config, relayFilter)
+  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, httpClient, config, relayFilter)
   const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, config)
   return {
     httpClient,

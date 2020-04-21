@@ -84,17 +84,14 @@ export function runServer (
 }
 
 class DevKnownRelays implements IKnownRelaysManager {
-  // noinspection JSUnusedGlobalSymbols
-  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]> {
+  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[][]> {
     // @ts-ignore
-    return Promise.resolve([this.devRelay])
+    return Promise.resolve([[this.devRelay]])
   }
 
-  // noinspection JSUnusedGlobalSymbols
   async refresh (): Promise<void> { // ts-ignore
   }
 
-  // noinspection JSUnusedGlobalSymbols
   saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void { // ts-ignore
   }
 
