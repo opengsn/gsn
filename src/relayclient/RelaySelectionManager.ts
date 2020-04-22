@@ -1,6 +1,6 @@
 import { IKnownRelaysManager } from './KnownRelaysManager'
 import HttpClient from './HttpClient'
-import { RelayInfoUrl } from './types/RelayRegisteredEventInfo'
+import { isInfoFromEvent, RelayInfoUrl } from './types/RelayRegisteredEventInfo'
 import { PingFilter } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import replaceErrors from '../common/ErrorReplacerJSON'
@@ -60,7 +60,7 @@ export default class RelaySelectionManager {
     }
     this._handleRaceResults(raceResult)
     if (raceResult.winner != null) {
-      if ('relayManager' in raceResult.winner.relayInfo) {
+      if (isInfoFromEvent(raceResult.winner.relayInfo)) {
         return (raceResult.winner as RelayInfo)
       } else {
         const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([raceResult.winner.pingResponse.RelayServerAddress]))
