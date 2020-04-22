@@ -11,26 +11,28 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance
 } from '../../types/truffle-contracts'
-import { evmMineMany } from '../TestUtils'
+import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
-import RelayRegisteredEventInfo from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import sinon from 'sinon'
+import { ChildProcessWithoutNullStreams } from 'child_process'
+import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager1: string, owner: string): Promise<void> {
-  await stakeManager.stakeForAddress(manager1, 1000, {
+export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
+  await stakeManager.stakeForAddress(manager, 1000, {
     value: ether('1'),
     from: owner
   })
-  await stakeManager.authorizeHub(manager1, relayHub.address, { from: owner })
+  await stakeManager.authorizeHub(manager, relayHub.address, { from: owner })
 }
 
-async function register (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, worker: string, url: string): Promise<void> {
+export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
-  await relayHub.registerRelayServer('0', '0', url, { from: manager })
+  await relayHub.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
 }
 
 contract('KnownRelaysManager', function (
@@ -140,6 +142,7 @@ contract('KnownRelaysManager 2', function (accounts) {
   }
 
   describe('#refresh()', function () {
+    let relayProcess: ChildProcessWithoutNullStreams
     let knownRelaysManager: KnownRelaysManager
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
@@ -150,8 +153,15 @@ contract('KnownRelaysManager 2', function (accounts) {
       stakeManager = await StakeManager.new()
       relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
       config = configureGSN({
+        preferredRelays: ['http://localhost:8090'],
         relayHubAddress: relayHub.address,
         stakeManagerAddress: stakeManager.address
+      })
+      relayProcess = await startRelay(relayHub.address, stakeManager, {
+        stake: 1e18,
+        url: 'asd',
+        relayOwner: accounts[1],
+        EthereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
       knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
@@ -159,21 +169,29 @@ contract('KnownRelaysManager 2', function (accounts) {
       await stake(stakeManager, relayHub, accounts[2], accounts[0])
       await stake(stakeManager, relayHub, accounts[3], accounts[0])
       await stake(stakeManager, relayHub, accounts[4], accounts[0])
-      await register(stakeManager, relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
-      await register(stakeManager, relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
-      await register(stakeManager, relayHub, accounts[3], accounts[8], 'stakeUnlocked')
-      await register(stakeManager, relayHub, accounts[4], accounts[9], 'hubUnauthorized')
+      await register(relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
+      await register(relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
+      await register(relayHub, accounts[3], accounts[8], 'stakeUnlocked')
+      await register(relayHub, accounts[4], accounts[9], 'hubUnauthorized')
 
       await stakeManager.unlockStake(accounts[3])
       await stakeManager.unauthorizeHub(accounts[4], relayHub.address)
     })
 
+    after(async function () {
+      await stopRelay(relayProcess)
+    })
+
     it('should consider all relay managers with stake and authorization as active', async function () {
       await knownRelaysManager.refresh()
-      const relays = knownRelaysManager.getRelays()
-      assert.equal(relays.length, 2)
-      assert.equal(relays[0].relayUrl, 'stakeAndAuthorization1')
-      assert.equal(relays[1].relayUrl, 'stakeAndAuthorization2')
+      const preferredRelays = knownRelaysManager.knownRelays[0]
+      const activeRelays = knownRelaysManager.knownRelays[1]
+      assert.equal(preferredRelays.length, 1)
+      assert.equal(preferredRelays[0].relayUrl, 'http://localhost:8090')
+      assert.equal(activeRelays.length, 3)
+      assert.equal(activeRelays[0].relayUrl, 'http://localhost:8090')
+      assert.equal(activeRelays[1].relayUrl, 'stakeAndAuthorization1')
+      assert.equal(activeRelays[2].relayUrl, 'stakeAndAuthorization2')
     })
 
     it('should use \'relayFilter\' to remove unsuitable relays', async function () {
@@ -182,7 +200,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       }
       const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, config, relayFilter)
       await knownRelaysManagerWithFilter.refresh()
-      const relays = knownRelaysManagerWithFilter.getRelays()
+      const relays = knownRelaysManagerWithFilter.knownRelays[1]
       assert.equal(relays.length, 1)
       assert.equal(relays[0].relayUrl, 'stakeAndAuthorization2')
     })
@@ -260,26 +278,24 @@ contract('KnownRelaysManager 2', function (accounts) {
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)
     before(function () {
-      const activeRelays = new Set<RelayRegisteredEventInfo>()
-      activeRelays.add({
+      const activeRelays: RelayRegisteredEventInfo[][] = [[], [{
         relayManager: accounts[0],
         relayUrl: 'alex',
         baseRelayFee: '100000000',
         pctRelayFee: '50'
-      })
-      activeRelays.add({
+      }, {
         relayManager: accounts[0],
         relayUrl: 'joe',
         baseRelayFee: '100',
         pctRelayFee: '5'
-      })
-      // @ts-ignore
-      knownRelaysManager.activeRelays = activeRelays
+      }]]
+      sinon.stub(knownRelaysManager, 'knownRelays').value(activeRelays)
     })
+
     it('should use provided score calculation method to sort the known relays', async function () {
       const sortedRelays = await knownRelaysManager.getRelaysSortedForTransaction(transactionDetails)
-      assert.equal(sortedRelays[0].relayUrl, 'alex')
-      assert.equal(sortedRelays[1].relayUrl, 'joe')
+      assert.equal(sortedRelays[1][0].relayUrl, 'alex')
+      assert.equal(sortedRelays[1][1].relayUrl, 'joe')
     })
   })
 })

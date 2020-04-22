@@ -122,10 +122,12 @@ contract('RelayServer', function (accounts) {
     serverError = null
   })
 
-  after('txstore cleanup', async function () {
+  const clearStorage = async function () {
     await relayServer?.txStoreManager.clearAll()
     assert.deepEqual([], await relayServer.txStoreManager.getAll())
-  })
+  }
+  before(clearStorage)
+  after(clearStorage)
 
   async function assertTransactionRelayed (txhash, gasLess) {
     const receipt = await _web3.eth.getTransactionReceipt(txhash)
