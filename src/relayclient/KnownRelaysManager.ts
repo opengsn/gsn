@@ -58,12 +58,6 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     this.contractInteractor = contractInteractor
   }
 
-  /**
-   * Pings all preferred arrays to discover their manager, fee information.
-   * Then, iterates through all relevant logs emitted by GSN contracts.
-   * These two lists form a two-dimensional array of {@link knownRelays}
-   * Note: duplicates across 'levels' will be cleared by {@link RelaySelectionManager._handleRaceResults}
-   */
   async refresh (): Promise<void> {
     this._refreshFailures()
     const recentlyActiveRelayManagers = await this._fetchRecentlyActiveRelayManagers()
