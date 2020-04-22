@@ -1,5 +1,5 @@
 const data = require('./data')
-
+const fs = require('fs')
 const axios = require('axios')
 const sleep = require('../../src/common/utils').sleep
 const utils = require('web3').utils
@@ -89,6 +89,11 @@ function getPaymaster (web3, address, options = {}) {
   })
 }
 
+function saveContractToFile (contract, workdir, filename) {
+  fs.mkdirSync(workdir, { recursive: true })
+  fs.writeFileSync(workdir + '/' + filename, `{ "address": "${contract.options.address}" }`)
+}
+
 async function isRelayHubDeployed (web3, hubAddress) {
   const code = await web3.eth.getCode(hubAddress)
   return code.length > 2
@@ -105,5 +110,6 @@ module.exports = {
   getPaymaster,
   isRelayHubDeployed,
   isRelayReady,
-  waitForRelay
+  waitForRelay,
+  saveContractToFile
 }

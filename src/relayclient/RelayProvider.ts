@@ -147,6 +147,9 @@ export default class RelayProvider implements HttpProvider {
   }
 
   _useGSN (payload: JsonRpcPayload): boolean {
+    if (payload.params[0] === undefined) {
+      return false
+    }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     return gsnTransactionDetails.useGSN ?? true
   }

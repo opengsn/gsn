@@ -57,6 +57,7 @@
   "dependencies": {
     "@0x/contracts-utils": "4.4.3",
     "@types/chai-as-promised": "^7.1.2",
+    "@truffle/contract": "4.1.13",
     "abi-decoder": "2.2.2",
     "async-mutex": "^0.2.1",
     "axios": "0.18.1",
@@ -150,8 +151,8 @@
     "webtools/",
     "scripts/gsn*",
     "webtools.webpack.js",
-    "helpers/"
+    "helpers/",
+    "dist/"
   ],
-  "main": "src/relayclient/index.js",
-  "types": "src/relayclient/index.js"
+  "main": "dist/src/relayclient/index.js"
 }

@@ -1,4 +1,3 @@
-const data = require('./data')
 const { defaultFromAccount, ether, isRelayReady, waitForRelay, getStakeManager, getRelayHub } = require('./helpers')
 const { merge } = require('lodash')
 const axios = require('axios')
