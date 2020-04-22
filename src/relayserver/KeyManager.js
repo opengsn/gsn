@@ -6,7 +6,6 @@ const ethUtils = require('ethereumjs-util')
 const ow = require('ow')
 
 class KeyManager {
-
   /**
    * @param count - # of addresses managed by this manager
    * @param workdir - read seed from keystore file (or generate one and write it)
