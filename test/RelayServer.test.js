@@ -91,10 +91,9 @@ contract('RelayServer', function (accounts) {
     relayServer.on('error', (e) => {
       console.log('error event', e.message)
     })
-    console.log('Relay Server Address', relayServer.getManagerAddress())
+    console.log('Relay Manager=', relayServer.getManagerAddress(), 'Worker=', relayServer.getAddress(1))
 
     encodedFunction = sr.contract.methods.emitMessage('hello world').encodeABI()
-    console.log('server address', relayServer.getManagerAddress())
     const relayClientConfig = {
       relayUrl: localhostOne,
       relayAddress: relayServer.getManagerAddress(),
@@ -554,7 +553,6 @@ contract('RelayServer', function (accounts) {
     })
 
     it('should resend multiple unconfirmed transactions', async function () {
-      console.log('==== start')
       // First clear db
       await relayServer.txStoreManager.clearAll()
       assert.deepEqual([], await relayServer.txStoreManager.getAll())

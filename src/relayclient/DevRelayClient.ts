@@ -214,14 +214,12 @@ export class DevRelayClient extends RelayClient {
     //   from: this.devConfig.relayOwner,
     //   value: ether('1'),
     // })
-    this.debug('== sending balance to relayServer', relayServer.getManagerAddress())
     await stakeManager.authorizeHub(relayServer.getManagerAddress(), this.config.relayHubAddress, { from: this.devConfig.relayOwner })
     await this.contractInteractor.getWeb3().eth.sendTransaction({
       from: this.devConfig.relayOwner,
       to: relayServer.getManagerAddress(),
       value: ether('1')
     })
-    this.debug('== waiting for relay')
     // @ts-ignore
     const relayInfo = await waitForRelay(relayServer.url as string + '/getaddr', 5000, (res) => {
       if (res?.data?.Ready === true) {
@@ -237,8 +235,6 @@ export class DevRelayClient extends RelayClient {
 
     const devRelays = this.knownRelaysManager as DevKnownRelays
     devRelays.devRelay = relayInfo
-
-    this.debug('== relay ready')
   }
 
   debug (...args: any): void {
