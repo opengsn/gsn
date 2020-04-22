@@ -43,7 +43,7 @@ async function deployRelayHub (web3, options = {}) {
   console.log('paymaster ', pmInstance.options.address)
   if (options.verbose) console.error(`RelayHub deployed at ${rInstance.options.address}`)
 
-  return relayHub.address
+  return rInstance.options.address
 }
 
 module.exports = {
