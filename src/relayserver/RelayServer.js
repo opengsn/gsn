@@ -556,8 +556,10 @@ class RelayServer extends EventEmitter {
     return receipt
   }
 
-  // resend Txs of all signers (manager, workers)
-  // return the receipt from the first request
+  /**
+   * resend Txs of all signers (manager, workers)
+   * @return the receipt from the first request
+   */
   async _resendUnconfirmedTransactions (blockHeader) {
     // repeat separately for each signer (manager, all workers)
     let receipt;

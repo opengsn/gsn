@@ -6,8 +6,12 @@ const ethUtils = require('ethereumjs-util')
 const ow = require('ow')
 
 class KeyManager {
-  // workdir - read seed from keystore file (or generate one and write it)
-  // seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
+
+  /**
+   * @param count - # of addresses managed by this manager
+   * @param workdir - read seed from keystore file (or generate one and write it)
+   * @param seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
+   */
   constructor ({ count, workdir = null, seed = null }) {
     ow(count, ow.number)
     if (seed && workdir) { throw new Error('Can\'t specify both seed and workdir') }
