@@ -8,7 +8,6 @@ import ContractInteractor, {
 } from './ContractInteractor'
 import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import HttpClient from './HttpClient'
 import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
@@ -46,16 +45,14 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
   private readonly config: GSNConfig
   private readonly relayFilter: RelayFilter
   private readonly scoreCalculator: AsyncScoreCalculator
-  private readonly httpClient: HttpClient
 
   private latestScannedBlock: number = 0
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
   public readonly knownRelays: RelayInfoUrl[][] = []
 
-  constructor (contractInteractor: ContractInteractor, httpClient: HttpClient, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
+  constructor (contractInteractor: ContractInteractor, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
     this.config = config
-    this.httpClient = httpClient
     this.relayFilter = relayFilter ?? EmptyFilter
     this.scoreCalculator = scoreCalculator ?? DefaultRelayScore
     this.contractInteractor = contractInteractor

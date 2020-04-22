@@ -97,7 +97,7 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
   const relayFilter = overrideDependencies?.relayFilter ?? EmptyFilter
   const asyncApprove = overrideDependencies?.asyncApprove ?? EmptyApprove
   const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
-  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, httpClient, config, relayFilter)
+  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, config, relayFilter)
   const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, config)
   return {
     httpClient,

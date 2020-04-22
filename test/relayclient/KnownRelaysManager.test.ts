@@ -13,8 +13,6 @@ import {
 } from '../../types/truffle-contracts'
 import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
-import HttpClient from '../../src/relayclient/HttpClient'
-import HttpWrapper from '../../src/relayclient/HttpWrapper'
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
@@ -32,12 +30,10 @@ export async function stake (stakeManager: StakeManagerInstance, relayHub: Relay
   await stakeManager.authorizeHub(manager, relayHub.address, { from: owner })
 }
 
-export async function register (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
+export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
   await relayHub.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
 }
-
-const httpClient = new HttpClient(new HttpWrapper(), configureGSN({}))
 
 contract('KnownRelaysManager', function (
   [
@@ -121,7 +117,7 @@ contract('KnownRelaysManager', function (
     })
 
     it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks', async function () {
-      const knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, config)
+      const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
       const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
       const actual = Array.from(res.values())
       assert.equal(actual.length, 4)
@@ -168,15 +164,15 @@ contract('KnownRelaysManager 2', function (accounts) {
         EthereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
-      knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, config)
+      knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
       await stake(stakeManager, relayHub, accounts[1], accounts[0])
       await stake(stakeManager, relayHub, accounts[2], accounts[0])
       await stake(stakeManager, relayHub, accounts[3], accounts[0])
       await stake(stakeManager, relayHub, accounts[4], accounts[0])
-      await register(stakeManager, relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
-      await register(stakeManager, relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
-      await register(stakeManager, relayHub, accounts[3], accounts[8], 'stakeUnlocked')
-      await register(stakeManager, relayHub, accounts[4], accounts[9], 'hubUnauthorized')
+      await register(relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
+      await register(relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
+      await register(relayHub, accounts[3], accounts[8], 'stakeUnlocked')
+      await register(relayHub, accounts[4], accounts[9], 'hubUnauthorized')
 
       await stakeManager.unlockStake(accounts[3])
       await stakeManager.unauthorizeHub(accounts[4], relayHub.address)
@@ -202,7 +198,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       const relayFilter = (registeredEventInfo: RelayRegisteredEventInfo): boolean => {
         return registeredEventInfo.relayUrl.includes('2')
       }
-      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, httpClient, config, relayFilter)
+      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, config, relayFilter)
       await knownRelaysManagerWithFilter.refresh()
       const relays = knownRelaysManagerWithFilter.knownRelays[1]
       assert.equal(relays.length, 1)
@@ -224,7 +220,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       pctRelayFee: '50'
     }
 
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, configureGSN({}))
+    const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}))
 
     describe('#_refreshFailures()', function () {
       let lastErrorTime: number
@@ -280,7 +276,7 @@ contract('KnownRelaysManager 2', function (accounts) {
         return Promise.resolve(100)
       }
     }
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, httpClient, configureGSN({}), undefined, biasedRelayScore)
+    const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)
     before(function () {
       const activeRelays: RelayRegisteredEventInfo[][] = [[], [{
         relayManager: accounts[0],

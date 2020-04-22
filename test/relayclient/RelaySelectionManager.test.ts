@@ -96,7 +96,7 @@ contract('RelaySelectionManager', function (accounts) {
         const stakeManager = await StakeManager.new()
         relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
-        await register(stakeManager, relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
+        await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
 
         const config = configureGSN({
           relayHubAddress: relayHub.address,
