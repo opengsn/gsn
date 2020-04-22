@@ -1,9 +1,14 @@
-import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
 import { Address, AsyncScoreCalculator, RelayFilter } from './types/Aliases'
 import RelayFailureInfo from './types/RelayFailureInfo'
-import ContractInteractor from './ContractInteractor'
+import ContractInteractor, {
+  HubUnauthorized,
+  RelayServerRegistered,
+  StakePenalized,
+  StakeUnlocked
+} from './ContractInteractor'
 import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
+import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -17,7 +22,7 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   const gasPrice = parseInt(txDetails.gasPrice ?? '0')
   const pctFee = parseInt(relay.pctRelayFee)
   const baseFee = parseInt(relay.baseRelayFee)
-  const transactionCost = baseFee + (gasLimit * gasPrice * pctFee) / 100
+  const transactionCost = baseFee + (gasLimit * gasPrice * (100 + pctFee)) / 100
   let score = Math.max(Number.MAX_SAFE_INTEGER - transactionCost, 0)
   score = score * Math.pow(0.9, failures.length)
   return Promise.resolve(score)
@@ -27,19 +32,24 @@ const activeManagerEvents = ['RelayServerRegistered', 'TransactionRelayed', 'Can
 
 export interface IKnownRelaysManager {
   refresh (): Promise<void>
+
   saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void
-  getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]>
+
+  getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]>
+
+  getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]>
 }
 
 export default class KnownRelaysManager implements IKnownRelaysManager {
-  private relayFailures = new Map<string, RelayFailureInfo[]>()
-  private readonly activeRelays = new Set<RelayRegisteredEventInfo>()
   private readonly contractInteractor: ContractInteractor
   private readonly config: GSNConfig
   private readonly relayFilter: RelayFilter
   private readonly scoreCalculator: AsyncScoreCalculator
 
   private latestScannedBlock: number = 0
+  private relayFailures = new Map<string, RelayFailureInfo[]>()
+
+  public readonly knownRelays: RelayInfoUrl[][] = []
 
   constructor (contractInteractor: ContractInteractor, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
     this.config = config
@@ -48,18 +58,21 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     this.contractInteractor = contractInteractor
   }
 
-  /**
-   * Iterates through all relevant logs emitted by GSN contracts
-   * initializes an array {@link activeRelays}
-   */
   async refresh (): Promise<void> {
-    const relayManagers = await this._fetchRecentlyActiveRelayManagers()
-    const topics = Array.from(relayManagers.values(),
-      (address: Address) => `0x${address.replace(/^0x/, '').padStart(64, '0').toLowerCase()}`
-    )
-    const registered = 'RelayServerRegistered'
-    const relayServerRegisteredEvents: any[] = await this.contractInteractor.getPastEventsForHub([registered], topics, { fromBlock: 1 })
-    const relayManagerExitEvents: any[] = await this.contractInteractor.getPastEventsForStakeManager(['StakeUnlocked', 'HubUnauthorized', 'StakePenalized'], topics, { fromBlock: 1 })
+    this._refreshFailures()
+    const recentlyActiveRelayManagers = await this._fetchRecentlyActiveRelayManagers()
+    this.knownRelays[0] = this.config.preferredRelays.map(relayUrl => { return { relayUrl } })
+    this.knownRelays[1] = await this.getRelayInfoForManagers(recentlyActiveRelayManagers)
+  }
+
+  async getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]> {
+    // As 'topics' are used as 'filter', having an empty set results in querying all register events.
+    if (relayManagers.size === 0) {
+      return []
+    }
+    const topics = this.contractInteractor.topicsForManagers(Array.from(relayManagers))
+    const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub([RelayServerRegistered], topics, { fromBlock: 1 })
+    const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock: 1 })
 
     if (this.config.verbose) {
       console.log(`== fetchRelaysAdded: found ${relayServerRegisteredEvents.length} unique RelayAdded events (should have at least as unique relays, above)`)
@@ -78,7 +91,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     const activeRelays = new Map<Address, RelayRegisteredEventInfo>()
     mergedEvents.forEach(event => {
       const args = event.returnValues
-      if (event.event === registered) {
+      if (event.event === RelayServerRegistered) {
         const relay = {
           relayManager: args.relayManager,
           relayUrl: args.url,
@@ -91,8 +104,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       }
     })
     const origRelays = Array.from(activeRelays.values())
-    const filteredRelays = origRelays.filter(this.relayFilter)
-    filteredRelays.forEach(relay => this.activeRelays.add(relay))
+    return origRelays.filter(this.relayFilter)
   }
 
   async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
@@ -125,7 +137,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
 
   _refreshFailures (): void {
     const newMap = new Map<string, RelayFailureInfo[]>()
-    this.relayFailures.forEach((value: RelayFailureInfo[], key: string, map: Map<string, RelayFailureInfo[]>) => {
+    this.relayFailures.forEach((value: RelayFailureInfo[], key: string) => {
       newMap.set(key, value.filter(failure => {
         const elapsed = (new Date().getTime() - failure.lastErrorTime) / 1000
         return elapsed < this.config.relayTimeoutGrace
@@ -134,21 +146,28 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     this.relayFailures = newMap
   }
 
-  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]> {
+  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]> {
+    const sortedRelays: RelayInfoUrl[][] = []
+    for (let i = 0; i < this.knownRelays.length; i++) {
+      sortedRelays[i] = await this._sortRelaysInternal(gsnTransactionDetails, this.knownRelays[i])
+    }
+    return sortedRelays
+  }
+
+  async _sortRelaysInternal (gsnTransactionDetails: GsnTransactionDetails, activeRelays: RelayInfoUrl[]): Promise<RelayInfoUrl[]> {
     const scores = new Map<string, number>()
-    for (const activeRelay of this.activeRelays) {
-      const score = await this.scoreCalculator(activeRelay, gsnTransactionDetails, this.relayFailures.get(activeRelay.relayUrl) ?? [])
+    for (const activeRelay of activeRelays) {
+      let score = 0
+      if (isInfoFromEvent(activeRelay)) {
+        score = await this.scoreCalculator((activeRelay as RelayRegisteredEventInfo), gsnTransactionDetails, this.relayFailures.get(activeRelay.relayUrl) ?? [])
+      }
       scores.set(activeRelay.relayUrl, score)
     }
-    return Array.from(this.activeRelays.values()).sort((a, b) => {
+    return Array.from(activeRelays.values()).sort((a, b) => {
       const aScore = scores.get(a.relayUrl) ?? 0
       const bScore = scores.get(b.relayUrl) ?? 0
       return bScore - aScore
     })
-  }
-
-  getRelays (): RelayRegisteredEventInfo[] {
-    return Array.from(this.activeRelays.values())
   }
 
   saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void {
