@@ -4,7 +4,6 @@ import { HttpProvider, TransactionReceipt } from 'web3-core'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import RelayInfo from './types/RelayInfo'
 import { AsyncApprove, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
@@ -13,6 +12,7 @@ import { IKnownRelaysManager } from './KnownRelaysManager'
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { RelayInfo } from './types/RelayInfo'
 
 export const EmptyApprove: AsyncApprove = async (): Promise<string> => {
   return Promise.resolve('0x')
@@ -113,7 +113,7 @@ export default class RelayClient {
       if (activeRelay != null) {
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
         if (relayingAttempt.transaction == null) {
-          relayingErrors.set(activeRelay.eventInfo.relayUrl, relayingAttempt.error ?? new Error('No error reason was given'))
+          relayingErrors.set(activeRelay.relayInfo.relayUrl, relayingAttempt.error ?? new Error('No error reason was given'))
           continue
         }
       }
@@ -147,10 +147,10 @@ export default class RelayClient {
     }
     let hexTransaction: PrefixedHexString
     try {
-      hexTransaction = await this.httpClient.relayTransaction(relayInfo.eventInfo.relayUrl, httpRequest)
+      hexTransaction = await this.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
     } catch (error) {
       if (error?.message == null || error.message.indexOf('timeout') !== -1) {
-        this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.eventInfo.relayManager, relayInfo.eventInfo.relayUrl)
+        this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       }
       if (this.config.verbose) {
         console.log('relayTransaction: ', JSON.stringify(httpRequest))
@@ -159,7 +159,7 @@ export default class RelayClient {
     }
     const transaction = new Transaction(hexTransaction)
     if (!this.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
-      this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.eventInfo.relayManager, relayInfo.eventInfo.relayUrl)
+      this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return { error: new Error('Returned transaction did not pass validation') }
     }
     await this._broadcastRawTx(transaction)
@@ -189,8 +189,8 @@ export default class RelayClient {
       target: gsnTransactionDetails.to,
       encodedFunction: gsnTransactionDetails.data,
       senderNonce,
-      pctRelayFee: relayInfo.eventInfo.pctRelayFee,
-      baseRelayFee: relayInfo.eventInfo.baseRelayFee,
+      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
+      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
       gasPrice,
       gasLimit,
       paymaster: gsnTransactionDetails.paymaster,
@@ -210,8 +210,8 @@ export default class RelayClient {
       senderNonce: relayRequest.relayData.senderNonce,
       from: gsnTransactionDetails.from,
       to: gsnTransactionDetails.to,
-      pctRelayFee: relayInfo.eventInfo.pctRelayFee,
-      baseRelayFee: relayInfo.eventInfo.baseRelayFee,
+      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
+      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
       gasPrice,
       gasLimit,
       paymaster: gsnTransactionDetails.paymaster,

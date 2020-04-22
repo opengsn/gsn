@@ -50,7 +50,7 @@
     "coverage": "yarn generate && ./scripts/run-coverage",
     "clean-coverage": "shx rm -rf coverage coverage.json",
     "generate": "rm -rf ./build/contracts && npx truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json'",
-    "tsc": "tsc --noEmit | sed -l -e '/at createTSError/,/Truffle.*code/d; s/\\(.*\\)(\\([0-9]*\\),\\([0-9]*\\))/\\1:\\2:\\3/'",
+    "tsc": "tsc --noEmit",
     "postinstall": "patch-package",
     "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage"
   },

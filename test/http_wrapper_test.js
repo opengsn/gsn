@@ -23,14 +23,8 @@ describe('HttpWrapper', () => {
   it('should timeout after specified time', async () => {
     // this test abuses the fact that a local ganache is slow, and should take over 1ms to respond even if it's local
     const http = new HttpWrapper({ timeout: 1 })
-    let error = null
-    await assert.isRejected(
+    const res =
       http.sendPromise(web3.currentProvider.host, { jsonrpc: '2.0', method: 'net_version', id: 123 })
-        .catch(err => {
-          error = err
-          return Promise.reject(err)
-        })
-    )
-    assert.deepEqual(error, { error: 'timeout of 1ms exceeded' })
+    return expect(res).to.be.eventually.rejectedWith('timeout of 1ms exceeded')
   })
 })
