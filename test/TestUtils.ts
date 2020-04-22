@@ -6,6 +6,7 @@ import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contrac
 import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
+import { ether } from '@openzeppelin/test-helpers'
 
 const localhostOne = 'http://localhost:8090'
 
@@ -85,19 +86,18 @@ export async function startRelay (
   assert.ok(res, 'can\'t ping server')
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   assert.ok(res.RelayServerAddress, `server returned unknown response ${res.toString()}`)
-  const relayManagerAddress = res.RelayServerAddress
+  const relayManagerAddress = res.RelayManagerAddress
   console.log('Relay Server Address', relayManagerAddress)
   // @ts-ignore
   await web3.eth.sendTransaction({
     to: relayManagerAddress,
     from: options.relayOwner,
-    // @ts-ignore
-    value: web3.utils.toWei('2', 'ether')
+    value: ether('2')
   })
 
-  await stakeManager.stakeForAddress(relayManagerAddress, options.delay || 3600, {
+  await stakeManager.stakeForAddress(relayManagerAddress, options.delay || 2000, {
     from: options.relayOwner,
-    value: options.stake
+    value: options.stake || ether('1')
   })
   await stakeManager.authorizeHub(relayManagerAddress, relayHubAddress, {
     from: options.relayOwner
