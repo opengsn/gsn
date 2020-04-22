@@ -5,7 +5,7 @@ import { sleep } from '../common/utils'
 import { HttpProvider, provider } from 'web3-core'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { IKnownRelaysManager } from './KnownRelaysManager'
-import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
 import { GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Address } from './types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
@@ -84,7 +84,7 @@ export function runServer (
 }
 
 class DevKnownRelays implements IKnownRelaysManager {
-  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[][]> {
+  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]> {
     // @ts-ignore
     return Promise.resolve([[this.devRelay]])
   }
@@ -93,6 +93,10 @@ class DevKnownRelays implements IKnownRelaysManager {
   }
 
   saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void { // ts-ignore
+  }
+
+  async getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]> {
+    return Promise.resolve([])
   }
 
   devRelay?: RelayRegisteredEventInfo
@@ -222,7 +226,7 @@ export class DevRelayClient extends RelayClient {
     const relayInfo = await waitForRelay(relayServer.url as string + '/getaddr', 5000, (res) => {
       if (res?.data?.Ready === true) {
         return {
-          ...res.data,
+          relayManager: res.data.RelayServerAddress,
           pctRelayFee: '0',
           baseRelayFee: '0',
           // @ts-ignore

@@ -30,9 +30,9 @@ export default class HttpWrapper {
     if (this.logreq) {
       console.log('sending request:', url, JSON.stringify(jsonRequestData ?? {}).slice(0, LOGMAXLEN))
     }
-    return this.provider.post(url, jsonRequestData)
-      .then(res => res.data)
-      .catch(async (err) => Promise.reject(err.response != null ? err.response.data : { error: err.message }))
+
+    const response = await this.provider.post(url, jsonRequestData)
+    return response.data
   }
 }
 

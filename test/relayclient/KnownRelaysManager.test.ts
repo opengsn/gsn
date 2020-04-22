@@ -13,28 +13,28 @@ import {
 } from '../../types/truffle-contracts'
 import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
-import RelayRegisteredEventInfo from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import HttpClient from '../../src/relayclient/HttpClient'
 import HttpWrapper from '../../src/relayclient/HttpWrapper'
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
+import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager1: string, owner: string): Promise<void> {
-  await stakeManager.stakeForAddress(manager1, 1000, {
+export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
+  await stakeManager.stakeForAddress(manager, 1000, {
     value: ether('1'),
     from: owner
   })
-  await stakeManager.authorizeHub(manager1, relayHub.address, { from: owner })
+  await stakeManager.authorizeHub(manager, relayHub.address, { from: owner })
 }
 
-async function register (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, worker: string, url: string): Promise<void> {
+export async function register (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
-  await relayHub.registerRelayServer('0', '0', url, { from: manager })
+  await relayHub.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
 }
 
 const httpClient = new HttpClient(new HttpWrapper(), configureGSN({}))

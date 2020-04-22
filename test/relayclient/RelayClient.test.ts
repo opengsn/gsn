@@ -21,13 +21,13 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import replaceErrors from '../../src/common/ErrorReplacerJSON'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
-import RelayInfo from '../../src/relayclient/types/RelayInfo'
 
 import BadHttpClient from '../dummies/BadHttpClient'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionValidator'
 import { startRelay, stopRelay } from '../TestUtils'
 import { constants } from '@openzeppelin/test-helpers'
+import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -173,7 +173,7 @@ contract('RelayClient', function (accounts) {
       Version: ''
     }
     const relayInfo: RelayInfo = {
-      eventInfo: {
+      relayInfo: {
         relayManager,
         relayUrl,
         baseRelayFee: '',

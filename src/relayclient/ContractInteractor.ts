@@ -31,12 +31,12 @@ export const StakeUnlocked: EventName = 'StakeUnlocked'
 export const HubUnauthorized: EventName = 'HubUnauthorized'
 export const StakePenalized: EventName = 'StakePenalized'
 
-let IPaymasterContract: Contract<IPaymasterInstance>
-let IRelayHubContract: Contract<IRelayHubInstance>
-let IForwarderContract: Contract<ITrustedForwarderInstance>
-let IStakeManager: Contract<IStakeManagerInstance>
-
 export default class ContractInteractor {
+  private readonly IPaymasterContract: Contract<IPaymasterInstance>
+  private readonly IRelayHubContract: Contract<IRelayHubInstance>
+  private readonly IForwarderContract: Contract<ITrustedForwarderInstance>
+  private readonly IStakeManager: Contract<IStakeManagerInstance>
+
   private readonly web3: Web3
   private readonly provider: provider
   private readonly config: GSNConfig
@@ -46,29 +46,29 @@ export default class ContractInteractor {
     this.config = config
     this.provider = provider
     // @ts-ignore
-    IPaymasterContract = TruffleContract({
+    this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
       abi: paymasterAbi
     })
     // @ts-ignore
-    IRelayHubContract = TruffleContract({
+    this.IRelayHubContract = TruffleContract({
       contractName: 'IRelayHub',
       abi: relayHubAbi
     })
     // @ts-ignore
-    IForwarderContract = TruffleContract({
+    this.IForwarderContract = TruffleContract({
       contractName: 'ITrustedForwarder',
       abi: forwarderAbi
     })
     // @ts-ignore
-    IStakeManager = TruffleContract({
+    this.IStakeManager = TruffleContract({
       contractName: 'IStakeManager',
       abi: stakeManagerAbi
     })
-    IStakeManager.setProvider(this.provider, undefined)
-    IRelayHubContract.setProvider(this.provider, undefined)
-    IPaymasterContract.setProvider(this.provider, undefined)
-    IForwarderContract.setProvider(this.provider, undefined)
+    this.IStakeManager.setProvider(this.provider, undefined)
+    this.IRelayHubContract.setProvider(this.provider, undefined)
+    this.IPaymasterContract.setProvider(this.provider, undefined)
+    this.IForwarderContract.setProvider(this.provider, undefined)
   }
 
   getProvider (): provider { return this.provider }
@@ -76,22 +76,22 @@ export default class ContractInteractor {
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
-    return IPaymasterContract.at(address)
+    return this.IPaymasterContract.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createRelayHub (address: Address): Promise<IRelayHubInstance> {
-    return IRelayHubContract.at(address)
+    return this.IRelayHubContract.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
-    return IForwarderContract.at(address)
+    return this.IForwarderContract.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
-    return IStakeManager.at(address)
+    return this.IStakeManager.at(address)
   }
 
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
@@ -154,7 +154,7 @@ export default class ContractInteractor {
   encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString): PrefixedHexString {
     // TODO: check this works as expected
     // @ts-ignore
-    const relayHub = new IRelayHubContract('')
+    const relayHub = new this.IRelayHubContract('')
     return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData).encodeABI()
   }
 
