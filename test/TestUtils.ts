@@ -7,8 +7,24 @@ import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
 import { ether } from '@openzeppelin/test-helpers'
+import fs from 'fs'
 
 const localhostOne = 'http://localhost:8090'
+
+// from: https://stackoverflow.com/questions/18052762/remove-directory-which-is-not-empty
+export function cleanFolder (folder: string): void {
+  if (fs.existsSync(folder)) {
+    fs.readdirSync(folder).forEach((file, index) => {
+      const curPath = path.join(folder, file)
+      if (fs.lstatSync(curPath).isDirectory()) { // recurse
+        cleanFolder(curPath)
+      } else { // delete file
+        fs.unlinkSync(curPath)
+      }
+    })
+    fs.rmdirSync(folder)
+  }
+}
 
 // start a background relay process.
 // rhub - relay hub contract
@@ -20,7 +36,11 @@ export async function startRelay (
   stakeManager: StakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
-  args.push('--Workdir', '/tmp/server')
+
+  const serverWorkDir = '/tmp/gsn/test/server'
+
+  cleanFolder(serverWorkDir)
+  args.push('--Workdir', serverWorkDir)
   args.push('--DevMode')
   args.push('--RelayHubAddress', relayHubAddress)
 
@@ -64,7 +84,7 @@ export async function startRelay (
       // @ts-ignore
       if (!proc.alreadystarted) {
         relaylog(`died before init code=${code.toString()}`)
-        reject(lastresponse)
+        reject(new Error(lastresponse))
       }
     }
     proc.on('exit', doaListener.bind(proc))
@@ -99,6 +119,7 @@ export async function startRelay (
     from: options.relayOwner,
     value: options.stake || ether('1')
   })
+  await sleep(500)
   await stakeManager.authorizeHub(relayManagerAddress, relayHubAddress, {
     from: options.relayOwner
   })
@@ -109,7 +130,7 @@ export async function startRelay (
   while (count-- > 0) {
     res = await http.getPingResponse(localhostOne)
     if (res?.Ready) break
-    await sleep(1500)
+    await sleep(500)
   }
   assert.ok(res.Ready, 'Timed out waiting for relay to get staked and registered')
 
