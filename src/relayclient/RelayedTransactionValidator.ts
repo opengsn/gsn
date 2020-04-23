@@ -58,7 +58,8 @@ export default class RelayedTransactionValidator {
         console.log('validateRelayResponse - valid transaction response')
       }
 
-      const receivedNonce = transaction.nonce.readUIntBE(0, transaction.nonce.byteLength)
+      // TODO: the relayServer encoder returns zero-length buffer for nonce=0.`
+      const receivedNonce = transaction.nonce.length === 0 ? 0 : transaction.nonce.readUIntBE(0, transaction.nonce.byteLength)
       if (receivedNonce > transactionJsonRequest.relayMaxNonce) {
         // TODO: need to validate that client retries the same request and doesn't double-spend.
         // Note that this transaction is totally valid from the EVM's point of view

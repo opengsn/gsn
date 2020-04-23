@@ -1,3 +1,5 @@
+const ow = require('ow')
+
 const EventEmitter = require('events')
 const Web3 = require('web3')
 const abiDecoder = require('abi-decoder')
@@ -24,6 +26,8 @@ abiDecoder.addABI(StakeManagerABI)
 
 const VERSION = '0.0.1' // eslint-disable-line no-unused-vars
 const minimumRelayBalance = 1e17 // 0.1 eth
+const defaultWorkerMinBalance = 0.01e18
+const defaultWorkerTargetBalance = 0.3e18
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const maxGasPrice = 100e9
@@ -32,6 +36,8 @@ const retryGasPriceFactor = 1.2
 const DEBUG = false
 const SPAM = false
 
+const toBN = Web3.utils.toBN
+
 function debug () {
   if (DEBUG) console.log(...arguments)
 }
@@ -39,6 +45,8 @@ function debug () {
 function spam () {
   if (SPAM) debug(...arguments)
 }
+
+class StateError extends Error {}
 
 class RelayServer extends EventEmitter {
   constructor (
@@ -52,6 +60,8 @@ class RelayServer extends EventEmitter {
       pctRelayFee,
       gasPriceFactor,
       web3provider,
+      workerMinBalance = defaultWorkerMinBalance,
+      workerTargetBalance = defaultWorkerTargetBalance,
       devMode
     }) {
     super()
@@ -69,26 +79,36 @@ class RelayServer extends EventEmitter {
         pctRelayFee,
         gasPriceFactor,
         web3provider,
+        workerMinBalance,
+        workerTargetBalance,
         devMode
       })
     this.web3 = new Web3(web3provider)
-    this.address = keyManager.address()
     this.relayHubContract = new this.web3.eth.Contract(RelayHubABI, hubAddress)
 
     this.paymasterContract = new this.web3.eth.Contract(PayMasterABI)
     this.lastScannedBlock = 0
     this.ready = false
     this.removed = false
-    this.nonce = 0
     this.nonceMutex = new Mutex()
+
+    // todo: initialize nonces for all signers (currently one manager, one worker)
+    this.nonces = { 0: 0, 1: 0 }
+
+    this.keyManager.generateKeys(2)
+    this.managerAddress = keyManager.getAddress(0)
+
     debug('gasPriceFactor', gasPriceFactor)
   }
 
-  async _initStakeManager () {
-    const stakeManagerAddress = await this.relayHubContract.methods.getStakeManager().call()
-    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
-    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
-    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.address.slice(2)]])
+  getManagerAddress () {
+    return this.managerAddress
+  }
+
+  // index zero is not a worker, but the manager.
+  getAddress (index) {
+    ow(index, ow.number)
+    return this.keyManager.getAddress(index)
   }
 
   getMinGasPrice () {
@@ -97,6 +117,17 @@ class RelayServer extends EventEmitter {
 
   isReady () {
     return this.ready && !this.removed
+  }
+
+  pingHandler () {
+    return {
+      RelayServerAddress: this.getAddress(1),
+      RelayManagerAddress: this.managerAddress,
+      RelayHubAddress: this.relayHubContract.options.address,
+      MinGasPrice: this.getMinGasPrice(),
+      Ready: this.isReady(),
+      Version: this.VERSION
+    }
   }
 
   async createRelayTransaction (
@@ -147,8 +178,14 @@ class RelayServer extends EventEmitter {
       throw new Error(`Unacceptable gasPrice: relayServer's gasPrice:${this.gasPrice} request's gasPrice: ${gasPrice}`)
     }
 
+    // TODO: currently we hard-code a single worker. should find a "free" one to use from a pool
+    const workerIndex = 1
+
+    // TODO: should replenish earlier, so client can validate the worker has funds to pay for the tx
+    await this.replenishWorker(1)
+
     // Check that max nonce is valid
-    const nonce = await this._pollNonce()
+    const nonce = await this._pollNonce(workerIndex)
     if (nonce > relayMaxNonce) {
       throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`)
     }
@@ -164,7 +201,7 @@ class RelayServer extends EventEmitter {
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
       paymaster: paymaster,
-      relayWorker: this.address
+      relayWorker: this.getAddress(1)
     })
     // TODO: should not use signedData at all. only the relayRequest.
     const signedData = getDataToSign({
@@ -204,7 +241,7 @@ class RelayServer extends EventEmitter {
       maxPossibleGas,
       gasLimits.acceptRelayedCallGasLimit,
       signature,
-      approvalData).call()
+      approvalData).call({ from: this.getAddress(workerIndex) })
     debug('canRelayRet', canRelayRet)
     if (!canRelayRet) {
       canRelayRet = {}
@@ -228,11 +265,14 @@ class RelayServer extends EventEmitter {
     debug(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${maxPossibleGas}`)
     const { signedTx } = await this._sendTransaction(
       {
+        signerIndex: workerIndex,
         method,
         destination: relayHubAddress,
         gasLimit: maxPossibleGas,
         gasPrice
       })
+    // after sending a transaction is a good time to check the worker's balance, and replenish it.
+    await this.replenishWorker(1)
     return signedTx
   }
 
@@ -243,6 +283,7 @@ class RelayServer extends EventEmitter {
         console.error('web3 subscription:', error)
       }
     }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => { console.error('worker:', e) })
+    setTimeout(() => { this._workerSemaphore.bind(this)({ number: 1 }) }, 1)
   }
 
   stop () {
@@ -270,39 +311,70 @@ class RelayServer extends EventEmitter {
       })
   }
 
+  fatal (message) {
+    console.error('FATAL: ' + message)
+    process.exit(1)
+  }
+
+  async _init () {
+    const relayHubAddress = this.relayHubContract.options.address
+    console.log('Server address', this.managerAddress)
+    const code = await this.web3.eth.getCode(relayHubAddress)
+    if (code.length < 10) {
+      this.fatal(`No RelayHub deployed at address ${relayHubAddress}.`)
+    }
+    const version = await this.relayHubContract.methods.getVersion().call().catch(e => 'no getVersion() method')
+    if (version !== '1.0.0') {
+      this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
+    }
+    const stakeManagerAddress = await this.relayHubContract.methods.getStakeManager().call()
+    this.stakeManagerContract = new this.web3.eth.Contract(StakeManagerABI, stakeManagerAddress)
+    const stakeManagerTopics = [Object.keys(this.stakeManagerContract.events).filter(x => (x.includes('0x')))]
+    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.managerAddress.slice(2)]])
+
+    this.chainId = await this.web3.eth.getChainId()
+    this.networkId = await this.web3.eth.net.getId()
+    if (this.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
+      console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
+      process.exit(-1)
+    }
+    this.initialized = true
+  }
+
+  async replenishWorker (workerIndex) {
+    const workerAddress = this.getAddress(workerIndex)
+    const workerBalance = toBN(await this.web3.eth.getBalance(workerAddress))
+    if (workerBalance.lt(toBN(this.workerMinBalance))) {
+      const refill = toBN(this.workerTargetBalance).sub(workerBalance)
+      console.log(`== replenishWorker(${workerIndex}): mgr balance=${this.balance.toString() / 1e18} worker balance=${workerBalance.toString() / 1e18} refill=${refill.toString() / 1e18}`)
+      if (refill.lt(this.balance.sub(toBN(minimumRelayBalance)))) {
+        await this._sendTransaction({
+          signerIndex: 0,
+          destination: workerAddress,
+          value: refill,
+          gasLimit: 300000
+          // gasPrice:1
+        })
+        this.refreshBalance()
+      } else {
+        console.log(`== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
+      }
+    }
+  }
+
   async _worker (blockHeader) {
     try {
-      if (!this.stakeManagerContract) {
-        await this._initStakeManager()
-      }
-      if (!this.chainId) {
-        this.chainId = await this.web3.eth.getChainId()
-      }
-      if (!this.chainId) {
-        this.ready = false
-        throw new Error('Could not get chainId from node')
-      }
-      if (!this.networkId) {
-        this.networkId = await this.web3.eth.net.getId()
-      }
-      if (!this.networkId) {
-        this.ready = false
-        throw new Error('Could not get networkId from node')
-      }
-      if (this.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
-        console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
-        process.exit(-1)
+      if (!this.initialized) {
+        await this._init()
       }
       const gasPriceString = await this.web3.eth.getGasPrice()
       this.gasPrice = Math.floor(parseInt(gasPriceString) * this.gasPriceFactor)
       if (!this.gasPrice) {
-        this.ready = false
-        throw new Error('Could not get gasPrice from node')
+        throw new StateError('Could not get gasPrice from node')
       }
       await this.refreshBalance()
-      if (!this.balance || this.balance < minimumRelayBalance) {
-        this.ready = false
-        throw new Error(
+      if (!this.balance || this.balance.lt(toBN(minimumRelayBalance))) {
+        throw new StateError(
           `Server's balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
       }
       const options = {
@@ -320,6 +392,9 @@ class RelayServer extends EventEmitter {
       // TODO TODO TODO 'StakeAdded' is not the event you want to cat upon if there was no 'HubAuthorized' event
       for (const dlog of decodedLogs) {
         switch (dlog.name) {
+          case 'HubAuthorized':
+            receipt = await this._handleHubAuthorizedEvent(dlog)
+            break
           case 'StakeAdded':
             receipt = await this._handleStakedEvent(dlog)
             break
@@ -332,37 +407,47 @@ class RelayServer extends EventEmitter {
             break
         }
       }
-      if (!(await this.refreshStake())) {
-        this.ready = false
-        throw new Error('Waiting for stake...')
+
+      if (!this.stake) {
+        throw new StateError('Waiting for stake')
       }
       // todo check if registered!!
       // TODO: now even more todo then before. This is a hotfix.
       if (!this.isAddressAdded) {
-        this.ready = false
-        throw new Error('Not registered yet...')
+        throw new StateError('Not registered yet...')
       }
       this.lastScannedBlock = parseInt(blockHeader.number)
-      debug('READY!')
+      if (!this.state) {
+        console.log('Relay is Ready.')
+      }
       this.ready = true
+      delete this.lastError
       await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
     } catch (e) {
-      this.emit('error', e)
-      console.error('error in worker:', e.message)
+      if (e instanceof StateError) {
+        if (e.message !== this.lastError) {
+          this.lastError = e.message
+          console.log('worker: ', this.lastError)
+          this.ready = false
+        }
+      } else {
+        this.emit('error', e)
+        console.error('error in worker:', e)
+      }
     }
   }
 
   async refreshBalance () {
-    this.balance = parseInt(await this.web3.eth.getBalance(this.address))
+    this.balance = toBN(await this.web3.eth.getBalance(this.managerAddress))
     return this.balance
   }
 
   async refreshStake () {
-    if (!this.stakeManagerContract) {
-      await this._initStakeManager()
+    if (!this.initialized) {
+      await this._init()
     }
-    const stakeInfo = await this.stakeManagerContract.methods.getStakeInfo(this.address).call()
+    const stakeInfo = await this.stakeManagerContract.methods.getStakeInfo(this.managerAddress).call()
     this.stake = parseInt(stakeInfo.stake)
     if (!this.stake) {
       return 0
@@ -381,31 +466,53 @@ class RelayServer extends EventEmitter {
     // todo
     console.log('handle RelayRemoved event')
     // sanity checks
-    if (dlog.name !== 'RelayRemoved' || dlog.args.relay.toLowerCase() !== this.address.toLowerCase()) {
+    if (dlog.name !== 'RelayRemoved' || dlog.args.relay.toLowerCase() !== this.managerAddress.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
     this.removed = true
     this.emit('removed')
   }
 
-  async _handleStakedEvent (dlog) {
-    // todo
-    console.log('handle relay staked. Registering relay...')
-    // sanity checks
-    if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
+  async _handleHubAuthorizedEvent (dlog) {
+    if (dlog.name !== 'HubAuthorized' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
+    if (dlog.args.relayHub.toLowerCase() === this.relayHubContract.options.address.toLowerCase()) {
+      this.authorizedHub = true
+    }
+
+    return this._registerIfNeeded()
+  }
+
+  async _handleStakedEvent (dlog) {
+    // todo
+    // sanity checks
+    if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
+      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
+    }
+    await this.refreshStake()
+
+    return this._registerIfNeeded()
+  }
+
+  async _registerIfNeeded () {
+    if (!this.authorizedHub || !this.stake) {
+      debug(`can't register yet: auth=${this.authorizedHub} stake=${this.stake}`)
+      return
+    }
+
     const workersAddedEvents = await this.relayHubContract.getPastEvents('RelayWorkersAdded', {
       fromBlock: 1,
-      filter: { relayManager: this.address }
+      filter: { relayManager: this.managerAddress }
     })
-    console.log('worker events', workersAddedEvents)
+
     // add worker only if not already added
-    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.address.toLowerCase()))) {
+    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.managerAddress.toLowerCase()))) {
       // register on chain
-      const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.address])
+      const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.getAddress(1)])
       await this._sendTransaction(
         {
+          signerIndex: 0,
           method: addRelayWorkerMethod,
           destination: this.relayHubContract.options.address
         })
@@ -414,10 +521,12 @@ class RelayServer extends EventEmitter {
       this.url)
     const { receipt } = await this._sendTransaction(
       {
+        signerIndex: 0,
         method: registerMethod,
         destination: this.relayHubContract.options.address
       })
-    debug(`Relay ${this.address} registered on hub ${this.relayHubContract.options.address}. `)
+    debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract.options.address}. `)
+
     this.isAddressAdded = true
     return receipt
   }
@@ -426,10 +535,10 @@ class RelayServer extends EventEmitter {
     // todo: send balance to owner
     console.log('handle Unstaked event', dlog)
     // sanity checks
-    if (dlog.name !== 'StakeUnlocked' || dlog.args.relayManager.toLowerCase() !== this.address.toLowerCase()) {
+    if (dlog.name !== 'StakeUnlocked' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
-    this.balance = await this.web3.eth.getBalance(this.address)
+    this.balance = toBN(await this.web3.eth.getBalance(this.managerAddress))
     const gasPrice = await this.web3.eth.getGasPrice()
     const gasLimit = 21000
     console.log(`Sending balance ${this.balance} to owner`)
@@ -437,40 +546,57 @@ class RelayServer extends EventEmitter {
       throw new Error(`balance too low: ${this.balance}, tx cost: ${gasLimit * gasPrice}`)
     }
     const { receipt } = await this._sendTransaction({
+      signerIndex: 0,
       destination: this.owner,
       gasLimit,
       gasPrice,
-      value: this.balance - gasLimit * gasPrice
+      value: this.balance.sub(toBN(gasLimit * gasPrice))
     })
     this.emit('unstaked')
     return receipt
   }
 
+  /**
+   * resend Txs of all signers (manager, workers)
+   * @return the receipt from the first request
+   */
   async _resendUnconfirmedTransactions (blockHeader) {
+    // repeat separately for each signer (manager, all workers)
+    let receipt;
+    [0, 1].forEach(signerIndex => {
+      const ret = this._resendUnconfirmedTransactionsForSigner(blockHeader, signerIndex)
+      if (ret) {
+        receipt = ret
+      }
+    })
+    return receipt
+  }
+
+  async _resendUnconfirmedTransactionsForSigner (blockHeader, signerIndex) {
+    const signer = this.getAddress(signerIndex)
     // Load unconfirmed transactions from store, and bail if there are none
-    let sortedTxs = await this.txStoreManager.getAll()
+    let sortedTxs = await this.txStoreManager.getAllBySigner(signer)
     if (sortedTxs.length === 0) {
       return
     }
     debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
-    let nonce = await this.web3.eth.getTransactionCount(this.address, confirmedBlock)
+    let nonce = await this.web3.eth.getTransactionCount(signer, confirmedBlock)
     debug(
-      `Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
+      `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
-    await this.txStoreManager.removeTxsUntilNonce({ nonce: nonce - 1 })
+    await this.txStoreManager.removeTxsUntilNonce({ signer, nonce: nonce - 1 })
 
     // Load unconfirmed transactions from store again
-    sortedTxs = await this.txStoreManager.getAll()
+    sortedTxs = await this.txStoreManager.getAllBySigner(signer)
     if (sortedTxs.length === 0) {
       return
     }
-
     // Check if the tx was mined by comparing its nonce against the latest one
-    nonce = await this.web3.eth.getTransactionCount(this.address)
+    nonce = await this.web3.eth.getTransactionCount(signer)
     if (sortedTxs[0].nonce < nonce) {
-      debug('awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
+      debug('resend', signerIndex, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
       return
     }
 
@@ -478,35 +604,37 @@ class RelayServer extends EventEmitter {
     if (Date.now() - (new Date(sortedTxs[0].createdAt)).getTime() < pendingTransactionTimeout) {
       spam(Date.now(), (new Date()), (new Date()).getTime())
       spam(sortedTxs[0].createdAt, (new Date(sortedTxs[0].createdAt)), (new Date(sortedTxs[0].createdAt)).getTime())
-      debug('awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
+      debug('resend', signerIndex, ': awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
       return
     }
     const { receipt, signedTx } = await this._resendTransaction({ tx: sortedTxs[0] })
     debug('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
       receipt.transactionHash)
     if (sortedTxs[0].attempts > 2) {
-      debug(`Sent tx ${sortedTxs[0].attempts} times already`)
+      debug(`resend ${signerIndex}: Sent tx ${sortedTxs[0].attempts} times already`)
     }
     return signedTx
   }
 
-  async _sendTransaction ({ method, destination, value, gasLimit, gasPrice }) {
+  // signerIndex is the index into addresses array. zero is relayManager, the rest are workers
+  async _sendTransaction ({ signerIndex, method, destination, value, gasLimit, gasPrice }) {
     const encodedCall = method && method.encodeABI ? method.encodeABI() : ''
     gasPrice = gasPrice || await this.web3.eth.getGasPrice()
     gasPrice = parseInt(gasPrice)
     debug('gasPrice', gasPrice)
-    const gas = (gasLimit && parseInt(gasLimit)) || await method.estimateGas({ from: this.address }) + 21000
+    const gas = (gasLimit && parseInt(gasLimit)) || (method && await method.estimateGas({ from: this.managerAddress }))
     debug('gasLimit', gas)
     debug('nonceMutex locked?', this.nonceMutex.isLocked())
     const releaseMutex = await this.nonceMutex.acquire()
     let signedTx
     let storedTx
     try {
-      const nonce = await this._pollNonce()
+      const nonce = await this._pollNonce(signerIndex)
       debug('nonce', nonce)
       // TODO: change to eip155 chainID
+      const signer = this.getAddress(signerIndex)
       const txToSign = new Transaction({
-        from: this.address,
+        from: signer,
         to: destination,
         value: value || 0,
         gas,
@@ -515,7 +643,7 @@ class RelayServer extends EventEmitter {
         nonce
       })
       spam('txToSign', txToSign)
-      signedTx = this.keyManager.signTransaction(txToSign)
+      signedTx = this.keyManager.signTransaction(signer, txToSign)
       storedTx = new StoredTx({
         from: txToSign.from,
         to: txToSign.to,
@@ -527,7 +655,7 @@ class RelayServer extends EventEmitter {
         txId: ethUtils.bufferToHex(txToSign.hash()),
         attempts: 1
       })
-      this.nonce++
+      this.nonces[signerIndex]++
       await this.txStoreManager.putTx({ tx: storedTx })
     } finally {
       releaseMutex()
@@ -563,7 +691,7 @@ class RelayServer extends EventEmitter {
     })
     spam('txToSign', txToSign)
     // TODO: change to eip155 chainID
-    const signedTx = this.keyManager.signTransaction(txToSign)
+    const signedTx = this.keyManager.signTransaction(tx.from, txToSign)
     const storedTx = new StoredTx({
       from: txToSign.from,
       to: txToSign.to,
@@ -576,8 +704,9 @@ class RelayServer extends EventEmitter {
       attempts: tx.attempts + 1
     })
     await this.txStoreManager.putTx({ tx: storedTx, updateExisting: true })
-    debug('resending tx with nonce', txToSign.nonce)
-    debug('account nonce', await this.web3.eth.getTransactionCount(this.address))
+
+    debug('resending tx with nonce', txToSign.nonce, 'from', tx.from)
+    debug('account nonce', await this.web3.eth.getTransactionCount(tx.from))
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
@@ -589,13 +718,14 @@ class RelayServer extends EventEmitter {
     }
   }
 
-  async _pollNonce () {
-    const nonce = await this.web3.eth.getTransactionCount(this.address, 'pending')
-    if (nonce > this.nonce) {
-      debug('NONCE FIX', nonce, this.nonce)
-      this.nonce = nonce
+  async _pollNonce (signerIndex) {
+    const signer = this.getAddress(signerIndex)
+    const nonce = await this.web3.eth.getTransactionCount(signer, 'pending')
+    if (nonce > this.nonces[signerIndex]) {
+      debug('NONCE FIX for index=', signerIndex, 'signer=', signer, ': nonce=', nonce, this.nonces[signerIndex])
+      this.nonces[signerIndex] = nonce
     }
-    return this.nonce
+    return nonce
   }
 
   _parseEvent (event) {
