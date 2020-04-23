@@ -26,21 +26,18 @@ async function registerRelay (web3, options = {}) {
 
     const response = await axios.get(`${options.relayUrl}/getaddr`)
     const relayAddress = response.data.RelayServerAddress
-    console.log('wtf 0', relayAddress)
+    console.log('relay server', relayAddress)
     const relayHub = getRelayHub(web3, options.hub)
-    console.log('wtf 1', relayHub.options.address)
+    console.log('hub', relayHub.options.address)
     const stakeManagerAddress = await relayHub.methods.getStakeManager().call()
-    console.log('wtf 2', options)
-    console.log('sm from hub', stakeManagerAddress)
+    console.log('stake manager ', stakeManagerAddress)
     const stakeManager = getStakeManager(web3, stakeManagerAddress)
-    console.log('wtf 3', await stakeManager.methods.getStakeInfo(relayAddress).call())
     await stakeManager.methods
       .stakeForAddress(relayAddress, options.unstakeDelay.toString())
       .send({ value: options.stake, from: options.from })
     await stakeManager.methods
       .authorizeHub(relayAddress, options.hub)
       .send({ from: options.from })
-    console.log('wtf 5')
     await web3.eth.sendTransaction({
       from: options.from,
       to: relayAddress,
