@@ -5,7 +5,7 @@ import { sleep } from '../common/utils'
 import { HttpProvider, provider } from 'web3-core'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { IKnownRelaysManager } from './KnownRelaysManager'
-import RelayRegisteredEventInfo from './types/RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
 import { GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Address } from './types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
@@ -17,8 +17,7 @@ import net from 'net'
 
 import KeyManager = require('../relayserver/KeyManager')
 
-const dayInSec = 24 * 60 * 60
-const weekInSec = dayInSec * 7
+const unstakeDelay = 2000
 
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
@@ -52,7 +51,7 @@ export function runServer (
   relayHub: string,
   devConfig: DevGSNConfig
 ): RunServerReturn {
-  const keyManager = new KeyManager({ ecdsaKeyPair: KeyManager.newKeypair(), workdir: devConfig.relayWorkdir })
+  const keyManager = new KeyManager({ count: 2, workdir: devConfig.relayWorkdir })
   const txStoreManager = new TxStoreManager({ inMemory: true })
 
   // @ts-ignore
@@ -84,18 +83,19 @@ export function runServer (
 }
 
 class DevKnownRelays implements IKnownRelaysManager {
-  // noinspection JSUnusedGlobalSymbols
-  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayRegisteredEventInfo[]> {
+  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]> {
     // @ts-ignore
-    return Promise.resolve([this.devRelay])
+    return Promise.resolve([[this.devRelay]])
   }
 
-  // noinspection JSUnusedGlobalSymbols
   async refresh (): Promise<void> { // ts-ignore
   }
 
-  // noinspection JSUnusedGlobalSymbols
   saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void { // ts-ignore
+  }
+
+  async getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]> {
+    return Promise.resolve([])
   }
 
   devRelay?: RelayRegisteredEventInfo
@@ -208,24 +208,24 @@ export class DevRelayClient extends RelayClient {
 
     const stakeManager = await IStakeManagerContract.at(stakeManagerAddress)
 
-    await stakeManager.stakeForAddress(relayServer.address, weekInSec, {
-      from: this.devConfig.relayOwner,
-      value: ether('1')
-      // gas: estim
-    })
-    this.debug('== sending balance to relayServer', relayServer.address)
-    await stakeManager.authorizeHub(relayServer.address, this.config.relayHubAddress, { from: this.devConfig.relayOwner })
+    await stakeManager.contract.methods.stakeForAddress(relayServer.getManagerAddress(), unstakeDelay).send({ from: this.devConfig.relayOwner, value: ether('1') })
+    // not sure why: the line below started to crash on: Number can only safely store up to 53 bits
+    // (and its not relayed - its a direct call)
+    // await stakeManager.stakeForAddress(relayServer.getManagerAddress(), unstakeDelay, {
+    //   from: this.devConfig.relayOwner,
+    //   value: ether('1'),
+    // })
+    await stakeManager.authorizeHub(relayServer.getManagerAddress(), this.config.relayHubAddress, { from: this.devConfig.relayOwner })
     await this.contractInteractor.getWeb3().eth.sendTransaction({
       from: this.devConfig.relayOwner,
-      to: relayServer.address,
-      value: 1e18
+      to: relayServer.getManagerAddress(),
+      value: ether('1')
     })
-    this.debug('== waiting for relay')
     // @ts-ignore
     const relayInfo = await waitForRelay(relayServer.url as string + '/getaddr', 5000, (res) => {
       if (res?.data?.Ready === true) {
         return {
-          ...res.data,
+          relayManager: res.data.RelayServerAddress,
           pctRelayFee: '0',
           baseRelayFee: '0',
           // @ts-ignore
@@ -236,8 +236,6 @@ export class DevRelayClient extends RelayClient {
 
     const devRelays = this.knownRelaysManager as DevKnownRelays
     devRelays.devRelay = relayInfo
-
-    this.debug('== relay ready')
   }
 
   debug (...args: any): void {

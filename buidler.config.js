@@ -5,9 +5,10 @@
 //   import "nomiclabs/buidler/console.log";
 //   console.log("a=%s addr=%s", 1, this);
 
+require( 'ts-node/register')
 // eslint-disable-next-line no-undef
 usePlugin('@nomiclabs/buidler-truffle5')
-
+require( 'ts-node/register')
 module.exports = {
   networks: {
     buidlerevm: {

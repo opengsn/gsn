@@ -25,7 +25,7 @@ async function registerRelay (web3, options = {}) {
     console.error(`Funding GSN relay at ${options.relayUrl}`)
 
     const response = await axios.get(`${options.relayUrl}/getaddr`)
-    const relayAddress = response.data.RelayServerAddress
+    const relayAddress = response.data.RelayManagerAddress
     console.log('relay server', relayAddress)
     const relayHub = getRelayHub(web3, options.hub)
     console.log('hub', relayHub.options.address)

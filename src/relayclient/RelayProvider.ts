@@ -151,7 +151,8 @@ export class RelayProvider implements HttpProvider {
       return false
     }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
-    return gsnTransactionDetails.useGSN ?? true
+    const ret = gsnTransactionDetails?.useGSN ?? true
+    return ret
   }
 
   private _dumpRelayingResult (relayingResult: RelayingResult): string {

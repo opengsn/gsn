@@ -34,6 +34,12 @@ module.exports = {
       port: 8544,
       network_id: '*'
     },
+    mainnet: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://mainnet.infura.io/v3/c3422181d0594697a38defe7706a1e5b')
+      },
+      network_id: 1
+    },
     ropsten: {
       provider: function () {
         return new HDWalletProvider(mnemonic, 'https://ropsten.infura.io/v3/c3422181d0594697a38defe7706a1e5b')
