@@ -25,7 +25,7 @@ const options = [
 if (!contract.only) { contract.only = contract }
 
 options.forEach(params => {
-  contract.only(params.title + 'Flow', async (acc) => {
+  contract(params.title + 'Flow', async (acc) => {
     let from
     let sr
     let paymaster
