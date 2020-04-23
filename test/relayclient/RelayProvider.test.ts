@@ -1,5 +1,5 @@
 import { HttpProvider } from 'web3-core'
-import RelayProvider, { BaseTransactionReceipt } from '../../src/relayclient/RelayProvider'
+import { RelayProvider, BaseTransactionReceipt } from '../../src/relayclient/RelayProvider'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
   RelayHubInstance, StakeManagerInstance,

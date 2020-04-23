@@ -18,7 +18,7 @@ export interface BaseTransactionReceipt {
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
-export default class RelayProvider implements HttpProvider {
+export class RelayProvider implements HttpProvider {
   private readonly origProvider: HttpProvider
   private readonly origProviderSend: any
   private readonly relayClient: RelayClient
