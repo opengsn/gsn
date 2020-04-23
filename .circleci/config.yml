@@ -3,19 +3,19 @@ jobs: # a collection of steps
   build: # runs not using Workflows must have a `build` job as entry point
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: tabookey/eth-tools:1.2
+      - image: circleci/node:13.11.0
 
     steps: # a collection of executable commands
       - checkout # special step to check out source code to working directory
 
       - restore_cache: # special step to restore the dependency cache
-          key: dependency-cache-{{ checksum "package.json" }}-yarn1
+          key: dependency-cache-{{ checksum "package.json" }}-yarn2
       - run:
           name: yarn-install
           command: yarn
 
       - save_cache: # special step to save the dependency cache
-          key: dependency-cache-{{ checksum "package.json" }}-yarn1
+          key: dependency-cache-{{ checksum "package.json" }}-yarn2
           paths:
             - ./node_modules
 
@@ -23,25 +23,26 @@ jobs: # a collection of steps
           name: test
           command: yarn test | tee /tmp/test-results.log
 
-      - restore_cache: # special cache for coverage test
-          key: last-coverage
-          paths:
-            - ./coverage
+#coverage is broken (doesn't cover all contracts). disabled for now..
+#      - restore_cache: # special cache for coverage test
+#          key: last-coverage
+#          paths:
+#            - ./coverage
 
-      - run: # run coverage. update "coverage/covsig.txt" if successful run.
-          # use last coverage report if no test/contract was changed.
-          name: coverage
-          command: yarn run coverage-if-changed
+#      - run: # run coverage. update "coverage/covsig.txt" if successful run.
+#          # use last coverage report if no test/contract was changed.
+#          name: coverage
+#          command: yarn run coverage-if-changed
 
-      - save_cache: # special cache for coverage test
-          key: last-coverage
-          paths:
-            - ./coverage
+#      - save_cache: # special cache for coverage test
+#          key: last-coverage
+#          paths:
+#            - ./coverage
 
-      - store_artifacts: # special step to save test results as as artifact
-          path: ./coverage
-      - store_artifacts:
-          path: ./coverage.html
+#      - store_artifacts: # special step to save test results as as artifact
+#          path: ./coverage
+#      - store_artifacts:
+#          path: ./coverage.html
 
       - store_test_results: # special step to upload test results for display in Test Summary
           path: /tmp/test-results.log

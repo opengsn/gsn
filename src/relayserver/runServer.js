@@ -50,15 +50,8 @@ if (devMode) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
   }
 }
-let keypair
-try {
-  keypair = JSON.parse(fs.readFileSync(`${workdir}/keystore`)).ecdsaKeyPair
-  keypair.privateKey = Buffer.from(keypair.privateKey)
-  console.log('Using saved keypair')
-} catch (e) {
-  keypair = KeyManager.newKeypair()
-}
-const keyManager = new KeyManager({ ecdsaKeyPair: keypair, workdir })
+
+const keyManager = new KeyManager({ count: 2, workdir })
 const txStoreManager = new TxStoreManager({ workdir })
 const web3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
