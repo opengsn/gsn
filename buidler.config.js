@@ -8,7 +8,7 @@
 require( 'ts-node/register')
 // eslint-disable-next-line no-undef
 usePlugin('@nomiclabs/buidler-truffle5')
-
+require( 'ts-node/register')
 module.exports = {
   networks: {
     buidlerevm: {

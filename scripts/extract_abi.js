@@ -10,7 +10,7 @@ const path = require('path')
 const contractsFolder = 'contracts'
 const outAbiFolder = 'src/common'
 
-const contractsToExtract = ['interfaces/IRelayHub', 'interfaces/IPaymaster', 'interfaces/IStakeManager', 'interfaces/ITrustedForwarder']
+const contractsFolderToExtract = './contracts/interfaces'
 
 function compileFile (contractFile, c) {
   console.log('compiling ' + contractFile)
@@ -71,7 +71,9 @@ function compileFile (contractFile, c) {
   return { abi, binary }
 }
 
-contractsToExtract.forEach(c => {
+fs.readdirSync(contractsFolderToExtract).forEach(file => {
+  const c = 'interfaces/' + file.replace(/.sol/, '')
+
   const contractFile = contractsFolder + '/' + c + '.sol'
   const outNodeFile = outAbiFolder + '/' + c + '.js'
   // const outAbiFile = outAbiFolder + '/' + c + '.json'
