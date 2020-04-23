@@ -355,7 +355,7 @@ class RelayServer extends EventEmitter {
           gasLimit: 300000
           // gasPrice:1
         })
-        this.balance = this.balance.sub(refill)
+        this.refreshBalance()
       } else {
         console.log(`== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
       }

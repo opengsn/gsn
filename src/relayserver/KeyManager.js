@@ -1,8 +1,6 @@
 const Wallet = require('ethereumjs-wallet')
 const HDKey = require('ethereumjs-wallet/hdkey')
-const abi = require('ethereumjs-abi')
 const fs = require('fs')
-const ethUtils = require('ethereumjs-util')
 const ow = require('ow')
 
 class KeyManager {
@@ -59,20 +57,6 @@ class KeyManager {
 
   getAddresses () {
     return Object.keys(this._privateKeys)
-  }
-
-  ecSignWithPrefix ({ signer, hash }) {
-    const prefixedHash = abi.soliditySHA3(['string', 'bytes32'], ['\x19Ethereum Signed Message:\n32', hash])
-    return this.ecSignNoPrefix({ signer, hash: prefixedHash })
-  }
-
-  ecSignNoPrefix ({ signer, hash }) {
-    ow(signer, ow.string)
-    ow(hash, ow.string)
-    const privateKey = this._privateKeys[signer]
-    if (privateKey === undefined) { throw new Error(`Can't sign: from=${signer} is not managed`) }
-    const sig = ethUtils.ecsign(hash, privateKey)
-    return Buffer.concat([sig.r, sig.s, Buffer.from(sig.v.toString(16), 'hex')])
   }
 
   signTransaction (signer, tx) {

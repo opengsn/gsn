@@ -56,7 +56,7 @@ contract('RelayServer', function (accounts) {
   let keyManager
 
   before(async function () {
-    ethereumNodeUrl = web3.currentProvider.host || 'http://localhost:8545'
+    ethereumNodeUrl = web3.currentProvider.host
     serverWeb3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 

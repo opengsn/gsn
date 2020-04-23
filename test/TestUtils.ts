@@ -11,21 +11,6 @@ import fs from 'fs'
 
 const localhostOne = 'http://localhost:8090'
 
-// from: https://stackoverflow.com/questions/18052762/remove-directory-which-is-not-empty
-export function cleanFolder (folder: string): void {
-  if (fs.existsSync(folder)) {
-    fs.readdirSync(folder).forEach((file, index) => {
-      const curPath = path.join(folder, file)
-      if (fs.lstatSync(curPath).isDirectory()) { // recurse
-        cleanFolder(curPath)
-      } else { // delete file
-        fs.unlinkSync(curPath)
-      }
-    })
-    fs.rmdirSync(folder)
-  }
-}
-
 // start a background relay process.
 // rhub - relay hub contract
 // options:
@@ -39,7 +24,7 @@ export async function startRelay (
 
   const serverWorkDir = '/tmp/gsn/test/server'
 
-  cleanFolder(serverWorkDir)
+  fs.rmdirSync(serverWorkDir, { recursive: true })
   args.push('--Workdir', serverWorkDir)
   args.push('--DevMode')
   args.push('--RelayHubAddress', relayHubAddress)
