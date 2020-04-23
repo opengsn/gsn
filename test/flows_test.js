@@ -12,6 +12,7 @@ const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymaste
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 
 const RelayProvider = require('../src/relayclient/RelayProvider')
 const Environments = require('../src/relayclient/types/Environments')
@@ -22,7 +23,7 @@ const options = [
 ]
 
 options.forEach(params => {
-  contract.skip(params.title + 'Flow', async (acc) => {
+  contract(params.title + 'Flow', async (acc) => {
     let from
     let sr
     let paymaster
@@ -40,11 +41,12 @@ options.forEach(params => {
       gasless = await web3.eth.personal.newAccount('password')
       web3.eth.personal.unlockAccount(gasless, 'password')
 
+      const sm = await StakeManager.new()
+      const p = await Penalizer.new()
+      rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, sm.address, p.address, { gas: 10000000 })
       if (params.relay) {
-        // rhub = await RelayHub.deployed()
-        const sm = await StakeManager.new()
-        rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, sm.address, { gas: 10000000 })
-        relayproc = await testutils.startRelay(rhub, {
+        relayproc = await testutils.startRelay(rhub.address, sm, {
+          relaylog:true,
           stake: 1e18,
           delay: 3600 * 24 * 7,
           pctRelayFee: 12,
@@ -57,8 +59,6 @@ options.forEach(params => {
         from = gasless
       } else {
         from = accounts[0]
-        // dummy relay hub. direct mode doesn't use it, but our SampleRecipient contract requires one.
-        rhub = await RelayHub.deployed()
       }
 
       sr = await SampleRecipient.new()

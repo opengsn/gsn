@@ -7,7 +7,6 @@ import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
 import { ether } from '@openzeppelin/test-helpers'
-import fs from 'fs'
 
 const localhostOne = 'http://localhost:8090'
 
@@ -21,7 +20,6 @@ export async function startRelay (
   stakeManager: StakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
-
   const serverWorkDir = '/tmp/gsn/test/server'
 
   fs.rmdirSync(serverWorkDir, { recursive: true })
