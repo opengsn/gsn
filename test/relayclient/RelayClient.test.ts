@@ -16,7 +16,7 @@ import {
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import RelayClient from '../../src/relayclient/RelayClient'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
-import { Address, AsyncApprove } from '../../src/relayclient/types/Aliases'
+import { Address, AsyncApprovalData } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import replaceErrors from '../../src/common/ErrorReplacerJSON'
@@ -241,13 +241,13 @@ contract('RelayClient', function (accounts) {
     })
 
     describe('#_prepareRelayHttpRequest()', function () {
-      const asyncApprove: AsyncApprove = async function (_: RelayRequest): Promise<PrefixedHexString> {
+      const asyncApprovalData: AsyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
         return Promise.resolve('0x1234567890')
       }
 
       it('should use provided approval function', async function () {
         const relayClient =
-          new RelayClient(underlyingProvider, gsnConfig, { asyncApprove })
+          new RelayClient(underlyingProvider, gsnConfig, { asyncApprovalData })
         const { httpRequest } = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
         assert.equal(httpRequest.approvalData, '0x1234567890')
       })

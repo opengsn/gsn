@@ -3,12 +3,13 @@ pragma solidity ^0.5.16;
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
 import "./BaseGsnAware.sol";
+import "./interfaces/IRelayRecipient.sol";
 
 /**
  * A base class to be inherited by a concrete Relay Recipient
  * A subclass must use "getSender()" instead of "msg.sender"
  */
-contract BaseRelayRecipient {
+contract BaseRelayRecipient is IRelayRecipient {
 
     /// the TrustedForwarder singleton we accept calls from.
     // we trust it to verify the caller's signature, and pass the caller's address as last 20 bytes

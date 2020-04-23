@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/strict-boolean-expressions */
 import childProcess, { ChildProcessWithoutNullStreams } from 'child_process'
 import path from 'path'
+import fs from 'fs'
 
 import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contracts'
 import HttpWrapper from '../src/relayclient/HttpWrapper'

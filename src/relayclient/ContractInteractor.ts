@@ -8,11 +8,14 @@ import paymasterAbi from '../common/interfaces/IPaymaster'
 import relayHubAbi from '../common/interfaces/IRelayHub'
 import forwarderAbi from '../common/interfaces/ITrustedForwarder'
 import stakeManagerAbi from '../common/interfaces/IStakeManager'
+import gsnRecipientAbi from '../common/interfaces/IRelayRecipient'
+
 import { calculateTransactionMaxPossibleGas, event2topic } from '../common/utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import {
+  BaseRelayRecipientInstance,
   IPaymasterInstance,
-  IRelayHubInstance, IStakeManagerInstance,
+  IRelayHubInstance, IRelayRecipientInstance, IStakeManagerInstance,
   ITrustedForwarderInstance
 } from '../../types/truffle-contracts'
 
@@ -36,6 +39,7 @@ export default class ContractInteractor {
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
   private readonly IForwarderContract: Contract<ITrustedForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
+  private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
 
   private readonly web3: Web3
   private readonly provider: provider
@@ -65,14 +69,25 @@ export default class ContractInteractor {
       contractName: 'IStakeManager',
       abi: stakeManagerAbi
     })
+    // @ts-ignore
+    this.IRelayRecipient = TruffleContract({
+      contractName: 'IRelayRecipient',
+      abi: gsnRecipientAbi
+    })
     this.IStakeManager.setProvider(this.provider, undefined)
     this.IRelayHubContract.setProvider(this.provider, undefined)
     this.IPaymasterContract.setProvider(this.provider, undefined)
     this.IForwarderContract.setProvider(this.provider, undefined)
+    this.IRelayRecipient.setProvider(this.provider, undefined)
   }
 
   getProvider (): provider { return this.provider }
   getWeb3 (): Web3 { return this.web3 }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
+    return this.IRelayRecipient.at(address)
+  }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
@@ -92,6 +107,11 @@ export default class ContractInteractor {
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
     return this.IStakeManager.at(address)
+  }
+
+  async getForwarder (recipientAddress: Address): Promise<Address> {
+    const recipient = await this._createRecipient(recipientAddress)
+    return recipient.getTrustedForwarder()
   }
 
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {

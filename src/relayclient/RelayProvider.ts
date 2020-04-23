@@ -148,7 +148,8 @@ export default class RelayProvider implements HttpProvider {
 
   _useGSN (payload: JsonRpcPayload): boolean {
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
-    return gsnTransactionDetails.useGSN ?? true
+    const ret = gsnTransactionDetails?.useGSN ?? true
+    return ret
   }
 
   private _dumpRelayingResult (relayingResult: RelayingResult): string {

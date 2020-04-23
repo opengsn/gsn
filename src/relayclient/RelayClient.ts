@@ -4,7 +4,7 @@ import { HttpProvider, TransactionReceipt } from 'web3-core'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { AsyncApprove, PingFilter } from './types/Aliases'
+import { AsyncApprovalData, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import RelaySelectionManager from './RelaySelectionManager'
@@ -14,7 +14,8 @@ import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
 
-export const EmptyApprove: AsyncApprove = async (): Promise<string> => {
+// generate "approvalData" for a request. must return string-encoded bytes array
+export const EmptyApprovalData: AsyncApprovalData = async (): Promise<PrefixedHexString> => {
   return Promise.resolve('0x')
 }
 
@@ -44,7 +45,7 @@ export default class RelayClient {
   protected contractInteractor: ContractInteractor
   protected knownRelaysManager: IKnownRelaysManager
   accountManager: AccountManager
-  private readonly asyncApprove: AsyncApprove
+  private readonly asyncApprovalData: AsyncApprovalData
   private readonly transactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
 
@@ -58,6 +59,7 @@ export default class RelayClient {
   ) {
     const config = configureGSN(configOverride)
     const dependencies = getDependencies(config, provider, overrideDependencies)
+
     this.config = dependencies.config
     this.httpClient = dependencies.httpClient
     this.contractInteractor = dependencies.contractInteractor
@@ -65,7 +67,7 @@ export default class RelayClient {
     this.transactionValidator = dependencies.transactionValidator
     this.accountManager = dependencies.accountManager
     this.pingFilter = dependencies.pingFilter
-    this.asyncApprove = dependencies.asyncApprove
+    this.asyncApprovalData = dependencies.asyncApprovalData
   }
 
   /**
@@ -172,7 +174,13 @@ export default class RelayClient {
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
-    const senderNonce = await this.contractInteractor.getSenderNonce(gsnTransactionDetails.from, gsnTransactionDetails.forwarder)
+    let forwarderAddress = gsnTransactionDetails.forwarder
+    if (forwarderAddress == null) {
+      forwarderAddress = await this.contractInteractor.getForwarder(gsnTransactionDetails.to)
+    }
+    const paymaster = gsnTransactionDetails.paymaster != null ? gsnTransactionDetails.paymaster : this.config.paymasterAddress
+
+    const senderNonce = await this.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarderAddress)
     const relayWorker = relayInfo.pingResponse.RelayServerAddress
     const gasPriceHex = gsnTransactionDetails.gasPrice
     const gasLimitHex = gsnTransactionDetails.gas
@@ -184,6 +192,7 @@ export default class RelayClient {
     }
     const gasLimit = parseInt(gasLimitHex, 16).toString()
     const gasPrice = parseInt(gasPriceHex, 16).toString()
+
     const relayRequest = new RelayRequest({
       senderAddress: gsnTransactionDetails.from,
       target: gsnTransactionDetails.to,
@@ -193,12 +202,12 @@ export default class RelayClient {
       baseRelayFee: relayInfo.relayInfo.baseRelayFee,
       gasPrice,
       gasLimit,
-      paymaster: gsnTransactionDetails.paymaster,
+      paymaster,
       relayWorker
     })
 
-    const signature = await this.accountManager.sign(relayRequest, gsnTransactionDetails.forwarder)
-    const approvalData = await this.asyncApprove(relayRequest)
+    const signature = await this.accountManager.sign(relayRequest, forwarderAddress)
+    const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
@@ -214,7 +223,7 @@ export default class RelayClient {
       baseRelayFee: relayInfo.relayInfo.baseRelayFee,
       gasPrice,
       gasLimit,
-      paymaster: gsnTransactionDetails.paymaster,
+      paymaster: paymaster,
       signature,
       approvalData,
       relayHubAddress: this.config.relayHubAddress,
