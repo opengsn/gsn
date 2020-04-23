@@ -34,7 +34,7 @@ contract BaseRelayRecipient is IRelayRecipient {
      * should be used in the contract anywhere instead of msg.sender
      */
     function getSender() internal view returns (address) {
-        if (msg.sender == address(getTrustedForwarder())) {
+        if (msg.data.length >= 24 && msg.sender == address(getTrustedForwarder())) {
             // At this point we know that the sender is a trusted forwarder,
             // so we trust that the last bytes of msg.data are the verified sender address.
             // extract sender address from the end of msg.data
