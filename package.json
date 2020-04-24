@@ -30,6 +30,7 @@
     "gsn": "./helpers/gsn.js",
     "gsn-run-relay": "./src/relayserver/runServer.js"
   },
+  "prepublish": "npm run prepare",
   "scripts": {
     "extract-abi": "./scripts/extract_abi.js",
     "test": "yarn run lint && yarn extract_abi && yarn generate && yarn tsc && npm run test-js",
@@ -42,9 +43,9 @@
     "webtools": "webpack-cli --config ./webtools.webpack.js && http-server webtools/ -o",
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:fix": "yarn run lint:js:fix",
-    "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore src test scripts",
+    "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore src test scripts helpers",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
-    "lint:js:fix": "eslint --ext .js,.ts -f unix --ignore-path .gitignore src test scripts --fix",
+    "lint:js:fix": "eslint --ext .js,.ts -f unix --ignore-path .gitignore src test scripts helpers --fix",
     "web": "./restart-relay.sh web",
     "trace": "MODE=trace truffle test",
     "coverage": "yarn generate && ./scripts/run-coverage",

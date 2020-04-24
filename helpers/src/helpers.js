@@ -2,14 +2,13 @@ const fs = require('fs')
 const axios = require('axios')
 const sleep = require('../../src/common/utils').sleep
 const utils = require('web3').utils
-const { merge } = require('lodash')
 
 // compiled folder populated by "prepublish"
 const compiledFolder = '../compiled/'
-const relayHub = require( compiledFolder+'RelayHub.json')
-const stakeManager = require( compiledFolder+'StakeManager.json')
-const penalizer = require( compiledFolder+'Penalizer.json')
-const paymaster = require( compiledFolder+'TestPaymasterEverythingAccepted.json' )
+const relayHub = require(compiledFolder + 'RelayHub.json')
+const stakeManager = require(compiledFolder + 'StakeManager.json')
+const penalizer = require(compiledFolder + 'Penalizer.json')
+const paymaster = require(compiledFolder + 'TestPaymasterEverythingAccepted.json')
 
 const ether = function (value) {
   return new utils.BN(utils.toWei(value, 'ether'))
