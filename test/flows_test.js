@@ -4,7 +4,7 @@
 // succeed in gasless)
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
 
-import RelayProvider from '../src/relayclient/RelayProvider'
+import { RelayProvider } from '../src/relayclient/RelayProvider'
 
 var testutils = require('./TestUtils')
 

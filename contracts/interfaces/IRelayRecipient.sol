@@ -20,5 +20,5 @@ contract IRelayRecipient {
      * otherwise, return `msg.sender`
      * should be used in the contract anywhere instead of msg.sender
      */
-    function getSender() internal view returns (address);
+    function _msgSender() internal view returns (address);
 }

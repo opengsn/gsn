@@ -8,6 +8,7 @@ import RelayClient, { RelayingResult } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Transaction } from 'ethereumjs-tx'
+import { AccountKeypair } from './AccountManager'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -18,7 +19,7 @@ export interface BaseTransactionReceipt {
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
-export default class RelayProvider implements HttpProvider {
+export class RelayProvider implements HttpProvider {
   private readonly origProvider: HttpProvider
   private readonly origProviderSend: any
   private readonly relayClient: RelayClient
@@ -40,6 +41,20 @@ export default class RelayProvider implements HttpProvider {
     this.config = config
     this.origProviderSend = this.origProvider.send.bind(this.origProvider)
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
+
+    this._delegateEventsApi(origProvider)
+  }
+
+  _delegateEventsApi (origProvider: HttpProvider): void {
+    // If the subprovider is a ws or ipc provider, then register all its methods on this provider
+    // and delegate calls to the subprovider. This allows subscriptions to work.
+    ['on', 'removeListener', 'removeAllListeners', 'reset', 'disconnect', 'addDefaultEvents', 'once', 'reconnect'].forEach(func => {
+      // @ts-ignore
+      if (origProvider[func] !== undefined) {
+        // @ts-ignore
+        this[func] = origProvider[func].bind(origProvider)
+      }
+    })
   }
 
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
@@ -147,6 +162,9 @@ export default class RelayProvider implements HttpProvider {
   }
 
   _useGSN (payload: JsonRpcPayload): boolean {
+    if (payload.params[0] === undefined) {
+      return false
+    }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     const ret = gsnTransactionDetails?.useGSN ?? true
     return ret
@@ -177,5 +195,13 @@ export default class RelayProvider implements HttpProvider {
 
   disconnect (): boolean {
     return this.origProvider.disconnect()
+  }
+
+  newAccount (): AccountKeypair {
+    return this.relayClient.accountManager.newAccount()
+  }
+
+  addAccount (keypair: AccountKeypair): void {
+    this.relayClient.accountManager.addAccount(keypair)
   }
 }

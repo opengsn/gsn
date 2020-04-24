@@ -1,5 +1,5 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
-import { bufferToHex, ecrecover, pubToAddress } from 'ethereumjs-util'
+import { bufferToHex } from 'ethereumjs-util'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import { isSameAddress } from '../common/utils'
 import ContractInteractor from './ContractInteractor'
@@ -31,8 +31,7 @@ export default class RelayedTransactionValidator {
       console.log('returnedTx is', transaction.v, transaction.r, transaction.s, transaction.to, transaction.data, transaction.gasLimit, transaction.gasPrice, transaction.value)
     }
 
-    const message = transaction.hash(false)
-    const signer = bufferToHex(pubToAddress(ecrecover(message, transaction.v[0], transaction.r, transaction.s, this.config.chainId)))
+    const signer = bufferToHex(transaction.getSenderAddress())
 
     const relayRequestOrig = new RelayRequest({
       senderAddress: transactionJsonRequest.from,

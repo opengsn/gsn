@@ -9,7 +9,7 @@ contract('PayableWithEmit', () => {
     receiver = await PayableWithEmit.new()
     sender = await PayableWithEmit.new()
   })
-  it('payable that uses getSender', async () => {
+  it('payable that uses _msgSender()', async () => {
     const ret = await sender.doSend(receiver.address, { value: 1e18 })
     // console.log({ gasUsed: ret.receipt.gasUsed, log: getLogs(ret) })
     assert.equal(ret.logs.find((e: any) => e.event === 'GasUsed').args.success, true)
