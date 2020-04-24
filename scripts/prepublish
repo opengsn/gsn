@@ -1,7 +1,8 @@
 #!/bin/bash -xe
 rm -rf ./dist/
+yarn extract_abi
+yarn generate
 tsc
-truffle compile --quiet
 mkdir -p helpers/compiled/
 
 CONTRACTS="RelayHub StakeManager Penalizer TestPaymasterEverythingAccepted"
