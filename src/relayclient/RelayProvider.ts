@@ -8,6 +8,7 @@ import RelayClient, { RelayingResult } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Transaction } from 'ethereumjs-tx'
+import { AccountKeypair } from './AccountManager'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -191,5 +192,13 @@ export default class RelayProvider implements HttpProvider {
 
   disconnect (): boolean {
     return this.origProvider.disconnect()
+  }
+
+  newAccount (): AccountKeypair {
+    return this.relayClient.accountManager.newAccount()
+  }
+
+  addAccount (keypair: AccountKeypair): void {
+    this.relayClient.accountManager.addAccount(keypair)
   }
 }
