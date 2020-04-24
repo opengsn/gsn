@@ -40,12 +40,12 @@ const baseRelayFee = argv.BaseFee || 70
 const pctRelayFee = argv.PercentFee || 0
 const url = argv.Url || 'http://localhost:8090'
 const port = argv.Port || 8090
-const relayHubAddress = argv.RelayHubAddress || '0xD216153c06E857cD7f72665E0aF1d7D82172F494'
+const relayHubAddress = argv.RelayHubAddress || error('missing --RelayHubAddress')
 // const defaultGasPrice = argv.DefaultGasPrice || 1e9 // 1 Gwei
 const gasPricePercent = argv.GasPricePercent || 10
 // const registrationBlockRate = argv.RegistrationBlockRate || 6000 - 200
 const ethereumNodeUrl = argv.EthereumNodeUrl || 'http://localhost:8545'
-const workdir = argv.Workdir || error('missing Workdir')
+const workdir = argv.Workdir || error('missing --Workdir')
 const devMode = argv.DevMode || false
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {

@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "dist",
+    "jsrelay/dist",
     "node_modules",
     "example",
     "build"
