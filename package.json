@@ -1,5 +1,5 @@
 {
-  "version": "0.4.5",
+  "version": "0.4.7",
   "description": "Open Gas Stations Network",
   "name": "@opengsn/gsn",
   "license": "MIT",
@@ -52,12 +52,13 @@
     "generate": "rm -rf ./build/contracts && npx truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json'",
     "tsc": "tsc --noEmit",
     "postinstall": "patch-package",
-    "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage"
+    "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage",
+    "prepare": "./scripts/prepublish"
   },
   "dependencies": {
     "@0x/contracts-utils": "4.4.3",
-    "@types/chai-as-promised": "^7.1.2",
     "@truffle/contract": "4.1.13",
+    "@types/chai-as-promised": "^7.1.2",
     "abi-decoder": "2.2.2",
     "async-mutex": "^0.2.1",
     "axios": "0.18.1",
@@ -152,7 +153,8 @@
     "scripts/gsn*",
     "webtools.webpack.js",
     "helpers/",
-    "dist/"
+    "dist/src"
   ],
-  "main": "dist/src/relayclient/index.js"
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts"
 }
