@@ -158,10 +158,10 @@ contract MyContract is RelayRecipient {
 
     // This is a sample contract method. 
     // note that when receiving a request from a relay, the msg.sender is always a RelayHub.
-    // You must change your contract to use getSender() to get the real sender.
-    // (its OK if someone calls this method directly: if no relay is involved, getSender() returns msg.sender)
+    // You must change your contract to use _msgSender() to get the real sender.
+    // (its OK if someone calls this method directly: if no relay is involved, _msgSender() returns msg.sender)
     function my_method() {
-        require ( my_users[ getSender() ] );
+        require ( my_users[ _msgSender() ] );
         ...
     }
 }

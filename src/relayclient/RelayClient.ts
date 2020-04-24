@@ -44,11 +44,11 @@ export default class RelayClient {
   private readonly httpClient: HttpClient
   protected contractInteractor: ContractInteractor
   protected knownRelaysManager: IKnownRelaysManager
-  accountManager: AccountManager
   private readonly asyncApprovalData: AsyncApprovalData
   private readonly transactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
 
+  public readonly accountManager: AccountManager
   /**
    * create a RelayClient library object, to force contracts to go through a relay.
    */
