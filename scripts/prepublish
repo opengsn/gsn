@@ -1,0 +1,10 @@
+#!/bin/bash -xe
+rm -rf ./dist/
+tsc
+truffle compile --quiet
+mkdir -p helpers/compiled/
+
+CONTRACTS="RelayHub StakeManager Penalizer TestPaymasterEverythingAccepted"
+BUILDFOLDER=./build/contracts
+OUTFOLDER=./helpers/compiled/
+for c in $CONTRACTS ; do cp $BUILDFOLDER/$c.json $OUTFOLDER ; done

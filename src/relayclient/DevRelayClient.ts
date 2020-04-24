@@ -9,7 +9,6 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredE
 import { GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Address } from './types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
-import { ether } from '@openzeppelin/test-helpers'
 import stakeManagerAbi from '../common/interfaces/IStakeManager'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
 import axios from 'axios'
@@ -208,7 +207,7 @@ export class DevRelayClient extends RelayClient {
 
     const stakeManager = await IStakeManagerContract.at(stakeManagerAddress)
 
-    await stakeManager.contract.methods.stakeForAddress(relayServer.getManagerAddress(), unstakeDelay).send({ from: this.devConfig.relayOwner, value: ether('1') })
+    await stakeManager.contract.methods.stakeForAddress(relayServer.getManagerAddress(), unstakeDelay).send({ from: this.devConfig.relayOwner, value: 1e18 })
     // not sure why: the line below started to crash on: Number can only safely store up to 53 bits
     // (and its not relayed - its a direct call)
     // await stakeManager.stakeForAddress(relayServer.getManagerAddress(), unstakeDelay, {
@@ -219,7 +218,7 @@ export class DevRelayClient extends RelayClient {
     await this.contractInteractor.getWeb3().eth.sendTransaction({
       from: this.devConfig.relayOwner,
       to: relayServer.getManagerAddress(),
-      value: ether('1')
+      value: 1e18
     })
     // @ts-ignore
     const relayInfo = await waitForRelay(relayServer.url as string + '/getaddr', 5000, (res) => {

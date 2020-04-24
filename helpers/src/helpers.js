@@ -1,9 +1,15 @@
-const data = require('./data')
 const fs = require('fs')
 const axios = require('axios')
 const sleep = require('../../src/common/utils').sleep
 const utils = require('web3').utils
 const { merge } = require('lodash')
+
+// compiled folder populated by "prepublish"
+const compiledFolder = '../compiled/'
+const relayHub = require( compiledFolder+'RelayHub.json')
+const stakeManager = require( compiledFolder+'StakeManager.json')
+const penalizer = require( compiledFolder+'Penalizer.json')
+const paymaster = require( compiledFolder+'TestPaymasterEverythingAccepted.json' )
 
 const ether = function (value) {
   return new utils.BN(utils.toWei(value, 'ether'))
@@ -62,29 +68,29 @@ function getPaymasterAddress (paymaster) {
 }
 
 function getRelayHub (web3, address, options = {}) {
-  return new web3.eth.Contract(data.relayHub.abi, address, {
-    data: data.relayHub.bytecode,
+  return new web3.eth.Contract(relayHub.abi, address, {
+    data: relayHub.bytecode,
     ...options
   })
 }
 
 function getStakeManager (web3, address, options = {}) {
-  return new web3.eth.Contract(data.stakeManager.abi, address, {
-    data: data.stakeManager.bytecode,
+  return new web3.eth.Contract(stakeManager.abi, address, {
+    data: stakeManager.bytecode,
     ...options
   })
 }
 
 function getPenalizer (web3, address, options = {}) {
-  return new web3.eth.Contract(data.penalizer.abi, address, {
-    data: data.penalizer.bytecode,
+  return new web3.eth.Contract(penalizer.abi, address, {
+    data: penalizer.bytecode,
     ...options
   })
 }
 
 function getPaymaster (web3, address, options = {}) {
-  return new web3.eth.Contract(data.paymaster.abi, address, {
-    data: data.paymaster.bytecode,
+  return new web3.eth.Contract(paymaster.abi, address, {
+    data: paymaster.bytecode,
     ...options
   })
 }

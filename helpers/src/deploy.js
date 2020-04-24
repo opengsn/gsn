@@ -13,7 +13,7 @@ async function deployRelayHub (web3, options = {}) {
   if (options.verbose) console.error(`Deploying RelayHub instance`)
   const stakeManager = getStakeManager(web3)
   const sInstance = await stakeManager.deploy({
-    data: data.stakeManager.bytecode
+    data: stakeManager.bytecode
   }).send({
     from: options.from,
     gas: 1e8,
@@ -22,7 +22,7 @@ async function deployRelayHub (web3, options = {}) {
   saveContractToFile(sInstance, options.workdir, 'StakeManager.json')
   const penalizer = getPenalizer(web3)
   const pInstance = await penalizer.deploy({
-    data: data.penalizer.bytecode
+    data: penalizer.bytecode
   }).send({
     from: options.from,
     gas: 1e8,
