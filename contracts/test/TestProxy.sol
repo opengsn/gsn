@@ -11,13 +11,13 @@ contract TestProxy is Ownable, BaseRelayRecipient {
     }
 
     function isOwner() public view returns (bool) {
-        return getSender() == owner();
+        return _msgSender() == owner();
     }
 
-    event Test(address getSender, address msg_sender);
+    event Test(address _msgSender, address msg_sender);
     //not a proxy method; just for testing.
     function test() public {
-        emit Test(getSender(), msg.sender);
+        emit Test(_msgSender(), msg.sender);
     }
 
     function execute(address target, bytes calldata func) external onlyOwner {
