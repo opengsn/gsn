@@ -15,7 +15,7 @@ import BadRelayClient from '../dummies/BadRelayClient'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
 import chaiAsPromised from 'chai-as-promised'
-import { constants, ether, expectEvent } from '@openzeppelin/test-helpers'
+import { constants, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import getDataToSign from '../../src/common/EIP712/Eip712Helper'
 import { getEip712Signature } from '../../src/common/utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
@@ -69,6 +69,7 @@ contract('RelayProvider', function (accounts) {
   let stakeManager: StakeManagerInstance
   let paymaster: Address
   let relayProcess: ChildProcessWithoutNullStreams
+  let relayProvider: provider
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
@@ -91,29 +92,60 @@ contract('RelayProvider', function (accounts) {
     await stopRelay(relayProcess)
   })
 
-  it('should relay transparently', async function () {
-    const TestRecipient = artifacts.require('TestRecipient')
-    const testRecipient = await TestRecipient.new()
-    const forwarder = await testRecipient.getTrustedForwarder()
-    const gsnConfig = configureGSN({ relayHubAddress: relayHub.address, stakeManagerAddress: stakeManager.address })
-    const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
-    // NOTE: in real application its enough to set the provider in web3.
-    // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
-    // so changing the global one is not enough.
-    // @ts-ignore
-    TestRecipient.web3.setProvider(relayProvider)
-    const res = await testRecipient.emitMessage('hello world', {
-      from: gasLess,
-      forceGasPrice: '0x51f4d5c00',
-      // TODO: for some reason estimated values are crazy high!
-      gas: '100000',
-      paymaster,
-      forwarder
+  describe('Use Provider to relay transparently', () => {
+    let testRecipient: TestRecipientInstance
+    before(async () => {
+      const TestRecipient = artifacts.require('TestRecipient')
+      testRecipient = await TestRecipient.new()
+      const gsnConfig = configureGSN({
+        relayHubAddress: relayHub.address,
+        stakeManagerAddress: stakeManager.address
+      })
+      const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
+      relayProvider = new RelayProvider(websocketProvider as any, gsnConfig)
+      // NOTE: in real application its enough to set the provider in web3.
+      // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
+      // so changing the global one is not enough.
+      // @ts-ignore
+      TestRecipient.web3.setProvider(relayProvider)
+    })
+    it('should relay transparently', async function () {
+      const res = await testRecipient.emitMessage('hello world', {
+        from: gasLess,
+        forceGasPrice: '0x51f4d5c00',
+        // TODO: for some reason estimated values are crazy high!
+        gas: '100000',
+        paymaster
+      })
+
+      expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
+        message: 'hello world',
+        realSender: gasLess
+      })
     })
 
-    expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
-      message: 'hello world',
-      realSender: gasLess
+    it('should subscribe to events', async () => {
+      const block = await web3.eth.getBlockNumber()
+
+      const eventPromise = new Promise((resolve, reject) => {
+        // @ts-ignore
+        testRecipient.contract.once('SampleRecipientEmitted', { fromBlock: block }, (err, ev) => {
+          if (err !== null) {
+            reject(err)
+          } else {
+            resolve(ev)
+          }
+        })
+      })
+
+      await testRecipient.emitMessage('hello again', { from: gasLess, paymaster })
+      const log: any = await eventPromise
+
+      assert.equal(log.returnValues.message, 'hello again')
+    })
+
+    it('should fail if transaction failed', async () => {
+      await expectRevert(testRecipient.testRevert({ from: gasLess, paymaster }), 'always fail')
     })
   })
 
