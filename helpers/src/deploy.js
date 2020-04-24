@@ -1,4 +1,3 @@
-const data = require('./data')
 const { defaultFromAccount, saveContractToFile, getRelayHub, getPenalizer, getStakeManager, getPaymaster } = require(
   './helpers')
 const { merge } = require('lodash')
