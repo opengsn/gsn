@@ -1,9 +1,9 @@
-import RelayProvider from './RelayProvider'
+import { RelayProvider } from './RelayProvider'
 import { DevRelayClient, DevGSNConfig } from './DevRelayClient'
 import { HttpProvider } from 'web3-core'
 import { configureGSN, GSNDependencies } from './GSNConfigurator'
 
-export default class GsnDevProvider extends RelayProvider {
+export class GsnDevProvider extends RelayProvider {
   private readonly devRelayClient: DevRelayClient
 
   /**

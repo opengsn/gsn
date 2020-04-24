@@ -1,10 +1,10 @@
 {
-  "version": "0.4.5",
-  "description": "Openeth Gas Stations Network",
-  "name": "@openeth/gsn",
+  "version": "0.8.0",
+  "description": "Open Gas Stations Network",
+  "name": "@opengsn/gsn",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/openeth-dev/gsn",
+    "url": "https://github.com/opengsn/gsn",
     "type": "git"
   },
   "contributors": [
@@ -14,7 +14,7 @@
     },
     {
       "name": "Yoav Weiss",
-      "email": "yoav@tabookey.com"
+      "email": "yoav@opengsn.org"
     },
     {
       "name": "Shahaf Nacson",
@@ -27,8 +27,8 @@
   ],
   "bin": {
     "gsn-stat": "./scripts/gsn-stat.js",
-    "gsn-dock-relay": "./scripts/gsn-dock-relay",
-    "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache"
+    "gsn": "./helpers/gsn.js",
+    "gsn-run-relay": "./src/relayserver/runServer.js"
   },
   "scripts": {
     "extract-abi": "./scripts/extract_abi.js",
@@ -52,10 +52,12 @@
     "generate": "rm -rf ./build/contracts && npx truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json'",
     "tsc": "tsc --noEmit",
     "postinstall": "patch-package",
-    "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage"
+    "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage",
+    "prepare": "./scripts/prepublish"
   },
   "dependencies": {
     "@0x/contracts-utils": "4.4.3",
+    "@truffle/contract": "4.1.13",
     "@types/chai-as-promised": "^7.1.2",
     "abi-decoder": "2.2.2",
     "async-mutex": "^0.2.1",
@@ -72,6 +74,8 @@
     "nedb-async": "0.1.3",
     "openzeppelin-solidity": "2.3.0",
     "ow": "0.17.0",
+    "patch-package": "6.2.1",
+    "postinstall-postinstall": "2.0.0",
     "request-promise": "4.2.2",
     "web3": "1.2.6",
     "web3-core": "1.2.6",
@@ -121,8 +125,6 @@
     "istanbul": "0.4.5",
     "lodash": "4.17.13",
     "opn-cli": "4.0.0",
-    "patch-package": "6.2.1",
-    "postinstall-postinstall": "2.0.0",
     "promisify": "0.0.3",
     "rlp": "2.2.3",
     "run-with-testrpc": "0.3.1",
@@ -149,7 +151,10 @@
     "contracts/",
     "webtools/",
     "scripts/gsn*",
-    "webtools.webpack.js"
+    "webtools.webpack.js",
+    "helpers/",
+    "dist/src"
   ],
-  "main": "src/relayclient/index.js"
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts"
 }

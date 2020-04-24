@@ -19,7 +19,7 @@ export interface BaseTransactionReceipt {
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
-export default class RelayProvider implements HttpProvider {
+export class RelayProvider implements HttpProvider {
   private readonly origProvider: HttpProvider
   private readonly origProviderSend: any
   private readonly relayClient: RelayClient
@@ -162,6 +162,9 @@ export default class RelayProvider implements HttpProvider {
   }
 
   _useGSN (payload: JsonRpcPayload): boolean {
+    if (payload.params[0] === undefined) {
+      return false
+    }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     const ret = gsnTransactionDetails?.useGSN ?? true
     return ret

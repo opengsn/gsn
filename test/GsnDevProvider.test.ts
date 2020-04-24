@@ -14,7 +14,7 @@ import {
 } from '../types/truffle-contracts'
 import { HttpProvider, WebsocketProvider } from 'web3-core'
 
-import GsnDevProvider from '../src/relayclient/GsnDevProvider'
+import { GsnDevProvider } from '../src/relayclient/GsnDevProvider'
 
 const SampleRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')

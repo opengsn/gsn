@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require('fs')
 const parseArgs = require('minimist')
 const Web3 = require('web3')
