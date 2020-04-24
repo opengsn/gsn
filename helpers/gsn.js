@@ -4,7 +4,6 @@ const program = require('commander')
 
 program
   .version(require('../package.json').version)
-  .command('run-relayer', 'downloads and runs a relayer binary, and registers it, deploying a hub if needed')
   .command('deploy-relay-hub', 'deploy the singleton RelayHub instance')
   .command('register-relayer', 'stake for a relayer and fund it')
   .command('fund-paymaster', 'fund a paymaster contract so that it can receive relayed calls')
