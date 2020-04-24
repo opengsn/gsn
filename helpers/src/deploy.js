@@ -9,7 +9,7 @@ async function deployRelayHub (web3, options = {}) {
 
   options = merge(defaultOptions, options)
 
-  if (options.verbose) console.error(`Deploying RelayHub instance`)
+  if (options.verbose) console.error('Deploying RelayHub instance')
   const stakeManager = getStakeManager(web3)
   const sInstance = await stakeManager.deploy({
     data: stakeManager.bytecode

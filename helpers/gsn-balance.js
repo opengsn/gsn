@@ -16,6 +16,6 @@ const web3 = new Web3(nodeURL)
 
 const { balance } = require('./src/balance')
 const { fromWei } = require('./src/helpers')
-balance(web3, {...lodash.pick(program, ['paymaster', 'hub']), hub, paymaster}).then(balance =>
+balance(web3, { ...lodash.pick(program, ['paymaster', 'hub']), hub, paymaster }).then(balance =>
   console.error(`Account ${paymaster} has a GSN balance of ${fromWei(balance)} ETH`)
 )

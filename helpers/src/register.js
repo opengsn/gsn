@@ -46,7 +46,7 @@ async function registerRelay (web3, options = {}) {
 
     await waitForRelay(options.relayUrl)
 
-    console.error(`Relay is funded and ready!`)
+    console.error('Relay is funded and ready')
   } catch (error) {
     throw Error(`Failed to fund relay: '${error}'`)
   }
