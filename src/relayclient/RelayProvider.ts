@@ -40,6 +40,20 @@ export default class RelayProvider implements HttpProvider {
     this.config = config
     this.origProviderSend = this.origProvider.send.bind(this.origProvider)
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
+
+    this._delegateEventsApi(origProvider)
+  }
+
+  _delegateEventsApi (origProvider: HttpProvider): void {
+    // If the subprovider is a ws or ipc provider, then register all its methods on this provider
+    // and delegate calls to the subprovider. This allows subscriptions to work.
+    ['on', 'removeListener', 'removeAllListeners', 'reset', 'disconnect', 'addDefaultEvents', 'once', 'reconnect'].forEach(func => {
+      // @ts-ignore
+      if (origProvider[func] !== undefined) {
+        // @ts-ignore
+        this[func] = origProvider[func].bind(origProvider)
+      }
+    })
   }
 
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
