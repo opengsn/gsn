@@ -1,6 +1,6 @@
 {
   "version": "0.4.5",
-  "description": "Opegsn Gas Stations Network",
+  "description": "Open Gas Stations Network",
   "name": "@opengsn/gsn",
   "license": "MIT",
   "repository": {
@@ -14,7 +14,7 @@
     },
     {
       "name": "Yoav Weiss",
-      "email": "weiss.yoav@gmail.com"
+      "email": "yoav@opengsn.org"
     },
     {
       "name": "Shahaf Nacson",
@@ -27,8 +27,6 @@
   ],
   "bin": {
     "gsn-stat": "./scripts/gsn-stat.js",
-    "gsn-dock-relay": "./scripts/gsn-dock-relay",
-    "gsn-dock-relay-ganache": "./scripts/gsn-dock-relay-ganache",
     "gsn": "./helpers/gsn.js",
     "gsn-run-relay": "./src/relayserver/runServer.js"
   },
