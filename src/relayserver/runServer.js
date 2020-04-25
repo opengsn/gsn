@@ -9,7 +9,11 @@ const KeyManager = require('./KeyManager')
 const TxStoreManager = require('./TxStoreManager').TxStoreManager
 const TXSTORE_FILENAME = require('./TxStoreManager').TXSTORE_FILENAME
 
-function error (err) { throw new Error(err) }
+function error (err) {
+  console.error(err);
+  process.exit(1);
+}
+
 // use all camel-case entries from environment as defaults.
 const envDefaults = Object.entries(process.env)
   .filter(([k]) => /^[A-Z][a-z][A-Za-z]*$/.test(k))
@@ -26,9 +30,9 @@ const argv = parseArgs(process.argv.slice(2), {
       'GasPricePercent',
       'RegistrationBlockRate',
       'EthereumNodeUrl',
-      'Workdir'
+      'Workdir',
     ],
-  boolean: ['DevMode'],
+  boolean: ['DevMode', 'Debug'],
   alias: {},
   default: envDefaults
 })
@@ -47,6 +51,7 @@ const gasPricePercent = argv.GasPricePercent || 10
 const ethereumNodeUrl = argv.EthereumNodeUrl || 'http://localhost:8545'
 const workdir = argv.Workdir || error('missing --Workdir')
 const devMode = argv.DevMode || false
+const Debug = argv.Debug || false
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
@@ -66,6 +71,7 @@ const relay = new RelayServer({
   baseRelayFee: baseRelayFee,
   pctRelayFee: pctRelayFee,
   devMode,
+  Debug,
   gasPriceFactor: gasPriceFactor,
   ethereumNodeUrl
 })

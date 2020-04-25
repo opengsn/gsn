@@ -12,7 +12,7 @@ services:
       STAGE: 'production'
 
   gsn:
-    image: opengsn/jsrelay
+    image: opengsn/jsrelay:${JSRELAY}
     restart: always
     ports:
       - '8090:80' #needed for debugging without https frontend
@@ -27,6 +27,5 @@ services:
       GasPricePercent: ${GAS_PRICE_PERCENT}
       BaseFee: ${BASE_FEE}
       PercentFee: ${PERCENT_FEE}
-      DevMode: ${DEVMODE}
 
 

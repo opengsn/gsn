@@ -2,10 +2,11 @@
 rm -rf ./dist/
 yarn extract_abi
 yarn generate
-tsc
 mkdir -p helpers/compiled/
 
-CONTRACTS="RelayHub StakeManager Penalizer TestPaymasterEverythingAccepted"
+CONTRACTS="RelayHub StakeManager Penalizer TrustedForwarder TestPaymasterEverythingAccepted"
 BUILDFOLDER=./build/contracts
 OUTFOLDER=./helpers/compiled/
 for c in $CONTRACTS ; do cp $BUILDFOLDER/$c.json $OUTFOLDER ; done
+
+tsc
