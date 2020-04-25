@@ -11,6 +11,13 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
+const Chains = {
+  mainnet: { chainId: 1, name: 'mainnet' },
+  ropsten: { chainId: 3, name: 'ropsten' },
+  rinkeby: { chainId: 4, name: 'rinkeby' },
+  goerli: { chainId: 5, name: 'goerli' },
+  kovan: { chainId: 42, name: 'kovan' }
+}
 /*
 cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
@@ -338,6 +345,20 @@ class RelayServer extends EventEmitter {
       console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
       process.exit(-1)
     }
+    let chain
+    switch (this.chainId) {
+      case Chains.ropsten.chainId:
+        chain = Chains.ropsten.name
+        break
+      case Chains.kovan.chainId:
+        chain = Chains.kovan.name
+        break
+      case Chains.mainnet.chainId:
+        chain = Chains.mainnet.name
+        break
+    }
+    this.rawTxOptions = { chain, hardfork: 'petersburg' }
+    console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
 
@@ -346,7 +367,8 @@ class RelayServer extends EventEmitter {
     const workerBalance = toBN(await this.web3.eth.getBalance(workerAddress))
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
-      console.log(`== replenishWorker(${workerIndex}): mgr balance=${this.balance.toString() / 1e18} worker balance=${workerBalance.toString() / 1e18} refill=${refill.toString() / 1e18}`)
+      console.log(
+        `== replenishWorker(${workerIndex}): mgr balance=${this.balance.toString() / 1e18} worker balance=${workerBalance.toString() / 1e18} refill=${refill.toString() / 1e18}`)
       if (refill.lt(this.balance.sub(toBN(minimumRelayBalance)))) {
         await this._sendTransaction({
           signerIndex: 0,
@@ -357,7 +379,8 @@ class RelayServer extends EventEmitter {
         })
         this.refreshBalance()
       } else {
-        console.log(`== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
+        console.log(
+          `== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
       }
     }
   }
@@ -500,14 +523,14 @@ class RelayServer extends EventEmitter {
       debug(`can't register yet: auth=${this.authorizedHub} stake=${this.stake}`)
       return
     }
-
     const workersAddedEvents = await this.relayHubContract.getPastEvents('RelayWorkersAdded', {
       fromBlock: 1,
       filter: { relayManager: this.managerAddress }
     })
 
     // add worker only if not already added
-    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.managerAddress.toLowerCase()))) {
+    if (!workersAddedEvents.find(
+      e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.getAddress(1).toLowerCase()))) {
       // register on chain
       const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.getAddress(1)])
       await this._sendTransaction(
@@ -596,7 +619,8 @@ class RelayServer extends EventEmitter {
     // Check if the tx was mined by comparing its nonce against the latest one
     nonce = await this.web3.eth.getTransactionCount(signer)
     if (sortedTxs[0].nonce < nonce) {
-      debug('resend', signerIndex, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
+      debug('resend', signerIndex, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce,
+        sortedTxs[0].txId)
       return
     }
 
@@ -622,6 +646,7 @@ class RelayServer extends EventEmitter {
     gasPrice = gasPrice || await this.web3.eth.getGasPrice()
     gasPrice = parseInt(gasPrice)
     debug('gasPrice', gasPrice)
+    debug('encodedCall', encodedCall)
     const gas = (gasLimit && parseInt(gasLimit)) || (method && await method.estimateGas({ from: this.managerAddress }))
     debug('gasLimit', gas)
     debug('nonceMutex locked?', this.nonceMutex.isLocked())
@@ -633,15 +658,19 @@ class RelayServer extends EventEmitter {
       debug('nonce', nonce)
       // TODO: change to eip155 chainID
       const signer = this.getAddress(signerIndex)
-      const txToSign = new Transaction({
-        from: signer,
-        to: destination,
-        value: value || 0,
-        gas,
-        gasPrice,
-        data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
-        nonce
-      })
+      const txToSign = new Transaction(
+        {
+          from: signer,
+          to: destination,
+          value: value || 0,
+          gas,
+          gasPrice,
+          data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
+          nonce,
+          chainId: this.chainId
+        },
+        this.rawTxOptions
+      )
       spam('txToSign', txToSign)
       signedTx = this.keyManager.signTransaction(signer, txToSign)
       storedTx = new StoredTx({
@@ -652,6 +681,7 @@ class RelayServer extends EventEmitter {
         gasPrice: txToSign.gasPrice,
         data: txToSign.data,
         nonce: txToSign.nonce,
+        chainId: this.chainId,
         txId: ethUtils.bufferToHex(txToSign.hash()),
         attempts: 1
       })
@@ -680,15 +710,19 @@ class RelayServer extends EventEmitter {
       newGasPrice = maxGasPrice
     }
     // Resend transaction with exactly the same values except for gas price
-    const txToSign = new Transaction({
-      from: tx.from,
-      to: tx.to,
-      value: tx.value,
-      gas: tx.gas,
-      gasPrice: newGasPrice,
-      data: tx.data,
-      nonce: tx.nonce
-    })
+    const txToSign = new Transaction(
+      {
+        from: tx.from,
+        to: tx.to,
+        value: tx.value,
+        gas: tx.gas,
+        gasPrice: newGasPrice,
+        data: tx.data,
+        nonce: tx.nonce,
+        chainId: tx.chainId
+      },
+      this.rawTxOptions
+    )
     spam('txToSign', txToSign)
     // TODO: change to eip155 chainID
     const signedTx = this.keyManager.signTransaction(tx.from, txToSign)
@@ -701,6 +735,7 @@ class RelayServer extends EventEmitter {
       data: txToSign.data,
       nonce: txToSign.nonce,
       txId: ethUtils.bufferToHex(txToSign.hash()),
+      chainId: txToSign.chainId,
       attempts: tx.attempts + 1
     })
     await this.txStoreManager.putTx({ tx: storedTx, updateExisting: true })

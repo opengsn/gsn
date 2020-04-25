@@ -33,13 +33,6 @@ class TxStoreManager {
     console.log('txstore created in ', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
-  _toLowerCase ({ tx }) {
-    return {
-      ...tx,
-      txId: tx.txId.toLowerCase()
-    }
-  }
-
   async putTx ({ tx, updateExisting }) {
     if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
       throw new Error('Invalid tx:' + JSON.stringify(tx))
