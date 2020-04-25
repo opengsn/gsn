@@ -11,6 +11,7 @@ const relayHub = require(compiledFolder + 'RelayHub.json')
 const stakeManager = require(compiledFolder + 'StakeManager.json')
 const penalizer = require(compiledFolder + 'Penalizer.json')
 const paymaster = require(compiledFolder + 'TestPaymasterEverythingAccepted.json')
+const forwarder = require(compiledFolder + 'TrustedForwarder.json')
 
 const ether = function (value) {
   return new utils.BN(utils.toWei(value, 'ether'))
@@ -96,6 +97,13 @@ function getPaymaster (web3, address, options = {}) {
   })
 }
 
+function getForwarder (web3, address, options = {}) {
+  return new web3.eth.Contract(forwarder.abi, address, {
+    data: forwarder.bytecode,
+    ...options
+  })
+}
+
 function saveContractToFile (contract, workdir, filename) {
   fs.mkdirSync(workdir, { recursive: true })
   fs.writeFileSync(workdir + '/' + filename, `{ "address": "${contract.options.address}" }`)
@@ -124,6 +132,7 @@ module.exports = {
   getStakeManager,
   getPenalizer,
   getPaymaster,
+  getForwarder,
   isRelayHubDeployed,
   isRelayReady,
   waitForRelay,

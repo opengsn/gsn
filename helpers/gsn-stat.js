@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import Web3 from 'web3'
-import rp from 'request-promise'
+const Web3 = require('web3')
+const rp = require('request-promise')
 
 const networks = {
   local: 'http://127.0.0.1:8545',
@@ -29,11 +29,12 @@ const GETADDR_TIMEOUT = (process.env.T || 1) * 1000
 let hubaddr = process.argv[3]
 
 const web3 = new Web3(new Web3.providers.HttpProvider(network))
-const RelayHubAbi = require('../src/relayclient/IRelayHub')
+const RelayHubAbi = require('../src/common/interfaces/IRelayHub')
 
 const owners = {}
 
 function owner (h) {
+  if (!h) return h // until we can easily find our owner
   if (!owners[h]) { owners[h] = 'owner-' + (Object.keys(owners).length + 1) }
   return owners[h]
 }
@@ -53,7 +54,7 @@ async function run () {
     // all relayed messages in the past time period.
     const allRelayAddedMessages = await web3.eth.getPastLogs({
       fromBlock,
-      topics: [web3.utils.sha3('RelayAdded(address,address,uint256,uint256,uint256,string)')]
+      topics: [web3.utils.sha3('RelayServerRegistered(address,uint256,uint256,string)')]
     })
     const relayHubs = [...new Set(allRelayAddedMessages.map(r => r.address))]
 
@@ -72,12 +73,12 @@ async function run () {
     // however, we need to format them for our contract
   }
 
-  const hubBalanceAsync = web3.eth.getBalance(hubaddr)
   const gasPriceAsync = web3.eth.getGasPrice()
   const r = new web3.eth.Contract(RelayHubAbi, hubaddr)
-  const pastEventsAsync = r.getPastEvents('RelayAdded', { fromBlock })
+  const stakesBalanceAsync = r.methods.getStakeManager().call().then(sm => web3.eth.getBalance(sm))
+  const pastEventsAsync = r.getPastEvents('RelayServerRegistered', { fromBlock })
 
-  console.log('hub balance (deposits, stakes)=', (await hubBalanceAsync) / 1e18)
+  console.log('Total relay stakes=', (await stakesBalanceAsync) / 1e18, 'eth')
   console.log('hub address', hubaddr)
   console.log('gas price: ', (await gasPriceAsync))
   console.log('current block: ', curBlockNumber)
@@ -92,32 +93,45 @@ async function run () {
     waiters.push(rp({ url: r.url + '/getaddr', timeout: GETADDR_TIMEOUT, json: true })
       .then(ret => {
         const version = ret.Version || ''
-        relays[r.relay].status = !same(r.relay, ret.RelayServerAddress) ? 'addr-mismatch @' + e.blockNumber //            ret.RelayServerAddress
+        relays[r.relayManager].status = !same(r.relayManager, ret.RelayManagerAddress) ? 'addr-mismatch @' + e.blockNumber //            ret.RelayServerAddress
           : ret.Ready ? 'Ready ' + version : 'pending ' + version
       }
       ).catch(err => {
-        relays[r.relay].status = err.error && err.error.code ? err.error.code : err.message || err.toString()
+        relays[r.relayManager].status = err.error && err.error.code ? err.error.code : err.message || err.toString()
       }))
-    waiters.push(web3.eth.getBalance(r.relay).then(bal => {
-      relays[r.relay].bal = bal / 1e18
+    waiters.push(web3.eth.getBalance(r.relayManager).then(bal => {
+      relays[r.relayManager].bal = bal / 1e18
     }))
 
     const aowner = owner(r.owner)
     // console.log( e.blockNumber, e.event, r.url, aowner )
-    relays[r.relay] = { addr: r.relay, url: r.url, owner: aowner, pctRelayFee: r.transactionFee, status: 'no answer' }
+    relays[r.relayManager] = { addr: r.relayManager, url: r.url, owner: aowner, baseRelayFee: r.baseRelayFee, pctRelayFee: r.pctRelayFee, status: 'no answer' }
   })
   await Promise.all(waiters)
   console.log('\n# Relays:')
-  Object.values(relays).sort((a, b) => a.owner > b.owner).forEach(r => console.log('-', r.addr.slice(2, 10), r.url, '\t' + r.owner, '\tpctRelayFee:' + r.pctRelayFee + '%', '\tbal', r.bal, '\t' + r.status))
-
-  console.log('\n# Owners:')
-  Object.keys(owners).forEach(k => {
-    const ethBalance = web3.eth.getBalance(k)
-    const relayBalance = r.methods.balanceOf(k).call()
-    Promise.all([ethBalance, relayBalance]).then(async () => {
-      console.log('-', owners[k], ':', k, 'on-hub:', (await relayBalance) / 1e18, '\tbal', (await ethBalance) / 1e18)
-    })
+  Object.values(relays).sort((a, b) => a.owner > b.owner).forEach(r => {
+    const res = []
+    res.push(r.addr.slice(2, 10))
+    res.push(r.url)
+    if (r.owner) {
+      res.push(r.owner)
+    }
+    res.push('\tfee:' + r.baseRelayFee + '+' + r.pctRelayFee + '%')
+    res.push('\tbal:' + r.bal)
+    res.push('\t' + r.status)
+    console.log('- ' + res.join(' '))
   })
+
+  if (owners.length) {
+    console.log('\n# Owners:')
+    Object.keys(owners).forEach(k => {
+      const ethBalance = web3.eth.getBalance(k)
+      const relayBalance = r.methods.balanceOf(k).call()
+      Promise.all([ethBalance, relayBalance]).then(async () => {
+        console.log('-', owners[k], ':', k, 'on-hub:', (await relayBalance) / 1e18, '\tbal', (await ethBalance) / 1e18)
+      })
+    })
+  }
 }
 
 run()

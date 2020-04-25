@@ -16,4 +16,4 @@ const { deployRelayHub } = require('./src/deploy')
 
 const opts = lodash.pick(program, ['from', 'workdir'])
 opts.verbose = true
-deployRelayHub(web3, opts).then(address => console.log(address))
+deployRelayHub(web3, opts)
