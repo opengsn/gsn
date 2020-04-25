@@ -11,7 +11,7 @@ program
   .option('--stake <stake>', 'amount to stake for the relayer, in wei (defaults to 1 Ether)')
   .option(
     '--unstakeDelay <delay>',
-    'time to wait between deregistering and withdrawing the stake, in seconds (defaults to one week)'
+    'blocks to wait between deregistering and withdrawing the stake (defaults to one 1000)'
   )
   .option(
     '--funds <funds>',
