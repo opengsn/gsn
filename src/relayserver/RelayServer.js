@@ -283,7 +283,7 @@ class RelayServer extends EventEmitter {
         console.error('web3 subscription:', error)
       }
     }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => { console.error('worker:', e) })
-    setTimeout(() => { this._workerSemaphore.bind(this)({ number: 1 }) }, 1)
+    setTimeout(() => { this.web3.eth.getBlockNumber().then(blockNumber => this._workerSemaphore.bind(this)({ number: blockNumber })) }, 1)
   }
 
   stop () {
@@ -338,6 +338,9 @@ class RelayServer extends EventEmitter {
       console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
       process.exit(-1)
     }
+    const chain = await this.web3.eth.net.getNetworkType()
+    this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
+    console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
 
@@ -346,7 +349,8 @@ class RelayServer extends EventEmitter {
     const workerBalance = toBN(await this.web3.eth.getBalance(workerAddress))
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
-      console.log(`== replenishWorker(${workerIndex}): mgr balance=${this.balance.toString() / 1e18} worker balance=${workerBalance.toString() / 1e18} refill=${refill.toString() / 1e18}`)
+      console.log(
+        `== replenishWorker(${workerIndex}): mgr balance=${this.balance.toString() / 1e18} worker balance=${workerBalance.toString() / 1e18} refill=${refill.toString() / 1e18}`)
       if (refill.lt(this.balance.sub(toBN(minimumRelayBalance)))) {
         await this._sendTransaction({
           signerIndex: 0,
@@ -357,7 +361,8 @@ class RelayServer extends EventEmitter {
         })
         this.refreshBalance()
       } else {
-        console.log(`== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
+        console.log(
+          `== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
       }
     }
   }
@@ -500,14 +505,14 @@ class RelayServer extends EventEmitter {
       debug(`can't register yet: auth=${this.authorizedHub} stake=${this.stake}`)
       return
     }
-
     const workersAddedEvents = await this.relayHubContract.getPastEvents('RelayWorkersAdded', {
       fromBlock: 1,
       filter: { relayManager: this.managerAddress }
     })
 
     // add worker only if not already added
-    if (!workersAddedEvents.find(e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.managerAddress.toLowerCase()))) {
+    if (!workersAddedEvents.find(
+      e => e.returnValues.newRelayWorkers.map(a => a.toLowerCase()).includes(this.getAddress(1).toLowerCase()))) {
       // register on chain
       const addRelayWorkerMethod = this.relayHubContract.methods.addRelayWorkers([this.getAddress(1)])
       await this._sendTransaction(
@@ -582,7 +587,9 @@ class RelayServer extends EventEmitter {
     debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
+    debug('signer, blockHeader, confirmedBlock', signer, blockHeader, confirmedBlock)
     let nonce = await this.web3.eth.getTransactionCount(signer, confirmedBlock)
+    debug('nonce', nonce, confirmedBlock)
     debug(
       `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
@@ -596,7 +603,8 @@ class RelayServer extends EventEmitter {
     // Check if the tx was mined by comparing its nonce against the latest one
     nonce = await this.web3.eth.getTransactionCount(signer)
     if (sortedTxs[0].nonce < nonce) {
-      debug('resend', signerIndex, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce, sortedTxs[0].txId)
+      debug('resend', signerIndex, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce,
+        sortedTxs[0].txId)
       return
     }
 
@@ -622,6 +630,7 @@ class RelayServer extends EventEmitter {
     gasPrice = gasPrice || await this.web3.eth.getGasPrice()
     gasPrice = parseInt(gasPrice)
     debug('gasPrice', gasPrice)
+    debug('encodedCall', encodedCall)
     const gas = (gasLimit && parseInt(gasLimit)) || (method && await method.estimateGas({ from: this.managerAddress }))
     debug('gasLimit', gas)
     debug('nonceMutex locked?', this.nonceMutex.isLocked())
@@ -633,15 +642,19 @@ class RelayServer extends EventEmitter {
       debug('nonce', nonce)
       // TODO: change to eip155 chainID
       const signer = this.getAddress(signerIndex)
-      const txToSign = new Transaction({
-        from: signer,
-        to: destination,
-        value: value || 0,
-        gas,
-        gasPrice,
-        data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
-        nonce
-      })
+      const txToSign = new Transaction(
+        {
+          from: signer,
+          to: destination,
+          value: value || 0,
+          gas,
+          gasPrice,
+          data: encodedCall ? Buffer.from(encodedCall.slice(2), 'hex') : Buffer.alloc(0),
+          nonce,
+          chainId: this.chainId
+        },
+        this.rawTxOptions
+      )
       spam('txToSign', txToSign)
       signedTx = this.keyManager.signTransaction(signer, txToSign)
       storedTx = new StoredTx({
@@ -652,6 +665,7 @@ class RelayServer extends EventEmitter {
         gasPrice: txToSign.gasPrice,
         data: txToSign.data,
         nonce: txToSign.nonce,
+        chainId: this.chainId,
         txId: ethUtils.bufferToHex(txToSign.hash()),
         attempts: 1
       })
@@ -680,16 +694,20 @@ class RelayServer extends EventEmitter {
       newGasPrice = maxGasPrice
     }
     // Resend transaction with exactly the same values except for gas price
-    const txToSign = new Transaction({
-      from: tx.from,
-      to: tx.to,
-      value: tx.value,
-      gas: tx.gas,
-      gasPrice: newGasPrice,
-      data: tx.data,
-      nonce: tx.nonce
-    })
-    spam('txToSign', txToSign)
+    const txToSign = new Transaction(
+      {
+        from: tx.from,
+        to: tx.to,
+        value: tx.value,
+        gas: tx.gas,
+        gasPrice: newGasPrice,
+        data: tx.data,
+        nonce: tx.nonce,
+        chainId: tx.chainId
+      },
+      this.rawTxOptions
+    )
+    debug('txToSign', txToSign)
     // TODO: change to eip155 chainID
     const signedTx = this.keyManager.signTransaction(tx.from, txToSign)
     const storedTx = new StoredTx({
@@ -701,6 +719,7 @@ class RelayServer extends EventEmitter {
       data: txToSign.data,
       nonce: txToSign.nonce,
       txId: ethUtils.bufferToHex(txToSign.hash()),
+      chainId: txToSign.chainId,
       attempts: tx.attempts + 1
     })
     await this.txStoreManager.putTx({ tx: storedTx, updateExisting: true })
