@@ -55,7 +55,7 @@ async function deployRelayHub (web3, options = {}) {
   const forwarder = getForwarder(web3)
   const fInstance = await forwarder.deploy({}).send({
     from: options.from,
-    gas: 1e6,
+    gas: 4e6,
     gasPrice: 1e9
   })
   saveContractToFile(fInstance, options.workdir, 'Forwarder.json')
