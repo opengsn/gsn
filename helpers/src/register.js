@@ -6,8 +6,8 @@ async function registerRelay (web3, options = {}) {
   const defaultOptions = {
     relayUrl: 'http://localhost:8090',
     stake: ether('1'),
-    unstakeDelay: 604800, // 1 week
-    funds: ether('5'),
+    unstakeDelay: 1000,
+    funds: ether('2'),
     from: await defaultFromAccount(web3, options && options.from)
   }
 
@@ -34,14 +34,16 @@ async function registerRelay (web3, options = {}) {
     const stakeManager = getStakeManager(web3, stakeManagerAddress)
     await stakeManager.methods
       .stakeForAddress(relayAddress, options.unstakeDelay.toString())
-      .send({ value: options.stake, from: options.from })
+      .send({ value: options.stake, from: options.from, gas: 1e6, gasPrice: 1e9 })
     await stakeManager.methods
       .authorizeHub(relayAddress, options.hub)
-      .send({ from: options.from })
+      .send({ from: options.from, gas: 1e6, gasPrice: 1e9 })
     await web3.eth.sendTransaction({
       from: options.from,
       to: relayAddress,
-      value: options.funds
+      value: options.funds,
+      gas: 1e6,
+      gasPrice: 1e9
     })
 
     await waitForRelay(options.relayUrl)

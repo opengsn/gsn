@@ -65,7 +65,7 @@ class KeyManager {
     if (privateKey === undefined) { throw new Error(`Can't sign: signer=${signer} is not managed`) }
 
     tx.sign(privateKey)
-    const rawTx = tx.serialize().toString('hex')
+    const rawTx = '0x' + tx.serialize().toString('hex')
     return rawTx
   }
 }

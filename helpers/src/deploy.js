@@ -15,7 +15,7 @@ async function deployRelayHub (web3, options = {}) {
     data: stakeManager.bytecode
   }).send({
     from: options.from,
-    gas: 1e8,
+    gas: 1e6,
     gasPrice: 1e9
   })
   saveContractToFile(sInstance, options.workdir, 'StakeManager.json')
@@ -24,7 +24,7 @@ async function deployRelayHub (web3, options = {}) {
     data: penalizer.bytecode
   }).send({
     from: options.from,
-    gas: 1e8,
+    gas: 1e6,
     gasPrice: 1e9
   })
   saveContractToFile(pInstance, options.workdir, 'Penalizer.json')
@@ -35,20 +35,20 @@ async function deployRelayHub (web3, options = {}) {
     arguments: [16, sInstance.options.address, pInstance.options.address]
   }).send({
     from: options.from,
-    gas: 1e8,
+    gas: 5e6,
     gasPrice: 1e9
   })
   saveContractToFile(rInstance, options.workdir, 'RelayHub.json')
   const paymaster = getPaymaster(web3)
   const pmInstance = await paymaster.deploy({}).send({
     from: options.from,
-    gas: 1e8,
+    gas: 1e6,
     gasPrice: 1e9
   })
   saveContractToFile(pmInstance, options.workdir, 'Paymaster.json')
   await pmInstance.methods.setHub(rInstance.options.address).send({
     from: options.from,
-    gas: 1e8,
+    gas: 1e6,
     gasPrice: 1e9
   })
   console.log('paymaster ', pmInstance.options.address)
