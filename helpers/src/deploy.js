@@ -1,4 +1,4 @@
-const { defaultFromAccount, saveContractToFile, getRelayHub, getPenalizer, getStakeManager, getPaymaster } = require(
+const { defaultFromAccount, saveContractToFile, getRelayHub, getPenalizer, getStakeManager, getPaymaster, getForwarder } = require(
   './helpers')
 const { merge } = require('lodash')
 
@@ -52,6 +52,14 @@ async function deployRelayHub (web3, options = {}) {
     gasPrice: 1e9
   })
   console.log('paymaster ', pmInstance.options.address)
+  const forwarder = getForwarder(web3)
+  const fInstance = await forwarder.deploy({}).send({
+    from: options.from,
+    gas: 4e6,
+    gasPrice: 1e9
+  })
+  saveContractToFile(fInstance, options.workdir, 'Forwarder.json')
+  console.log('forwarder', fInstance.options.address)
   if (options.verbose) console.error(`RelayHub deployed at ${rInstance.options.address}`)
 
   return rInstance.options.address

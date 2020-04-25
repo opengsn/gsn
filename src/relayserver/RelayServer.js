@@ -11,6 +11,7 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
+const packageVersion = require('../../package.json').version
 /*
 cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
@@ -33,7 +34,7 @@ const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const maxGasPrice = 100e9
 const GAS_RESERVE = 100000
 const retryGasPriceFactor = 1.2
-const DEBUG = false
+let DEBUG = false
 const SPAM = false
 
 const toBN = Web3.utils.toBN
@@ -62,7 +63,8 @@ class RelayServer extends EventEmitter {
       web3provider,
       workerMinBalance = defaultWorkerMinBalance,
       workerTargetBalance = defaultWorkerTargetBalance,
-      devMode
+      devMode,
+      Debug
     }) {
     super()
     if (url === undefined) {
@@ -91,6 +93,8 @@ class RelayServer extends EventEmitter {
     this.ready = false
     this.removed = false
     this.nonceMutex = new Mutex()
+
+    DEBUG = Debug
 
     // todo: initialize nonces for all signers (currently one manager, one worker)
     this.nonces = { 0: 0, 1: 0 }
@@ -126,7 +130,7 @@ class RelayServer extends EventEmitter {
       RelayHubAddress: this.relayHubContract.options.address,
       MinGasPrice: this.getMinGasPrice(),
       Ready: this.isReady(),
-      Version: this.VERSION
+      Version: packageVersion
     }
   }
 
