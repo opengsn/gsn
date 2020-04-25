@@ -58,6 +58,7 @@ async function deployRelayHub (web3, options = {}) {
     gas: 1e8,
     gasPrice: 1e9
   })
+  saveContractToFile(fInstance, options.workdir, 'Forwarder.json')
   console.log('forwarder', fInstance.options.address)
   if (options.verbose) console.error(`RelayHub deployed at ${rInstance.options.address}`)
 
