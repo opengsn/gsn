@@ -2,6 +2,8 @@ const fs = require('fs')
 const axios = require('axios')
 const sleep = require('../../src/common/utils').sleep
 const utils = require('web3').utils
+const Web3 = require('web3')
+const HDWalletProvider = require('truffle-hdwallet-provider')
 
 // compiled folder populated by "prepublish"
 const compiledFolder = '../compiled/'
@@ -21,7 +23,7 @@ const fromWei = function (wei) {
 
 async function defaultFromAccount (web3, from = null) {
   if (from) return from
-  const requiredBalance = ether('10')
+  const requiredBalance = ether('2')
 
   try {
     const accounts = await web3.eth.getAccounts()
@@ -112,6 +114,15 @@ async function isRelayHubDeployed (web3, hubAddress) {
   return code.length > 2
 }
 
+function getWeb3 (nodeURL) {
+  if (process.env.HDWALLET_KEY) {
+    console.log('Using hd wallet provider with mnemonic')
+    return new Web3(new HDWalletProvider(process.env.HDWALLET_KEY, nodeURL))
+  } else {
+    return new Web3(nodeURL)
+  }
+}
+
 module.exports = {
   defaultFromAccount,
   ether,
@@ -125,5 +136,6 @@ module.exports = {
   isRelayHubDeployed,
   isRelayReady,
   waitForRelay,
-  saveContractToFile
+  saveContractToFile,
+  getWeb3
 }

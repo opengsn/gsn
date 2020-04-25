@@ -29,6 +29,7 @@ const localhostOne = 'http://localhost:8090'
 const workdir = '/tmp/gsn/test/relayserver'
 
 const testutils = require('./TestUtils')
+const removeHexPrefix = require('../src/common/utils').removeHexPrefix
 const increaseTime = testutils.increaseTime
 
 if (!contract.only) { contract.only = contract } // buidler "support"
@@ -176,7 +177,7 @@ contract('RelayServer', function (accounts) {
         ...badArgs
       })
 
-    const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(signedTx, 'hex')))
+    const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
     await assertTransactionRelayed(txhash, relayRequest.relayData.senderAddress)
     return signedTx
   }
