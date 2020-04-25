@@ -11,13 +11,6 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
-const Chains = {
-  mainnet: { chainId: 1, name: 'mainnet' },
-  ropsten: { chainId: 3, name: 'ropsten' },
-  rinkeby: { chainId: 4, name: 'rinkeby' },
-  goerli: { chainId: 5, name: 'goerli' },
-  kovan: { chainId: 42, name: 'kovan' }
-}
 /*
 cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
@@ -345,19 +338,8 @@ class RelayServer extends EventEmitter {
       console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
       process.exit(-1)
     }
-    let chain
-    switch (this.chainId) {
-      case Chains.ropsten.chainId:
-        chain = Chains.ropsten.name
-        break
-      case Chains.kovan.chainId:
-        chain = Chains.kovan.name
-        break
-      case Chains.mainnet.chainId:
-        chain = Chains.mainnet.name
-        break
-    }
-    this.rawTxOptions = { chain, hardfork: 'petersburg' }
+    const chain = await this.web3.eth.net.getNetworkType()
+    this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
     console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
