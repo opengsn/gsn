@@ -10,8 +10,8 @@ const TxStoreManager = require('./TxStoreManager').TxStoreManager
 const TXSTORE_FILENAME = require('./TxStoreManager').TXSTORE_FILENAME
 
 function error (err) {
-  console.error(err);
-  process.exit(1);
+  console.error(err)
+  process.exit(1)
 }
 
 // use all camel-case entries from environment as defaults.
@@ -30,7 +30,7 @@ const argv = parseArgs(process.argv.slice(2), {
       'GasPricePercent',
       'RegistrationBlockRate',
       'EthereumNodeUrl',
-      'Workdir',
+      'Workdir'
     ],
   boolean: ['DevMode', 'Debug'],
   alias: {},

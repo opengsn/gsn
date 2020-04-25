@@ -94,7 +94,7 @@ class RelayServer extends EventEmitter {
     this.removed = false
     this.nonceMutex = new Mutex()
 
-    DEBUG=Debug
+    DEBUG = Debug
 
     // todo: initialize nonces for all signers (currently one manager, one worker)
     this.nonces = { 0: 0, 1: 0 }
