@@ -40,6 +40,12 @@ module.exports = {
       },
       network_id: 1
     },
+    kovan: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://kovan.infura.io/v3/c3422181d0594697a38defe7706a1e5b')
+      },
+      network_id: 42
+    },
     ropsten: {
       provider: function () {
         return new HDWalletProvider(mnemonic, 'https://ropsten.infura.io/v3/c3422181d0594697a38defe7706a1e5b')

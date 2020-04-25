@@ -2,7 +2,6 @@ pragma solidity ^0.5.16;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
-import "./BaseGsnAware.sol";
 import "./interfaces/IRelayRecipient.sol";
 
 /**

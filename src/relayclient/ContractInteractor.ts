@@ -1,7 +1,7 @@
 import Web3 from 'web3'
 import { provider, TransactionReceipt } from 'web3-core'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import paymasterAbi from '../common/interfaces/IPaymaster'
@@ -44,6 +44,7 @@ export default class ContractInteractor {
   private readonly web3: Web3
   private readonly provider: provider
   private readonly config: GSNConfig
+  private rawTxOptions?: TransactionOptions
 
   constructor (provider: provider, config: GSNConfig) {
     this.web3 = new Web3(provider)
@@ -83,6 +84,21 @@ export default class ContractInteractor {
 
   getProvider (): provider { return this.provider }
   getWeb3 (): Web3 { return this.web3 }
+
+  async _init (): Promise<void> {
+    const chain = await this.web3.eth.net.getNetworkType()
+    console.log('== chain=', chain)
+    // @ts-ignore
+    this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
+  }
+
+  // must use these options when creating Transaction object
+  getRawTxOptions (): TransactionOptions {
+    if (this.rawTxOptions == null) {
+      throw new Error('_init not called')
+    }
+    return this.rawTxOptions
+  }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
