@@ -283,7 +283,7 @@ class RelayServer extends EventEmitter {
         console.error('web3 subscription:', error)
       }
     }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => { console.error('worker:', e) })
-    setTimeout(() => { this._workerSemaphore.bind(this)({ number: 1 }) }, 1)
+    setTimeout(() => { this._workerSemaphore.bind(this)({ number: confirmationsNeeded + 1 }) }, 1)
   }
 
   stop () {
@@ -587,7 +587,9 @@ class RelayServer extends EventEmitter {
     debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
     const confirmedBlock = blockHeader.number - confirmationsNeeded
+    debug('signer, blockHeader, confirmedBlock', signer, blockHeader, confirmedBlock)
     let nonce = await this.web3.eth.getTransactionCount(signer, confirmedBlock)
+    debug('nonce', nonce, confirmedBlock)
     debug(
       `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
@@ -705,7 +707,7 @@ class RelayServer extends EventEmitter {
       },
       this.rawTxOptions
     )
-    spam('txToSign', txToSign)
+    debug('txToSign', txToSign)
     // TODO: change to eip155 chainID
     const signedTx = this.keyManager.signTransaction(tx.from, txToSign)
     const storedTx = new StoredTx({
