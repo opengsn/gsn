@@ -25,7 +25,7 @@ export default class RelayedTransactionValidator {
     transactionJsonRequest: TmpRelayTransactionJsonRequest,
     returnedTx: PrefixedHexString
   ): boolean {
-    const transaction = new Transaction(returnedTx)
+    const transaction = new Transaction(returnedTx, this.contractInteractor.getRawTxOptions())
 
     if (this.config.verbose) {
       console.log('returnedTx is', transaction.v, transaction.r, transaction.s, transaction.to, transaction.data, transaction.gasLimit, transaction.gasPrice, transaction.value)

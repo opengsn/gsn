@@ -49,6 +49,8 @@ export default class RelayClient {
   private readonly pingFilter: PingFilter
 
   public readonly accountManager: AccountManager
+  private initialized = false
+
   /**
    * create a RelayClient library object, to force contracts to go through a relay.
    */
@@ -99,7 +101,15 @@ export default class RelayClient {
     }
   }
 
+  async _init (): Promise<void> {
+    await this.contractInteractor._init()
+    this.initialized = true
+  }
+
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
+    if (!this.initialized) {
+      await this._init()
+    }
     // TODO: should have a better strategy to decide how often to refresh known relays
     await this.knownRelaysManager.refresh()
     gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
@@ -159,7 +169,7 @@ export default class RelayClient {
       }
       return { error }
     }
-    const transaction = new Transaction(hexTransaction)
+    const transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())
     if (!this.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
       this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return { error: new Error('Returned transaction did not pass validation') }

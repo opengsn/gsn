@@ -342,8 +342,11 @@ class RelayServer extends EventEmitter {
       console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
       process.exit(-1)
     }
+
+    // TODO: use ContractInteractor
     const chain = await this.web3.eth.net.getNetworkType()
     this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
+
     console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }

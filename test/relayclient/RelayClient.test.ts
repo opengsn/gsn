@@ -194,6 +194,7 @@ contract('RelayClient', function (accounts) {
       const badContractInteractor = new BadContractInteractor(web3.currentProvider, configureGSN(gsnConfig), true)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
+      await relayClient._init()
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
       assert.equal(error!.message, `canRelay failed: ${BadContractInteractor.message}`)
@@ -204,6 +205,8 @@ contract('RelayClient', function (accounts) {
       const dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, { httpClient: badHttpClient })
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
+      await relayClient._init()
+
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
       await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -232,6 +235,8 @@ contract('RelayClient', function (accounts) {
       })
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
+
+      await relayClient._init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
