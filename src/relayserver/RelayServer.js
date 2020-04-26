@@ -573,13 +573,13 @@ class RelayServer extends EventEmitter {
    */
   async _resendUnconfirmedTransactions (blockHeader) {
     // repeat separately for each signer (manager, all workers)
-    let receipt;
-    [0, 1].forEach(signerIndex => {
-      const ret = this._resendUnconfirmedTransactionsForSigner(blockHeader, signerIndex)
+    let receipt
+    for (const signerIndex of [0, 1]) {
+      const ret = await this._resendUnconfirmedTransactionsForSigner(blockHeader, signerIndex)
       if (ret) {
         receipt = ret
       }
-    })
+    }
     return receipt
   }
 
