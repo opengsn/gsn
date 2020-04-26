@@ -2,7 +2,7 @@
 
 GSN abstracts away gas to minimize onboarding & UX friction for dapps. With GSN, gasless clients can interact with Ethereum contracts without users needing ETH for transaction fees. The GSN is a decentralized system that improves dapp usability without sacrificing security.
 
-## Sample dapp
+## Demo
 
 Try it: https://metacoin.opengsn.org/
 
