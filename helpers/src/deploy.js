@@ -62,7 +62,12 @@ async function deployRelayHub (web3, options = {}) {
   console.log('forwarder', fInstance.options.address)
   if (options.verbose) console.error(`RelayHub deployed at ${rInstance.options.address}`)
 
-  return rInstance.options.address
+  return {
+    relayHubAddress: rInstance.options.address,
+    stakeManagerAddress: sInstance.options.address,
+    penalizerAddress: pInstance.options.address,
+    forwarderAddress: fInstance.options.address
+  }
 }
 
 module.exports = {

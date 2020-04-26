@@ -1,5 +1,4 @@
 const { defaultFromAccount, ether, getPaymasterAddress, getRelayHub } = require('./helpers')
-// const { deployRelayHub } = require('./deploy')
 const { merge } = require('lodash')
 
 async function fundPaymaster (web3, options = {}) {
