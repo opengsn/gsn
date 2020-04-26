@@ -55,6 +55,13 @@ contract BasePaymaster is IPaymaster, Ownable, BaseGsnAware {
         return relayHub.balanceOf(address(this));
     }
 
+    // any money moved into the paymaster is transferred as a deposit.
+    // This way, we don't need to understand the RelayHub API in order to replenish
+    // the paymaster.
+    function() external payable {
+        relayHub.depositFor.value(msg.value)(address(this));
+    }
+
     /// withdraw deposit from relayHub
     function withdrawRelayHubDepositTo(uint amount, address payable target) public onlyOwner {
         relayHub.withdraw(amount, target);

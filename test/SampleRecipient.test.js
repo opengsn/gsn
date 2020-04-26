@@ -37,10 +37,15 @@ contract('SampleRecipient', function (accounts) {
     const rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address,
       penalizer.address)
     await paymaster.setHub(rhub.address)
-    await rhub.depositFor(paymaster.address, {
+
+    // transfer eth into paymaster (using the normal "transfer" helper, which internally
+    // uses hub.depositFor)
+    await web3.eth.sendTransaction({
       from: accounts[0],
+      to: paymaster.address,
       value: deposit
     })
+
     let depositActual = await rhub.balanceOf(paymaster.address)
     assert.equal(deposit.toString(), depositActual.toString())
     const a0BalanceBefore = await web3.eth.getBalance(accounts[0])
