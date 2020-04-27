@@ -1,25 +1,31 @@
-const ow = require('ow')
+import { EventEmitter } from 'events'
+import ow from 'ow'
+import Web3 from 'web3'
+import abiDecoder from 'abi-decoder'
 
-const EventEmitter = require('events')
-const Web3 = require('web3')
-const abiDecoder = require('abi-decoder')
-const { Transaction } = require('ethereumjs-tx')
-const ethUtils = require('ethereumjs-util')
-const RelayHubABI = require('../common/interfaces/IRelayHub')
-const PayMasterABI = require('../common/interfaces/IPaymaster')
-const StakeManagerABI = require('../common/interfaces/IStakeManager')
-const getDataToSign = require('../common/EIP712/Eip712Helper')
-const RelayRequest = require('../common/EIP712/RelayRequest')
-const utils = require('../common/utils')
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+
+import ethUtils from 'ethereumjs-util'
+
+import RelayHubABI from '../common/interfaces/IRelayHub'
+import PayMasterABI from '../common/interfaces/IPaymaster'
+import StakeManagerABI from '../common/interfaces/IStakeManager'
+import getDataToSign from '../common/EIP712/Eip712Helper'
+import RelayRequest from '../common/EIP712/RelayRequest'
+import utils from '../common/utils'
 /*
 cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
 const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
  */
-const gtxdatanonzero = 16
-const StoredTx = require('./TxStoreManager').StoredTx
-const Mutex = require('async-mutex').Mutex
+import { StoredTx, TxStoreManager } from './TxStoreManager'
 
+import { Mutex } from 'async-mutex'
+import { KeyManager } from './KeyManager'
+import {Contract} from "web3-eth-contract";
+import ContractInteractor from "../relayclient/ContractInteractor";
+
+const gtxdatanonzero = 16
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
@@ -38,60 +44,46 @@ const SPAM = false
 
 const toBN = Web3.utils.toBN
 
-function debug () {
-  if (DEBUG) console.log(...arguments)
+function debug (...args: any): void {
+  if (DEBUG) console.log(...args)
 }
 
-function spam () {
-  if (SPAM) debug(...arguments)
+function spam (...args: any): void {
+  if (SPAM) debug(...args)
 }
 
-class StateError extends Error {}
+class StateError extends Error {
+}
 
-class RelayServer extends EventEmitter {
-  constructor (
-    {
-      txStoreManager,
-      keyManager,
-      owner,
-      hubAddress,
-      url,
-      baseRelayFee,
-      pctRelayFee,
-      gasPriceFactor,
-      web3provider,
-      workerMinBalance = defaultWorkerMinBalance,
-      workerTargetBalance = defaultWorkerTargetBalance,
-      devMode,
-      Debug
-    }) {
+export class RelayServer extends EventEmitter {
+
+  private relayHubContract?: Contract;
+  private lastScannedBlock = 0
+  private ready = false
+  private removed = false
+  private nonceMutex = new Mutex()
+  private _privateKeys: Record<string, Buffer> = {}
+  private nonces: Record<number, number> = {}
+
+  constructor (readonly txStoreManager: TxStoreManager,
+    readonly keyManager: KeyManager,
+    readonly owner: PrefixedHexString,
+    readonly hubAddress: PrefixedHexString,
+    readonly url: string = 'http://localhost:8090',
+    readonly baseRelayFee: string,
+    readonly pctRelayFee: string,
+
+    readonly gasPriceFactor: number,
+    readonly web3provider: provider,
+    readonly workerMinBalance = defaultWorkerMinBalance,
+    readonly workerTargetBalance = defaultWorkerTargetBalance,
+    readonly devMode: boolean,
+    readonly Debug: boolean,
+    readonly contractInteractor: ContractInteractor,
+    readonly web3 = new Web3(web3provider)
+  ) {
     super()
-    if (url === undefined) {
-      url = 'http://localhost:8090'
-    }
-    Object.assign(this,
-      {
-        txStoreManager,
-        keyManager,
-        owner,
-        hubAddress,
-        url,
-        baseRelayFee,
-        pctRelayFee,
-        gasPriceFactor,
-        web3provider,
-        workerMinBalance,
-        workerTargetBalance,
-        devMode
-      })
-    this.web3 = new Web3(web3provider)
-    this.relayHubContract = new this.web3.eth.Contract(RelayHubABI, hubAddress)
 
-    this.paymasterContract = new this.web3.eth.Contract(PayMasterABI)
-    this.lastScannedBlock = 0
-    this.ready = false
-    this.removed = false
-    this.nonceMutex = new Mutex()
 
     DEBUG = Debug
 
@@ -102,6 +94,12 @@ class RelayServer extends EventEmitter {
     this.managerAddress = keyManager.getAddress(0)
 
     debug('gasPriceFactor', gasPriceFactor)
+  }
+
+  async init() {
+    this.relayHubContract = (await this.contractInteractor._createRelayHub(this.hubAddress)).contract
+
+    this.paymasterContract = (await this.contractInteractor._createPaymaster(this.pa)new this.web3.eth.Contract(PayMasterABI)
   }
 
   getManagerAddress () {
@@ -162,7 +160,7 @@ class RelayServer extends EventEmitter {
     // Check that the relayhub is the correct one
     if (relayHubAddress !== this.relayHubContract.options.address) {
       throw new Error(
-        `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract.options.address}, request's hub address: ${relayHubAddress}\n`)
+                `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract.options.address}, request's hub address: ${relayHubAddress}\n`)
     }
 
     // Check that the fee is acceptable
@@ -285,8 +283,12 @@ class RelayServer extends EventEmitter {
       if (error) {
         console.error('web3 subscription:', error)
       }
-    }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => { console.error('worker:', e) })
-    setTimeout(() => { this.web3.eth.getBlockNumber().then(blockNumber => this._workerSemaphore.bind(this)({ number: blockNumber })) }, 1)
+    }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => {
+      console.error('worker:', e)
+    })
+    setTimeout(() => {
+      this.web3.eth.getBlockNumber().then(blockNumber => this._workerSemaphore.bind(this)({ number: blockNumber }))
+    }, 1)
   }
 
   stop () {
@@ -356,7 +358,7 @@ class RelayServer extends EventEmitter {
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
       console.log(
-        `== replenishWorker(${workerIndex}): mgr balance=${this.balance.toString() / 1e18} worker balance=${workerBalance.toString() / 1e18} refill=${refill.toString() / 1e18}`)
+                `== replenishWorker(${workerIndex}): mgr balance=${this.balance.toString() / 1e18} worker balance=${workerBalance.toString() / 1e18} refill=${refill.toString() / 1e18}`)
       if (refill.lt(this.balance.sub(toBN(minimumRelayBalance)))) {
         await this._sendTransaction({
           signerIndex: 0,
@@ -368,7 +370,7 @@ class RelayServer extends EventEmitter {
         this.refreshBalance()
       } else {
         console.log(
-          `== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
+                    `== replenishWorker: can't replenish: mgr balance too low ${this.balance.toString() / 1e18} refil=${refill.toString() / 1e18}`)
       }
     }
   }
@@ -386,7 +388,7 @@ class RelayServer extends EventEmitter {
       await this.refreshBalance()
       if (!this.balance || this.balance.lt(toBN(minimumRelayBalance))) {
         throw new StateError(
-          `Server's balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
+                    `Server's balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
       }
       const options = {
         fromBlock: this.lastScannedBlock + 1,
@@ -409,10 +411,10 @@ class RelayServer extends EventEmitter {
           case 'StakeAdded':
             receipt = await this._handleStakedEvent(dlog)
             break
-          // There is no such event now
-          // case 'RelayRemoved':
-          //   await this._handleRelayRemovedEvent(dlog)
-          //   break
+            // There is no such event now
+            // case 'RelayRemoved':
+            //   await this._handleRelayRemovedEvent(dlog)
+            //   break
           case 'StakeUnlocked':
             receipt = await this._handleUnstakedEvent(dlog)
             break
@@ -568,9 +570,9 @@ class RelayServer extends EventEmitter {
   }
 
   /**
-   * resend Txs of all signers (manager, workers)
-   * @return the receipt from the first request
-   */
+     * resend Txs of all signers (manager, workers)
+     * @return the receipt from the first request
+     */
   async _resendUnconfirmedTransactions (blockHeader) {
     // repeat separately for each signer (manager, all workers)
     let receipt
@@ -597,7 +599,7 @@ class RelayServer extends EventEmitter {
     let nonce = await this.web3.eth.getTransactionCount(signer, confirmedBlock)
     debug('nonce', nonce, confirmedBlock)
     debug(
-      `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
+            `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
     await this.txStoreManager.removeTxsUntilNonce({ signer, nonce: nonce - 1 })
 
@@ -632,7 +634,7 @@ class RelayServer extends EventEmitter {
 
   // signerIndex is the index into addresses array. zero is relayManager, the rest are workers
   async _sendTransaction ({ signerIndex, method, destination, value, gasLimit, gasPrice }) {
-    const encodedCall = method && method.encodeABI ? method.encodeABI() : ''
+    const encodedCall = method?.encodeABI ? method.encodeABI() : ''
     gasPrice = gasPrice || await this.web3.eth.getGasPrice()
     gasPrice = parseInt(gasPrice)
     debug('gasPrice', gasPrice)
@@ -769,5 +771,3 @@ class RelayServer extends EventEmitter {
     }
   }
 }
-
-module.exports = RelayServer

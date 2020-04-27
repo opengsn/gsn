@@ -1,7 +1,7 @@
-const express = require('express')
-const jsonrpc = require('jsonrpc-lite')
-const bodyParser = require('body-parser')
-const cors = require('cors')
+import express from 'express'
+import jsonrpc from 'jsonrpc-lite'
+import bodyParser from 'body-parser'
+import cors from 'cors'
 
 class HttpServer {
   constructor ({ port, backend }) {

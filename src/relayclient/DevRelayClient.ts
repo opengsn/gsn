@@ -1,5 +1,5 @@
 import RelayClient, { RelayingResult } from './RelayClient'
-import RelayServer from '../relayserver/RelayServer'
+import { RelayServer } from '../relayserver/RelayServer'
 import HttpServer from '../relayserver/HttpServer'
 import { sleep } from '../common/utils'
 import { HttpProvider, provider } from 'web3-core'
@@ -64,7 +64,8 @@ export function runServer (
     baseRelayFee: devConfig.baseRelayFee,
     pctRelayFee: devConfig.pctRelayFee,
     gasPriceFactor: devConfig.gasPriceFactor,
-    devMode: devConfig.devMode
+    devMode: devConfig.devMode,
+    Debug: devConfig.verbose
   })
   relayServer.on('error', (e: any) => {
     // console.error('ERR:', e.message)

@@ -1,19 +1,26 @@
-const Wallet = require('ethereumjs-wallet')
-const HDKey = require('ethereumjs-wallet/hdkey')
-const fs = require('fs')
-const ow = require('ow')
+import Wallet from 'ethereumjs-wallet'
+import { HDKey, EthereumHDKey } from 'ethereumjs-wallet/hdkey'
 
-class KeyManager {
+import fs from 'fs'
+import ow from 'ow'
+import { toHex } from 'web3-utils'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+
+export class KeyManager {
+  private readonly hdkey: EthereumHDKey;
   /**
    * @param count - # of addresses managed by this manager
    * @param workdir - read seed from keystore file (or generate one and write it)
    * @param seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
    */
-  constructor ({ count, workdir = null, seed = null }) {
+  constructor (count: number, workdir?: string, seed?: string) {
     ow(count, ow.number)
-    if (seed && workdir) { throw new Error('Can\'t specify both seed and workdir') }
+    if (seed !== undefined && workdir !== undefined) {
+      throw new Error('Can\'t specify both seed and workdir')
+    }
 
-    if (workdir) {
+    if (workdir !== undefined) {
+      // @ts-ignore
       try {
         if (!fs.existsSync(workdir)) {
           fs.mkdirSync(workdir, { recursive: true })
@@ -28,46 +35,48 @@ class KeyManager {
         }
         this.hdkey = HDKey.fromMasterSeed(genseed)
       } catch (e) {
+        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
         if (!e.message.includes('file already exists')) {
           throw e
         }
       }
     } else {
       // no workdir: working in-memory
-      if (!seed) {
+      if (seed !== undefined) {
         seed = Wallet.generate().getPrivateKey().toString('hex')
       }
       this.hdkey = HDKey.fromMasterSeed(seed)
     }
+
     this.generateKeys(count)
   }
 
-  generateKeys (count) {
+  generateKeys (count: number): void {
     this._privateKeys = {}
+    this.nonces={}
     for (let index = 0; index < count; index++) {
       const w = this.hdkey.deriveChild(index).getWallet()
-      const address = '0x' + w.getAddress().toString('hex')
+      const address = toHex(w.getAddress())
       this._privateKeys[address] = w.privKey
+      this.nonces[index] = 0
     }
   }
 
-  getAddress (index) {
+  getAddress (index: number): string {
     return this.getAddresses()[index]
   }
 
-  getAddresses () {
+  getAddresses (): string[] {
     return Object.keys(this._privateKeys)
   }
 
-  signTransaction (signer, tx) {
+  signTransaction (signer: string, tx: Transaction): PrefixedHexString {
     ow(signer, ow.string)
     const privateKey = this._privateKeys[signer]
     if (privateKey === undefined) { throw new Error(`Can't sign: signer=${signer} is not managed`) }
 
     tx.sign(privateKey)
-    const rawTx = '0x' + tx.serialize().toString('hex')
+    const rawTx = toHex(tx.serialize().toString('hex'))
     return rawTx
   }
 }
-
-module.exports = KeyManager

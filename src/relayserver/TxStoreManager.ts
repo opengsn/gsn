@@ -1,26 +1,38 @@
+import ethUtils from 'ethereumjs-util'
+import ow from 'ow'
+import { PrefixedHexString } from 'ethereumjs-tx'
+import AsyncNedb from 'nedb-async'
 const Nedb = require('nedb-async').AsyncNedb
-const ethUtils = require('ethereumjs-util')
-const ow = require('ow')
 
-class StoredTx {
-  constructor (tx) {
+export class StoredTx {
+  readonly from: PrefixedHexString
+  readonly to: PrefixedHexString
+  readonly gas: number
+  readonly gasPrice: number
+  readonly data: PrefixedHexString
+  readonly nonce: number
+  readonly txId: PrefixedHexString
+  readonly attempts: number
+
+  constructor (from: Buffer, to: Buffer, gas: Buffer, gasPrice: Buffer, data: Buffer, nonce: Buffer, txId: string, attempts: number) {
     // Object.keys(tx).forEach(key => {
     //   this[key] = ethUtils.bufferToHex(tx[key])
     // })
-    this.from = ethUtils.bufferToHex(tx.from)
-    this.to = ethUtils.bufferToHex(tx.to)
-    this.gas = ethUtils.bufferToInt(tx.gas)
-    this.gasPrice = ethUtils.bufferToInt(tx.gasPrice)
-    this.data = ethUtils.bufferToHex(tx.data)
-    this.nonce = ethUtils.bufferToInt(tx.nonce)
-    this.txId = tx.txId
-    this.attempts = tx.attempts
+    this.from = ethUtils.bufferToHex(from)
+    this.to = ethUtils.bufferToHex(to)
+    this.gas = ethUtils.bufferToInt(gas)
+    this.gasPrice = ethUtils.bufferToInt(gasPrice)
+    this.data = ethUtils.bufferToHex(data)
+    this.nonce = ethUtils.bufferToInt(nonce)
+    this.txId = txId
+    this.attempts = attempts
   }
 }
 
-const TXSTORE_FILENAME = 'txstore.db'
+export const TXSTORE_FILENAME = 'txstore.db'
 
-class TxStoreManager {
+export class TxStoreManager {
+  private readonly txstore: AsyncNedb<any>
   constructor ({ workdir = '/tmp/test/', inMemory = false }) {
     this.txstore = new Nedb({
       filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
@@ -33,7 +45,8 @@ class TxStoreManager {
     console.log('txstore created in ', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
-  async putTx ({ tx, updateExisting }) {
+  async putTx (tx: any, updateExisting: boolean): Promise<void> {
+    // eslint-disable-next-line
     if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
       throw new Error('Invalid tx:' + JSON.stringify(tx))
     }
@@ -46,6 +59,7 @@ class TxStoreManager {
       }
     }
     const existing = await this.txstore.asyncFindOne({ nonceSigner: tx1.nonceSigner })
+    // eslint-disable-next-line
     if (existing && updateExisting) {
       await this.txstore.asyncUpdate({ txId: existing.txId }, { $set: tx1 })
     } else {
@@ -53,7 +67,7 @@ class TxStoreManager {
     }
   }
 
-  async getTxByNonce ({ signer, nonce }) {
+  async getTxByNonce (signer: PrefixedHexString, nonce: number): Promise<any> {
     ow(nonce, ow.any(ow.number, ow.string))
     ow(signer, ow.string)
 
@@ -65,13 +79,13 @@ class TxStoreManager {
     }, { _id: 0 })
   }
 
-  async getTxById ({ txId }) {
+  async getTxById (txId: string): Promise<any> {
     ow(txId, ow.string)
 
     return this.txstore.asyncFindOne({ txId: txId.toLowerCase() }, { _id: 0 })
   }
 
-  async removeTxByNonce ({ signer, nonce }) {
+  async removeTxByNonce (signer: PrefixedHexString, nonce: number): Promise<unknown> {
     ow(nonce, ow.any(ow.string, ow.number))
     ow(signer, ow.string)
 
@@ -82,7 +96,7 @@ class TxStoreManager {
     }, { multi: true })
   }
 
-  async removeTxsUntilNonce ({ signer, nonce }) {
+  async removeTxsUntilNonce (signer: PrefixedHexString, nonce: number): Promise<unknown> {
     ow(nonce, ow.number)
     ow(signer, ow.string)
 
@@ -93,25 +107,19 @@ class TxStoreManager {
     }, { multi: true })
   }
 
-  async clearAll () {
-    return this.txstore.asyncRemove({}, { multi: true })
+  async clearAll (): Promise<void> {
+    await this.txstore.asyncRemove({}, { multi: true })
   }
 
-  async getAllBySigner (signer) {
+  async getAllBySigner (signer: PrefixedHexString): Promise<any[]> {
     return (await this.txstore.asyncFind({ 'nonceSigner.signer': signer })).sort(function (tx1, tx2) {
       return tx1.nonce - tx2.nonce
     })
   }
 
-  async getAll () {
+  async getAll (): Promise<any[]> {
     return (await this.txstore.asyncFind({})).sort(function (tx1, tx2) {
       return tx1.nonce - tx2.nonce
     })
   }
-}
-
-module.exports = {
-  TxStoreManager,
-  StoredTx,
-  TXSTORE_FILENAME
 }

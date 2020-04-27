@@ -27,30 +27,28 @@ contract('TxStoreManager', function (accounts) {
     await txmanager.clearAll()
     assert.ok(txmanager, 'txstore uninitialized' + txmanager)
     assert.isTrue(fs.existsSync(workdir), 'test txstore dir should exist already')
-    tx = new StoredTx(
-      {
-        from: '0x',
-        to: '0x',
-        value: 0,
-        gas: 0,
-        gasPrice: 0,
-        data: 0,
-        nonce: 111,
-        txId: '123456',
-        attempts: 1
-      })
-    tx2 = new StoredTx(
-      {
-        from: '0x',
-        to: '0x',
-        value: 0,
-        gas: 0,
-        gasPrice: 0,
-        data: 0,
-        nonce: 112,
-        txId: '1234567',
-        attempts: 1
-      })
+    tx = new StoredTx({
+      from: '0x',
+      to: '0x',
+      value: 0,
+      gas: 0,
+      gasPrice: 0,
+      data: 0,
+      nonce: 111,
+      txId: '123456',
+      attempts: 1
+    })
+    tx2 = new StoredTx({
+      from: '0x',
+      to: '0x',
+      value: 0,
+      gas: 0,
+      gasPrice: 0,
+      data: 0,
+      nonce: 112,
+      txId: '1234567',
+      attempts: 1
+    })
     tx3 = new StoredTx(
       {
         from: '0x',
