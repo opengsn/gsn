@@ -1,21 +1,24 @@
+import { constants, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
-import { RelayProvider, BaseTransactionReceipt } from '../../src/relayclient/RelayProvider'
+import { ChildProcessWithoutNullStreams } from 'child_process'
+import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import chaiAsPromised from 'chai-as-promised'
+import Web3 from 'web3'
+
+import { RelayProvider, BaseTransactionReceipt } from '../../src/relayclient'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
-  RelayHubInstance, StakeManagerInstance,
+  RelayHubInstance,
+  StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
+  TestRecipientContract,
   TestRecipientInstance
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/relayclient/types/Aliases'
-import Web3 from 'web3'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { startRelay, stopRelay } from '../TestUtils'
-import { ChildProcessWithoutNullStreams } from 'child_process'
 import BadRelayClient from '../dummies/BadRelayClient'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
-import chaiAsPromised from 'chai-as-promised'
-import { constants, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import getDataToSign from '../../src/common/EIP712/Eip712Helper'
 import { getEip712Signature } from '../../src/common/utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
@@ -138,14 +141,20 @@ contract('RelayProvider', function (accounts) {
         })
       })
 
-      await testRecipient.emitMessage('hello again', { from: gasLess, paymaster })
+      await testRecipient.emitMessage('hello again', {
+        from: gasLess,
+        paymaster
+      })
       const log: any = await eventPromise
 
       assert.equal(log.returnValues.message, 'hello again')
     })
 
     it('should fail if transaction failed', async () => {
-      await expectRevert(testRecipient.testRevert({ from: gasLess, paymaster }), 'always fail')
+      await expectRevert(testRecipient.testRevert({
+        from: gasLess,
+        paymaster
+      }), 'always fail')
     })
   })
 
@@ -199,7 +208,10 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
-      const gsnConfig = configureGSN({ relayHubAddress: relayHub.address, stakeManagerAddress: stakeManager.address })
+      const gsnConfig = configureGSN({
+        relayHubAddress: relayHub.address,
+        stakeManagerAddress: stakeManager.address
+      })
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
         if (error != null) {
@@ -310,6 +322,34 @@ contract('RelayProvider', function (accounts) {
       assert.equal(notRelayedTxReceipt.status, true)
       const modifiedReceipt = relayProvider._getTranslatedGsnResponseResult(notRelayedTxReceipt)
       assert.equal(modifiedReceipt.status, true)
+    })
+  })
+
+  describe('new contract deployment', function () {
+    let TestRecipient: TestRecipientContract
+    before(function () {
+      TestRecipient = artifacts.require('TestRecipient')
+      const gsnConfig = configureGSN({
+        relayHubAddress: relayHub.address,
+        stakeManagerAddress: stakeManager.address
+      })
+      const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
+      relayProvider = new RelayProvider(websocketProvider as any, gsnConfig)
+      // @ts-ignore
+      TestRecipient.web3.setProvider(relayProvider)
+    })
+
+    it('should throw on calling .new without useGSN: false', async function () {
+      await expect(TestRecipient.new()).to.be.eventually.rejectedWith('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.')
+    })
+
+    it('should deploy a contract without GSN on calling .new with useGSN: false', async function () {
+      const testRecipient = await TestRecipient.new({
+        from: accounts[0],
+        useGSN: false
+      })
+      const receipt = await web3.eth.getTransactionReceipt(testRecipient.transactionHash)
+      assert.equal(receipt.from, accounts[0])
     })
   })
 })

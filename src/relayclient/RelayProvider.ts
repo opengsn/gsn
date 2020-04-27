@@ -60,6 +60,9 @@ export class RelayProvider implements HttpProvider {
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
+        if (payload.params[0].to === undefined) {
+          throw new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.')
+        }
         this._ethSendTransaction(payload, callback)
         return
       }
