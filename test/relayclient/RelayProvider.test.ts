@@ -349,7 +349,7 @@ contract('RelayProvider', function (accounts) {
         useGSN: false
       })
       const receipt = await web3.eth.getTransactionReceipt(testRecipient.transactionHash)
-      assert.equal(receipt.from, accounts[0])
+      assert.equal(receipt.from.toLowerCase(), accounts[0].toLowerCase())
     })
   })
 })
