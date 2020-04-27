@@ -79,15 +79,19 @@ export class RelayProvider implements HttpProvider {
       console.log('calling sendAsync' + JSON.stringify(payload))
     }
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
-      if (error != null) {
-        callback(error)
+      // Sometimes, ganache seems to return 'false' for 'no error' (breaking TypeScript declarations)
+      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+      if (error) {
+        callback(error, rpcResponse)
         return
       }
       if (rpcResponse == null || rpcResponse.result == null) {
-        throw new Error('Empty JsonRpcResponse with no error message')
+        console.error('Empty JsonRpcResponse with no error message')
+        callback(error, rpcResponse)
+        return
       }
       rpcResponse.result = this._getTranslatedGsnResponseResult(rpcResponse.result)
-      callback(null, rpcResponse)
+      callback(error, rpcResponse)
     })
   }
 

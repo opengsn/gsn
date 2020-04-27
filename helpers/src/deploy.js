@@ -66,7 +66,8 @@ async function deployRelayHub (web3, options = {}) {
     relayHubAddress: rInstance.options.address,
     stakeManagerAddress: sInstance.options.address,
     penalizerAddress: pInstance.options.address,
-    forwarderAddress: fInstance.options.address
+    forwarderAddress: fInstance.options.address,
+    paymasterAddress: pmInstance.options.address
   }
 }
 
