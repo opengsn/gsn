@@ -11,7 +11,6 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
-const packageVersion = require('../../package.json').version
 /*
 cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
@@ -25,7 +24,7 @@ abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
 
-const VERSION = '0.0.1' // eslint-disable-line no-unused-vars
+const VERSION = '0.0.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
@@ -130,7 +129,7 @@ class RelayServer extends EventEmitter {
       RelayHubAddress: this.relayHubContract.options.address,
       MinGasPrice: this.getMinGasPrice(),
       Ready: this.isReady(),
-      Version: packageVersion
+      Version: VERSION
     }
   }
 
@@ -574,13 +573,13 @@ class RelayServer extends EventEmitter {
    */
   async _resendUnconfirmedTransactions (blockHeader) {
     // repeat separately for each signer (manager, all workers)
-    let receipt;
-    [0, 1].forEach(signerIndex => {
-      const ret = this._resendUnconfirmedTransactionsForSigner(blockHeader, signerIndex)
+    let receipt
+    for (const signerIndex of [0, 1]) {
+      const ret = await this._resendUnconfirmedTransactionsForSigner(blockHeader, signerIndex)
       if (ret) {
         receipt = ret
       }
-    })
+    }
     return receipt
   }
 
