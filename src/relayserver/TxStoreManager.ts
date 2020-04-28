@@ -1,6 +1,6 @@
 import ethUtils from 'ethereumjs-util'
 import ow from 'ow'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import AsyncNedb from 'nedb-async'
 const Nedb = require('nedb-async').AsyncNedb
 
@@ -29,6 +29,27 @@ export class StoredTx {
   }
 }
 
+export function transactionToStoredTx (tx: Transaction, from: PrefixedHexString, chainId: number, attempts: number): StoredTx {
+  return {
+    from,
+    to: ethUtils.bufferToHex(tx.to),
+    gas: ethUtils.bufferToInt(tx.gasLimit),
+    gasPrice: ethUtils.bufferToInt(tx.gasPrice),
+    data: ethUtils.bufferToHex(tx.data),
+    nonce: ethUtils.bufferToInt(tx.nonce),
+    txId: ethUtils.bufferToHex(tx.hash()),
+    attempts: attempts
+  }
+}
+export function storedTxToTransaction (stx: StoredTx): Transaction {
+  return new Transaction({
+    to: stx.to,
+    gasLimit: stx.gas,
+    gasPrice: stx.gasPrice,
+    nonce: stx.nonce,
+    data: stx.data
+  })
+}
 export const TXSTORE_FILENAME = 'txstore.db'
 
 export class TxStoreManager {

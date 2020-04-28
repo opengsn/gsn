@@ -59,6 +59,7 @@
     "@0x/contracts-utils": "4.4.3",
     "@truffle/contract": "4.1.13",
     "@types/chai-as-promised": "^7.1.2",
+    "@types/cors": "^2.8.6",
     "@types/express": "^4.17.6",
     "abi-decoder": "2.2.2",
     "async-mutex": "^0.2.1",

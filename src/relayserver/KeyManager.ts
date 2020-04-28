@@ -1,4 +1,6 @@
+// @ts-ignore
 import Wallet from 'ethereumjs-wallet'
+// @ts-ignore
 import { HDKey, EthereumHDKey } from 'ethereumjs-wallet/hdkey'
 
 import fs from 'fs'
@@ -8,11 +10,14 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 
 export class KeyManager {
   private readonly hdkey: EthereumHDKey;
+  private _privateKeys: Record<PrefixedHexString, Buffer> = {}
+  private nonces: Record<string, number> = {};
+
   /**
-   * @param count - # of addresses managed by this manager
-   * @param workdir - read seed from keystore file (or generate one and write it)
-   * @param seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
-   */
+     * @param count - # of addresses managed by this manager
+     * @param workdir - read seed from keystore file (or generate one and write it)
+     * @param seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
+     */
   constructor (count: number, workdir?: string, seed?: string) {
     ow(count, ow.number)
     if (seed !== undefined && workdir !== undefined) {
@@ -53,7 +58,7 @@ export class KeyManager {
 
   generateKeys (count: number): void {
     this._privateKeys = {}
-    this.nonces={}
+    this.nonces = {}
     for (let index = 0; index < count; index++) {
       const w = this.hdkey.deriveChild(index).getWallet()
       const address = toHex(w.getAddress())
@@ -62,18 +67,20 @@ export class KeyManager {
     }
   }
 
-  getAddress (index: number): string {
+  getAddress (index: number): PrefixedHexString {
     return this.getAddresses()[index]
   }
 
-  getAddresses (): string[] {
+  getAddresses (): PrefixedHexString[] {
     return Object.keys(this._privateKeys)
   }
 
   signTransaction (signer: string, tx: Transaction): PrefixedHexString {
     ow(signer, ow.string)
     const privateKey = this._privateKeys[signer]
-    if (privateKey === undefined) { throw new Error(`Can't sign: signer=${signer} is not managed`) }
+    if (privateKey === undefined) {
+      throw new Error(`Can't sign: signer=${signer} is not managed`)
+    }
 
     tx.sign(privateKey)
     const rawTx = toHex(tx.serialize().toString('hex'))

@@ -1,6 +1,6 @@
 import RelayClient, { RelayingResult } from './RelayClient'
 import { RelayServer } from '../relayserver/RelayServer'
-import HttpServer from '../relayserver/HttpServer'
+import { HttpServer } from '../relayserver/HttpServer'
 import { sleep } from '../common/utils'
 import { HttpProvider, provider } from 'web3-core'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
@@ -14,7 +14,7 @@ import { TxStoreManager } from '../relayserver/TxStoreManager'
 import axios from 'axios'
 import net from 'net'
 
-import KeyManager = require('../relayserver/KeyManager')
+import { KeyManager } from '../relayserver/KeyManager'
 
 const unstakeDelay = 2000
 
@@ -50,7 +50,7 @@ export function runServer (
   relayHub: string,
   devConfig: DevGSNConfig
 ): RunServerReturn {
-  const keyManager = new KeyManager({ count: 2, workdir: devConfig.relayWorkdir })
+  const keyManager = new KeyManager(2, devConfig.relayWorkdir)
   const txStoreManager = new TxStoreManager({ inMemory: true })
 
   // @ts-ignore
@@ -67,14 +67,11 @@ export function runServer (
     devMode: devConfig.devMode,
     Debug: devConfig.verbose
   })
-  relayServer.on('error', (e: any) => {
+  relayServer.on('error', (_: any) => {
     // console.error('ERR:', e.message)
   })
 
-  const httpServer = new HttpServer({
-    port: devConfig.relayListenPort,
-    backend: relayServer
-  })
+  const httpServer = new HttpServer(devConfig.relayListenPort as number, relayServer)
   httpServer.start()
   return {
     httpServer,
