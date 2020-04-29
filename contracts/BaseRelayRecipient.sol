@@ -37,7 +37,7 @@ contract BaseRelayRecipient is IRelayRecipient {
             // At this point we know that the sender is a trusted forwarder,
             // so we trust that the last bytes of msg.data are the verified sender address.
             // extract sender address from the end of msg.data
-            return LibBytes.readAddress(msg.data, msg.data.length - 20);
+            return address(uint160(LibBytes.readAddress(msg.data, msg.data.length - 20)));
         }
         return msg.sender;
     }
