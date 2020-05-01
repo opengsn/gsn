@@ -1,7 +1,7 @@
 // @ts-ignore
 import Wallet from 'ethereumjs-wallet'
 // @ts-ignore
-import { HDKey, EthereumHDKey } from 'ethereumjs-wallet/hdkey'
+import HDKey, { EthereumHDKey } from 'ethereumjs-wallet/hdkey'
 
 import fs from 'fs'
 import ow from 'ow'

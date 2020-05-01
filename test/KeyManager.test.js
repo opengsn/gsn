@@ -1,7 +1,7 @@
 /* global */
 
 const fs = require('fs')
-const KeyManager = require('../src/relayserver/KeyManager')
+const { KeyManager } = require('../src/relayserver/KeyManager')
 const KEYSTORE_FILENAME = 'keystore'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
@@ -17,22 +17,24 @@ function cleanFolder () {
   }
 }
 
+if (!contract.only) { contract.only = contract } // buidler "support"
+
 contract('KeyManager', function (accounts) {
   describe('in-memory', () => {
     let mkm
     before(() => {
-      mkm = new KeyManager({ count: 10, seed: 'seed1234' })
+      mkm = new KeyManager(10,'seed1234')
     })
     it('should return key', () => {
       // for a given seed, the addresses and privkeys are known..
       const k0 = mkm.getAddress(0)
-      assert.deepEqual(mkm._privateKeys[k0].toString('hex'), '98bd175008b68dfd5a6aca0584d5a040032f2469656569d5d428161b776d27ff')
-      assert.equal(k0, '0x56558253d657baa29cfe9f0a808b7d19d5d80b9c')
+      assert.deepEqual(mkm._privateKeys[k0].toString('hex'), '57741c5b35559587a8322a60ebbf011bd991be1f96837e18f487be008ffa7bfc')
+      assert.equal(k0, '0x9c5bcd9fa54ea1353edbdb879ed923de834f5d19')
     })
     it('should return another key for different index', () => {
       const k1 = mkm.getAddress(1)
-      assert.equal(mkm._privateKeys[k1].toString('hex'), 'e52f32d373b0b38be3800ec9070af883a63c4fd2857c5b0f249180a2c303eb7e')
-      assert.equal(k1, '0xe2ceef58b3e5a8816c52b00067830b8e1afd82da')
+      assert.equal(mkm._privateKeys[k1].toString('hex'), 'ebf5960c8d941e2323290a4acd4891684a37b2b05eefde44219530b41d19a260')
+      assert.equal(k1, '0x8bce814c8b753b49982d5b2c78867ac2c0907ac8')
     })
   })
   describe('file-based KeyManager', () => {
@@ -40,7 +42,7 @@ contract('KeyManager', function (accounts) {
 
     before('create key manager', async function () {
       cleanFolder()
-      fkmA = new KeyManager({ count: 20, workdir })
+      fkmA = new KeyManager(20, workdir)
       assert.isTrue(fs.existsSync(workdir), 'test keystore dir should exist already')
     })
 
@@ -53,7 +55,7 @@ contract('KeyManager', function (accounts) {
     it('should get the same key when reloading', () => {
       const addrA = fkmA.getAddress(0)
       const addrA10 = fkmA.getAddress(10)
-      const fkmB = new KeyManager({ workdir, count: 20 })
+      const fkmB = new KeyManager(20,workdir)
       const addrB = fkmB.getAddress(0)
       assert.equal(addrA, addrB)
       assert.equal(fkmA._privateKeys[addrA].toString('hex'), fkmB._privateKeys[addrB].toString('hex'))

@@ -1,7 +1,7 @@
 /* global artifacts describe */
 const Web3 = require('web3')
 const RelayClient = require('./TmpLegacyRelayClient')
-const RelayServer = require('../src/relayserver/RelayServer')
+const { RelayServer } = require('../src/relayserver/RelayServer')
 const TxStoreManager = require('../src/relayserver/TxStoreManager').TxStoreManager
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
@@ -9,7 +9,7 @@ const TrustedForwarder = artifacts.require('TrustedForwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
-const KeyManager = require('../src/relayserver/KeyManager')
+const { KeyManager } = require('../src/relayserver/KeyManager')
 const RelayHubABI = require('../src/common/interfaces/IRelayHub')
 const PayMasterABI = require('../src/common/interfaces/IPaymaster')
 const Environments = require('../src/relayclient/types/Environments')
@@ -17,9 +17,10 @@ const Environments = require('../src/relayclient/types/Environments')
 const ethUtils = require('ethereumjs-util')
 const { Transaction } = require('ethereumjs-tx')
 const abiDecoder = require('abi-decoder')
-const chai = require('chai')
+
 const sinonChai = require('sinon-chai')
-chai.use(sinonChai)
+const {expect, chai } = require('chai').use(require('chai-as-promised')).use(sinonChai)
+
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(TestRecipient.abi)
@@ -73,7 +74,7 @@ contract('RelayServer', function (accounts) {
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')
-    keyManager = new KeyManager({ count: 2, seed: Date.now().toString() })
+    keyManager = new KeyManager(2, Date.now().toString())
     const txStoreManager = new TxStoreManager({ workdir })
     relayServer = new RelayServer({
       txStoreManager,
@@ -208,17 +209,15 @@ contract('RelayServer', function (accounts) {
       assert.notEqual(relayServer.chainId, chainId)
       assert.notEqual(relayServer.networkId, networkId)
       assert.equal(relayServer.ready, false)
-      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
-      assert.include(relayServer.lastError, 'Server\'s balance too low')
-      assert.equal(relayServer.gasPrice, expectedGasPrice)
-      assert.equal(relayServer.chainId, chainId)
-      assert.equal(relayServer.networkId, networkId)
+
+      expect(relayServer._worker({ number: await _web3.eth.getBlockNumber() }))
+        .to.be.eventually.rejectedWith('Server\'s balance too low')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
     })
 
     it('should wait for balance', async function () {
-      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
-      assert.include(relayServer.lastError, 'Server\'s balance too low')
+      await relayServer._workerSemaphore({ number: await _web3.eth.getBlockNumber() }))
+        .to.be.eventually.rejectedWith('Server\'s balance too low')
       const expectedBalance = _web3.utils.toWei('2', 'ether')
       assert.notEqual(relayServer.balance, expectedBalance)
       await _web3.eth.sendTransaction({

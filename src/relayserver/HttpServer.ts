@@ -47,6 +47,8 @@ export class HttpServer {
 
   close (): void {
     console.log('Stopping relay worker...')
+    // stop (unsubscribe) is async..
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     this.backend.stop()
     // process.exit()
   }

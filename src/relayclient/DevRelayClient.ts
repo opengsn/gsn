@@ -6,7 +6,7 @@ import { HttpProvider, provider } from 'web3-core'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { IKnownRelaysManager } from './KnownRelaysManager'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
-import { GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Address } from './types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
 import stakeManagerAbi from '../common/interfaces/IStakeManager'
@@ -15,6 +15,7 @@ import axios from 'axios'
 import net from 'net'
 
 import { KeyManager } from '../relayserver/KeyManager'
+import ContractInteractor from './ContractInteractor'
 
 const unstakeDelay = 2000
 
@@ -53,19 +54,21 @@ export function runServer (
   const keyManager = new KeyManager(2, devConfig.relayWorkdir)
   const txStoreManager = new TxStoreManager({ inMemory: true })
 
+  const contractInteractor = new ContractInteractor(web3provider, configureGSN(devConfig))
   // @ts-ignore
   const relayServer = new RelayServer({
-    web3provider,
     txStoreManager,
+    web3provider,
     keyManager,
+    contractInteractor,
     // owner: relayOwner,
     hubAddress: relayHub,
-    url: devConfig.relayUrl,
     baseRelayFee: devConfig.baseRelayFee,
     pctRelayFee: devConfig.pctRelayFee,
     gasPriceFactor: devConfig.gasPriceFactor,
-    devMode: devConfig.devMode,
-    Debug: devConfig.verbose
+    url: devConfig.relayUrl ?? undefined,
+    devMode: devConfig.devMode ?? false,
+    Debug: devConfig.verbose ?? false
   })
   relayServer.on('error', (_: any) => {
     // console.error('ERR:', e.message)
@@ -147,7 +150,7 @@ export class DevRelayClient extends RelayClient {
     if (this.relayServer !== undefined) {
       // @ts-ignore
       await this.relayServer.txStoreManager.clearAll()
-      this.relayServer.stop()
+      await this.relayServer.stop()
       this.relayServer = undefined
     }
   }
@@ -219,7 +222,7 @@ export class DevRelayClient extends RelayClient {
       value: 1e18
     })
     // @ts-ignore
-    const relayInfo = await waitForRelay(relayServer.url as string + '/getaddr', 5000, (res) => {
+    const relayInfo = await waitForRelay(relayServer.url + '/getaddr', 5000, (res) => {
       if (res?.data?.Ready === true) {
         return {
           relayManager: res.data.RelayServerAddress,

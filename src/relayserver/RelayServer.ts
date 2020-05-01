@@ -28,6 +28,7 @@ import GsnTransactionDetails from '../relayclient/types/GsnTransactionDetails'
 import { IPaymasterInstance, IRelayHubInstance, IStakeManagerInstance } from '../../types/truffle-contracts'
 import { BlockHeader } from 'web3-eth'
 import { TransactionReceipt } from 'web3-core'
+import {configureGSN} from "../relayclient/GSNConfigurator";
 
 const gtxdatanonzero = 16
 abiDecoder.addABI(RelayHubABI)
@@ -89,6 +90,23 @@ interface SendTransactionDetails {
   gasPrice: IntString
 }
 
+class RelayServerParams {
+  constructor (readonly txStoreManager: TxStoreManager,
+    readonly web3provider: provider,
+    readonly keyManager: KeyManager,
+    readonly contractInteractor: ContractInteractor,
+    readonly hubAddress: PrefixedHexString,
+    readonly baseRelayFee: number|undefined,
+    readonly pctRelayFee: number|undefined,
+    readonly gasPriceFactor: number,
+    readonly url?: string,
+    readonly workerMinBalance = defaultWorkerMinBalance,
+    readonly workerTargetBalance = defaultWorkerTargetBalance,
+    readonly devMode = false,
+    readonly Debug = false,
+    readonly web3 = new Web3(web3provider)
+  ) {}
+}
 export class RelayServer extends EventEmitter {
   private lastScannedBlock = 0
   private ready = false
@@ -115,33 +133,45 @@ export class RelayServer extends EventEmitter {
   private unstakeDelay: BN | undefined | string;
   private withdrawBlock: BN | undefined | string;
   private authorizedHub = false
+  readonly txStoreManager: TxStoreManager;
+  private readonly web3provider: provider;
+  private readonly keyManager: KeyManager;
+  private readonly contractInteractor: ContractInteractor;
+  private readonly hubAddress: PrefixedHexString;
+  private readonly baseRelayFee: number;
+  private readonly pctRelayFee: number;
+  private readonly gasPriceFactor: number;
+  private readonly url: string;
+  private readonly workerMinBalance: number;
+  private readonly workerTargetBalance: number;
+  private readonly devMode: boolean;
+  private readonly web3: Web3;
 
-  constructor (readonly txStoreManager: TxStoreManager,
-    readonly keyManager: KeyManager,
-    readonly contractInteractor: ContractInteractor,
-    readonly hubAddress: PrefixedHexString,
-    readonly url: string | null, //= 'http://localhost:8090',
-    readonly baseRelayFee: number,
-    readonly pctRelayFee: number,
-    readonly gasPriceFactor: number,
-    readonly web3provider: provider,
-    readonly workerMinBalance = defaultWorkerMinBalance,
-    readonly workerTargetBalance = defaultWorkerTargetBalance,
-    readonly devMode = false,
-    readonly Debug = false,
-    readonly web3 = new Web3(web3provider)
-  ) {
+  constructor (params: RelayServerParams) {
     super()
+    this.txStoreManager = params.txStoreManager
+    this.web3provider = params.web3provider
+    this.keyManager = params.keyManager
+    this.hubAddress = params.hubAddress
+    this.baseRelayFee = params.baseRelayFee ?? 0
+    this.pctRelayFee = params.pctRelayFee ?? 0
+    this.gasPriceFactor = params.gasPriceFactor
+    this.url = params.url ?? 'http://localhost:8090'
+    this.workerMinBalance = params.workerMinBalance
+    this.workerTargetBalance = params.workerTargetBalance
+    this.devMode = params.devMode
+    this.web3 = params.web3 ?? new Web3(this.web3provider)
+    this.contractInteractor = params.contractInteractor ?? new ContractInteractor(this.web3provider,configureGSN({}) )
 
-    DEBUG = Debug
+    DEBUG = params.Debug
 
     // todo: initialize nonces for all signers (currently one manager, one worker)
     this.nonces = { 0: 0, 1: 0 }
 
     this.keyManager.generateKeys(2)
-    this.managerAddress = keyManager.getAddress(0)
+    this.managerAddress = this.keyManager.getAddress(0)
 
-    debug('gasPriceFactor', gasPriceFactor)
+    debug('gasPriceFactor', this.gasPriceFactor)
   }
 
   getManagerAddress (): PrefixedHexString {
@@ -179,7 +209,7 @@ export class RelayServer extends EventEmitter {
     ow(req.approvalData, ow.string)
     ow(req.signature, ow.string)
 
-    // Check that the relayhub is the correct one
+    // Check that the relayHub is the correct one
     if (req.relayHubAddress !== this.relayHubContract?.address) {
       throw new Error(
                 `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract?.address}, request's hub address: ${req.relayHubAddress}\n`)
@@ -318,6 +348,7 @@ export class RelayServer extends EventEmitter {
       if (error != null) {
         console.error('web3 subscription:', error)
       }
+      console.log('successfully registered', result)
     }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => {
       console.error('worker:', e)
     })
@@ -330,15 +361,10 @@ export class RelayServer extends EventEmitter {
     }, 1)
   }
 
-  stop (): void {
+  async stop (): Promise<void> {
     // @ts-ignore
-    this.subscription.unsubscribe(function (error, success) {
-      if (error != null) {
-        throw error
-      }
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-      console.log('Successfully unsubscribed!' + success)
-    })
+    await this.subscription.unsubscribe()
+    console.log('Successfully unsubscribed!')
   }
 
   _workerSemaphore (blockHeader: BlockHeader): void {
@@ -421,7 +447,7 @@ export class RelayServer extends EventEmitter {
         await this.refreshBalance()
       } else {
         console.log(
-                    `== replenishWorker: can't replenish: mgr balance too low ${this.balance.toNumber() / 1e18} refil=${refill.toNumber() / 1e18}`)
+                    `== replenishWorker: can't replenish: mgr balance too low ${this.balance.toNumber() / 1e18} refill=${refill.toNumber() / 1e18}`)
       }
     }
   }

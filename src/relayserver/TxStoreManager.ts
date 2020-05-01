@@ -1,8 +1,19 @@
-import ethUtils from 'ethereumjs-util'
+import * as ethUtils from 'ethereumjs-util'
 import ow from 'ow'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import AsyncNedb from 'nedb-async'
 const Nedb = require('nedb-async').AsyncNedb
+
+interface StoredParams {
+  from: Buffer
+  to: Buffer
+  gas: Buffer
+  gasPrice: Buffer
+  data: Buffer
+  nonce: Buffer
+  txId: string
+  attempts: number
+}
 
 export class StoredTx {
   readonly from: PrefixedHexString
@@ -14,18 +25,18 @@ export class StoredTx {
   readonly txId: PrefixedHexString
   readonly attempts: number
 
-  constructor (from: Buffer, to: Buffer, gas: Buffer, gasPrice: Buffer, data: Buffer, nonce: Buffer, txId: string, attempts: number) {
+  constructor (params: StoredParams) {
     // Object.keys(tx).forEach(key => {
     //   this[key] = ethUtils.bufferToHex(tx[key])
     // })
-    this.from = ethUtils.bufferToHex(from)
-    this.to = ethUtils.bufferToHex(to)
-    this.gas = ethUtils.bufferToInt(gas)
-    this.gasPrice = ethUtils.bufferToInt(gasPrice)
-    this.data = ethUtils.bufferToHex(data)
-    this.nonce = ethUtils.bufferToInt(nonce)
-    this.txId = txId
-    this.attempts = attempts
+    this.from = ethUtils.bufferToHex(params.from)
+    this.to = ethUtils.bufferToHex(params.to)
+    this.gas = ethUtils.bufferToInt(params.gas)
+    this.gasPrice = ethUtils.bufferToInt(params.gasPrice)
+    this.data = ethUtils.bufferToHex(params.data)
+    this.nonce = ethUtils.bufferToInt(params.nonce)
+    this.txId = params.txId
+    this.attempts = params.attempts
   }
 }
 
