@@ -1,3 +1,5 @@
-export * from './src/relayclient/RelayProvider'
-export * from './src/relayclient/GsnDevProvider'
-export * from './src/relayclient/GSNConfigurator'
+export * from './RelayProvider'
+export * from './RelayClient'
+
+//not included: clients should ask for it explicitly (require '@opengsn/gsn/dist/GsnDevProvider')
+//export * from './GsDevProvider'
