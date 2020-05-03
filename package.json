@@ -155,7 +155,8 @@
     "scripts/gsn*",
     "webtools.webpack.js",
     "helpers/",
-    "dist/src"
+    "dist/src",
+    "dist/*.*"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts"

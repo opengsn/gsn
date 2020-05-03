@@ -20,3 +20,8 @@ serverdock/
 /dist/
 cache
 /helpers/compiled/
+/opengsn-gsn-*.tgz
+/GsnDevProvider.ts
+/RelayClient.ts
+/RelayProvider.ts
+/GSNConfigurator.ts
