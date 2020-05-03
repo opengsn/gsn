@@ -26,9 +26,7 @@
     }
   ],
   "bin": {
-    "gsn-stat": "./helpers/gsn-stat.js",
-    "gsn": "./helpers/gsn.js",
-    "gsn-run-relay": "./src/relayserver/runServer.js"
+    "gsn": "dist/src/cli/commands/gsn.js"
   },
   "prepublish": "npm run prepare",
   "scripts": {
@@ -42,7 +40,7 @@
     "webtools": "webpack-cli --config ./webtools.webpack.js && http-server webtools/ -o",
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:fix": "yarn run lint:js:fix",
-    "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore src test scripts helpers",
+    "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore src test scripts",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "lint:js:fix": "eslint --ext .js,.ts --cache  -f unix --ignore-path .gitignore src test scripts helpers --fix",
     "web": "./restart-relay.sh web",
@@ -57,8 +55,12 @@
   },
   "dependencies": {
     "@0x/contracts-utils": "4.4.3",
+    "@openzeppelin/test-helpers": "0.5.5",
     "@truffle/contract": "4.1.13",
+    "@truffle/hdwallet-provider": "1.0.34",
     "@types/chai-as-promised": "^7.1.2",
+    "@types/lodash": "^4.14.150",
+    "@types/request-promise": "^4.1.46",
     "abi-decoder": "2.2.2",
     "async-mutex": "^0.2.1",
     "axios": "0.18.1",
@@ -79,7 +81,6 @@
     "patch-package": "6.2.1",
     "postinstall-postinstall": "2.0.0",
     "request-promise": "4.2.2",
-    "truffle-hdwallet-provider": "1.0.17",
     "web3": "1.2.6",
     "web3-core": "1.2.6",
     "web3-core-helpers": "1.2.6",
@@ -96,7 +97,6 @@
     "@0x/subproviders": "4.1.0",
     "@0x/typescript-typings": "5.0.2",
     "@openeth/truffle-typings": "0.0.5",
-    "@openzeppelin/test-helpers": "0.5.5",
     "@truffle-types/abi-decoder": "^0.1.1",
     "@types/big.js": "4.0.5",
     "@types/bignumber.js": "5.0.0",
