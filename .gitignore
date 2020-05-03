@@ -19,4 +19,4 @@ node_modules
 serverdock/
 /dist/
 cache
-/helpers/compiled/
+/src/cli/compiled/

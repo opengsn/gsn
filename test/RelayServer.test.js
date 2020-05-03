@@ -149,7 +149,7 @@ contract('RelayServer', function (accounts) {
     assert.equal(decodedLogs[0].args.relayManager.toLowerCase(), relayServer.getManagerAddress().toLowerCase())
     assert.equal(decodedLogs[0].args.baseRelayFee, relayServer.baseRelayFee)
     assert.equal(decodedLogs[0].args.pctRelayFee, relayServer.pctRelayFee)
-    assert.equal(decodedLogs[0].args.url, relayServer.url)
+    assert.equal(decodedLogs[0].args.relayUrl, relayServer.url)
   }
 
   async function relayTransaction (options, badArgs) {

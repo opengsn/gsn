@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// TODO: convert to 'commander' format
 const fs = require('fs')
 const parseArgs = require('minimist')
 const Web3 = require('web3')

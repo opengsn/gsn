@@ -1,1 +1,0 @@
-require('../src/relayserver/runServer')
