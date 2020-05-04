@@ -27,7 +27,7 @@ contract('GsnTestEnvironment', function () {
     })
   })
 
-  context('just with DevRelayClient', () => {
+  context('using RelayClient', () => {
     let sender: string
     let testEnvironment: TestEnvironment
     let relayClient: RelayClient
@@ -56,7 +56,7 @@ contract('GsnTestEnvironment', function () {
     })
   })
 
-  context('using GsnDevProvider', () => {
+  context('using RelayProvider', () => {
     let sender: string
     let testEnvironment: TestEnvironment
     before(async function () {
@@ -68,7 +68,7 @@ contract('GsnTestEnvironment', function () {
       await GsnTestEnvironment.stopGsn()
     })
 
-    it('should send relayed transaction through devProvider', async () => {
+    it('should send relayed transaction through RelayProvider', async () => {
       const txDetails = {
         from: sender,
         paymaster: testEnvironment.deploymentResult.paymasterAddress,
