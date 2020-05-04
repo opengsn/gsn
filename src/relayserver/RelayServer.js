@@ -24,7 +24,7 @@ abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
 
-const VERSION = '0.0.1'
+const VERSION = '0.8.5'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
@@ -373,6 +373,16 @@ class RelayServer extends EventEmitter {
     }
   }
 
+  _validateConnection () {
+    if (this._watchdog) {
+      clearTimeout(this._watchdog)
+    }
+    this._watchdog = setTimeout(() => this.fatal('timed-out node connection'), 30000)
+    if (!this.web3provider.connected) {
+      this.fatal('lost node connection')
+    }
+  }
+
   async _worker (blockHeader) {
     try {
       if (!this.initialized) {
@@ -383,6 +393,9 @@ class RelayServer extends EventEmitter {
       if (!this.gasPrice) {
         throw new StateError('Could not get gasPrice from node')
       }
+
+      this._validateConnection()
+
       await this.refreshBalance()
       if (!this.balance || this.balance.lt(toBN(minimumRelayBalance))) {
         throw new StateError(
@@ -428,7 +441,7 @@ class RelayServer extends EventEmitter {
         throw new StateError('Not registered yet...')
       }
       this.lastScannedBlock = parseInt(blockHeader.number)
-      if (!this.state) {
+      if (!this.ready) {
         console.log('Relay is Ready.')
       }
       this.ready = true
