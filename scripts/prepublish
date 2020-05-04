@@ -15,7 +15,7 @@ for c in $CONTRACTS; do
 done
 
 
-for c in GsnDevProvider RelayProvider RelayClient GSNConfigurator; do
+for c in RelayProvider RelayClient GSNConfigurator; do
   echo gen ./$c.ts:
   (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
 done
