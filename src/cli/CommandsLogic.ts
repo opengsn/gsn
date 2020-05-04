@@ -29,8 +29,8 @@ interface CompiledContract {
 
 interface RegisterOptions {
   from: Address
-  stake: string
-  funds: string
+  stake: string | BN
+  funds: string | BN
   relayUrl: string
   unstakeDelay: string
 }
@@ -43,7 +43,7 @@ export interface DeploymentResult {
   paymasterAddress: Address
 }
 
-interface FundingResult {
+interface RegistrationResult {
   success: boolean
   transactions?: string[]
   error?: string
@@ -93,8 +93,12 @@ export default class CommandsLogic {
 
     for (let i = 0; i < timeout; ++i) {
       await sleep(1000)
-
-      const isReady = await this.isRelayReady(relayUrl)
+      let isReady = false
+      try {
+        isReady = await this.isRelayReady(relayUrl)
+      } catch (e) {
+        console.log(e)
+      }
       if (isReady) {
         return
       }
@@ -138,7 +142,7 @@ export default class CommandsLogic {
     }
   }
 
-  async registerRelay (options: RegisterOptions): Promise<FundingResult> {
+  async registerRelay (options: RegisterOptions): Promise<RegistrationResult> {
     try {
       if (await this.isRelayReady(options.relayUrl)) {
         return {
@@ -231,6 +235,12 @@ export default class CommandsLogic {
       gas: 1e6,
       gasPrice: 1e9
     })
+
+    // Overriding saved configuration with newly deployed instances
+    this.config.paymasterAddress = pmInstance.options.address
+    this.config.stakeManagerAddress = sInstance.options.address
+    this.config.relayHubAddress = rInstance.options.address
+
     return {
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,

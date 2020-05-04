@@ -22,8 +22,9 @@ export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) =>
 export class RelayProvider implements HttpProvider {
   private readonly origProvider: HttpProvider
   private readonly origProviderSend: any
-  private readonly relayClient: RelayClient
   private readonly config: GSNConfig
+
+  readonly relayClient: RelayClient
 
   /**
    * create a proxy provider, to relay transaction
