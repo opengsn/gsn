@@ -2,7 +2,7 @@
 import commander, { CommanderStatic } from 'commander'
 import fs from 'fs'
 
-const networks = new Map<string, string>([
+export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
   ['xdai', 'https://dai.poa.network'],
   ['ropsten', 'https://ropsten.infura.io/v3/c3422181d0594697a38defe7706a1e5b'],
@@ -16,15 +16,22 @@ export function getNetworkUrl (network: string): string {
   return networks.get(network) ?? match[0]
 }
 
+export function getPaymasterAddress (paymaster?: string): string | undefined {
+  return getAddressFromFile('build/gsn/Paymaster.json', paymaster)
+}
+
 export function getRelayHubAddress (hub?: string): string | undefined {
-  if (hub == null) {
-    const relayHubDeployedPath = 'build/gsn/RelayHub.json'
-    if (fs.existsSync(relayHubDeployedPath)) {
-      const relayHubDeployInfo = fs.readFileSync(relayHubDeployedPath).toString()
+  return getAddressFromFile('build/gsn/RelayHub.json', hub)
+}
+
+function getAddressFromFile (path: string, input?: string): string | undefined {
+  if (input == null) {
+    if (fs.existsSync(path)) {
+      const relayHubDeployInfo = fs.readFileSync(path).toString()
       return JSON.parse(relayHubDeployInfo).address
     }
   }
-  return hub
+  return input
 }
 
 type GsnOption = 'n' | 'f' | 'h'

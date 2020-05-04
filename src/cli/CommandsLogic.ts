@@ -35,7 +35,7 @@ interface RegisterOptions {
   unstakeDelay: string
 }
 
-interface DeploymentResult {
+export interface DeploymentResult {
   relayHubAddress: Address
   stakeManagerAddress: Address
   penalizerAddress: Address
@@ -112,6 +112,14 @@ export default class CommandsLogic {
     return relayHub.balanceOf(paymaster)
   }
 
+  /**
+   * Send enough ether from the {@param from} to the RelayHub to make {@param paymaster}'s gas deposit exactly {@param amount}.
+   * Does nothing if current paymaster balance exceeds amount.
+   * @param from
+   * @param paymaster
+   * @param amount
+   * @return deposit of the paymaster after
+   */
   async fundPaymaster (
     from: Address, paymaster: Address, amount: string | BN
   ): Promise<BN> {
