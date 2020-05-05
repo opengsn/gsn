@@ -15,7 +15,7 @@ gsnCommander(['n', 'f'])
   const logic = new CommandsLogic(nodeURL, configureGSN({}))
   const from = commander.from ?? await logic.findWealthyAccount()
 
-  const deploymentResult = await logic.deployRelayHub(from)
+  const deploymentResult = await logic.deployGsnContracts(from)
   const paymasterName = 'Default'
 
   console.log(

@@ -40,7 +40,7 @@ class GsnTestEnvironmentClass {
     if (from == null) {
       throw new Error('could not get unlocked account with sufficient balance')
     }
-    const deploymentResult = await commandsLogic.deployRelayHub(from, undefined, paymaster)
+    const deploymentResult = await commandsLogic.deployGsnContracts(from, undefined, paymaster)
     const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
     console.log('Sample Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
 

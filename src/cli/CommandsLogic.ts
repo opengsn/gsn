@@ -22,11 +22,6 @@ import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
 
-interface CompiledContract {
-  abi: any
-  bytecode: string
-}
-
 interface RegisterOptions {
   from: Address
   stake: string | BN
@@ -77,8 +72,7 @@ export default class CommandsLogic {
         }
       }
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw Error(`Failed to retrieve accounts and balances: ${error}`)
+      console.error('Failed to retrieve accounts and balances:', error)
     }
   }
 
@@ -92,7 +86,6 @@ export default class CommandsLogic {
     console.error(`Will wait up to ${timeout}s for the relay to be ready`)
 
     for (let i = 0; i < timeout; ++i) {
-      await sleep(1000)
       let isReady = false
       try {
         isReady = await this.isRelayReady(relayUrl)
@@ -102,6 +95,7 @@ export default class CommandsLogic {
       if (isReady) {
         return
       }
+      await sleep(1000)
     }
     throw Error(`Relay not ready after ${timeout}s`)
   }
@@ -207,11 +201,11 @@ export default class CommandsLogic {
     }
   }
 
-  contract (file: CompiledContract): Contract {
+  contract (file: any): Contract {
     return new this.web3.eth.Contract(file.abi, undefined, { data: file.bytecode })
   }
 
-  async deployRelayHub (from: Address, gasPrice?: string, paymaster?: CompiledContract): Promise<DeploymentResult> {
+  async deployGsnContracts (from: Address, gasPrice?: string, paymaster?: any): Promise<DeploymentResult> {
     const options = {
       from,
       gas: 1e6,
