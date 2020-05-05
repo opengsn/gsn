@@ -1,5 +1,5 @@
 import Web3 from 'web3'
-import { provider, TransactionReceipt } from 'web3-core'
+import { Log, provider, TransactionReceipt } from 'web3-core'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 
@@ -219,6 +219,22 @@ export default class ContractInteractor {
       topics.push(extraTopics)
     }
     return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
+  }
+
+  async getPastLogs (eventName: EventName, options: PastEventOptions): Promise<Log[]> {
+    // @ts-ignore
+    const hubContract = new this.web3.eth.Contract(relayHubAbi)
+    const eventTopic = event2topic(hubContract, eventName)
+    return this.web3.eth.getPastLogs(
+      {
+        ...options,
+        topics: [eventTopic]
+      }
+    )
+  }
+
+  async getBalance (address: Address): Promise<string> {
+    return this.web3.eth.getBalance(address)
   }
 
   async getBlockNumber (): Promise<number> {

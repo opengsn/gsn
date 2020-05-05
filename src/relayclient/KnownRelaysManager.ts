@@ -92,13 +92,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     mergedEvents.forEach(event => {
       const args = event.returnValues
       if (event.event === RelayServerRegistered) {
-        const relay = {
-          relayManager: args.relayManager,
-          relayUrl: args.url,
-          baseRelayFee: args.baseRelayFee,
-          pctRelayFee: args.pctRelayFee
-        }
-        activeRelays.set(args.relayManager, relay)
+        activeRelays.set(args.relayManager, args as RelayRegisteredEventInfo)
       } else {
         activeRelays.delete(args.relayManager)
       }

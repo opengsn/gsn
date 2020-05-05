@@ -1,0 +1,24 @@
+diff --git a/node_modules/@truffle/hdwallet-provider/dist/index.d.ts b/node_modules/@truffle/hdwallet-provider/dist/index.d.ts
+index c168914..308f41c 100644
+--- a/node_modules/@truffle/hdwallet-provider/dist/index.d.ts
++++ b/node_modules/@truffle/hdwallet-provider/dist/index.d.ts
+@@ -1,7 +1,7 @@
+ import "source-map-support/register";
+ import ProviderEngine from "web3-provider-engine";
+ import { JSONRPCRequestPayload, JSONRPCErrorCallback } from "ethereum-protocol";
+-import { Callback, JsonRPCResponse } from "web3/providers";
++
+ declare class HDWalletProvider {
+     private hdwallet?;
+     private walletHdpath;
+@@ -9,8 +9,8 @@ declare class HDWalletProvider {
+     private addresses;
+     engine: ProviderEngine;
+     constructor(mnemonic: string | string[], provider: string | any, addressIndex?: number, numAddresses?: number, shareNonce?: boolean, walletHdpath?: string);
+-    send(payload: JSONRPCRequestPayload, callback: JSONRPCErrorCallback | Callback<JsonRPCResponse>): void;
+-    sendAsync(payload: JSONRPCRequestPayload, callback: JSONRPCErrorCallback | Callback<JsonRPCResponse>): void;
++    send(payload: JSONRPCRequestPayload, callback: JSONRPCErrorCallback): void;
++    sendAsync(payload: JSONRPCRequestPayload, callback: JSONRPCErrorCallback): void;
+     getAddress(idx?: number): string;
+     getAddresses(): string[];
+     static isValidProvider(provider: string | any): boolean;

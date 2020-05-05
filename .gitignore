@@ -19,7 +19,7 @@ node_modules
 serverdock/
 /dist/
 cache
-/helpers/compiled/
+/src/cli/compiled/
 /opengsn-gsn-*.tgz
 /GsnDevProvider.ts
 /RelayClient.ts

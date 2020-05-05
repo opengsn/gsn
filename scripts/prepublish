@@ -4,18 +4,18 @@ rm -rf ./dist/
 yarn extract_abi
 yarn generate
 
-mkdir -p helpers/compiled/
+mkdir -p src/cli/compiled/
 
 CONTRACTS="RelayHub StakeManager Penalizer TrustedForwarder TestPaymasterEverythingAccepted"
 BUILDFOLDER=./build/contracts
-OUTFOLDER=./helpers/compiled
+OUTFOLDER=./src/cli/compiled/
 for c in $CONTRACTS; do
   echo copy $OUTFOLDER/$c.json
   cp $BUILDFOLDER/$c.json $OUTFOLDER
 done
 
 
-for c in GsnDevProvider RelayProvider RelayClient GSNConfigurator; do
+for c in RelayProvider RelayClient GSNConfigurator; do
   echo gen ./$c.ts:
   (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
 done

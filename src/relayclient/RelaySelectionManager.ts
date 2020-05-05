@@ -63,7 +63,7 @@ export default class RelaySelectionManager {
       if (isInfoFromEvent(raceResult.winner.relayInfo)) {
         return (raceResult.winner as RelayInfo)
       } else {
-        const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([raceResult.winner.pingResponse.RelayServerAddress]))
+        const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([raceResult.winner.pingResponse.RelayManagerAddress]))
         if (events.length === 1) {
           return {
             pingResponse: raceResult.winner.pingResponse,
