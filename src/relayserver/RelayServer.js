@@ -374,6 +374,9 @@ class RelayServer extends EventEmitter {
   }
 
   _validateConnection () {
+    if (this.devMode) {
+      return
+    }
     if (this._watchdog) {
       clearTimeout(this._watchdog)
     }
