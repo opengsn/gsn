@@ -6,7 +6,7 @@ module.exports = {
   plugins: [
     //      new BundleAnalyzerPlugin()
 	new IgnorePlugin(/electron/),
-	new IgnorePlugin(/Release/)
+	new IgnorePlugin(/^scrypt$/),
   ],
   target: 'node',
   entry: '../src/relayserver/runServer.js',
