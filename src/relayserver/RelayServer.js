@@ -297,6 +297,7 @@ class RelayServer extends EventEmitter {
         throw error
       }
     })
+    if (this._watchdog) { clearTimeout(this._watchdog) }
   }
 
   _workerSemaphore (blockHeader) {
