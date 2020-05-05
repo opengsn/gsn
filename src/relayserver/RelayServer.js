@@ -452,11 +452,11 @@ class RelayServer extends EventEmitter {
       await this._resendUnconfirmedTransactions(blockHeader)
       return receipt
     } catch (e) {
+      this.ready = false
       if (e instanceof StateError) {
         if (e.message !== this.lastError) {
           this.lastError = e.message
           console.log('worker: ', this.lastError)
-          this.ready = false
         }
       } else {
         this.emit('error', e)
