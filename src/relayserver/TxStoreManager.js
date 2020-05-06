@@ -78,7 +78,7 @@ class TxStoreManager {
     return this.txstore.asyncRemove({
       $and: [
         { 'nonceSigner.nonce': nonce },
-        { 'nonceSigner.signer': signer }]
+        { 'nonceSigner.signer': signer.toLowerCase() }]
     }, { multi: true })
   }
 

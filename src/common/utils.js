@@ -2,7 +2,13 @@ const ethUtils = require('ethereumjs-util')
 const web3Utils = require('web3-utils')
 
 const abi = require('web3-eth-abi')
+
+const { default: Common } = require('ethereumjs-common')
+
 function removeHexPrefix (hex) {
+  if (hex == null || typeof hex.replace !== 'function') {
+    throw new Error('Cannot remove hex prefix')
+  }
   return hex.replace(/^0x/, '')
 }
 
@@ -25,6 +31,7 @@ function event2topic (contract, names) {
     .filter(e => names.includes(e.name))
     .map(abi.encodeEventSignature)
 }
+
 module.exports = {
   event2topic,
 
@@ -40,7 +47,13 @@ module.exports = {
       dataToSign = JSON.stringify(dataToSign)
     }
     return new Promise((resolve, reject) => {
-      web3.currentProvider.send({
+      let method
+      if (typeof web3.currentProvider.sendAsync === 'function') {
+        method = web3.currentProvider.sendAsync
+      } else {
+        method = web3.currentProvider.send
+      }
+      method.bind(web3.currentProvider)({
         method: 'eth_signTypedData' + methodSuffix,
         params: [senderAddress, dataToSign],
         from: senderAddress,
@@ -157,5 +170,23 @@ module.exports = {
 
   sleep: function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
+  },
+
+  /**
+   * Ganache does not seem to enforce EIP-155 signature. Buidler does, though.
+   * This is how {@link Transaction} constructor allows support for custom and private network.
+   * @param chainId
+   * @param networkId
+   * @return {{common: Common}}
+   */
+  getRawTxOptions (chainId, networkId) {
+    return {
+      common: Common.forCustomChain(
+        'mainnet',
+        {
+          chainId,
+          networkId
+        }, 'istanbul')
+    }
   }
 }

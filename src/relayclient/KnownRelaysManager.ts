@@ -75,7 +75,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock: 1 })
 
     if (this.config.verbose) {
-      console.log(`== fetchRelaysAdded: found ${relayServerRegisteredEvents.length} unique RelayAdded events (should have at least as unique relays, above)`)
+      console.log(`== fetchRelaysAdded: found ${relayServerRegisteredEvents.length} unique RelayAdded events`)
     }
 
     const mergedEvents = [...relayManagerExitEvents, ...relayServerRegisteredEvents].sort((a, b) => {
@@ -123,7 +123,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     })
 
     if (this.config.verbose) {
-      console.log('fetchRelaysAdded: found', Object.keys(foundRelayManagers).length, 'unique relays')
+      console.log('fetchRelaysAdded: found unique relays:', foundRelayManagers)
     }
     this.latestScannedBlock = toBlock
     return foundRelayManagers
