@@ -647,7 +647,7 @@ class RelayServer extends EventEmitter {
       const confirmations = blockHeader.number - txBlockNumber
       if (confirmations >= confirmationsNeeded) {
         debug(`removing tx number ${receipt.nonce} sent by ${receipt.from} with ${confirmations} confirmations`)
-        await this.txStoreManager.removeTxByNonce({
+        await this.txStoreManager.removeTxsUntilNonce({
           signer: receipt.from,
           nonce: receipt.nonce
         })
