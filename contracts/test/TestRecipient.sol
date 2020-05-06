@@ -1,5 +1,5 @@
 /* solhint-disable avoid-tx-origin */
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 
 import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
@@ -26,7 +26,7 @@ contract TestRecipient is BaseRelayRecipient {
         paymaster = _paymaster;
     }
 
-    function() external payable {}
+    receive() external payable {}
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin);
 

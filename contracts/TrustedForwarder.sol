@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./utils/GSNTypes.sol";
@@ -16,20 +16,20 @@ contract TrustedForwarder is ITrustedForwarder {
         eip712sig = new EIP712Sig(address(this));
     }
 
-    function getNonce(address from) external view returns (uint256) {
+    function getNonce(address from) external override view returns (uint256) {
         return nonces[from];
     }
 
-    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) public view {
+    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) public override view {
         _verify(req, sig);
     }
 
-    function verifyAndCall(GSNTypes.RelayRequest memory req, bytes memory sig) public returns (bool success, bytes memory ret) {
+    function verifyAndCall(GSNTypes.RelayRequest memory req, bytes memory sig) public override returns (bool success, bytes memory ret) {
         _verify(req, sig);
         _updateNonce(req);
 
-        return req.target.call.gas(req.gasData.gasLimit)
-        (abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
+        return req.target.call{gas:req.gasData.gasLimit}
+            (abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
     }
 
     function _verify(GSNTypes.RelayRequest memory req, bytes memory sig) internal view {

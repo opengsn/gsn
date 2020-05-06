@@ -1,7 +1,7 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/access/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./IUniswap.sol";
 import "../BasePaymaster.sol";
@@ -45,7 +45,7 @@ contract TokenPaymaster is BasePaymaster {
     }
 
     event Received(uint eth);
-    function() external payable {
+    receive() external override payable {
         emit Received(msg.value);
     }
 
@@ -62,8 +62,8 @@ contract TokenPaymaster is BasePaymaster {
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
-    view
+    external override
+view
     returns (bytes memory context) {
         (approvalData);
         address payer = this.getPayer(relayRequest);
@@ -76,7 +76,7 @@ contract TokenPaymaster is BasePaymaster {
         return abi.encode(payer, tokenPreCharge);
     }
 
-    function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
+    function preRelayedCall(bytes calldata context) external override relayHubOnly returns (bytes32) {
         (address payer, uint tokenPrecharge) = abi.decode(context, (address, uint));
 
         if (tokenPrecharge != 0) {
@@ -91,7 +91,7 @@ contract TokenPaymaster is BasePaymaster {
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GSNTypes.GasData calldata gasData
-    ) external relayHubOnly {
+    ) external override relayHubOnly {
         (success, preRetVal);
 
         (address payer, uint tokenPrecharge) = abi.decode(context, (address, uint));

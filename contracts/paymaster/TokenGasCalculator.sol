@@ -1,7 +1,7 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/access/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./TokenPaymaster.sol";
 import "../RelayHub.sol";
@@ -11,12 +11,12 @@ import "../RelayHub.sol";
  * Calculate the postRelayedCall gas usage for a TokenPaymaster.
  *
  */
-contract TokenGasCalculator is RelayHub, Ownable {
+contract TokenGasCalculator is Ownable {
 
     //(The Paymaster calls back calculateCharge, deposotFor in the relayHub,
     //so the calculator has to implement them just like a real RelayHub
     // solhint-disable-next-line no-empty-blocks
-    constructor(uint256 _gtxdatanonzero, StakeManager _stakeManager, Penalizer _penalizer) public RelayHub(_gtxdatanonzero, _stakeManager, _penalizer) {}
+    constructor(uint256 _gtxdatanonzero, StakeManager _stakeManager, Penalizer _penalizer) public {}
 
     /**
      * calculate actual cost of postRelayedCall.
@@ -61,7 +61,7 @@ contract TokenGasCalculator is RelayHub, Ownable {
     }
 
     //called by postRelayedCall. copied from RelayHub
-    function calculateCharge(uint256 gasUsed, GSNTypes.GasData memory gasData) public view returns (uint256) {
+    function calculateCharge(uint256 gasUsed, GSNTypes.GasData memory gasData) public pure returns (uint256) {
         return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
     }
 

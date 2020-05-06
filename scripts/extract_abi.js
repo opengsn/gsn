@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-// TODO !!! This is an ad-hoc modified version of extract-abi. This script is to be replaced ASAP.
+// extract ABI from truffle-compiled files
 
-const solc = require('solc')
 const fs = require('fs')
 const path = require('path')
 
@@ -74,8 +73,7 @@ function compileFile (contractFile, c) {
 fs.readdirSync(contractsFolderToExtract).forEach(file => {
   const c = 'interfaces/' + file.replace(/.sol/, '')
 
-  const contractFile = contractsFolder + '/' + c + '.sol'
-  const outNodeFile = outAbiFolder + '/' + c + '.js'
+  const outNodeFile = outAbiFolder + '/' + c + '.json'
   // const outAbiFile = outAbiFolder + '/' + c + '.json'
   // const outBinFile = outAbiFolder + '/' + c + '.bin'
   // TODO: Cannot depend on timestamps when working with interdependent contracts
@@ -90,26 +88,9 @@ fs.readdirSync(contractsFolderToExtract).forEach(file => {
         console.log(e);
     }
     */
-  const { abi } = compileFile(contractFile, c)
-
-  createDirectories(outNodeFile, function () {
-    // fs.writeFileSync(outAbiFile, abi)
-    fs.writeFileSync(outNodeFile, 'module.exports=' + abi)
-    // fs.writeFileSync(outBinFile, binary)
-    // console.log('written "' + outAbiFile + '"')
-    console.log('written "' + outNodeFile + '"')
-    // console.log('written "' + outBinFile + '"')
-  })
+  const jsonFile = `./build/contracts/${c.replace(/interfaces./, '')}.json`
+  const abiStr = JSON.parse(fs.readFileSync(jsonFile, { encoding: 'ascii' }))
+  fs.mkdirSync(path.dirname(outNodeFile), { recursive: true })
+  fs.writeFileSync(outNodeFile, JSON.stringify(abiStr.abi))
+  console.log('written "' + outNodeFile + '"')
 })
-
-function createDirectories (pathname, callback) {
-  const __dirname = path.resolve()
-  // eslint-disable-next-line no-useless-escape
-  pathname = pathname.replace(/^\.*\/|\/?[^\/]+\.[a-z]+|\/$/g, '') // Remove leading directory markers, and remove ending /file-name.extension
-  fs.mkdir(path.resolve(__dirname, pathname), { recursive: true }, e => {
-    if (e) {
-      console.error(e)
-    }
-    callback(e)
-  })
-}

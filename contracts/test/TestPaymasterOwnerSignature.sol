@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
@@ -16,7 +16,7 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
         bytes calldata approvalData,
         uint256 maxPossibleCharge
     )
-    external
+    external override
     view
     returns (bytes memory) {
         (maxPossibleCharge);

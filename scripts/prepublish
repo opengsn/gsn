@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
 rm -rf ./dist/
-yarn extract_abi
 yarn generate
+yarn extract_abi
 
 mkdir -p src/cli/compiled/
 

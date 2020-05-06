@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 import "../../contracts/BaseRelayRecipient.sol";
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 
@@ -10,7 +10,7 @@ contract PayableWithEmit is BaseRelayRecipient {
 
   event Received(address sender, uint value, uint gasleft);
 
-  function () external payable {
+  receive () external payable {
 
     emit Received(_msgSender(), msg.value, gasleft());
   }

@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./TestPaymasterEverythingAccepted.sol";
@@ -39,7 +39,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    external override
     view
     returns (bytes memory) {
         return abi.encode(
@@ -55,7 +55,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
             maxPossibleGas);
     }
 
-    function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
+    function preRelayedCall(bytes calldata context) external override relayHubOnly returns (bytes32) {
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 baseRelayFee, uint256 pctRelayFee, uint256 gasPrice, uint256 gasLimit,
@@ -74,7 +74,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         uint256 gasUseWithoutPost,
         GSNTypes.GasData calldata gasData
     )
-    external
+    external override
     relayHubOnly
     {
         (context, success, preRetVal, gasUseWithoutPost, gasData);

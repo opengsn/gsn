@@ -1,11 +1,14 @@
 /* solhint-disable avoid-tx-origin */
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 
 import "../BaseRelayRecipient.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/access/Ownable.sol";
 
-contract TestProxy is Ownable, BaseRelayRecipient {
+contract TestProxy is BaseRelayRecipient, Ownable  {
 
+    function _msgSender() internal override(Context, BaseRelayRecipient) view returns (address payable) {
+        return BaseRelayRecipient._msgSender();
+    }
     constructor(address forwarder) public {
         trustedForwarder = forwarder;
     }

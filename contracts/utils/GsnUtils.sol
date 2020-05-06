@@ -1,5 +1,5 @@
 /* solhint-disable no-inline-assembly */
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 
 import "@0x/contracts-utils/contracts/src/LibBytes.sol";
 

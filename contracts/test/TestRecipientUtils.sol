@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 
 import "../utils/GsnUtils.sol";
 import "../interfaces/IRelayHub.sol";
@@ -10,7 +10,7 @@ contract TestRecipientUtils {
         emit Unused();  //just to avoid warnings..
     }
 
-    function() external payable {}
+    receive() external payable {}
 
     /****** these methods are internal in 'GsnUtils' and cannot be accessed from JS *******/
 

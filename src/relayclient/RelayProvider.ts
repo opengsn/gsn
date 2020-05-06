@@ -3,7 +3,7 @@ import abiDecoder from 'abi-decoder'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpProvider } from 'web3-core'
 
-import relayHubAbi from '../common/interfaces/IRelayHub'
+import relayHubAbi from '../common/interfaces/IRelayHub.json'
 import RelayClient, { RelayingResult } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
