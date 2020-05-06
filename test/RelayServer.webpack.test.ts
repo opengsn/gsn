@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs'
 
 describe('RelayServer-webpack', () => {
-  let oneFileRelayer
+  let oneFileRelayer: string
   before('create webpack', function () {
     this.timeout(5000)
     const jsrelayDir = path.join(__dirname, '..', 'jsrelay')
@@ -12,9 +12,9 @@ describe('RelayServer-webpack', () => {
     oneFileRelayer = path.join(jsrelayDir, 'dist', 'relayserver.js')
   })
 
-  it('should launch (and say "missing address") to veirfy it was packed ok', () => {
+  it('should launch (and say "missing address") to verify it was packed ok', () => {
     try {
-      childProcess.execSync('node ' + oneFileRelayer, { encoding: 'ascii' })
+      childProcess.execSync('node ' + oneFileRelayer, { encoding: 'ascii', stdio: 'pipe' })
       assert.fail('should throw')
     } catch (e) {
       assert.match(e.toString(), /missing --RelayHubAddress/)
