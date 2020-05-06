@@ -104,5 +104,3 @@ export class HttpServer {
     }
   }
 }
-
-module.exports = HttpServer

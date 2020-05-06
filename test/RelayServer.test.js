@@ -35,7 +35,7 @@ const increaseTime = testutils.increaseTime
 
 if (!contract.only) { contract.only = contract } // buidler "support"
 
-contract.only('RelayServer', function (accounts) {
+contract('RelayServer', function (accounts) {
   let rhub
   let forwarder
   let stakeManager
