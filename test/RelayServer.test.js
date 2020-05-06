@@ -19,7 +19,7 @@ const { Transaction } = require('ethereumjs-tx')
 const abiDecoder = require('abi-decoder')
 
 const sinonChai = require('sinon-chai')
-const {expect, chai } = require('chai').use(require('chai-as-promised')).use(sinonChai)
+const { expect } = require('chai').use(require('chai-as-promised')).use(sinonChai)
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -58,6 +58,7 @@ contract('RelayServer', function (accounts) {
   let keyManager
 
   before(async function () {
+    id = (await testutils.snapshot()).result
     ethereumNodeUrl = web3.currentProvider.host
     serverWeb3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
@@ -74,7 +75,7 @@ contract('RelayServer', function (accounts) {
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')
-    keyManager = new KeyManager(2, Date.now().toString())
+    keyManager = new KeyManager(2, workdir)
     const txStoreManager = new TxStoreManager({ workdir })
     relayServer = new RelayServer({
       txStoreManager,
@@ -90,6 +91,7 @@ contract('RelayServer', function (accounts) {
       web3provider: serverWeb3provider,
       devMode: true
     })
+    // relayServer = new RelayServer(relayServerParams)
     relayServer.on('error', (e) => {
       console.log('error event', e.message)
     })
@@ -117,10 +119,11 @@ contract('RelayServer', function (accounts) {
       ...options,
       from: gasLess2
     }
+    await clearStorage()
   })
 
-  before(async function () {
-    await relayServer?.txStoreManager.clearAll()
+  after(async function () {
+    await testutils.revert(id)
   })
 
   const clearStorage = async function () {
@@ -159,7 +162,8 @@ contract('RelayServer', function (accounts) {
   }
 
   async function relayTransactionFromRequest (badArgs, { relayRequest, relayMaxNonce, approvalData, signature }) {
-    // console.log('relayRequest is', relayRequest, signature, approvalData)
+    console.log('relayRequest is', relayRequest, signature, approvalData)
+    console.log('badArgs is', badArgs)
     const signedTx = await relayServer.createRelayTransaction(
       {
         senderNonce: relayRequest.relayData.senderNonce,
@@ -200,7 +204,7 @@ contract('RelayServer', function (accounts) {
   }
 
   // When running server before staking/funding it, or when balance gets too low
-  describe('multi-step server initialization ', async function () {
+  describe.only('multi-step server initialization ', async function () {
     it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
       const expectedGasPrice = (await _web3.eth.getGasPrice()) * relayServer.gasPriceFactor
       const chainId = await _web3.eth.getChainId()
@@ -210,14 +214,15 @@ contract('RelayServer', function (accounts) {
       assert.notEqual(relayServer.networkId, networkId)
       assert.equal(relayServer.ready, false)
 
-      expect(relayServer._worker({ number: await _web3.eth.getBlockNumber() }))
+      await expect(relayServer._worker({ number: await _web3.eth.getBlockNumber() }))
         .to.be.eventually.rejectedWith('Server\'s balance too low')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
     })
 
     it('should wait for balance', async function () {
-      await relayServer._workerSemaphore({ number: await _web3.eth.getBlockNumber() }))
-        .to.be.eventually.rejectedWith('Server\'s balance too low')
+      await expect(
+        relayServer._worker({ number: await _web3.eth.getBlockNumber() })
+      ).to.be.eventually.rejectedWith('Server\'s balance too low')
       const expectedBalance = _web3.utils.toWei('2', 'ether')
       assert.notEqual(relayServer.balance, expectedBalance)
       await _web3.eth.sendTransaction({
@@ -225,16 +230,20 @@ contract('RelayServer', function (accounts) {
         from: relayOwner,
         value: expectedBalance
       })
-      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
-      assert.include(relayServer.lastError, 'Waiting for stake')
+      console.log('wtf? 2', relayServer.getManagerAddress())
+      await expect(
+        relayServer._worker({ number: await _web3.eth.getBlockNumber() })
+      ).to.be.eventually.rejectedWith('Waiting for stake')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
       assert.equal(relayServer.balance, expectedBalance)
+      console.log('wtf? 3', relayServer.getManagerAddress())
     })
 
     it('should wait for stake and then register', async function () {
       assert.equal(relayServer.lastScannedBlock, 0)
-      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
-      assert.include(relayServer.lastError, 'Waiting for stake')
+      await expect(
+        relayServer._worker({ number: await _web3.eth.getBlockNumber() })
+      ).to.be.eventually.rejectedWith('Waiting for stake')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
       const res = await stakeManager.stakeForAddress(relayServer.getManagerAddress(), weekInSec, {
         from: relayOwner,
@@ -253,7 +262,7 @@ contract('RelayServer', function (accounts) {
     })
 
     it('should start again after restarting process', async () => {
-      const newKeyManager = new KeyManager({ count: 2, seed: Date.now().toString() })
+      const newKeyManager = new KeyManager(2, workdir)
       const txStoreManager = new TxStoreManager({ workdir })
       const newRelayServer = new RelayServer({
         txStoreManager,
@@ -271,15 +280,14 @@ contract('RelayServer', function (accounts) {
       })
 
       await newRelayServer._worker({ number: await _web3.eth.getBlockNumber() })
-      assert.equal(relayServer.lastError, null)
       assert.equal(relayServer.ready, true, 'relay not ready?')
     })
   })
 
   // When running server after both staking & funding it
-  describe('single step server initialization', async function () {
+  describe.only('single step server initialization', async function () {
     it('should initialize relay after staking and funding it', async function () {
-      const keyManager = new KeyManager({ count: 2, seed: Date.now().toString() })
+      const keyManager = new KeyManager(2, null, Date.now().toString())
       const txStoreManager = new TxStoreManager({ workdir: workdir + '/defunct' })
       defunctRelayServer = new RelayServer({
         txStoreManager,
@@ -335,23 +343,6 @@ contract('RelayServer', function (accounts) {
     it('should relay transaction', async function () {
       await relayTransaction(options)
     })
-
-    /*
-    * encodedFunction,
-      approvalData,
-      signature,
-      from,
-      to,
-      paymaster,
-      gasPrice,
-      gasLimit,
-      senderNonce,
-      relayMaxNonce,
-      baseRelayFee,
-      pctRelayFee,
-      relayHubAddress
-      *
-      * */
     it('should fail to relay with undefined encodedFunction', async function () {
       try {
         await relayTransaction(options, { encodedFunction: undefined })
@@ -491,7 +482,7 @@ contract('RelayServer', function (accounts) {
         assert.fail()
       } catch (e) {
         assert.include(e.message,
-            `Wrong hub address.\nRelay server's hub address: ${relayServer.hubAddress}, request's hub address: 0xdeadface\n`)
+          `Wrong hub address.\nRelay server's hub address: ${relayServer.hubAddress}, request's hub address: 0xdeadface\n`)
       }
     })
   })
@@ -712,7 +703,7 @@ contract('RelayServer', function (accounts) {
       await rhub.removeRelayByOwner(relayServer.getManagerAddress(), {
         from: relayOwner
       })
-      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
+      await relayServer._workerSemaphore({ number: await _web3.eth.getBlockNumber() })
       assert.equal(relayServer.removed, true)
       assert.equal(relayServer.isReady(), false)
     })
@@ -722,7 +713,7 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(relayBalanceBefore > 0)
       await increaseTime(weekInSec)
       await stakeManager.unlockStake(relayServer.getManagerAddress(), { from: relayOwner })
-      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
+      await relayServer._workerSemaphore({ number: await _web3.eth.getBlockNumber() })
       const relayBalanceAfter = await relayServer.refreshBalance()
       assert.equal(relayBalanceAfter.toNumber(), 0, 'relayBalanceAfter is not zero: ' + relayBalanceAfter)
     })

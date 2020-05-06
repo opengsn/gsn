@@ -20,11 +20,11 @@ export class KeyManager {
      */
   constructor (count: number, workdir?: string, seed?: string) {
     ow(count, ow.number)
-    if (seed !== undefined && workdir !== undefined) {
+    if (seed != null && workdir != null) {
       throw new Error('Can\'t specify both seed and workdir')
     }
 
-    if (workdir !== undefined) {
+    if (workdir != null) {
       // @ts-ignore
       try {
         if (!fs.existsSync(workdir)) {
@@ -47,7 +47,7 @@ export class KeyManager {
       }
     } else {
       // no workdir: working in-memory
-      if (seed !== undefined) {
+      if (seed != null) {
         seed = Wallet.generate().getPrivateKey().toString('hex')
       }
       this.hdkey = HDKey.fromMasterSeed(seed)
@@ -83,7 +83,7 @@ export class KeyManager {
     }
 
     tx.sign(privateKey)
-    const rawTx = toHex(tx.serialize().toString('hex'))
+    const rawTx = tx.serialize().toString('hex')
     return rawTx
   }
 }

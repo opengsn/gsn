@@ -23,17 +23,19 @@ contract('KeyManager', function (accounts) {
   describe('in-memory', () => {
     let mkm
     before(() => {
-      mkm = new KeyManager(10,'seed1234')
+      mkm = new KeyManager(10, 'seed1234')
     })
     it('should return key', () => {
       // for a given seed, the addresses and privkeys are known..
       const k0 = mkm.getAddress(0)
-      assert.deepEqual(mkm._privateKeys[k0].toString('hex'), '57741c5b35559587a8322a60ebbf011bd991be1f96837e18f487be008ffa7bfc')
+      assert.deepEqual(mkm._privateKeys[k0].toString('hex'),
+        '57741c5b35559587a8322a60ebbf011bd991be1f96837e18f487be008ffa7bfc')
       assert.equal(k0, '0x9c5bcd9fa54ea1353edbdb879ed923de834f5d19')
     })
     it('should return another key for different index', () => {
       const k1 = mkm.getAddress(1)
-      assert.equal(mkm._privateKeys[k1].toString('hex'), 'ebf5960c8d941e2323290a4acd4891684a37b2b05eefde44219530b41d19a260')
+      assert.equal(mkm._privateKeys[k1].toString('hex'),
+        'ebf5960c8d941e2323290a4acd4891684a37b2b05eefde44219530b41d19a260')
       assert.equal(k1, '0x8bce814c8b753b49982d5b2c78867ac2c0907ac8')
     })
   })
@@ -55,7 +57,7 @@ contract('KeyManager', function (accounts) {
     it('should get the same key when reloading', () => {
       const addrA = fkmA.getAddress(0)
       const addrA10 = fkmA.getAddress(10)
-      const fkmB = new KeyManager(20,workdir)
+      const fkmB = new KeyManager(20, workdir)
       const addrB = fkmB.getAddress(0)
       assert.equal(addrA, addrB)
       assert.equal(fkmA._privateKeys[addrA].toString('hex'), fkmB._privateKeys[addrB].toString('hex'))
