@@ -19,7 +19,7 @@ function cleanFolder () {
 
 if (!contract.only) { contract.only = contract } // buidler "support"
 
-contract.only('KeyManager', function (accounts) {
+contract('KeyManager', function (accounts) {
   describe('in-memory', () => {
     let mkm
     before(() => {

@@ -35,7 +35,7 @@ const increaseTime = testutils.increaseTime
 
 if (!contract.only) { contract.only = contract } // buidler "support"
 
-contract('RelayServer', function (accounts) {
+contract.only('RelayServer', function (accounts) {
   let rhub
   let forwarder
   let stakeManager
@@ -161,8 +161,8 @@ contract('RelayServer', function (accounts) {
   }
 
   async function relayTransactionFromRequest (badArgs, { relayRequest, relayMaxNonce, approvalData, signature }) {
-    console.log('relayRequest is', relayRequest, signature, approvalData)
-    console.log('badArgs is', badArgs)
+    // console.log('relayRequest is', relayRequest, signature, approvalData)
+    // console.log('badArgs is', badArgs)
     const signedTx = await relayServer.createRelayTransaction(
       {
         senderNonce: relayRequest.relayData.senderNonce,
@@ -203,7 +203,7 @@ contract('RelayServer', function (accounts) {
   }
 
   // When running server before staking/funding it, or when balance gets too low
-  describe.only('multi-step server initialization ', async function () {
+  describe('multi-step server initialization ', async function () {
     it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
       const expectedGasPrice = (await _web3.eth.getGasPrice()) * relayServer.gasPriceFactor
       const chainId = await _web3.eth.getChainId()
@@ -255,6 +255,7 @@ contract('RelayServer', function (accounts) {
       assert.equal(relayServer.lastError, null)
       assert.equal(relayServer.lastScannedBlock, expectedLastScannedBlock)
       assert.equal(relayServer.stake, oneEther)
+      assert.equal(relayServer.owner, relayOwner)
       assert.equal(relayServer.ready, true, 'relay not ready?')
       await assertRelayAdded(receipt, relayServer)
     })
@@ -283,7 +284,7 @@ contract('RelayServer', function (accounts) {
   })
 
   // When running server after both staking & funding it
-  describe.only('single step server initialization', async function () {
+  describe('single step server initialization', async function () {
     it('should initialize relay after staking and funding it', async function () {
       const keyManager = new KeyManager(2, null, Date.now().toString())
       const txStoreManager = new TxStoreManager({ workdir: workdir + '/defunct' })
@@ -318,6 +319,7 @@ contract('RelayServer', function (accounts) {
       })
       const stake = await defunctRelayServer.refreshStake()
       assert.equal(stake, oneEther)
+      assert.equal(defunctRelayServer.owner, relayOwner, 'owner should be set after refreshing stake')
 
       const expectedGasPrice = (await _web3.eth.getGasPrice()) * defunctRelayServer.gasPriceFactor
       const expectedBalance = await _web3.eth.getBalance(defunctRelayServer.getManagerAddress())
@@ -337,7 +339,7 @@ contract('RelayServer', function (accounts) {
     })
   })
 
-  describe.only('relay transaction flows', async function () {
+  describe('relay transaction flows', async function () {
     it('should relay transaction', async function () {
       await relayTransaction(options)
     })
@@ -486,7 +488,7 @@ contract('RelayServer', function (accounts) {
     })
   })
 
-  describe.only('resend unconfirmed transactions task', async function () {
+  describe('resend unconfirmed transactions task', async function () {
     it('should resend unconfirmed transaction', async function () {
       // First clear db
       await relayServer.txStoreManager.clearAll()
@@ -494,7 +496,7 @@ contract('RelayServer', function (accounts) {
       // Send a transaction via the relay, but then revert to a previous snapshot
       id = (await testutils.snapshot()).result
       const signedTx = await relayTransaction(options)
-      let parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx)).hash())
+      let parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx, relayServer.rawTxOptions)).hash())
       const receiptBefore = await _web3.eth.getTransactionReceipt(parsedTxHash)
       const minedTxBefore = await _web3.eth.getTransaction(parsedTxHash)
       assert.equal(parsedTxHash, receiptBefore.transactionHash)
@@ -518,7 +520,7 @@ contract('RelayServer', function (accounts) {
         }
         // Resend tx, now should be ok
         resentTx = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
-        parsedTxHash = ethUtils.bufferToHex((new Transaction(resentTx)).hash())
+        parsedTxHash = ethUtils.bufferToHex((new Transaction(resentTx, relayServer.rawTxOptions)).hash())
 
         // Validate relayed tx with increased gasPrice
         const minedTxAfter = await _web3.eth.getTransaction(parsedTxHash)
@@ -576,7 +578,7 @@ contract('RelayServer', function (accounts) {
         await testutils.revert(id)
         const nonceBefore = parseInt(await _web3.eth.getTransactionCount(relayServer.getManagerAddress()))
         // Check tx1 still went fine after revert
-        const parsedTxHash1 = ethUtils.bufferToHex((new Transaction(signedTx1)).hash())
+        const parsedTxHash1 = ethUtils.bufferToHex((new Transaction(signedTx1, relayServer.rawTxOptions)).hash())
         await assertTransactionRelayed(parsedTxHash1, gasLess)
         // After 10 minutes, tx2 is not resent because tx1 is still unconfirmed
         nowIncrease = 10 * 60 * 1000 // 10 minutes in milliseconds
@@ -594,11 +596,11 @@ contract('RelayServer', function (accounts) {
         const confirmationsNeeded = 12
         await testutils.evmMineMany(confirmationsNeeded)
         const resentTx2 = await relayServer._resendUnconfirmedTransactions({ number: await _web3.eth.getBlockNumber() })
-        const parsedTxHash2 = ethUtils.bufferToHex((new Transaction(resentTx2)).hash())
+        const parsedTxHash2 = ethUtils.bufferToHex((new Transaction(resentTx2, relayServer.rawTxOptions)).hash())
         await assertTransactionRelayed(parsedTxHash2, gasLess)
         // Re-inject tx3 into the chain as if it were mined once tx2 goes through
         await _web3.eth.sendSignedTransaction(signedTx3)
-        const parsedTxHash3 = ethUtils.bufferToHex((new Transaction(signedTx3)).hash())
+        const parsedTxHash3 = ethUtils.bufferToHex((new Transaction(signedTx3, relayServer.rawTxOptions)).hash())
         await assertTransactionRelayed(parsedTxHash3, gasLess)
         // Check that tx3 does not get resent, even after time passes or blocks get mined, and that store is empty
         nowIncrease = 60 * 60 * 1000 // 60 minutes in milliseconds
@@ -685,8 +687,7 @@ contract('RelayServer', function (accounts) {
         try {
           await relayTransaction(options)
         } catch (e) {
-          console.log(e)
-          assert.equal(e.message, 'no tx for you')
+          assert.include(e.message, 'no tx for you')
           assert.isFalse(relayServer.nonceMutex.isLocked(), 'nonce mutex not released after exception')
         }
       } finally {

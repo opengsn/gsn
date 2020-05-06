@@ -160,7 +160,6 @@ export class RelayServer extends EventEmitter {
     this.pctRelayFee = params.pctRelayFee ?? 0
     this.gasPriceFactor = params.gasPriceFactor
     this.url = params.url ?? 'http://localhost:8090'
-    console.log('WTF workerMinBalance', params.workerMinBalance)
     this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
     this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
     this.devMode = params.devMode
@@ -434,6 +433,7 @@ export class RelayServer extends EventEmitter {
     // @ts-ignore
     this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
 
+    // todo: fix typo AND fix metacoin
     console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
@@ -441,7 +441,6 @@ export class RelayServer extends EventEmitter {
   async replenishWorker (workerIndex: number): Promise<void> {
     const workerAddress = this.getAddress(workerIndex)
     const workerBalance = toBN(await this.web3.eth.getBalance(workerAddress))
-    console.log('wtf workerMinBalance', this.workerMinBalance)
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
       console.log(
@@ -473,7 +472,6 @@ export class RelayServer extends EventEmitter {
       throw new StateError('Could not get gasPrice from node')
     }
     await this.refreshBalance()
-    console.log('wtf is balance?', this.balance.toString())
     if (this.balance.lt(toBN(minimumRelayBalance))) {
       throw new StateError(
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -514,7 +512,6 @@ export class RelayServer extends EventEmitter {
     if (this.stake.eq(toBN(0))) {
       throw new StateError('Waiting for stake')
     }
-    console.log('wtf is stake', this.stake.toString(), this.stake.eq(toBN(0)))
     // todo check if registered!!
     // TODO: now even more todo then before. This is a hotfix.
     if (!this.isAddressAdded) {
@@ -527,7 +524,6 @@ export class RelayServer extends EventEmitter {
     this.ready = true
     delete this.lastError
     await this._resendUnconfirmedTransactions(blockHeader)
-    console.log('wtf is receipt', receipt)
     return receipt
   }
 
@@ -547,7 +543,7 @@ export class RelayServer extends EventEmitter {
     }
 
     // first time getting stake, setting owner
-    if (this.owner != null) {
+    if (this.owner == null) {
       this.owner = stakeInfo?.owner
       debug(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake.toString()}`)
     }
@@ -648,7 +644,8 @@ export class RelayServer extends EventEmitter {
     const gasPrice = await this.web3.eth.getGasPrice()
     const gasLimit = 21000
     console.log(`Sending balance ${this.balance.div(toBN(1e18)).toString()} to owner`)
-    if (this.balance.lt(toBN(gasLimit * parseInt(gasPrice)))) {
+    const txCost = toBN(gasLimit * parseInt(gasPrice))
+    if (this.balance.lt(txCost)) {
       throw new Error(`balance too low: ${this.balance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     const { receipt } = await this._sendTransaction({
@@ -656,7 +653,7 @@ export class RelayServer extends EventEmitter {
       destination: this.owner as string,
       gasLimit: gasLimit.toString(),
       gasPrice,
-      value: this.balance.sub(toBN(gasLimit * parseInt(gasPrice))).toString()
+      value: web3.utils.toHex(this.balance.sub(txCost))
     })
     this.emit('unstaked')
     return receipt
@@ -666,7 +663,7 @@ export class RelayServer extends EventEmitter {
    * resend Txs of all signers (manager, workers)
    * @return the receipt from the first request
    */
-  async _resendUnconfirmedTransactions (blockHeader: BlockHeader): Promise<TransactionReceipt | undefined> {
+  async _resendUnconfirmedTransactions (blockHeader: BlockHeader): Promise<PrefixedHexString | undefined> {
     // repeat separately for each signer (manager, all workers)
     for (const signerIndex of [0, 1]) {
       const receipt = await this._resendUnconfirmedTransactionsForSigner(blockHeader, signerIndex)
@@ -676,7 +673,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async _resendUnconfirmedTransactionsForSigner (blockHeader: BlockHeader, signerIndex: number): Promise<TransactionReceipt | null> {
+  async _resendUnconfirmedTransactionsForSigner (blockHeader: BlockHeader, signerIndex: number): Promise<PrefixedHexString | null> {
     const signer = this.getAddress(signerIndex)
     // Load unconfirmed transactions from store, and bail if there are none
     let sortedTxs = await this.txStoreManager.getAllBySigner(signer)
@@ -714,14 +711,14 @@ export class RelayServer extends EventEmitter {
       debug('resend', signerIndex, ': awaiting transaction', sortedTxs[0].txId, 'to be mined. nonce:', nonce)
       return null
     }
-    const { receipt } = await this._resendTransaction(sortedTxs[0])
+    const { receipt, signedTx } = await this._resendTransaction(sortedTxs[0])
     debug('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
       receipt.transactionHash)
     if (sortedTxs[0].attempts > 2) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       debug(`resend ${signerIndex}: Sent tx ${sortedTxs[0].attempts} times already`)
     }
-    return receipt
+    return signedTx
   }
 
   // signerIndex is the index into addresses array. zero is relayManager, the rest are workers
@@ -739,9 +736,7 @@ export class RelayServer extends EventEmitter {
     try {
       const nonce = await this._pollNonce(signerIndex)
       debug('nonce', nonce)
-      // TODO: change to eip155 chainID
       const signer = this.getAddress(signerIndex)
-      console.log('wtf params', value, gas, _gasPrice, encodedCall)
       const txToSign = new Transaction({
         to: destination,
         value: value,
