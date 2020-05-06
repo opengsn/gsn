@@ -18,7 +18,7 @@ function cleanFolder () {
   }
 }
 
-contract('TxStoreManager', function (accounts) {
+contract.only('TxStoreManager', function (accounts) {
   let txmanager, tx, tx2, tx3
 
   before('create txstore', async function () {

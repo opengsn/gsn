@@ -47,7 +47,7 @@ export class KeyManager {
       }
     } else {
       // no workdir: working in-memory
-      if (seed != null) {
+      if (seed == null) {
         seed = Wallet.generate().getPrivateKey().toString('hex')
       }
       this.hdkey = HDKey.fromMasterSeed(seed)

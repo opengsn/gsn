@@ -486,7 +486,7 @@ contract('RelayServer', function (accounts) {
     })
   })
 
-  describe('resend unconfirmed transactions task', async function () {
+  describe.only('resend unconfirmed transactions task', async function () {
     it('should resend unconfirmed transaction', async function () {
       // First clear db
       await relayServer.txStoreManager.clearAll()
@@ -702,7 +702,7 @@ contract('RelayServer', function (accounts) {
       await rhub.removeRelayByOwner(relayServer.getManagerAddress(), {
         from: relayOwner
       })
-      await relayServer._workerSemaphore({ number: await _web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       assert.equal(relayServer.removed, true)
       assert.equal(relayServer.isReady(), false)
     })
@@ -712,7 +712,7 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(relayBalanceBefore > 0)
       await increaseTime(weekInSec)
       await stakeManager.unlockStake(relayServer.getManagerAddress(), { from: relayOwner })
-      await relayServer._workerSemaphore({ number: await _web3.eth.getBlockNumber() })
+      await relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       const relayBalanceAfter = await relayServer.refreshBalance()
       assert.equal(relayBalanceAfter.toNumber(), 0, 'relayBalanceAfter is not zero: ' + relayBalanceAfter)
     })
