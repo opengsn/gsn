@@ -71,7 +71,9 @@ class StateError extends Error {
 }
 
 export interface CreateTransactionDetails extends GsnTransactionDetails {
-  // encodedFunction: PrefixedHexString - defined as "data
+  // todo: gasLimit defined as "gas"
+  gasLimit: PrefixedHexString
+  // todo: encodedFunction defined as "data"
   encodedFunction: PrefixedHexString
   approvalData: PrefixedHexString
   signature: PrefixedHexString
@@ -86,28 +88,26 @@ interface SendTransactionDetails {
   signerIndex: number
   method?: any
   destination: Address
-  value: IntString
-  gasLimit: IntString
-  gasPrice: IntString
+  value?: IntString
+  gasLimit?: IntString
+  gasPrice?: IntString
 }
 
-export class RelayServerParams {
-  constructor (
-    readonly txStoreManager: TxStoreManager,
-    readonly web3provider: provider,
-    readonly keyManager: KeyManager,
-    readonly contractInteractor: ContractInteractor,
-    readonly hubAddress: PrefixedHexString,
-    readonly baseRelayFee: number | undefined,
-    readonly pctRelayFee: number | undefined,
-    readonly gasPriceFactor: number,
-    readonly url?: string,
-    readonly workerMinBalance = defaultWorkerMinBalance,
-    readonly workerTargetBalance = defaultWorkerTargetBalance,
-    readonly devMode = false,
-    readonly Debug = false,
-    readonly web3 = new Web3(web3provider)
-  ) {}
+interface RelayServerParams {
+  readonly txStoreManager: TxStoreManager
+  readonly web3provider: provider
+  readonly keyManager: KeyManager
+  readonly contractInteractor: ContractInteractor
+  readonly hubAddress: PrefixedHexString
+  readonly baseRelayFee: number | undefined
+  readonly pctRelayFee: number | undefined
+  readonly gasPriceFactor: number
+  readonly url?: string
+  readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
+  readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
+  readonly devMode: boolean // = false,
+  readonly Debug: boolean // = false,
+  readonly web3: Web3 // = new Web3(web3provider)
 }
 
 export class RelayServer extends EventEmitter {
@@ -161,8 +161,8 @@ export class RelayServer extends EventEmitter {
     this.gasPriceFactor = params.gasPriceFactor
     this.url = params.url ?? 'http://localhost:8090'
     console.log('WTF workerMinBalance', params.workerMinBalance)
-    this.workerMinBalance = params.workerMinBalance
-    this.workerTargetBalance = params.workerTargetBalance
+    this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
+    this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
     this.devMode = params.devMode
     this.web3 = params.web3 ?? new Web3(this.web3provider)
     this.contractInteractor = params.contractInteractor ?? new ContractInteractor(this.web3provider,
@@ -210,6 +210,7 @@ export class RelayServer extends EventEmitter {
 
   async createRelayTransaction (req: CreateTransactionDetails): Promise<any> {
     debug('dump request params', arguments[0])
+    ow(req.encodedFunction, ow.string)
     ow(req.approvalData, ow.string)
     ow(req.signature, ow.string)
 
@@ -228,7 +229,7 @@ export class RelayServer extends EventEmitter {
     }
 
     // Check that the gasPrice is initialized & acceptable
-    if (this.gasPrice === 0) {
+    if (this.gasPrice === 0 || this.gasPrice == null) {
       throw new Error('gasPrice not initialized')
     }
     if (this.gasPrice > parseInt(req.gasPrice ?? '0')) {
@@ -253,11 +254,11 @@ export class RelayServer extends EventEmitter {
       senderAddress: req.from,
       senderNonce: req.senderNonce,
       target: req.to,
-      encodedFunction: req.data,
+      encodedFunction: req.encodedFunction,
       baseRelayFee: req.baseRelayFee,
       pctRelayFee: req.pctRelayFee,
       gasPrice: req.gasPrice,
-      gasLimit: req.gas,
+      gasLimit: req.gasLimit,
       paymaster: req.paymaster,
       relayWorker: this.getAddress(1)
     })
@@ -281,7 +282,7 @@ export class RelayServer extends EventEmitter {
       if (
         // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
         e.message.includes(
-          'Returned values aren\'t valid, did it run Out of Gas? You might also see this error if you are not using the correct ABI for the contract you are retrieving data from, requesting data from a block number that does not exist, or querying a node which is not fully synced.'
+          'Returned values aren\'t valid, did it run Out of Gas?'
         )
       ) {
         throw new Error(`non-existent or incompatible paymaster contract: ${req.paymaster}`)
@@ -295,13 +296,13 @@ export class RelayServer extends EventEmitter {
     const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: parseInt(req.gas ?? '0'),
+      relayCallGasLimit: parseInt(req.gasLimit),
       calldataSize,
       gtxdatanonzero: gtxdatanonzero
     })
 
     // @ts-ignore
-    let canRelayRet: { success: boolean } = await this.relayHubContract.canRelay(
+    let canRelayRet: { success: boolean, returnValue: string } = await this.relayHubContract.canRelay(
       signedData.message,
       maxPossibleGas,
       gasLimits.acceptRelayedCallGasLimit,
@@ -309,37 +310,37 @@ export class RelayServer extends EventEmitter {
       req.approvalData, { from: this.getAddress(workerIndex) })
     debug('canRelayRet', canRelayRet)
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    if (canRelayRet) {
-      canRelayRet = { success: false }
+    if (!canRelayRet) {
+      canRelayRet = { success: false, returnValue: 'No idea why' }
     }
     if (!canRelayRet.success) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`canRelay failed in server: ${canRelayRet}`)
+      throw new Error(`canRelay failed in server: ${canRelayRet.returnValue}`)
     }
     // Send relayed transaction
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
 
-    const maxCharge = parseInt(
+    const maxCharge =
       // @ts-ignore
       await this.relayHubContract.calculateCharge(maxPossibleGas, {
         gasPrice: req.gasPrice?.toString() ?? '0',
         pctRelayFee: req.pctRelayFee.toString(),
         baseRelayFee: req.baseRelayFee.toString(),
         gasLimit: 0
-      }))
-    const paymasterBalance = (await this.relayHubContract.balanceOf(req.paymaster)).toNumber()
-    if (paymasterBalance < maxCharge) {
-      throw new Error(`paymaster balance too low: ${paymasterBalance}, maxCharge: ${maxCharge}`)
+      })
+    const paymasterBalance = await this.relayHubContract.balanceOf(req.paymaster)
+    if (paymasterBalance.lt(maxCharge)) {
+      throw new Error(`paymaster balance too low: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
     }
+    console.log(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    debug(`Estimated max charge of relayed tx: ${maxCharge}, GasLimit of relayed tx: ${maxPossibleGas}`)
+    console.log(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
     const { signedTx } = await this._sendTransaction(
       {
         signerIndex: workerIndex,
         method,
-        value: '0',
         destination: req.relayHubAddress,
-        gasLimit: req.baseRelayFee,
+        gasLimit: maxPossibleGas,
         gasPrice: req.gasPrice as string
       })
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
@@ -444,14 +445,15 @@ export class RelayServer extends EventEmitter {
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
       console.log(
-        `== replenishWorker(${workerIndex}): mgr balance=${this.balance.toNumber() / 1e18} worker balance=${workerBalance.toNumber() / 1e18} refill=${refill.toNumber() / 1e18}`)
+        `== replenishWorker(${workerIndex}): mgr balance=${this.balance.div(
+          toBN(1e18)).toString()} worker balance=${workerBalance.div(
+          toBN(1e18)).toString()} refill=${refill.div(toBN(1e18)).toString()}`)
       if (refill.lt(this.balance.sub(toBN(minimumRelayBalance)))) {
         await this._sendTransaction({
           signerIndex: 0,
           destination: workerAddress,
-          value: refill.toString(),
-          gasLimit: '300000',
-          gasPrice: this.gasPrice.toString()
+          value: this.web3.utils.toHex(refill),
+          gasLimit: 3e5.toString()
         })
         await this.refreshBalance()
       } else {
@@ -610,10 +612,10 @@ export class RelayServer extends EventEmitter {
       await this._sendTransaction({
         signerIndex: 0,
         method: addRelayWorkerMethod,
-        destination: this.relayHubContract?.address as string,
-        value: '0x',
-        gasLimit: 2e6.toString(),
-        gasPrice: await this.web3.eth.getGasPrice()
+        destination: this.relayHubContract?.address as string
+        // value: '0x',
+        // gasLimit: 2e6.toString(),
+        // gasPrice: await this.web3.eth.getGasPrice()
       })
     }
     console.log('wtf after add workers')
@@ -623,10 +625,10 @@ export class RelayServer extends EventEmitter {
     const { receipt } = await this._sendTransaction({
       signerIndex: 0,
       method: registerMethod,
-      destination: this.relayHubContract?.address as string,
-      value: '0x',
-      gasLimit: 1e6.toString(),
-      gasPrice: await this.web3.eth.getGasPrice()
+      destination: this.relayHubContract?.address as string
+      // value: '0x',
+      // gasLimit: 1e6.toString(),
+      // gasPrice: await this.web3.eth.getGasPrice()
     })
     console.log('wtf after registerMethod')
     debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
@@ -636,7 +638,6 @@ export class RelayServer extends EventEmitter {
   }
 
   async _handleUnstakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt> {
-    // todo: send balance to owner
     console.log('handle Unstaked event', dlog)
     // sanity checks
     if (dlog.name !== 'StakeUnlocked' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
@@ -724,8 +725,7 @@ export class RelayServer extends EventEmitter {
   }
 
   // signerIndex is the index into addresses array. zero is relayManager, the rest are workers
-  async _sendTransaction ({ signerIndex, method, destination, value = '0', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
-    console.log('wtf fuck this fucking shit')
+  async _sendTransaction ({ signerIndex, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = method?.encodeABI() ?? '0x'
     const _gasPrice = parseInt(gasPrice ?? await this.web3.eth.getGasPrice())
     debug('gasPrice', _gasPrice)
@@ -758,7 +758,6 @@ export class RelayServer extends EventEmitter {
     } finally {
       releaseMutex()
     }
-    console.log('wtf before sendsigned', signedTx)
     const receipt = await this.web3.eth.sendSignedTransaction(signedTx)
     console.log('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {

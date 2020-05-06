@@ -51,14 +51,14 @@ contract('RelayServer', function (accounts) {
   let serverWeb3provider
   let ethereumNodeUrl
   let _web3
-  let id
+  let id, globalId
   let encodedFunction
   let relayClient
   let options, options2
   let keyManager
 
   before(async function () {
-    id = (await testutils.snapshot()).result
+    globalId = (await testutils.snapshot()).result
     ethereumNodeUrl = web3.currentProvider.host
     serverWeb3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
@@ -91,7 +91,6 @@ contract('RelayServer', function (accounts) {
       web3provider: serverWeb3provider,
       devMode: true
     })
-    // relayServer = new RelayServer(relayServerParams)
     relayServer.on('error', (e) => {
       console.log('error event', e.message)
     })
@@ -123,7 +122,7 @@ contract('RelayServer', function (accounts) {
   })
 
   after(async function () {
-    await testutils.revert(id)
+    await testutils.revert(globalId)
   })
 
   const clearStorage = async function () {
@@ -213,7 +212,6 @@ contract('RelayServer', function (accounts) {
       assert.notEqual(relayServer.chainId, chainId)
       assert.notEqual(relayServer.networkId, networkId)
       assert.equal(relayServer.ready, false)
-
       await expect(relayServer._worker({ number: await _web3.eth.getBlockNumber() }))
         .to.be.eventually.rejectedWith('Server\'s balance too low')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
@@ -339,7 +337,7 @@ contract('RelayServer', function (accounts) {
     })
   })
 
-  describe('relay transaction flows', async function () {
+  describe.only('relay transaction flows', async function () {
     it('should relay transaction', async function () {
       await relayTransaction(options)
     })
@@ -348,7 +346,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { encodedFunction: undefined })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'invalid encodedFunction given: undefined')
+        assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
       }
     })
     it('should fail to relay with undefined approvalData', async function () {
@@ -356,7 +354,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { approvalData: undefined })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'invalid approvalData given: undefined')
+        assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
       }
     })
     it('should fail to relay with undefined signature', async function () {
@@ -364,7 +362,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { signature: undefined })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'invalid signature given: undefined')
+        assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
       }
     })
     it('should fail to relay with wrong signature', async function () {
@@ -417,6 +415,7 @@ contract('RelayServer', function (accounts) {
       delete relayServer.gasPrice
       try {
         await relayTransaction(options)
+        console.log('wtfff', relayServer.gasPrice)
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'gasPrice not initialized')
@@ -436,7 +435,7 @@ contract('RelayServer', function (accounts) {
     it('should fail to relay with wrong senderNonce', async function () {
       // First we change the senderNonce and see nonce failure
       try {
-        await relayTransaction(options, { senderNonce: 123456 })
+        await relayTransaction(options, { senderNonce: '123456' })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'canRelay failed in server: nonce mismatch')
