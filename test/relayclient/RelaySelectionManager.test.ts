@@ -32,6 +32,7 @@ contract('RelaySelectionManager', function (accounts) {
   }
   const pingResponse = {
     RelayServerAddress: '',
+    RelayManagerAddress: '',
     MinGasPrice: '1',
     Ready: true,
     Version: '1'
@@ -115,6 +116,7 @@ contract('RelaySelectionManager', function (accounts) {
         const urlInfo: RelayInfoUrl = { relayUrl: preferredRelayUrl }
         const pingResponse: PingResponse = {
           RelayServerAddress: relayManager,
+          RelayManagerAddress: relayManager,
           MinGasPrice: '1',
           Ready: true,
           Version: '1'

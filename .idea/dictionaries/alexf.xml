@@ -18,6 +18,8 @@
       <w>interactor</w>
       <w>jsonrpc</w>
       <w>keccak</w>
+      <w>kovan</w>
+      <w>mainnet</w>
       <w>metamask</w>
       <w>mixedcase</w>
       <w>multiplicator</w>
@@ -33,6 +35,10 @@
       <w>registree</w>
       <w>registrees</w>
       <w>relaydata</w>
+      <w>relayer</w>
+      <w>relayers</w>
+      <w>rinkeby</w>
+      <w>ropsten</w>
       <w>solc</w>
       <w>solhint</w>
       <w>subprovider</w>
@@ -42,6 +48,8 @@
       <w>uniswap</w>
       <w>unstake</w>
       <w>unstaked</w>
+      <w>workdir</w>
+      <w>xdai</w>
     </words>
   </dictionary>
 </component>

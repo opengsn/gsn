@@ -12,7 +12,7 @@ interface IRelayHub {
         address indexed relayManager,
         uint256 baseRelayFee,
         uint256 pctRelayFee,
-        string url);
+        string relayUrl);
 
     /// Emitted when relays are added by a relayManager
     event RelayWorkersAdded(
