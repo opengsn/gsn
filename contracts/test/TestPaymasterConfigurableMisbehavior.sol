@@ -97,5 +97,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         return balance;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     receive() external override payable {}
 }
