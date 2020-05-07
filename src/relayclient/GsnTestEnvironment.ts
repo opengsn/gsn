@@ -5,7 +5,7 @@ import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
 import KeyManager from '../relayserver/KeyManager'
 
 import { configureGSN } from './GSNConfigurator'
-import {getNetworkUrl, networks, supportedNetworks} from '../cli/utils'
+import { getNetworkUrl, supportedNetworks } from '../cli/utils'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
 import RelayServer from '../relayserver/RelayServer'
 import HttpServer from '../relayserver/HttpServer'
@@ -32,7 +32,7 @@ class GsnTestEnvironmentClass {
   async startGsn (host?: string, paymaster?: any): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
-    console.log( '_host=', _host)
+    console.log('_host=', _host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)

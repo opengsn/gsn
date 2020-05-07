@@ -15,7 +15,7 @@ export function supportedNetworks (): string[] {
   return Array.from(networks.keys())
 }
 
-export function getNetworkUrl(network = ''): string {
+export function getNetworkUrl (network = ''): string {
   const match = network.match(/^(https?:\/\/.*)/) ?? []
   return networks.get(network) ?? match[0]
 }

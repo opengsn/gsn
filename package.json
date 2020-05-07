@@ -42,7 +42,7 @@
     "lint:fix": "yarn run lint:js:fix",
     "lint:js": "eslint --ext .js,.ts --cache -f unix --ignore-path .gitignore src test scripts",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
-    "lint:js:fix": "eslint --ext .js,.ts --cache  -f unix --ignore-path .gitignore src test scripts helpers --fix",
+    "lint:js:fix": "eslint --ext .js,.ts --cache  -f unix --ignore-path .gitignore src test scripts --fix",
     "web": "./restart-relay.sh web",
     "trace": "MODE=trace truffle test",
     "coverage": "yarn generate && ./scripts/run-coverage",
