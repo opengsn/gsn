@@ -8,11 +8,13 @@ class Environment {
   public readonly gtxdatanonzero: number
   public readonly gtxdatazero: number
   public readonly chainId: number
+  public readonly mintxgascost: number
 
   constructor (env: Environment) {
     this.gtxdatanonzero = env.gtxdatanonzero
     this.gtxdatazero = env.gtxdatazero
     this.chainId = env.chainId
+    this.mintxgascost = env.mintxgascost
   }
 }
 
@@ -20,12 +22,14 @@ export const environments = {
   istanbul: new Environment({
     gtxdatanonzero: 16,
     gtxdatazero: 4,
-    chainId: 1
+    chainId: 1,
+    mintxgascost: 21000
   }),
   constantinople: new Environment({
     gtxdatanonzero: 68,
     gtxdatazero: 4,
-    chainId: 1
+    chainId: 1,
+    mintxgascost: 21000
   })
 }
 

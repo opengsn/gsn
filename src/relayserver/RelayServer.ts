@@ -12,11 +12,6 @@ import StakeManagerABI from '../common/interfaces/IStakeManager'
 import getDataToSign from '../common/EIP712/Eip712Helper'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import utils from '../common/utils'
-/*
-cannot read TS module if executed by node. Use ts-node to run or, better, fix.
-const Environments = require('../relayclient/types/Environments').environments
-const gtxdatanonzero = Environments.constantinople.gtxdatanonzero
- */
 import { StoredTx, transactionToStoredTx, TxStoreManager } from './TxStoreManager'
 
 import { Mutex } from 'async-mutex'
@@ -29,11 +24,14 @@ import { IPaymasterInstance, IRelayHubInstance, IStakeManagerInstance } from '..
 import { BlockHeader } from 'web3-eth'
 import { TransactionReceipt } from 'web3-core'
 import { configureGSN } from '../relayclient/GSNConfigurator'
+import { defaultEnvironment } from '../relayclient/types/Environments'
 
-const gtxdatanonzero = 16
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
+
+const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
+const mintxgascost = defaultEnvironment.mintxgascost
 
 const VERSION = '0.0.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
@@ -452,7 +450,7 @@ export class RelayServer extends EventEmitter {
           signerIndex: 0,
           destination: workerAddress,
           value: this.web3.utils.toHex(refill),
-          gasLimit: 3e5.toString()
+          gasLimit: mintxgascost.toString()
         })
         await this.refreshBalance()
       } else {
@@ -608,9 +606,6 @@ export class RelayServer extends EventEmitter {
         signerIndex: 0,
         method: addRelayWorkerMethod,
         destination: this.relayHubContract?.address as string
-        // value: '0x',
-        // gasLimit: 2e6.toString(),
-        // gasPrice: await this.web3.eth.getGasPrice()
       })
     }
     const registerMethod = this.relayHubContract?.contract.methods
@@ -636,7 +631,7 @@ export class RelayServer extends EventEmitter {
     }
     this.balance = toBN(await this.web3.eth.getBalance(this.managerAddress))
     const gasPrice = await this.web3.eth.getGasPrice()
-    const gasLimit = 21000
+    const gasLimit = mintxgascost
     console.log(`Sending balance ${this.balance.div(toBN(1e18)).toString()} to owner`)
     const txCost = toBN(gasLimit * parseInt(gasPrice))
     if (this.balance.lt(txCost)) {
