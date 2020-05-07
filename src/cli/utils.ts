@@ -11,8 +11,12 @@ export const networks = new Map<string, string>([
   ['mainnet', 'https://mainnet.infura.io/v3/c3422181d0594697a38defe7706a1e5b']
 ])
 
-export function getNetworkUrl (network: string): string {
-  const match = network.match(/^(https?:.*)?/) ?? []
+export function supportedNetworks (): string[] {
+  return Array.from(networks.keys())
+}
+
+export function getNetworkUrl(network = ''): string {
+  const match = network.match(/^(https?:\/\/.*)/) ?? []
   return networks.get(network) ?? match[0]
 }
 

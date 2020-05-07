@@ -15,7 +15,8 @@ for c in $CONTRACTS; do
 done
 
 
-for c in RelayProvider RelayClient GSNConfigurator; do
+#these files are created for packing only (removed by "postpack")
+for c in RelayProvider RelayClient GSNConfigurator GsnTestEnvironment; do
   echo gen ./$c.ts:
   (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
 done

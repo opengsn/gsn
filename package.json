@@ -51,6 +51,7 @@
     "tsc": "tsc --noEmit",
     "postinstall": "patch-package",
     "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage",
+    "postpack": "./scripts/postpack",
     "prepare": "./scripts/prepublish"
   },
   "dependencies": {
