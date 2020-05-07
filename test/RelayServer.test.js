@@ -228,13 +228,11 @@ contract('RelayServer', function (accounts) {
         from: relayOwner,
         value: expectedBalance
       })
-      console.log('wtf? 2', relayServer.getManagerAddress())
       await expect(
         relayServer._worker({ number: await _web3.eth.getBlockNumber() })
       ).to.be.eventually.rejectedWith('Waiting for stake')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
       assert.equal(relayServer.balance, expectedBalance)
-      console.log('wtf? 3', relayServer.getManagerAddress())
     })
 
     it('should wait for stake and then register', async function () {
@@ -417,7 +415,6 @@ contract('RelayServer', function (accounts) {
       delete relayServer.gasPrice
       try {
         await relayTransaction(options)
-        console.log('wtfff', relayServer.gasPrice)
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'gasPrice not initialized')

@@ -477,7 +477,6 @@ export class RelayServer extends EventEmitter {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         `Server's balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
     }
-    console.log('wtf how?', minimumRelayBalance)
     const options = {
       fromBlock: this.lastScannedBlock + 1,
       toBlock: 'latest',
@@ -614,7 +613,6 @@ export class RelayServer extends EventEmitter {
         // gasPrice: await this.web3.eth.getGasPrice()
       })
     }
-    console.log('wtf after add workers')
     const registerMethod = this.relayHubContract?.contract.methods
       .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
         this.url)
@@ -622,11 +620,7 @@ export class RelayServer extends EventEmitter {
       signerIndex: 0,
       method: registerMethod,
       destination: this.relayHubContract?.address as string
-      // value: '0x',
-      // gasLimit: 1e6.toString(),
-      // gasPrice: await this.web3.eth.getGasPrice()
     })
-    console.log('wtf after registerMethod')
     debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
 
     this.isAddressAdded = true
