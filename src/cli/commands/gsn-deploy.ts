@@ -1,7 +1,7 @@
 import commander from 'commander'
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, gsnCommander } from '../utils'
+import { getNetworkUrl, gsnCommander, saveDeployment, showDeployment } from '../utils'
 
 // TODO: support deploying custom paymasters by passing bytecode, ABI and constructor params
 gsnCommander(['n', 'f'])
@@ -18,20 +18,8 @@ gsnCommander(['n', 'f'])
   const deploymentResult = await logic.deployGsnContracts(from)
   const paymasterName = 'Default'
 
-  console.log(
-    `Deployed GSN to network: ${network}
-  RelayHub: ${deploymentResult.relayHubAddress}
-  StakeManager: ${deploymentResult.stakeManagerAddress}
-  Penalizer: ${deploymentResult.penalizerAddress}
-  TrustedForwarder: ${deploymentResult.forwarderAddress}
-  Paymaster (${paymasterName}): ${deploymentResult.paymasterAddress}
-  `)
-
-  logic.saveContractToFile(deploymentResult.stakeManagerAddress, commander.workdir, 'StakeManager.json')
-  logic.saveContractToFile(deploymentResult.penalizerAddress, commander.workdir, 'Penalizer.json')
-  logic.saveContractToFile(deploymentResult.relayHubAddress, commander.workdir, 'RelayHub.json')
-  logic.saveContractToFile(deploymentResult.paymasterAddress, commander.workdir, 'Paymaster.json')
-  logic.saveContractToFile(deploymentResult.forwarderAddress, commander.workdir, 'Forwarder.json')
+  showDeployment(deploymentResult, `Deployed GSN to network: ${network}`, paymasterName)
+  saveDeployment(deploymentResult, commander.workdir)
 })().catch(
   reason => {
     console.error(reason)

@@ -288,9 +288,16 @@ class RelayServer extends EventEmitter {
         console.error('web3 subscription:', error)
       }
     }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => { console.error('worker:', e) })
-    const handler = () => { this.web3.eth.getBlockNumber().then(blockNumber => this._workerSemaphore.bind(this)({ number: blockNumber })) }
+    const handler = () => {
+      this.web3.eth.getBlockNumber()
+        .then(blockNumber => {
+          if (blockNumber !== this.lastScannedBlock) {
+            this._workerSemaphore.bind(this)({ number: blockNumber })
+          }
+        })
+    }
     if (this.devMode) {
-      this.workerInterval = setInterval(handler, 8000)
+      this.workerInterval = setInterval(handler, 1000)
     }
     setTimeout(handler, 1)
   }

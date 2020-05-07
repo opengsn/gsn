@@ -5,7 +5,7 @@ import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
 import KeyManager from '../relayserver/KeyManager'
 
 import { configureGSN } from './GSNConfigurator'
-import { getNetworkUrl } from '../cli/utils'
+import { getNetworkUrl, supportedNetworks } from '../cli/utils'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
 import RelayServer from '../relayserver/RelayServer'
 import HttpServer from '../relayserver/HttpServer'
@@ -29,11 +29,13 @@ class GsnTestEnvironmentClass {
    * @param paymaster TODO: will allow using custom paymaster (need to provide ABI file contents)
    * @return
    */
-  async startGsn (host: string, paymaster?: any): Promise<TestEnvironment> {
+  async startGsn (host?: string, paymaster?: any): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
+    console.log('_host=', _host)
     if (_host == null) {
-      throw new Error(`Failed to connect to ${host}`)
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
     const commandsLogic = new CommandsLogic(_host, configureGSN({}))
     const from = await commandsLogic.findWealthyAccount()
@@ -44,7 +46,7 @@ class GsnTestEnvironmentClass {
     const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
     console.log('Sample Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
 
-    await this._runServer(host, deploymentResult, from)
+    await this._runServer(_host, deploymentResult, from)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -70,6 +72,7 @@ class GsnTestEnvironmentClass {
     })
 
     const relayProvider = new RelayProvider(new Web3.providers.HttpProvider(_host), config)
+    console.error('== startGSN: ready.')
     return {
       deploymentResult,
       relayProvider,

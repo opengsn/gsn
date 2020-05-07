@@ -1,6 +1,9 @@
 // TODO: allow reading network URLs from 'truffle-config.js'
 import commander, { CommanderStatic } from 'commander'
 import fs from 'fs'
+import { Address } from '../relayclient/types/Aliases'
+import path from 'path'
+import { DeploymentResult } from './CommandsLogic'
 
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
@@ -11,8 +14,12 @@ export const networks = new Map<string, string>([
   ['mainnet', 'https://mainnet.infura.io/v3/c3422181d0594697a38defe7706a1e5b']
 ])
 
-export function getNetworkUrl (network: string): string {
-  const match = network.match(/^(https?:.*)?/) ?? []
+export function supportedNetworks (): string[] {
+  return Array.from(networks.keys())
+}
+
+export function getNetworkUrl (network = ''): string {
+  const match = network.match(/^(https?:\/\/.*)/) ?? []
   return networks.get(network) ?? match[0]
 }
 
@@ -32,6 +39,46 @@ function getAddressFromFile (path: string, input?: string): string | undefined {
     }
   }
   return input
+}
+
+function saveContractToFile (address: Address, workdir: string, filename: string): void {
+  fs.mkdirSync(workdir, { recursive: true })
+  fs.writeFileSync(path.join(workdir, filename), `{ "address": "${address}" }`)
+}
+
+export function saveDeployment (deploymentResult: DeploymentResult, workdir: string): void {
+  saveContractToFile(deploymentResult.stakeManagerAddress, workdir, 'StakeManager.json')
+  saveContractToFile(deploymentResult.penalizerAddress, workdir, 'Penalizer.json')
+  saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
+  saveContractToFile(deploymentResult.paymasterAddress, workdir, 'Paymaster.json')
+  saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
+}
+
+export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string| undefined = undefined): void {
+  if (title != null) {
+    console.log(title)
+  }
+  console.log(`
+  RelayHub: ${deploymentResult.relayHubAddress}
+  StakeManager: ${deploymentResult.stakeManagerAddress}
+  Penalizer: ${deploymentResult.penalizerAddress}
+  TrustedForwarder: ${deploymentResult.forwarderAddress}
+  Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.paymasterAddress}`)
+}
+
+export function loadDeployment (workdir: string): DeploymentResult {
+  function getAddress (name: string): string {
+    const address = getAddressFromFile(path.join(workdir, name + '.json'))
+    if (address != null) { return address }
+    throw new Error('no address for ' + name)
+  }
+  return {
+    relayHubAddress: getAddress('RelayHub'),
+    stakeManagerAddress: getAddress('StakeManager'),
+    penalizerAddress: getAddress('Penalizer.json'),
+    forwarderAddress: getAddress('Forwarder.json'),
+    paymasterAddress: getAddress('Paymaster.json')
+  }
 }
 
 type GsnOption = 'n' | 'f' | 'h'
