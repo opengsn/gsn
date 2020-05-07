@@ -1,10 +1,11 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../paymaster/IUniswap.sol";
 
-contract TestToken is ERC20 {
+contract TestToken is ERC20("Test Token", "TOK") {
+
     function mint(uint amount) public {
         _mint(msg.sender, amount);
     }
@@ -26,38 +27,39 @@ contract TestUniswap is IUniswap {
         require(rateMult != 0 && rateDiv != 0, "bad mult,div");
     }
 
-    function() external payable {}
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 
-    function tokenAddress() external view returns (address out) {
+    function tokenAddress() external override view returns (address out) {
         return address(token);
     }
 
-    function tokenToEthSwapOutput(uint256 eth_bought, uint256 max_tokens, uint256 deadline) public returns (uint256 out) {
-        (max_tokens, deadline);
-        uint tokensToSell = getTokenToEthOutputPrice(eth_bought);
-        require(address(this).balance > eth_bought, "not enough liquidity");
+    function tokenToEthSwapOutput(uint256 ethBought, uint256 maxTokens, uint256 deadline) public override returns (uint256 out) {
+        (maxTokens, deadline);
+        uint tokensToSell = getTokenToEthOutputPrice(ethBought);
+        require(address(this).balance > ethBought, "not enough liquidity");
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
-        msg.sender.transfer(eth_bought);
+        msg.sender.transfer(ethBought);
         return tokensToSell;
     }
 
-    function getTokenToEthInputPrice(uint256 tokens_sold) external view returns (uint256 out) {
-        return tokens_sold * rateDiv / rateMult;
+    function getTokenToEthInputPrice(uint256 tokensSold) external override view returns (uint256 out) {
+        return tokensSold * rateDiv / rateMult;
     }
 
-    function tokenToEthTransferOutput(uint256 eth_bought, uint256 max_tokens, uint256 deadline, address payable recipient) external returns (uint256 out) {
-        (max_tokens, deadline, recipient);
-        require(address(this).balance > eth_bought, "not enough liquidity");
+    function tokenToEthTransferOutput(uint256 ethBought, uint256 maxTokens, uint256 deadline, address payable recipient) external override returns (uint256 out) {
+        (maxTokens, deadline, recipient);
+        require(address(this).balance > ethBought, "not enough liquidity");
 
-        uint tokensToSell = getTokenToEthOutputPrice(eth_bought);
+        uint tokensToSell = getTokenToEthOutputPrice(ethBought);
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
-        recipient.transfer(eth_bought);
+        recipient.transfer(ethBought);
         return tokensToSell;
     }
 
-    function getTokenToEthOutputPrice(uint256 eth_bought) public view returns (uint256 out) {
-        return eth_bought * rateMult / rateDiv;
+    function getTokenToEthOutputPrice(uint256 ethBought) public override view returns (uint256 out) {
+        return ethBought * rateMult / rateDiv;
     }
 }

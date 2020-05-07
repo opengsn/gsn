@@ -1,7 +1,7 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/access/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./TokenPaymaster.sol";
 import "../RelayHub.sol";
@@ -31,7 +31,6 @@ contract TokenGasCalculator is RelayHub, Ownable {
      * but still leave no side-effect on the network.
      */
     function calculatePostGas(TokenPaymaster paymaster) public onlyOwner returns (uint gasUsedByPostWithPreCharge, uint gasUsedByPostWithoutPreCharge) {
-
         address paymasterAddress = address(paymaster);
         IERC20 token = paymaster.token();
         require(token.balanceOf(address(this)) >= 1000, "must move some tokens to calculator first");
@@ -58,11 +57,6 @@ contract TokenGasCalculator is RelayHub, Ownable {
         gasUsedByPostWithoutPreCharge = gasinit - gas0;
         gasUsedByPostWithPreCharge = gas0 - gas1;
         emit GasUsed(gasUsedByPostWithPreCharge, gasUsedByPostWithoutPreCharge);
-    }
-
-    //called by postRelayedCall. copied from RelayHub
-    function calculateCharge(uint256 gasUsed, GSNTypes.GasData memory gasData) public view returns (uint256) {
-        return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
     }
 
     event GasUsed(uint gasUsedByPostWithPreCharge, uint gasUsedByPostWithoutPreCharge);

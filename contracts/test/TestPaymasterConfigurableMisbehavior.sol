@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./TestPaymasterEverythingAccepted.sol";
@@ -38,6 +38,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         uint256 maxPossibleCharge
     )
     external
+    override
     view
     returns (bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
@@ -53,7 +54,11 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         return "";
     }
 
-    function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
+    function preRelayedCall(bytes calldata context)
+    external
+    override
+    relayHubOnly
+    returns (bytes32) {
         (context);
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
@@ -72,6 +77,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         GSNTypes.GasData calldata gasData
     )
     external
+    override
     relayHubOnly
     {
         (context, success, preRetVal, gasUseWithoutPost, gasData);
@@ -91,5 +97,5 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         return balance;
     }
 
-    function() external payable {}
+    receive() external override payable {}
 }

@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./TestPaymasterEverythingAccepted.sol";
@@ -17,6 +17,7 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
         uint256 maxPossibleCharge
     )
     external
+    override
     view
     returns (bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
