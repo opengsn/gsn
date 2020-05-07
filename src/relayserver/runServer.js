@@ -13,6 +13,23 @@ function error (err) {
   process.exit(1)
 }
 
+/// TODO: remove once translated to TypeScript. This method is in ./cli/utils.ts
+function getRelayHubAddress (hub) {
+  return getAddressFromFile('build/gsn/RelayHub.json', hub)
+}
+
+function getAddressFromFile (path, input) {
+  if (input == null) {
+    if (fs.existsSync(path)) {
+      const relayHubDeployInfo = fs.readFileSync(path).toString()
+      return JSON.parse(relayHubDeployInfo).address
+    }
+  }
+  return input
+}
+
+/// TODO end
+
 // use all camel-case entries from environment as defaults.
 const envDefaults = Object.entries(process.env)
   .filter(([k]) => /^[A-Z][a-z][A-Za-z]*$/.test(k))
@@ -43,7 +60,7 @@ const baseRelayFee = argv.BaseFee || 70
 const pctRelayFee = argv.PercentFee || 0
 const url = argv.Url || 'http://localhost:8090'
 const port = argv.Port || 8090
-const relayHubAddress = argv.RelayHubAddress || error('missing --RelayHubAddress')
+const relayHubAddress = getRelayHubAddress(argv.RelayHubAddress) || error('missing --RelayHubAddress')
 // const defaultGasPrice = argv.DefaultGasPrice || 1e9 // 1 Gwei
 const gasPricePercent = argv.GasPricePercent || 10
 // const registrationBlockRate = argv.RegistrationBlockRate || 6000 - 200

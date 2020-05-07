@@ -11,6 +11,8 @@ const StakeManagerABI = require('../common/interfaces/IStakeManager')
 const getDataToSign = require('../common/EIP712/Eip712Helper')
 const RelayRequest = require('../common/EIP712/RelayRequest')
 const utils = require('../common/utils')
+const { getRawTxOptions } = require('../common/utils')
+
 /*
 cannot read TS module if executed by node. Use ts-node to run or, better, fix.
 const Environments = require('../relayclient/types/Environments').environments
@@ -286,7 +288,11 @@ class RelayServer extends EventEmitter {
         console.error('web3 subscription:', error)
       }
     }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => { console.error('worker:', e) })
-    setTimeout(() => { this.web3.eth.getBlockNumber().then(blockNumber => this._workerSemaphore.bind(this)({ number: blockNumber })) }, 1)
+    const handler = () => { this.web3.eth.getBlockNumber().then(blockNumber => this._workerSemaphore.bind(this)({ number: blockNumber })) }
+    if (this.devMode) {
+      this.workerInterval = setInterval(handler, 8000)
+    }
+    setTimeout(handler, 1)
   }
 
   stop () {
@@ -298,6 +304,9 @@ class RelayServer extends EventEmitter {
       }
     })
     if (this._watchdog) { clearTimeout(this._watchdog) }
+    if (this.workerInterval) {
+      clearInterval(this.workerInterval)
+    }
   }
 
   _workerSemaphore (blockHeader) {
@@ -345,7 +354,14 @@ class RelayServer extends EventEmitter {
 
     // TODO: use ContractInteractor
     const chain = await this.web3.eth.net.getNetworkType()
-    this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
+    if (chain === 'private') {
+      this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId)
+    } else {
+      this.rawTxOptions = {
+        chain,
+        hardfork: 'istanbul'
+      }
+    }
 
     console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
@@ -609,22 +625,41 @@ class RelayServer extends EventEmitter {
     }
     debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
-    const confirmedBlock = blockHeader.number - confirmationsNeeded
-    debug('signer, blockHeader, confirmedBlock', signer, blockHeader, confirmedBlock)
-    let nonce = await this.web3.eth.getTransactionCount(signer, confirmedBlock)
-    debug('nonce', nonce, confirmedBlock)
-    debug(
-      `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
+    // const confirmedBlock = Math.max(0, blockHeader.number - confirmationsNeeded)
+    // debug('signer, blockHeader, confirmedBlock', signer, blockHeader, confirmedBlock)
+    // let nonce = await this.web3.eth.getTransactionCount(signer, confirmedBlock)
+    // debug('nonce', nonce, confirmedBlock)
+    // debug(
+    //   `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
     // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
-    await this.txStoreManager.removeTxsUntilNonce({ signer, nonce: nonce - 1 })
+    // await this.txStoreManager.removeTxsUntilNonce({
+    //   signer,
+    //   nonce: nonce - 1
+    // })
 
+    for (const transaction of sortedTxs) {
+      const receipt = await this.web3.eth.getTransaction(transaction.txId)
+      if (receipt == null) {
+        // I believe this means this transaction was not confirmed
+        continue
+      }
+      const txBlockNumber = receipt.blockNumber
+      const confirmations = blockHeader.number - txBlockNumber
+      if (confirmations >= confirmationsNeeded) {
+        debug(`removing tx number ${receipt.nonce} sent by ${receipt.from} with ${confirmations} confirmations`)
+        await this.txStoreManager.removeTxsUntilNonce({
+          signer: receipt.from,
+          nonce: receipt.nonce
+        })
+      }
+    }
     // Load unconfirmed transactions from store again
     sortedTxs = await this.txStoreManager.getAllBySigner(signer)
     if (sortedTxs.length === 0) {
       return
     }
     // Check if the tx was mined by comparing its nonce against the latest one
-    nonce = await this.web3.eth.getTransactionCount(signer)
+    const nonce = await this.web3.eth.getTransactionCount(signer)
     if (sortedTxs[0].nonce < nonce) {
       debug('resend', signerIndex, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce,
         sortedTxs[0].txId)

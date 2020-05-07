@@ -19,8 +19,12 @@ export interface BaseTransactionReceipt {
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
+interface ISendAsync {
+  sendAsync?: any
+}
+
 export class RelayProvider implements HttpProvider {
-  private readonly origProvider: HttpProvider
+  private readonly origProvider: HttpProvider & ISendAsync
   private readonly origProviderSend: any
   private readonly config: GSNConfig
 
@@ -40,7 +44,11 @@ export class RelayProvider implements HttpProvider {
 
     this.origProvider = origProvider
     this.config = config
-    this.origProviderSend = this.origProvider.send.bind(this.origProvider)
+    if (typeof this.origProvider.sendAsync === 'function') {
+      this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
+    } else {
+      this.origProviderSend = this.origProvider.send.bind(this.origProvider)
+    }
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
 
     this._delegateEventsApi(origProvider)

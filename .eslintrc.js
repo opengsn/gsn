@@ -22,6 +22,9 @@ module.exports = {
     // The 'tsconfig.eslint.json' is needed to add all JavaScript files to the project
     'project': ['./tsconfig.json', './tsconfig.eslint.json']
   },
+  ignorePatterns: [
+    'dist/'
+  ],
   rules: {
     'no-console': 'off',
   },
