@@ -1,4 +1,3 @@
-import fs from 'fs'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import HDWalletProvider from '@truffle/hdwallet-provider'
@@ -16,7 +15,7 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/TrustedForwarder.json'
 
-import { Address } from '../relayclient/types/Aliases'
+import { Address, notNull } from '../relayclient/types/Aliases'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
@@ -100,11 +99,6 @@ export default class CommandsLogic {
     throw Error(`Relay not ready after ${timeout}s`)
   }
 
-  saveContractToFile (address: Address, workdir: string, filename: string): void {
-    fs.mkdirSync(workdir, { recursive: true })
-    fs.writeFileSync(workdir + '/' + filename, `{ "address": "${address}" }`)
-  }
-
   async getPaymasterBalance (paymaster: Address): Promise<BN> {
     const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
     return relayHub.balanceOf(paymaster)
@@ -151,6 +145,9 @@ export default class CommandsLogic {
       }
     }
 
+    let stakeTx: Truffle.TransactionResponse | undefined
+    let authorizeTx: Truffle.TransactionResponse | undefined
+    let fundTx: TransactionReceipt | undefined
     try {
       console.error(`Funding GSN relay at ${options.relayUrl}`)
 
@@ -159,14 +156,14 @@ export default class CommandsLogic {
       const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
       const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
-      const stakeTx = await stakeManager
+      stakeTx = await stakeManager
         .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
           value: options.stake,
           from: options.from,
           gas: 1e6,
           gasPrice: 1e9
         })
-      const authorizeTx = await stakeManager
+      authorizeTx = await stakeManager
         .authorizeHub(relayAddress, this.config.relayHubAddress, {
           from: options.from,
           gas: 1e6,
@@ -180,7 +177,7 @@ export default class CommandsLogic {
         gasPrice: 1e9
       })
 
-      const fundTx = _fundTx as TransactionReceipt
+      fundTx = _fundTx as TransactionReceipt
       if (fundTx.transactionHash == null) {
         return {
           success: false,
@@ -195,6 +192,7 @@ export default class CommandsLogic {
     } catch (error) {
       return {
         success: false,
+        transactions: [stakeTx?.tx, authorizeTx?.tx, fundTx?.transactionHash].filter(notNull),
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         error: `Failed to fund relay: '${error}'`
       }
