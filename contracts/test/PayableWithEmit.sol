@@ -1,6 +1,6 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 import "../../contracts/BaseRelayRecipient.sol";
-import "@0x/contracts-utils/contracts/src/LibBytes.sol";
+import "../0x/LibBytesV06.sol";
 
 //make sure that "payable" function that uses _msgSender() still works
 // (its not required to use _msgSender(), since the default function
@@ -10,7 +10,7 @@ contract PayableWithEmit is BaseRelayRecipient {
 
   event Received(address sender, uint value, uint gasleft);
 
-  function () external payable {
+  receive () external payable {
 
     emit Received(_msgSender(), msg.value, gasleft());
   }
@@ -20,6 +20,7 @@ contract PayableWithEmit is BaseRelayRecipient {
   function doSend(address payable target) public payable {
 
     uint before = gasleft();
+    // solhint-disable-next-line check-send-result
     bool success = target.send(msg.value);
     uint gasAfter = gasleft();
     emit GasUsed(before-gasAfter, success);

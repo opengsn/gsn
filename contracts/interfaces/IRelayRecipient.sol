@@ -1,17 +1,17 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 
 /**
  * a contract must implement this interface in order to support relayed transaction.
  * It is better to inherit the BaseRelayRecipient as its implementation.
  */
-contract IRelayRecipient {
+abstract contract IRelayRecipient {
 
     /**
      * return the forwarder we trust to forward relayed transactions to us.
      * the forwarder is required to verify the sender's signature, and verify
      * the call is not a replay.
      */
-    function getTrustedForwarder() public view returns(address);
+    function getTrustedForwarder() public virtual view returns(address);
 
     /**
      * return the sender of this call.
@@ -20,5 +20,5 @@ contract IRelayRecipient {
      * otherwise, return `msg.sender`
      * should be used in the contract anywhere instead of msg.sender
      */
-    function _msgSender() internal view returns (address payable);
+    function _msgSender() internal virtual view returns (address payable);
 }

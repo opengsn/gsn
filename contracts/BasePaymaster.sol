@@ -1,9 +1,8 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/access/Ownable.sol";
 
-import "./BaseGsnAware.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
 
@@ -14,7 +13,13 @@ import "./interfaces/IRelayHub.sol";
  *  - preRelayedCall
  *  - postRelayedCall
  */
-contract BasePaymaster is IPaymaster, Ownable, BaseGsnAware {
+abstract contract BasePaymaster is IPaymaster, Ownable {
+
+    IRelayHub internal relayHub;
+
+    function getHubAddr() public override view returns (address) {
+        return address(relayHub);
+    }
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
     uint256 constant private ACCEPT_RELAYED_CALL_GAS_LIMIT = 50000;
@@ -23,6 +28,7 @@ contract BasePaymaster is IPaymaster, Ownable, BaseGsnAware {
 
     function getGasLimits()
     external
+    override
     view
     returns (
         GSNTypes.GasLimits memory limits
@@ -50,6 +56,7 @@ contract BasePaymaster is IPaymaster, Ownable, BaseGsnAware {
     // (wanted to name it "getRelayHubDeposit()", but we use the name from IRelayRecipient...
     function getRelayHubDeposit()
     public
+    override
     view
     returns (uint) {
         return relayHub.balanceOf(address(this));
@@ -58,7 +65,7 @@ contract BasePaymaster is IPaymaster, Ownable, BaseGsnAware {
     // any money moved into the paymaster is transferred as a deposit.
     // This way, we don't need to understand the RelayHub API in order to replenish
     // the paymaster.
-    function() external payable {
+    receive() external virtual payable {
         relayHub.depositFor.value(msg.value)(address(this));
     }
 

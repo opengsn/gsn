@@ -60,7 +60,11 @@ class GsnTestEnvironmentClass {
       unstakeDelay: '2000'
     }
     const registrationResult = await commandsLogic.registerRelay(registerOptions)
-    console.log('In-process relay successfully registered:', JSON.stringify(registrationResult))
+    if (registrationResult.success) {
+      console.log('In-process relay successfully registered:', JSON.stringify(registrationResult))
+    } else {
+      throw new Error(`Failed to fund relay: ${registrationResult.error} : ${registrationResult?.transactions?.toString()}`)
+    }
 
     await commandsLogic.waitForRelay(relayUrl)
 

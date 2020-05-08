@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -9,7 +9,7 @@ contract StakeManager is IStakeManager {
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
-    function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo) {
+    function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo) {
         return stakes[relayManager];
     }
 
@@ -21,7 +21,7 @@ contract StakeManager is IStakeManager {
     /// If the entry already exists, only the owner can call this function.
     /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
-    function stakeForAddress(address relayManager, uint256 unstakeDelay) external payable {
+    function stakeForAddress(address relayManager, uint256 unstakeDelay) external override payable {
         require(stakes[relayManager].owner == address(0) || stakes[relayManager].owner == msg.sender, "not owner");
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
         require(msg.sender != relayManager, "relayManager cannot stake for itself");
@@ -32,7 +32,7 @@ contract StakeManager is IStakeManager {
         emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
     }
 
-    function unlockStake(address relayManager) external {
+    function unlockStake(address relayManager) external override {
         StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock == 0, "already pending");
@@ -40,7 +40,7 @@ contract StakeManager is IStakeManager {
         emit StakeUnlocked(relayManager, msg.sender, info.withdrawBlock);
     }
 
-    function withdrawStake(address relayManager) external {
+    function withdrawStake(address relayManager) external override {
         StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock > 0, "Withdrawal is not scheduled");
@@ -51,14 +51,14 @@ contract StakeManager is IStakeManager {
         emit StakeWithdrawn(relayManager, msg.sender, amount);
     }
 
-    function authorizeHub(address relayManager, address relayHub) external {
+    function authorizeHub(address relayManager, address relayHub) external override {
         StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         authorizedHubs[relayManager][relayHub].removalBlock = uint(-1);
         emit HubAuthorized(relayManager, relayHub);
     }
 
-    function unauthorizeHub(address relayManager, address relayHub) external {
+    function unauthorizeHub(address relayManager, address relayHub) external override {
         StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
@@ -70,6 +70,7 @@ contract StakeManager is IStakeManager {
 
     function isRelayManagerStaked(address relayManager, uint256 minAmount, uint256 minUnstakeDelay)
     external
+    override
     view
     returns (bool) {
         StakeInfo storage info = stakes[relayManager];
@@ -88,7 +89,7 @@ contract StakeManager is IStakeManager {
     /// @param relayManager - entry to penalize
     /// @param beneficiary - address that receives half of the penalty amount
     /// @param amount - amount to withdraw from stake
-    function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external {
+    function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external override {
         uint256 removalBlock =  authorizedHubs[relayManager][msg.sender].removalBlock;
         require(removalBlock != 0, "hub not authorized");
         require(removalBlock > block.number, "hub authorization expired");

@@ -1,9 +1,9 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "../utils/GSNTypes.sol";
 
-contract ITrustedForwarder {
+interface ITrustedForwarder {
 
     // verify the signature matches the request.
     //  that is, the senderAccount is the signer

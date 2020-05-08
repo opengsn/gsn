@@ -2,10 +2,10 @@
 /* solhint-disable no-inline-assembly */
 /* solhint-disable not-rely-on-time */
 /* solhint-disable bracket-align */
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "@0x/contracts-utils/contracts/src/LibBytes.sol";
+import "./0x/LibBytesV06.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 import "./utils/EIP712Sig.sol";
@@ -41,9 +41,9 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 37770;
+    uint256 constant private GAS_OVERHEAD = 36221;
 
-    function getHubOverhead() external view returns (uint256) {
+    function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
     }
     // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
@@ -66,7 +66,7 @@ contract RelayHub is IRelayHub {
 
     string public version = "1.0.0";
     // TODO: remove with 0.6 solc
-    function getVersion() external view returns (string memory) {
+    function getVersion() external override view returns (string memory) {
         return version;
     }
 
@@ -81,7 +81,7 @@ contract RelayHub is IRelayHub {
         gtxdatanonzero = _gtxdatanonzero;
     }
 
-    function getStakeManager() external view returns(address) {
+    function getStakeManager() external override view returns(address) {
         return address(stakeManager);
     }
 
@@ -90,7 +90,7 @@ contract RelayHub is IRelayHub {
     }
 
 
-    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external {
+    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
         address relayManager = msg.sender;
         require(
             stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
@@ -100,7 +100,7 @@ contract RelayHub is IRelayHub {
         emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
     }
 
-    function addRelayWorkers(address[] calldata newRelayWorkers) external {
+    function addRelayWorkers(address[] calldata newRelayWorkers) external override {
         address relayManager = msg.sender;
         workerCount[relayManager] = workerCount[relayManager] + newRelayWorkers.length;
         require(workerCount[relayManager] <= MAX_WORKER_COUNT, "too many workers");
@@ -118,7 +118,7 @@ contract RelayHub is IRelayHub {
         emit RelayWorkersAdded(relayManager, newRelayWorkers, workerCount[relayManager]);
     }
 
-    function depositFor(address target) public payable {
+    function depositFor(address target) public override payable {
         uint256 amount = msg.value;
         require(amount <= MAXIMUM_RECIPIENT_DEPOSIT, "deposit too big");
 
@@ -127,11 +127,11 @@ contract RelayHub is IRelayHub {
         emit Deposited(target, msg.sender, amount);
     }
 
-    function balanceOf(address target) external view returns (uint256) {
+    function balanceOf(address target) external override view returns (uint256) {
         return balances[target];
     }
 
-    function withdraw(uint256 amount, address payable dest) public {
+    function withdraw(uint256 amount, address payable dest) public override {
         address payable account = msg.sender;
         require(balances[account] >= amount, "insufficient funds");
 
@@ -149,6 +149,7 @@ contract RelayHub is IRelayHub {
         bytes memory approvalData
     )
     public
+    override
     view
     returns (bool success, string memory returnValue)
     {
@@ -174,7 +175,7 @@ contract RelayHub is IRelayHub {
         );
 
         (success, ret) =
-        relayRequest.relayData.paymaster.staticcall.gas(acceptRelayedCallGasLimit)(encodedTx);
+            relayRequest.relayData.paymaster.staticcall{gas:acceptRelayedCallGasLimit}(encodedTx);
 
         if (!success) {
             return (false, GsnUtils.getError(ret));
@@ -229,9 +230,10 @@ contract RelayHub is IRelayHub {
         bytes calldata approvalData
     )
     external
+    override
     {
         uint256 initialGas = gasleft();
-        bytes4 functionSelector = LibBytes.readBytes4(relayRequest.encodedFunction, 0);
+        bytes4 functionSelector = LibBytesV06.readBytes4(relayRequest.encodedFunction, 0);
         // Initial soundness checks - the relay must make sure these pass, or it will pay for a reverted transaction.
         // The worker must be controlled by a manager with a locked stake
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
@@ -357,7 +359,7 @@ contract RelayHub is IRelayHub {
             bytes memory retData;
             // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
             // acceptRelayedCall that this will not happen.
-            (success, retData) = relayRequest.relayData.paymaster.call.gas(gasLimits.preRelayedCallGasLimit)(atomicData.data);
+            (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(atomicData.data);
             if (!success) {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed);
             }
@@ -381,7 +383,7 @@ contract RelayHub is IRelayHub {
             relayRequest.gasData
         );
 
-        (bool successPost,) = relayRequest.relayData.paymaster.call.gas(gasLimits.postRelayedCallGasLimit)(atomicData.data);
+        (bool successPost,) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(atomicData.data);
 
         if (!successPost) {
             revertWithStatus(RelayCallStatus.PostRelayedFailed);
@@ -408,7 +410,7 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gasUsed, GSNTypes.GasData memory gasData) public view returns (uint256) {
+    function calculateCharge(uint256 gasUsed, GSNTypes.GasData memory gasData) public override virtual view returns (uint256) {
         return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
     }
 
@@ -417,7 +419,7 @@ contract RelayHub is IRelayHub {
         _;
     }
 
-    function penalize(address relayWorker, address payable beneficiary) external penalizerOnly {
+    function penalize(address relayWorker, address payable beneficiary) external override penalizerOnly {
         address relayManager = workerToManager[relayWorker];
         // The worker must be controlled by a manager with a locked stake
         require(relayManager != address(0), "Unknown relay worker");

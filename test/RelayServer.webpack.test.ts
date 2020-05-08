@@ -12,12 +12,12 @@ describe('RelayServer-webpack', () => {
     oneFileRelayer = path.join(jsrelayDir, 'dist', 'relayserver.js')
   })
 
-  it('should launch (and say "missing address") to verify it was packed ok', () => {
+  it('should launch (and instantly crash with some parameter missing) to verify it was packed correctly', function () {
     try {
       childProcess.execSync('node ' + oneFileRelayer, { encoding: 'ascii', stdio: 'pipe' })
       assert.fail('should throw')
     } catch (e) {
-      assert.match(e.toString(), /missing --RelayHubAddress/)
+      assert.match(e.toString(), /Command failed.*[\r\n]+missing --/)
     }
   })
 

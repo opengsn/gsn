@@ -25,3 +25,4 @@ cache
 /RelayClient.ts
 /RelayProvider.ts
 /GSNConfigurator.ts
+/GsnTestEnvironment.ts
