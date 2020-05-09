@@ -1,31 +1,31 @@
-import Web3 from 'web3'
-import { Log, provider, TransactionReceipt } from 'web3-core'
-import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 
+import * as ethers from 'ethers'
 import RelayRequest from '../common/EIP712/RelayRequest'
-import paymasterAbi from '../common/interfaces/IPaymaster.json'
-import relayHubAbi from '../common/interfaces/IRelayHub.json'
-import forwarderAbi from '../common/interfaces/ITrustedForwarder.json'
-import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
-import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 
-import { calculateTransactionMaxPossibleGas, event2topic, getRawTxOptions } from '../common/utils'
+import { calculateTransactionMaxPossibleGas, getRawTxOptions } from '../common/utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
-import {
-  BaseRelayRecipientInstance,
-  IPaymasterInstance,
-  IRelayHubInstance, IRelayRecipientInstance, IStakeManagerInstance,
-  ITrustedForwarderInstance
-} from '../../types/truffle-contracts'
 
 import { Address, IntString } from './types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
+import { AsyncSendable, Filter, Provider, TransactionRequest } from 'ethers/providers'
+import { IRelayRecipientFactory } from '../../types/ethers-contracts/IRelayRecipientFactory'
+import { IRelayRecipient } from '../../types/ethers-contracts/IRelayRecipient'
+import { IPaymasterFactory } from '../../types/ethers-contracts/IPaymasterFactory'
+import { IPaymaster } from '../../types/ethers-contracts/IPaymaster'
+import { IRelayHubFactory } from '../../types/ethers-contracts/IRelayHubFactory'
+import { ITrustedForwarder } from '../../types/ethers-contracts/ITrustedForwarder'
+import { IRelayHub } from '../../types/ethers-contracts/IRelayHub'
+import { IStakeManagerFactory } from '../../types/ethers-contracts/IStakeManagerFactory'
+import { IStakeManager } from '../../types/ethers-contracts/IStakeManager'
+import { ITrustedForwarderFactory } from '../../types/ethers-contracts/ITrustedForwarderFactory'
+import { TransactionResponse } from 'ethers/providers/abstract-provider'
+import { ethersGetPastEvents, LogEvent } from './ethers_getPastEvent'
+import { AddressZero } from 'ethers/constants'
+import { Signer } from 'ethers'
 
 // Truffle Contract typings seem to be completely out of their minds
-import TruffleContract = require('@truffle/contract')
-import Contract = Truffle.Contract
 
 type EventName = string
 
@@ -35,63 +35,23 @@ export const HubUnauthorized: EventName = 'HubUnauthorized'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export default class ContractInteractor {
-  private readonly IPaymasterContract: Contract<IPaymasterInstance>
-  private readonly IRelayHubContract: Contract<IRelayHubInstance>
-  private readonly IForwarderContract: Contract<ITrustedForwarderInstance>
-  private readonly IStakeManager: Contract<IStakeManagerInstance>
-  private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
-
-  private readonly web3: Web3
-  private readonly provider: provider
+  private readonly provider: ethers.providers.JsonRpcProvider
   private readonly config: GSNConfig
   private rawTxOptions?: TransactionOptions
 
-  constructor (provider: provider, config: GSNConfig) {
-    this.web3 = new Web3(provider)
+  constructor (provider: any, config: GSNConfig) {
     this.config = config
-    this.provider = provider
-    // @ts-ignore
-    this.IPaymasterContract = TruffleContract({
-      contractName: 'IPaymaster',
-      abi: paymasterAbi
-    })
-    // @ts-ignore
-    this.IRelayHubContract = TruffleContract({
-      contractName: 'IRelayHub',
-      abi: relayHubAbi
-    })
-    // @ts-ignore
-    this.IForwarderContract = TruffleContract({
-      contractName: 'ITrustedForwarder',
-      abi: forwarderAbi
-    })
-    // @ts-ignore
-    this.IStakeManager = TruffleContract({
-      contractName: 'IStakeManager',
-      abi: stakeManagerAbi
-    })
-    // @ts-ignore
-    this.IRelayRecipient = TruffleContract({
-      contractName: 'IRelayRecipient',
-      abi: gsnRecipientAbi
-    })
-    this.IStakeManager.setProvider(this.provider, undefined)
-    this.IRelayHubContract.setProvider(this.provider, undefined)
-    this.IPaymasterContract.setProvider(this.provider, undefined)
-    this.IForwarderContract.setProvider(this.provider, undefined)
-    this.IRelayRecipient.setProvider(this.provider, undefined)
+    this.provider = new ethers.providers.Web3Provider(provider as AsyncSendable)
   }
 
-  getProvider (): provider { return this.provider }
-
-  getWeb3 (): Web3 { return this.web3 }
 
   async _init (): Promise<void> {
-    const chain = await this.web3.eth.net.getNetworkType()
-    console.log('== chain=', chain)
-    if (chain === 'private') {
-      const chainId = await this.web3.eth.getChainId()
-      const networkId = await this.web3.eth.net.getId()
+    const network = await this.provider.getNetwork()
+    const chain = network.name
+    if (chain === 'unknown') {
+      // TODO:
+      const chainId = await this.provider.send('eth_chainId', [])
+      const networkId = network.chainId
       this.rawTxOptions = getRawTxOptions(chainId, networkId)
     } else {
       this.rawTxOptions = {
@@ -110,28 +70,32 @@ export default class ContractInteractor {
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
-    return this.IRelayRecipient.at(address)
+  async _createRecipient (address: Address): Promise<IRelayRecipient> {
+    return IRelayRecipientFactory.connect(address, this.provider)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
-    return this.IPaymasterContract.at(address)
+  async _createPaymaster (address: Address): Promise<IPaymaster> {
+    return IPaymasterFactory.connect(address, this.provider)
+  }
+
+  _providerOrSigner (from?: Address): Provider | Signer {
+    return from != null ? this.provider.getSigner(from) : this.provider
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createRelayHub (address: Address): Promise<IRelayHubInstance> {
-    return this.IRelayHubContract.at(address)
+  async _createRelayHub (address: Address, from?: Address): Promise<IRelayHub> {
+    return IRelayHubFactory.connect(address, this._providerOrSigner(from))
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
-    return this.IForwarderContract.at(address)
+  async _createForwarder (address: Address): Promise<ITrustedForwarder> {
+    return ITrustedForwarderFactory.connect(address, this.provider)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
-    return this.IStakeManager.at(address)
+  async _createStakeManager (address: Address, from?: Address): Promise<IStakeManager> {
+    return IStakeManagerFactory.connect(address, this._providerOrSigner(from))
   }
 
   async getForwarder (recipientAddress: Address): Promise<Address> {
@@ -199,8 +163,8 @@ export default class ContractInteractor {
   encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString): PrefixedHexString {
     // TODO: check this works as expected
     // @ts-ignore
-    const relayHub = new this.IRelayHubContract('')
-    return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData).encodeABI()
+    const relayHub = IRelayHubFactory.connect(AddressZero, this.provider)
+    return relayHub.interface.functions.relayCall.encode([relayRequest, sig, approvalData])
   }
 
   topicsForManagers (relayManagers: Address[]): string[] {
@@ -209,60 +173,44 @@ export default class ContractInteractor {
     )
   }
 
-  async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForHub (names: EventName[], extraTopics: string[], options: Filter): Promise<LogEvent[]> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
-    return this._getPastEvents(relayHub.contract, names, extraTopics, options)
+    return ethersGetPastEvents(relayHub, names, extraTopics, options)
   }
 
-  async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: Filter): Promise<LogEvent[]> {
     const stakeManager = await this._createStakeManager(this.config.stakeManagerAddress)
-    return this._getPastEvents(stakeManager.contract, names, extraTopics, options)
-  }
-
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async _getPastEvents (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    const topics: string[][] = []
-    const eventTopic = event2topic(contract, names)
-    topics.push(eventTopic)
-    if (extraTopics.length > 0) {
-      topics.push(extraTopics)
-    }
-    return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
-  }
-
-  async getPastLogs (eventName: EventName, options: PastEventOptions): Promise<Log[]> {
-    // @ts-ignore
-    const hubContract = new this.web3.eth.Contract(relayHubAbi)
-    const eventTopic = event2topic(hubContract, eventName)
-    return this.web3.eth.getPastLogs(
-      {
-        ...options,
-        topics: [eventTopic]
-      }
-    )
+    return ethersGetPastEvents(stakeManager, names, extraTopics, options)
   }
 
   async getBalance (address: Address): Promise<string> {
-    return this.web3.eth.getBalance(address)
+    return (await this.provider.getBalance(address)).toString()
   }
 
   async getBlockNumber (): Promise<number> {
-    return this.web3.eth.getBlockNumber()
+    return this.provider.getBlockNumber()
   }
 
-  async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
-    return this.web3.eth.sendSignedTransaction(rawTx)
+  async sendSignedTransaction (rawTx: string): Promise<TransactionResponse> {
+    return this.provider.sendTransaction(rawTx)
+  }
+
+  async sendTransaction (tx: TransactionRequest): Promise<TransactionResponse> {
+    const { from, ...txWithoutFrom } = tx
+    return this.provider.getSigner(await from)
+      .sendTransaction(txWithoutFrom)
   }
 
   async estimateGas (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
-    return this.web3.eth.estimateGas(gsnTransactionDetails)
+    const tx: TransactionRequest = { ...gsnTransactionDetails, gasLimit: gsnTransactionDetails.gas }
+    return await this.provider.estimateGas(tx) as unknown as number
   }
 
   async getGasPrice (): Promise<string> {
-    return this.web3.eth.getGasPrice()
+    return (await this.provider.getGasPrice()).toString()
   }
 
   async getTransactionCount (relayWorker: string): Promise<number> {
-    return this.web3.eth.getTransactionCount(relayWorker)
+    return this.provider.getTransactionCount(relayWorker)
   }
 }

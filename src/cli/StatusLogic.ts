@@ -43,7 +43,7 @@ export default class StatusLogic {
 
     const relayRegisteredEventsData =
       await this.contractInteractor.getPastEventsForHub([RelayServerRegistered], [], { fromBlock })
-    const relayRegisteredEvents = relayRegisteredEventsData.map(e => e.returnValues as RelayRegisteredEventInfo)
+    const relayRegisteredEvents = relayRegisteredEventsData.map(e => e.args as RelayRegisteredEventInfo)
 
     const relayPings = new Map<string, PingAttempt>()
     const balances = new Map<string, string>()

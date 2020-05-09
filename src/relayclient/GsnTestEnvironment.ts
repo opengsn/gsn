@@ -12,6 +12,7 @@ import HttpServer from '../relayserver/HttpServer'
 import { Address } from './types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
+import {BigNumber, BigNumberish, formatEther} from 'ethers/utils'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -32,7 +33,6 @@ class GsnTestEnvironmentClass {
   async startGsn (host?: string, paymaster?: any): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
-    console.log('_host=', _host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
@@ -43,8 +43,8 @@ class GsnTestEnvironmentClass {
       throw new Error('could not get unlocked account with sufficient balance')
     }
     const deploymentResult = await commandsLogic.deployGsnContracts(from, undefined, paymaster)
-    const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
-    console.log('Sample Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
+    const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1').toString())
+    console.log('Sample Paymaster successfully funded, balance:', formatEther(balance))
 
     await this._runServer(_host, deploymentResult, from)
     if (this.httpServer == null) {
@@ -60,6 +60,9 @@ class GsnTestEnvironmentClass {
       unstakeDelay: '2000'
     }
     const registrationResult = await commandsLogic.registerRelay(registerOptions)
+    if (!registrationResult.success) {
+      throw new Error(`failed to register relay: ${registrationResult.error}`)
+    }
     if (registrationResult.success) {
       console.log('In-process relay successfully registered:', JSON.stringify(registrationResult))
     } else {

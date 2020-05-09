@@ -1,7 +1,7 @@
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { TransactionReceipt } from 'web3-core'
+import { TransactionResponse } from 'ethers/providers/abstract-provider'
 
 export default class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'
@@ -26,7 +26,7 @@ export default class BadContractInteractor extends ContractInteractor {
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
+  async sendSignedTransaction (rawTx: string): Promise<TransactionResponse> {
     throw new Error(BadContractInteractor.wrongNonceMessage)
   }
 }

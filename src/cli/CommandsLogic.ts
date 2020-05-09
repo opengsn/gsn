@@ -3,7 +3,7 @@ import { Contract } from 'web3-eth-contract'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import BN from 'bn.js'
 import { ether } from '@openzeppelin/test-helpers'
-import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { HttpProvider } from 'web3-core'
 import { merge } from 'lodash'
 
 import { sleep } from '../common/utils'
@@ -20,6 +20,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
+import { BigNumber, bigNumberify, BigNumberish } from 'ethers/utils'
 
 interface RegisterOptions {
   from: Address
@@ -99,9 +100,10 @@ export default class CommandsLogic {
     throw Error(`Relay not ready after ${timeout}s`)
   }
 
+
   async getPaymasterBalance (paymaster: Address): Promise<BN> {
     const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
-    return relayHub.balanceOf(paymaster)
+    return new BN((await relayHub.balanceOf(paymaster)).toString())
   }
 
   /**
@@ -113,16 +115,15 @@ export default class CommandsLogic {
    * @return deposit of the paymaster after
    */
   async fundPaymaster (
-    from: Address, paymaster: Address, amount: string | BN
-  ): Promise<BN> {
-    const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
-    const targetAmount = new BN(amount)
+    from: Address, paymaster: Address, amount: BigNumberish
+  ): Promise<BigNumber> {
+    const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress, from)
+    const targetAmount = new BigNumber(amount)
     const currentBalance = await relayHub.balanceOf(paymaster)
     if (currentBalance.lt(targetAmount)) {
       const value = targetAmount.sub(currentBalance)
       await relayHub.depositFor(paymaster, {
-        value,
-        from
+        value
       })
       return targetAmount
     } else {
@@ -153,31 +154,29 @@ export default class CommandsLogic {
 
       const response = await this.httpClient.getPingResponse(options.relayUrl)
       const relayAddress = response.RelayManagerAddress
-      const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
+      const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress, options.from)
       const stakeManagerAddress = await relayHub.getStakeManager()
-      const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
-      stakeTx = await stakeManager
+      const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress, options.from)
+      stakeTx = await (await stakeManager
         .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
-          value: options.stake,
-          from: options.from,
-          gas: 1e6,
+          value: bigNumberify(options.stake.toString()),
+          gasLimit: 1e6,
           gasPrice: 1e9
-        })
-      authorizeTx = await stakeManager
+        })).wait()
+      authorizeTx = await (await stakeManager
         .authorizeHub(relayAddress, this.config.relayHubAddress, {
-          from: options.from,
-          gas: 1e6,
+          gasLimit: 1e6,
           gasPrice: 1e9
-        })
-      const _fundTx = await this.web3.eth.sendTransaction({
+        })).wait()
+      const _fundTx = await this.contractInteractor.sendTransaction({
         from: options.from,
         to: relayAddress,
-        value: options.funds,
-        gas: 1e6,
+        value: bigNumberify(options.funds.toString()),
+        gasLimit: 1e6,
         gasPrice: 1e9
       })
 
-      fundTx = _fundTx as TransactionReceipt
+      fundTx = await _fundTx.wait()
       if (fundTx.transactionHash == null) {
         return {
           success: false,
@@ -185,9 +184,10 @@ export default class CommandsLogic {
         }
       }
       await this.waitForRelay(options.relayUrl)
+      assert(stakeTx.transactionHash != null && authorizeTx.transactionHash != null)
       return {
         success: true,
-        transactions: [stakeTx.tx, authorizeTx.tx, fundTx.transactionHash]
+        transactions: [stakeTx.transactionHash, authorizeTx.transactionHash, fundTx.transactionHash]
       }
     } catch (error) {
       return {

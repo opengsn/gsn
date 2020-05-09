@@ -15,7 +15,7 @@ node_modules
 /.eslintcache
 /src/common/interfaces/
 /ganache.pid
-/types/truffle-contracts/
+/types/ethers-contracts/
 serverdock/
 /dist/
 cache

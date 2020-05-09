@@ -1,5 +1,5 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
-import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { HttpProvider } from 'web3-core'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
@@ -13,6 +13,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
+import { TransactionResponse } from 'ethers/providers'
 
 // generate "approvalData" for a request. must return string-encoded bytes array
 export const EmptyApprovalData: AsyncApprovalData = async (): Promise<PrefixedHexString> => {
@@ -80,7 +81,7 @@ export default class RelayClient {
    *
    * @param {*} transaction - actual Ethereum transaction, signed by a relay
    */
-  async _broadcastRawTx (transaction: Transaction): Promise<{ receipt?: TransactionReceipt, broadcastError?: Error, wrongNonce?: boolean }> {
+  async _broadcastRawTx (transaction: Transaction): Promise<{ receipt?: TransactionResponse, broadcastError?: Error, wrongNonce?: boolean }> {
     const rawTx = '0x' + transaction.serialize().toString('hex')
     const txHash = '0x' + transaction.hash(true).toString('hex')
     if (this.config.verbose) {
@@ -217,8 +218,8 @@ export default class RelayClient {
       target: gsnTransactionDetails.to,
       encodedFunction: gsnTransactionDetails.data,
       senderNonce,
-      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
-      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
+      pctRelayFee: relayInfo.relayInfo.pctRelayFee.toString(),
+      baseRelayFee: relayInfo.relayInfo.baseRelayFee.toString(),
       gasPrice,
       gasLimit,
       paymaster,
@@ -232,14 +233,16 @@ export default class RelayClient {
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
+
+    // TODO: instead of re-packing relayRequest, use it: differences are 3 un-signed params, and rename of target/to
     const httpRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
       encodedFunction: gsnTransactionDetails.data,
       senderNonce: relayRequest.relayData.senderNonce,
       from: gsnTransactionDetails.from,
       to: gsnTransactionDetails.to,
-      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
-      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
+      pctRelayFee: relayInfo.relayInfo.pctRelayFee.toString(),
+      baseRelayFee: relayInfo.relayInfo.baseRelayFee.toString(),
       gasPrice,
       gasLimit,
       paymaster: paymaster,

@@ -4437,6 +4437,21 @@ ethers@^4.0.0-beta.1, ethers@^4.0.32, ethers@~4.0.4:
     uuid "2.0.1"
     xmlhttprequest "1.8.0"
 
+ethers@^4.0.47:
+  version "4.0.47"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-4.0.47.tgz#91b9cd80473b1136dd547095ff9171bd1fc68c85"
+  integrity sha512-hssRYhngV4hiDNeZmVU/k5/E8xmLG8UpcNUzg6mb7lqhgpFPH/t7nuv20RjRrEf0gblzvi2XwR5Te+V3ZFc9pQ==
+  dependencies:
+    aes-js "3.0.0"
+    bn.js "^4.4.0"
+    elliptic "6.5.2"
+    hash.js "1.1.3"
+    js-sha3 "0.5.7"
+    scrypt-js "2.0.4"
+    setimmediate "1.0.4"
+    uuid "2.0.1"
+    xmlhttprequest "1.8.0"
+
 ethjs-abi@^0.2.1:
   version "0.2.1"
   resolved "https://registry.yarnpkg.com/ethjs-abi/-/ethjs-abi-0.2.1.tgz#e0a7a93a7e81163a94477bad56ede524ab6de533"
@@ -9830,6 +9845,13 @@ type@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/type/-/type-2.0.0.tgz#5f16ff6ef2eb44f260494dae271033b29c09a9c3"
   integrity sha512-KBt58xCHry4Cejnc2ISQAF7QY+ORngsWfxezO68+12hKV6lQY8P/psIkcbjeHWn7MqcgciWJyCCevFMJdIXpow==
+
+typechain-target-ethers@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/typechain-target-ethers/-/typechain-target-ethers-1.0.4.tgz#597d92bb7db66a656126c930db4a0f5be287a37d"
+  integrity sha512-ay4qcan8erubMgBUcMErKplwQXydWCo/mBmrYGfbnnbUYzRe99jGs4uuSEi1JH2jGDtRi1sRDpIW0q9V4fd14A==
+  dependencies:
+    lodash "^4.17.15"
 
 typechain-target-trufflehotfix@0.0.4-alpha:
   version "0.0.4-alpha"

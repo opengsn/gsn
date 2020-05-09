@@ -79,6 +79,9 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     }
 
     const mergedEvents = [...relayManagerExitEvents, ...relayServerRegisteredEvents].sort((a, b) => {
+      assert(a != null && b != null)
+      assert(a.blockNumber != null && a.transactionIndex != null)
+      assert(b.blockNumber != null && b.transactionIndex != null)
       const blockNumberA = a.blockNumber
       const blockNumberB = b.blockNumber
       const transactionIndexA = a.transactionIndex
@@ -90,7 +93,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     })
     const activeRelays = new Map<Address, RelayRegisteredEventInfo>()
     mergedEvents.forEach(event => {
-      const args = event.returnValues
+      const args = event.args as any
       if (event.event === RelayServerRegistered) {
         activeRelays.set(args.relayManager, args as RelayRegisteredEventInfo)
       } else {
@@ -119,7 +122,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       // if (event.event === 'RelayRemoved') {
       //   foundRelays.delete(event.returnValues.relay)
       // } else {
-      foundRelayManagers.add(event.returnValues.relayManager)
+      foundRelayManagers.add(event.args.relayManager)
     })
 
     if (this.config.verbose) {
