@@ -44,7 +44,6 @@ export default class ContractInteractor {
     this.provider = new ethers.providers.Web3Provider(provider as AsyncSendable)
   }
 
-
   async _init (): Promise<void> {
     const network = await this.provider.getNetwork()
     const chain = network.name

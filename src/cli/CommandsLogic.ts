@@ -21,6 +21,8 @@ import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
 import { BigNumber, bigNumberify, BigNumberish } from 'ethers/utils'
+import { TransactionReceipt } from 'ethers/providers/abstract-provider'
+import { ContractReceipt } from 'ethers/contract'
 
 interface RegisterOptions {
   from: Address
@@ -100,7 +102,6 @@ export default class CommandsLogic {
     throw Error(`Relay not ready after ${timeout}s`)
   }
 
-
   async getPaymasterBalance (paymaster: Address): Promise<BN> {
     const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
     return new BN((await relayHub.balanceOf(paymaster)).toString())
@@ -146,9 +147,9 @@ export default class CommandsLogic {
       }
     }
 
-    let stakeTx: Truffle.TransactionResponse | undefined
-    let authorizeTx: Truffle.TransactionResponse | undefined
-    let fundTx: TransactionReceipt | undefined
+    let stakeTx: ContractReceipt |null = null
+    let authorizeTx: ContractReceipt | null = null
+    let fundTx: TransactionReceipt | null = null
     try {
       console.error(`Funding GSN relay at ${options.relayUrl}`)
 
@@ -184,15 +185,14 @@ export default class CommandsLogic {
         }
       }
       await this.waitForRelay(options.relayUrl)
-      assert(stakeTx.transactionHash != null && authorizeTx.transactionHash != null)
       return {
         success: true,
-        transactions: [stakeTx.transactionHash, authorizeTx.transactionHash, fundTx.transactionHash]
+        transactions: [stakeTx.transactionHash as string, authorizeTx.transactionHash as string, fundTx.transactionHash]
       }
     } catch (error) {
       return {
         success: false,
-        transactions: [stakeTx?.tx, authorizeTx?.tx, fundTx?.transactionHash].filter(notNull),
+        transactions: [stakeTx?.transactionHash, authorizeTx?.transactionHash, fundTx?.transactionHash].filter(notNull),
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         error: `Failed to fund relay: '${error}'`
       }

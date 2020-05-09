@@ -1,8 +1,6 @@
 const ethUtils = require('ethereumjs-util')
 const web3Utils = require('web3-utils')
 
-const abi = require('web3-eth-abi')
-
 const { default: Common } = require('ethereumjs-common')
 
 function removeHexPrefix (hex) {

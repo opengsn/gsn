@@ -43,8 +43,8 @@ function getTopic2prep (contract: Contract): Map<string, Log2LogEvent> {
     .filter(eventName => !/[(]/.test(eventName)) // remove entries with params: EventName(arg,arg)
     .map(eventName => {
       const filter = contract.filters[eventName]() // create a filter for that event
-      assert(filter.topics !== undefined)
       return [
+        // @ts-ignore
         filter.topics[0], // first topic
         // @ts-ignore
         prepWrapper(eventName, contract._getEventFilter(filter).prepareEvent) // function to map params
@@ -66,7 +66,7 @@ export async function ethersGetPastEvents (contract: Contract, filters: any[], e
         throw new Error('no such filter: ' + filterOrName)
       }
       const topics = found[1]().topics
-      assert(topics !== undefined)
+      // @ts-ignore
       return topics[0]
     }
     if (typeof filterOrName === 'function') { return filterOrName().topics[0] }

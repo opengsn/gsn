@@ -12,7 +12,7 @@ import HttpServer from '../relayserver/HttpServer'
 import { Address } from './types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
-import {BigNumber, BigNumberish, formatEther} from 'ethers/utils'
+import { formatEther } from 'ethers/utils'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult

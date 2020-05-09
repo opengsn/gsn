@@ -79,16 +79,15 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     }
 
     const mergedEvents = [...relayManagerExitEvents, ...relayServerRegisteredEvents].sort((a, b) => {
-      assert(a != null && b != null)
-      assert(a.blockNumber != null && a.transactionIndex != null)
-      assert(b.blockNumber != null && b.transactionIndex != null)
       const blockNumberA = a.blockNumber
       const blockNumberB = b.blockNumber
       const transactionIndexA = a.transactionIndex
       const transactionIndexB = b.transactionIndex
       if (blockNumberA === blockNumberB) {
+        // @ts-ignore
         return transactionIndexA - transactionIndexB
       }
+      // @ts-ignore
       return blockNumberA - blockNumberB
     })
     const activeRelays = new Map<Address, RelayRegisteredEventInfo>()
