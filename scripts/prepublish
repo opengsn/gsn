@@ -1,9 +1,7 @@
 #!/bin/bash -e
 
-rm -rf ./dist/
-yarn truffle-compile
-yarn extract_abi
 yarn generate
+yarn extract_abi
 
 mkdir -p src/cli/compiled/
 
@@ -11,8 +9,8 @@ CONTRACTS="RelayHub StakeManager Penalizer TrustedForwarder TestPaymasterEveryth
 BUILDFOLDER=./build/contracts
 OUTFOLDER=./src/cli/compiled/
 for c in $CONTRACTS; do
-  echo copy $OUTFOLDER/$c.json
-  cp $BUILDFOLDER/$c.json $OUTFOLDER
+  echo copy "$OUTFOLDER/$c.json"
+  cp "$BUILDFOLDER/$c.json" $OUTFOLDER
 done
 
 

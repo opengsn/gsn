@@ -48,7 +48,7 @@ export default class ContractInteractor {
     const network = await this.provider.getNetwork()
     const chain = network.name
     if (chain === 'unknown') {
-      // TODO:
+      // ethers@4 doesn't support eth_chainId: https://github.com/ethers-io/ethers.js/issues/827
       const chainId = await this.provider.send('eth_chainId', [])
       const networkId = network.chainId
       this.rawTxOptions = getRawTxOptions(chainId, networkId)

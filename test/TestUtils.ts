@@ -8,8 +8,14 @@ import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
 import { ether } from '@openzeppelin/test-helpers'
 import fs from 'fs'
+import { JsonRpcProvider } from 'ethers/providers'
 
 const localhostOne = 'http://localhost:8090'
+
+// temporary helper for web3-based tests
+export function web3AsJsonRpcProvider (web3: any): JsonRpcProvider {
+  return web3.currentProvider as unknown as JsonRpcProvider
+}
 
 // start a background relay process.
 // rhub - relay hub contract

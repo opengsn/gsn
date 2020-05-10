@@ -7,8 +7,7 @@ import { getEip712Signature, isSameAddress } from '../common/utils'
 import { Address } from './types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { GSNConfig } from './GSNConfigurator'
-import { HttpProvider } from 'web3-core'
-import Web3 from 'web3'
+import { JsonRpcProvider } from 'ethers/providers'
 
 export interface AccountKeypair {
   privateKey: Buffer
@@ -20,13 +19,13 @@ function toAddress (wallet: any): string {
   return `0x${wallet.getAddress().toString('hex')}`
 }
 export default class AccountManager {
-  private readonly web3: Web3
+  private readonly rpcProvider: JsonRpcProvider
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
   private readonly chainId: number
 
-  constructor (provider: HttpProvider, chainId: number, config: GSNConfig) {
-    this.web3 = new Web3(provider)
+  constructor (provider: JsonRpcProvider, chainId: number, config: GSNConfig) {
+    this.rpcProvider = provider
     this.chainId = chainId
     this.config = config
   }
@@ -89,7 +88,7 @@ export default class AccountManager {
   async _signWithProvider (signedData: any): Promise<string> {
     return getEip712Signature(
       {
-        web3: this.web3,
+        rpcProvider: this.rpcProvider,
         methodSuffix: this.config.methodSuffix ?? '',
         jsonStringifyRequest: this.config.jsonStringifyRequest ?? false,
         dataToSign: signedData

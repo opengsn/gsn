@@ -1,7 +1,7 @@
 // TODO: convert to 'commander' format
 const fs = require('fs')
 const parseArgs = require('minimist')
-const Web3 = require('web3')
+const Web3WebsocketProvider = require('web3-providers-ws')
 const HttpServer = require('./HttpServer')
 const RelayServer = require('./RelayServer')
 const KeyManager = require('./KeyManager')
@@ -76,7 +76,7 @@ if (devMode) {
 
 const keyManager = new KeyManager({ count: 2, workdir })
 const txStoreManager = new TxStoreManager({ workdir })
-const web3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
+const web3provider = new Web3WebsocketProvider(ethereumNodeUrl)
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const relay = new RelayServer({
   txStoreManager,

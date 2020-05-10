@@ -103,6 +103,7 @@ contract('RelayServer', function (accounts) {
       verbose: process.env.DEBUG
     }
 
+    // TODO: this is not a real RelayClient: its a legacy onee, which isn't using ethers provider.
     relayClient = new RelayClient(_web3, relayClientConfig)
 
     options = {

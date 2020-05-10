@@ -14,6 +14,8 @@ import {
   ITrustedForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
+import { JsonRpcProvider } from 'ethers/providers'
+import { web3AsJsonRpcProvider } from './TestUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const TrustedForwarder = artifacts.require('TrustedForwarder')
@@ -62,6 +64,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let signature: string
   let relayRequest: RelayRequest
   let forwarder: string
+  let rpcProvider: JsonRpcProvider
+
+  before(() => {
+    rpcProvider = web3AsJsonRpcProvider(web3)
+  })
 
   beforeEach(async function prepareForHub () {
     recipient = await TestRecipient.new()
@@ -102,7 +109,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       relayRequest
     })
     signature = await getEip712Signature({
-      web3,
+      rpcProvider,
       dataToSign
     })
   })
@@ -179,7 +186,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         relayRequest: relayRequestMisbehaving
       })
       const signature = await getEip712Signature({
-        web3,
+        rpcProvider,
         dataToSign
       })
       const maxPossibleGasIrrelevantValue = 8000000
@@ -266,7 +273,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                 relayRequest
               })
               const signature = await getEip712Signature({
-                web3,
+                rpcProvider,
                 dataToSign
               })
               const res = await relayHub.relayCall(relayRequest, signature, '0x', {

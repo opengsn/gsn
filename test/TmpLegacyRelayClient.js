@@ -71,7 +71,7 @@ class TmpLegacyRelayClient {
     })
     return getEip712Signature(
       {
-        web3: this.web3,
+        rpcProvider: this.web3.currentProvider,
         methodSuffix: options.methodSuffix || '',
         jsonStringifyRequest: options.jsonStringifyRequest || false,
         dataToSign: signedData

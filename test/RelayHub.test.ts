@@ -13,6 +13,8 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, TrustedForwarderInstance, PenalizerInstance
 } from '../types/truffle-contracts'
+import { web3AsJsonRpcProvider } from './TestUtils'
+import { JsonRpcProvider } from 'ethers/providers'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -44,6 +46,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let target: string
   let paymaster: string
   let forwarder: string
+  let rpcProvider: JsonRpcProvider
+
+  before(() => {
+    rpcProvider = web3AsJsonRpcProvider(web3)
+  })
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
@@ -255,7 +262,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           relayRequest
         })
         signatureWithPermissivePaymaster = await getEip712Signature({
-          web3,
+          rpcProvider,
           dataToSign
         })
 
@@ -317,7 +324,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequest: relayRequestWrongNonce
           })
           const signature = await getEip712Signature({
-            web3,
+            rpcProvider,
             dataToSign
           })
 
@@ -364,7 +371,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
 
           signature = await getEip712Signature({
-            web3,
+            rpcProvider,
             dataToSign
           })
 
@@ -377,7 +384,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequest: relayRequestMisbehavingPaymaster
           })
           signatureWithMisbehavingPaymaster = await getEip712Signature({
-            web3,
+            rpcProvider,
             dataToSign
           })
 
@@ -389,7 +396,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequest: relayRequestPaymasterWithContext
           })
           signatureWithContextPaymaster = await getEip712Signature({
-            web3,
+            rpcProvider,
             dataToSign
           })
         })
@@ -423,7 +430,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequest: relayRequestNoCallData
           })
           signature = await getEip712Signature({
-            web3,
+            rpcProvider,
             dataToSign
           })
           const { tx } = await relayHubInstance.relayCall(relayRequestNoCallData, signature, '0x', {
@@ -593,7 +600,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               relayRequest: relayRequestMisbehavingPaymaster
             })
             signature = await getEip712Signature({
-              web3,
+              rpcProvider,
               dataToSign
             })
           })

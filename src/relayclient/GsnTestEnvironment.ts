@@ -1,5 +1,4 @@
 import net from 'net'
-import { ether } from '@openzeppelin/test-helpers'
 
 import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
 import KeyManager from '../relayserver/KeyManager'
@@ -12,7 +11,7 @@ import HttpServer from '../relayserver/HttpServer'
 import { Address } from './types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
-import { formatEther } from 'ethers/utils'
+import { formatEther, parseEther } from 'ethers/utils'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -43,7 +42,7 @@ class GsnTestEnvironmentClass {
       throw new Error('could not get unlocked account with sufficient balance')
     }
     const deploymentResult = await commandsLogic.deployGsnContracts(from, undefined, paymaster)
-    const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1').toString())
+    const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, parseEther('1').toString())
     console.log('Sample Paymaster successfully funded, balance:', formatEther(balance))
 
     await this._runServer(_host, deploymentResult, from)
@@ -54,8 +53,8 @@ class GsnTestEnvironmentClass {
 
     const registerOptions = {
       from,
-      stake: ether('1'),
-      funds: ether('1'),
+      stake: parseEther('1').toString(),
+      funds: parseEther('1').toString(),
       relayUrl: relayUrl,
       unstakeDelay: '2000'
     }

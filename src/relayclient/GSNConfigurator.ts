@@ -8,6 +8,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
 import { EmptyApprovalData, GasPricePingFilter } from './RelayClient'
+import { JsonRpcProvider } from 'ethers/providers'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -75,11 +76,11 @@ export interface GSNDependencies {
   config: GSNConfig
 }
 
-export function getDependencies (config: GSNConfig, provider?: HttpProvider, overrideDependencies?: Partial<GSNDependencies>): GSNDependencies {
+export function getDependencies (config: GSNConfig, provider?: JsonRpcProvider | HttpProvider, overrideDependencies?: Partial<GSNDependencies>): GSNDependencies {
   let accountManager = overrideDependencies?.accountManager
   if (accountManager == null) {
     if (provider != null) {
-      accountManager = new AccountManager(provider, config.chainId ?? defaultEnvironment.chainId, config)
+      accountManager = new AccountManager(provider as JsonRpcProvider, config.chainId ?? defaultEnvironment.chainId, config)
     } else {
       throw new Error('either account manager or web3 provider must be non-null')
     }

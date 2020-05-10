@@ -1,8 +1,8 @@
-import { ether } from '@openzeppelin/test-helpers'
 
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
+import { parseEther } from 'ethers/utils'
 
 const commander = gsnCommander(['n', 'f', 'h'])
   .option('--paymaster <address>',
@@ -23,7 +23,7 @@ const commander = gsnCommander(['n', 'f', 'h'])
 
   const logic = new CommandsLogic(nodeURL, configureGSN({ relayHubAddress: hub }))
   const from = commander.from ?? await logic.findWealthyAccount()
-  const amount = commander.amount ?? ether('1')
+  const amount = commander.amount ?? parseEther('1')
 
   const balance = await logic.fundPaymaster(from, paymaster, amount)
   console.log(`Paymaster ${paymaster} balance is now ${balance.toString()} wei`)

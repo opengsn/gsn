@@ -18,6 +18,7 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
+import { web3AsJsonRpcProvider } from './TestUtils'
 import TransactionResponse = Truffle.TransactionResponse
 
 const RelayHub = artifacts.require('RelayHub')
@@ -271,7 +272,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             relayRequest
           })
           const signature = await getEip712Signature({
-            web3,
+            rpcProvider: web3AsJsonRpcProvider(web3),
             dataToSign
           })
           await relayHub.depositFor(paymaster.address, {

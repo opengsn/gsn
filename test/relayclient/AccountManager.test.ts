@@ -1,6 +1,5 @@
 import AccountManager from '../../src/relayclient/AccountManager'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
-import { HttpProvider } from 'web3-core'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { constants } from '@openzeppelin/test-helpers'
 import sinon from 'sinon'
@@ -10,6 +9,7 @@ import { isSameAddress } from '../../src/common/utils'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import { web3AsJsonRpcProvider } from '../TestUtils'
 
 const expect = chai.expect
 chai.use(sinonChai)
@@ -25,7 +25,8 @@ contract('AccountManager', function (accounts) {
     methodSuffix: '',
     jsonStringifyRequest: false
   })
-  const accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
+  const rpcProvider = web3AsJsonRpcProvider(web3)
+  const accountManager = new AccountManager(rpcProvider, defaultEnvironment.chainId, config)
   // @ts-ignore
   sinon.spy(accountManager)
   describe('#addAccount()', function () {
@@ -48,7 +49,7 @@ contract('AccountManager', function (accounts) {
     })
   })
   describe('#newAccount()', function () {
-    const accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
+    const accountManager = new AccountManager(rpcProvider, defaultEnvironment.chainId, config)
     it('should create a new keypair, return it and save it internally', function () {
       const keypair = accountManager.newAccount()
       // @ts-ignore

@@ -1,6 +1,7 @@
 /* global contract artifacts before it */
 
 import { constants } from '@openzeppelin/test-helpers'
+import { web3AsJsonRpcProvider } from './TestUtils'
 
 const Environments = require('../src/relayclient/types/Environments')
 const RelayRequest = require('../src/common/EIP712/RelayRequest')
@@ -143,7 +144,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         relayRequest
       })
       const signature = await getEip712Signature({
-        web3,
+        rpcProvider: web3AsJsonRpcProvider(web3),
         dataToSign
       })
       const maxGas = 1e6

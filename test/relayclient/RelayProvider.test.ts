@@ -16,7 +16,7 @@ import {
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
-import { startRelay, stopRelay } from '../TestUtils'
+import { startRelay, stopRelay, web3AsJsonRpcProvider } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
 import getDataToSign from '../../src/common/EIP712/Eip712Helper'
@@ -56,7 +56,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
     relayRequest: relayRequest
   })
   const signature = await getEip712Signature({
-    web3,
+    rpcProvider: web3AsJsonRpcProvider(web3),
     dataToSign
   })
   return {

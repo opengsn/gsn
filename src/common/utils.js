@@ -23,23 +23,25 @@ module.exports = {
 
   getEip712Signature: async function (
     {
-      web3,
+      rpcProvider,
       dataToSign,
       methodSuffix = '',
       jsonStringifyRequest = false
     }) {
+    assert(rpcProvider != null, 'no provider')
     const senderAddress = dataToSign.message.relayData.senderAddress
     if (jsonStringifyRequest) {
       dataToSign = JSON.stringify(dataToSign)
     }
     return new Promise((resolve, reject) => {
       let method
-      if (typeof web3.currentProvider.sendAsync === 'function') {
-        method = web3.currentProvider.sendAsync
+      if (typeof rpcProvider.sendAsync === 'function') {
+        method = rpcProvider.sendAsync
       } else {
-        method = web3.currentProvider.send
+        method = rpcProvider.send
+        assert(typeof method === 'function', 'Invalid provider')
       }
-      method.bind(web3.currentProvider)({
+      method.bind(rpcProvider)({
         method: 'eth_signTypedData' + methodSuffix,
         params: [senderAddress, dataToSign],
         from: senderAddress,

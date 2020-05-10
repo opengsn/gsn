@@ -2,7 +2,6 @@ import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import BN from 'bn.js'
-import { ether } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 import { merge } from 'lodash'
 
@@ -20,7 +19,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
-import { BigNumber, bigNumberify, BigNumberish } from 'ethers/utils'
+import { BigNumber, bigNumberify, BigNumberish, parseEther } from 'ethers/utils'
 import { TransactionReceipt } from 'ethers/providers/abstract-provider'
 import { ContractReceipt } from 'ethers/contract'
 
@@ -64,11 +63,11 @@ export default class CommandsLogic {
     this.web3 = new Web3(provider)
   }
 
-  async findWealthyAccount (requiredBalance = ether('2')): Promise<string | undefined> {
+  async findWealthyAccount (requiredBalance = parseEther('2')): Promise<string | undefined> {
     try {
       const accounts = await this.web3.eth.getAccounts()
       for (const account of accounts) {
-        const balance = new BN(await this.web3.eth.getBalance(account))
+        const balance = new BigNumber(await this.web3.eth.getBalance(account))
         if (balance.gte(requiredBalance)) {
           return account
         }

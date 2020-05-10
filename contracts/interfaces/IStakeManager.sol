@@ -1,8 +1,6 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-
 interface IStakeManager {
 
     /// Emitted when a stake or unstakeDelay are initialized or increased

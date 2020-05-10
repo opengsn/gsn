@@ -1,4 +1,6 @@
 /* global describe it web3 */
+import { web3AsJsonRpcProvider } from './TestUtils'
+
 const assert = require('chai').use(require('chai-as-promised')).assert
 // eslint-disable-next-line camelcase
 const { recoverTypedSignature_v4 } = require('eth-sig-util')
@@ -45,7 +47,7 @@ contract('Utils', async function (accounts) {
         relayRequest
       })
       const sig = await getEip712Signature({
-        web3,
+        rpcProvider: web3AsJsonRpcProvider(web3),
         dataToSign
       })
 

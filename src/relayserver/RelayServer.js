@@ -370,7 +370,7 @@ class RelayServer extends EventEmitter {
       }
     }
 
-    console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
+    // console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
 
