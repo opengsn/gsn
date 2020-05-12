@@ -60,7 +60,7 @@ contract('RelayServer', function (accounts) {
   before(async function () {
     globalId = (await testutils.snapshot()).result
     ethereumNodeUrl = web3.currentProvider.host
-    serverWeb3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
+    serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 
     stakeManager = await StakeManager.new()
@@ -629,11 +629,13 @@ contract('RelayServer', function (accounts) {
     it('should start block listener', async function () {
       relayServer.start()
       await testutils.evmMine()
+      await testutils.sleep(200)
       assert.isTrue(started, 'could not start task correctly')
     })
     it('should stop block listener', async function () {
       relayServer.stop()
       await testutils.evmMine()
+      await testutils.sleep(200)
       assert.isFalse(started, 'could not stop task correctly')
     })
   })
@@ -714,6 +716,45 @@ contract('RelayServer', function (accounts) {
       const relayBalanceAfter = await relayServer.refreshBalance()
       assert.equal(relayBalanceAfter.toNumber(), 0, 'relayBalanceAfter is not zero: ' + relayBalanceAfter)
     })
+
+    it('_handleHubAuthorizedEvent')
+
+    it('_handleStakedEvent')
     // TODO add failure tests
+  })
+
+  describe.skip('network errors')
+
+  describe.skip('Function testing', async function () {
+    it('_workerSemaphore', async function () {
+    })
+    it('_init', async function () {
+    })
+    it('replenishWorker', async function () {
+    })
+    it('_worker', async function () {
+    })
+    it('refreshBalance', async function () {
+    })
+    it('refreshStake', async function () {
+    })
+    it('_handleHubAuthorizedEvent', async function () {
+    })
+    it('_handleStakedEvent', async function () {
+    })
+    it('_registerIfNeeded', async function () {
+    })
+    it('_resendUnconfirmedTransactions', async function () {
+    })
+    it('_resendUnconfirmedTransactionsForSigner', async function () {
+    })
+    it('_sendTransaction', async function () {
+    })
+    it('_resendTransaction', async function () {
+    })
+    it('_pollNonce', async function () {
+    })
+    it('_parseEvent', async function () {
+    })
   })
 })

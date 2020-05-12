@@ -120,7 +120,6 @@ export class RelayServer extends EventEmitter {
   private paymasterContract: IPaymasterInstance | undefined
   private chainId: any
   private rawTxOptions: TransactionOptions | undefined
-  private subscription: any
   private _workerSemaphoreOn = false
   private stakeManagerContract: IStakeManagerInstance | undefined
   private topics: string[][] | undefined
@@ -147,6 +146,7 @@ export class RelayServer extends EventEmitter {
   private readonly workerTargetBalance: number
   private readonly devMode: boolean
   private readonly web3: Web3
+  private workerTask: any
 
   constructor (params: RelayServerParams) {
     super()
@@ -224,7 +224,6 @@ export class RelayServer extends EventEmitter {
     if (isNaN(parseInt(req.baseRelayFee)) || parseInt(req.baseRelayFee) < this.baseRelayFee) {
       throw new Error(`Unacceptable baseRelayFee: ${req.baseRelayFee} relayServer's baseRelayFee: ${this.baseRelayFee}`)
     }
-
     // Check that the gasPrice is initialized & acceptable
     if (this.gasPrice === 0 || this.gasPrice == null) {
       throw new Error('gasPrice not initialized')
@@ -233,7 +232,6 @@ export class RelayServer extends EventEmitter {
       throw new Error(
         `Unacceptable gasPrice: relayServer's gasPrice:${this.gasPrice} request's gasPrice: ${req.gasPrice}`)
     }
-
     // TODO: currently we hard-code a single worker. should find a "free" one to use from a pool
     const workerIndex = 1
 
@@ -346,28 +344,28 @@ export class RelayServer extends EventEmitter {
   }
 
   start (): void {
-    debug('Subscribing to new blocks')
-    this.subscription = this.web3.eth.subscribe('newBlockHeaders', (error, result) => {
-      if (error != null) {
-        console.error('web3 subscription:', error)
-      }
-      console.log('successfully registered', result)
-    }).on('data', this._workerSemaphore.bind(this)).on('error', (e) => {
-      console.error('worker:', e)
-    })
+    debug('Polling new blocks')
 
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    setTimeout(async () => {
-      const blockNumber = await this.web3.eth.getBlockNumber()
-      const blockHeader = { number: blockNumber }
-      this._workerSemaphore.bind(this)(blockHeader as BlockHeader)
-    }, 1)
+    const handler = (): void => {
+      this.web3.eth.getBlockNumber()
+        .then(
+          blockNumber => {
+            if (blockNumber > this.lastScannedBlock) {
+              const blockHeader = { number: blockNumber }
+              this._workerSemaphore.bind(this)(blockHeader as BlockHeader)
+            }
+          })
+        .catch((e) => {
+          this.emit('error', e)
+          console.error('error in start:', e)
+        })
+    }
+    this.workerTask = setInterval(handler, 10 * this.timeUnit())
   }
 
-  async stop (): Promise<void> {
-    // @ts-ignore
-    await this.subscription.unsubscribe()
-    console.log('Successfully unsubscribed!')
+  stop (): void {
+    clearInterval(this.workerTask)
+    console.log('Successfully stopped polling!!')
   }
 
   _workerSemaphore (blockHeader: BlockHeader): void {
@@ -455,7 +453,8 @@ export class RelayServer extends EventEmitter {
         await this.refreshBalance()
       } else {
         console.log(
-          `== replenishWorker: can't replenish: mgr balance too low ${this.balance.toNumber() / 1e18} refill=${refill.toNumber() / 1e18}`)
+          `== replenishWorker: can't replenish: mgr balance too low ${this.balance.div(toBN(1e18)).toString()} refill=${refill.div(
+            toBN(1e18)).toString()}`)
       }
     }
   }
@@ -803,8 +802,7 @@ export class RelayServer extends EventEmitter {
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {
     if (event?.events === undefined) {
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-      return 'not event: ' + event
+      return `not event: ${event?.toString()}`
     }
     const args: Record<string, any> = {}
     // event arguments is for some weird reason give as ".events"
@@ -816,5 +814,12 @@ export class RelayServer extends EventEmitter {
       address: event.address,
       args: args
     }
+  }
+
+  timeUnit (): number {
+    if (this.devMode) {
+      return 10
+    }
+    return 1000
   }
 }

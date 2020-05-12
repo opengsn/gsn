@@ -58,7 +58,7 @@ if (devMode) {
 
 const keyManager = new KeyManager(2, workdir)
 const txStoreManager = new TxStoreManager({ workdir })
-const web3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
+const web3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const relay = new RelayServer({
   txStoreManager,

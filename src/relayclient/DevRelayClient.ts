@@ -67,7 +67,7 @@ export function runServer (
     pctRelayFee: devConfig.pctRelayFee,
     gasPriceFactor: devConfig.gasPriceFactor,
     url: devConfig.relayUrl ?? undefined,
-    devMode: devConfig.devMode ?? false,
+    devMode: devConfig.devMode ?? true,
     Debug: devConfig.verbose ?? false
   })
   relayServer.on('error', (_: any) => {

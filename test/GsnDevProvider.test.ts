@@ -12,7 +12,7 @@ import {
   RelayHubInstance,
   TestPaymasterEverythingAcceptedInstance, TestRecipientInstance
 } from '../types/truffle-contracts'
-import { HttpProvider, WebsocketProvider } from 'web3-core'
+import { HttpProvider } from 'web3-core'
 
 import { GsnDevProvider } from '../src/relayclient/GsnDevProvider'
 
@@ -27,7 +27,7 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
   let sr: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let relayHub: RelayHubInstance
-  let wssProvider: WebsocketProvider
+  let httpProvider: HttpProvider
 
   before(async () => {
     const sm = await StakeManager.new()
@@ -43,13 +43,13 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
 
     // RelayServer requires a provider with events (not HttpProvider)
     // @ts-ignore
-    wssProvider = new Web3.providers.WebsocketProvider(web3.currentProvider.host)
+    httpProvider = new Web3.providers.HttpProvider(web3.currentProvider.host)
   })
   context('just with DevRelayClient', () => {
     let sender: string
     let relayClient: DevRelayClient
     before(async () => {
-      const provider = wssProvider as unknown as HttpProvider
+      const provider = httpProvider
       relayClient = new DevRelayClient(provider, {
         relayHubAddress: relayHub.address,
         minGasPrice: 0,
@@ -91,7 +91,7 @@ contract('GsnDevProvider', ([from, relayOwner]) => {
         baseRelayFee: 0,
         pctRelayFee: 0
       }
-      devProvider = new GsnDevProvider(wssProvider as unknown as HttpProvider, devConfig)
+      devProvider = new GsnDevProvider(httpProvider, devConfig)
 
       SampleRecipient.web3.setProvider(devProvider)
     })
