@@ -1,16 +1,16 @@
 import Web3 from 'web3'
-import { provider, TransactionReceipt } from 'web3-core'
+import { Log, provider, TransactionReceipt } from 'web3-core'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
-import paymasterAbi from '../common/interfaces/IPaymaster'
-import relayHubAbi from '../common/interfaces/IRelayHub'
-import forwarderAbi from '../common/interfaces/ITrustedForwarder'
-import stakeManagerAbi from '../common/interfaces/IStakeManager'
-import gsnRecipientAbi from '../common/interfaces/IRelayRecipient'
+import paymasterAbi from '../common/interfaces/IPaymaster.json'
+import relayHubAbi from '../common/interfaces/IRelayHub.json'
+import forwarderAbi from '../common/interfaces/ITrustedForwarder.json'
+import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
+import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 
-import { calculateTransactionMaxPossibleGas, event2topic } from '../common/utils'
+import { calculateTransactionMaxPossibleGas, event2topic, getRawTxOptions } from '../common/utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import {
   BaseRelayRecipientInstance,
@@ -83,13 +83,22 @@ export default class ContractInteractor {
   }
 
   getProvider (): provider { return this.provider }
+
   getWeb3 (): Web3 { return this.web3 }
 
   async _init (): Promise<void> {
     const chain = await this.web3.eth.net.getNetworkType()
     console.log('== chain=', chain)
-    // @ts-ignore
-    this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
+    if (chain === 'private') {
+      const chainId = await this.web3.eth.getChainId()
+      const networkId = await this.web3.eth.net.getId()
+      this.rawTxOptions = getRawTxOptions(chainId, networkId)
+    } else {
+      this.rawTxOptions = {
+        chain,
+        hardfork: 'istanbul'
+      }
+    }
   }
 
   // must use these options when creating Transaction object
@@ -131,7 +140,7 @@ export default class ContractInteractor {
   }
 
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
-    const forwarder = await this._createForwarder(forwarderAddress) // TODO: this is temoporary, add Forwarder API
+    const forwarder = await this._createForwarder(forwarderAddress)
     const nonce = await forwarder.getNonce(sender)
     return nonce.toString()
   }
@@ -219,6 +228,22 @@ export default class ContractInteractor {
       topics.push(extraTopics)
     }
     return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
+  }
+
+  async getPastLogs (eventName: EventName, options: PastEventOptions): Promise<Log[]> {
+    // @ts-ignore
+    const hubContract = new this.web3.eth.Contract(relayHubAbi)
+    const eventTopic = event2topic(hubContract, eventName)
+    return this.web3.eth.getPastLogs(
+      {
+        ...options,
+        topics: [eventTopic]
+      }
+    )
+  }
+
+  async getBalance (address: Address): Promise<string> {
+    return this.web3.eth.getBalance(address)
   }
 
   async getBlockNumber (): Promise<number> {

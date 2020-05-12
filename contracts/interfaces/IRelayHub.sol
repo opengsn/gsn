@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "../utils/EIP712Sig.sol";
@@ -12,7 +12,7 @@ interface IRelayHub {
         address indexed relayManager,
         uint256 baseRelayFee,
         uint256 pctRelayFee,
-        string url);
+        string relayUrl);
 
     /// Emitted when relays are added by a relayManager
     event RelayWorkersAdded(

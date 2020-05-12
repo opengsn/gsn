@@ -3,7 +3,7 @@ import abiDecoder from 'abi-decoder'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpProvider } from 'web3-core'
 
-import relayHubAbi from '../common/interfaces/IRelayHub'
+import relayHubAbi from '../common/interfaces/IRelayHub.json'
 import RelayClient, { RelayingResult } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
@@ -19,11 +19,16 @@ export interface BaseTransactionReceipt {
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
+interface ISendAsync {
+  sendAsync?: any
+}
+
 export class RelayProvider implements HttpProvider {
-  private readonly origProvider: HttpProvider
+  private readonly origProvider: HttpProvider & ISendAsync
   private readonly origProviderSend: any
-  private readonly relayClient: RelayClient
   private readonly config: GSNConfig
+
+  readonly relayClient: RelayClient
 
   /**
    * create a proxy provider, to relay transaction
@@ -39,7 +44,11 @@ export class RelayProvider implements HttpProvider {
 
     this.origProvider = origProvider
     this.config = config
-    this.origProviderSend = this.origProvider.send.bind(this.origProvider)
+    if (typeof this.origProvider.sendAsync === 'function') {
+      this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
+    } else {
+      this.origProviderSend = this.origProvider.send.bind(this.origProvider)
+    }
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
 
     this._delegateEventsApi(origProvider)
@@ -60,6 +69,9 @@ export class RelayProvider implements HttpProvider {
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
+        if (payload.params[0].to === undefined) {
+          throw new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.')
+        }
         this._ethSendTransaction(payload, callback)
         return
       }

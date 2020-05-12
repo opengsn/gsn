@@ -65,7 +65,7 @@ module.exports = {
   },
   compilers: {
     solc: {
-      version: packageJson.devDependencies.solc,
+      version: '0.6.2',
       settings: {
         evmVersion: 'istanbul',
         optimizer: {

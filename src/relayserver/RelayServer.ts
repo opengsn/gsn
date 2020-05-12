@@ -6,9 +6,9 @@ import abiDecoder from 'abi-decoder'
 
 import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
 
-import RelayHubABI from '../common/interfaces/IRelayHub'
-import PayMasterABI from '../common/interfaces/IPaymaster'
-import StakeManagerABI from '../common/interfaces/IStakeManager'
+import RelayHubABI from '../common/interfaces/IRelayHub.json'
+import PayMasterABI from '../common/interfaces/IPaymaster.json'
+import StakeManagerABI from '../common/interfaces/IStakeManager.json'
 import getDataToSign from '../common/EIP712/Eip712Helper'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import utils from '../common/utils'
@@ -91,7 +91,7 @@ interface SendTransactionDetails {
   gasPrice?: IntString
 }
 
-interface RelayServerParams {
+export interface RelayServerParams {
   readonly txStoreManager: TxStoreManager
   readonly web3provider: provider
   readonly keyManager: KeyManager
@@ -105,7 +105,6 @@ interface RelayServerParams {
   readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
   readonly devMode: boolean // = false,
   readonly Debug: boolean // = false,
-  readonly web3: Web3 // = new Web3(web3provider)
 }
 
 export class RelayServer extends EventEmitter {
@@ -161,7 +160,7 @@ export class RelayServer extends EventEmitter {
     this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
     this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
     this.devMode = params.devMode
-    this.web3 = params.web3 ?? new Web3(this.web3provider)
+    this.web3 = new Web3(this.web3provider)
     this.contractInteractor = params.contractInteractor ?? new ContractInteractor(this.web3provider,
       configureGSN({}))
 
@@ -426,8 +425,14 @@ export class RelayServer extends EventEmitter {
 
     // TODO: use ContractInteractor
     const chain = await this.web3.eth.net.getNetworkType()
-    // @ts-ignore
-    this.rawTxOptions = { chain: chain !== 'private' ? chain : null, hardfork: 'istanbul' }
+    if (chain === 'private') {
+      this.rawTxOptions = utils.getRawTxOptions(this.chainId, this.networkId)
+    } else {
+      this.rawTxOptions = {
+        chain,
+        hardfork: 'istanbul'
+      }
+    }
 
     // todo: fix typo AND fix metacoin
     console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)

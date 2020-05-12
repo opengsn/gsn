@@ -9,7 +9,7 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredE
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Address } from './types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
-import stakeManagerAbi from '../common/interfaces/IStakeManager'
+import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
 import axios from 'axios'
 import net from 'net'

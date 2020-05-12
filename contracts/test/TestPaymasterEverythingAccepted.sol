@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "../BasePaymaster.sol";
@@ -14,6 +14,8 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         uint256 maxPossibleCharge
     )
     external
+    override
+    virtual
     view
     returns (bytes memory) {
         (relayRequest, approvalData, maxPossibleCharge);
@@ -24,6 +26,8 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         bytes calldata context
     )
     external
+    override
+    virtual
     relayHubOnly
     returns (bytes32) {
         (context);
@@ -39,6 +43,8 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         GSNTypes.GasData calldata gasData
     )
     external
+    override
+    virtual
     relayHubOnly
     {
         (context, gasUseWithoutPost, gasData);

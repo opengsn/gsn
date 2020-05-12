@@ -16,3 +16,7 @@ export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: Gsn
 export type AsyncApprovalData = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
 export type RelayFilter = (registeredEventInfo: RelayRegisteredEventInfo) => boolean
 export type AsyncScoreCalculator = (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]) => Promise<number>
+
+export function notNull<TValue> (value: TValue | null | undefined): value is TValue {
+  return value !== null && value !== undefined
+}

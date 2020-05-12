@@ -17,7 +17,7 @@ const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythi
 contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, relayWorker1, relayWorker2, relayWorker3]) {
   const baseRelayFee = new BN('10')
   const pctRelayFee = new BN('20')
-  const url = 'http://new-relay.com'
+  const relayUrl = 'http://new-relay.com'
 
   let relayHub: RelayHubInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
@@ -53,7 +53,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
       it('should not allow relayManager to register a relay server', async function () {
         await expectRevert(
-          relayHub.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager }),
+          relayHub.registerRelayServer(baseRelayFee, pctRelayFee, relayUrl, { from: relayManager }),
           'relay manager not staked')
       })
     })
@@ -70,7 +70,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
     it('should not allow relayManager to register a relay server', async function () {
       await expectRevert(
-        relayHub.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager }),
+        relayHub.registerRelayServer(baseRelayFee, pctRelayFee, relayUrl, { from: relayManager }),
         'no relay workers')
     })
 
@@ -113,12 +113,12 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
     })
 
     it('should allow relayManager to update transaction fee and url', async function () {
-      const { logs } = await relayHub.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
+      const { logs } = await relayHub.registerRelayServer(baseRelayFee, pctRelayFee, relayUrl, { from: relayManager })
       expectEvent.inLogs(logs, 'RelayServerRegistered', {
         relayManager,
         pctRelayFee,
         baseRelayFee,
-        url
+        relayUrl
       })
     })
   })

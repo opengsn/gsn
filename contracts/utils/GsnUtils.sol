@@ -1,7 +1,7 @@
 /* solhint-disable no-inline-assembly */
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 
-import "@0x/contracts-utils/contracts/src/LibBytes.sol";
+import "../0x/LibBytesV06.sol";
 
 import "./GSNTypes.sol";
 
@@ -23,14 +23,14 @@ library GsnUtils {
             //not a valid revert with error. return as-is.
             return string(err);
         }
-        (ret) = abi.decode(LibBytes.slice(err, 4, err.length), (string));
+        (ret) = abi.decode(LibBytesV06.slice(err, 4, err.length), (string));
     }
 
     /**
      * extract method sig from encoded function call
      */
     function getMethodSig(bytes memory msgData) internal pure returns (bytes4) {
-        return LibBytes.readBytes4(msgData, 0);
+        return LibBytesV06.readBytes4(msgData, 0);
     }
 
     /**
@@ -40,7 +40,7 @@ library GsnUtils {
      * the return value should be casted to the right type.
      */
     function getParam(bytes memory msgData, uint index) internal pure returns (uint) {
-        return LibBytes.readUint256(msgData, 4 + index * 32);
+        return LibBytesV06.readUint256(msgData, 4 + index * 32);
     }
 
     function getAddressParam(bytes memory msgData, uint index) internal pure returns (address) {
@@ -59,8 +59,8 @@ library GsnUtils {
      */
     function getBytesParam(bytes memory msgData, uint index) internal pure returns (bytes memory ret) {
         uint ofs = getParam(msgData, index) + 4;
-        uint len = LibBytes.readUint256(msgData, ofs);
-        ret = LibBytes.slice(msgData, ofs + 32, ofs + 32 + len);
+        uint len = LibBytesV06.readUint256(msgData, ofs);
+        ret = LibBytesV06.slice(msgData, ofs + 32, ofs + 32 + len);
     }
 
     function getStringParam(bytes memory msgData, uint index) internal pure returns (string memory) {

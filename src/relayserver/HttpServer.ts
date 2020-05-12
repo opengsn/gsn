@@ -8,7 +8,7 @@ import { Server } from 'http'
 export class HttpServer {
   app: Express
   private serverInstance: Server | undefined;
-  constructor (private readonly port: number, private readonly backend: RelayServer) {
+  constructor (private readonly port: number, readonly backend: RelayServer) {
     this.app = express()
     this.app.use(cors())
 

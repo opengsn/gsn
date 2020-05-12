@@ -151,6 +151,9 @@ export default class RelayClient {
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayingAttempt> {
+    if (this.config.verbose) {
+      console.log(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
+    }
     const { relayRequest, approvalData, signature, httpRequest } =
       await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
     const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(relayRequest, signature, approvalData)
@@ -186,7 +189,13 @@ export default class RelayClient {
   ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
     let forwarderAddress = gsnTransactionDetails.forwarder
     if (forwarderAddress == null) {
+      if (this.config.verbose) {
+        console.log(`will get forwarder for: ${gsnTransactionDetails.to}`)
+      }
       forwarderAddress = await this.contractInteractor.getForwarder(gsnTransactionDetails.to)
+      if (this.config.verbose) {
+        console.log(`on-chain forwarder for: ${gsnTransactionDetails.to} is ${forwarderAddress}`)
+      }
     }
     const paymaster = gsnTransactionDetails.paymaster != null ? gsnTransactionDetails.paymaster : this.config.paymasterAddress
 
@@ -238,6 +247,9 @@ export default class RelayClient {
       approvalData,
       relayHubAddress: this.config.relayHubAddress,
       relayMaxNonce
+    }
+    if (this.config.verbose) {
+      console.log(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
     }
     return {
       relayRequest,

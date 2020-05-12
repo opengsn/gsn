@@ -1,5 +1,4 @@
-// import { getLogs } from '../TestUtils'
-const PayableWithEmit = artifacts.require('./PayableWithEmit.sol')
+const PayableWithEmit = artifacts.require('PayableWithEmit')
 
 contract('PayableWithEmit', () => {
   let sender: any

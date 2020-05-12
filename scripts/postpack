@@ -1,0 +1,8 @@
+#!/bin/bash -e
+
+#these files were created for packing only (see "prepack")
+for c in RelayProvider RelayClient GSNConfigurator GsnTestEnvironment; do
+  echo del ./$c.ts:
+  rm $c.ts
+done
+

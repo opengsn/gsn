@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": true,
+    "resolveJsonModule": true,
     "esModuleInterop": true,
     "target": "es2017",
     "module": "commonjs",
@@ -33,8 +34,9 @@
     ]
   },
   "include": [
-    "**/*.ts"
-  ],
+    "**/*.ts",
+    "src/**/*"
+ ],
   "exclude": [
     "dist",
     "jsrelay/dist",

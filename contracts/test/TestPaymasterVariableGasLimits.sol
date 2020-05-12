@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./TestPaymasterEverythingAccepted.sol";
@@ -22,6 +22,7 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
         uint256 maxPossibleGas
     )
     external
+    override
     view
     returns (bytes memory) {
         (relayRequest, approvalData);
@@ -30,7 +31,11 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
             maxPossibleGas);
     }
 
-    function preRelayedCall(bytes calldata context) external relayHubOnly returns (bytes32) {
+    function preRelayedCall(bytes calldata context)
+    external
+    override
+    relayHubOnly
+    returns (bytes32) {
         (
         uint256 arcGasleft, uint256 maxPossibleGas) =
             abi.decode(context, (uint256, uint256));
@@ -47,6 +52,7 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
         GSNTypes.GasData calldata gasData
     )
     external
+    override
     relayHubOnly
     {
         (context, success, preRetVal, gasUseWithoutPost, gasData);
