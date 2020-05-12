@@ -7,28 +7,12 @@ const RelayServer = require('./RelayServer').RelayServer
 const KeyManager = require('./KeyManager').KeyManager
 const TxStoreManager = require('./TxStoreManager').TxStoreManager
 const TXSTORE_FILENAME = require('./TxStoreManager').TXSTORE_FILENAME
+const getRelayHubAddress = require('../cli/utils').getRelayHubAddress
 
 function error (err) {
   console.error(err)
   process.exit(1)
 }
-
-/// TODO: remove once translated to TypeScript. This method is in ./cli/utils.ts
-function getRelayHubAddress (hub) {
-  return getAddressFromFile('build/gsn/RelayHub.json', hub)
-}
-
-function getAddressFromFile (path, input) {
-  if (input == null) {
-    if (fs.existsSync(path)) {
-      const relayHubDeployInfo = fs.readFileSync(path).toString()
-      return JSON.parse(relayHubDeployInfo).address
-    }
-  }
-  return input
-}
-
-/// TODO end
 
 // use all camel-case entries from environment as defaults.
 const envDefaults = Object.entries(process.env)

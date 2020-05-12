@@ -87,7 +87,7 @@ export class TxStoreManager {
       txId: tx.txId.toLowerCase(),
       nonceSigner: {
         nonce: tx.nonce,
-        signer: tx.from
+        signer: tx.from.toLowerCase()
       }
     }
     const existing = await this.txstore.asyncFindOne({ nonceSigner: tx1.nonceSigner })
@@ -105,7 +105,7 @@ export class TxStoreManager {
 
     return this.txstore.asyncFindOne({
       nonceSigner: {
-        signer,
+        signer: signer.toLowerCase(),
         nonce
       }
     }, { _id: 0 })
@@ -124,7 +124,7 @@ export class TxStoreManager {
     return this.txstore.asyncRemove({
       $and: [
         { 'nonceSigner.nonce': nonce },
-        { 'nonceSigner.signer': signer }]
+        { 'nonceSigner.signer': signer.toLowerCase() }]
     }, { multi: true })
   }
 
@@ -135,7 +135,7 @@ export class TxStoreManager {
     return this.txstore.asyncRemove({
       $and: [
         { 'nonceSigner.nonce': { $lte: nonce } },
-        { 'nonceSigner.signer': signer }]
+        { 'nonceSigner.signer': signer.toLowerCase() }]
     }, { multi: true })
   }
 
@@ -144,7 +144,7 @@ export class TxStoreManager {
   }
 
   async getAllBySigner (signer: PrefixedHexString): Promise<any[]> {
-    return (await this.txstore.asyncFind({ 'nonceSigner.signer': signer })).sort(function (tx1, tx2) {
+    return (await this.txstore.asyncFind({ 'nonceSigner.signer': signer.toLowerCase() })).sort(function (tx1, tx2) {
       return tx1.nonce - tx2.nonce
     })
   }

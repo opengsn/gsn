@@ -675,14 +675,26 @@ export class RelayServer extends EventEmitter {
     }
     debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
-    const confirmedBlock = blockHeader.number - confirmationsNeeded
-    debug('signer, blockHeader, confirmedBlock', signer, blockHeader, confirmedBlock)
-    let nonce = await this.web3.eth.getTransactionCount(signer, confirmedBlock)
-    debug('nonce', nonce, confirmedBlock)
-    debug(
-      `resend ${signerIndex}: Removing confirmed txs until nonce ${nonce - 1}. confirmedBlock: ${confirmedBlock}. block number: ${blockHeader.number}`)
-    // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
-    await this.txStoreManager.removeTxsUntilNonce(signer, nonce - 1)
+    for (const transaction of sortedTxs) {
+      const receipt = await this.web3.eth.getTransaction(transaction.txId)
+      if (receipt == null) {
+        // I believe this means this transaction was not confirmed
+        continue
+      }
+      if (receipt.blockNumber == null) {
+        throw new Error(`invalid block number in receipt ${receipt.toString()}`)
+      }
+      const txBlockNumber = receipt.blockNumber
+      const confirmations = blockHeader.number - txBlockNumber
+      if (confirmations >= confirmationsNeeded) {
+        // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
+        debug(`removing tx number ${receipt.nonce} sent by ${receipt.from} with ${confirmations} confirmations`)
+        await this.txStoreManager.removeTxsUntilNonce(
+          receipt.from,
+          receipt.nonce
+        )
+      }
+    }
 
     // Load unconfirmed transactions from store again
     sortedTxs = await this.txStoreManager.getAllBySigner(signer)
@@ -690,7 +702,7 @@ export class RelayServer extends EventEmitter {
       return null
     }
     // Check if the tx was mined by comparing its nonce against the latest one
-    nonce = await this.web3.eth.getTransactionCount(signer)
+    const nonce = await this.web3.eth.getTransactionCount(signer)
     if (sortedTxs[0].nonce < nonce) {
       debug('resend', signerIndex, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce,
         sortedTxs[0].txId)
