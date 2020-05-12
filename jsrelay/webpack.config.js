@@ -7,10 +7,23 @@ module.exports = {
     //      new BundleAnalyzerPlugin()
 	new IgnorePlugin(/electron/),
 	new IgnorePlugin(/^scrypt$/),
+  new IgnorePlugin(/swarm-js/),
   ],
   target: 'node',
-  entry: '../src/relayserver/runServer.js',
+  entry: '../dist/src/relayserver/runServer.js',
   mode: 'development',
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
+      },
+    ],
+  },
+  resolve: {
+    extensions: [ '.tsx', '.ts', '.js' ],
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'relayserver.js'
