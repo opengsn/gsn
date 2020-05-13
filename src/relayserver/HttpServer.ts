@@ -1,12 +1,14 @@
-const express = require('express')
-const jsonrpc = require('jsonrpc-lite')
-const bodyParser = require('body-parser')
-const cors = require('cors')
+import express, { Express } from 'express'
+import jsonrpc from 'jsonrpc-lite'
+import bodyParser from 'body-parser'
+import cors from 'cors'
+import { RelayServer } from './RelayServer'
+import { Server } from 'http'
 
-class HttpServer {
-  constructor ({ port, backend }) {
-    this.port = port
-    this.backend = backend
+export class HttpServer {
+  app: Express
+  private serverInstance: Server | undefined;
+  constructor (private readonly port: number, readonly backend: RelayServer) {
     this.app = express()
     this.app.use(cors())
 
@@ -24,8 +26,8 @@ class HttpServer {
     this.backend.on('error', (e) => { console.error('httpServer:', e) })
   }
 
-  start () {
-    if (!this.serverInstance) {
+  start (): void {
+    if (this.serverInstance === undefined) {
       this.serverInstance = this.app.listen(this.port, () => {
         console.log('Listening on port', this.port)
       })
@@ -38,52 +40,62 @@ class HttpServer {
     }
   }
 
-  stop () {
-    this.serverInstance.close()
+  stop (): void {
+    this.serverInstance?.close()
     console.log('Http server stopped.\nShutting down relay...')
   }
 
-  close () {
+  close (): void {
     console.log('Stopping relay worker...')
+    // stop (unsubscribe) is async..
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     this.backend.stop()
     // process.exit()
   }
 
   // TODO: use this when changing to jsonrpc
-  async rootHandler (req, res) {
+  async rootHandler (req: any, res: any): Promise<void> {
     let status
     try {
       let res
-      let func
-      if ((func = this.backend[req.body.method])) {
-        res = await func.apply(this.backend, [req.body.params]) || { code: 200 }
+      // @ts-ignore
+      const func = this.backend[req.body.method]
+      // @ts-ignore
+      if (func != null) {
+        // @ts-ignore
+        res = await func.apply(this.backend, [req.body.params]) ?? { code: 200 }
       } else {
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         throw Error(`Implementation of method ${req.body.params} not found on backend!`)
       }
 
+      // @ts-ignore
       status = jsonrpc.success(req.body.id, res)
     } catch (e) {
       let stack = e.stack.toString()
       // remove anything after 'rootHandler'
       stack = stack.replace(/(rootHandler.*)[\s\S]*/, '$1')
+      // @ts-ignore
       status = jsonrpc.error(req.body.id, new jsonrpc.JsonRpcError(stack, -125))
     }
     res.send(status)
   }
 
-  async pingHandler (req, res) {
+  pingHandler (req: any, res: any): void {
     const pingResponse = this.backend.pingHandler()
     res.send(pingResponse)
     console.log(`address ${pingResponse.RelayServerAddress} sent. ready: ${pingResponse.Ready}`)
   }
 
-  async relayHandler (req, res) {
+  async relayHandler (req: any, res: any): Promise<void> {
     if (!this.backend.isReady()) {
       res.send('Error: relay not ready')
       return
     }
 
     try {
+      // @ts-ignore
       const signedTx = await this.backend.createRelayTransaction(req.body)
       res.send({ signedTx })
     } catch (e) {
@@ -92,5 +104,3 @@ class HttpServer {
     }
   }
 }
-
-module.exports = HttpServer

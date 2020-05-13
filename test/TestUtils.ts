@@ -42,7 +42,7 @@ export async function startRelay (
     args.push('--BaseFee', options.baseRelayFee)
   }
   const runServerPath = path.resolve(__dirname, '../src/relayserver/runServer.js')
-  const proc: ChildProcessWithoutNullStreams = childProcess.spawn('node',
+  const proc: ChildProcessWithoutNullStreams = childProcess.spawn('ts-node',
     [runServerPath, ...args])
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
