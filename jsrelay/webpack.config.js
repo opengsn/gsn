@@ -7,7 +7,6 @@ module.exports = {
     //      new BundleAnalyzerPlugin()
 	new IgnorePlugin(/electron/),
 	new IgnorePlugin(/^scrypt$/),
-  new IgnorePlugin(/swarm-js/),
   ],
   target: 'node',
   entry: '../dist/src/relayserver/runServer.js',

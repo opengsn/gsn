@@ -1,0 +1,13 @@
+diff --git a/node_modules/ethereum-ens/node_modules/swarm-js/package.json b/node_modules/ethereum-ens/node_modules/swarm-js/package.json
+index 2b3035a..d50ca76 100644
+--- a/node_modules/ethereum-ens/node_modules/swarm-js/package.json
++++ b/node_modules/ethereum-ens/node_modules/swarm-js/package.json
+@@ -20,7 +20,7 @@
+     "buffer": "^5.0.5",
+     "eth-lib": "^0.1.26",
+     "fs-extra": "^4.0.2",
+-    "got": "^7.1.0",
++    "got": "9.6.0",
+     "mime-types": "^2.1.16",
+     "mkdirp-promise": "^5.0.1",
+     "mock-fs": "^4.1.0",
