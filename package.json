@@ -49,7 +49,7 @@
     "clean-coverage": "shx rm -rf coverage coverage.json",
     "generate": "rm -rf ./build/contracts && npx truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json'",
     "tsc": "tsc --noEmit",
-    "postinstall": "patch-package && rm node_modules/swarm-js/node_modules/got -rf && rm node_modules/ethereum-ens/node_modules/swarm-js/node_modules/got -rf",
+    "postinstall": "patch-package",
     "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage",
     "postpack": "./scripts/postpack",
     "prepare": "./scripts/prepublish"

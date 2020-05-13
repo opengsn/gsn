@@ -346,12 +346,11 @@ export class RelayServer extends EventEmitter {
     debug('Polling new blocks')
 
     const handler = (): void => {
-      this.web3.eth.getBlockNumber()
+      this.web3.eth.getBlock('latest')
         .then(
-          blockNumber => {
-            if (blockNumber > this.lastScannedBlock) {
-              const blockHeader = { number: blockNumber }
-              this._workerSemaphore.bind(this)(blockHeader as BlockHeader)
+          block => {
+            if (block.number > this.lastScannedBlock) {
+              this._workerSemaphore.bind(this)(block)
             }
           })
         .catch((e) => {
