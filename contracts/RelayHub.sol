@@ -52,6 +52,7 @@ contract RelayHub is IRelayHub {
     uint256 public gtxdatanonzero;
     uint256 constant public GTRANSACTION = 21000;
 
+
     // maps relay worker's address to its manager's address
     mapping(address => address) private workerToManager;
 
@@ -143,7 +144,6 @@ contract RelayHub is IRelayHub {
     {
         gasLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
-
         uint256 requiredGas =
             GAS_OVERHEAD +
             gasLimits.acceptRelayedCallGasLimit +
@@ -169,7 +169,6 @@ contract RelayHub is IRelayHub {
         // for the maximum possible charge.
         require(maxPossibleCharge <= balances[relayRequest.relayData.paymaster],
             "Paymaster balance too low");
-
         bytes memory encodedTx = abi.encodeWithSelector(IPaymaster.acceptRelayedCall.selector,
             relayRequest, signature, approvalData, maxPossibleGas
         );
@@ -190,7 +189,8 @@ contract RelayHub is IRelayHub {
     //  make sure this does not have security impl
         ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        bytes calldata approvalData
+        bytes calldata approvalData,
+        uint externalGasLimit
     )
     external
     override
@@ -199,13 +199,11 @@ contract RelayHub is IRelayHub {
         RelayCallData memory vars;
         vars.initialGas = gasleft();
         vars.functionSelector = LibBytesV06.readBytes4(relayRequest.encodedFunction, 0);
-
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(
             stakeManager.isRelayManagerStaked(workerToManager[msg.sender], MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
             "relay manager not staked"
         );
-
         require(relayRequest.gasData.gasPrice <= tx.gasprice, "Invalid gas price");
         // We now verify that the paymaster will agree to be charged for the transaction.
         bool success;
@@ -245,7 +243,7 @@ contract RelayHub is IRelayHub {
         // We now perform the actual charge calculation, based on the measured gas used
         uint256 charge = calculateCharge(
             calldatagascost() +
-            (vars.initialGas - gasleft()) +
+            (externalGasLimit - gasleft()) +
             GAS_OVERHEAD,
             relayRequest.gasData
         );
@@ -317,6 +315,7 @@ contract RelayHub is IRelayHub {
             }
             atomicData.preReturnValue = abi.decode(retData, (bytes32));
         }
+
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (atomicData.relayedCallSuccess,) =
         relayRequest.relayData.forwarder.call(

@@ -59,6 +59,7 @@ contract('KnownRelaysManager', function (
     let workerRelayWorkersAdded
     let workerRelayServerRegistered
     let workerNotActive
+    const gas = 4e9
 
     before(async function () {
       workerRelayWorkersAdded = await web3.eth.personal.newAccount('password')
@@ -105,13 +106,15 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
         from: activeRelayWorkersAdded
       })
-      await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
+      await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
         from: workerTransactionRelayed,
+        gas,
         gasPrice: txTransactionRelayed.relayRequest.gasData.gasPrice
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(txCanRelayFailed.relayRequest, txCanRelayFailed.signature, '0x', {
+      await relayHub.relayCall(txCanRelayFailed.relayRequest, txCanRelayFailed.signature, '0x', gas, {
         from: workerCanRelayFailed,
+        gas,
         gasPrice: txCanRelayFailed.relayRequest.gasData.gasPrice
       })
     })

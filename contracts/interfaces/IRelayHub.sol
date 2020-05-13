@@ -112,6 +112,7 @@ interface IRelayHub {
 
     // Relaying
 
+
     /// Relays a transaction. For this to succeed, multiple conditions must be met:
     ///  - canRelay must return CanRelayStatus.OK
     ///  - the sender must be a registered relayWorker
@@ -126,12 +127,14 @@ interface IRelayHub {
     /// @param signature - client's signature over all previous params, plus the relayWorker and RelayHub addresses
     /// @param approvalData: dapp-specific data forwarded to acceptRelayedCall.
     ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the sponsor.
+    /// @param externalGasLimit - the value passed as gasLimit to the transaction.
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
         ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        bytes calldata approvalData
+        bytes calldata approvalData,
+        uint externalGasLimit
     )
     external
     returns (bool paymasterAccepted, string memory returnValue);

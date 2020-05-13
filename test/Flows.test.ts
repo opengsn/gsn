@@ -111,7 +111,11 @@ options.forEach(params => {
       console.log('running emitMessage (should succeed)')
       let res
       try {
-        res = await sr.emitMessage('hello', { from: from })
+        const gas = await sr.contract.methods.emitMessage('hello').estimateGas()
+        console.log( '== gas estim: ', gas)
+        res = await sr.emitMessage('hello', { from: from, gas })
+        console.log( '==gas used=', res.gasUsed)
+        res = await sr.emitMessage('hello', { from: from, gas, paymaster: filterPaymaster.address })
       } catch (e) {
         console.log('error is ', e.message)
         throw e

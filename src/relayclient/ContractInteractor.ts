@@ -159,7 +159,6 @@ export default class ContractInteractor {
     const recipient = await this._createRecipient(recipientAddress)
     return recipient.isTrustedForwarder(forwarder)
   }
-
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
     const forwarder = await this._createForwarder(forwarderAddress)
     const nonce = await forwarder.getNonce(sender)
@@ -199,11 +198,11 @@ export default class ContractInteractor {
     }
   }
 
-  encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString): PrefixedHexString {
+  encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
     // TODO: check this works as expected
     // @ts-ignore
     const relayHub = new this.IRelayHubContract('')
-    return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData).encodeABI()
+    return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   topicsForManagers (relayManagers: Address[]): string[] {
