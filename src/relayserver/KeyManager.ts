@@ -83,7 +83,7 @@ export class KeyManager {
     }
 
     tx.sign(privateKey)
-    const rawTx = tx.serialize().toString('hex')
+    const rawTx = '0x' + tx.serialize().toString('hex')
     return rawTx
   }
 }
