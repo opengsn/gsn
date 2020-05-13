@@ -260,11 +260,21 @@ contract('RelayClient', function (accounts) {
       expect(dependencyTree.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
 
+    const difficulty = 2 ^ (256>>10);
+    function calculateHash() {}
+    function asyncApprovalData(request) {
+      const counter=0
+      while (true) {
+        const hash = calculateHash(request.senderAddress, request.senderNonce, counter)
+        if ( hash < difficulty ) return hash
+        counter++;
+      }
+    }
+
     describe('#_prepareRelayHttpRequest()', function () {
       const asyncApprovalData: AsyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
         return Promise.resolve('0x1234567890')
       }
-
       it('should use provided approval function', async function () {
         const relayClient =
           new RelayClient(underlyingProvider, gsnConfig, { asyncApprovalData })

@@ -4,6 +4,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import chaiAsPromised from 'chai-as-promised'
 import Web3 from 'web3'
+import {toBN} from 'web3-utils'
 
 import { RelayProvider, BaseTransactionReceipt } from '../../src/relayclient'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
@@ -144,6 +145,7 @@ contract('RelayProvider', function (accounts) {
 
       await testRecipient.emitMessage('hello again', {
         from: gasLess,
+        gas: '100000',
         paymaster
       })
       const log: any = await eventPromise
@@ -237,6 +239,7 @@ contract('RelayProvider', function (accounts) {
     let innerTxSucceedReceipt: BaseTransactionReceipt
     let notRelayedTxReceipt: BaseTransactionReceipt
     let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
+    const gas = toBN(4e9)
     // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
@@ -265,8 +268,9 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-      const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', {
+      const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas,{
         from: accounts[0],
+        gas,
         gasPrice: '1'
       })
       expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster')
@@ -275,8 +279,9 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)
       await misbehavingPaymaster.setRevertPreRelayCall(true)
 
-      const innerTxFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', {
+      const innerTxFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
         from: accounts[0],
+        gas,
         gasPrice: '1'
       })
       expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRelayed', {
@@ -285,8 +290,9 @@ contract('RelayProvider', function (accounts) {
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setRevertPreRelayCall(false)
-      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', {
+      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
         from: accounts[0],
+        gas,
         gasPrice: '1'
       })
       expectEvent.inLogs(innerTxSuccessReceiptTruffle.logs, 'SampleRecipientEmitted')
