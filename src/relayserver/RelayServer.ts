@@ -33,7 +33,7 @@ abiDecoder.addABI(StakeManagerABI)
 const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
-const VERSION = '0.0.1'
+const VERSION = '0.9.0'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
