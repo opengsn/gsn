@@ -2,9 +2,9 @@ import { ether } from '@openzeppelin/test-helpers'
 
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, getRelayHubAddress, gsnCommander } from '../utils'
+import { getNetworkUrl, getRelayHubAddress, gsnCommander, getMnemonic } from '../utils'
 
-const commander = gsnCommander(['n', 'f', 'h'])
+const commander = gsnCommander(['n', 'f', 'h', 'm'])
   .option('--relayUrl <url>', 'url to advertise the relayer (defaults to localhost:8090)')
   .option('--stake <stake>', 'amount to stake for the relayer, in wei (defaults to 1 Ether)')
   .option(
@@ -20,7 +20,8 @@ const commander = gsnCommander(['n', 'f', 'h'])
 (async () => {
   const host = getNetworkUrl(commander.network)
   const hub = getRelayHubAddress(commander.hub)
-  const logic = new CommandsLogic(host, configureGSN({ relayHubAddress: hub }))
+  const mnemonic = getMnemonic(commander.mnemonic)
+  const logic = new CommandsLogic(host, configureGSN({ relayHubAddress: hub }), mnemonic)
   const registerOptions = {
     hub,
     from: commander.from ?? await logic.findWealthyAccount(),
