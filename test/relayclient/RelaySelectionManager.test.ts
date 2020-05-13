@@ -33,6 +33,7 @@ contract('RelaySelectionManager', function (accounts) {
   const pingResponse = {
     RelayServerAddress: '',
     RelayManagerAddress: '',
+    RelayHubAddress: '',
     MinGasPrice: '1',
     Ready: true,
     Version: '1'
@@ -60,6 +61,7 @@ contract('RelaySelectionManager', function (accounts) {
       stubRaceToSuccess = sinon.stub(relaySelectionManager, '_raceToSuccess')
       stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
       // unless this is stubbed, promises will not be handled and exception will be thrown somewhere
+      // @ts-ignore
       sinon.stub(relaySelectionManager, '_getRelayAddressPing').returns(Promise.resolve(winner))
     })
 
@@ -117,9 +119,10 @@ contract('RelaySelectionManager', function (accounts) {
         const pingResponse: PingResponse = {
           RelayServerAddress: relayManager,
           RelayManagerAddress: relayManager,
+          RelayHubAddress: relayManager,
           MinGasPrice: '1',
           Ready: true,
-          Version: '1'
+          Version: ''
         }
         const winner: PartialRelayInfo = {
           pingResponse,

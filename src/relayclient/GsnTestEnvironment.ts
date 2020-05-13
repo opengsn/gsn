@@ -2,13 +2,13 @@ import net from 'net'
 import { ether } from '@openzeppelin/test-helpers'
 
 import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
-import KeyManager from '../relayserver/KeyManager'
+import { KeyManager } from '../relayserver/KeyManager'
 
 import { configureGSN } from './GSNConfigurator'
 import { getNetworkUrl, supportedNetworks } from '../cli/utils'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
-import RelayServer from '../relayserver/RelayServer'
-import HttpServer from '../relayserver/HttpServer'
+import { RelayServer, RelayServerParams } from '../relayserver/RelayServer'
+import { HttpServer } from '../relayserver/HttpServer'
 import { Address } from './types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
@@ -46,11 +46,12 @@ class GsnTestEnvironmentClass {
     const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
     console.log('Sample Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
 
-    await this._runServer(_host, deploymentResult, from)
+    const port = await this._resolveAvailablePort()
+    const relayUrl = 'http://127.0.0.1:' + port.toString()
+    this._runServer(_host, deploymentResult, from, relayUrl, port)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
-    const relayUrl = this.httpServer.backend.url as string
 
     const registerOptions = {
       from,
@@ -113,27 +114,28 @@ class GsnTestEnvironmentClass {
     }
   }
 
-  async _runServer (
+  _runServer (
     host: string,
     deploymentResult: DeploymentResult,
-    from: Address
-  ): Promise<void> {
+    from: Address,
+    relayUrl: string,
+    port: number
+  ): void {
     if (this.httpServer !== undefined) {
       return
     }
-    const port = await this._resolveAvailablePort()
-    const relayUrl = 'http://127.0.0.1:' + port.toString()
 
-    const keyManager = new KeyManager({
-      count: 2
-    })
+    const keyManager = new KeyManager(2)
     const txStoreManager = new TxStoreManager({ inMemory: true })
-
-    const backend = new RelayServer({
-      web3provider: new Web3.providers.WebsocketProvider(host),
+    /*
+      readonly contractInteractor: ContractInteractor
+      readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
+      readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
+     */
+    const relayServerParams = {
+      web3provider: new Web3.providers.HttpProvider(host),
       txStoreManager,
       keyManager,
-      owner: from,
       url: relayUrl,
       hubAddress: deploymentResult.relayHubAddress,
       gasPriceFactor: 1,
@@ -141,12 +143,13 @@ class GsnTestEnvironmentClass {
       pctRelayFee: 0,
       devMode: true,
       Debug: false
-    })
+    }
+    const backend = new RelayServer(relayServerParams as RelayServerParams)
 
-    this.httpServer = new HttpServer({
+    this.httpServer = new HttpServer(
       port,
       backend
-    })
+    )
     this.httpServer.start()
   }
 }

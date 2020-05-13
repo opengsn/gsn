@@ -2,33 +2,17 @@
 const fs = require('fs')
 const parseArgs = require('minimist')
 const Web3 = require('web3')
-const HttpServer = require('./HttpServer')
-const RelayServer = require('./RelayServer')
-const KeyManager = require('./KeyManager')
+const HttpServer = require('./HttpServer').HttpServer
+const RelayServer = require('./RelayServer').RelayServer
+const KeyManager = require('./KeyManager').KeyManager
 const TxStoreManager = require('./TxStoreManager').TxStoreManager
 const TXSTORE_FILENAME = require('./TxStoreManager').TXSTORE_FILENAME
+const getRelayHubAddress = require('../cli/utils').getRelayHubAddress
 
 function error (err) {
   console.error(err)
   process.exit(1)
 }
-
-/// TODO: remove once translated to TypeScript. This method is in ./cli/utils.ts
-function getRelayHubAddress (hub) {
-  return getAddressFromFile('build/gsn/RelayHub.json', hub)
-}
-
-function getAddressFromFile (path, input) {
-  if (input == null) {
-    if (fs.existsSync(path)) {
-      const relayHubDeployInfo = fs.readFileSync(path).toString()
-      return JSON.parse(relayHubDeployInfo).address
-    }
-  }
-  return input
-}
-
-/// TODO end
 
 // use all camel-case entries from environment as defaults.
 const envDefaults = Object.entries(process.env)
@@ -74,9 +58,9 @@ if (devMode) {
   }
 }
 
-const keyManager = new KeyManager({ count: 2, workdir })
+const keyManager = new KeyManager(2, workdir)
 const txStoreManager = new TxStoreManager({ workdir })
-const web3provider = new Web3.providers.WebsocketProvider(ethereumNodeUrl)
+const web3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const relay = new RelayServer({
   txStoreManager,
@@ -92,6 +76,7 @@ const relay = new RelayServer({
   ethereumNodeUrl
 })
 console.log('Starting server.')
-console.log(`server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)
-const httpServer = new HttpServer({ port, backend: relay })
+console.log(
+  `server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)
+const httpServer = new HttpServer(port, relay)
 httpServer.start()

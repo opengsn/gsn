@@ -9,8 +9,17 @@ module.exports = {
 	new IgnorePlugin(/^scrypt$/),
   ],
   target: 'node',
-  entry: '../src/relayserver/runServer.js',
+  entry: '../dist/src/relayserver/runServer.js',
   mode: 'development',
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
+      },
+    ],
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'relayserver.js'

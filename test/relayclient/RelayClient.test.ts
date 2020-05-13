@@ -169,6 +169,7 @@ contract('RelayClient', function (accounts) {
     const pingResponse = {
       RelayServerAddress,
       RelayManagerAddress: relayManager,
+      RelayHubAddress: relayManager,
       MinGasPrice: '',
       Ready: true,
       Version: ''
