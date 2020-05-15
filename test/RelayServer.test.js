@@ -401,7 +401,7 @@ contract('RelayServer', function (accounts) {
     it('should fail to relay when paymaster\'s balance too low', async function () {
       id = (await testutils.snapshot()).result
       try {
-        await paymaster.withdraw(accounts[0])
+        await paymaster.withdrawAll(accounts[0])
         await relayTransaction(options)
         assert.fail()
       } catch (e) {
