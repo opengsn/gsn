@@ -1,7 +1,7 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
@@ -66,7 +66,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     // This way, we don't need to understand the RelayHub API in order to replenish
     // the paymaster.
     receive() external virtual payable {
-        relayHub.depositFor.value(msg.value)(address(this));
+        relayHub.depositFor{value:msg.value}(address(this));
     }
 
     /// withdraw deposit from relayHub
