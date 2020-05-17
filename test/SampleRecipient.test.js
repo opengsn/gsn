@@ -36,7 +36,7 @@ contract('SampleRecipient', function (accounts) {
     const penalizer = await Penalizer.new()
     const rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address,
       penalizer.address)
-    await paymaster.setHub(rhub.address)
+    await paymaster.setRelayHub(rhub.address)
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally
     // uses hub.depositFor)

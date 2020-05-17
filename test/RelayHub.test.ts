@@ -58,7 +58,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     paymaster = paymasterContract.address
     relayHub = relayHubInstance.address
 
-    await paymasterContract.setHub(relayHub)
+    await paymasterContract.setRelayHub(relayHub)
   })
 
   it('should retrieve version number', async function () {
@@ -347,8 +347,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         beforeEach(async function () {
           paymasterWithContext = await TestPaymasterStoreContext.new()
           misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
-          await paymasterWithContext.setHub(relayHub)
-          await misbehavingPaymaster.setHub(relayHub)
+          await paymasterWithContext.setRelayHub(relayHub)
+          await misbehavingPaymaster.setRelayHub(relayHub)
           await relayHubInstance.depositFor(paymasterWithContext.address, {
             value: ether('1'),
             from: other
@@ -514,7 +514,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
           async function () {
             const paymaster2 = await TestPaymasterEverythingAccepted.new()
-            await paymaster2.setHub(relayHub)
+            await paymaster2.setRelayHub(relayHub)
             const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
               gasPrice,
               pctRelayFee,
@@ -579,7 +579,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           let signature: string
           beforeEach(async function () {
             misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
-            await misbehavingPaymaster.setHub(relayHub)
+            await misbehavingPaymaster.setRelayHub(relayHub)
             await relayHubInstance.depositFor(misbehavingPaymaster.address, {
               value: ether('1'),
               from: other

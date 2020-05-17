@@ -50,7 +50,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       value: ether('1')
     })
     await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
-    await paymaster.setHub(relayHub.address)
+    await paymaster.setRelayHub(relayHub.address)
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     // @ts-ignore
     Object.keys(StakeManager.events).forEach(function (topic) {
