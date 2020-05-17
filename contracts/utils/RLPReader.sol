@@ -1,3 +1,4 @@
+// SPDX-License-Identifier:APACHE-2.0
 /*
 * Taken from https://github.com/hamdiallam/Solidity-RLP
 */

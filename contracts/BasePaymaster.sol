@@ -1,7 +1,8 @@
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
@@ -67,7 +68,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     // the paymaster.
     receive() external virtual payable {
         require(address(relayHub) != address(0), "relay hub address not set");
-        relayHub.depositFor.value(msg.value)(address(this));
+        relayHub.depositFor{value:msg.value}(address(this));
     }
 
     /// withdraw deposit from relayHub

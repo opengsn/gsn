@@ -1,7 +1,8 @@
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../paymaster/IUniswap.sol";
 
 contract TestToken is ERC20("Test Token", "TOK") {

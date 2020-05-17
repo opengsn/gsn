@@ -1,3 +1,4 @@
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
@@ -34,7 +35,7 @@ contract TrustedForwarder is ITrustedForwarder {
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        return req.target.call.gas(req.gasData.gasLimit)
+        return req.target.call{gas:req.gasData.gasLimit}
         (abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
     }
 

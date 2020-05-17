@@ -456,6 +456,11 @@
     fs-extra "^8.1.0"
     try-require "^1.2.1"
 
+"@openzeppelin/contracts@3.0.1":
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.0.1.tgz#2f327f77d16b43f14674086b2b634bda38cb0838"
+  integrity sha512-uSrD7hZ0ViuHGqHZbeHawZBi/uy7aBiNramXAt2dFFuSuoU4u9insS3V3zdVfOnYSPreUo636xSOuQIFN4//HA==
+
 "@openzeppelin/test-helpers@0.5.5":
   version "0.5.5"
   resolved "https://registry.yarnpkg.com/@openzeppelin/test-helpers/-/test-helpers-0.5.5.tgz#c0a549fdcf1a9f4b1fd041233e52a700ed988eb6"
@@ -7734,11 +7739,6 @@ opener@^1.5.1:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/opener/-/opener-1.5.1.tgz#6d2f0e77f1a0af0032aca716c2c1fbb8e7e8abed"
   integrity sha512-goYSy5c2UXE4Ra1xixabeVh1guIX/ZV/YokJksb6q2lubWu6UbvPQ20p542/sFIll1nl8JnCyK9oBaOcCWXwvA==
-
-openzeppelin-solidity@3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/openzeppelin-solidity/-/openzeppelin-solidity-3.0.0.tgz#b68f82529ea1f7131018866b8dcc8d932e698bb5"
-  integrity sha512-jW6p145prFEf9k0fXGeF7o0Op88SetcRdaFLvB7UVaZb7NQVCIazB6OBVC9NW28R+/mzumoxGf+VvWvz5oiYhQ==
 
 opn-cli@4.0.0:
   version "4.0.0"

@@ -2,11 +2,12 @@
 /* solhint-disable no-inline-assembly */
 /* solhint-disable not-rely-on-time */
 /* solhint-disable bracket-align */
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./0x/LibBytesV06.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/EIP712Sig.sol";
 import "./utils/GSNTypes.sol";

@@ -1,7 +1,8 @@
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./interfaces/IStakeManager.sol";
 
