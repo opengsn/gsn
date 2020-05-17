@@ -2,11 +2,12 @@
 /* solhint-disable no-inline-assembly */
 /* solhint-disable not-rely-on-time */
 /* solhint-disable bracket-align */
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./0x/LibBytesV06.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/EIP712Sig.sol";
 import "./utils/GSNTypes.sol";
@@ -41,7 +42,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 36250;
+    uint256 constant private GAS_OVERHEAD = 36261;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;

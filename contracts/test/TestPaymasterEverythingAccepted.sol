@@ -1,3 +1,4 @@
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
@@ -53,7 +54,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
 
     function deposit() public payable {
         require(address(relayHub) != address(0), "relay hub address not set");
-        relayHub.depositFor.value(msg.value)(address(this));
+        relayHub.depositFor{value:msg.value}(address(this));
     }
 
     function withdrawAll(address payable destination) public {

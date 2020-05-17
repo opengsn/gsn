@@ -1,8 +1,10 @@
 /* solhint-disable avoid-tx-origin */
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "../BaseRelayRecipient.sol";
-import "openzeppelin-solidity/contracts/access/Ownable.sol";
 
 contract TestProxy is BaseRelayRecipient, Ownable  {
 
