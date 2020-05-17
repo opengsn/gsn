@@ -51,10 +51,6 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
     }
 
-    function setHub(IRelayHub _relayHub) public {
-        setRelayHub(_relayHub);
-    }
-
     function deposit() public payable {
         require(address(relayHub) != address(0), "relay hub address not set");
         relayHub.depositFor.value(msg.value)(address(this));

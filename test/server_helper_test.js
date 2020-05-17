@@ -51,7 +51,7 @@ contract.skip('ServerHelper', function (accounts) {
       EthereumNodeUrl: web3.currentProvider.host,
       GasPricePercent: gasPricePercent
     })
-    serverHelper.setHub(rhub.contract)
+    serverHelper.setRelayHub(rhub.contract)
   })
 
   after(async function () {
@@ -136,7 +136,7 @@ contract.skip('ServerHelper', function (accounts) {
       await increaseTime(3600 * 24 * 7 * 2)
       await rhub.unstake(accounts[2], { from: accounts[0] })
 
-      serverHelper.setHub(rhub.contract)
+      serverHelper.setRelayHub(rhub.contract)
     })
 
     it('should list all relays from relay contract', async function () {
@@ -255,11 +255,11 @@ contract.skip('ServerHelper', function (accounts) {
     beforeEach('set mock relay hub', function () {
       this.originalRelayHub = serverHelper.relayHubInstance
       this.mockRelayHub = { getPastEvents: () => mockRelayAddedEvents }
-      serverHelper.setHub(this.mockRelayHub)
+      serverHelper.setRelayHub(this.mockRelayHub)
     })
 
     afterEach('restore original relay hub', function () {
-      serverHelper.setHub(this.originalRelayHub)
+      serverHelper.setRelayHub(this.originalRelayHub)
     })
 
     it('should use default strategy for filtering and sorting relays', async function () {
@@ -273,7 +273,7 @@ contract.skip('ServerHelper', function (accounts) {
       // 4 & 5 are not filtered out since no restrictions on minimum delay or stake are set
       // 5, 7 & 6 go first due to lower transaction fee (1e5, 1e7, and 1e9, vs 1e10 of the rest)
       const customServerHelper = new ServerHelper(httpWrapper, {}, { addScoreRandomness: noRandomness })
-      customServerHelper.setHub(this.mockRelayHub)
+      customServerHelper.setRelayHub(this.mockRelayHub)
       const relays = await customServerHelper.fetchRelaysAdded()
       assert.deepEqual(relays.map(r => r.address), ['5', '7', '6', '1', '2', '3', '4'])
     })
@@ -291,7 +291,7 @@ contract.skip('ServerHelper', function (accounts) {
         calculateRelayScore: (r) => r.stake,
         addScoreRandomness: noRandomness
       })
-      customServerHelper.setHub(this.mockRelayHub)
+      customServerHelper.setRelayHub(this.mockRelayHub)
       const relays = await customServerHelper.fetchRelaysAdded()
       assert.deepEqual(relays.map(r => r.address), ['6', '7', '5'])
     })
@@ -311,7 +311,7 @@ contract.skip('ServerHelper', function (accounts) {
         calculateRelayScore: (r) => r.address > '4' ? 2 : 1, // 2 score levels
         addScoreRandomness: noRandomness
       })
-      customServerHelper.setHub(this.mockRelayHub)
+      customServerHelper.setRelayHub(this.mockRelayHub)
       let relays = await customServerHelper.fetchRelaysAdded()
       assert.deepEqual(relays.map(r => r.address), ['5', '6', '7', '1', '2', '3', '4'])
 
@@ -328,7 +328,7 @@ contract.skip('ServerHelper', function (accounts) {
         addScoreRandomness: noRandomness
       })
 
-      customServerHelper.setHub(this.mockRelayHub)
+      customServerHelper.setRelayHub(this.mockRelayHub)
 
       let relays = await customServerHelper.fetchRelaysAdded()
       assert.deepEqual(relays.map(r => r.address), ['5', '7', '6', '1', '2', '3', '4'])

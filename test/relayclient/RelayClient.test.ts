@@ -65,7 +65,7 @@ contract('RelayClient', function (accounts) {
     forwarderAddress = await testRecipient.getTrustedForwarder()
     paymaster = await TestPaymasterEverythingAccepted.new()
 
-    await paymaster.setHub(relayHub.address)
+    await paymaster.setRelayHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
     gasLess = await web3.eth.personal.newAccount('password')
 

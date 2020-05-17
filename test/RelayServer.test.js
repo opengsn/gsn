@@ -71,7 +71,7 @@ contract('RelayServer', function (accounts) {
     forwarder = await TrustedForwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
 
-    await paymaster.setHub(rhub.address)
+    await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')

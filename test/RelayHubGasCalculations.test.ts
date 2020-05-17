@@ -71,7 +71,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
-    await paymaster.setHub(relayHub.address)
+    await paymaster.setRelayHub(relayHub.address)
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
       from: other
@@ -165,7 +165,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     it('should revert an attempt to use more than allowed gas for acceptRelayedCall', async function () {
       // TODO: extract preparation to 'before' block
       const misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
-      await misbehavingPaymaster.setHub(relayHub.address)
+      await misbehavingPaymaster.setRelayHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: ether('0.1') })
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
