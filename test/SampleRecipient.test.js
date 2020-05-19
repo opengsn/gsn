@@ -1,4 +1,4 @@
-const Big = require('big.js')
+import { toBN } from 'web3-utils'
 
 const Environments = require('../src/relayclient/types/Environments')
 
@@ -31,7 +31,7 @@ contract('SampleRecipient', function (accounts) {
 
   // TODO: this test is in a wrong file
   it('should allow owner to withdraw balance from RelayHub', async function () {
-    const deposit = new Big('100000000000000000')
+    const deposit = toBN('100000000000000000')
     const stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
     const rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address,
@@ -56,8 +56,8 @@ contract('SampleRecipient', function (accounts) {
       gasPrice: gasPrice
     })
     const a0BalanceAfter = await web3.eth.getBalance(accounts[0])
-    const expectedBalanceAfter = new Big(a0BalanceBefore).add(deposit).sub(res.receipt.gasUsed * gasPrice)
-    assert.equal(expectedBalanceAfter.toFixed(), a0BalanceAfter.toString())
+    const expectedBalanceAfter = toBN(a0BalanceBefore).add(deposit).sub(toBN(res.receipt.gasUsed * gasPrice))
+    assert.equal(expectedBalanceAfter.toString(), a0BalanceAfter.toString())
     depositActual = await rhub.balanceOf(paymaster.address)
     assert.equal('0', depositActual.toString())
   })

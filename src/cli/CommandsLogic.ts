@@ -2,7 +2,6 @@ import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import BN from 'bn.js'
-import { ether } from '@openzeppelin/test-helpers'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { merge } from 'lodash'
 
@@ -20,6 +19,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
+import { ether } from './utils'
 
 interface RegisterOptions {
   from: Address

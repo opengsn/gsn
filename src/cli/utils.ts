@@ -4,6 +4,7 @@ import fs from 'fs'
 import { Address } from '../relayclient/types/Aliases'
 import path from 'path'
 import { DeploymentResult } from './CommandsLogic'
+import { toWei } from 'web3-utils'
 
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
@@ -14,6 +15,9 @@ export const networks = new Map<string, string>([
   ['mainnet', 'https://mainnet.infura.io/v3/c3422181d0594697a38defe7706a1e5b']
 ])
 
+export function ether (n: BN|string|number): BN {
+  return toWei(n as any, 'ether')
+}
 export function supportedNetworks (): string[] {
   return Array.from(networks.keys())
 }

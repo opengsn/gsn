@@ -1,8 +1,7 @@
-import { ether } from '@openzeppelin/test-helpers'
 
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, getRelayHubAddress, gsnCommander } from '../utils'
+import { getNetworkUrl, getRelayHubAddress, gsnCommander, ether } from '../utils'
 
 const commander = gsnCommander(['n', 'f', 'h'])
   .option('--relayUrl <url>', 'url to advertise the relayer (defaults to localhost:8090)')

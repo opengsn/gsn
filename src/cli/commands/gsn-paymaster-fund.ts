@@ -1,8 +1,6 @@
-import { ether } from '@openzeppelin/test-helpers'
-
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
+import { ether, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
 
 const commander = gsnCommander(['n', 'f', 'h'])
   .option('--paymaster <address>',

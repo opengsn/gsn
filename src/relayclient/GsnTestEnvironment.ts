@@ -1,11 +1,10 @@
 import net from 'net'
-import { ether } from '@openzeppelin/test-helpers'
 
 import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
 import { KeyManager } from '../relayserver/KeyManager'
 
 import { configureGSN } from './GSNConfigurator'
-import { getNetworkUrl, supportedNetworks } from '../cli/utils'
+import { getNetworkUrl, supportedNetworks, ether } from '../cli/utils'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
 import { RelayServer, RelayServerParams } from '../relayserver/RelayServer'
 import { HttpServer } from '../relayserver/HttpServer'
