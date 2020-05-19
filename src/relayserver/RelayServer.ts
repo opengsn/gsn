@@ -108,43 +108,43 @@ export interface RelayServerParams {
 }
 
 export class RelayServer extends EventEmitter {
-  private lastScannedBlock = 0
-  private ready = false
-  private removed = false
-  private readonly nonceMutex = new Mutex()
-  private readonly nonces: Record<number, number> = {}
+  lastScannedBlock = 0
+  ready = false
+  removed = false
+  nonceMutex = new Mutex()
+  readonly nonces: Record<number, number> = {}
   private readonly managerAddress: PrefixedHexString
-  private gasPrice: number = 0
+  gasPrice: number = 0
   private relayHubContract: IRelayHubInstance | undefined
   private paymasterContract: IPaymasterInstance | undefined
-  private chainId: any
-  private rawTxOptions: TransactionOptions | undefined
+  chainId: any
+  rawTxOptions: TransactionOptions | undefined
   private _workerSemaphoreOn = false
   private stakeManagerContract: IStakeManagerInstance | undefined
   private topics: string[][] | undefined
-  private networkId: number | undefined
+  networkId: number | undefined
   private initialized = false
-  private balance = toBN(0)
-  private stake = toBN(0)
+  balance = toBN(0)
+  stake = toBN(0)
   private isAddressAdded = false
-  private lastError: string | undefined
-  private owner: PrefixedHexString | undefined
+  lastError: string | undefined
+  owner: PrefixedHexString | undefined
   private unstakeDelay: BN | undefined | string
   private withdrawBlock: BN | undefined | string
   private authorizedHub = false
   readonly txStoreManager: TxStoreManager
   private readonly web3provider: provider
-  private readonly keyManager: KeyManager
+  readonly keyManager: KeyManager
   private readonly contractInteractor: ContractInteractor
-  private readonly hubAddress: PrefixedHexString
-  private readonly baseRelayFee: number
-  private readonly pctRelayFee: number
-  private readonly gasPriceFactor: number
-  private readonly url: string
+  readonly hubAddress: PrefixedHexString
+  readonly baseRelayFee: number
+  readonly pctRelayFee: number
+  readonly gasPriceFactor: number
+  readonly url: string
   private readonly workerMinBalance: number
   private readonly workerTargetBalance: number
   private readonly devMode: boolean
-  private readonly web3: Web3
+  readonly web3: Web3
   private workerTask: any
 
   constructor (params: RelayServerParams) {
@@ -204,7 +204,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async createRelayTransaction (req: CreateTransactionDetails): Promise<any> {
+  async createRelayTransaction (req: CreateTransactionDetails): Promise<PrefixedHexString> {
     debug('dump request params', arguments[0])
     ow(req.encodedFunction, ow.string)
     ow(req.approvalData, ow.string)

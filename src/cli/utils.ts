@@ -28,7 +28,7 @@ export function getMnemonic (mnemonicFile: string): string | undefined {
     return
   }
   console.log('Using mnemonic from file ' + mnemonicFile)
-  return fs.readFileSync(mnemonicFile, { encoding: 'utf8' }).replace(/\r?\n|\r/g, "")
+  return fs.readFileSync(mnemonicFile, { encoding: 'utf8' }).replace(/\r?\n|\r/g, '')
 }
 
 export function getPaymasterAddress (paymaster?: string): string | undefined {
@@ -62,7 +62,7 @@ export function saveDeployment (deploymentResult: DeploymentResult, workdir: str
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
 }
 
-export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string| undefined = undefined): void {
+export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
   if (title != null) {
     console.log(title)
   }
@@ -80,6 +80,7 @@ export function loadDeployment (workdir: string): DeploymentResult {
     if (address != null) { return address }
     throw new Error('no address for ' + name)
   }
+
   return {
     relayHubAddress: getAddress('RelayHub'),
     stakeManagerAddress: getAddress('StakeManager'),
