@@ -73,7 +73,7 @@ contract('KnownRelaysManager', function (
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
       testRecipient = await TestRecipient.new()
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
-      await paymaster.setHub(relayHub.address)
+      await paymaster.setRelayHub(relayHub.address)
       await paymaster.deposit({ value: ether('1') })
       await stake(stakeManager, relayHub, activeRelayWorkersAdded, owner)
       await stake(stakeManager, relayHub, activeRelayServerRegistered, owner)

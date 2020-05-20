@@ -1,7 +1,8 @@
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./GSNTypes.sol";
 
 // https://github.com/ethereum/EIPs/blob/master/assets/eip-712/Example.sol

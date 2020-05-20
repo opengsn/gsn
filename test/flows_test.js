@@ -66,7 +66,7 @@ options.forEach(params => {
 
       sr = await SampleRecipient.new()
       paymaster = await TestPaymasterEverythingAccepted.new()
-      await paymaster.setHub(rhub.address)
+      await paymaster.setRelayHub(rhub.address)
     })
 
     after(async function () {
@@ -143,7 +143,7 @@ options.forEach(params => {
         let approvalData
         before(async function () {
           approvalPaymaster = await TestPaymasterPreconfiguredApproval.new()
-          await approvalPaymaster.setHub(rhub.address)
+          await approvalPaymaster.setRelayHub(rhub.address)
           await rhub.depositFor(approvalPaymaster.address, { value: 1e18 })
 
           const relayProvider = new RelayProvider(web3.currentProvider, relayClientConfig, { asyncApprovalData: () => Promise.resolve(approvalData) })

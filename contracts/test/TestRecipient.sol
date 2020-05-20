@@ -1,4 +1,5 @@
 /* solhint-disable avoid-tx-origin */
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 
 import "../utils/GsnUtils.sol";
@@ -11,6 +12,10 @@ contract TestRecipient is BaseRelayRecipient {
     constructor() public {
         //should be a singleton, since Paymaster should (eventually) trust it.
         trustedForwarder = address(new TrustedForwarder());
+    }
+
+    function setTrustedForwarder(address forwarder) external {
+        trustedForwarder = forwarder;
     }
 
     event Reverting(string message);

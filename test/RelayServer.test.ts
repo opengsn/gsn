@@ -88,7 +88,7 @@ contract('RelayServer', function (accounts) {
     forwarder = await TrustedForwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
 
-    await paymaster.setHub(rhub.address)
+    await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')
@@ -463,7 +463,7 @@ contract('RelayServer', function (accounts) {
     it('should fail to relay when paymaster\'s balance too low', async function () {
       id = (await snapshot()).result
       try {
-        await paymaster.withdraw(accounts[0])
+        await paymaster.withdrawAll(accounts[0])
         await relayTransaction(options)
         assert.fail()
       } catch (e) {

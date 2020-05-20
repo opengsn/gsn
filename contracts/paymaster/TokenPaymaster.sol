@@ -1,8 +1,9 @@
+// SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/access/Ownable.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IUniswap.sol";
 import "../BasePaymaster.sol";
 
@@ -117,7 +118,7 @@ contract TokenPaymaster is BasePaymaster {
         }
         //solhint-disable-next-line
         uniswap.tokenToEthSwapOutput(ethActualCharge, uint(-1), block.timestamp+60*15);
-        relayHub.depositFor.value(ethActualCharge)(address(this));
+        relayHub.depositFor{value:ethActualCharge}(address(this));
         emit TokensCharged(gasUseWithoutPost, ethActualCharge, tokenActualCharge);
     }
 
