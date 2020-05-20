@@ -692,7 +692,8 @@ contract('RelayServer', function (accounts) {
       _pollNonceOrig = relayServer._pollNonce
       relayServer._pollNonce = async function (signerIndex) {
         const signer = this.getAddress(signerIndex)
-        const nonce = await this.web3.eth.getTransactionCount(signer, 'pending')
+        // @ts-ignore
+        const nonce = await this.contractInteractor.getTransactionCount(signer, 'pending')
         return nonce
       }
     })
