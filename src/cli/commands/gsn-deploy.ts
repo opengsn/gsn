@@ -1,10 +1,10 @@
 import commander from 'commander'
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, gsnCommander, saveDeployment, showDeployment } from '../utils'
+import { getMnemonic, getNetworkUrl, gsnCommander, saveDeployment, showDeployment } from '../utils'
 
 // TODO: support deploying custom paymasters by passing bytecode, ABI and constructor params
-gsnCommander(['n', 'f'])
+gsnCommander(['n', 'f', 'm'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
   .parse(process.argv);
 
@@ -12,7 +12,8 @@ gsnCommander(['n', 'f'])
   const network: string = commander.network
   const nodeURL = getNetworkUrl(network)
 
-  const logic = new CommandsLogic(nodeURL, configureGSN({}))
+  const mnemonic = getMnemonic(commander.mnemonic)
+  const logic = new CommandsLogic(nodeURL, configureGSN({}), mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
 
   const deploymentResult = await logic.deployGsnContracts(from)

@@ -206,12 +206,14 @@ export default class RelayClient {
     if (gasPriceHex == null || gasLimitHex == null) {
       throw new Error('RelayClient internal exception. Gas price or gas limit still not calculated. Cannot happen.')
     }
-    if (gasPriceHex.indexOf('0x') !== 0 || gasLimitHex.indexOf('0x') !== 0) {
-      throw new Error(`Invalid hex string: ${gasPriceHex} | ${gasLimitHex}`)
+    if (gasPriceHex.indexOf('0x') !== 0) {
+      throw new Error(`Invalid gasPrice hex string: ${gasPriceHex}`)
+    }
+    if (gasLimitHex.indexOf('0x') !== 0) {
+      throw new Error(`Invalid gasLimit hex string: ${gasLimitHex}`)
     }
     const gasLimit = parseInt(gasLimitHex, 16).toString()
     const gasPrice = parseInt(gasPriceHex, 16).toString()
-
     const relayRequest = new RelayRequest({
       senderAddress: gsnTransactionDetails.from,
       target: gsnTransactionDetails.to,
@@ -224,7 +226,6 @@ export default class RelayClient {
       paymaster,
       relayWorker
     })
-
     const signature = await this.accountManager.sign(relayRequest, forwarderAddress)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.

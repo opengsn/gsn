@@ -207,21 +207,21 @@ export async function evmMine (): Promise<any> {
   })
 }
 
-export async function snapshot (): Promise<number> {
+export async function snapshot (): Promise<{ id: number, jsonrpc: string, result: string }> {
   return new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
       method: 'evm_snapshot',
       id: Date.now()
-    }, (err: Error | null, snapshotId: number) => {
+    }, (err: Error | null, snapshotId: { id: number, jsonrpc: string, result: string }) => {
       if (err) { return reject(err) }
       return resolve(snapshotId)
     })
   })
 }
 
-export async function revert (id: number): Promise<void> {
+export async function revert (id: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({

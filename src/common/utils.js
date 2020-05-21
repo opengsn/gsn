@@ -3,8 +3,6 @@ const web3Utils = require('web3-utils')
 
 const abi = require('web3-eth-abi')
 
-const { default: Common } = require('ethereumjs-common')
-
 function removeHexPrefix (hex) {
   if (hex == null || typeof hex.replace !== 'function') {
     throw new Error('Cannot remove hex prefix')
@@ -76,13 +74,14 @@ module.exports = {
    * @param gtxdatanonzero
    * @returns maximum possible gas consumption by this relayed call
    */
-  calculateTransactionMaxPossibleGas: function ({
-    gasLimits,
-    hubOverhead,
-    relayCallGasLimit,
-    calldataSize,
-    gtxdatanonzero
-  }) {
+  calculateTransactionMaxPossibleGas: function (
+    {
+      gasLimits,
+      hubOverhead,
+      relayCallGasLimit,
+      calldataSize,
+      gtxdatanonzero
+    }) {
     return 21000 +
       hubOverhead +
       calldataSize * gtxdatanonzero +
@@ -121,14 +120,16 @@ module.exports = {
     }
 
     const signature = ethUtils.fromRpcSig(sig_)
-    const sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(web3Utils.toHex(signature.v))
+    const sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(
+      web3Utils.toHex(signature.v))
 
     return sig
   },
 
   getTransactionSignatureWithKey: function (privKey, hash) {
     const signature = ethUtils.ecsign(hash, privKey)
-    const sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(web3Utils.toHex(signature.v))
+    const sig = web3Utils.bytesToHex(signature.r) + removeHexPrefix(web3Utils.bytesToHex(signature.s)) + removeHexPrefix(
+      web3Utils.toHex(signature.v))
     return sig
   },
 
@@ -170,23 +171,5 @@ module.exports = {
 
   sleep: function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
-  },
-
-  /**
-   * Ganache does not seem to enforce EIP-155 signature. Buidler does, though.
-   * This is how {@link Transaction} constructor allows support for custom and private network.
-   * @param chainId
-   * @param networkId
-   * @return {{common: Common}}
-   */
-  getRawTxOptions (chainId, networkId) {
-    return {
-      common: Common.forCustomChain(
-        'mainnet',
-        {
-          chainId,
-          networkId
-        }, 'istanbul')
-    }
   }
 }

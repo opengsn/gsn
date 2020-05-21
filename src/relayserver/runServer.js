@@ -72,8 +72,7 @@ const relay = new RelayServer({
   pctRelayFee: pctRelayFee,
   devMode,
   Debug,
-  gasPriceFactor: gasPriceFactor,
-  ethereumNodeUrl
+  gasPriceFactor: gasPriceFactor
 })
 console.log('Starting server.')
 console.log(

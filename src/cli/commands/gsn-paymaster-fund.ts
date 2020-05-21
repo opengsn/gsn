@@ -2,9 +2,9 @@ import { ether } from '@openzeppelin/test-helpers'
 
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
+import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
 
-const commander = gsnCommander(['n', 'f', 'h'])
+const commander = gsnCommander(['n', 'f', 'h', 'm'])
   .option('--paymaster <address>',
     'address of the paymaster contract (defaults to address from build/gsn/Paymaster.json if exists')
   .option('--amount <amount>', 'amount of funds to deposit for the paymaster contract, in wei (defaults to 1 Ether)')
@@ -21,7 +21,8 @@ const commander = gsnCommander(['n', 'f', 'h'])
     throw new Error(`Contracts not found: hub: ${hub} paymaster: ${paymaster} `)
   }
 
-  const logic = new CommandsLogic(nodeURL, configureGSN({ relayHubAddress: hub }))
+  const mnemonic = getMnemonic(commander.mnemonic)
+  const logic = new CommandsLogic(nodeURL, configureGSN({ relayHubAddress: hub }), mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
   const amount = commander.amount ?? ether('1')
 

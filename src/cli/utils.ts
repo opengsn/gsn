@@ -23,6 +23,14 @@ export function getNetworkUrl (network = ''): string {
   return networks.get(network) ?? match[0]
 }
 
+export function getMnemonic (mnemonicFile: string): string | undefined {
+  if (mnemonicFile == null) {
+    return
+  }
+  console.log('Using mnemonic from file ' + mnemonicFile)
+  return fs.readFileSync(mnemonicFile, { encoding: 'utf8' }).replace(/\r?\n|\r/g, '')
+}
+
 export function getPaymasterAddress (paymaster?: string): string | undefined {
   return getAddressFromFile('build/gsn/Paymaster.json', paymaster)
 }
@@ -54,7 +62,7 @@ export function saveDeployment (deploymentResult: DeploymentResult, workdir: str
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
 }
 
-export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string| undefined = undefined): void {
+export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
   if (title != null) {
     console.log(title)
   }
@@ -72,6 +80,7 @@ export function loadDeployment (workdir: string): DeploymentResult {
     if (address != null) { return address }
     throw new Error('no address for ' + name)
   }
+
   return {
     relayHubAddress: getAddress('RelayHub'),
     stakeManagerAddress: getAddress('StakeManager'),
@@ -81,7 +90,7 @@ export function loadDeployment (workdir: string): DeploymentResult {
   }
 }
 
-type GsnOption = 'n' | 'f' | 'h'
+type GsnOption = 'n' | 'f' | 'h' | 'm'
 
 export function gsnCommander (options: GsnOption[]): CommanderStatic {
   options.forEach(option => {
@@ -94,6 +103,9 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         break
       case 'h':
         commander.option('-h, --hub <address>', 'address of the hub contract (default: the address from build/gsn/RelayHub.json if exists)')
+        break
+      case 'm':
+        commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\' (default: empty)')
         break
     }
   })
