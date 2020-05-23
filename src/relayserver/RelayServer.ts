@@ -33,7 +33,7 @@ abiDecoder.addABI(StakeManagerABI)
 const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
-const VERSION = '0.9.0'
+const VERSION = '0.9.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
@@ -115,7 +115,7 @@ export class RelayServer extends EventEmitter {
   gasPrice: number = 0
   private relayHubContract: IRelayHubInstance | undefined
   private paymasterContract: IPaymasterInstance | undefined
-  chainId: any
+  chainId!: number
   rawTxOptions: TransactionOptions | undefined
   private _workerSemaphoreOn = false
   private stakeManagerContract: IStakeManagerInstance | undefined

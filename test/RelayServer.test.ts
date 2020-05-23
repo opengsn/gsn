@@ -52,7 +52,7 @@ abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 const localhostOne = 'http://localhost:8090'
 const workdir = '/tmp/gsn/test/relayserver'
 
-contract('RelayServer', function (accounts) {
+contract.only('RelayServer', function (accounts) {
   let rhub: RelayHubInstance
   let forwarder: TrustedForwarderInstance
   let stakeManager: StakeManagerInstance
@@ -751,8 +751,8 @@ contract('RelayServer', function (accounts) {
     beforeEach(function () {
       origWorker = relayServer._worker
       started = false
-      // @ts-ignore
-      relayServer._worker = function () {
+      relayServer._worker = async function () {
+        await Promise.resolve()
         started = true
         this.emit('error', new Error('GOTCHA'))
       }
@@ -793,36 +793,57 @@ contract('RelayServer', function (accounts) {
 
   // describe('network errors')
   //
-  // describe.skip('Function testing', function () {
-  //   it('_workerSemaphore', async function () {
-  //   })
-  //   it('_init', async function () {
-  //   })
-  //   it('replenishWorker', async function () {
-  //   })
-  //   it('_worker', async function () {
-  //   })
-  //   it('refreshBalance', async function () {
-  //   })
-  //   it('refreshStake', async function () {
-  //   })
-  //   it('_handleHubAuthorizedEvent', async function () {
-  //   })
-  //   it('_handleStakedEvent', async function () {
-  //   })
-  //   it('_registerIfNeeded', async function () {
-  //   })
-  //   it('_resendUnconfirmedTransactions', async function () {
-  //   })
-  //   it('_resendUnconfirmedTransactionsForSigner', async function () {
-  //   })
-  //   it('_sendTransaction', async function () {
-  //   })
-  //   it('_resendTransaction', async function () {
-  //   })
-  //   it('_pollNonce', async function () {
-  //   })
-  //   it('_parseEvent', async function () {
-  //   })
-  // })
+  describe('Function testing', function () {
+    it('_workerSemaphore', async function () {
+      // @ts-ignore
+      assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false first')
+      const workerOrig = relayServer._worker
+      let shouldRun = true
+      try {
+        relayServer._worker = async function (blockHeader: BlockHeader): Promise<TransactionReceipt | void> {
+          // eslint-disable-next-line no-unmodified-loop-condition
+          while (shouldRun) {
+            await sleep(200)
+          }
+        }
+        relayServer._workerSemaphore(await _web3.eth.getBlock('latest'))
+        // @ts-ignore
+        assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
+        shouldRun = false
+        await sleep(200)
+        // @ts-ignore
+        assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false after')
+      } finally {
+        relayServer._worker = workerOrig
+      }
+    })
+    // it('_init', async function () {
+    // })
+    // it('replenishWorker', async function () {
+    // })
+    // it('_worker', async function () {
+    // })
+    // it('refreshBalance', async function () {
+    // })
+    // it('refreshStake', async function () {
+    // })
+    // it('_handleHubAuthorizedEvent', async function () {
+    // })
+    // it('_handleStakedEvent', async function () {
+    // })
+    // it('_registerIfNeeded', async function () {
+    // })
+    // it('_resendUnconfirmedTransactions', async function () {
+    // })
+    // it('_resendUnconfirmedTransactionsForSigner', async function () {
+    // })
+    // it('_sendTransaction', async function () {
+    // })
+    // it('_resendTransaction', async function () {
+    // })
+    // it('_pollNonce', async function () {
+    // })
+    // it('_parseEvent', async function () {
+    // })
+  })
 })
