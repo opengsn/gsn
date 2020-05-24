@@ -278,7 +278,7 @@ export default class RelayClient {
           console.log(`on-chain forwarder for: ${gsnTransactionDetails.to} is ${forwarderAddress}`)
         }
       } catch (e) {
-        throw new Error('No forwarder address configured and fetching from Recipient failed')
+        throw new Error('No forwarder address configured and no getTrustedForwarder in target contract (fetching from Recipient failed)')
       }
     }
 
