@@ -32,6 +32,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let stakeManager
   let penalizer
   let sharedRelayRequestData
+  let relayRequest
+  let signature
 
   async function calculatePostGas (paymaster) {
     const testpaymaster = await TokenPaymaster.new(await paymaster.uniswap(), { gas: 1e7 })
@@ -65,46 +67,55 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     sharedRelayRequestData = {
       senderAddress: from,
       encodedFunction: recipient.contract.methods.test().encodeABI(),
-      senderNonce: '1',
+      senderNonce: '0',
       target: recipient.address,
       pctRelayFee: '1',
       baseRelayFee: '0',
       gasPrice: await web3.eth.getGasPrice(),
       gasLimit: 1e6.toString(),
       relayWorker: from,
-      paymaster: paymaster.address
+      paymaster: paymaster.address,
+      forwarder: forwarder.address
     }
+
+    relayRequest = new RelayRequest({
+      ...sharedRelayRequestData
+    })
+
+    const chainId = Environments.defaultEnvironment.chainId
+    const dataToSign = await getDataToSign({
+      chainId,
+      verifier: forwarder.address,
+      relayRequest
+    })
+    signature = await getEip712Signature({
+      web3,
+      dataToSign
+    })
   })
 
   context('#acceptRelayedCall', async () => {
     it('should fail if not enough balance', async () => {
-      const relayRequest = new RelayRequest({
-        ...sharedRelayRequestData
-      })
-      assert.equal(await revertReason(paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)), 'balance too low')
+      assert.equal(await revertReason(paymaster.acceptRelayedCall(relayRequest, signature, '0x', 1e6)), 'balance too low')
     })
 
+    // not a test!
     it('should fund recipient', async () => {
       await token.mint(5e18.toString())
       await token.transfer(recipient.address, 5e18.toString())
     })
 
     it('should fail if no approval', async () => {
-      const relayRequest = new RelayRequest({
-        ...sharedRelayRequestData
-      })
-      assert.include(await revertReason(paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)), 'allowance too low')
+      assert.include(await revertReason(paymaster.acceptRelayedCall(relayRequest, signature, '0x', 1e6)), 'allowance too low')
     })
 
+    // not a test!
     it('should recipient.approve', async () => {
       await recipient.execute(token.address, token.contract.methods.approve(paymaster.address, -1).encodeABI())
     })
 
     it('should succeed acceptRelayedCall', async () => {
-      const relayRequest = new RelayRequest({
-        ...sharedRelayRequestData
-      })
-      await paymaster.acceptRelayedCall(relayRequest, '0x', 1e6)
+      await paymaster.acceptRelayedCall(relayRequest, signature, '0x', 1e6)
     })
   })
 
@@ -146,15 +157,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         web3,
         dataToSign
       })
-      const maxGas = 1e6
-      const arcGasLimit = 1e6
-
-      // not really required: verify there's no revert
-      const canRelayRet = await hub.canRelay(relayRequest, maxGas, arcGasLimit, signature, '0x', {
-        from: relay,
-        gasPrice: 1
-      })
-      assert.equal(canRelayRet[0], true)
 
       const preBalance = await hub.balanceOf(paymaster.address)
 

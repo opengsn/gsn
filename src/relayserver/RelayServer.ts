@@ -78,6 +78,8 @@ export interface CreateTransactionDetails extends GsnTransactionDetails {
   baseRelayFee: IntString
   pctRelayFee: IntString
   relayHubAddress: Address
+  paymaster: Address
+  forwarder: Address
 }
 
 interface SendTransactionDetails {
@@ -249,6 +251,7 @@ export class RelayServer extends EventEmitter {
       gasPrice: req.gasPrice,
       gasLimit: req.gasLimit,
       paymaster: req.paymaster,
+      forwarder: req.forwarder,
       relayWorker: this.getAddress(1)
     })
     // TODO: should not use signedData at all. only the relayRequest.
@@ -290,20 +293,22 @@ export class RelayServer extends EventEmitter {
       gtxdatanonzero: gtxdatanonzero
     })
 
-    // @ts-ignore
-    let canRelayRet: { success: boolean, returnValue: string } = await this.relayHubContract.canRelay(
-      signedData.message,
-      maxPossibleGas,
-      gasLimits.acceptRelayedCallGasLimit,
-      req.signature,
-      req.approvalData, { from: this.getAddress(workerIndex) })
-    debug('canRelayRet', canRelayRet)
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    if (!canRelayRet) {
-      canRelayRet = { success: false, returnValue: 'No idea why' }
-    }
-    if (!canRelayRet.success) {
+    let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
+    try {
+      canRelayRet = await this.relayHubContract.contract.methods.relayCall(
+        signedData.message,
+        req.signature,
+        req.approvalData)
+        .call({
+          from: this.getAddress(workerIndex),
+          gasPrice: signedData.message.gasData.gasPrice
+        })
+    } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`relayCall reverted in server: ${e.message}`)
+    }
+    debug('canRelayRet', canRelayRet)
+    if (!canRelayRet.paymasterAccepted) {
       throw new Error(`canRelay failed in server: ${canRelayRet.returnValue}`)
     }
     // Send relayed transaction

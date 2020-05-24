@@ -1,10 +1,11 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { constants } from '@openzeppelin/test-helpers'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { AsyncApprovalData, PingFilter } from './types/Aliases'
+import { Address, AsyncApprovalData, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import RelaySelectionManager from './RelaySelectionManager'
@@ -157,8 +158,14 @@ export default class RelayClient {
     const { relayRequest, approvalData, signature, httpRequest } =
       await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
     const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(relayRequest, signature, approvalData)
-    if (!acceptRelayCallResult.success) {
-      return { error: new Error(`canRelay failed: ${acceptRelayCallResult.returnValue}`) }
+    if (!acceptRelayCallResult.paymasterAccepted) {
+      let message: string
+      if (acceptRelayCallResult.reverted) {
+        message = 'local view call to \'relayCall()\' reverted'
+      } else {
+        message = 'paymaster rejected in local view call to \'relayCall()\' '
+      }
+      return { error: new Error(`${message}: ${acceptRelayCallResult.returnValue}`) }
     }
     let hexTransaction: PrefixedHexString
     try {
@@ -187,16 +194,7 @@ export default class RelayClient {
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
-    let forwarderAddress = gsnTransactionDetails.forwarder
-    if (forwarderAddress == null) {
-      if (this.config.verbose) {
-        console.log(`will get forwarder for: ${gsnTransactionDetails.to}`)
-      }
-      forwarderAddress = await this.contractInteractor.getForwarder(gsnTransactionDetails.to)
-      if (this.config.verbose) {
-        console.log(`on-chain forwarder for: ${gsnTransactionDetails.to} is ${forwarderAddress}`)
-      }
-    }
+    const forwarderAddress = await this.resolveForwarder(gsnTransactionDetails)
     const paymaster = gsnTransactionDetails.paymaster != null ? gsnTransactionDetails.paymaster : this.config.paymasterAddress
 
     const senderNonce = await this.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarderAddress)
@@ -224,6 +222,7 @@ export default class RelayClient {
       gasPrice,
       gasLimit,
       paymaster,
+      forwarder: forwarderAddress,
       relayWorker
     })
     const signature = await this.accountManager.sign(relayRequest, forwarderAddress)
@@ -244,6 +243,7 @@ export default class RelayClient {
       gasPrice,
       gasLimit,
       paymaster: paymaster,
+      forwarder: forwarderAddress,
       signature,
       approvalData,
       relayHubAddress: this.config.relayHubAddress,
@@ -259,5 +259,29 @@ export default class RelayClient {
       signature,
       httpRequest
     }
+  }
+
+  async resolveForwarder (gsnTransactionDetails: GsnTransactionDetails): Promise<Address> {
+    let forwarderAddress = gsnTransactionDetails.forwarder ?? this.config.forwarderAddress
+    if (forwarderAddress !== constants.ZERO_ADDRESS) {
+      const isTrusted = await this.contractInteractor.isTrustedForwarder(gsnTransactionDetails.to, forwarderAddress)
+      if (!isTrusted) {
+        throw new Error('The Forwarder address configured but is not trusted by the Recipient contract')
+      }
+    } else {
+      try {
+        if (this.config.verbose) {
+          console.log(`will attempt to get trusted forwarder from: ${gsnTransactionDetails.to}`)
+        }
+        forwarderAddress = await this.contractInteractor.getForwarder(gsnTransactionDetails.to)
+        if (this.config.verbose) {
+          console.log(`on-chain forwarder for: ${gsnTransactionDetails.to} is ${forwarderAddress}`)
+        }
+      } catch (e) {
+        throw new Error('No forwarder address configured and no getTrustedForwarder in target contract (fetching from Recipient failed)')
+      }
+    }
+
+    return forwarderAddress
   }
 }

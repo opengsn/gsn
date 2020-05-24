@@ -9,11 +9,13 @@ import relayHubAbi from '../common/interfaces/IRelayHub.json'
 import forwarderAbi from '../common/interfaces/ITrustedForwarder.json'
 import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
+import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
-import { calculateTransactionMaxPossibleGas, event2topic } from '../common/utils'
+import { event2topic } from '../common/utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import {
   BaseRelayRecipientInstance,
+  IKnowForwarderAddressInstance,
   IPaymasterInstance,
   IRelayHubInstance,
   IRelayRecipientInstance,
@@ -44,6 +46,7 @@ export default class ContractInteractor {
   private readonly IForwarderContract: Contract<ITrustedForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
+  private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
 
   private readonly web3: Web3
   private readonly provider: provider
@@ -82,11 +85,17 @@ export default class ContractInteractor {
       contractName: 'IRelayRecipient',
       abi: gsnRecipientAbi
     })
+    // @ts-ignore
+    this.IKnowForwarderAddress = TruffleContract({
+      contractName: 'IKnowForwarderAddress',
+      abi: knowForwarderAddressAbi
+    })
     this.IStakeManager.setProvider(this.provider, undefined)
     this.IRelayHubContract.setProvider(this.provider, undefined)
     this.IPaymasterContract.setProvider(this.provider, undefined)
     this.IForwarderContract.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
+    this.IKnowForwarderAddress.setProvider(this.provider, undefined)
   }
 
   getProvider (): provider { return this.provider }
@@ -109,6 +118,11 @@ export default class ContractInteractor {
       throw new Error('_init not called')
     }
     return this.rawTxOptions
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async _createKnowsForwarder (address: Address): Promise<IKnowForwarderAddressInstance> {
+    return this.IKnowForwarderAddress.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
@@ -137,8 +151,13 @@ export default class ContractInteractor {
   }
 
   async getForwarder (recipientAddress: Address): Promise<Address> {
-    const recipient = await this._createRecipient(recipientAddress)
+    const recipient = await this._createKnowsForwarder(recipientAddress)
     return recipient.getTrustedForwarder()
+  }
+
+  async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {
+    const recipient = await this._createRecipient(recipientAddress)
+    return recipient.isTrustedForwarder(forwarder)
   }
 
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
@@ -147,54 +166,36 @@ export default class ContractInteractor {
     return nonce.toString()
   }
 
-  // TODO: currently the name is incorrect, as we call to 'canRelay'
-  //  but the plan is to remove 'canRelay' and move all decision-making to Paymaster and Forwarder
-  //  Also, as ARC does not return a value, `reverted` flag is unnecessary. This will be addressed soon.
   async validateAcceptRelayCall (
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
-    approvalData: PrefixedHexString): Promise<{ success: boolean, returnValue: string, reverted: boolean }> {
-    const paymaster = await this._createPaymaster(relayRequest.relayData.paymaster)
+    approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
-    const relayRequestAbiEncode = this.encodeABI(relayRequest, signature, approvalData)
-    const calldataSize = relayRequestAbiEncode.length
-
-    const gasLimits = await paymaster.getGasLimits()
-    const hubOverhead = await relayHub.getHubOverhead()
-    const maxPossibleGas = calculateTransactionMaxPossibleGas({
-      gasLimits,
-      hubOverhead: hubOverhead.toNumber(),
-      relayCallGasLimit: relayRequest.gasData.gasLimit,
-      calldataSize,
-      gtxdatanonzero: this.config.gtxdatanonzero
-    })
-    let success: boolean
-    let returnValue: string
     try {
-      ({
-        // @ts-ignore
-        success,
-        // @ts-ignore
-        returnValue
-      } = await relayHub.canRelay(
+      const res = await relayHub.contract.methods.relayCall(
         relayRequest,
-        maxPossibleGas,
-        gasLimits.acceptRelayedCallGasLimit,
         signature,
         approvalData
-      ))
+      )
+        .call({
+          from: relayRequest.relayData.relayWorker,
+          gasPrice: relayRequest.gasData.gasPrice
+        })
+      if (this.config.verbose) {
+        console.log(res)
+      }
+      return {
+        returnValue: res.returnValue,
+        paymasterAccepted: res.paymasterAccepted,
+        reverted: false
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
       return {
-        success: false,
+        paymasterAccepted: false,
         reverted: true,
-        returnValue: `canRelay reverted (should not happen): ${message}`
+        returnValue: `view call to 'relayCall' reverted in client (should not happen): ${message}`
       }
-    }
-    return {
-      success,
-      returnValue,
-      reverted: false
     }
   }
 
@@ -256,8 +257,9 @@ export default class ContractInteractor {
     return this.web3.eth.getGasPrice()
   }
 
-  async getTransactionCount (address: string, defulatBlock?: BlockNumber): Promise<number> {
-    return this.web3.eth.getTransactionCount(address)
+  async getTransactionCount (address: string, defaultBlock?: BlockNumber): Promise<number> {
+    // @ts-ignore (web3 does not define 'defaultBlock' as optional)
+    return this.web3.eth.getTransactionCount(address, defaultBlock)
   }
 
   async getTransaction (transactionHash: string): Promise<Transaction> {
@@ -299,6 +301,7 @@ export default class ContractInteractor {
  * This is how {@link Transaction} constructor allows support for custom and private network.
  * @param chainId
  * @param networkId
+ * @param chain
  * @return {{common: Common}}
  */
 export function getRawTxOptions (chainId: number, networkId: number, chain?: string): TransactionOptions {

@@ -147,7 +147,7 @@ export class RelayProvider implements HttpProvider {
       return fixedTransactionReceipt
     }
     const logs = abiDecoder.decodeLogs(respResult.logs)
-    const canRelayFailed = logs.find((e: any) => e != null && e.name === 'CanRelayFailed')
+    const canRelayFailed = logs.find((e: any) => e != null && e.name === 'TransactionRejectedByPaymaster')
 
     if (canRelayFailed !== null && canRelayFailed !== undefined) {
       const canRelayFailedReason: { value: string } = canRelayFailed.events.find((e: any) => e.name === 'reason')
@@ -182,8 +182,7 @@ export class RelayProvider implements HttpProvider {
       return false
     }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
-    const ret = gsnTransactionDetails?.useGSN ?? true
-    return ret
+    return gsnTransactionDetails?.useGSN ?? true
   }
 
   private _dumpRelayingResult (relayingResult: RelayingResult): string {

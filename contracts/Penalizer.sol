@@ -84,7 +84,7 @@ contract Penalizer {
         if (decodedTx.to == address(hub)) {
             bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
             require(
-                selector != hub.relayCall.selector,
+                selector != IRelayHub.relayCall.selector,
                 "Legal relay transaction");
         }
         address relay = keccak256(abi.encodePacked(unsignedTx)).recover(signature);

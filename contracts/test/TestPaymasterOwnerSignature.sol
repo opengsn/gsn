@@ -14,14 +14,15 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
      */
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
-        uint256 maxPossibleCharge
+        uint256 maxPossibleGas
     )
     external
     override
     view
     returns (bytes memory) {
-        (maxPossibleCharge);
+        (signature, maxPossibleGas);
         address signer =
             keccak256(abi.encodePacked("I approve", relayRequest.relayData.senderAddress))
             .toEthSignedMessageHash()

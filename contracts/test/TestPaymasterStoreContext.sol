@@ -37,6 +37,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
      */
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
@@ -44,6 +45,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     override
     view
     returns (bytes memory) {
+        (signature);
         return abi.encode(
             relayRequest.relayData.relayWorker,
             relayRequest.relayData.senderAddress,

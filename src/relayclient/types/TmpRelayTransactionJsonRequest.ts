@@ -9,6 +9,7 @@ export default interface TmpRelayTransactionJsonRequest {
   from: Address
   to: Address
   paymaster: Address
+  forwarder: Address
   gasPrice: IntString
   gasLimit: IntString
   senderNonce: number

@@ -56,7 +56,8 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
       gasPrice: await web3.eth.getGasPrice(),
       gasLimit: 1e6.toString(),
       relayWorker: relayWorker,
-      paymaster: paymaster.address
+      paymaster: paymaster.address,
+      forwarder: forwarder.address
     }
   })
 

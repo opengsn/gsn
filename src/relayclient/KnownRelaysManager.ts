@@ -28,7 +28,7 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   return Promise.resolve(score)
 }
 
-const activeManagerEvents = ['RelayServerRegistered', 'TransactionRelayed', 'CanRelayFailed', 'RelayWorkersAdded']
+const activeManagerEvents = ['RelayServerRegistered', 'TransactionRelayed', 'TransactionRejectedByPaymaster', 'RelayWorkersAdded']
 
 export interface IKnownRelaysManager {
   refresh (): Promise<void>

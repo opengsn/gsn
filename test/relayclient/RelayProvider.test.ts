@@ -34,7 +34,7 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
-export async function prepareTransaction (testRecipient: TestRecipientInstance, account: string, relayWorker: string, paymaster: string, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
+export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
   const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
   const testRecipientForwarder = await TrustedForwarder.at(testRecipientForwarderAddress)
   const senderNonce = (await testRecipientForwarder.getNonce(account)).toString()
@@ -48,7 +48,8 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
     gasPrice: '1',
     gasLimit: '10000',
     relayWorker,
-    paymaster
+    paymaster,
+    forwarder: testRecipientForwarderAddress
   })
   const dataToSign = await getDataToSign({
     chainId: defaultEnvironment.chainId,
@@ -268,7 +269,7 @@ contract('RelayProvider', function (accounts) {
         from: accounts[0],
         gasPrice: '1'
       })
-      expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'CanRelayFailed')
+      expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster')
       canRelayFailedTxReceipt = await web3.eth.getTransactionReceipt(canRelayFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)

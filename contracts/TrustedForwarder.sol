@@ -3,6 +3,7 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./utils/GSNTypes.sol";
+import "./utils/GsnUtils.sol";
 import "./utils/EIP712Sig.sol";
 import "./interfaces/ITrustedForwarder.sol";
 
@@ -28,15 +29,14 @@ contract TrustedForwarder is ITrustedForwarder {
     function verifyAndCall(GSNTypes.RelayRequest memory req, bytes memory sig)
     public
     override
-    returns (
-        bool success, bytes memory ret
-    ) {
+    {
         _verify(req, sig);
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        return req.target.call{gas:req.gasData.gasLimit}
-        (abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
+        (bool success, bytes memory returnValue) = req.target.call{gas:req.gasData.gasLimit}(abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
+        // TODO: use assembly to prevent double-wrapping of the revert reason (part of GSN-37)
+        require(success, GsnUtils.getError(returnValue));
     }
 
     function _verify(GSNTypes.RelayRequest memory req, bytes memory sig) internal view {

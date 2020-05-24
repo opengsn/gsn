@@ -11,7 +11,7 @@ interface ITrustedForwarder {
     function verify(GSNTypes.RelayRequest calldata req, bytes calldata sig) external view;
 
     // validate the signature, and execute the call.
-    function verifyAndCall(GSNTypes.RelayRequest calldata req, bytes calldata sig) external returns (bool success, bytes memory ret);
+    function verifyAndCall(GSNTypes.RelayRequest calldata req, bytes calldata sig) external;
 
     function getNonce(address from) external view returns (uint256);
 }

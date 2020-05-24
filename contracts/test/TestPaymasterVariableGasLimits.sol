@@ -19,6 +19,7 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
 
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
@@ -26,7 +27,7 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
     override
     view
     returns (bytes memory) {
-        (relayRequest, approvalData);
+        (relayRequest, signature, approvalData);
         return abi.encode(
             gasleft(),
             maxPossibleGas);

@@ -2,6 +2,7 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
+import "../interfaces/ITrustedForwarder.sol";
 import "../BasePaymaster.sol";
 
 contract TestPaymasterEverythingAccepted is BasePaymaster {
@@ -11,16 +12,18 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
 
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
-        uint256 maxPossibleCharge
+        uint256 maxPossibleGas
     )
     external
     override
     virtual
     view
     returns (bytes memory) {
-        (relayRequest, approvalData, maxPossibleCharge);
-        return "";
+        (relayRequest, signature, approvalData, maxPossibleGas);
+        ITrustedForwarder(relayRequest.relayData.forwarder).verify(relayRequest, signature);
+        return "no revert here";
     }
 
     function preRelayedCall(

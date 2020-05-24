@@ -15,6 +15,7 @@ library GSNTypes {
         uint256 senderNonce;
         address relayWorker;
         address paymaster;
+        address forwarder;
     }
 
     struct RelayRequest {

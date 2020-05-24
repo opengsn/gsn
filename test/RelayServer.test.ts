@@ -189,7 +189,7 @@ contract('RelayServer', function (accounts) {
   }
 
   async function relayTransaction (options: any, badArgs?: any): Promise<PrefixedHexString> {
-    const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest(options)
+    const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest({ ...options, ...badArgs })
     return relayTransactionFromRequest(badArgs, { relayRequest, relayMaxNonce, approvalData, signature })
   }
 
@@ -211,6 +211,7 @@ contract('RelayServer', function (accounts) {
         baseRelayFee: relayRequest.gasData.baseRelayFee,
         pctRelayFee: relayRequest.gasData.pctRelayFee,
         relayHubAddress: rhub.address,
+        forwarder: relayRequest.relayData.forwarder,
         ...badArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
@@ -397,6 +398,7 @@ contract('RelayServer', function (accounts) {
     })
   })
 
+  // TODO: most of this tests have literally nothing to do with Relay Server and actually double-check the client code.
   describe('relay transaction flows', function () {
     it('should relay transaction', async function () {
       await relayTransaction(options)
@@ -434,7 +436,9 @@ contract('RelayServer', function (accounts) {
         assert.include(e.message, 'canRelay failed in server: signature mismatch')
       }
     })
-    it('should fail to relay with wrong from', async function () {
+
+    // this test does not check what it declares to. nonce mismatch is accidental.
+    it.skip('should fail to relay with wrong from', async function () {
       try {
         await relayTransaction(options, { from: accounts[1] })
         assert.fail()
@@ -447,7 +451,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { to: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: getTrustedForwarder failed')
+        assert.include(e.message, 'Cannot create instance of IRelayRecipient; no code at address')
       }
     })
     it('should fail to relay with invalid paymaster', async function () {
@@ -465,7 +469,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options)
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'paymaster balance too low:')
+        assert.include(e.message, 'Paymaster balance too low')
       } finally {
         await revert(id)
       }
