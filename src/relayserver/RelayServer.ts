@@ -33,7 +33,7 @@ abiDecoder.addABI(StakeManagerABI)
 const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
-const VERSION = '0.9.0'
+const VERSION = '0.9.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
@@ -117,14 +117,13 @@ export class RelayServer extends EventEmitter {
   gasPrice: number = 0
   private relayHubContract: IRelayHubInstance | undefined
   private paymasterContract: IPaymasterInstance | undefined
-  chainId: any
+  chainId!: number
   rawTxOptions: TransactionOptions | undefined
   private _workerSemaphoreOn = false
   private stakeManagerContract: IStakeManagerInstance | undefined
   private topics: string[][] | undefined
   networkId: number | undefined
   private initialized = false
-  balance = toBN(0)
   stake = toBN(0)
   private isAddressAdded = false
   lastError: string | undefined
@@ -435,21 +434,22 @@ export class RelayServer extends EventEmitter {
     const workerBalance = toBN(await this.contractInteractor.getBalance(workerAddress))
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
+      const balance = await this.getManagerBalance()
       console.log(
-        `== replenishWorker(${workerIndex}): mgr balance=${this.balance.div(
+        `== replenishWorker(${workerIndex}): mgr balance=${balance.div(
           toBN(1e18)).toString()} worker balance=${workerBalance.div(
           toBN(1e18)).toString()} refill=${refill.div(toBN(1e18)).toString()}`)
-      if (refill.lt(this.balance.sub(toBN(minimumRelayBalance)))) {
+      if (refill.lt(balance.sub(toBN(minimumRelayBalance)))) {
         await this._sendTransaction({
           signerIndex: 0,
           destination: workerAddress,
           value: toHex(refill),
           gasLimit: mintxgascost.toString()
         })
-        await this.refreshBalance()
+        await this.getManagerBalance()
       } else {
         console.log(
-          `== replenishWorker: can't replenish: mgr balance too low ${this.balance.div(toBN(1e18)).toString()} refill=${refill.div(
+          `== replenishWorker: can't replenish: mgr balance too low ${balance.div(toBN(1e18)).toString()} refill=${refill.div(
             toBN(1e18)).toString()}`)
       }
     }
@@ -464,11 +464,11 @@ export class RelayServer extends EventEmitter {
     if (this.gasPrice === 0) {
       throw new StateError('Could not get gasPrice from node')
     }
-    await this.refreshBalance()
-    if (this.balance.lt(toBN(minimumRelayBalance))) {
+    const balance = await this.getManagerBalance()
+    if (balance.lt(toBN(minimumRelayBalance))) {
       throw new StateError(
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Server's balance too low ( ${this.balance}, required ${minimumRelayBalance}). Waiting for funding...`)
+        `Server's balance too low ( ${balance}, required ${minimumRelayBalance}). Waiting for funding...`)
     }
     const options = {
       fromBlock: this.lastScannedBlock + 1,
@@ -519,9 +519,8 @@ export class RelayServer extends EventEmitter {
     return receipt
   }
 
-  async refreshBalance (): Promise<BN> {
-    this.balance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
-    return this.balance
+  async getManagerBalance (): Promise<BN> {
+    return toBN(await this.contractInteractor.getBalance(this.managerAddress))
   }
 
   async refreshStake (): Promise<BN> {
@@ -624,20 +623,20 @@ export class RelayServer extends EventEmitter {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
-    this.balance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
+    const balance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
     const gasPrice = await this.contractInteractor.getGasPrice()
     const gasLimit = mintxgascost
-    console.log(`Sending balance ${this.balance.div(toBN(1e18)).toString()} to owner`)
+    console.log(`Sending balance ${balance.div(toBN(1e18)).toString()} to owner`)
     const txCost = toBN(gasLimit * parseInt(gasPrice))
-    if (this.balance.lt(txCost)) {
-      throw new Error(`balance too low: ${this.balance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+    if (balance.lt(txCost)) {
+      throw new Error(`balance too low: ${balance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     const { receipt } = await this._sendTransaction({
       signerIndex: 0,
       destination: this.owner as string,
       gasLimit: gasLimit.toString(),
       gasPrice,
-      value: toHex(this.balance.sub(txCost))
+      value: toHex(balance.sub(txCost))
     })
     this.emit('unstaked')
     return receipt
