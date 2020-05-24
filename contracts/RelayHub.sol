@@ -229,7 +229,7 @@ contract RelayHub is IRelayHub {
 
         if (!success) {
             revertReason = GsnUtils.getError(vars.recipientContext);
-            emit UnpaidPaymasterRejection(
+            emit TransactionRejectedByPaymaster(
                 workerToManager[msg.sender],
                 relayRequest.relayData.paymaster,
                 relayRequest.relayData.senderAddress,

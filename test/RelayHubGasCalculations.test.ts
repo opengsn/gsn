@@ -195,7 +195,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         gasPrice: gasPrice
       })
 
-      assert.equal('UnpaidPaymasterRejection', res.logs[0].event)
+      assert.equal('TransactionRejectedByPaymaster', res.logs[0].event)
       assert.equal(res.logs[0].args.reason, '')
     })
   })

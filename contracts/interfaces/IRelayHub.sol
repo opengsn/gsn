@@ -41,7 +41,7 @@ interface IRelayHub {
     // The actual relayed call was not executed, and the recipient not charged.
     // The reason field contains an error code: values 1-10 correspond to CanRelayStatus entries, and values over 10
     // are custom recipient error codes returned from acceptRelayedCall.
-    event UnpaidPaymasterRejection(
+    event TransactionRejectedByPaymaster(
         address indexed relayManager,
         address indexed paymaster,
         address indexed from,

@@ -269,7 +269,7 @@ contract('RelayProvider', function (accounts) {
         from: accounts[0],
         gasPrice: '1'
       })
-      expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'UnpaidPaymasterRejection')
+      expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster')
       canRelayFailedTxReceipt = await web3.eth.getTransactionReceipt(canRelayFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)

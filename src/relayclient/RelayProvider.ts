@@ -147,7 +147,7 @@ export class RelayProvider implements HttpProvider {
       return fixedTransactionReceipt
     }
     const logs = abiDecoder.decodeLogs(respResult.logs)
-    const canRelayFailed = logs.find((e: any) => e != null && e.name === 'UnpaidPaymasterRejection')
+    const canRelayFailed = logs.find((e: any) => e != null && e.name === 'TransactionRejectedByPaymaster')
 
     if (canRelayFailed !== null && canRelayFailed !== undefined) {
       const canRelayFailedReason: { value: string } = canRelayFailed.events.find((e: any) => e.name === 'reason')

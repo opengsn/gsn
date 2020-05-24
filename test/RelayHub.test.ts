@@ -454,7 +454,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gasPrice
             })
 
-          expectEvent.inLogs(logs, 'UnpaidPaymasterRejection', { reason: 'invalid code' })
+          expectEvent.inLogs(logs, 'TransactionRejectedByPaymaster', { reason: 'invalid code' })
         })
 
         it('should not accept relay requests if gas limit is too low for a relayed transaction', async function () {
