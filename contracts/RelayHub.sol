@@ -274,7 +274,7 @@ contract RelayHub is IRelayHub {
             vars.functionSelector,
             vars.status,
             charge);
-        return (true, '');
+        return (true, "");
     }
 
     struct AtomicData {
