@@ -68,7 +68,8 @@ contract('AccountManager', function (accounts) {
       gasPrice: '1',
       gasLimit: '1',
       relayWorker: constants.ZERO_ADDRESS,
-      paymaster: constants.ZERO_ADDRESS
+      paymaster: constants.ZERO_ADDRESS,
+      forwarder: constants.ZERO_ADDRESS
     })
     beforeEach(function () {
       sinon.resetHistory()

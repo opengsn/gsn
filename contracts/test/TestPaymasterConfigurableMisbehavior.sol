@@ -35,14 +35,15 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
-        uint256 maxPossibleCharge
+        uint256 maxPossibleGas
     )
     external
     override
     view
     returns (bytes memory) {
-        (relayRequest, approvalData, maxPossibleCharge);
+        (relayRequest, signature, approvalData, maxPossibleGas);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {

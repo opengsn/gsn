@@ -263,7 +263,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             pctRelayFee: fee.toString(),
             senderNonce: senderNonce.toString(),
             relayWorker,
-            paymaster: paymaster.address
+            paymaster: paymaster.address,
+            forwarder
           })
           const dataToSign = await getDataToSign({
             chainId,
@@ -357,7 +358,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           gasLimit: encodedCallArgs.gasLimit.toString(),
           senderNonce: encodedCallArgs.nonce.toString(),
           relayWorker,
-          paymaster: encodedCallArgs.paymaster
+          paymaster: encodedCallArgs.paymaster,
+          forwarder
         }
       )
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x').encodeABI()

@@ -47,8 +47,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const gasLimit = new BN('1000000')
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 619,
-    pre: 1486,
+    arc: 844,
+    pre: 1508,
     post: 1583
   }
 
@@ -94,7 +94,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       pctRelayFee: fee.toString(),
       gasPrice: gasPrice.toString(),
       gasLimit: gasLimit.toString(),
-      paymaster: paymaster.address
+      paymaster: paymaster.address,
+      forwarder
     })
     const dataToSign = await getDataToSign({
       chainId,
@@ -182,9 +183,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         web3,
         dataToSign
       })
-      const maxPossibleGasIrrelevantValue = 8000000
-      const acceptRelayedCallGasLimit = 50000
-      const canRelayResponse = await relayHub.canRelay(relayRequestMisbehaving, maxPossibleGasIrrelevantValue, acceptRelayedCallGasLimit, signature, '0x')
+      const canRelayResponse =
+        await relayHub.contract.methods
+          .relayCall(relayRequestMisbehaving, signature, '0x')
+          .call({ from: relayRequestMisbehaving.relayData.relayWorker })
       assert.equal(canRelayResponse[0], false)
       assert.equal(canRelayResponse[1], '') // no revert string on out-of-gas
 
@@ -193,7 +195,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         gasPrice: gasPrice
       })
 
-      assert.equal('CanRelayFailed', res.logs[0].event)
+      assert.equal('UnpaidPaymasterRejection', res.logs[0].event)
       assert.equal(res.logs[0].args.reason, '')
     })
   })
@@ -258,7 +260,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                 gasLimit: gasLimit.toString(),
                 senderNonce,
                 relayWorker,
-                paymaster: paymaster.address
+                paymaster: paymaster.address,
+                forwarder
               })
               const dataToSign = await getDataToSign({
                 chainId,

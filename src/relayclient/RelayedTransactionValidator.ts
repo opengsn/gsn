@@ -43,7 +43,8 @@ export default class RelayedTransactionValidator {
       pctRelayFee: transactionJsonRequest.pctRelayFee,
       senderNonce: transactionJsonRequest.senderNonce,
       relayWorker: transactionJsonRequest.relayWorker,
-      paymaster: transactionJsonRequest.paymaster
+      paymaster: transactionJsonRequest.paymaster,
+      forwarder: transactionJsonRequest.forwarder
     })
 
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData)

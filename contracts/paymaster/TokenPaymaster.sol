@@ -4,8 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IUniswap.sol";
+
+import "../interfaces/ITrustedForwarder.sol";
 import "../BasePaymaster.sol";
+
+import "./IUniswap.sol";
 
 /**
  * A Token-based paymaster.
@@ -60,6 +63,7 @@ contract TokenPaymaster is BasePaymaster {
      */
     function acceptRelayedCall(
         GSNTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
@@ -68,6 +72,11 @@ contract TokenPaymaster is BasePaymaster {
     view
     returns (bytes memory context) {
         (approvalData);
+
+        // Verify the sender's request is valid for selected forwarder
+        ITrustedForwarder forwarder = ITrustedForwarder(relayRequest.relayData.forwarder);
+        forwarder.verify(relayRequest, signature);
+
         address payer = this.getPayer(relayRequest);
         uint ethMaxCharge = relayHub.calculateCharge(maxPossibleGas, relayRequest.gasData);
         uint tokenPreCharge = uniswap.getTokenToEthOutputPrice(ethMaxCharge);

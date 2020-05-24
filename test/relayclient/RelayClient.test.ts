@@ -28,6 +28,7 @@ import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionVali
 import { startRelay, stopRelay } from '../TestUtils'
 import { constants } from '@openzeppelin/test-helpers'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
+import PingResponse from '../../src/common/PingResponse'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -164,42 +165,53 @@ contract('RelayClient', function (accounts) {
 
   describe('#_attemptRelay()', function () {
     const relayUrl = localhostOne
-    const RelayServerAddress = '0x0000000000000000000000000000000000000001'
-    const relayManager = '0x0000000000000000000000000000000000000002'
-    const pingResponse = {
-      RelayServerAddress,
-      RelayManagerAddress: relayManager,
-      RelayHubAddress: relayManager,
-      MinGasPrice: '',
-      Ready: true,
-      Version: ''
-    }
-    const relayInfo: RelayInfo = {
-      relayInfo: {
-        relayManager,
-        relayUrl,
-        baseRelayFee: '',
-        pctRelayFee: ''
-      },
-      pingResponse
-    }
+    const RelayServerAddress = accounts[1]
+    const relayManager = accounts[2]
+    const relayOwner = accounts[3]
+    let pingResponse: PingResponse
+    let relayInfo: RelayInfo
     let optionsWithGas: GsnTransactionDetails
 
-    before(function () {
+    before(async function () {
+      await stakeManager.stakeForAddress(relayManager, 7 * 24 * 3600, {
+        from: relayOwner,
+        value: (2e18).toString()
+      })
+      await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+      await relayHub.addRelayWorkers([RelayServerAddress], { from: relayManager })
+      await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
+      await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
+      pingResponse = {
+        RelayServerAddress,
+        RelayManagerAddress: relayManager,
+        RelayHubAddress: relayManager,
+        MinGasPrice: '',
+        Ready: true,
+        Version: ''
+      }
+      relayInfo = {
+        relayInfo: {
+          relayManager,
+          relayUrl,
+          baseRelayFee: '',
+          pctRelayFee: ''
+        },
+        pingResponse
+      }
       optionsWithGas = Object.assign({}, options, {
         gas: '0xf4240',
         gasPrice: '0x51f4d5c00'
       })
     })
 
-    it('should return error if canRelay/acceptRelayedCall fail', async function () {
+    it('should return error if view call to \'relayCall()\' fails', async function () {
       const badContractInteractor = new BadContractInteractor(web3.currentProvider, configureGSN(gsnConfig), true)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
       await relayClient._init()
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
-      assert.equal(error!.message, `canRelay failed: ${BadContractInteractor.message}`)
+      assert.equal(error!.message, `local view call to 'relayCall()' reverted: ${BadContractInteractor.message}`)
     })
 
     it('should report relays that timeout to the Known Relays Manager', async function () {
@@ -211,7 +223,8 @@ contract('RelayClient', function (accounts) {
 
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
-      await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const attempt = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      assert.equal(attempt.error?.message, 'some error describing how timeout occurred somewhere')
       expect(dependencyTree.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
 

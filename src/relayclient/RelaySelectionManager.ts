@@ -74,6 +74,7 @@ export default class RelaySelectionManager {
             relayInfo: events[0]
           }
         } else {
+          // TODO: do not throw! The preffered relay may be removed since.
           throw new Error('Could not find register event for the winning preferred relay')
         }
       }

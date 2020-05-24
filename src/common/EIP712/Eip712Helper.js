@@ -16,7 +16,8 @@ const RelayDataType = [
   { name: 'senderAddress', type: 'address' },
   { name: 'senderNonce', type: 'uint256' },
   { name: 'relayWorker', type: 'address' },
-  { name: 'paymaster', type: 'address' }
+  { name: 'paymaster', type: 'address' },
+  { name: 'forwarder', type: 'address' }
 ]
 
 const RelayRequest = [

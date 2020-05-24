@@ -22,6 +22,7 @@ contract('Utils', async function (accounts) {
       const baseRelayFee = '1000'
       const gasPrice = '10000000'
       const gasLimit = '500000'
+      const forwarder = accounts[6]
       const paymaster = accounts[7]
       const verifier = accounts[8]
       const relayWorker = accounts[9]
@@ -36,6 +37,7 @@ contract('Utils', async function (accounts) {
         baseRelayFee,
         senderNonce,
         relayWorker,
+        forwarder,
         paymaster
       })
 

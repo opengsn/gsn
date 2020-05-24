@@ -6,12 +6,17 @@ import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
 import "../TrustedForwarder.sol";
+import "../interfaces/IKnowForwarderAddress.sol";
 
-contract TestRecipient is BaseRelayRecipient {
+contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
 
     constructor() public {
         //should be a singleton, since Paymaster should (eventually) trust it.
         trustedForwarder = address(new TrustedForwarder());
+    }
+
+    function getTrustedForwarder() public override view returns(address) {
+        return trustedForwarder;
     }
 
     function setTrustedForwarder(address forwarder) external {

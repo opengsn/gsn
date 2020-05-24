@@ -41,12 +41,12 @@ interface IRelayHub {
     // The actual relayed call was not executed, and the recipient not charged.
     // The reason field contains an error code: values 1-10 correspond to CanRelayStatus entries, and values over 10
     // are custom recipient error codes returned from acceptRelayedCall.
-    event CanRelayFailed(
+    event UnpaidPaymasterRejection(
         address indexed relayManager,
-        address indexed relayWorker,
+        address indexed paymaster,
         address indexed from,
         address to,
-        address paymaster,
+        address relayWorker,
         bytes4 selector,
         string reason);
 
@@ -112,23 +112,6 @@ interface IRelayHub {
 
     // Relaying
 
-    // Check if the RelayHub will accept a relayed operation. Multiple things must be true for this to happen:
-    //  - all arguments must be signed for by the sender (from)
-    //  - the sender's nonce must be the current one
-    //  - the recipient must accept this transaction (via acceptRelayedCall)
-    // Returns true on success (and recipient context), or false with error string
-    // it returns one in acceptRelayedCall.
-    function canRelay(
-        GSNTypes.RelayRequest calldata relayRequest,
-        uint256 maxPossibleGas,
-        uint256 acceptRelayedCallGasLimit,
-        bytes calldata signature,
-        bytes calldata approvalData
-    )
-    external
-    view
-    returns (bool success, string memory returnValue);
-
     /// Relays a transaction. For this to succeed, multiple conditions must be met:
     ///  - canRelay must return CanRelayStatus.OK
     ///  - the sender must be a registered relayWorker
@@ -149,25 +132,10 @@ interface IRelayHub {
         GSNTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
-    ) external;
+    )
+    external
+    returns (bool paymasterAccepted, string memory returnValue);
 
-    // Relay penalization. Any account can penalize relays, removing them from the system immediately, and rewarding the
-    // reporter with half of the relayWorker's stake. The other half is burned so that, even if the relayWorker penalizes itself, it
-    // still loses half of its stake.
-
-    // Penalize a relayWorker that signed two transactions using the same nonce (making only the first one valid) and
-    // different data (gas price, gas limit, etc. may be different). The (unsigned) transaction data and signature for
-    // both transactions must be provided.
-    /*function penalizeRepeatedNonce(
-        bytes calldata unsignedTx1,
-        bytes calldata signature1,
-        bytes calldata unsignedTx2,
-        bytes calldata signature2)
-    external;
-
-    // Penalize a relayWorker that sent a transaction that didn't target RelayHub's registerRelay or relayCall.
-    function penalizeIllegalTransaction(bytes calldata unsignedTx, bytes calldata signature) external;
-*/
     function penalize(address relayWorker, address payable beneficiary) external;
 
     function getHubOverhead() external view returns (uint256);

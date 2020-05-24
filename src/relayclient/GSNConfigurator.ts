@@ -8,6 +8,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
 import { EmptyApprovalData, GasPricePingFilter } from './RelayClient'
+import { constants } from '@openzeppelin/test-helpers'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -25,9 +26,10 @@ const defaultGsnConfig: GSNConfig = {
   methodSuffix: '',
   jsonStringifyRequest: false,
   chainId: defaultEnvironment.chainId,
-  relayHubAddress: '0x0000000000000000000000000000000000000000',
-  stakeManagerAddress: '0x0000000000000000000000000000000000000000',
-  paymasterAddress: '0x0000000000000000000000000000000000000000',
+  relayHubAddress: constants.ZERO_ADDRESS,
+  stakeManagerAddress: constants.ZERO_ADDRESS,
+  paymasterAddress: constants.ZERO_ADDRESS,
+  forwarderAddress: constants.ZERO_ADDRESS,
   verbose: false
 }
 
@@ -59,6 +61,7 @@ export interface GSNConfig {
   relayHubAddress: Address
   stakeManagerAddress: Address
   paymasterAddress: Address
+  forwarderAddress: Address
   chainId: number
 }
 
