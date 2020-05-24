@@ -285,7 +285,7 @@ contract('RelayServer', function (accounts) {
         relayServer._worker(header)
       ).to.be.eventually.rejectedWith('Server\'s balance too low')
       const expectedBalance = _web3.utils.toWei('2', 'ether')
-      assert.notEqual(relayServer.balance.cmp(toBN(expectedBalance)), 0)
+      assert.notEqual((await relayServer.getManagerBalance()).cmp(toBN(expectedBalance)), 0)
       await _web3.eth.sendTransaction({
         to: relayServer.getManagerAddress(),
         from: relayOwner,
@@ -296,7 +296,7 @@ contract('RelayServer', function (accounts) {
         relayServer._worker(header)
       ).to.be.eventually.rejectedWith('Waiting for stake')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
-      assert.equal(relayServer.balance.cmp(toBN(expectedBalance)), 0)
+      assert.equal((await relayServer.getManagerBalance()).cmp(toBN(expectedBalance)), 0)
     })
 
     it('should wait for stake and then register', async function () {
@@ -382,14 +382,12 @@ contract('RelayServer', function (accounts) {
       assert.equal(defunctRelayServer.owner, relayOwner, 'owner should be set after refreshing stake')
 
       const expectedGasPrice = parseInt(await _web3.eth.getGasPrice()) * defunctRelayServer.gasPriceFactor
-      const expectedBalance = toBN(await _web3.eth.getBalance(defunctRelayServer.getManagerAddress()))
       assert.equal(defunctRelayServer.ready, false)
       const expectedLastScannedBlock = await _web3.eth.getBlockNumber()
       assert.equal(defunctRelayServer.lastScannedBlock, 0)
       const receipt = await defunctRelayServer._worker(await _web3.eth.getBlock('latest'))
       assert.equal(defunctRelayServer.lastScannedBlock, expectedLastScannedBlock)
       assert.equal(defunctRelayServer.gasPrice, expectedGasPrice)
-      assert.deepEqual(defunctRelayServer.balance, expectedBalance)
       assert.equal(defunctRelayServer.ready, true, 'relay no ready?')
       await assertRelayAdded(receipt as TransactionReceipt, defunctRelayServer)
     })
@@ -751,8 +749,8 @@ contract('RelayServer', function (accounts) {
     beforeEach(function () {
       origWorker = relayServer._worker
       started = false
-      // @ts-ignore
-      relayServer._worker = function () {
+      relayServer._worker = async function () {
+        await Promise.resolve()
         started = true
         this.emit('error', new Error('GOTCHA'))
       }
@@ -776,12 +774,12 @@ contract('RelayServer', function (accounts) {
 
   describe('event handlers', function () {
     it('should handle Unstaked event - send balance to owner', async function () {
-      const relayBalanceBefore = await relayServer.refreshBalance()
+      const relayBalanceBefore = await relayServer.getManagerBalance()
       assert.isTrue(relayBalanceBefore.gtn(0))
       await increaseTime(weekInSec)
       await stakeManager.unlockStake(relayServer.getManagerAddress(), { from: relayOwner })
       await relayServer._worker(await _web3.eth.getBlock('latest'))
-      const relayBalanceAfter = await relayServer.refreshBalance()
+      const relayBalanceAfter = await relayServer.getManagerBalance()
       assert.equal(relayBalanceAfter.toNumber(), 0, `relayBalanceAfter is not zero: ${relayBalanceAfter.toString()}`)
     })
 
@@ -793,36 +791,57 @@ contract('RelayServer', function (accounts) {
 
   // describe('network errors')
   //
-  // describe.skip('Function testing', function () {
-  //   it('_workerSemaphore', async function () {
-  //   })
-  //   it('_init', async function () {
-  //   })
-  //   it('replenishWorker', async function () {
-  //   })
-  //   it('_worker', async function () {
-  //   })
-  //   it('refreshBalance', async function () {
-  //   })
-  //   it('refreshStake', async function () {
-  //   })
-  //   it('_handleHubAuthorizedEvent', async function () {
-  //   })
-  //   it('_handleStakedEvent', async function () {
-  //   })
-  //   it('_registerIfNeeded', async function () {
-  //   })
-  //   it('_resendUnconfirmedTransactions', async function () {
-  //   })
-  //   it('_resendUnconfirmedTransactionsForSigner', async function () {
-  //   })
-  //   it('_sendTransaction', async function () {
-  //   })
-  //   it('_resendTransaction', async function () {
-  //   })
-  //   it('_pollNonce', async function () {
-  //   })
-  //   it('_parseEvent', async function () {
-  //   })
-  // })
+  describe('Function testing', function () {
+    it('_workerSemaphore', async function () {
+      // @ts-ignore
+      assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false first')
+      const workerOrig = relayServer._worker
+      let shouldRun = true
+      try {
+        relayServer._worker = async function (blockHeader: BlockHeader): Promise<TransactionReceipt | void> {
+          // eslint-disable-next-line no-unmodified-loop-condition
+          while (shouldRun) {
+            await sleep(200)
+          }
+        }
+        relayServer._workerSemaphore(await _web3.eth.getBlock('latest'))
+        // @ts-ignore
+        assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
+        shouldRun = false
+        await sleep(200)
+        // @ts-ignore
+        assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false after')
+      } finally {
+        relayServer._worker = workerOrig
+      }
+    })
+    // it('_init', async function () {
+    // })
+    // it('replenishWorker', async function () {
+    // })
+    // it('_worker', async function () {
+    // })
+    // it('getManagerBalance', async function () {
+    // })
+    // it('refreshStake', async function () {
+    // })
+    // it('_handleHubAuthorizedEvent', async function () {
+    // })
+    // it('_handleStakedEvent', async function () {
+    // })
+    // it('_registerIfNeeded', async function () {
+    // })
+    // it('_resendUnconfirmedTransactions', async function () {
+    // })
+    // it('_resendUnconfirmedTransactionsForSigner', async function () {
+    // })
+    // it('_sendTransaction', async function () {
+    // })
+    // it('_resendTransaction', async function () {
+    // })
+    // it('_pollNonce', async function () {
+    // })
+    // it('_parseEvent', async function () {
+    // })
+  })
 })
