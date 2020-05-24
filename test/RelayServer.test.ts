@@ -52,7 +52,7 @@ abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 const localhostOne = 'http://localhost:8090'
 const workdir = '/tmp/gsn/test/relayserver'
 
-contract.only('RelayServer', function (accounts) {
+contract('RelayServer', function (accounts) {
   let rhub: RelayHubInstance
   let forwarder: TrustedForwarderInstance
   let stakeManager: StakeManagerInstance
@@ -285,7 +285,7 @@ contract.only('RelayServer', function (accounts) {
         relayServer._worker(header)
       ).to.be.eventually.rejectedWith('Server\'s balance too low')
       const expectedBalance = _web3.utils.toWei('2', 'ether')
-      assert.notEqual(relayServer.balance.cmp(toBN(expectedBalance)), 0)
+      assert.notEqual((await relayServer.getManagerBalance()).cmp(toBN(expectedBalance)), 0)
       await _web3.eth.sendTransaction({
         to: relayServer.getManagerAddress(),
         from: relayOwner,
@@ -296,7 +296,7 @@ contract.only('RelayServer', function (accounts) {
         relayServer._worker(header)
       ).to.be.eventually.rejectedWith('Waiting for stake')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
-      assert.equal(relayServer.balance.cmp(toBN(expectedBalance)), 0)
+      assert.equal((await relayServer.getManagerBalance()).cmp(toBN(expectedBalance)), 0)
     })
 
     it('should wait for stake and then register', async function () {
@@ -382,14 +382,12 @@ contract.only('RelayServer', function (accounts) {
       assert.equal(defunctRelayServer.owner, relayOwner, 'owner should be set after refreshing stake')
 
       const expectedGasPrice = parseInt(await _web3.eth.getGasPrice()) * defunctRelayServer.gasPriceFactor
-      const expectedBalance = toBN(await _web3.eth.getBalance(defunctRelayServer.getManagerAddress()))
       assert.equal(defunctRelayServer.ready, false)
       const expectedLastScannedBlock = await _web3.eth.getBlockNumber()
       assert.equal(defunctRelayServer.lastScannedBlock, 0)
       const receipt = await defunctRelayServer._worker(await _web3.eth.getBlock('latest'))
       assert.equal(defunctRelayServer.lastScannedBlock, expectedLastScannedBlock)
       assert.equal(defunctRelayServer.gasPrice, expectedGasPrice)
-      assert.deepEqual(defunctRelayServer.balance, expectedBalance)
       assert.equal(defunctRelayServer.ready, true, 'relay no ready?')
       await assertRelayAdded(receipt as TransactionReceipt, defunctRelayServer)
     })
@@ -776,12 +774,12 @@ contract.only('RelayServer', function (accounts) {
 
   describe('event handlers', function () {
     it('should handle Unstaked event - send balance to owner', async function () {
-      const relayBalanceBefore = await relayServer.refreshBalance()
+      const relayBalanceBefore = await relayServer.getManagerBalance()
       assert.isTrue(relayBalanceBefore.gtn(0))
       await increaseTime(weekInSec)
       await stakeManager.unlockStake(relayServer.getManagerAddress(), { from: relayOwner })
       await relayServer._worker(await _web3.eth.getBlock('latest'))
-      const relayBalanceAfter = await relayServer.refreshBalance()
+      const relayBalanceAfter = await relayServer.getManagerBalance()
       assert.equal(relayBalanceAfter.toNumber(), 0, `relayBalanceAfter is not zero: ${relayBalanceAfter.toString()}`)
     })
 
@@ -823,7 +821,7 @@ contract.only('RelayServer', function (accounts) {
     // })
     // it('_worker', async function () {
     // })
-    // it('refreshBalance', async function () {
+    // it('getManagerBalance', async function () {
     // })
     // it('refreshStake', async function () {
     // })
