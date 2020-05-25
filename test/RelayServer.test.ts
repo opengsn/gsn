@@ -833,8 +833,9 @@ contract('RelayServer', function (accounts) {
     // })
     // it('_handleStakedEvent', async function () {
     // })
-    // it('_registerIfNeeded', async function () {
-    // })
+    it.skip('_registerIfNeeded', async function () {
+      // todo add test for registering for all of the cases: when not registered, when registered but changed parameters, when regisered and nothing changed ( should not re-register)
+    })
     // it('_resendUnconfirmedTransactions', async function () {
     // })
     // it('_resendUnconfirmedTransactionsForSigner', async function () {

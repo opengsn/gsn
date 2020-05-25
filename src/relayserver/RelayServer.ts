@@ -603,17 +603,27 @@ export class RelayServer extends EventEmitter {
       })
     }
     // todo: register only if not already registered
-
-    const registerMethod = this.relayHubContract?.contract.methods
-      .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
-        this.url)
-    const { receipt } = await this._sendTransaction({
-      signerIndex: 0,
-      method: registerMethod,
-      destination: this.relayHubContract?.address as string
+    const relayRegisteredEvents = await this.relayHubContract?.contract.getPastEvents('RelayServerRegistered', {
+      fromBlock: 1,
+      filter: { relayManager: this.managerAddress }
     })
-    debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
-
+    let receipt: TransactionReceipt | undefined
+    if (relayRegisteredEvents.find(
+      (e: any) =>
+        e.returnValues.relayManager.toLowerCase() === this.managerAddress &&
+        e.returnValues.baseRelayFee === this.baseRelayFee &&
+        e.returnValues.pctRelayFee === this.pctRelayFee &&
+        e.returnValues.relayUrl === this.url) == null) {
+      const registerMethod = this.relayHubContract?.contract.methods
+        .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
+          this.url)
+      receipt = (await this._sendTransaction({
+        signerIndex: 0,
+        method: registerMethod,
+        destination: this.relayHubContract?.address as string
+      })).receipt
+      debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
+    }
     this.isAddressAdded = true
     return receipt
   }
