@@ -30,7 +30,7 @@
   },
   "prepublish": "npm run prepare",
   "scripts": {
-    "test": "yarn run lint && yarn run truffle-compile && yarn extract_abi && yarn generate && yarn tsc && npm run test-js",
+    "test": "yarn run lint && yarn run truffle-compile && yarn generate && yarn tsc && npm run test-js",
     "ganache": "ganache-cli --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "test-js": "run-with-testrpc --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'npx truffle --network npmtest test'",
     "extract_abi": "./scripts/extract_abi.js",
@@ -47,7 +47,7 @@
     "trace": "MODE=trace truffle test",
     "coverage": "yarn generate && ./scripts/run-coverage",
     "clean-coverage": "shx rm -rf coverage coverage.json",
-    "generate": "rm -rf ./build/contracts && npx truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json'",
+    "generate": "rm -rf ./build/contracts && npx truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json' && yarn run extract_abi",
     "tsc": "tsc --noEmit",
     "postinstall": "patch-package",
     "coverage-if-changed": "./scripts/run-coverage-if-changed.sh npm run coverage",

@@ -407,7 +407,7 @@ export class RelayServer extends EventEmitter {
     } else {
       debug('code length', code.length)
     }
-    const version = await this.relayHubContract.getVersion().catch(_ => 'no getVersion() method')
+    const version: string = await this.relayHubContract.version().catch(_ => 'no version() method')
     if (version !== '1.0.0') {
       this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
     }
@@ -602,6 +602,8 @@ export class RelayServer extends EventEmitter {
         destination: this.relayHubContract?.address as string
       })
     }
+    // todo: register only if not already registered
+
     const registerMethod = this.relayHubContract?.contract.methods
       .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
         this.url)

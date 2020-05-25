@@ -42,7 +42,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 36834;
+    uint256 constant private GAS_OVERHEAD = 36844;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
@@ -54,20 +54,16 @@ contract RelayHub is IRelayHub {
     uint256 constant public GTRANSACTION = 21000;
 
     // maps relay worker's address to its manager's address
-    mapping(address => address) private workerToManager;
+    mapping(address => address) public workerToManager;
 
     // maps relay managers to the number of their workers
-    mapping(address => uint256) private workerCount;
+    mapping(address => uint256) public workerCount;
 
     uint256 constant public MAX_WORKER_COUNT = 10;
 
-    mapping(address => uint256) private balances;
+    mapping(address => uint256) public balances;
 
-    string public version = "1.0.0";
-    // TODO: remove with 0.6 solc
-    function getVersion() external override view returns (string memory) {
-        return version;
-    }
+    string public override version = "1.0.0";
 
 
     EIP712Sig public eip712sig;

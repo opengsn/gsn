@@ -145,7 +145,7 @@ interface IRelayHub {
     /// charged for 1.4 times the spent amount.
     function calculateCharge(uint256 gasUsed, GSNTypes.GasData calldata gasData) external view returns (uint256);
 
-    function getVersion() external view returns (string memory);
+    function version() external view returns (string memory);
 
 }
 
