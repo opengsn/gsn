@@ -48,6 +48,7 @@
     "prepare": "./scripts/prepublish"
   },
   "dependencies": {
+    "@openeth/truffle-typings": "0.0.6",
     "@openzeppelin/contracts": "3.0.1",
     "@openzeppelin/test-helpers": "0.5.5",
     "@truffle/contract": "4.2.4",
@@ -62,6 +63,7 @@
     "@types/node": "13.9.1",
     "@types/sinon": "9.0.0",
     "@types/sinon-chai": "3.2.4",
+    "@types/web3": "1.2.2",
     "abi-decoder": "2.2.2",
     "async-mutex": "^0.2.1",
     "axios": "0.18.1",
@@ -97,8 +99,6 @@
     "@0x/sol-trace": "3.0.8",
     "@0x/subproviders": "4.1.0",
     "@typescript-eslint/parser": "3.0.0",
-    "@openeth/truffle-typings": "0.0.5",
-    "@truffle-types/abi-decoder": "^0.1.1",
     "@typescript-eslint/eslint-plugin": "2.23.0",
     "chai-as-promised": "7.1.1",
     "cors": "2.8.5",
@@ -135,6 +135,7 @@
     "webtools.webpack.js",
     "helpers/",
     "dist/src",
+    "dist/types",
     "dist/*.*"
   ],
   "main": "dist/index.js",

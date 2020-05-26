@@ -23,3 +23,5 @@ for c in RelayProvider RelayClient GSNConfigurator GsnTestEnvironment; do
 done
 
 tsc
+
+cp -r types dist/
