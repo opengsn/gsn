@@ -1,5 +1,4 @@
 const path = require('path')
-// BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
 const { IgnorePlugin } = require( 'webpack' )
 
 module.exports = {

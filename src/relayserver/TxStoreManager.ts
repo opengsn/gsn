@@ -2,7 +2,6 @@ import * as ethUtils from 'ethereumjs-util'
 import ow from 'ow'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import AsyncNedb from 'nedb-async'
-const Nedb = require('nedb-async').AsyncNedb
 
 interface StoredParams {
   from: Buffer
@@ -66,7 +65,7 @@ export const TXSTORE_FILENAME = 'txstore.db'
 export class TxStoreManager {
   private readonly txstore: AsyncNedb<any>
   constructor ({ workdir = '/tmp/test/', inMemory = false }) {
-    this.txstore = new Nedb({
+    this.txstore = new AsyncNedb({
       filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
       autoload: true,
       timestampData: true
