@@ -180,6 +180,7 @@ contract RelayHub is IRelayHub {
     }
 
     struct RelayCallData {
+        bool success;
         uint256 initialGas;
         bytes4 functionSelector;
         bytes recipientContext;
@@ -208,8 +209,7 @@ contract RelayHub is IRelayHub {
         );
         require(relayRequest.gasData.gasPrice <= tx.gasprice, "Invalid gas price");
         // We now verify that the paymaster will agree to be charged for the transaction.
-        bool success;
-        (success, vars.recipientContext, vars.gasLimits) =
+        (vars.success, vars.recipientContext, vars.gasLimits) =
             canRelay(
                 GSNTypes.RelayRequest(
                     relayRequest.target,
@@ -218,7 +218,7 @@ contract RelayHub is IRelayHub {
                     relayRequest.relayData),
                     vars.initialGas, signature, approvalData);
 
-        if (!success) {
+        if (!vars.success) {
             revertReason = GsnUtils.getError(vars.recipientContext);
             emit TransactionRejectedByPaymaster(
                 workerToManager[msg.sender],
@@ -228,7 +228,7 @@ contract RelayHub is IRelayHub {
                 msg.sender,
                 vars.functionSelector,
                 revertReason);
-            return (success, revertReason);
+            return (vars.success, revertReason);
         }
 
         // From this point on, this transaction will not revert nor run out of gas, and the recipient will be charged

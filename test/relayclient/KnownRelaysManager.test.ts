@@ -59,7 +59,7 @@ contract('KnownRelaysManager', function (
     let workerRelayWorkersAdded
     let workerRelayServerRegistered
     let workerNotActive
-    const gas = 4e9
+    const gas = 4e6
 
     before(async function () {
       workerRelayWorkersAdded = await web3.eth.personal.newAccount('password')

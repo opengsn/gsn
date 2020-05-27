@@ -184,7 +184,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     context('with unknown worker', function () {
       const signature = '0xdeadbeef'
       const approvalData = '0x'
-      const gas = 4e9
+      const gas = 4e6
       let relayRequest: RelayRequest
       beforeEach(async function () {
         relayRequest = new RelayRequest(
@@ -312,7 +312,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         let signatureWithMisbehavingPaymaster: string
         let relayRequestMisbehavingPaymaster: RelayRequest
-        const gas=4e9
+        const gas=4e6
 
         beforeEach(async function () {
           paymasterWithContext = await TestPaymasterStoreContext.new()
