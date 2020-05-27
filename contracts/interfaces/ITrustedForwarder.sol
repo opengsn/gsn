@@ -14,4 +14,6 @@ interface ITrustedForwarder {
     function verifyAndCall(GSNTypes.RelayRequest calldata req, bytes calldata sig) external;
 
     function getNonce(address from) external view returns (uint256);
+
+    function versionForwarder() external view returns (string memory);
 }

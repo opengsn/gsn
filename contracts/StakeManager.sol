@@ -8,6 +8,8 @@ import "./interfaces/IStakeManager.sol";
 
 contract StakeManager is IStakeManager {
 
+    string public override versionSM = "2.0.0-alpha.1+opengsn.stakemanager.istakemanager";
+
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
     function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo) {

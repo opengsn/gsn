@@ -206,7 +206,7 @@ export default class CommandsLogic {
   async deployGsnContracts (from: Address, gasPrice?: string, paymaster?: any): Promise<DeploymentResult> {
     const options = {
       from,
-      gas: 1e6,
+      gas: 3e6,
       gasPrice: gasPrice ?? (1e9).toString()
     }
 

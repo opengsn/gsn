@@ -25,6 +25,7 @@ import { TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../relayclient/types/Environments'
+import VersionsManager from '../common/VersionsManager'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -135,6 +136,7 @@ export class RelayServer extends EventEmitter {
   private readonly web3provider: provider
   readonly keyManager: KeyManager
   private readonly contractInteractor: ContractInteractor
+  private readonly versionManager: VersionsManager
   readonly hubAddress: PrefixedHexString
   readonly baseRelayFee: number
   readonly pctRelayFee: number
@@ -147,6 +149,7 @@ export class RelayServer extends EventEmitter {
 
   constructor (params: RelayServerParams) {
     super()
+    this.versionManager = new VersionsManager()
     this.txStoreManager = params.txStoreManager
     this.web3provider = params.web3provider
     this.keyManager = params.keyManager
@@ -407,8 +410,8 @@ export class RelayServer extends EventEmitter {
     } else {
       debug('code length', code.length)
     }
-    const version = await this.relayHubContract.getVersion().catch(_ => 'no getVersion() method')
-    if (version !== '1.0.0') {
+    const version = await this.relayHubContract.versionHub().catch(_ => 'no getVersion() method')
+    if (!this.versionManager.isHubVersionSupported(version)) {
       this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
     }
     const stakeManagerAddress = await this.relayHubContract.getStakeManager()
