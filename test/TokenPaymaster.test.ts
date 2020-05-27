@@ -171,7 +171,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
 
       const preBalance = await hub.balanceOf(paymaster.address)
 
-      const externalGasLimit = 5e9.toString()
+      const externalGasLimit = 5e6.toString()
       const ret = await hub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
         from: relay,
         gasPrice: 1,

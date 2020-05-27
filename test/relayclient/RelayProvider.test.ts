@@ -243,7 +243,7 @@ contract('RelayProvider', function (accounts) {
     let innerTxSucceedReceipt: BaseTransactionReceipt
     let notRelayedTxReceipt: BaseTransactionReceipt
     let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
-    const gas = toBN(4e9)
+    const gas = toBN(3e6).toString()
     // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')

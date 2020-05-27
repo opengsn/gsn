@@ -146,7 +146,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
           gas: transactionGasLimit.toString(),
           gasPrice
         })
-        const externalGasLimit = 5e9.toString()
+        const externalGasLimit = 5e6.toString()
         const calldata = relayHub.contract.methods.relayCall(relayRequest, signature, '0x', externalGasLimit).encodeABI()
         const calldataSize = calldata.length / 2 - 1
         const gasLimits = await paymaster.getGasLimits()
