@@ -18,6 +18,7 @@ import "./IUniswap.sol";
  * - postRelayedCall - refund the caller for the unused gas
  */
 contract TokenPaymaster is BasePaymaster {
+    string public override versionPaymaster = "2.0.0-alpha.1+opengsn.token.ipaymaster";
 
     IUniswap public uniswap;
     IERC20 public token;

@@ -9,7 +9,7 @@ import "./interfaces/IRelayRecipient.sol";
  * A base contract to be inherited by any contract that want to receive relayed transactions
  * A subclass must use "_msgSender()" instead of "msg.sender"
  */
-contract BaseRelayRecipient is IRelayRecipient {
+abstract contract BaseRelayRecipient is IRelayRecipient {
 
     /// the TrustedForwarder singleton we accept calls from.
     // we trust it to verify the caller's signature, and pass the caller's address as last 20 bytes

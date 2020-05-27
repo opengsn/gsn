@@ -21,7 +21,7 @@ import "./Penalizer.sol";
 
 contract RelayHub is IRelayHub {
 
-    string constant public COMMIT_ID = "$Id$";
+    string public override versionHub = "2.0.0-alpha.1+opengsn.hub.irelayhub";
 
     // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
     uint256 constant private MINIMUM_STAKE = 1 ether;
@@ -42,7 +42,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 36834;
+    uint256 constant private GAS_OVERHEAD = 36800;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
@@ -62,13 +62,6 @@ contract RelayHub is IRelayHub {
     uint256 constant public MAX_WORKER_COUNT = 10;
 
     mapping(address => uint256) private balances;
-
-    string public version = "1.0.0";
-    // TODO: remove with 0.6 solc
-    function getVersion() external override view returns (string memory) {
-        return version;
-    }
-
 
     EIP712Sig public eip712sig;
     StakeManager public stakeManager;

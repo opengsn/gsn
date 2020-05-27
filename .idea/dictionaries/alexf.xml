@@ -17,7 +17,13 @@
       <w>gtransaction</w>
       <w>gtxdatanonzero</w>
       <w>ierc</w>
+      <w>iforwarder</w>
       <w>interactor</w>
+      <w>ipaymaster</w>
+      <w>ipenalizer</w>
+      <w>irelayhub</w>
+      <w>irelayrecipient</w>
+      <w>istakemanager</w>
       <w>jsonrpc</w>
       <w>keccak</w>
       <w>kovan</w>
@@ -28,6 +34,7 @@
       <w>nonces</w>
       <w>offchain</w>
       <w>openeth</w>
+      <w>opengsn</w>
       <w>openzeppelin</w>
       <w>ownable</w>
       <w>penalizable</w>
@@ -43,7 +50,9 @@
       <w>ropsten</w>
       <w>solc</w>
       <w>solhint</w>
+      <w>stakemanager</w>
       <w>subprovider</w>
+      <w>testproxy</w>
       <w>typechain</w>
       <w>typehash</w>
       <w>unauthorize</w>

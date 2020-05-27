@@ -9,6 +9,10 @@ import "./interfaces/ITrustedForwarder.sol";
 
 contract TrustedForwarder is ITrustedForwarder {
 
+    function versionForwarder() external view virtual override returns (string memory){
+        return "2.0.0-alpha.1+opengsn.forwarder.iforwarder";
+    }
+
     EIP712Sig private eip712sig;
 
     // Nonces of senders, used to prevent replay attacks

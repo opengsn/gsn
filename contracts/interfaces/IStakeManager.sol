@@ -88,4 +88,6 @@ interface IStakeManager {
     function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external;
 
     function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo);
+
+    function versionSM() external view returns (string memory);
 }

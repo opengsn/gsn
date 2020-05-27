@@ -12,6 +12,12 @@ import "./utils/GsnUtils.sol";
  */
 contract TrustedBatchForwarder is TrustedForwarder, BaseRelayRecipient {
 
+    function versionForwarder() external view override returns (string memory){
+        return "2.0.0-alpha.1+opengsn.batched.iforwarder";
+    }
+
+    string public override versionRecipient = "2.0.0-alpha.1+opengsn.batched.irelayrecipient";
+
     constructor() public {
         //needed for sendBatch
         trustedForwarder = address(this);

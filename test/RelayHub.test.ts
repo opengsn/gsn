@@ -62,8 +62,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   })
 
   it('should retrieve version number', async function () {
-    const version = await relayHubInstance.version()
-    assert.equal(version, '1.0.0')
+    const version = await relayHubInstance.versionHub()
+    assert.match(version, /2\.\d*\.\d*-?.*\+opengsn\.hub\.irelayhub/)
   })
   describe.skip('balances', function () {
     async function testDeposit (sender: string, paymaster: string, amount: BN): Promise<void> {

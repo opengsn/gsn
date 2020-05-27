@@ -91,4 +91,5 @@ interface IPaymaster {
         GSNTypes.GasData calldata gasData
     ) external;
 
+    function versionPaymaster() external view returns (string memory);
 }
