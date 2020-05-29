@@ -34,7 +34,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
 
     function acceptRelayedCall(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -76,7 +76,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        GSNTypes.GasData calldata gasData
+        ISignatureVerifier.GasData calldata gasData
     )
     external
     override

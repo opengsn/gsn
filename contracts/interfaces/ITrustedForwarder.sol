@@ -1,17 +1,17 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
 
-import "../utils/GSNTypes.sol";
+import "./ISignatureVerifier.sol";
+pragma experimental ABIEncoderV2;
 
 interface ITrustedForwarder {
 
     // verify the signature matches the request.
     //  that is, the senderAccount is the signer
-    function verify(GSNTypes.RelayRequest calldata req, bytes calldata sig) external view;
+    function verify(ISignatureVerifier.RelayRequest calldata req, bytes calldata sig) external view;
 
     // validate the signature, and execute the call.
-    function verifyAndCall(GSNTypes.RelayRequest calldata req, bytes calldata sig) external;
+    function verifyAndCall(ISignatureVerifier.RelayRequest calldata req, bytes calldata sig) external;
 
     function getNonce(address from) external view returns (uint256);
 

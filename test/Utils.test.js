@@ -8,7 +8,7 @@ const Environments = require('../src/relayclient/types/Environments')
 const { getEip712Signature } = require('../src/common/utils')
 const getDataToSign = require('../src/common/EIP712/Eip712Helper')
 
-const EIP712Sig = artifacts.require('./EIP712Sig.sol')
+const EIP712Sig = artifacts.require('./SignatureVerifier.sol')
 
 contract('Utils', async function (accounts) {
   describe('#getEip712Signature()', async function () {
