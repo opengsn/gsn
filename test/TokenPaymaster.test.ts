@@ -12,7 +12,7 @@ import {
 } from '../types/truffle-contracts'
 
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
-import { getEip712Signature } from '../src/common/utils'
+import { getEip712Signature } from '../src/common/Utils'
 
 const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
@@ -58,7 +58,10 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
 
   before(async () => {
     // exchange rate 2 tokens per eth.
-    uniswap = await TestUniswap.new(2, 1, { value: 5e18, gas: 1e7 })
+    uniswap = await TestUniswap.new(2, 1, {
+      value: 5e18,
+      gas: 1e7
+    })
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     hub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
@@ -98,10 +101,10 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       forwarder.address,
       relayRequest
     )
-    signature = await getEip712Signature({
+    signature = await getEip712Signature(
       web3,
       dataToSign
-    })
+    )
   })
 
   context('#acceptRelayedCall', function () {
@@ -161,10 +164,10 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         forwarder.address,
         _relayRequest
       )
-      const signature = await getEip712Signature({
+      const signature = await getEip712Signature(
         web3,
         dataToSign
-      })
+      )
 
       const preBalance = await hub.balanceOf(paymaster.address)
 

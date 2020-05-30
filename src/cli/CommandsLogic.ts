@@ -6,7 +6,7 @@ import { ether } from '@openzeppelin/test-helpers'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { merge } from 'lodash'
 
-import { sleep } from '../common/utils'
+import { sleep } from '../common/Utils'
 
 // compiled folder populated by "prepublish"
 import StakeManager from './compiled/StakeManager.json'

@@ -19,7 +19,7 @@ import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
-import { getEip712Signature } from '../../src/common/utils'
+import { getEip712Signature } from '../../src/common/Utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
 
@@ -60,10 +60,10 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
     testRecipientForwarderAddress,
     relayRequest
   )
-  const signature = await getEip712Signature({
+  const signature = await getEip712Signature(
     web3,
     dataToSign
-  })
+  )
   return {
     relayRequest,
     signature

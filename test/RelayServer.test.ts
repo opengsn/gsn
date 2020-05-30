@@ -14,7 +14,7 @@ import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { sleep, revert, snapshot, evmMine, evmMineMany, increaseTime } from './TestUtils'
-import { removeHexPrefix } from '../src/common/utils'
+import { removeHexPrefix } from '../src/common/Utils'
 import {
   PenalizerInstance,
   RelayHubInstance,

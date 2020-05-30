@@ -9,7 +9,7 @@ import { encode } from 'rlp'
 import { expect } from 'chai'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import { getEip712Signature } from '../src/common/utils'
+import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
@@ -275,10 +275,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             forwarder,
             relayRequest
           )
-          const signature = await getEip712Signature({
+          const signature = await getEip712Signature(
             web3,
             dataToSign
-          })
+          )
           await relayHub.depositFor(paymaster.address, {
             from: other,
             value: ether('1')

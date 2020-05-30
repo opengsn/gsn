@@ -1,7 +1,7 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 import RelayRequest from '../common/EIP712/RelayRequest'
-import { isSameAddress } from '../common/utils'
+import { isSameAddress } from '../common/Utils'
 import ContractInteractor from './ContractInteractor'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import { GSNConfig } from './GSNConfigurator'

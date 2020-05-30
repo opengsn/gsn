@@ -2,7 +2,7 @@
 import ethWallet from 'ethereumjs-wallet'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import sigUtil from 'eth-sig-util'
-import { getEip712Signature, isSameAddress } from '../common/utils'
+import { getEip712Signature, isSameAddress } from '../common/Utils'
 import { Address } from './types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { GSNConfig } from './GSNConfigurator'
@@ -88,12 +88,11 @@ export default class AccountManager {
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
     return getEip712Signature(
-      {
-        web3: this.web3,
-        methodSuffix: this.config.methodSuffix ?? '',
-        jsonStringifyRequest: this.config.jsonStringifyRequest ?? false,
-        dataToSign: signedData
-      })
+      this.web3,
+      signedData,
+      this.config.methodSuffix ?? '',
+      this.config.jsonStringifyRequest ?? false
+    )
   }
 
   _signWithControlledKey (keypair: AccountKeypair, signedData: TypedRequestData): string {

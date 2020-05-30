@@ -9,7 +9,6 @@ import RelayHubABI from '../common/interfaces/IRelayHub.json'
 import PayMasterABI from '../common/interfaces/IPaymaster.json'
 import StakeManagerABI from '../common/interfaces/IStakeManager.json'
 import RelayRequest from '../common/EIP712/RelayRequest'
-import utils from '../common/utils'
 import { StoredTx, transactionToStoredTx, TxStoreManager } from './TxStoreManager'
 
 import { Mutex } from 'async-mutex'
@@ -25,6 +24,7 @@ import { toBN, toHex } from 'web3-utils'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../relayclient/types/Environments'
 import VersionsManager from '../common/VersionsManager'
+import { calculateTransactionMaxPossibleGas } from '../common/Utils'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -286,10 +286,10 @@ export class RelayServer extends EventEmitter {
 
     const hubOverhead = (await this.relayHubContract.getHubOverhead()).toNumber()
     // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-    const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
+    const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: parseInt(req.gasLimit),
+      relayCallGasLimit: req.gasLimit,
       calldataSize,
       gtxdatanonzero: gtxdatanonzero
     })
@@ -335,7 +335,7 @@ export class RelayServer extends EventEmitter {
         signerIndex: workerIndex,
         method,
         destination: req.relayHubAddress,
-        gasLimit: maxPossibleGas,
+        gasLimit: maxPossibleGas.toString(),
         gasPrice: req.gasPrice
       })
     // after sending a transaction is a good time to check the worker's balance, and replenish it.

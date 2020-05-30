@@ -1,7 +1,7 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
-import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/utils'
+import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
@@ -106,10 +106,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       forwarder,
       relayRequest
     )
-    signature = await getEip712Signature({
+    signature = await getEip712Signature(
       web3,
       dataToSign
-    })
+    )
   })
 
   describe('#calculateCharge()', function () {
@@ -146,7 +146,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasLimits,
           hubOverhead,
-          relayCallGasLimit: gasLimit.toNumber(),
+          relayCallGasLimit: gasLimit.toString(),
           calldataSize,
           gtxdatanonzero
         })
@@ -183,10 +183,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         forwarder,
         relayRequestMisbehaving
       )
-      const signature = await getEip712Signature({
+      const signature = await getEip712Signature(
         web3,
         dataToSign
-      })
+      )
       const canRelayResponse =
         await relayHub.contract.methods
           .relayCall(relayRequestMisbehaving, signature, '0x')
@@ -277,10 +277,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                 forwarder,
                 relayRequest
               )
-              const signature = await getEip712Signature({
+              const signature = await getEip712Signature(
                 web3,
                 dataToSign
-              })
+              )
               const res = await relayHub.relayCall(relayRequest, signature, '0x', {
                 from: relayWorker,
                 gasPrice: gasPrice

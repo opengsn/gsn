@@ -4,7 +4,7 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 
-import { getEip712Signature } from '../src/common/utils'
+import { getEip712Signature } from '../src/common/Utils'
 
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
@@ -90,10 +90,10 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         forwarder.address,
         relayRequest
       )
-      const signature = await getEip712Signature({
+      const signature = await getEip712Signature(
         web3,
         dataToSign
-      })
+      )
 
       const ret = await hub.relayCall(relayRequest, signature, '0x', {
         from: relayWorker
@@ -126,10 +126,10 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         forwarder.address,
         relayRequest
       )
-      const signature = await getEip712Signature({
+      const signature = await getEip712Signature(
         web3,
         dataToSign
-      })
+      )
 
       const ret = await hub.relayCall(relayRequest, signature, '0x', {
         from: relayWorker
@@ -152,10 +152,10 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         forwarder.address,
         relayRequest
       )
-      const signature = await getEip712Signature({
+      const signature = await getEip712Signature(
         web3,
         dataToSign
-      })
+      )
 
       const ret = await hub.relayCall(relayRequest, signature, '0x', {
         from: relayWorker

@@ -1,19 +1,22 @@
 /* global describe it web3 */
-const assert = require('chai').use(require('chai-as-promised')).assert
-// eslint-disable-next-line camelcase
-const { recoverTypedSignature_v4 } = require('eth-sig-util')
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/camelcase
+import { recoverTypedSignature_v4 } from 'eth-sig-util'
+import chaiAsPromised from 'chai-as-promised'
 
-const RelayRequest = require('../src/common/EIP712/RelayRequest')
-const Environments = require('../src/relayclient/types/Environments')
-const { getEip712Signature } = require('../src/common/utils')
-const getDataToSign = require('../src/common/EIP712/TypedRequestData')
+import RelayRequest from '../src/common/EIP712/RelayRequest'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { getEip712Signature } from '../src/common/Utils'
+import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+
+const assert = require('chai').use(chaiAsPromised).assert
 
 const EIP712Sig = artifacts.require('./SignatureVerifier.sol')
 
-contract('Utils', async function (accounts) {
-  describe('#getEip712Signature()', async function () {
+contract('Utils', function (accounts) {
+  describe('#getEip712Signature()', function () {
     it('should generate a valid EIP-712 compatible signature', async function () {
-      const chainId = Environments.defaultEnvironment.chainId
+      const chainId = defaultEnvironment.chainId
       const senderAddress = accounts[0]
       const senderNonce = '5'
       const target = accounts[5]
@@ -27,29 +30,33 @@ contract('Utils', async function (accounts) {
       const verifier = accounts[8]
       const relayWorker = accounts[9]
 
-      const relayRequest = new RelayRequest({
-        senderAddress,
+      const relayRequest: RelayRequest = {
         target,
         encodedFunction,
-        gasPrice,
-        gasLimit,
-        pctRelayFee,
-        baseRelayFee,
-        senderNonce,
-        relayWorker,
-        forwarder,
-        paymaster
-      })
+        relayData: {
+          senderAddress,
+          senderNonce,
+          relayWorker,
+          forwarder,
+          paymaster
+        },
+        gasData: {
+          gasPrice,
+          gasLimit,
+          pctRelayFee,
+          baseRelayFee
+        }
+      }
 
-      const dataToSign = await getDataToSign({
+      const dataToSign = new TypedRequestData(
         chainId,
         verifier,
         relayRequest
-      })
-      const sig = await getEip712Signature({
+      )
+      const sig = await getEip712Signature(
         web3,
         dataToSign
-      })
+      )
 
       const recoveredAccount = recoverTypedSignature_v4({
         data: dataToSign,
