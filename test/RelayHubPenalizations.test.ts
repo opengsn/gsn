@@ -10,7 +10,7 @@ import { expect } from 'chai'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/utils'
-import getDataToSign from '../src/common/EIP712/Eip712Helper'
+import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   PenalizerInstance,
@@ -253,24 +253,28 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const gasLimit = new BN('1000000')
           const senderNonce = new BN('0')
           const txData = recipient.contract.methods.emitMessage('').encodeABI()
-          const relayRequest = new RelayRequest({
-            senderAddress: sender,
+          const relayRequest: RelayRequest = {
             target: recipient.address,
             encodedFunction: txData,
-            gasPrice: gasPrice.toString(),
-            gasLimit: gasLimit.toString(),
-            baseRelayFee: baseFee.toString(),
-            pctRelayFee: fee.toString(),
-            senderNonce: senderNonce.toString(),
-            relayWorker,
-            paymaster: paymaster.address,
-            forwarder
-          })
-          const dataToSign = await getDataToSign({
+            relayData: {
+              senderAddress: sender,
+              senderNonce: senderNonce.toString(),
+              relayWorker,
+              paymaster: paymaster.address,
+              forwarder
+            },
+            gasData: {
+              gasPrice: gasPrice.toString(),
+              gasLimit: gasLimit.toString(),
+              baseRelayFee: baseFee.toString(),
+              pctRelayFee: fee.toString()
+            }
+          }
+          const dataToSign = new TypedRequestData(
             chainId,
-            verifier: forwarder,
+            forwarder,
             relayRequest
-          })
+          )
           const signature = await getEip712Signature({
             web3,
             dataToSign
@@ -347,21 +351,24 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       const privateKey = Buffer.from(relayCallArgs.privateKey, 'hex')
       const relayWorker = privateToAddress(privateKey).toString('hex')
       // TODO: 'encodedCallArgs' is no longer needed. just keep the RelayRequest in test
-      const relayRequest = new RelayRequest(
+      const relayRequest: RelayRequest =
         {
-          senderAddress: encodedCallArgs.sender,
           target: encodedCallArgs.recipient,
           encodedFunction: encodedCallArgs.data,
-          baseRelayFee: encodedCallArgs.baseFee.toString(),
-          pctRelayFee: encodedCallArgs.fee.toString(),
-          gasPrice: encodedCallArgs.gasPrice.toString(),
-          gasLimit: encodedCallArgs.gasLimit.toString(),
-          senderNonce: encodedCallArgs.nonce.toString(),
-          relayWorker,
-          paymaster: encodedCallArgs.paymaster,
-          forwarder
+          relayData: {
+            senderAddress: encodedCallArgs.sender,
+            senderNonce: encodedCallArgs.nonce.toString(),
+            relayWorker,
+            paymaster: encodedCallArgs.paymaster,
+            forwarder
+          },
+          gasData: {
+            baseRelayFee: encodedCallArgs.baseFee.toString(),
+            pctRelayFee: encodedCallArgs.fee.toString(),
+            gasPrice: encodedCallArgs.gasPrice.toString(),
+            gasLimit: encodedCallArgs.gasLimit.toString()
+          }
         }
-      )
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x').encodeABI()
 
       const transaction = new Transaction({

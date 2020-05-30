@@ -19,9 +19,9 @@ import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
-import getDataToSign from '../../src/common/EIP712/Eip712Helper'
 import { getEip712Signature } from '../../src/common/utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
+import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -38,24 +38,28 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
   const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
   const testRecipientForwarder = await TrustedForwarder.at(testRecipientForwarderAddress)
   const senderNonce = (await testRecipientForwarder.getNonce(account)).toString()
-  const relayRequest = new RelayRequest({
-    senderAddress: account,
-    encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
-    senderNonce,
+  const relayRequest: RelayRequest = {
     target: testRecipient.address,
-    pctRelayFee: '1',
-    baseRelayFee: '1',
-    gasPrice: '1',
-    gasLimit: '10000',
-    relayWorker,
-    paymaster,
-    forwarder: testRecipientForwarderAddress
-  })
-  const dataToSign = await getDataToSign({
-    chainId: defaultEnvironment.chainId,
-    verifier: testRecipientForwarderAddress,
-    relayRequest: relayRequest
-  })
+    encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
+    relayData: {
+      senderAddress: account,
+      senderNonce,
+      relayWorker,
+      paymaster,
+      forwarder: testRecipientForwarderAddress
+    },
+    gasData: {
+      pctRelayFee: '1',
+      baseRelayFee: '1',
+      gasPrice: '1',
+      gasLimit: '10000'
+    }
+  }
+  const dataToSign = new TypedRequestData(
+    defaultEnvironment.chainId,
+    testRecipientForwarderAddress,
+    relayRequest
+  )
   const signature = await getEip712Signature({
     web3,
     dataToSign

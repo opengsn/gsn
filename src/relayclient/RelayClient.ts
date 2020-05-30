@@ -212,19 +212,23 @@ export default class RelayClient {
     }
     const gasLimit = parseInt(gasLimitHex, 16).toString()
     const gasPrice = parseInt(gasPriceHex, 16).toString()
-    const relayRequest = new RelayRequest({
-      senderAddress: gsnTransactionDetails.from,
+    const relayRequest: RelayRequest = {
       target: gsnTransactionDetails.to,
       encodedFunction: gsnTransactionDetails.data,
-      senderNonce,
-      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
-      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
-      gasPrice,
-      gasLimit,
-      paymaster,
-      forwarder: forwarderAddress,
-      relayWorker
-    })
+      gasData: {
+        pctRelayFee: relayInfo.relayInfo.pctRelayFee,
+        baseRelayFee: relayInfo.relayInfo.baseRelayFee,
+        gasPrice,
+        gasLimit
+      },
+      relayData: {
+        senderAddress: gsnTransactionDetails.from,
+        senderNonce,
+        paymaster,
+        forwarder: forwarderAddress,
+        relayWorker
+      }
+    }
     const signature = await this.accountManager.sign(relayRequest, forwarderAddress)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.

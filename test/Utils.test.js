@@ -6,7 +6,7 @@ const { recoverTypedSignature_v4 } = require('eth-sig-util')
 const RelayRequest = require('../src/common/EIP712/RelayRequest')
 const Environments = require('../src/relayclient/types/Environments')
 const { getEip712Signature } = require('../src/common/utils')
-const getDataToSign = require('../src/common/EIP712/Eip712Helper')
+const getDataToSign = require('../src/common/EIP712/TypedRequestData')
 
 const EIP712Sig = artifacts.require('./SignatureVerifier.sol')
 

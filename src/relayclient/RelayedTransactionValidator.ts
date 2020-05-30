@@ -33,20 +33,23 @@ export default class RelayedTransactionValidator {
 
     const signer = bufferToHex(transaction.getSenderAddress())
 
-    const relayRequestOrig = new RelayRequest({
-      senderAddress: transactionJsonRequest.from,
+    const relayRequestOrig: RelayRequest = {
       target: transactionJsonRequest.to,
       encodedFunction: transactionJsonRequest.encodedFunction,
-      gasPrice: transactionJsonRequest.gasPrice,
-      gasLimit: transactionJsonRequest.gasLimit,
-      baseRelayFee: transactionJsonRequest.baseRelayFee,
-      pctRelayFee: transactionJsonRequest.pctRelayFee,
-      senderNonce: transactionJsonRequest.senderNonce,
-      relayWorker: transactionJsonRequest.relayWorker,
-      paymaster: transactionJsonRequest.paymaster,
-      forwarder: transactionJsonRequest.forwarder
-    })
-
+      gasData: {
+        gasPrice: transactionJsonRequest.gasPrice,
+        gasLimit: transactionJsonRequest.gasLimit,
+        baseRelayFee: transactionJsonRequest.baseRelayFee,
+        pctRelayFee: transactionJsonRequest.pctRelayFee
+      },
+      relayData: {
+        senderAddress: transactionJsonRequest.from,
+        senderNonce: transactionJsonRequest.senderNonce,
+        relayWorker: transactionJsonRequest.relayWorker,
+        paymaster: transactionJsonRequest.paymaster,
+        forwarder: transactionJsonRequest.forwarder
+      }
+    }
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData)
 
     if (

@@ -2,9 +2,9 @@ import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/utils'
-import getDataToSign from '../src/common/EIP712/Eip712Helper'
+import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
-import RelayRequest from '../src/common/EIP712/RelayRequest'
+import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,
@@ -84,24 +84,28 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     await relayHub.registerRelayServer(0, fee, '', { from: relayManager })
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
-    relayRequest = new RelayRequest({
-      senderAddress,
-      relayWorker,
+    relayRequest = {
       encodedFunction,
-      senderNonce: senderNonce.toString(),
       target: recipient.address,
-      baseRelayFee: baseFee.toString(),
-      pctRelayFee: fee.toString(),
-      gasPrice: gasPrice.toString(),
-      gasLimit: gasLimit.toString(),
-      paymaster: paymaster.address,
-      forwarder
-    })
-    const dataToSign = await getDataToSign({
+      relayData: {
+        senderAddress,
+        relayWorker,
+        senderNonce: senderNonce.toString(),
+        paymaster: paymaster.address,
+        forwarder
+      },
+      gasData: {
+        baseRelayFee: baseFee.toString(),
+        pctRelayFee: fee.toString(),
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString()
+      }
+    }
+    const dataToSign = new TypedRequestData(
       chainId,
-      verifier: forwarder,
+      forwarder,
       relayRequest
-    })
+    )
     signature = await getEip712Signature({
       web3,
       dataToSign
@@ -171,14 +175,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
       const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
-      const relayRequestMisbehaving = relayRequest.clone()
+      const relayRequestMisbehaving = cloneRelayRequest(relayRequest)
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
       relayRequestMisbehaving.relayData.senderNonce = senderNonce
-      const dataToSign = await getDataToSign({
+      const dataToSign = new TypedRequestData(
         chainId,
-        verifier: forwarder,
-        relayRequest: relayRequestMisbehaving
-      })
+        forwarder,
+        relayRequestMisbehaving
+      )
       const signature = await getEip712Signature({
         web3,
         dataToSign
@@ -250,24 +254,29 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               const pctRelayFee = requestedFee.toString()
               const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
               const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
-              const relayRequest = new RelayRequest({
-                senderAddress,
+              const relayRequest: RelayRequest = {
                 target: recipient.address,
                 encodedFunction,
-                baseRelayFee: '0',
-                pctRelayFee,
-                gasPrice: gasPrice.toString(),
-                gasLimit: gasLimit.toString(),
-                senderNonce,
-                relayWorker,
-                paymaster: paymaster.address,
-                forwarder
-              })
-              const dataToSign = await getDataToSign({
+                relayData: {
+                  senderAddress,
+                  senderNonce,
+                  relayWorker,
+                  paymaster: paymaster.address,
+                  forwarder
+                },
+                gasData: {
+
+                  baseRelayFee: '0',
+                  pctRelayFee,
+                  gasPrice: gasPrice.toString(),
+                  gasLimit: gasLimit.toString()
+                }
+              }
+              const dataToSign = new TypedRequestData(
                 chainId,
-                verifier: forwarder,
+                forwarder,
                 relayRequest
-              })
+              )
               const signature = await getEip712Signature({
                 web3,
                 dataToSign

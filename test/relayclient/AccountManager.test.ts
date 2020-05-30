@@ -5,11 +5,11 @@ import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { constants } from '@openzeppelin/test-helpers'
 import sinon from 'sinon'
 import sigUtil from 'eth-sig-util'
-import getDataToSign from '../../src/common/EIP712/Eip712Helper'
 import { isSameAddress } from '../../src/common/utils'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
 
 const expect = chai.expect
 chai.use(sinonChai)
@@ -58,30 +58,34 @@ contract('AccountManager', function (accounts) {
 
   describe('#sign()', function () {
     accountManager.addAccount(keypair)
-    const relayRequest = new RelayRequest({
-      senderAddress: '',
-      encodedFunction: '0x123',
-      senderNonce: '1',
+    const relayRequest: RelayRequest = {
       target: constants.ZERO_ADDRESS,
-      pctRelayFee: '1',
-      baseRelayFee: '1',
-      gasPrice: '1',
-      gasLimit: '1',
-      relayWorker: constants.ZERO_ADDRESS,
-      paymaster: constants.ZERO_ADDRESS,
-      forwarder: constants.ZERO_ADDRESS
-    })
+      encodedFunction: '0x123',
+      relayData: {
+        senderNonce: '1',
+        senderAddress: '',
+        relayWorker: constants.ZERO_ADDRESS,
+        paymaster: constants.ZERO_ADDRESS,
+        forwarder: constants.ZERO_ADDRESS
+      },
+      gasData: {
+        pctRelayFee: '1',
+        baseRelayFee: '1',
+        gasPrice: '1',
+        gasLimit: '1'
+      }
+    }
     beforeEach(function () {
       sinon.resetHistory()
     })
 
     it('should use internally controlled keypair for signing if available', async function () {
       relayRequest.relayData.senderAddress = address
-      const signedData = getDataToSign({
-        chainId: defaultEnvironment.chainId,
-        verifier: constants.ZERO_ADDRESS,
+      const signedData = new TypedRequestData(
+        defaultEnvironment.chainId,
+        constants.ZERO_ADDRESS,
         relayRequest
-      })
+      )
       const signature = await accountManager.sign(relayRequest, constants.ZERO_ADDRESS)
       // @ts-ignore
       const rec = sigUtil.recoverTypedSignature_v4({
@@ -94,11 +98,11 @@ contract('AccountManager', function (accounts) {
     })
     it('should ask provider to sign if key is not controlled', async function () {
       relayRequest.relayData.senderAddress = accounts[0]
-      const signedData = getDataToSign({
-        chainId: defaultEnvironment.chainId,
-        verifier: constants.ZERO_ADDRESS,
+      const signedData = new TypedRequestData(
+        defaultEnvironment.chainId,
+        constants.ZERO_ADDRESS,
         relayRequest
-      })
+      )
       const signature = await accountManager.sign(relayRequest, constants.ZERO_ADDRESS)
       // @ts-ignore
       const rec = sigUtil.recoverTypedSignature_v4({

@@ -5,7 +5,7 @@ import { constants } from '@openzeppelin/test-helpers'
 const Environments = require('../src/relayclient/types/Environments')
 const RelayRequest = require('../src/common/EIP712/RelayRequest')
 
-const getDataToSign = require('../src/common/EIP712/Eip712Helper')
+const getDataToSign = require('../src/common/EIP712/TypedRequestData')
 
 const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
