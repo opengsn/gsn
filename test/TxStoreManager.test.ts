@@ -1,15 +1,13 @@
 /* global */
 
-const fs = require('fs')
-const TxStoreManager = require('../src/relayserver/TxStoreManager').TxStoreManager
-const TXSTORE_FILENAME = require('../src/relayserver/TxStoreManager').TXSTORE_FILENAME
-const StoredTx = require('../src/relayserver/TxStoreManager').StoredTx
+import fs from 'fs'
+import { TxStoreManager, TXSTORE_FILENAME, StoredTx } from '../src/relayserver/TxStoreManager'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
 const txStoreFilePath = `${workdir}/${TXSTORE_FILENAME}`
 
-function cleanFolder () {
+function cleanFolder (): void {
   if (fs.existsSync(txStoreFilePath)) {
     fs.unlinkSync(txStoreFilePath)
   }
@@ -19,45 +17,45 @@ function cleanFolder () {
 }
 
 contract('TxStoreManager', function (accounts) {
-  let txmanager, tx, tx2, tx3
+  let txmanager: TxStoreManager
+  let tx: StoredTx
+  let tx2: StoredTx
+  let tx3: StoredTx
 
   before('create txstore', async function () {
     cleanFolder()
     txmanager = new TxStoreManager({ workdir })
     await txmanager.clearAll()
-    assert.ok(txmanager, 'txstore uninitialized' + txmanager)
+    assert.ok(txmanager, 'txstore uninitialized' + txmanager.toString())
     assert.isTrue(fs.existsSync(workdir), 'test txstore dir should exist already')
     tx = new StoredTx({
-      from: '0x',
-      to: '0x',
-      value: 0,
-      gas: 0,
-      gasPrice: 0,
-      data: 0,
-      nonce: 111,
+      from: Buffer.from([]),
+      to: Buffer.from([]),
+      gas: Buffer.from([0]),
+      gasPrice: Buffer.from([0]),
+      data: Buffer.from([]),
+      nonce: Buffer.from([111]),
       txId: '123456',
       attempts: 1
     })
     tx2 = new StoredTx({
-      from: '0x',
-      to: '0x',
-      value: 0,
-      gas: 0,
-      gasPrice: 0,
-      data: 0,
-      nonce: 112,
+      from: Buffer.from([]),
+      to: Buffer.from([]),
+      gas: Buffer.from([0]),
+      gasPrice: Buffer.from([0]),
+      data: Buffer.from([]),
+      nonce: Buffer.from([112]),
       txId: '1234567',
       attempts: 1
     })
     tx3 = new StoredTx(
       {
-        from: '0x',
-        to: '0x',
-        value: 0,
-        gas: 0,
-        gasPrice: 0,
-        data: 0,
-        nonce: 113,
+        from: Buffer.from([]),
+        to: Buffer.from([]),
+        gas: Buffer.from([0]),
+        gasPrice: Buffer.from([0]),
+        data: Buffer.from([]),
+        nonce: Buffer.from([113]),
         txId: '12345678',
         attempts: 1
       })
