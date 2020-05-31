@@ -1,7 +1,5 @@
 import { TestPaymasterEverythingAcceptedInstance, TestRecipientInstance } from '../types/truffle-contracts'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import BN from 'bn.js'
-
 const RelayHub = artifacts.require('./RelayHub.sol')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

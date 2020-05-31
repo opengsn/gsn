@@ -7,7 +7,6 @@ import { configureGSN, getDependencies, GSNDependencies } from '../../src/relayc
 import { PingFilter } from '../../src/relayclient/types/Aliases'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { PartialRelayInfo } from '../../src/relayclient/types/RelayInfo'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { constants } from '@openzeppelin/test-helpers'
 import { register, stake } from './KnownRelaysManager.test'
 import PingResponse from '../../src/common/PingResponse'

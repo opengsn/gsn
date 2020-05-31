@@ -1,7 +1,6 @@
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   PenalizerInstance,
   RelayHubInstance,
