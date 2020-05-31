@@ -5,8 +5,17 @@
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
 
 import { RelayProvider } from '../src/relayclient/RelayProvider'
-
-var testutils = require('./TestUtils')
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { Address } from '../src/relayclient/types/Aliases'
+import {
+  RelayHubInstance, StakeManagerInstance,
+  TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
+  TestRecipientInstance
+} from '../types/truffle-contracts'
+import { startRelay, stopRelay } from './TestUtils'
+import { ChildProcessWithoutNullStreams } from 'child_process'
+import { GSNConfig } from '../src/relayclient/GSNConfigurator'
+import { PrefixedHexString } from 'ethereumjs-tx'
 
 const SampleRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -15,46 +24,46 @@ const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymaste
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const Environments = require('../src/relayclient/types/Environments')
 
 const options = [
-  { title: 'Direct-', relay: 0 },
-  { title: 'Relayed-', relay: 1 }
+  {
+    title: 'Direct-',
+    relay: false
+  },
+  {
+    title: 'Relayed-',
+    relay: true
+  }
 ]
 
-if (!contract.only) { contract.only = contract }
-
 options.forEach(params => {
-  contract(params.title + 'Flow', async (acc) => {
-    let from
-    let sr
-    let paymaster
-    let rhub
-    let sm
-    const accounts = acc
-    let gasless
-    let relayproc
-    let gasPrice
-    let relayClientConfig
+  contract(params.title + 'Flow', function (accounts) {
+    let from: Address
+    let sr: TestRecipientInstance
+    let paymaster: TestPaymasterEverythingAcceptedInstance
+    let rhub: RelayHubInstance
+    let sm: StakeManagerInstance
+    let gasless: Address
+    let relayproc: ChildProcessWithoutNullStreams
+    let relayClientConfig: Partial<GSNConfig>
 
     before(async () => {
       const gasPricePercent = 20
-      gasPrice = (await web3.eth.getGasPrice()) * (100 + gasPricePercent) / 100
 
       gasless = await web3.eth.personal.newAccount('password')
-      web3.eth.personal.unlockAccount(gasless, 'password')
+      await web3.eth.personal.unlockAccount(gasless, 'password', 0)
 
       sm = await StakeManager.new()
       const p = await Penalizer.new()
-      rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, sm.address, p.address, { gas: 10000000 })
+      rhub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, sm.address, p.address, { gas: 10000000 })
       if (params.relay) {
-        relayproc = await testutils.startRelay(rhub.address, sm, {
-          // relaylog:true,
+        relayproc = await startRelay(rhub.address, sm, {
           stake: 1e18,
           delay: 3600 * 24 * 7,
           pctRelayFee: 12,
           url: 'asd',
           relayOwner: accounts[0],
+          // @ts-ignore
           EthereumNodeUrl: web3.currentProvider.host,
           GasPricePercent: gasPricePercent
         })
@@ -70,25 +79,23 @@ options.forEach(params => {
     })
 
     after(async function () {
-      await testutils.stopRelay(relayproc)
+      await stopRelay(relayproc)
     })
 
     if (params.relay) {
       before(params.title + 'enable relay', async function () {
-        rhub.depositFor(paymaster.address, { value: 1e18 })
+        await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
 
         relayClientConfig = {
           relayHubAddress: rhub.address,
           stakeManagerAddress: sm.address,
           paymasterAddress: paymaster.address,
-          pctRelayFee: 60,
           // override requested gas price
-          force_gasPrice: gasPrice,
           // override requested gas limit.
-          force_gasLimit: 100000,
-          verbose: process.env.DEBUG
+          verbose: false
         }
 
+        // @ts-ignore
         const relayProvider = new RelayProvider(web3.currentProvider, relayClientConfig)
 
         // web3.setProvider(relayProvider)
@@ -116,7 +123,7 @@ options.forEach(params => {
       console.log('gasless=' + gasless)
 
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed)')
-      let ex
+      let ex: Error | undefined
       try {
         const res = await sr.emitMessage('hello, from gasless', { from: gasless })
         console.log('res after gasless emit:', res.logs[0].args.message)
@@ -125,9 +132,9 @@ options.forEach(params => {
       }
 
       if (params.relay) {
-        assert.ok(ex == null, 'should succeed sending gasless transaction through relay. got: ' + ex)
+        assert.ok(ex == null, `should succeed sending gasless transaction through relay. got: ${ex?.toString()}`)
       } else {
-        assert.ok(ex.toString().indexOf('funds') > 0, 'Expected Error with \'funds\'. got: ' + ex)
+        assert.ok(ex!.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
       }
     })
     it(params.title + 'running testRevert (should always fail)', async () => {
@@ -137,16 +144,19 @@ options.forEach(params => {
     })
 
     if (params.relay) {
-      let approvalPaymaster
+      let approvalPaymaster: TestPaymasterPreconfiguredApprovalInstance
 
       describe('request with approvaldata', () => {
-        let approvalData
+        let approvalData: PrefixedHexString
         before(async function () {
           approvalPaymaster = await TestPaymasterPreconfiguredApproval.new()
           await approvalPaymaster.setRelayHub(rhub.address)
-          await rhub.depositFor(approvalPaymaster.address, { value: 1e18 })
+          await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
 
-          const relayProvider = new RelayProvider(web3.currentProvider, relayClientConfig, { asyncApprovalData: () => Promise.resolve(approvalData) })
+          const relayProvider =
+            // @ts-ignore
+            new RelayProvider(web3.currentProvider,
+              relayClientConfig, { asyncApprovalData: async () => Promise.resolve(approvalData) })
           SampleRecipient.web3.setProvider(relayProvider)
         })
 
@@ -174,6 +184,7 @@ options.forEach(params => {
 
         it(params.title + 'fail on no approval data', async () => {
           try {
+            // @ts-ignore
             await approvalPaymaster.setExpectedApprovalData(Buffer.from('hello1'), {
               from: accounts[0],
               useGSN: false
@@ -189,6 +200,7 @@ options.forEach(params => {
             console.log('error3: ', e)
             throw e
           } finally {
+            // @ts-ignore
             await approvalPaymaster.setExpectedApprovalData(Buffer.from(''), {
               from: accounts[0],
               useGSN: false
@@ -198,18 +210,17 @@ options.forEach(params => {
       })
     }
 
-    async function asyncShouldThrow (asyncFunc, str) {
-      const msg = str || 'Error'
-      let ex = null
+    async function asyncShouldThrow (asyncFunc: () => Promise<any>, str?: string): Promise<void> {
+      const msg = str ?? 'Error'
+      let ex: Error | undefined
       try {
         await asyncFunc()
       } catch (e) {
         ex = e
       }
-      assert.ok(ex != null, 'Expected to throw ' + msg + ' but threw nothing')
-      const isExpectedError = ex.toString().includes(msg) ||
-        (ex.otherErrors != null && ex.otherErrors.length > 0 && ex.otherErrors[0].toString().includes(msg))
-      assert.ok(isExpectedError, 'Expected to throw ' + msg + ' but threw ' + ex.message)
+      assert.ok(ex != null, `Expected to throw ${msg} but threw nothing`)
+      const isExpectedError = ex?.toString().includes(msg)
+      assert.ok(isExpectedError, `Expected to throw ${msg} but threw ${ex?.message}`)
     }
-  }) // of contract
-}) // of "foreach"
+  })
+})

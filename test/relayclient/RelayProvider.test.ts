@@ -5,7 +5,7 @@ import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import chaiAsPromised from 'chai-as-promised'
 import Web3 from 'web3'
 
-import { RelayProvider, BaseTransactionReceipt } from '../../src/relayclient'
+import { BaseTransactionReceipt, RelayProvider } from '../../src/relayclient/RelayProvider'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
   RelayHubInstance,

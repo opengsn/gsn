@@ -76,7 +76,7 @@ export class TxStoreManager {
     console.log('txstore created in ', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
-  async putTx (tx: any, updateExisting: boolean): Promise<void> {
+  async putTx (tx: any, updateExisting: boolean = false): Promise<void> {
     // eslint-disable-next-line
     if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
       throw new Error('Invalid tx:' + JSON.stringify(tx))
