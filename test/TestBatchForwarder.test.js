@@ -85,8 +85,9 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         dataToSign
       })
 
-      const ret = await hub.relayCall(relayRequest, signature, '0x', {
-        from: relayWorker
+      const ret = await hub.relayCall(relayRequest, signature, '0x', 7e6, {
+        from: relayWorker,
+        gas: 7e6
       })
 
       // console.log(getLogs(ret))
@@ -122,8 +123,9 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         dataToSign
       })
 
-      const ret = await hub.relayCall(relayRequest, signature, '0x', {
-        from: relayWorker
+      const ret = await hub.relayCall(relayRequest, signature, '0x', 7e6, {
+        from: relayWorker,
+        gas: 7e6
       })
       expectEvent(ret, 'TransactionRelayed', { status: '1' })
     })
@@ -150,8 +152,9 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         dataToSign
       })
 
-      const ret = await hub.relayCall(relayRequest, signature, '0x', {
-        from: relayWorker
+      const ret = await hub.relayCall(relayRequest, signature, '0x', 7e6, {
+        from: relayWorker,
+        gas: 7e6
       })
       expectEvent(ret, 'TransactionRelayed', { status: '1' })
     })

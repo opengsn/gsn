@@ -172,14 +172,19 @@ export default class ContractInteractor {
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
     try {
+      // not really needed in client view call. only need to be large enough.
+      const externalGasLimit = 10e6
+
       const res = await relayHub.contract.methods.relayCall(
         relayRequest,
         signature,
-        approvalData
+        approvalData,
+        externalGasLimit
       )
         .call({
           from: relayRequest.relayData.relayWorker,
-          gasPrice: relayRequest.gasData.gasPrice
+          gasPrice: relayRequest.gasData.gasPrice,
+          gasLimit: externalGasLimit
         })
       if (this.config.verbose) {
         console.log(res)

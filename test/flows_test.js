@@ -120,7 +120,7 @@ options.forEach(params => {
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed)')
       let ex
       try {
-        const res = await sr.emitMessage('hello, from gasless', { from: gasless })
+        const res = await sr.emitMessage('hello, from gasless', { from: gasless, gasLimit: 1e6 })
         console.log('res after gasless emit:', res.logs[0].args.message)
       } catch (e) {
         ex = e

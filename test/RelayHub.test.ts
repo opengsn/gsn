@@ -284,8 +284,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
           const relayCallView = await relayHubInstance.contract.methods.relayCall(
             relayRequest,
-            signatureWithPermissivePaymaster, '0x')
-            .call({ from: relayWorker })
+            signatureWithPermissivePaymaster, '0x', 7e6)
+            .call({ from: relayWorker, gas: 7e6 })
           assert.equal(relayCallView.paymasterAccepted, true)
           assert.equal(relayCallView.revertReason, '')
         })
@@ -294,7 +294,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const relayCallView =
             await relayHubInstance.contract.methods
-              .relayCall(relayRequestMisbehavingPaymaster, '0x', '0x')
+              .relayCall(relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
               .call({ from: relayWorker })
           assert.equal(relayCallView.paymasterAccepted, false)
           assert.equal(relayCallView.revertReason, 'invalid code')
