@@ -5,7 +5,6 @@
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
 
 import { RelayProvider } from '../src/relayclient/RelayProvider'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { Address } from '../src/relayclient/types/Aliases'
 import {
   RelayHubInstance, StakeManagerInstance,
@@ -126,7 +125,7 @@ options.forEach(params => {
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed)')
       let ex: Error | undefined
       try {
-        const res = await sr.emitMessage('hello, from gasless', { from: gasless, gasLimit: 1e6 })
+        const res = await sr.emitMessage('hello, from gasless', { from: gasless, gas: 1e6 })
         console.log('res after gasless emit:', res.logs[0].args.message)
       } catch (e) {
         ex = e

@@ -261,7 +261,6 @@ export class RelayServer extends EventEmitter {
       }
     }
 
-    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, 7e6)
     let gasLimits
     try {
       if (this.paymasterContract === undefined) {
@@ -287,11 +286,9 @@ export class RelayServer extends EventEmitter {
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: parseInt(req.gasLimit),
+      relayCallGasLimit: req.gasLimit
     })
-
-    method = this.relayHubContract.contract.methods.relayCall(signedData.message, req.signature, req.approvalData, maxPossibleGas)
-
+    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
     let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       canRelayRet = await this.relayHubContract.contract.methods.relayCall(
@@ -301,7 +298,7 @@ export class RelayServer extends EventEmitter {
         maxPossibleGas)
         .call({
           from: this.getAddress(workerIndex),
-          gasPrice: relayRequest.gasData.gasPrice
+          gasPrice: relayRequest.gasData.gasPrice,
           gasLimit: maxPossibleGas
         })
     } catch (e) {

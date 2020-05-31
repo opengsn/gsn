@@ -173,7 +173,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const preBalance = await hub.balanceOf(paymaster.address)
 
       const externalGasLimit = 5e6.toString()
-      const ret = await hub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
+      const ret = await hub.relayCall(_relayRequest, signature, '0x', externalGasLimit, {
         from: relay,
         gasPrice: 1,
         gas: externalGasLimit
@@ -187,7 +187,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const chargedEvent = events.find((e: any) => e.event === 'TokensCharged')
 
       console.log({ relayed, chargedEvent })
-      console.log('charged: ', relayed.args.charge.toString())
+      console.log('charged: ', relayed!.args.charge.toString())
       assert.equal(relayed!.args.status, 0)
       const postTokens = await token.balanceOf(recipient.address)
       const usedTokens = preTokens.sub(postTokens)

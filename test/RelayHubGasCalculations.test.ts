@@ -136,13 +136,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasLimits,
           hubOverhead,
-<<<<<<< HEAD
-          relayCallGasLimit: gasLimit.toString(),
-          calldataSize,
-          gtxdatanonzero
-=======
-          relayCallGasLimit: gasLimit.toNumber()
->>>>>>> removed obsolete calldatasize, gtxdatanonzero
+          relayCallGasLimit: gasLimit.toString()
         })
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
@@ -252,8 +246,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   forwarder
                 },
                 gasData: {
-
-                  baseRelayFeeб
+                  baseRelayFee,
                   pctRelayFee,
                   gasPrice: gasPrice.toString(),
                   gasLimit: gasLimit.toString()
