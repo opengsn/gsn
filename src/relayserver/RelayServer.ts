@@ -261,7 +261,8 @@ export class RelayServer extends EventEmitter {
         relayWorker: this.getAddress(1)
       }
     }
-    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData)
+
+    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, 7e6)
     const calldataSize = method.encodeABI().length / 2
     debug('calldatasize', calldataSize)
     let gasLimits
@@ -294,15 +295,19 @@ export class RelayServer extends EventEmitter {
       gtxdatanonzero: gtxdatanonzero
     })
 
+    method = this.relayHubContract.contract.methods.relayCall(signedData.message, req.signature, req.approvalData, maxPossibleGas)
+
     let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       canRelayRet = await this.relayHubContract.contract.methods.relayCall(
         relayRequest,
         req.signature,
-        req.approvalData)
+        req.approvalData,
+        maxPossibleGas)
         .call({
           from: this.getAddress(workerIndex),
           gasPrice: relayRequest.gasData.gasPrice
+          gasLimit: maxPossibleGas
         })
     } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
