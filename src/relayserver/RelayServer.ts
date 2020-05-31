@@ -96,7 +96,8 @@ export interface RelayServerParams {
   readonly web3provider: provider
   readonly keyManager: KeyManager
   readonly contractInteractor: ContractInteractor
-  readonly hubAddress: PrefixedHexString
+  readonly hubAddress: Address
+  readonly trustedPaymasters?: Address[]
   readonly baseRelayFee: number | undefined
   readonly pctRelayFee: number | undefined
   readonly gasPriceFactor: number
@@ -127,7 +128,7 @@ export class RelayServer extends EventEmitter {
   stake = toBN(0)
   private isAddressAdded = false
   lastError: string | undefined
-  owner: PrefixedHexString | undefined
+  owner: Address | undefined
   private unstakeDelay: BN | undefined | string
   private withdrawBlock: BN | undefined | string
   private authorizedHub = false
@@ -135,7 +136,8 @@ export class RelayServer extends EventEmitter {
   private readonly web3provider: provider
   readonly keyManager: KeyManager
   private readonly contractInteractor: ContractInteractor
-  readonly hubAddress: PrefixedHexString
+  readonly hubAddress: Address
+  readonly trustedPaymasters?: Address[]
   readonly baseRelayFee: number
   readonly pctRelayFee: number
   readonly gasPriceFactor: number
@@ -151,6 +153,7 @@ export class RelayServer extends EventEmitter {
     this.web3provider = params.web3provider
     this.keyManager = params.keyManager
     this.hubAddress = params.hubAddress
+    this.trustedPaymasters = params.trustedPaymasters?.map(e => e.toLowerCase())
     this.baseRelayFee = params.baseRelayFee ?? 0
     this.pctRelayFee = params.pctRelayFee ?? 0
     this.gasPriceFactor = params.gasPriceFactor
@@ -213,12 +216,15 @@ export class RelayServer extends EventEmitter {
         `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract?.address}, request's hub address: ${req.relayHubAddress}\n`)
     }
 
-    // Check that the fee is acceptable
-    if (isNaN(parseInt(req.pctRelayFee)) || parseInt(req.pctRelayFee) < this.pctRelayFee) {
-      throw new Error(`Unacceptable pctRelayFee: ${req.pctRelayFee} relayServer's pctRelayFee: ${this.pctRelayFee}`)
-    }
-    if (isNaN(parseInt(req.baseRelayFee)) || parseInt(req.baseRelayFee) < this.baseRelayFee) {
-      throw new Error(`Unacceptable baseRelayFee: ${req.baseRelayFee} relayServer's baseRelayFee: ${this.baseRelayFee}`)
+    // if trusted paymaster, we trust it to handle fees
+    if (this.trustedPaymasters == null || !this.trustedPaymasters.includes(req.paymaster.toLowerCase())) {
+      // Check that the fee is acceptable
+      if (isNaN(parseInt(req.pctRelayFee)) || parseInt(req.pctRelayFee) < this.pctRelayFee) {
+        throw new Error(`Unacceptable pctRelayFee: ${req.pctRelayFee} relayServer's pctRelayFee: ${this.pctRelayFee}`)
+      }
+      if (isNaN(parseInt(req.baseRelayFee)) || parseInt(req.baseRelayFee) < this.baseRelayFee) {
+        throw new Error(`Unacceptable baseRelayFee: ${req.baseRelayFee} relayServer's baseRelayFee: ${this.baseRelayFee}`)
+      }
     }
     // Check that the gasPrice is initialized & acceptable
     if (this.gasPrice === 0 || this.gasPrice == null) {
@@ -602,7 +608,6 @@ export class RelayServer extends EventEmitter {
         destination: this.relayHubContract?.address as string
       })
     }
-    // todo: register only if not already registered
     const relayRegisteredEvents = await this.relayHubContract?.contract.getPastEvents('RelayServerRegistered', {
       fromBlock: 1,
       filter: { relayManager: this.managerAddress }

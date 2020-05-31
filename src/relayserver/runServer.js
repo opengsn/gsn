@@ -22,17 +22,17 @@ const envDefaults = Object.entries(process.env)
 const argv = parseArgs(process.argv.slice(2), {
   string:
     [
-      'BaseFee',
-      'PercentFee',
-      'Url',
-      'RelayHubAddress',
-      'DefaultGasPrice',
-      'GasPricePercent',
-      'RegistrationBlockRate',
-      'EthereumNodeUrl',
-      'Workdir'
+      'config',
+      'baseRelayFee',
+      'pctRelayFee',
+      'url',
+      'relayHubAddress',
+      'defaultGasPrice',
+      'gasPricePercent',
+      'ethereumNodeUrl',
+      'workdir'
     ],
-  boolean: ['DevMode', 'Debug'],
+  boolean: ['devMode', 'debug'],
   alias: {},
   default: envDefaults
 })
@@ -40,18 +40,17 @@ const argv = parseArgs(process.argv.slice(2), {
 if (argv._.length) error('unknown extra params: ' + argv._)
 
 console.log('runServer start. args', argv)
-const baseRelayFee = argv.BaseFee || 70
-const pctRelayFee = argv.PercentFee || 0
-const url = argv.Url || 'http://localhost:8090'
-const port = argv.Port || 8090
-const relayHubAddress = getRelayHubAddress(argv.RelayHubAddress) || error('missing --RelayHubAddress')
-// const defaultGasPrice = argv.DefaultGasPrice || 1e9 // 1 Gwei
-const gasPricePercent = argv.GasPricePercent || 10
-// const registrationBlockRate = argv.RegistrationBlockRate || 6000 - 200
-const ethereumNodeUrl = argv.EthereumNodeUrl || 'http://localhost:8545'
-const workdir = argv.Workdir || error('missing --Workdir')
-const devMode = argv.DevMode || false
-const Debug = argv.Debug || false
+const config = require(argv.config)
+const baseRelayFee = argv.baseRelayFee || config.baseRelayFee
+const pctRelayFee = argv.pctRelayFee || config.pctRelayFee
+const url = argv.url || config.url
+const port = argv.port || config.port
+const relayHubAddress = getRelayHubAddress(argv.relayHubAddress) || config.relayHubAddress || error('missing --RelayHubAddress')
+const gasPricePercent = argv.gasPricePercent || config.gasPricePercent
+const ethereumNodeUrl = argv.ethereumNodeUrl || config.ethereumNodeUrl
+const workdir = argv.workdir || config.workdir || error('missing --Workdir')
+const devMode = argv.devMode || config.devMode
+const Debug = argv.debug || config.debug
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)

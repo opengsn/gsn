@@ -55,8 +55,8 @@ options.forEach(params => {
           pctRelayFee: 12,
           url: 'asd',
           relayOwner: accounts[0],
-          EthereumNodeUrl: web3.currentProvider.host,
-          GasPricePercent: gasPricePercent
+          ethereumNodeUrl: web3.currentProvider.host,
+          gasPricePercent: gasPricePercent
         })
         console.log('relay started')
         from = gasless

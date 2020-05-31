@@ -547,6 +547,10 @@ contract('RelayServer', function (accounts) {
           `Wrong hub address.\nRelay server's hub address: ${relayServer.hubAddress}, request's hub address: 0xdeadface\n`)
       }
     })
+    describe('trusted paymasters flows', function () {
+      it('should validate fees if not given trusted paymasters')
+      it('should  bypass fee checks if given trusted paymasters')
+    })
   })
 
   describe('resend unconfirmed transactions task', function () {

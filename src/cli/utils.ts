@@ -35,18 +35,18 @@ export function getPaymasterAddress (paymaster?: string): string | undefined {
   return getAddressFromFile('build/gsn/Paymaster.json', paymaster)
 }
 
-export function getRelayHubAddress (hub?: string): string | undefined {
-  return getAddressFromFile('build/gsn/RelayHub.json', hub)
+export function getRelayHubAddress (defaultAddress?: string): string | undefined {
+  return getAddressFromFile('build/gsn/RelayHub.json', defaultAddress)
 }
 
-function getAddressFromFile (path: string, input?: string): string | undefined {
-  if (input == null) {
+function getAddressFromFile (path: string, defaultAddress?: string): string | undefined {
+  if (defaultAddress == null) {
     if (fs.existsSync(path)) {
       const relayHubDeployInfo = fs.readFileSync(path).toString()
       return JSON.parse(relayHubDeployInfo).address
     }
   }
-  return input
+  return defaultAddress
 }
 
 function saveContractToFile (address: Address, workdir: string, filename: string): void {
