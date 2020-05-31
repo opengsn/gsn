@@ -82,9 +82,7 @@ module.exports = {
       calldataSize,
       gtxdatanonzero
     }) {
-    return 21000 +
-      hubOverhead +
-      calldataSize * gtxdatanonzero +
+    return hubOverhead +
       parseInt(relayCallGasLimit) +
       parseInt(gasLimits.acceptRelayedCallGasLimit) +
       parseInt(gasLimits.preRelayedCallGasLimit) +

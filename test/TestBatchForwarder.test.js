@@ -26,7 +26,7 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
 
     const stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
-    hub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
+    hub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     const relayHub = hub
     await stakeManager.stakeForAddress(relayManager, 2000, {
       value: ether('2'),

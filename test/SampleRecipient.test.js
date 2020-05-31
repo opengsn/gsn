@@ -34,8 +34,7 @@ contract('SampleRecipient', function (accounts) {
     const deposit = new Big('100000000000000000')
     const stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
-    const rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, stakeManager.address,
-      penalizer.address)
+    const rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(rhub.address)
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally

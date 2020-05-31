@@ -46,7 +46,7 @@ options.forEach(params => {
 
       sm = await StakeManager.new()
       const p = await Penalizer.new()
-      rhub = await RelayHub.new(Environments.defaultEnvironment.gtxdatanonzero, sm.address, p.address, { gas: 10000000 })
+      rhub = await RelayHub.new(sm.address, p.address, { gas: 10000000 })
       if (params.relay) {
         relayproc = await testutils.startRelay(rhub.address, sm, {
           // relaylog:true,

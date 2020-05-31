@@ -219,7 +219,7 @@ export default class CommandsLogic {
     const fInstance =
       await this.contract(Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
     const rInstance = await this.contract(RelayHub).deploy({
-      arguments: [16, sInstance.options.address, pInstance.options.address]
+      arguments: [sInstance.options.address, pInstance.options.address]
     }).send(merge(options, { gas: 5e6 }))
 
     await pmInstance.methods.setRelayHub(rInstance.options.address).send({

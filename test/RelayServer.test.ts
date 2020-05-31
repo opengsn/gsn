@@ -82,7 +82,7 @@ contract('RelayServer', function (accounts) {
 
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    rhub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
+    rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     sr = await TestRecipient.new()
     const forwarderAddress = await sr.getTrustedForwarder()
     forwarder = await TrustedForwarder.at(forwarderAddress)

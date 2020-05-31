@@ -40,7 +40,7 @@ contract.skip('RelayHub Penalizations', function ([_, relayOwner, relayWorker, o
   before(async function () {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
+    relayHub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
 

@@ -97,7 +97,7 @@ contract('RelaySelectionManager', function (accounts) {
         const RelayHub = artifacts.require('RelayHub')
         const StakeManager = artifacts.require('StakeManager')
         const stakeManager = await StakeManager.new()
-        relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+        relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
 
