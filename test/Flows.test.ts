@@ -92,7 +92,7 @@ options.forEach(params => {
           paymasterAddress: paymaster.address,
           // override requested gas price
           // override requested gas limit.
-          verbose:true,
+          verbose: true
         }
 
         // @ts-ignore
@@ -112,11 +112,7 @@ options.forEach(params => {
       let res
       try {
         const gas = await sr.contract.methods.emitMessage('hello').estimateGas()
-        console.log( '== gas estim: ', gas)
         res = await sr.emitMessage('hello', { from: from, gas })
-        console.log( '==gas used=', res.gasUsed)
-        //DT TODO: why we had here filterPaymaster ?
-        res = await sr.emitMessage('hello', { from: from, gas, paymaster: paymaster.address })
       } catch (e) {
         console.log('error is ', e.message)
         throw e

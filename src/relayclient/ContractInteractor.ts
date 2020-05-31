@@ -159,6 +159,7 @@ export default class ContractInteractor {
     const recipient = await this._createRecipient(recipientAddress)
     return recipient.isTrustedForwarder(forwarder)
   }
+
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
     const forwarder = await this._createForwarder(forwarderAddress)
     const nonce = await forwarder.getNonce(sender)

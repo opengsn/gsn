@@ -23,7 +23,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-require('source-map-support').install({ errorFormatterForce: true})
+require('source-map-support').install({ errorFormatterForce: true })
 
 function correctGasCost (buffer: Buffer, nonzerocost: number, zerocost: number): number {
   let gasCost = 0
@@ -136,11 +136,10 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
   })
 
   describe('#relayCall()', function () {
-
     it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'acceptRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
-        console.log( "gas limit=", transactionGasLimit.toNumber()/1e9, "gwei")
+        console.log('gas limit=', transactionGasLimit.toNumber() / 1e9, 'gwei')
         const { tx } = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
           from: relayWorker,
           gas: transactionGasLimit.toString(),

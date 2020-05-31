@@ -4,7 +4,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import chaiAsPromised from 'chai-as-promised'
 import Web3 from 'web3'
-import {toBN} from 'web3-utils'
+import { toBN } from 'web3-utils'
 
 import { BaseTransactionReceipt, RelayProvider } from '../../src/relayclient/RelayProvider'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
@@ -272,7 +272,7 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-      const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas,{
+      const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
         gasPrice: '1'
