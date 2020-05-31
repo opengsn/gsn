@@ -27,7 +27,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
+    relayHub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setRelayHub(relayHub.address)
   })

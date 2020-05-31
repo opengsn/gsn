@@ -84,7 +84,7 @@ contract('RelayProvider', function (accounts) {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+    relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
     const paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address
     await paymasterInstance.setRelayHub(relayHub.address)

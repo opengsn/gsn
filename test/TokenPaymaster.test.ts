@@ -47,12 +47,13 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
 
   async function calculatePostGas (paymaster: TokenPaymasterInstance): Promise<void> {
     const testpaymaster = await TokenPaymaster.new(await paymaster.uniswap(), { gas: 1e7 })
-    const calc = await TokenGasCalculator.new(defaultEnvironment.gtxdatanonzero, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, { gas: 10000000 })
+    const calc = await TokenGasCalculator.new(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, { gas: 10000000 })
     await testpaymaster.transferOwnership(calc.address)
     // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
-    await token.mint(1000)
-    await token.transfer(calc.address, 1000)
+    await token.mint(1e18.toString())
+    await token.transfer(calc.address, 1e18.toString())
     const ret = await calc.calculatePostGas.call(testpaymaster.address)
+    console.log('gas calculator result=', ret)
     await paymaster.setPostGasUsage(ret[0], ret[1])
   }
 
@@ -64,11 +65,11 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     })
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    hub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
+    hub = await RelayHub.new(stakeManager.address, penalizer.address)
     token = await TestToken.at(await uniswap.tokenAddress())
 
     paymaster = await TokenPaymaster.new(uniswap.address, { gas: 1e7 })
-    await calculatePostGas(paymaster)
+    // await calculatePostGas(paymaster)
     await paymaster.setRelayHub(hub.address)
 
     forwarder = await TrustedForwarder.new({ gas: 1e7 })
@@ -175,7 +176,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const ret = await hub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
         from: relay,
         gasPrice: 1,
-        gas: 1.516181e6
+        gas: externalGasLimit
       })
 
       // console.log(getLogs(ret))
@@ -185,6 +186,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       // console.log(getLogs(events))
       const chargedEvent = events.find((e: any) => e.event === 'TokensCharged')
 
+      console.log({ relayed, chargedEvent })
+      console.log('charged: ', relayed.args.charge.toString())
       assert.equal(relayed!.args.status, 0)
       const postTokens = await token.balanceOf(recipient.address)
       const usedTokens = preTokens.sub(postTokens)

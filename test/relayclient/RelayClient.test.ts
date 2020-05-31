@@ -61,7 +61,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+    relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
     testRecipient = await TestRecipient.new()
     forwarderAddress = await testRecipient.getTrustedForwarder()
     paymaster = await TestPaymasterEverythingAccepted.new()
