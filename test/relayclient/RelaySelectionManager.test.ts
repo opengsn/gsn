@@ -1,7 +1,7 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
 import { HttpProvider } from 'web3-core'
-import { GasPricePingFilter } from '../../src/relayclient'
+import { GasPricePingFilter } from '../../src/relayclient/RelayClient'
 import RelaySelectionManager from '../../src/relayclient/RelaySelectionManager'
 import { configureGSN, getDependencies, GSNDependencies } from '../../src/relayclient/GSNConfigurator'
 import { PingFilter } from '../../src/relayclient/types/Aliases'
