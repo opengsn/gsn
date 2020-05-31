@@ -9,9 +9,8 @@ pragma experimental ABIEncoderV2;
 import "./0x/LibBytesV06.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./utils/EIP712Sig.sol";
-import "./utils/GSNTypes.sol";
 import "./utils/GsnUtils.sol";
+import "./interfaces/ISignatureVerifier.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/ITrustedForwarder.sol";
@@ -42,7 +41,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 36800;
+    uint256 constant private GAS_OVERHEAD = 36867;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
@@ -63,11 +62,10 @@ contract RelayHub is IRelayHub {
 
     mapping(address => uint256) private balances;
 
-    EIP712Sig public eip712sig;
     StakeManager public stakeManager;
     Penalizer public penalizer;
+
     constructor (uint256 _gtxdatanonzero, StakeManager _stakeManager, Penalizer _penalizer) public {
-        eip712sig = new EIP712Sig(address(this));
         stakeManager = _stakeManager;
         penalizer = _penalizer;
         gtxdatanonzero = _gtxdatanonzero;
@@ -134,14 +132,14 @@ contract RelayHub is IRelayHub {
     }
 
     function canRelay(
-        GSNTypes.RelayRequest memory relayRequest,
+        ISignatureVerifier.RelayRequest memory relayRequest,
         uint256 initialGas,
         bytes memory signature,
         bytes memory approvalData
     )
     private
     view
-    returns (bool success, bytes memory returnValue, GSNTypes.GasLimits memory gasLimits)
+    returns (bool success, bytes memory returnValue, IPaymaster.GasLimits memory gasLimits)
     {
         gasLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
@@ -184,13 +182,13 @@ contract RelayHub is IRelayHub {
         uint256 initialGas;
         bytes4 functionSelector;
         bytes recipientContext;
-        GSNTypes.GasLimits gasLimits;
+        IPaymaster.GasLimits gasLimits;
         RelayCallStatus status;
     }
     function relayCall(
     // TODO: msg.sender used to be treated as 'relay' (now passed in a struct),
     //  make sure this does not have security impl
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
     )
@@ -213,7 +211,7 @@ contract RelayHub is IRelayHub {
         bool success;
         (success, vars.recipientContext, vars.gasLimits) =
             canRelay(
-                GSNTypes.RelayRequest(
+                ISignatureVerifier.RelayRequest(
                     relayRequest.target,
                     relayRequest.encodedFunction,
                     relayRequest.gasData,
@@ -278,9 +276,9 @@ contract RelayHub is IRelayHub {
     }
 
     function recipientCallsAtomic(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        GSNTypes.GasLimits calldata gasLimits,
+        IPaymaster.GasLimits calldata gasLimits,
         uint256 totalInitialGas,
         uint256 calldataGas,
         bytes calldata recipientContext
@@ -364,7 +362,7 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gasUsed, GSNTypes.GasData memory gasData) public override virtual view returns (uint256) {
+    function calculateCharge(uint256 gasUsed, ISignatureVerifier.GasData memory gasData) public override virtual view returns (uint256) {
         return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
     }
 

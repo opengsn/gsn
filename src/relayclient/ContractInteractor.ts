@@ -11,7 +11,7 @@ import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
-import { event2topic } from '../common/utils'
+import { event2topic } from '../common/Utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import {
   BaseRelayRecipientInstance,

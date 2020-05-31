@@ -2,10 +2,9 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "./utils/GSNTypes.sol";
 import "./utils/GsnUtils.sol";
-import "./utils/EIP712Sig.sol";
 import "./interfaces/ITrustedForwarder.sol";
+import "./SignatureVerifier.sol";
 
 contract TrustedForwarder is ITrustedForwarder {
 
@@ -13,24 +12,24 @@ contract TrustedForwarder is ITrustedForwarder {
         return "2.0.0-alpha.1+opengsn.forwarder.iforwarder";
     }
 
-    EIP712Sig private eip712sig;
+    SignatureVerifier private signatureVerifier;
 
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
 
     constructor() public {
-        eip712sig = new EIP712Sig(address(this));
+        signatureVerifier = new SignatureVerifier(address(this));
     }
 
     function getNonce(address from) external override view returns (uint256) {
         return nonces[from];
     }
 
-    function verify(GSNTypes.RelayRequest memory req, bytes memory sig) public override view {
+    function verify(ISignatureVerifier.RelayRequest memory req, bytes memory sig) public override view {
         _verify(req, sig);
     }
 
-    function verifyAndCall(GSNTypes.RelayRequest memory req, bytes memory sig)
+    function verifyAndCall(ISignatureVerifier.RelayRequest memory req, bytes memory sig)
     public
     override
     {
@@ -43,20 +42,20 @@ contract TrustedForwarder is ITrustedForwarder {
         require(success, GsnUtils.getError(returnValue));
     }
 
-    function _verify(GSNTypes.RelayRequest memory req, bytes memory sig) internal view {
+    function _verify(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal view {
         _verifyNonce(req);
         _verifySig(req, sig);
     }
 
-    function _verifyNonce(GSNTypes.RelayRequest memory req) internal view {
+    function _verifyNonce(ISignatureVerifier.RelayRequest memory req) internal view {
         require(nonces[req.relayData.senderAddress] == req.relayData.senderNonce, "nonce mismatch");
     }
 
-    function _updateNonce(GSNTypes.RelayRequest memory req) internal {
+    function _updateNonce(ISignatureVerifier.RelayRequest memory req) internal {
         nonces[req.relayData.senderAddress]++;
     }
 
-    function _verifySig(GSNTypes.RelayRequest memory req, bytes memory sig) internal view {
-        require(eip712sig.verify(req, sig), "signature mismatch");
+    function _verifySig(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal view {
+        require(signatureVerifier.verify(req, sig), "signature mismatch");
     }
 }

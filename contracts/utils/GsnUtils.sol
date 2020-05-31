@@ -4,8 +4,6 @@ pragma solidity ^0.6.2;
 
 import "../0x/LibBytesV06.sol";
 
-import "./GSNTypes.sol";
-
 library GsnUtils {
 
     function getChainID() internal pure returns (uint256) {

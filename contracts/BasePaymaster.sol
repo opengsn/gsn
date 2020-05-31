@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "./interfaces/ISignatureVerifier.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
 
@@ -32,9 +33,9 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     override
     view
     returns (
-        GSNTypes.GasLimits memory limits
+        IPaymaster.GasLimits memory limits
     ) {
-        return GSNTypes.GasLimits(
+        return IPaymaster.GasLimits(
             ACCEPT_RELAYED_CALL_GAS_LIMIT,
             PRE_RELAYED_CALL_GAS_LIMIT,
             POST_RELAYED_CALL_GAS_LIMIT

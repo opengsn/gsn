@@ -1,4 +1,8 @@
-const EIP712Domain = [
+import { Address } from '../../relayclient/types/Aliases'
+import RelayRequest from './RelayRequest'
+import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types } from 'eth-sig-util'
+
+const EIP712DomainType = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
   // { name: 'chainId', type: 'uint256' },
@@ -20,36 +24,43 @@ const RelayDataType = [
   { name: 'forwarder', type: 'address' }
 ]
 
-const RelayRequest = [
+const RelayRequestType = [
   { name: 'target', type: 'address' },
   { name: 'encodedFunction', type: 'bytes' },
   { name: 'gasData', type: 'GasData' },
   { name: 'relayData', type: 'RelayData' }
 ]
 
-module.exports = function getDataToSign (
-  {
-    chainId,
-    verifier,
-    relayRequest
-  }
-) {
-  if (!verifier) throw new Error('missing "verifier"')
-  // TODO: enable ChainID opcode in the EIP712Sig
-  return {
-    types: {
-      EIP712Domain,
-      RelayRequest,
+interface Types extends EIP712Types {
+  EIP712Domain: EIP712TypeProperty[]
+  RelayRequest: EIP712TypeProperty[]
+  GasData: EIP712TypeProperty[]
+  RelayData: EIP712TypeProperty[]
+}
+
+export default class TypedRequestData implements EIP712TypedData {
+  readonly types: Types
+  readonly domain: EIP712Domain
+  readonly primaryType: string
+  readonly message: RelayRequest
+
+  constructor (
+    chainId: number,
+    verifier: Address,
+    relayRequest: RelayRequest) {
+    this.types = {
+      EIP712Domain: EIP712DomainType,
+      RelayRequest: RelayRequestType,
       GasData: GasDataType,
       RelayData: RelayDataType
-    },
-    domain: {
+    }
+    this.domain = {
       name: 'GSN Relayed Transaction',
       version: '1',
       chainId: chainId,
       verifyingContract: verifier
-    },
-    primaryType: 'RelayRequest',
-    message: relayRequest
+    }
+    this.primaryType = 'RelayRequest'
+    this.message = relayRequest
   }
 }

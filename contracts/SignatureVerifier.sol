@@ -3,12 +3,13 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
-import "./GSNTypes.sol";
+import "./interfaces/ISignatureVerifier.sol";
 
-// https://github.com/ethereum/EIPs/blob/master/assets/eip-712/Example.sol
-contract EIP712Sig {
+contract SignatureVerifier is ISignatureVerifier{
 
     using ECDSA for bytes32;
+
+    string public override versionSM = "2.0.0-alpha.1+opengsn.sv.isignatureverifier";
 
     struct EIP712Domain {
         string name;
@@ -52,7 +53,7 @@ contract EIP712Sig {
             ));
     }
 
-    function hash(GSNTypes.RelayRequest memory req) internal pure returns (bytes32) {
+    function hash(RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
                     req.target,
@@ -62,7 +63,7 @@ contract EIP712Sig {
             ));
     }
 
-    function hash(GSNTypes.GasData memory req) internal pure returns (bytes32) {
+    function hash(GasData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 CALLDATA_TYPEHASH,
                 req.gasLimit,
@@ -72,7 +73,7 @@ contract EIP712Sig {
             ));
     }
 
-    function hash(GSNTypes.RelayData memory req) internal pure returns (bytes32) {
+    function hash(RelayData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
                 req.senderAddress,
@@ -83,19 +84,11 @@ contract EIP712Sig {
             ));
     }
 
-    function verify(GSNTypes.RelayRequest memory req, bytes memory signature) public view returns (bool) {
+    function verify(RelayRequest memory req, bytes memory signature) public view override returns (bool) {
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hash(req)
             ));
         return digest.recover(signature) == req.relayData.senderAddress;
-    }
-
-    function getChainID() internal pure returns (uint256) {
-//        uint256 id;
-//        assembly {
-//            id := chainid()
-//        }
-        return 7;
     }
 }

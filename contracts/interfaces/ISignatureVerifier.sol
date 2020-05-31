@@ -1,7 +1,8 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
+pragma experimental ABIEncoderV2;
 
-library GSNTypes {
+interface ISignatureVerifier{
 
     struct GasData {
         uint256 gasLimit;
@@ -25,9 +26,7 @@ library GSNTypes {
         RelayData relayData;
     }
 
-    struct GasLimits {
-        uint256 acceptRelayedCallGasLimit;
-        uint256 preRelayedCallGasLimit;
-        uint256 postRelayedCallGasLimit;
-    }
+    function verify(RelayRequest calldata req, bytes calldata signature) external view returns (bool);
+
+    function versionSM() external view returns (string memory);
 }

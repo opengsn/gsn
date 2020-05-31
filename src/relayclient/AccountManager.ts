@@ -1,14 +1,14 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
 import RelayRequest from '../common/EIP712/RelayRequest'
-import getDataToSign from '../common/EIP712/Eip712Helper'
 import sigUtil from 'eth-sig-util'
-import { getEip712Signature, isSameAddress } from '../common/utils'
+import { getEip712Signature, isSameAddress } from '../common/Utils'
 import { Address } from './types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { GSNConfig } from './GSNConfigurator'
 import { HttpProvider } from 'web3-core'
 import Web3 from 'web3'
+import TypedRequestData from '../common/EIP712/TypedRequestData'
 
 export interface AccountKeypair {
   privateKey: Buffer
@@ -53,11 +53,11 @@ export default class AccountManager {
   // TODO: make forwarder part of RelayRequest, why is it dangling??
   async sign (relayRequest: RelayRequest, forwarderAddress: Address): Promise<PrefixedHexString> {
     let signature
-    const signedData = getDataToSign({
-      chainId: this.chainId,
-      verifier: forwarderAddress,
+    const signedData = new TypedRequestData(
+      this.chainId,
+      forwarderAddress,
       relayRequest
-    })
+    )
     const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.relayData.senderAddress))
     if (keypair != null) {
       signature = this._signWithControlledKey(keypair, signedData)
@@ -88,15 +88,14 @@ export default class AccountManager {
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
     return getEip712Signature(
-      {
-        web3: this.web3,
-        methodSuffix: this.config.methodSuffix ?? '',
-        jsonStringifyRequest: this.config.jsonStringifyRequest ?? false,
-        dataToSign: signedData
-      })
+      this.web3,
+      signedData,
+      this.config.methodSuffix ?? '',
+      this.config.jsonStringifyRequest ?? false
+    )
   }
 
-  _signWithControlledKey (keypair: AccountKeypair, signedData: any): string {
+  _signWithControlledKey (keypair: AccountKeypair, signedData: TypedRequestData): string {
     // @ts-ignore
     return sigUtil.signTypedData_v4(keypair.privateKey, { data: signedData })
   }

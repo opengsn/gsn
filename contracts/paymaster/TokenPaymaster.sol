@@ -45,7 +45,7 @@ contract TokenPaymaster is BasePaymaster {
 
     //return the payer of this request.
     // for account-based target, this is the target account.
-    function getPayer(GSNTypes.RelayRequest calldata relayRequest) external pure returns (address) {
+    function getPayer(ISignatureVerifier.RelayRequest calldata relayRequest) external pure returns (address) {
         return relayRequest.target;
     }
 
@@ -63,7 +63,7 @@ contract TokenPaymaster is BasePaymaster {
      *  The methods preRelayedCall, postRelayedCall already handle such zero tokenPreCharge.
      */
     function acceptRelayedCall(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -102,7 +102,7 @@ contract TokenPaymaster is BasePaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        GSNTypes.GasData calldata gasData
+        ISignatureVerifier.GasData calldata gasData
     ) external override relayHubOnly {
         (success, preRetVal);
 

@@ -8,9 +8,7 @@ import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-t
 import RelayHubABI from '../common/interfaces/IRelayHub.json'
 import PayMasterABI from '../common/interfaces/IPaymaster.json'
 import StakeManagerABI from '../common/interfaces/IStakeManager.json'
-import getDataToSign from '../common/EIP712/Eip712Helper'
 import RelayRequest from '../common/EIP712/RelayRequest'
-import utils from '../common/utils'
 import { StoredTx, transactionToStoredTx, TxStoreManager } from './TxStoreManager'
 
 import { Mutex } from 'async-mutex'
@@ -26,6 +24,7 @@ import { toBN, toHex } from 'web3-utils'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../relayclient/types/Environments'
 import VersionsManager from '../common/VersionsManager'
+import { calculateTransactionMaxPossibleGas } from '../common/Utils'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -70,6 +69,7 @@ class StateError extends Error {
 export interface CreateTransactionDetails extends GsnTransactionDetails {
   // todo: gasLimit defined as "gas"
   gasLimit: PrefixedHexString
+  gasPrice: PrefixedHexString
   // todo: encodedFunction defined as "data"
   encodedFunction: PrefixedHexString
   approvalData: PrefixedHexString
@@ -244,26 +244,24 @@ export class RelayServer extends EventEmitter {
     }
 
     // Check canRelay view function to see if we'll get paid for relaying this tx
-    const relayRequest = new RelayRequest({
-      senderAddress: req.from,
-      senderNonce: req.senderNonce,
+    const relayRequest: RelayRequest = {
       target: req.to,
       encodedFunction: req.encodedFunction,
-      baseRelayFee: req.baseRelayFee,
-      pctRelayFee: req.pctRelayFee,
-      gasPrice: req.gasPrice,
-      gasLimit: req.gasLimit,
-      paymaster: req.paymaster,
-      forwarder: req.forwarder,
-      relayWorker: this.getAddress(1)
-    })
-    // TODO: should not use signedData at all. only the relayRequest.
-    const signedData = getDataToSign({
-      chainId: this.chainId,
-      verifier: this.relayHubContract.address,
-      relayRequest
-    })
-    const method = this.relayHubContract.contract.methods.relayCall(signedData.message, req.signature, req.approvalData)
+      gasData: {
+        baseRelayFee: req.baseRelayFee,
+        pctRelayFee: req.pctRelayFee,
+        gasPrice: req.gasPrice,
+        gasLimit: req.gasLimit
+      },
+      relayData: {
+        senderAddress: req.from,
+        senderNonce: req.senderNonce,
+        paymaster: req.paymaster,
+        forwarder: req.forwarder,
+        relayWorker: this.getAddress(1)
+      }
+    }
+    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData)
     const calldataSize = method.encodeABI().length / 2
     debug('calldatasize', calldataSize)
     let gasLimits
@@ -288,10 +286,10 @@ export class RelayServer extends EventEmitter {
 
     const hubOverhead = (await this.relayHubContract.getHubOverhead()).toNumber()
     // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-    const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
+    const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: parseInt(req.gasLimit),
+      relayCallGasLimit: req.gasLimit,
       calldataSize,
       gtxdatanonzero: gtxdatanonzero
     })
@@ -299,12 +297,12 @@ export class RelayServer extends EventEmitter {
     let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       canRelayRet = await this.relayHubContract.contract.methods.relayCall(
-        signedData.message,
+        relayRequest,
         req.signature,
         req.approvalData)
         .call({
           from: this.getAddress(workerIndex),
-          gasPrice: signedData.message.gasData.gasPrice
+          gasPrice: relayRequest.gasData.gasPrice
         })
     } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -337,8 +335,8 @@ export class RelayServer extends EventEmitter {
         signerIndex: workerIndex,
         method,
         destination: req.relayHubAddress,
-        gasLimit: maxPossibleGas,
-        gasPrice: req.gasPrice as string
+        gasLimit: maxPossibleGas.toString(),
+        gasPrice: req.gasPrice
       })
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishWorker(1)
