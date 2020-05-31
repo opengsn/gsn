@@ -87,7 +87,7 @@ options.forEach(params => {
           // override requested gas limit.
           force_gasLimit: 100000,
           // verbose: process.env.DEBUG
-          verbose:true,
+          verbose: true
         }
 
         const relayProvider = new RelayProvider(web3.currentProvider, relayClientConfig)
@@ -106,11 +106,7 @@ options.forEach(params => {
       let res
       try {
         const gas = await sr.contract.methods.emitMessage('hello').estimateGas()
-        console.log( '== gas estim: ', gas)
         res = await sr.emitMessage('hello', { from: from, gas })
-        console.log( '==gas used=', res.gasUsed)
-        //DT TODO: why we had here filterPaymaster ?
-        res = await sr.emitMessage('hello', { from: from, gas, paymaster: paymaster.address })
       } catch (e) {
         console.log('error is ', e.message)
         throw e
