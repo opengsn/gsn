@@ -33,7 +33,7 @@ abiDecoder.addABI(StakeManagerABI)
 const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
-const VERSION = '0.9.1'
+const VERSION = '0.9.2'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
@@ -441,18 +441,26 @@ export class RelayServer extends EventEmitter {
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
       const balance = await this.getManagerBalance()
+      const managerHubBalance = await this.relayHubContract?.balanceOf(this.managerAddress) ?? toBN(0)
       console.log(
         `== replenishWorker(${workerIndex}): mgr balance=${balance.div(
-          toBN(1e18)).toString()} worker balance=${workerBalance.div(
+          toBN(1e18)).toString()}  manager hub balance=${managerHubBalance.div(toBN(1e18)).toString()} 
+          worker balance=${workerBalance.div(
           toBN(1e18)).toString()} refill=${refill.div(toBN(1e18)).toString()}`)
-      if (refill.lt(balance.sub(toBN(minimumRelayBalance)))) {
+      if (refill.lt(managerHubBalance.sub(toBN(minimumRelayBalance)))) {
+        const method = this.relayHubContract?.contract.methods.withdraw(toHex(refill), workerAddress)
+        await this._sendTransaction({
+          signerIndex: 0,
+          destination: this.relayHubContract?.address as string,
+          method
+        })
+      } else if (refill.lt(balance.sub(toBN(minimumRelayBalance)))) {
         await this._sendTransaction({
           signerIndex: 0,
           destination: workerAddress,
           value: toHex(refill),
           gasLimit: mintxgascost.toString()
         })
-        await this.getManagerBalance()
       } else {
         console.log(
           `== replenishWorker: can't replenish: mgr balance too low ${balance.div(toBN(1e18)).toString()} refill=${refill.div(
