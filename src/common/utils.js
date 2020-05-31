@@ -70,17 +70,13 @@ module.exports = {
    * @param gasLimits
    * @param hubOverhead
    * @param relayCallGasLimit
-   * @param calldataSize
-   * @param gtxdatanonzero
    * @returns maximum possible gas consumption by this relayed call
    */
   calculateTransactionMaxPossibleGas: function (
     {
       gasLimits,
       hubOverhead,
-      relayCallGasLimit,
-      calldataSize,
-      gtxdatanonzero
+      relayCallGasLimit
     }) {
     return hubOverhead +
       parseInt(relayCallGasLimit) +

@@ -4,7 +4,6 @@ import { HttpProvider } from 'web3-core'
 import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import {
   RelayHubInstance,
   StakeManagerInstance,

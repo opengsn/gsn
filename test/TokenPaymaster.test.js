@@ -27,7 +27,7 @@ async function revertReason (func) {
   }
 }
 
-contract.only('TokenPaymaster', ([from, relay, relayOwner]) => {
+contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let paymaster, uniswap, token, recipient, hub, forwarder
   let stakeManager
   let penalizer
@@ -56,7 +56,9 @@ contract.only('TokenPaymaster', ([from, relay, relayOwner]) => {
     token = await TestToken.at(await uniswap.tokenAddress())
 
     paymaster = await TokenPaymaster.new(uniswap.address, { gas: 1e7 })
-    // await calculatePostGas(paymaster)
+    if (!paymaster) { // TODO: placeholder - fix
+      await calculatePostGas(paymaster)
+    }
     await paymaster.setRelayHub(hub.address)
 
     forwarder = await TrustedForwarder.new({ gas: 1e7 })

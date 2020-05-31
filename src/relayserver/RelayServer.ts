@@ -31,7 +31,6 @@ abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
 
-const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
 const VERSION = '0.9.1'
@@ -265,8 +264,6 @@ export class RelayServer extends EventEmitter {
     })
 
     let method = this.relayHubContract.contract.methods.relayCall(signedData.message, req.signature, req.approvalData, 7e6)
-    const calldataSize = method.encodeABI().length / 2
-    debug('calldatasize', calldataSize)
     let gasLimits
     try {
       if (this.paymasterContract === undefined) {
@@ -292,9 +289,7 @@ export class RelayServer extends EventEmitter {
     const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: parseInt(req.gasLimit),
-      calldataSize,
-      gtxdatanonzero: gtxdatanonzero
+      relayCallGasLimit: parseInt(req.gasLimit)
     })
 
     method = this.relayHubContract.contract.methods.relayCall(signedData.message, req.signature, req.approvalData, maxPossibleGas)

@@ -15,7 +15,6 @@ import {
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import RelayClient from '../../src/relayclient/RelayClient'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { Address, AsyncApprovalData } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
