@@ -3,7 +3,6 @@ require('ts-node/register')
 var HDWalletProvider = require('truffle-hdwallet-provider')
 var mnemonic = 'digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six'
 
-const packageJson = require('./package.json')
 const secretMnemonicFile = './secret_mnemonic'
 const fs = require('fs')
 let secretMnemonic

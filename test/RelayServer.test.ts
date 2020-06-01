@@ -6,7 +6,6 @@ import { TxStoreManager } from '../src/relayserver/TxStoreManager'
 import { KeyManager } from '../src/relayserver/KeyManager'
 import RelayHubABI from '../src/common/interfaces/IRelayHub.json'
 import PayMasterABI from '../src/common/interfaces/IPaymaster.json'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import * as ethUtils from 'ethereumjs-util'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 // @ts-ignore
@@ -82,7 +81,7 @@ contract('RelayServer', function (accounts) {
 
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    rhub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
+    rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     sr = await TestRecipient.new()
     const forwarderAddress = await sr.getTrustedForwarder()
     forwarder = await TrustedForwarder.at(forwarderAddress)
@@ -124,7 +123,6 @@ contract('RelayServer', function (accounts) {
      methodSuffix: string
      jsonStringifyRequest: boolean
      relayTimeoutGrace: number
-     gtxdatanonzero: number
      sliceSize: number
      verbose: boolean
      gasPriceFactorPercent: number

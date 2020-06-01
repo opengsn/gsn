@@ -9,6 +9,8 @@ import { configureGSN } from '../src/relayclient/GSNConfigurator'
 import { ether } from '@openzeppelin/test-helpers'
 import fs from 'fs'
 
+require('source-map-support').install({ errorFormatterForce: true })
+
 const localhostOne = 'http://localhost:8090'
 
 // start a background relay process.

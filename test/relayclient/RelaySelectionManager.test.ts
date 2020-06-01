@@ -7,7 +7,6 @@ import { configureGSN, getDependencies, GSNDependencies } from '../../src/relayc
 import { PingFilter } from '../../src/relayclient/types/Aliases'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { PartialRelayInfo } from '../../src/relayclient/types/RelayInfo'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { constants } from '@openzeppelin/test-helpers'
 import { register, stake } from './KnownRelaysManager.test'
 import PingResponse from '../../src/common/PingResponse'
@@ -97,7 +96,7 @@ contract('RelaySelectionManager', function (accounts) {
         const RelayHub = artifacts.require('RelayHub')
         const StakeManager = artifacts.require('StakeManager')
         const stakeManager = await StakeManager.new()
-        relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+        relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
 

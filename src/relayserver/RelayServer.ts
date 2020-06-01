@@ -30,7 +30,6 @@ abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
 
-const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
 const VERSION = '0.9.1'
@@ -261,9 +260,7 @@ export class RelayServer extends EventEmitter {
         relayWorker: this.getAddress(1)
       }
     }
-    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData)
-    const calldataSize = method.encodeABI().length / 2
-    debug('calldatasize', calldataSize)
+
     let gasLimits
     try {
       if (this.paymasterContract === undefined) {
@@ -289,20 +286,20 @@ export class RelayServer extends EventEmitter {
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: req.gasLimit,
-      calldataSize,
-      gtxdatanonzero: gtxdatanonzero
+      relayCallGasLimit: req.gasLimit
     })
-
+    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
     let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       canRelayRet = await this.relayHubContract.contract.methods.relayCall(
         relayRequest,
         req.signature,
-        req.approvalData)
+        req.approvalData,
+        maxPossibleGas)
         .call({
           from: this.getAddress(workerIndex),
-          gasPrice: relayRequest.gasData.gasPrice
+          gasPrice: relayRequest.gasData.gasPrice,
+          gasLimit: maxPossibleGas
         })
     } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

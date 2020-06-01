@@ -17,7 +17,6 @@ const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
 const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
   relayLookupWindowBlocks: 6000,
-  gtxdatanonzero: defaultEnvironment.gtxdatanonzero,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   minGasPrice: 0,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
@@ -52,7 +51,6 @@ export interface GSNConfig {
   methodSuffix: string
   jsonStringifyRequest: boolean
   relayTimeoutGrace: number
-  gtxdatanonzero: number
   sliceSize: number
   verbose: boolean
   gasPriceFactorPercent: number
