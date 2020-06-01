@@ -1,7 +1,6 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
-// @ts-ignore
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
@@ -15,7 +14,6 @@ import {
   ITrustedForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
-require('source-map-support').install({ errorFormatterForce: true })
 
 const RelayHub = artifacts.require('RelayHub')
 const TrustedForwarder = artifacts.require('TrustedForwarder')
