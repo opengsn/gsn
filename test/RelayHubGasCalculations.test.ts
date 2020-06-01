@@ -1,6 +1,7 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
+// @ts-ignore
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
@@ -14,6 +15,7 @@ import {
   ITrustedForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
+require('source-map-support').install({ errorFormatterForce: true })
 
 const RelayHub = artifacts.require('RelayHub')
 const TrustedForwarder = artifacts.require('TrustedForwarder')
@@ -22,8 +24,6 @@ const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
-
-require('source-map-support').install({ errorFormatterForce: true })
 
 contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
@@ -125,7 +125,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'acceptRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
-        console.log('gas limit=', transactionGasLimit.toNumber() / 1e9, 'gwei')
         const { tx } = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
           from: relayWorker,
           gas: transactionGasLimit.toString(),
@@ -150,10 +149,32 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         })
       })
 
-    /**
-     * This value is not accessible outside of the relay hub. This test must be added later.
-     */
-    it('should set correct gas limits and pass correct \'gasUsedWithoutPost\' to the \'postRelayCall\'')
+    it('should set correct gas limits and pass correct \'gasUsedWithoutPost\' to the \'postRelayCall\'', async () => {
+      const gasPrice = 1e9
+      const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', 0, {
+        gasLimit: 0,
+        gasPrice,
+        pctRelayFee: 0,
+        baseRelayFee: 0
+      }, { from: relayHub.address })) - 21000
+
+      const externalGasLimit = 5e6
+      const tx = await relayHub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
+        from: relayWorker,
+        gas: externalGasLimit.toString(),
+        gasPrice
+      })
+
+      const pmlogs = await paymaster.contract.getPastEvents()
+      const pmPostLog = pmlogs.find((e: any) => e.event === 'SampleRecipientPostCallWithValues')
+
+      const gasUseWithoutPost = parseInt(pmPostLog.returnValues.gasUseWithoutPost)
+      const usedGas = tx.receipt.gasUsed
+      assert.closeTo(gasUseWithoutPost, usedGas - estimatePostGas, 100,
+        'POST_OVERHEAD: increase by ' + (usedGas - estimatePostGas - gasUseWithoutPost).toString()
+      )
+      // @ts-ignore
+    })
 
     it('should revert an attempt to use more than allowed gas for acceptRelayedCall', async function () {
       // TODO: extract preparation to 'before' block
@@ -280,12 +301,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
               assert.equal((res.receipt.gasUsed * gasPrice).toString(), workerWeiGasUsed.toString(), 'where else did the money go?')
 
-              // const txRelayed:any = res.logs.find(e=>e.event=='TransactionRelayed')
-              // assert.equal(res.receipt.gasUsed, txRelayed.args.gasUsed.toNumber(),
-              //     'GAS_OVERHEAD: add='+(res.receipt.gasUsed-txRelayed.args.gasUsed.toNumber()))
-
               const expectedCharge = Math.floor(workerWeiGasUsed.toNumber() * (100 + requestedFee) / 100) + parseInt(baseRelayFee)
-              assert.closeTo(weiActualCharge.toNumber(), expectedCharge, 0,
+              assert.equal(weiActualCharge.toNumber(), expectedCharge,
                 'actual charge from paymaster higher than expected. diff= ' + ((weiActualCharge.toNumber() - expectedCharge) / gasPrice.toNumber()).toString())
 
               // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)

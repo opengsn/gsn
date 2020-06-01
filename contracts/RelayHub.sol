@@ -43,6 +43,9 @@ contract RelayHub is IRelayHub {
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
     uint256 constant private GAS_OVERHEAD = 34864;
 
+    //gas overhead to calculate gasUseWithoutPost
+    uint256 constant private POST_OVERHEAD = 8688;
+
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
     }
@@ -229,7 +232,7 @@ contract RelayHub is IRelayHub {
         // RelayCallStatus value.
         (, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, vars.gasLimits,
-                innerGasLimit + externalGasLimit-gasleft(),
+                innerGasLimit + externalGasLimit-gasleft() + GAS_OVERHEAD + POST_OVERHEAD, /*totalInitialGas*/
                 abi.decode(vars.recipientContext, (bytes)))
         );
     

@@ -53,8 +53,10 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     await token.mint(1e18.toString())
     await token.transfer(calc.address, 1e18.toString())
     const ret = await calc.calculatePostGas.call(testpaymaster.address)
-    console.log('gas calculator result=', ret)
-    await paymaster.setPostGasUsage(ret[0], ret[1])
+    const { gasUsedByPostWithPreCharge, gasUsedByPostWithoutPreCharge } = ret
+    console.log('post calculator:', gasUsedByPostWithPreCharge.toString(), gasUsedByPostWithoutPreCharge.toString())
+    console.log(ret)
+    await paymaster.setPostGasUsage(gasUsedByPostWithPreCharge, gasUsedByPostWithoutPreCharge)
   }
 
   before(async () => {
@@ -72,6 +74,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     await calculatePostGas(paymaster)
     await paymaster.setRelayHub(hub.address)
 
+    console.log('paymaster post with precharge=', await paymaster.gasUsedByPostWithPreCharge.toString())
+    console.log('paymaster post without precharge=', await paymaster.gasUsedByPostWithoutPreCharge.toString())
     forwarder = await TrustedForwarder.new({ gas: 1e7 })
     recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
 
@@ -179,11 +183,9 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         gas: externalGasLimit
       })
 
-      // console.log(getLogs(ret))
       const relayed = ret.logs.find(log => log.event === 'TransactionRelayed')
       // @ts-ignore
       const events = await paymaster.getPastEvents()
-      // console.log(getLogs(events))
       const chargedEvent = events.find((e: any) => e.event === 'TokensCharged')
 
       console.log({ relayed, chargedEvent })
@@ -193,7 +195,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       const usedTokens = preTokens.sub(postTokens)
 
       console.log('recipient tokens balance change (used tokens): ', usedTokens.toString())
-      console.log('reported charged tokens: ', chargedEvent.args.tokenActualCharge.toString())
+      console.log('reported charged tokens in TokensCharged: ', chargedEvent.args.tokenActualCharge.toString())
       const expectedTokenCharge = await uniswap.getTokenToEthOutputPrice(chargedEvent.args.ethActualCharge)
       assert.closeTo(usedTokens.toNumber(), expectedTokenCharge.toNumber(), 1000)
       const postBalance = await hub.balanceOf(paymaster.address)
@@ -202,8 +204,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         `expected paymaster balance not to be reduced: pre=${preBalance.toString()} post=${postBalance.toString()}`)
       // TODO: add test for relayed.args.charge, once gasUsedWithoutPost parameter is fixed (currently, its too high, and Paymaster "charges" too much)
       const postPaymasterTokens = await token.balanceOf(paymaster.address)
-      console.log('Paymaster "earned" tokens:', postPaymasterTokens.sub(prePaymasterTokens))
-      console.log('Paymaster "earned" deposit on RelayHub:', postBalance.sub(preBalance))
+      console.log('Paymaster "earned" tokens:', postPaymasterTokens.sub(prePaymasterTokens).toString())
+      console.log('Paymaster "earned" deposit on RelayHub:', postBalance.sub(preBalance).toString())
     })
   })
 })

@@ -129,8 +129,8 @@ contract TokenPaymaster is BasePaymaster {
         //solhint-disable-next-line
         uniswap.tokenToEthSwapOutput(ethActualCharge, uint(-1), block.timestamp+60*15);
         relayHub.depositFor{value:ethActualCharge}(address(this));
-        emit TokensCharged(gasUseWithoutPost, ethActualCharge, tokenActualCharge);
+        emit TokensCharged(gasUseWithoutPost, justPost, ethActualCharge, tokenActualCharge);
     }
 
-    event TokensCharged(uint gasUseWithoutPost, uint ethActualCharge, uint tokenActualCharge);
+    event TokensCharged(uint gasUseWithoutPost, uint gasJustPost, uint ethActualCharge, uint tokenActualCharge);
 }
