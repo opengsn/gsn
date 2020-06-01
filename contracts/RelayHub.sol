@@ -13,7 +13,7 @@ import "./utils/GsnUtils.sol";
 import "./interfaces/ISignatureVerifier.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
-import "./interfaces/ITrustedForwarder.sol";
+import "./interfaces/IForwarder.sol";
 import "./BaseRelayRecipient.sol";
 import "./StakeManager.sol";
 import "./Penalizer.sol";
@@ -41,7 +41,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 34835;
+    uint256 constant private GAS_OVERHEAD = 34876;
 
     //gas overhead to calculate gasUseWithoutPost
     uint256 constant private POST_OVERHEAD = 8688;
@@ -316,7 +316,7 @@ contract RelayHub is IRelayHub {
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (atomicData.relayedCallSuccess,) =
         relayRequest.relayData.forwarder.call(
-            abi.encodeWithSelector(ITrustedForwarder.verifyAndCall.selector, relayRequest, signature)
+            abi.encodeWithSelector(IForwarder.verifyAndCall.selector, relayRequest, signature)
         );
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate

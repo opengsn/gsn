@@ -27,7 +27,7 @@ import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
 const RelayHub = artifacts.require('RelayHub')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
@@ -37,7 +37,7 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
   const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
-  const testRecipientForwarder = await TrustedForwarder.at(testRecipientForwarderAddress)
+  const testRecipientForwarder = await Forwarder.at(testRecipientForwarderAddress)
   const senderNonce = (await testRecipientForwarder.getNonce(account)).toString()
   const relayRequest: RelayRequest = {
     target: testRecipient.address,

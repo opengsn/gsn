@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../interfaces/ITrustedForwarder.sol";
+import "../interfaces/IForwarder.sol";
 import "../BasePaymaster.sol";
 
 import "./IUniswap.sol";
@@ -75,7 +75,7 @@ contract TokenPaymaster is BasePaymaster {
         (approvalData);
 
         // Verify the sender's request is valid for selected forwarder
-        ITrustedForwarder forwarder = ITrustedForwarder(relayRequest.relayData.forwarder);
+        IForwarder forwarder = IForwarder(relayRequest.relayData.forwarder);
         forwarder.verify(relayRequest, signature);
 
         address payer = this.getPayer(relayRequest);

@@ -2,7 +2,7 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "./TrustedForwarder.sol";
+import "./Forwarder.sol";
 import "./BaseRelayRecipient.sol";
 import "./utils/GsnUtils.sol";
 
@@ -10,7 +10,7 @@ import "./utils/GsnUtils.sol";
  * batch forwarder support calling a method sendBatch in the forwarder itself.
  * NOTE: the "target" of the request should be the BatcherForwarder itself
  */
-contract TrustedBatchForwarder is TrustedForwarder, BaseRelayRecipient {
+contract BatchForwarder is Forwarder, BaseRelayRecipient {
 
     function versionForwarder() external view override returns (string memory){
         return "2.0.0-alpha.1+opengsn.batched.iforwarder";

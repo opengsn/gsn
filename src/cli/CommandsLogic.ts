@@ -13,7 +13,7 @@ import StakeManager from './compiled/StakeManager.json'
 import RelayHub from './compiled/RelayHub.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
-import Forwarder from './compiled/TrustedForwarder.json'
+import Forwarder from './compiled/Forwarder.json'
 
 import { Address, notNull } from '../relayclient/types/Aliases'
 import ContractInteractor from '../relayclient/ContractInteractor'

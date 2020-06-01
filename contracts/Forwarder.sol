@@ -3,10 +3,10 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./utils/GsnUtils.sol";
-import "./interfaces/ITrustedForwarder.sol";
+import "./interfaces/IForwarder.sol";
 import "./SignatureVerifier.sol";
 
-contract TrustedForwarder is ITrustedForwarder {
+contract Forwarder is IForwarder {
 
     function versionForwarder() external view virtual override returns (string memory){
         return "2.0.0-alpha.1+opengsn.forwarder.iforwarder";
