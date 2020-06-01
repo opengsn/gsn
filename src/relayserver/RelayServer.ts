@@ -137,7 +137,7 @@ export class RelayServer extends EventEmitter {
   readonly keyManager: KeyManager
   private readonly contractInteractor: ContractInteractor
   readonly hubAddress: Address
-  readonly trustedPaymasters?: Address[]
+  readonly trustedPaymasters: Address[]
   readonly baseRelayFee: number
   readonly pctRelayFee: number
   readonly gasPriceFactor: number
@@ -153,7 +153,7 @@ export class RelayServer extends EventEmitter {
     this.web3provider = params.web3provider
     this.keyManager = params.keyManager
     this.hubAddress = params.hubAddress
-    this.trustedPaymasters = params.trustedPaymasters?.map(e => e.toLowerCase())
+    this.trustedPaymasters = params.trustedPaymasters?.map(e => e.toLowerCase()) ?? []
     this.baseRelayFee = params.baseRelayFee ?? 0
     this.pctRelayFee = params.pctRelayFee ?? 0
     this.gasPriceFactor = params.gasPriceFactor
@@ -217,7 +217,7 @@ export class RelayServer extends EventEmitter {
     }
 
     // if trusted paymaster, we trust it to handle fees
-    if (this.trustedPaymasters == null || !this.trustedPaymasters.includes(req.paymaster.toLowerCase())) {
+    if (!this.trustedPaymasters.includes(req.paymaster.toLowerCase())) {
       // Check that the fee is acceptable
       if (isNaN(parseInt(req.pctRelayFee)) || parseInt(req.pctRelayFee) < this.pctRelayFee) {
         throw new Error(`Unacceptable pctRelayFee: ${req.pctRelayFee} relayServer's pctRelayFee: ${this.pctRelayFee}`)
@@ -462,9 +462,10 @@ export class RelayServer extends EventEmitter {
           gasLimit: mintxgascost.toString()
         })
       } else {
-        console.log(
-          `== replenishWorker: can't replenish: mgr balance too low ${balance.div(toBN(1e18)).toString()} refill=${refill.div(
-            toBN(1e18)).toString()}`)
+        const message = `== replenishWorker: can't replenish: mgr balance too low ${balance.div(toBN(1e18)).toString()} refill=${refill.div(
+          toBN(1e18)).toString()}`
+        this.emit('funding needed', message)
+        console.log(message)
       }
     }
   }

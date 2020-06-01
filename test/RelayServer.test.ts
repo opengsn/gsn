@@ -53,6 +53,8 @@ const localhostOne = 'http://localhost:8090'
 const workdir = '/tmp/gsn/test/relayserver'
 
 contract('RelayServer', function (accounts) {
+  const pctRelayFee = 11
+  const baseRelayFee = 12
   let rhub: RelayHubInstance
   let forwarder: TrustedForwarderInstance
   let stakeManager: StakeManagerInstance
@@ -99,13 +101,15 @@ contract('RelayServer', function (accounts) {
       keyManager,
       hubAddress: rhub.address,
       url: localhostOne,
-      baseRelayFee: 0,
-      pctRelayFee: 0,
+      baseRelayFee: baseRelayFee,
+      pctRelayFee: pctRelayFee,
       gasPriceFactor: 1,
       web3provider: serverWeb3provider,
+      trustedPaymasters: [paymaster.address],
       devMode: true
     }
     relayServer = new RelayServer(params as RelayServerParams)
+    assert.deepEqual(relayServer.trustedPaymasters, [paymaster.address.toLowerCase()], 'trusted paymaster not initialized correctly')
     relayServer.on('error', (e) => {
       console.log('error event', e.message)
     })
@@ -118,24 +122,6 @@ contract('RelayServer', function (accounts) {
       verbose: process.env.DEBUG != null
     }
 
-    /*
-     *   preferredRelays: string[]
-     relayLookupWindowBlocks: number
-     methodSuffix: string
-     jsonStringifyRequest: boolean
-     relayTimeoutGrace: number
-     gtxdatanonzero: number
-     sliceSize: number
-     verbose: boolean
-     gasPriceFactorPercent: number
-     minGasPrice: number
-     maxRelayNonceGap: number
-     relayHubAddress: Address
-     stakeManagerAddress: Address
-     paymasterAddress: Address
-     chainId: number
-     */
-
     const config = configureGSN(relayClientConfig)
     relayClient = new RelayClient(new Web3.providers.HttpProvider(ethereumNodeUrl), config)
 
@@ -143,7 +129,7 @@ contract('RelayServer', function (accounts) {
       // approveFunction: approveFunction,
       from: gasLess,
       to: sr.address,
-      pctRelayFee: 0,
+      pctRelayFee: pctRelayFee,
       gas_limit: 1000000,
       paymaster: paymaster.address
     }
@@ -229,8 +215,8 @@ contract('RelayServer', function (accounts) {
       // Version
     }
     const eventInfo = {
-      baseRelayFee: '0',
-      pctRelayFee: '0'
+      baseRelayFee: (options.baseRelayFee ?? baseRelayFee).toString(),
+      pctRelayFee: (options.pctRelayFee ?? pctRelayFee).toString()
       // relayManager: ,
       // relayUrl
     }
@@ -249,18 +235,6 @@ contract('RelayServer', function (accounts) {
     }
     const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await relayClient._prepareRelayHttpRequest(relayInfo,
       gsnTransactionDetails)
-    // const { relayRequest, relayMaxNonce, approvalData, signature } = await relayClient._prepareRelayHttpRequest(
-    //   encodedFunction,
-    //   /* relayWorker: */relayServer.getAddress(1),
-    //   /* pctRelayFee: */0,
-    //   /* baseRelayFee: */0,
-    //   /* gasPrice: */parseInt(await _web3.eth.getGasPrice()),
-    //   /* gasLimit: */1000000,
-    //   /* senderNonce: */(await forwarder.getNonce(options.from)).toString(),
-    //   /* paymaster: */paymaster.address,
-    //   /* relayHub: */rhub.contract,
-    //   forwarder.contract,
-    //   options)
     return { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }
   }
 
@@ -278,6 +252,9 @@ contract('RelayServer', function (accounts) {
       await expect(relayServer._worker(header))
         .to.be.eventually.rejectedWith('Server\'s balance too low')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
+      assert.equal(relayServer.gasPrice, expectedGasPrice)
+      assert.equal(relayServer.chainId, chainId)
+      assert.equal(relayServer.networkId, networkId)
     })
 
     it('should wait for balance', async function () {
@@ -523,20 +500,29 @@ contract('RelayServer', function (accounts) {
       }
     })
     it('should fail to relay with wrong baseRelayFee', async function () {
+      const trustedPaymaster = relayServer.trustedPaymasters.pop()
       try {
-        await relayTransaction(options, { baseRelayFee: -1 })
+        await relayTransaction(options, { baseRelayFee: relayServer.baseRelayFee - 1 })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Unacceptable baseRelayFee:')
+      } finally {
+        relayServer.trustedPaymasters.push(trustedPaymaster!)
       }
     })
     it('should fail to relay with wrong pctRelayFee', async function () {
+      const trustedPaymaster = relayServer.trustedPaymasters.pop()
       try {
-        await relayTransaction(options, { pctRelayFee: -1 })
+        await relayTransaction(options, { pctRelayFee: relayServer.pctRelayFee - 1 })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Unacceptable pctRelayFee:')
+      } finally {
+        relayServer.trustedPaymasters.push(trustedPaymaster!)
       }
+    })
+    it('should  bypass fee checks if given trusted paymasters', async function () {
+      await relayTransaction(options, { baseRelayFee: (relayServer.baseRelayFee - 1).toString() })
     })
     it('should fail to relay with wrong hub address', async function () {
       try {
@@ -547,12 +533,19 @@ contract('RelayServer', function (accounts) {
           `Wrong hub address.\nRelay server's hub address: ${relayServer.hubAddress}, request's hub address: 0xdeadface\n`)
       }
     })
-    describe('trusted paymasters flows', function () {
-      it('should validate fees if not given trusted paymasters')
-      it('should  bypass fee checks if given trusted paymasters')
-    })
   })
 
+  describe('relay workers rebalancing', function () {
+    it('should rebalance from manager hub balance when sufficient', async function () {
+
+    })
+    it('should rebalance from manager eth balance when sufficient and hub balance too low', async function () {
+
+    })
+    it('should emit \'funding needed\' when both eth and hub balances insufficient', async function () {
+
+    })
+  })
   describe('resend unconfirmed transactions task', function () {
     it('should resend unconfirmed transaction', async function () {
       // First clear db
@@ -798,7 +791,6 @@ contract('RelayServer', function (accounts) {
   })
 
   // describe('network errors')
-  //
   describe('Function testing', function () {
     it('_workerSemaphore', async function () {
       // @ts-ignore
@@ -838,7 +830,7 @@ contract('RelayServer', function (accounts) {
     // it('_handleStakedEvent', async function () {
     // })
     it.skip('_registerIfNeeded', async function () {
-      // todo add test for registering for all of the cases: when not registered, when registered but changed parameters, when regisered and nothing changed ( should not re-register)
+      // todo add test for registering for all of the cases: when not registered, when registered but changed parameters, when registered and nothing changed ( should not re-register)
     })
     // it('_resendUnconfirmedTransactions', async function () {
     // })
