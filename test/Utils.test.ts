@@ -33,16 +33,16 @@ contract('Utils', function (accounts) {
       const relayRequest: RelayRequest = {
         target,
         encodedFunction,
+        senderAddress,
+        senderNonce,
+        gasLimit,
+        forwarder,
         relayData: {
-          senderAddress,
-          senderNonce,
           relayWorker,
-          forwarder,
           paymaster
         },
         gasData: {
           gasPrice,
-          gasLimit,
           pctRelayFee,
           baseRelayFee
         }

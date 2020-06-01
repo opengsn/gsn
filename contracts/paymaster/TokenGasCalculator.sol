@@ -43,7 +43,7 @@ contract TokenGasCalculator is RelayHub, Ownable {
 
         paymaster.setRelayHub(IRelayHub(address(this)));
 
-        ISignatureVerifier.GasData memory gasData = ISignatureVerifier.GasData(0, 1, 0, 0);
+        ISignatureVerifier.GasData memory gasData = ISignatureVerifier.GasData(1, 0, 0);
         bytes memory ctx0 = abi.encode(this, uint(0));
         //no precharge
         bytes memory ctx1 = abi.encode(this, uint(500));

@@ -215,17 +215,17 @@ export default class RelayClient {
     const relayRequest: RelayRequest = {
       target: gsnTransactionDetails.to,
       encodedFunction: gsnTransactionDetails.data,
+      senderAddress: gsnTransactionDetails.from,
+      senderNonce,
+      gasLimit,
+      forwarder: forwarderAddress,
       gasData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,
         baseRelayFee: relayInfo.relayInfo.baseRelayFee,
-        gasPrice,
-        gasLimit
+        gasPrice
       },
       relayData: {
-        senderAddress: gsnTransactionDetails.from,
-        senderNonce,
         paymaster,
-        forwarder: forwarderAddress,
         relayWorker
       }
     }
@@ -239,7 +239,7 @@ export default class RelayClient {
     const httpRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
       encodedFunction: gsnTransactionDetails.data,
-      senderNonce: relayRequest.relayData.senderNonce,
+      senderNonce: relayRequest.senderNonce,
       from: gsnTransactionDetails.from,
       to: gsnTransactionDetails.to,
       pctRelayFee: relayInfo.relayInfo.pctRelayFee,

@@ -256,16 +256,16 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const relayRequest: RelayRequest = {
             target: recipient.address,
             encodedFunction: txData,
+            senderAddress: sender,
+            senderNonce: senderNonce.toString(),
+            gasLimit: gasLimit.toString(),
+            forwarder,
             relayData: {
-              senderAddress: sender,
-              senderNonce: senderNonce.toString(),
               relayWorker,
-              paymaster: paymaster.address,
-              forwarder
+              paymaster: paymaster.address
             },
             gasData: {
               gasPrice: gasPrice.toString(),
-              gasLimit: gasLimit.toString(),
               baseRelayFee: baseFee.toString(),
               pctRelayFee: fee.toString()
             }
@@ -355,18 +355,18 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         {
           target: encodedCallArgs.recipient,
           encodedFunction: encodedCallArgs.data,
+          senderAddress: encodedCallArgs.sender,
+          senderNonce: encodedCallArgs.nonce.toString(),
+          gasLimit: encodedCallArgs.gasLimit.toString(),
+          forwarder,
           relayData: {
-            senderAddress: encodedCallArgs.sender,
-            senderNonce: encodedCallArgs.nonce.toString(),
             relayWorker,
-            paymaster: encodedCallArgs.paymaster,
-            forwarder
+            paymaster: encodedCallArgs.paymaster
           },
           gasData: {
             baseRelayFee: encodedCallArgs.baseFee.toString(),
             pctRelayFee: encodedCallArgs.fee.toString(),
-            gasPrice: encodedCallArgs.gasPrice.toString(),
-            gasLimit: encodedCallArgs.gasLimit.toString()
+            gasPrice: encodedCallArgs.gasPrice.toString()
           }
         }
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x').encodeABI()

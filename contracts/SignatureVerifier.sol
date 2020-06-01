@@ -23,13 +23,13 @@ contract SignatureVerifier is ISignatureVerifier{
     );
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,bytes encodedFunction,GasData gasData,RelayData relayData)GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address senderAddress,uint256 senderNonce,address relayWorker,address paymaster,address forwarder)");
+    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit,address forwarder,GasData gasData,RelayData relayData)GasData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address relayWorker,address paymaster)");
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant CALLDATA_TYPEHASH = keccak256("GasData(uint256 gasLimit,uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)");
+    bytes32 public constant CALLDATA_TYPEHASH = keccak256("GasData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)");
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address senderAddress,uint256 senderNonce,address relayWorker,address paymaster,address forwarder)");
+    bytes32 public constant RELAYDATA_TYPEHASH = keccak256("RelayData(address relayWorker,address paymaster)");
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
@@ -58,6 +58,10 @@ contract SignatureVerifier is ISignatureVerifier{
                 RELAY_REQUEST_TYPEHASH,
                     req.target,
                     keccak256(req.encodedFunction),
+                    req.senderAddress,
+                    req.senderNonce,
+                    req.gasLimit,
+                    req.forwarder,
                     hash(req.gasData),
                     hash(req.relayData)
             ));
@@ -66,7 +70,6 @@ contract SignatureVerifier is ISignatureVerifier{
     function hash(GasData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 CALLDATA_TYPEHASH,
-                req.gasLimit,
                 req.gasPrice,
                 req.pctRelayFee,
                 req.baseRelayFee
@@ -76,11 +79,8 @@ contract SignatureVerifier is ISignatureVerifier{
     function hash(RelayData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
-                req.senderAddress,
-                req.senderNonce,
                 req.relayWorker,
-                req.paymaster,
-                req.forwarder
+                req.paymaster
             ));
     }
 
@@ -89,6 +89,6 @@ contract SignatureVerifier is ISignatureVerifier{
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hash(req)
             ));
-        return digest.recover(signature) == req.relayData.senderAddress;
+        return digest.recover(signature) == req.senderAddress;
     }
 }

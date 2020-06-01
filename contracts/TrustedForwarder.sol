@@ -37,7 +37,7 @@ contract TrustedForwarder is ITrustedForwarder {
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnValue) = req.target.call{gas:req.gasData.gasLimit}(abi.encodePacked(req.encodedFunction, req.relayData.senderAddress));
+        (bool success, bytes memory returnValue) = req.target.call{gas:req.gasLimit}(abi.encodePacked(req.encodedFunction, req.senderAddress));
         // TODO: use assembly to prevent double-wrapping of the revert reason (part of GSN-37)
         require(success, GsnUtils.getError(returnValue));
     }
@@ -48,11 +48,11 @@ contract TrustedForwarder is ITrustedForwarder {
     }
 
     function _verifyNonce(ISignatureVerifier.RelayRequest memory req) internal view {
-        require(nonces[req.relayData.senderAddress] == req.relayData.senderNonce, "nonce mismatch");
+        require(nonces[req.senderAddress] == req.senderNonce, "nonce mismatch");
     }
 
     function _updateNonce(ISignatureVerifier.RelayRequest memory req) internal {
-        nonces[req.relayData.senderAddress]++;
+        nonces[req.senderAddress]++;
     }
 
     function _verifySig(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal view {

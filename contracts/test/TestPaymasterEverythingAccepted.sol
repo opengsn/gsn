@@ -26,7 +26,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     view
     returns (bytes memory) {
         (relayRequest, signature, approvalData, maxPossibleGas);
-        ITrustedForwarder(relayRequest.relayData.forwarder).verify(relayRequest, signature);
+        ITrustedForwarder(relayRequest.forwarder).verify(relayRequest, signature);
         return "no revert here";
     }
 

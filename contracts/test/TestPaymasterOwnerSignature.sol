@@ -24,7 +24,7 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
     returns (bytes memory) {
         (signature, maxPossibleGas);
         address signer =
-            keccak256(abi.encodePacked("I approve", relayRequest.relayData.senderAddress))
+            keccak256(abi.encodePacked("I approve", relayRequest.senderAddress))
             .toEthSignedMessageHash()
             .recover(approvalData);
         require(signer == owner(), "test: not approved");

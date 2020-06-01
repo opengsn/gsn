@@ -10,23 +10,23 @@ const EIP712DomainType = [
 ]
 
 const GasDataType = [
-  { name: 'gasLimit', type: 'uint256' },
   { name: 'gasPrice', type: 'uint256' },
   { name: 'pctRelayFee', type: 'uint256' },
   { name: 'baseRelayFee', type: 'uint256' }
 ]
 
 const RelayDataType = [
-  { name: 'senderAddress', type: 'address' },
-  { name: 'senderNonce', type: 'uint256' },
   { name: 'relayWorker', type: 'address' },
-  { name: 'paymaster', type: 'address' },
-  { name: 'forwarder', type: 'address' }
+  { name: 'paymaster', type: 'address' }
 ]
 
 const RelayRequestType = [
   { name: 'target', type: 'address' },
   { name: 'encodedFunction', type: 'bytes' },
+  { name: 'senderAddress', type: 'address' },
+  { name: 'senderNonce', type: 'uint256' },
+  { name: 'gasLimit', type: 'uint256' },
+  { name: 'forwarder', type: 'address' },
   { name: 'gasData', type: 'GasData' },
   { name: 'relayData', type: 'RelayData' }
 ]

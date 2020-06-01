@@ -41,18 +41,18 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
   const relayRequest: RelayRequest = {
     target: testRecipient.address,
     encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
+    senderAddress: account,
+    senderNonce,
+    gasLimit: '10000',
+    forwarder: testRecipientForwarderAddress,
     relayData: {
-      senderAddress: account,
-      senderNonce,
       relayWorker,
-      paymaster,
-      forwarder: testRecipientForwarderAddress
+      paymaster
     },
     gasData: {
       pctRelayFee: '1',
       baseRelayFee: '1',
-      gasPrice: '1',
-      gasLimit: '10000'
+      gasPrice: '1'
     }
   }
   const dataToSign = new TypedRequestData(

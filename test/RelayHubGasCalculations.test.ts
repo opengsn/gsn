@@ -87,18 +87,18 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     relayRequest = {
       encodedFunction,
       target: recipient.address,
+      senderAddress,
+      senderNonce: senderNonce.toString(),
+      gasLimit: gasLimit.toString(),
+      forwarder,
       relayData: {
-        senderAddress,
         relayWorker,
-        senderNonce: senderNonce.toString(),
-        paymaster: paymaster.address,
-        forwarder
+        paymaster: paymaster.address
       },
       gasData: {
         baseRelayFee: baseFee.toString(),
         pctRelayFee: fee.toString(),
-        gasPrice: gasPrice.toString(),
-        gasLimit: gasLimit.toString()
+        gasPrice: gasPrice.toString()
       }
     }
     const dataToSign = new TypedRequestData(
@@ -177,7 +177,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
       const relayRequestMisbehaving = cloneRelayRequest(relayRequest)
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
-      relayRequestMisbehaving.relayData.senderNonce = senderNonce
+      relayRequestMisbehaving.senderNonce = senderNonce
       const dataToSign = new TypedRequestData(
         chainId,
         forwarder,
@@ -257,19 +257,19 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               const relayRequest: RelayRequest = {
                 target: recipient.address,
                 encodedFunction,
+                senderAddress,
+                senderNonce,
+                gasLimit: gasLimit.toString(),
+                forwarder,
                 relayData: {
-                  senderAddress,
-                  senderNonce,
                   relayWorker,
-                  paymaster: paymaster.address,
-                  forwarder
+                  paymaster: paymaster.address
                 },
                 gasData: {
 
                   baseRelayFee: '0',
                   pctRelayFee,
-                  gasPrice: gasPrice.toString(),
-                  gasLimit: gasLimit.toString()
+                  gasPrice: gasPrice.toString()
                 }
               }
               const dataToSign = new TypedRequestData(

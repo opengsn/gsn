@@ -198,15 +198,15 @@ contract('RelayServer', function (accounts) {
     // console.log('badArgs is', badArgs)
     const signedTx = await relayServer.createRelayTransaction(
       {
-        senderNonce: relayRequest.relayData.senderNonce,
+        senderNonce: relayRequest.senderNonce,
         gasPrice: relayRequest.gasData.gasPrice,
         encodedFunction: relayRequest.encodedFunction,
         approvalData,
         signature,
-        from: relayRequest.relayData.senderAddress,
+        from: relayRequest.senderAddress,
         to: relayRequest.target,
         paymaster: relayRequest.relayData.paymaster,
-        gasLimit: relayRequest.gasData.gasLimit,
+        gasLimit: relayRequest.gasLimit,
         relayMaxNonce,
         baseRelayFee: relayRequest.gasData.baseRelayFee,
         pctRelayFee: relayRequest.gasData.pctRelayFee,
@@ -215,7 +215,7 @@ contract('RelayServer', function (accounts) {
         ...badArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-    await assertTransactionRelayed(txhash, relayRequest.relayData.senderAddress)
+    await assertTransactionRelayed(txhash, relayRequest.senderAddress)
     return signedTx
   }
 

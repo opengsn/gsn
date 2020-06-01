@@ -80,18 +80,18 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     relayRequest = {
       target: recipient.address,
       encodedFunction: recipient.contract.methods.test().encodeABI(),
+      senderAddress: from,
+      senderNonce: '0',
+      gasLimit: 1e6.toString(),
+      forwarder: forwarder.address,
       relayData: {
-        senderAddress: from,
-        senderNonce: '0',
         relayWorker: from,
-        paymaster: paymaster.address,
-        forwarder: forwarder.address
+        paymaster: paymaster.address
       },
       gasData: {
         pctRelayFee: '1',
         baseRelayFee: '0',
-        gasPrice: await web3.eth.getGasPrice(),
-        gasLimit: 1e6.toString()
+        gasPrice: await web3.eth.getGasPrice()
       }
     }
 
@@ -152,8 +152,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       // for simpler calculations: we don't take any fee, and gas price is '1', so actual charge
       // should be exactly gas usage. token is 2:1 to eth, so we expect to pay exactly twice the "charge"
       const _relayRequest = cloneRelayRequest(relayRequest)
-      _relayRequest.relayData.senderAddress = from
-      _relayRequest.relayData.senderNonce = (await forwarder.getNonce(from)).toString()
+      _relayRequest.senderAddress = from
+      _relayRequest.senderNonce = (await forwarder.getNonce(from)).toString()
       _relayRequest.gasData.gasPrice = '1'
       _relayRequest.gasData.pctRelayFee = '0'
       _relayRequest.gasData.baseRelayFee = '0'

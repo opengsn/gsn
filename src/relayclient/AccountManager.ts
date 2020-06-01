@@ -10,6 +10,8 @@ import { HttpProvider } from 'web3-core'
 import Web3 from 'web3'
 import TypedRequestData from '../common/EIP712/TypedRequestData'
 
+require('source-map-support').install({ errorFormatterForce: true })
+
 export interface AccountKeypair {
   privateKey: Buffer
   address: Address
@@ -58,7 +60,7 @@ export default class AccountManager {
       forwarderAddress,
       relayRequest
     )
-    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.relayData.senderAddress))
+    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.senderAddress))
     if (keypair != null) {
       signature = this._signWithControlledKey(keypair, signedData)
     } else {
@@ -74,11 +76,11 @@ export default class AccountManager {
       })
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Failed to sign relayed transaction for ${relayRequest.relayData.senderAddress}`)
+      throw new Error(`Failed to sign relayed transaction for ${relayRequest.senderAddress}`)
     }
-    if (!isSameAddress(relayRequest.relayData.senderAddress.toLowerCase(), rec)) {
+    if (!isSameAddress(relayRequest.senderAddress.toLowerCase(), rec)) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.relayData.senderAddress}, recovered=${rec}`)
+      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.senderAddress}, recovered=${rec}`)
     }
     return signature
   }

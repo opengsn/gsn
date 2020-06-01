@@ -75,7 +75,7 @@ contract TokenPaymaster is BasePaymaster {
         (approvalData);
 
         // Verify the sender's request is valid for selected forwarder
-        ITrustedForwarder forwarder = ITrustedForwarder(relayRequest.relayData.forwarder);
+        ITrustedForwarder forwarder = ITrustedForwarder(relayRequest.forwarder);
         forwarder.verify(relayRequest, signature);
 
         address payer = this.getPayer(relayRequest);

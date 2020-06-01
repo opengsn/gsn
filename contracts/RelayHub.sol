@@ -149,7 +149,7 @@ contract RelayHub is IRelayHub {
             gasLimits.acceptRelayedCallGasLimit +
             gasLimits.preRelayedCallGasLimit +
             gasLimits.postRelayedCallGasLimit +
-            relayRequest.gasData.gasLimit;
+            relayRequest.gasLimit;
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
@@ -214,16 +214,20 @@ contract RelayHub is IRelayHub {
                 ISignatureVerifier.RelayRequest(
                     relayRequest.target,
                     relayRequest.encodedFunction,
+                    relayRequest.senderAddress,
+                    relayRequest.senderNonce,
+                    relayRequest.gasLimit,
+                    relayRequest.forwarder,
                     relayRequest.gasData,
                     relayRequest.relayData),
-                    vars.initialGas, signature, approvalData);
+                vars.initialGas, signature, approvalData);
 
         if (!success) {
             revertReason = GsnUtils.getError(vars.recipientContext);
             emit TransactionRejectedByPaymaster(
                 workerToManager[msg.sender],
                 relayRequest.relayData.paymaster,
-                relayRequest.relayData.senderAddress,
+                relayRequest.senderAddress,
                 relayRequest.target,
                 msg.sender,
                 vars.functionSelector,
@@ -259,7 +263,7 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(
             workerToManager[msg.sender],
             msg.sender,
-            relayRequest.relayData.senderAddress,
+            relayRequest.senderAddress,
             relayRequest.target,
             relayRequest.relayData.paymaster,
             vars.functionSelector,
@@ -319,7 +323,7 @@ contract RelayHub is IRelayHub {
         }
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         (atomicData.relayedCallSuccess,) =
-        relayRequest.relayData.forwarder.call(
+        relayRequest.forwarder.call(
             abi.encodeWithSelector(ITrustedForwarder.verifyAndCall.selector, relayRequest, signature)
         );
 

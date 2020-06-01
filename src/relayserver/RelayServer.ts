@@ -247,17 +247,17 @@ export class RelayServer extends EventEmitter {
     const relayRequest: RelayRequest = {
       target: req.to,
       encodedFunction: req.encodedFunction,
+      senderAddress: req.from,
+      senderNonce: req.senderNonce,
+      gasLimit: req.gasLimit,
+      forwarder: req.forwarder,
       gasData: {
         baseRelayFee: req.baseRelayFee,
         pctRelayFee: req.pctRelayFee,
-        gasPrice: req.gasPrice,
-        gasLimit: req.gasLimit
+        gasPrice: req.gasPrice
       },
       relayData: {
-        senderAddress: req.from,
-        senderNonce: req.senderNonce,
         paymaster: req.paymaster,
-        forwarder: req.forwarder,
         relayWorker: this.getAddress(1)
       }
     }
@@ -320,8 +320,7 @@ export class RelayServer extends EventEmitter {
       await this.relayHubContract.calculateCharge(maxPossibleGas, {
         gasPrice: req.gasPrice?.toString() ?? '0',
         pctRelayFee: req.pctRelayFee.toString(),
-        baseRelayFee: req.baseRelayFee.toString(),
-        gasLimit: 0
+        baseRelayFee: req.baseRelayFee.toString()
       })
     const paymasterBalance = await this.relayHubContract.balanceOf(req.paymaster)
     if (paymasterBalance.lt(maxCharge)) {
