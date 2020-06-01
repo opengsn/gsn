@@ -5,7 +5,7 @@ import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types } from '
 const EIP712DomainType = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
-  // { name: 'chainId', type: 'uint256' },
+  { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }
 ]
 
