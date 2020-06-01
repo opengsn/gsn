@@ -196,6 +196,8 @@ contract RelayHub is IRelayHub {
             "relay manager not staked"
         );
         require(relayRequest.gasData.gasPrice <= tx.gasprice, "Invalid gas price");
+        require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
+
         // We now verify that the paymaster will agree to be charged for the transaction.
         (vars.success, vars.recipientContext, vars.gasLimits) =
             canRelay(

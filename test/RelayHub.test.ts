@@ -477,7 +477,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
 
         it('should not accept relay requests with gas price lower then user specified', async function () {
-          // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
           await expectRevert(
             relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
@@ -485,6 +484,16 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gasPrice: parseInt(gasPrice) - 1
             }),
             'Invalid gas price')
+        })
+
+        it('should not accept relay requests with gas limit higher then block gas limit', async function () {
+          await expectRevert(
+            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', 100000001, {
+              from: relayWorker,
+              gasPrice,
+              gas
+            }),
+            'Impossible gas limit')
         })
 
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
