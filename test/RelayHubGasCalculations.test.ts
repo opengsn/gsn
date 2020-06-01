@@ -171,7 +171,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       assert.closeTo(gasUseWithoutPost, usedGas - estimatePostGas, 100,
         'POST_OVERHEAD: increase by ' + (usedGas - estimatePostGas - gasUseWithoutPost).toString()
       )
-      // @ts-ignore
     })
 
     it('should revert an attempt to use more than allowed gas for acceptRelayedCall', async function () {
@@ -197,7 +196,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const canRelayResponse =
         await relayHub.contract.methods
           .relayCall(relayRequestMisbehaving, signature, '0x', externalGasLimit)
-          .call({ from: relayRequestMisbehaving.relayData.relayWorker, gas: externalGasLimit })
+          .call({
+            from: relayRequestMisbehaving.relayData.relayWorker,
+            gas: externalGasLimit
+          })
       assert.equal(canRelayResponse[0], false)
       assert.equal(canRelayResponse[1], '') // no revert string on out-of-gas
 
@@ -295,16 +297,16 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               // how much gas we actually spent on this tx
               const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
 
+              if (requestedFee === 0) {
+                logOverhead(weiActualCharge, workerWeiGasUsed)
+              }
+
               // sanity: worker executed and paid this tx
-              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-              assert.equal((res.receipt.gasUsed * gasPrice).toString(), workerWeiGasUsed.toString(), 'where else did the money go?')
+              assert.equal((gasPrice.muln(res.receipt.gasUsed)).toString(), workerWeiGasUsed.toString(), 'where else did the money go?')
 
               const expectedCharge = Math.floor(workerWeiGasUsed.toNumber() * (100 + requestedFee) / 100) + parseInt(baseRelayFee)
               assert.equal(weiActualCharge.toNumber(), expectedCharge,
                 'actual charge from paymaster higher than expected. diff= ' + ((weiActualCharge.toNumber() - expectedCharge) / gasPrice.toNumber()).toString())
-
-              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-              if (requestedFee === 0) logOverhead(weiActualCharge, workerWeiGasUsed)
 
               // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
               // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)

@@ -237,7 +237,7 @@ contract RelayHub is IRelayHub {
                 innerGasLimit + externalGasLimit-gasleft() + GAS_OVERHEAD + POST_OVERHEAD, /*totalInitialGas*/
                 abi.decode(vars.recipientContext, (bytes)))
         );
-    
+
         vars.status = abi.decode(relayCallStatus, (RelayCallStatus));
     }
     {

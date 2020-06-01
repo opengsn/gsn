@@ -89,9 +89,7 @@ options.forEach(params => {
           relayHubAddress: rhub.address,
           stakeManagerAddress: sm.address,
           paymasterAddress: paymaster.address,
-          // override requested gas price
-          // override requested gas limit.
-          verbose: true
+          verbose: false
         }
 
         // @ts-ignore
