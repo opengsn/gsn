@@ -70,7 +70,7 @@ export function showDeployment (deploymentResult: DeploymentResult, title: strin
   RelayHub: ${deploymentResult.relayHubAddress}
   StakeManager: ${deploymentResult.stakeManagerAddress}
   Penalizer: ${deploymentResult.penalizerAddress}
-  TrustedForwarder: ${deploymentResult.forwarderAddress}
+  Forwarder: ${deploymentResult.forwarderAddress}
   Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.paymasterAddress}`)
 }
 

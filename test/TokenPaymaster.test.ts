@@ -7,8 +7,12 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import {
   PenalizerInstance,
   RelayHubInstance,
-  StakeManagerInstance, TestProxyInstance, TestTokenInstance, TestUniswapInstance, TokenPaymasterInstance,
-  TrustedForwarderInstance
+  StakeManagerInstance,
+  TestProxyInstance,
+  TestTokenInstance,
+  TestUniswapInstance,
+  TokenPaymasterInstance,
+  ForwarderInstance
 } from '../types/truffle-contracts'
 
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
@@ -19,7 +23,7 @@ const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
 const TestUniswap = artifacts.require('TestUniswap.sol')
 const TestToken = artifacts.require('TestToken.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
-const TrustedForwarder = artifacts.require('./TrustedForwarder.sol')
+const Forwarder = artifacts.require('./Forwarder.sol')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
@@ -39,7 +43,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   let token: TestTokenInstance
   let recipient: TestProxyInstance
   let hub: RelayHubInstance
-  let forwarder: TrustedForwarderInstance
+  let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let relayRequest: RelayRequest
@@ -76,7 +80,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
 
     console.log('paymaster post with precharge=', await paymaster.gasUsedByPostWithPreCharge.toString())
     console.log('paymaster post without precharge=', await paymaster.gasUsedByPostWithoutPreCharge.toString())
-    forwarder = await TrustedForwarder.new({ gas: 1e7 })
+    forwarder = await Forwarder.new({ gas: 1e7 })
     recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
 
     // approve uniswap to take our tokens.

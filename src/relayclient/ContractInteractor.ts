@@ -6,7 +6,7 @@ import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import paymasterAbi from '../common/interfaces/IPaymaster.json'
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
-import forwarderAbi from '../common/interfaces/ITrustedForwarder.json'
+import forwarderAbi from '../common/interfaces/IForwarder.json'
 import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
@@ -20,7 +20,7 @@ import {
   IRelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance,
-  ITrustedForwarderInstance
+  IForwarderInstance
 } from '../../types/truffle-contracts'
 
 import { Address, IntString } from './types/Aliases'
@@ -43,7 +43,7 @@ export const StakePenalized: EventName = 'StakePenalized'
 export default class ContractInteractor {
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
-  private readonly IForwarderContract: Contract<ITrustedForwarderInstance>
+  private readonly IForwarderContract: Contract<IForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
@@ -72,7 +72,7 @@ export default class ContractInteractor {
     })
     // @ts-ignore
     this.IForwarderContract = TruffleContract({
-      contractName: 'ITrustedForwarder',
+      contractName: 'IForwarder',
       abi: forwarderAbi
     })
     // @ts-ignore
@@ -141,7 +141,7 @@ export default class ContractInteractor {
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
+  async _createForwarder (address: Address): Promise<IForwarderInstance> {
     return this.IForwarderContract.at(address)
   }
 

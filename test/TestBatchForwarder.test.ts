@@ -10,21 +10,22 @@ import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   RelayHubInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance, TrustedBatchForwarderInstance
+  TestRecipientInstance,
+  BatchForwarderInstance
 } from '../types/truffle-contracts'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const TrustedBatchForwarder = artifacts.require('./TrustedBatchForwarder.sol')
+const BatchForwarder = artifacts.require('./BatchForwarder.sol')
 const TestRecipient = artifacts.require('TestRecipient.sol')
 
-contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
+contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let recipient: TestRecipientInstance
   let hub: RelayHubInstance
-  let forwarder: TrustedBatchForwarderInstance
+  let forwarder: BatchForwarderInstance
   let sharedRelayRequestData: RelayRequest
   const chainId = defaultEnvironment.chainId
 
@@ -49,7 +50,7 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
 
     recipient = await TestRecipient.new()
-    forwarder = await TrustedBatchForwarder.new()
+    forwarder = await BatchForwarder.new()
     await recipient.setTrustedForwarder(forwarder.address)
 
     await paymaster.setRelayHub(hub.address)

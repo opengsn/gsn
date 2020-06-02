@@ -11,12 +11,12 @@ import {
   TestRecipientInstance,
   TestPaymasterVariableGasLimitsInstance,
   StakeManagerInstance,
-  ITrustedForwarderInstance,
+  IForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -45,7 +45,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterVariableGasLimitsInstance
-  let forwarderInstance: ITrustedForwarderInstance
+  let forwarderInstance: IForwarderInstance
   let encodedFunction
   let signature: string
   let relayRequest: RelayRequest
@@ -54,7 +54,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   beforeEach(async function prepareForHub () {
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
-    forwarderInstance = await TrustedForwarder.at(forwarder)
+    forwarderInstance = await Forwarder.at(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()

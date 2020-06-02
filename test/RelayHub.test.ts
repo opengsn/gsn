@@ -11,12 +11,12 @@ import {
   RelayHubInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, TrustedForwarderInstance, PenalizerInstance
+  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, ForwarderInstance, PenalizerInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -40,7 +40,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let relayHubInstance: RelayHubInstance
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
-  let forwarderInstance: TrustedForwarderInstance
+  let forwarderInstance: ForwarderInstance
   let target: string
   let paymaster: string
   let forwarder: string
@@ -52,7 +52,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
     forwarder = await recipientContract.getTrustedForwarder()
-    forwarderInstance = await TrustedForwarder.at(forwarder)
+    forwarderInstance = await Forwarder.at(forwarder)
 
     target = recipientContract.address
     paymaster = paymasterContract.address

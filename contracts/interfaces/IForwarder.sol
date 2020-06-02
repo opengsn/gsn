@@ -4,7 +4,7 @@ pragma solidity ^0.6.2;
 import "./ISignatureVerifier.sol";
 pragma experimental ABIEncoderV2;
 
-interface ITrustedForwarder {
+interface IForwarder {
 
     // verify the signature matches the request.
     //  that is, the senderAccount is the signer
