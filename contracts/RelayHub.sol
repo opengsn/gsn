@@ -1,6 +1,7 @@
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */
 /* solhint-disable not-rely-on-time */
+/* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
@@ -190,6 +191,7 @@ contract RelayHub is IRelayHub {
     {
         RelayCallData memory vars;
         vars.functionSelector = LibBytesV06.readBytes4(relayRequest.encodedFunction, 0);
+        require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(
             stakeManager.isRelayManagerStaked(workerToManager[msg.sender], MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
