@@ -265,6 +265,28 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
       })
 
+      context('with relay worker that is not externally-owned account', function () {
+        it('should not accept relay requests', async function () {
+          const signature = '0xdeadbeef'
+          const gas = 4e6
+          const TestRelayWorkerContract = artifacts.require('TestRelayWorkerContract')
+          const testRelayWorkerContract = await TestRelayWorkerContract.new()
+          await relayHubInstance.addRelayWorkers([testRelayWorkerContract.address], {
+            from: relayManager
+          })
+          await expectRevert(
+            testRelayWorkerContract.relayCall(
+              relayHubInstance.address,
+              relayRequest,
+              signature,
+              gas,
+              {
+                gas
+              }),
+            'relay worker cannot be a smart contract')
+        })
+      })
+
       context('with view functions only', function () {
         let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
         let relayRequestMisbehavingPaymaster: RelayRequest
@@ -300,7 +322,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
       })
 
-      context('with funded recipient', function () {
+      context('with funded paymaster', function () {
         let signature
 
         let paymasterWithContext
