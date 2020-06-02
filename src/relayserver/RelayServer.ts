@@ -470,7 +470,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async _worker (blockHeader: BlockHeader): Promise<TransactionReceipt | void> {
+  async _worker (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
     if (!this.initialized) {
       await this._init()
     }
@@ -495,23 +495,23 @@ export class RelayServer extends EventEmitter {
     spam('logs?', logs)
     spam('options? ', options)
     const decodedLogs = abiDecoder.decodeLogs(logs).map(this._parseEvent)
-    let receipt
+    let receipts: TransactionReceipt[] = []
     // TODO: what about 'penalize' events? should send balance to owner, I assume
     // TODO TODO TODO 'StakeAdded' is not the event you want to cat upon if there was no 'HubAuthorized' event
     for (const dlog of decodedLogs) {
       switch (dlog.name) {
         case 'HubAuthorized':
-          receipt = await this._handleHubAuthorizedEvent(dlog)
+          receipts = receipts.concat(await this._handleHubAuthorizedEvent(dlog))
           break
         case 'StakeAdded':
-          receipt = await this._handleStakedEvent(dlog)
+          receipts = receipts.concat(await this._handleStakedEvent(dlog))
           break
         // There is no such event now
         // case 'RelayRemoved':
         //   await this._handleRelayRemovedEvent(dlog)
         //   break
         case 'StakeUnlocked':
-          receipt = await this._handleUnstakedEvent(dlog)
+          receipts = receipts.concat(await this._handleUnstakedEvent(dlog))
           break
       }
     }
@@ -531,7 +531,7 @@ export class RelayServer extends EventEmitter {
     this.ready = true
     delete this.lastError
     await this._resendUnconfirmedTransactions(blockHeader)
-    return receipt
+    return receipts
   }
 
   async getManagerBalance (): Promise<BN> {
@@ -575,7 +575,7 @@ export class RelayServer extends EventEmitter {
     this.emit('removed')
   }
 
-  async _handleHubAuthorizedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt | undefined> {
+  async _handleHubAuthorizedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
     if (dlog.name !== 'HubAuthorized' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
@@ -587,7 +587,7 @@ export class RelayServer extends EventEmitter {
     return this._registerIfNeeded()
   }
 
-  async _handleStakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt | undefined> {
+  async _handleStakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
     // todo
     // sanity checks
     if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
@@ -599,10 +599,11 @@ export class RelayServer extends EventEmitter {
     return this._registerIfNeeded()
   }
 
-  async _registerIfNeeded (): Promise<TransactionReceipt | undefined> {
+  async _registerIfNeeded (): Promise<TransactionReceipt[]> {
+    let receipts: TransactionReceipt[] = []
     if (!this.authorizedHub || this.stake.eq(toBN(0))) {
       debug(`can't register yet: auth=${this.authorizedHub} stake=${this.stake.toString()}`)
-      return
+      return receipts
     }
     const workersAddedEvents = await this.relayHubContract?.contract.getPastEvents('RelayWorkersAdded', {
       fromBlock: 1,
@@ -615,17 +616,16 @@ export class RelayServer extends EventEmitter {
       // register on chain
       const addRelayWorkerMethod = this.relayHubContract?.contract.methods
         .addRelayWorkers([this.getAddress(1)])
-      await this._sendTransaction({
+      receipts = receipts.concat((await this._sendTransaction({
         signerIndex: 0,
         method: addRelayWorkerMethod,
         destination: this.relayHubContract?.address as string
-      })
+      })).receipt)
     }
     const relayRegisteredEvents = await this.relayHubContract?.contract.getPastEvents('RelayServerRegistered', {
       fromBlock: 1,
       filter: { relayManager: this.managerAddress }
     })
-    let receipt: TransactionReceipt | undefined
     if (relayRegisteredEvents.find(
       (e: any) =>
         e.returnValues.relayManager.toLowerCase() === this.managerAddress &&
@@ -635,42 +635,78 @@ export class RelayServer extends EventEmitter {
       const registerMethod = this.relayHubContract?.contract.methods
         .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
           this.url)
-      receipt = (await this._sendTransaction({
+      receipts = receipts.concat((await this._sendTransaction({
         signerIndex: 0,
         method: registerMethod,
         destination: this.relayHubContract?.address as string
-      })).receipt
+      })).receipt)
       debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
     }
     this.isAddressAdded = true
-    return receipt
+    return receipts
   }
 
-  async _handleUnstakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt> {
+  async _handleUnstakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
     console.log('handle Unstaked event', dlog)
     // sanity checks
     if (dlog.name !== 'StakeUnlocked' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
-    const balance = await this.getManagerBalance()
+    const receipts: TransactionReceipt[] = []
+    const managerHubBalance = await this.relayHubContract?.balanceOf(this.managerAddress) ?? toBN(0)
     const gasPrice = await this.contractInteractor.getGasPrice()
-    const gasLimit = mintxgascost
-    console.log(`Sending balance ${balance.div(toBN(1e18)).toString()} to owner`)
-    const txCost = toBN(gasLimit * parseInt(gasPrice))
-    if (balance.lt(txCost)) {
-      throw new Error(`balance too low: ${balance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+    const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.owner)
+    const withdrawTxGasLimit = await method.estimateGas(
+      { from: this.getManagerAddress() })
+    const withdrawTxCost = toBN(withdrawTxGasLimit * parseInt(gasPrice))
+    // sending manager hub balance to owner
+    if (managerHubBalance.gte(withdrawTxCost)) {
+      console.log(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
+      receipts.push((await this._sendTransaction({
+        signerIndex: 0,
+        destination: this.relayHubContract?.address as string,
+        method
+      })).receipt)
+    } else {
+      console.log(`manager hub balance too low: ${managerHubBalance.toString()}, tx cost: ${withdrawTxCost.toString()}`)
     }
-    const { receipt } = await this._sendTransaction({
-      signerIndex: 0,
-      destination: this.owner as string,
-      gasLimit: gasLimit.toString(),
-      gasPrice,
-      value: toHex(balance.sub(txCost))
-    })
-    // todo: sender worker balance and manager hub balance as well!!!
+
+    const gasLimit = mintxgascost
+    const txCost = toBN(gasLimit * parseInt(gasPrice))
+
+    const managerBalance = await this.getManagerBalance()
+    if (managerBalance.gte(txCost)) {
+      console.log(`Sending manager eth balance ${managerBalance.toString()} to owner`)
+      // sending manager eth balance to owner
+      receipts.push((await this._sendTransaction({
+        signerIndex: 0,
+        destination: this.owner as string,
+        gasLimit: gasLimit.toString(),
+        gasPrice,
+        value: toHex(managerBalance.sub(txCost))
+      })).receipt)
+    } else {
+      console.log(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+    }
+
+    // sending workers' balance to owner (currently one worker, todo: extend to multiple)
+    const workerBalance = await this.getWorkerBalance(1)
+    if (workerBalance.gte(txCost)) {
+      console.log(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
+      receipts.push((await this._sendTransaction({
+        signerIndex: 1,
+        destination: this.owner as string,
+        gasLimit: gasLimit.toString(),
+        gasPrice,
+        value: toHex(workerBalance.sub(txCost))
+      })).receipt)
+    } else {
+      console.log(`balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+    }
+
     this.emit('unstaked')
-    return receipt
+    return receipts
   }
 
   /**

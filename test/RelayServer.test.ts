@@ -164,8 +164,12 @@ contract('RelayServer', function (accounts) {
     return receipt
   }
 
-  function assertRelayAdded (receipt: TransactionReceipt, relayServer: RelayServer): void {
-    const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(relayServer._parseEvent)
+  function assertRelayAdded (receipts: TransactionReceipt[], relayServer: RelayServer): void {
+    const receipt = receipts.find(r => {
+      const decodedLogs = abiDecoder.decodeLogs(r.logs).map(relayServer._parseEvent)
+      return decodedLogs[0].name === 'RelayServerRegistered'
+    })
+    const decodedLogs = abiDecoder.decodeLogs(receipt!.logs).map(relayServer._parseEvent)
     assert.equal(decodedLogs.length, 1)
     assert.equal(decodedLogs[0].name, 'RelayServerRegistered')
     assert.equal(decodedLogs[0].args.relayManager.toLowerCase(), relayServer.getManagerAddress().toLowerCase())
@@ -292,13 +296,13 @@ contract('RelayServer', function (accounts) {
       assert.ok(res.receipt.status, 'stake failed')
       assert.ok(res2.receipt.status, 'authorize hub failed')
       header = await _web3.eth.getBlock('latest')
-      const receipt = await relayServer._worker(header)
+      const receipts = await relayServer._worker(header)
       assert.equal(relayServer.lastError, null)
       assert.equal(relayServer.lastScannedBlock, header.number)
       assert.deepEqual(relayServer.stake, oneEther)
       assert.equal(relayServer.owner, relayOwner)
       assert.equal(relayServer.ready, true, 'relay not ready?')
-      await assertRelayAdded(receipt as TransactionReceipt, relayServer)
+      await assertRelayAdded(receipts, relayServer)
     })
 
     it('should start again after restarting process', async () => {
@@ -363,11 +367,11 @@ contract('RelayServer', function (accounts) {
       assert.equal(defunctRelayServer.ready, false)
       const expectedLastScannedBlock = await _web3.eth.getBlockNumber()
       assert.equal(defunctRelayServer.lastScannedBlock, 0)
-      const receipt = await defunctRelayServer._worker(await _web3.eth.getBlock('latest'))
+      const receipts = await defunctRelayServer._worker(await _web3.eth.getBlock('latest'))
       assert.equal(defunctRelayServer.lastScannedBlock, expectedLastScannedBlock)
       assert.equal(defunctRelayServer.gasPrice, expectedGasPrice)
       assert.equal(defunctRelayServer.ready, true, 'relay no ready?')
-      await assertRelayAdded(receipt as TransactionReceipt, defunctRelayServer)
+      await assertRelayAdded(receipts, defunctRelayServer)
     })
     after('txstore cleanup', async function () {
       await defunctRelayServer.txStoreManager.clearAll()
@@ -734,8 +738,10 @@ contract('RelayServer', function (accounts) {
   describe('relay workers rebalancing', function () {
     const workerIndex = 1
     const gasPrice = 1e9
+    let beforeDescribeId: string
     const txcost = toBN(defaultEnvironment.mintxgascost * gasPrice)
     before('deplete worker balance', async function () {
+      beforeDescribeId = (await snapshot()).result
       await relayServer._sendTransaction({
         signerIndex: 1,
         destination: accounts[0],
@@ -746,6 +752,9 @@ contract('RelayServer', function (accounts) {
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.lt(toBN(relayServer.workerMinBalance)),
         'worker balance should be lower than min balance')
+    })
+    after(async function () {
+      await revert(beforeDescribeId)
     })
     beforeEach(async function () {
       id = (await snapshot()).result
@@ -805,7 +814,7 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('listener task', function () {
-    let origWorker: (blockHeader: BlockHeader) => Promise<TransactionReceipt | void>
+    let origWorker: (blockHeader: BlockHeader) => Promise<TransactionReceipt[]>
     let started: boolean
     beforeEach(function () {
       origWorker = relayServer._worker
@@ -814,6 +823,7 @@ contract('RelayServer', function (accounts) {
         await Promise.resolve()
         started = true
         this.emit('error', new Error('GOTCHA'))
+        return []
       }
     })
     afterEach(function () {
@@ -834,14 +844,39 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('event handlers', function () {
+    const workerIndex = 1
     it('should handle Unstaked event - send balance to owner', async function () {
-      const relayBalanceBefore = await relayServer.getManagerBalance()
-      assert.isTrue(relayBalanceBefore.gtn(0))
       await increaseTime(weekInSec)
       await stakeManager.unlockStake(relayServer.getManagerAddress(), { from: relayOwner })
-      await relayServer._worker(await _web3.eth.getBlock('latest'))
+
+      const gasPrice = await _web3.eth.getGasPrice()
+      const managerHubBalanceBefore = await rhub.balanceOf(relayServer.getManagerAddress())
+      const managerBalanceBefore = await relayServer.getManagerBalance()
+      const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
+      const ownerBalanceBefore = toBN(await _web3.eth.getBalance(relayServer.owner!))
+      assert.isTrue(managerHubBalanceBefore.gtn(0))
+      assert.isTrue(managerBalanceBefore.gtn(0))
+      assert.isTrue(workerBalanceBefore.gtn(0))
+      const receipts = await relayServer._worker(await _web3.eth.getBlock('latest'))
+      const totalTxCosts = receipts.map(r => toBN(r.gasUsed).mul(toBN(gasPrice))).reduce(
+        (previous, current) => previous.add(current), toBN(0))
       const relayBalanceAfter = await relayServer.getManagerBalance()
       assert.equal(relayBalanceAfter.toNumber(), 0, `relayBalanceAfter is not zero: ${relayBalanceAfter.toString()}`)
+      const ownerBalanceAfter = toBN(await _web3.eth.getBalance(relayServer.owner!))
+      assert.equal(
+        ownerBalanceAfter.sub(
+          ownerBalanceBefore).toString(),
+        managerHubBalanceBefore.add(managerBalanceBefore).add(workerBalanceBefore)
+          .sub(totalTxCosts).toString(),
+        `ownerBalanceAfter(${ownerBalanceAfter.toString()}) - ownerBalanceBefore(${ownerBalanceBefore.toString()}) != 
+         managerHubBalanceBefore(${managerHubBalanceBefore.toString()}) + managerBalanceBefore(${managerBalanceBefore.toString()}) + workerBalanceBefore(${workerBalanceBefore.toString()})
+         - totalTxCosts(${totalTxCosts.toString()})`)
+      const managerHubBalanceAfter = await rhub.balanceOf(relayServer.getManagerAddress())
+      const managerBalanceAfter = await relayServer.getManagerBalance()
+      const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
+      assert.isTrue(managerHubBalanceAfter.eqn(0))
+      assert.isTrue(managerBalanceAfter.eqn(0))
+      assert.isTrue(workerBalanceAfter.eqn(0))
     })
 
     it('_handleHubAuthorizedEvent')
@@ -858,11 +893,12 @@ contract('RelayServer', function (accounts) {
       const workerOrig = relayServer._worker
       let shouldRun = true
       try {
-        relayServer._worker = async function (blockHeader: BlockHeader): Promise<TransactionReceipt | void> {
+        relayServer._worker = async function (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
           // eslint-disable-next-line no-unmodified-loop-condition
           while (shouldRun) {
             await sleep(200)
           }
+          return []
         }
         relayServer._workerSemaphore(await _web3.eth.getBlock('latest'))
         // @ts-ignore
