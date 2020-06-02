@@ -42,7 +42,7 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 34876;
+    uint256 constant private GAS_OVERHEAD = 34835;
 
     //gas overhead to calculate gasUseWithoutPost
     uint256 constant private POST_OVERHEAD = 8688;
@@ -178,8 +178,6 @@ contract RelayHub is IRelayHub {
     }
 
     function relayCall(
-    // TODO: msg.sender used to be treated as 'relay' (now passed in a struct),
-    //  make sure this does not have security impl
         ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -193,6 +191,7 @@ contract RelayHub is IRelayHub {
         vars.functionSelector = LibBytesV06.readBytes4(relayRequest.encodedFunction, 0);
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
+        require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
         require(
             stakeManager.isRelayManagerStaked(workerToManager[msg.sender], MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
             "relay manager not staked"
