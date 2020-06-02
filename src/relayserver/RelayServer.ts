@@ -142,8 +142,8 @@ export class RelayServer extends EventEmitter {
   readonly pctRelayFee: number
   readonly gasPriceFactor: number
   readonly url: string
-  private readonly workerMinBalance: number
-  private readonly workerTargetBalance: number
+  readonly workerMinBalance: number
+  readonly workerTargetBalance: number
   private readonly devMode: boolean
   private workerTask: any
 
@@ -437,7 +437,7 @@ export class RelayServer extends EventEmitter {
 
   async replenishWorker (workerIndex: number): Promise<void> {
     const workerAddress = this.getAddress(workerIndex)
-    const workerBalance = toBN(await this.contractInteractor.getBalance(workerAddress))
+    const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       const refill = toBN(this.workerTargetBalance).sub(workerBalance)
       const balance = await this.getManagerBalance()
@@ -464,7 +464,7 @@ export class RelayServer extends EventEmitter {
       } else {
         const message = `== replenishWorker: can't replenish: mgr balance too low ${balance.div(toBN(1e18)).toString()} refill=${refill.div(
           toBN(1e18)).toString()}`
-        this.emit('funding needed', message)
+        this.emit('fundingNeeded', message)
         console.log(message)
       }
     }
@@ -536,6 +536,10 @@ export class RelayServer extends EventEmitter {
 
   async getManagerBalance (): Promise<BN> {
     return toBN(await this.contractInteractor.getBalance(this.managerAddress))
+  }
+
+  async getWorkerBalance (workerIndex: number): Promise<BN> {
+    return toBN(await this.contractInteractor.getBalance(this.getAddress(workerIndex)))
   }
 
   async refreshStake (): Promise<BN> {
@@ -649,7 +653,7 @@ export class RelayServer extends EventEmitter {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
-    const balance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
+    const balance = await this.getManagerBalance()
     const gasPrice = await this.contractInteractor.getGasPrice()
     const gasLimit = mintxgascost
     console.log(`Sending balance ${balance.div(toBN(1e18)).toString()} to owner`)
@@ -664,6 +668,7 @@ export class RelayServer extends EventEmitter {
       gasPrice,
       value: toHex(balance.sub(txCost))
     })
+    // todo: sender worker balance and manager hub balance as well!!!
     this.emit('unstaked')
     return receipt
   }

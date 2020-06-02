@@ -535,17 +535,6 @@ contract('RelayServer', function (accounts) {
     })
   })
 
-  describe('relay workers rebalancing', function () {
-    it('should rebalance from manager hub balance when sufficient', async function () {
-
-    })
-    it('should rebalance from manager eth balance when sufficient and hub balance too low', async function () {
-
-    })
-    it('should emit \'funding needed\' when both eth and hub balances insufficient', async function () {
-
-    })
-  })
   describe('resend unconfirmed transactions task', function () {
     it('should resend unconfirmed transaction', async function () {
       // First clear db
@@ -570,8 +559,6 @@ contract('RelayServer', function (accounts) {
       sortedTxs = await relayServer.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
       // Increase time by hooking Date.now()
-      // @ts-ignore
-      // @ts-ignore
       try {
         const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
         // @ts-ignore
@@ -741,6 +728,79 @@ contract('RelayServer', function (accounts) {
       } finally {
         relayServer.keyManager.signTransaction = signTransactionOrig
       }
+    })
+  })
+
+  describe('relay workers rebalancing', function () {
+    const workerIndex = 1
+    const gasPrice = 1e9
+    const txcost = toBN(defaultEnvironment.mintxgascost * gasPrice)
+    before('deplete worker balance', async function () {
+      await relayServer._sendTransaction({
+        signerIndex: 1,
+        destination: accounts[0],
+        gasLimit: defaultEnvironment.mintxgascost.toString(),
+        gasPrice: gasPrice.toString(),
+        value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txcost))
+      })
+      const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
+      assert.isTrue(workerBalanceAfter.lt(toBN(relayServer.workerMinBalance)),
+        'worker balance should be lower than min balance')
+    })
+    beforeEach(async function () {
+      id = (await snapshot()).result
+      await relayServer.txStoreManager.clearAll()
+    })
+    afterEach(async function () {
+      await revert(id)
+      await relayServer.txStoreManager.clearAll()
+    })
+    it('should fund from manager hub balance first when sufficient before using eth balance', async function () {
+      await rhub.depositFor(relayServer.getManagerAddress(), { value: 1e18.toString() })
+      const managerHubBalanceBefore = await rhub.balanceOf(relayServer.getManagerAddress())
+      const managerEthBalance = await relayServer.getManagerBalance()
+      const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
+      const refill = toBN(relayServer.workerTargetBalance).sub(workerBalanceBefore)
+      assert.isTrue(managerHubBalanceBefore.gte(refill), 'manager hub balance should be sufficient to replenish worker')
+      assert.isTrue(managerEthBalance.gte(refill), 'manager eth balance should be sufficient to replenish worker')
+      await relayServer.replenishWorker(workerIndex)
+      const managerHubBalanceAfter = await rhub.balanceOf(relayServer.getManagerAddress())
+      const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
+      assert.isTrue(managerHubBalanceAfter.eq(managerHubBalanceBefore.sub(refill)),
+        `managerHubBalanceAfter (${managerHubBalanceAfter.toString()}) != managerHubBalanceBefore (${managerHubBalanceBefore.toString()}) - refill (${refill.toString()}`)
+      assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
+        `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
+    })
+    it('should fund from manager eth balance when sufficient and hub balance too low', async function () {
+      const managerHubBalanceBefore = await rhub.balanceOf(relayServer.getManagerAddress())
+      const managerEthBalance = await relayServer.getManagerBalance()
+      const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
+      const refill = toBN(relayServer.workerTargetBalance).sub(workerBalanceBefore)
+      assert.isTrue(managerHubBalanceBefore.lt(refill), 'manager hub balance should be insufficient to replenish worker')
+      assert.isTrue(managerEthBalance.gte(refill), 'manager eth balance should be sufficient to replenish worker')
+      await relayServer.replenishWorker(workerIndex)
+      const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
+      assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
+        `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
+    })
+    it('should emit \'funding needed\' when both eth and hub balances are too low', async function () {
+      await relayServer._sendTransaction({
+        signerIndex: 0,
+        destination: accounts[0],
+        gasLimit: defaultEnvironment.mintxgascost.toString(),
+        gasPrice: gasPrice.toString(),
+        value: toHex((await relayServer.getManagerBalance()).sub(txcost))
+      })
+      const managerHubBalanceBefore = await rhub.balanceOf(relayServer.getManagerAddress())
+      const managerEthBalance = await relayServer.getManagerBalance()
+      const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
+      const refill = toBN(relayServer.workerTargetBalance).sub(workerBalanceBefore)
+      assert.isTrue(managerHubBalanceBefore.lt(refill), 'manager hub balance should be insufficient to replenish worker')
+      assert.isTrue(managerEthBalance.lt(refill), 'manager eth balance should be insufficient to replenish worker')
+      let fundingNeededEmitted = false
+      relayServer.on('fundingNeeded', () => { fundingNeededEmitted = true })
+      await relayServer.replenishWorker(workerIndex)
+      assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
     })
   })
 
