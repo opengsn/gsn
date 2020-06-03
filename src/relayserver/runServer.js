@@ -40,7 +40,7 @@ const argv = parseArgs(process.argv.slice(2), {
 if (argv._.length) error('unknown extra params: ' + argv._)
 
 console.log('runServer start. args', argv)
-const config = require(argv.config)
+const config = argv.config ? require(argv.config) : error('missing --config')
 const baseRelayFee = argv.baseRelayFee || config.baseRelayFee
 const pctRelayFee = argv.pctRelayFee || config.pctRelayFee
 const url = argv.url || config.url
