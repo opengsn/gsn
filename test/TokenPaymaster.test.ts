@@ -92,7 +92,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       relayData: {
         senderAddress: from,
         senderNonce: '0',
-        relayWorker: from,
+        relayWorker: relay,
         paymaster: paymaster.address,
         forwarder: forwarder.address
       },
