@@ -32,11 +32,11 @@ export async function startRelay (
   args.push('--relayHubAddress', relayHubAddress)
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
-  if (options.EthereumNodeUrl) {
-    args.push('--ethereumNodeUrl', options.EthereumNodeUrl)
+  if (options.ethereumNodeUrl) {
+    args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
   }
-  if (options.GasPricePercent) {
-    args.push('--gasPricePercent', options.GasPricePercent)
+  if (options.gasPricePercent) {
+    args.push('--gasPricePercent', options.gasPricePercent)
   }
   if (options.pctRelayFee) {
     args.push('--pctRelayFee', options.pctRelayFee)

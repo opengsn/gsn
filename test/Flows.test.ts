@@ -64,7 +64,8 @@ options.forEach(params => {
           relayOwner: accounts[0],
           // @ts-ignore
           ethereumNodeUrl: web3.currentProvider.host,
-          gasPricePercent: gasPricePercent
+          gasPricePercent: gasPricePercent,
+          relaylog: process.env.relaylog
         })
         console.log('relay started')
         from = gasless
