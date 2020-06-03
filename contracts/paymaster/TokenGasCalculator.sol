@@ -17,7 +17,7 @@ contract TokenGasCalculator is RelayHub, Ownable {
     //(The Paymaster calls back calculateCharge, deposotFor in the relayHub,
     //so the calculator has to implement them just like a real RelayHub
     // solhint-disable-next-line no-empty-blocks
-    constructor(uint256 _gtxdatanonzero, StakeManager _stakeManager, Penalizer _penalizer) public RelayHub(_gtxdatanonzero, _stakeManager, _penalizer) {}
+    constructor(StakeManager _stakeManager, Penalizer _penalizer) public RelayHub(_stakeManager, _penalizer) {}
 
     /**
      * calculate actual cost of postRelayedCall.
@@ -43,7 +43,7 @@ contract TokenGasCalculator is RelayHub, Ownable {
 
         paymaster.setRelayHub(IRelayHub(address(this)));
 
-        GSNTypes.GasData memory gasData = GSNTypes.GasData(0, 1, 0, 0);
+        ISignatureVerifier.GasData memory gasData = ISignatureVerifier.GasData(0, 1, 0, 0);
         bytes memory ctx0 = abi.encode(this, uint(0));
         //no precharge
         bytes memory ctx1 = abi.encode(this, uint(500));

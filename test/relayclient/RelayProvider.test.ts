@@ -4,8 +4,9 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import chaiAsPromised from 'chai-as-promised'
 import Web3 from 'web3'
+import { toBN } from 'web3-utils'
 
-import { RelayProvider, BaseTransactionReceipt } from '../../src/relayclient'
+import { BaseTransactionReceipt, RelayProvider } from '../../src/relayclient/RelayProvider'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
   RelayHubInstance,
@@ -19,14 +20,14 @@ import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
-import getDataToSign from '../../src/common/EIP712/Eip712Helper'
-import { getEip712Signature } from '../../src/common/utils'
+import { getEip712Signature } from '../../src/common/Utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
+import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
 const RelayHub = artifacts.require('RelayHub')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
@@ -36,30 +37,34 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
   const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
-  const testRecipientForwarder = await TrustedForwarder.at(testRecipientForwarderAddress)
+  const testRecipientForwarder = await Forwarder.at(testRecipientForwarderAddress)
   const senderNonce = (await testRecipientForwarder.getNonce(account)).toString()
-  const relayRequest = new RelayRequest({
-    senderAddress: account,
-    encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
-    senderNonce,
+  const relayRequest: RelayRequest = {
     target: testRecipient.address,
-    pctRelayFee: '1',
-    baseRelayFee: '1',
-    gasPrice: '1',
-    gasLimit: '10000',
-    relayWorker,
-    paymaster,
-    forwarder: testRecipientForwarderAddress
-  })
-  const dataToSign = await getDataToSign({
-    chainId: defaultEnvironment.chainId,
-    verifier: testRecipientForwarderAddress,
-    relayRequest: relayRequest
-  })
-  const signature = await getEip712Signature({
+    encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
+    relayData: {
+      senderAddress: account,
+      senderNonce,
+      relayWorker,
+      paymaster,
+      forwarder: testRecipientForwarderAddress
+    },
+    gasData: {
+      pctRelayFee: '1',
+      baseRelayFee: '1',
+      gasPrice: '1',
+      gasLimit: '10000'
+    }
+  }
+  const dataToSign = new TypedRequestData(
+    defaultEnvironment.chainId,
+    testRecipientForwarderAddress,
+    relayRequest
+  )
+  const signature = await getEip712Signature(
     web3,
     dataToSign
-  })
+  )
   return {
     relayRequest,
     signature
@@ -79,7 +84,7 @@ contract('RelayProvider', function (accounts) {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+    relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
     const paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address
     await paymasterInstance.setRelayHub(relayHub.address)
@@ -144,6 +149,7 @@ contract('RelayProvider', function (accounts) {
 
       await testRecipient.emitMessage('hello again', {
         from: gasLess,
+        gas: '100000',
         paymaster
       })
       const log: any = await eventPromise
@@ -237,6 +243,7 @@ contract('RelayProvider', function (accounts) {
     let innerTxSucceedReceipt: BaseTransactionReceipt
     let notRelayedTxReceipt: BaseTransactionReceipt
     let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
+    const gas = toBN(3e6).toString()
     // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
@@ -265,8 +272,9 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-      const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', {
+      const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
         from: accounts[0],
+        gas,
         gasPrice: '1'
       })
       expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster')
@@ -275,8 +283,9 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)
       await misbehavingPaymaster.setRevertPreRelayCall(true)
 
-      const innerTxFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', {
+      const innerTxFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
         from: accounts[0],
+        gas,
         gasPrice: '1'
       })
       expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRelayed', {
@@ -285,8 +294,9 @@ contract('RelayProvider', function (accounts) {
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setRevertPreRelayCall(false)
-      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', {
+      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
         from: accounts[0],
+        gas,
         gasPrice: '1'
       })
       expectEvent.inLogs(innerTxSuccessReceiptTruffle.logs, 'SampleRecipientEmitted')

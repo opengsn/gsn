@@ -12,7 +12,7 @@ export default interface TmpRelayTransactionJsonRequest {
   forwarder: Address
   gasPrice: IntString
   gasLimit: IntString
-  senderNonce: number
+  senderNonce: IntString
   relayMaxNonce: number
   baseRelayFee: IntString
   pctRelayFee: IntString

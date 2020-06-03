@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../interfaces/ITrustedForwarder.sol";
+import "../interfaces/IForwarder.sol";
 import "../BasePaymaster.sol";
 
 import "./IUniswap.sol";
@@ -18,6 +18,7 @@ import "./IUniswap.sol";
  * - postRelayedCall - refund the caller for the unused gas
  */
 contract TokenPaymaster is BasePaymaster {
+    string public override versionPaymaster = "2.0.0-alpha.1+opengsn.token.ipaymaster";
 
     IUniswap public uniswap;
     IERC20 public token;
@@ -44,7 +45,7 @@ contract TokenPaymaster is BasePaymaster {
 
     //return the payer of this request.
     // for account-based target, this is the target account.
-    function getPayer(GSNTypes.RelayRequest calldata relayRequest) external pure returns (address) {
+    function getPayer(ISignatureVerifier.RelayRequest calldata relayRequest) external pure returns (address) {
         return relayRequest.target;
     }
 
@@ -62,7 +63,7 @@ contract TokenPaymaster is BasePaymaster {
      *  The methods preRelayedCall, postRelayedCall already handle such zero tokenPreCharge.
      */
     function acceptRelayedCall(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -74,7 +75,7 @@ contract TokenPaymaster is BasePaymaster {
         (approvalData);
 
         // Verify the sender's request is valid for selected forwarder
-        ITrustedForwarder forwarder = ITrustedForwarder(relayRequest.relayData.forwarder);
+        IForwarder forwarder = IForwarder(relayRequest.relayData.forwarder);
         forwarder.verify(relayRequest, signature);
 
         address payer = this.getPayer(relayRequest);
@@ -101,7 +102,7 @@ contract TokenPaymaster is BasePaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        GSNTypes.GasData calldata gasData
+        ISignatureVerifier.GasData calldata gasData
     ) external override relayHubOnly {
         (success, preRetVal);
 
@@ -128,8 +129,8 @@ contract TokenPaymaster is BasePaymaster {
         //solhint-disable-next-line
         uniswap.tokenToEthSwapOutput(ethActualCharge, uint(-1), block.timestamp+60*15);
         relayHub.depositFor{value:ethActualCharge}(address(this));
-        emit TokensCharged(gasUseWithoutPost, ethActualCharge, tokenActualCharge);
+        emit TokensCharged(gasUseWithoutPost, justPost, ethActualCharge, tokenActualCharge);
     }
 
-    event TokensCharged(uint gasUseWithoutPost, uint ethActualCharge, uint tokenActualCharge);
+    event TokensCharged(uint gasUseWithoutPost, uint gasJustPost, uint ethActualCharge, uint tokenActualCharge);
 }

@@ -1,12 +1,11 @@
 const path = require('path')
-// BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
-const { IgnorePlugin } = require( 'webpack' )
+const { IgnorePlugin } = require('webpack')
 
 module.exports = {
   plugins: [
     //      new BundleAnalyzerPlugin()
-	new IgnorePlugin(/electron/),
-	new IgnorePlugin(/^scrypt$/),
+    new IgnorePlugin(/electron/),
+    new IgnorePlugin(/^scrypt$/)
   ],
   target: 'node',
   entry: '../dist/src/relayserver/runServer.js',
@@ -16,9 +15,9 @@ module.exports = {
       {
         test: /\.tsx?$/,
         use: 'ts-loader',
-        exclude: /node_modules/,
-      },
-    ],
+        exclude: /node_modules/
+      }
+    ]
   },
   output: {
     path: path.resolve(__dirname, 'dist'),

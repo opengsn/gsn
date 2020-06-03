@@ -2,9 +2,15 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "../utils/EIP712Sig.sol";
+import "./ISignatureVerifier.sol";
 
 interface IPaymaster {
+
+    struct GasLimits {
+        uint256 acceptRelayedCallGasLimit;
+        uint256 preRelayedCallGasLimit;
+        uint256 postRelayedCallGasLimit;
+    }
 
     /**
      * return the relayHub of this contract.
@@ -24,7 +30,7 @@ interface IPaymaster {
     external
     view
     returns (
-        GSNTypes.GasLimits memory limits
+        GasLimits memory limits
     );
 
     /**
@@ -40,7 +46,7 @@ interface IPaymaster {
      *  @return a context to be passed to preRelayedCall and postRelayedCall.
      */
     function acceptRelayedCall(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -88,7 +94,8 @@ interface IPaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        GSNTypes.GasData calldata gasData
+        ISignatureVerifier.GasData calldata gasData
     ) external;
 
+    function versionPaymaster() external view returns (string memory);
 }

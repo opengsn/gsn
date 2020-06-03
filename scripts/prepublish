@@ -7,7 +7,7 @@ yarn generate
 
 mkdir -p src/cli/compiled/
 
-CONTRACTS="RelayHub StakeManager Penalizer TrustedForwarder TestPaymasterEverythingAccepted"
+CONTRACTS="RelayHub StakeManager Penalizer Forwarder TestPaymasterEverythingAccepted"
 BUILDFOLDER=./build/contracts
 OUTFOLDER=./src/cli/compiled/
 for c in $CONTRACTS; do
@@ -23,3 +23,5 @@ for c in RelayProvider RelayClient GSNConfigurator GsnTestEnvironment; do
 done
 
 tsc
+
+cp -r types dist/

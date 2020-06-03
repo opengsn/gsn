@@ -2,16 +2,20 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/ITrustedForwarder.sol";
+import "../interfaces/IForwarder.sol";
 import "../BasePaymaster.sol";
 
 contract TestPaymasterEverythingAccepted is BasePaymaster {
+
+    function versionPaymaster() external view override virtual returns (string memory){
+        return "2.0.0-alpha.1+opengsn.test_pea.ipaymaster";
+    }
 
     event SampleRecipientPreCall();
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
 
     function acceptRelayedCall(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -22,7 +26,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     view
     returns (bytes memory) {
         (relayRequest, signature, approvalData, maxPossibleGas);
-        ITrustedForwarder(relayRequest.relayData.forwarder).verify(relayRequest, signature);
+        IForwarder(relayRequest.relayData.forwarder).verify(relayRequest, signature);
         return "no revert here";
     }
 
@@ -44,7 +48,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        GSNTypes.GasData calldata gasData
+        ISignatureVerifier.GasData calldata gasData
     )
     external
     override

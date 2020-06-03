@@ -4,7 +4,6 @@ import { HttpProvider } from 'web3-core'
 import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import {
   RelayHubInstance,
   StakeManagerInstance,
@@ -59,13 +58,14 @@ contract('KnownRelaysManager', function (
     let workerRelayWorkersAdded
     let workerRelayServerRegistered
     let workerNotActive
+    const gas = 4e6
 
     before(async function () {
       workerRelayWorkersAdded = await web3.eth.personal.newAccount('password')
       workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
       workerNotActive = await web3.eth.personal.newAccount('password')
       stakeManager = await StakeManager.new()
-      relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+      relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
       config = configureGSN({
         relayHubAddress: relayHub.address,
         relayLookupWindowBlocks
@@ -105,13 +105,15 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
         from: activeRelayWorkersAdded
       })
-      await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
+      await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
         from: workerTransactionRelayed,
+        gas,
         gasPrice: txTransactionRelayed.relayRequest.gasData.gasPrice
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(txCanRelayFailed.relayRequest, txCanRelayFailed.signature, '0x', {
+      await relayHub.relayCall(txCanRelayFailed.relayRequest, txCanRelayFailed.signature, '0x', gas, {
         from: workerCanRelayFailed,
+        gas,
         gasPrice: txCanRelayFailed.relayRequest.gasData.gasPrice
       })
     })
@@ -151,7 +153,7 @@ contract('KnownRelaysManager 2', function (accounts) {
 
     before(async function () {
       stakeManager = await StakeManager.new()
-      relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+      relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090'],
         relayHubAddress: relayHub.address,

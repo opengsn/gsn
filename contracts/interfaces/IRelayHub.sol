@@ -2,7 +2,7 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "../utils/EIP712Sig.sol";
+import "./ISignatureVerifier.sol";
 
 interface IRelayHub {
 
@@ -112,6 +112,7 @@ interface IRelayHub {
 
     // Relaying
 
+
     /// Relays a transaction. For this to succeed, multiple conditions must be met:
     ///  - canRelay must return CanRelayStatus.OK
     ///  - the sender must be a registered relayWorker
@@ -126,12 +127,14 @@ interface IRelayHub {
     /// @param signature - client's signature over all previous params, plus the relayWorker and RelayHub addresses
     /// @param approvalData: dapp-specific data forwarded to acceptRelayedCall.
     ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the sponsor.
+    /// @param externalGasLimit - the value passed as gasLimit to the transaction.
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        bytes calldata approvalData
+        bytes calldata approvalData,
+        uint externalGasLimit
     )
     external
     returns (bool paymasterAccepted, string memory returnValue);
@@ -143,9 +146,9 @@ interface IRelayHub {
     /// The fee is expressed as a base fee in wei plus percentage on actual charge.
     /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
     /// charged for 1.4 times the spent amount.
-    function calculateCharge(uint256 gasUsed, GSNTypes.GasData calldata gasData) external view returns (uint256);
+    function calculateCharge(uint256 gasUsed, ISignatureVerifier.GasData calldata gasData) external view returns (uint256);
 
-    function version() external view returns (string memory);
+    function versionHub() external view returns (string memory);
 
 }
 

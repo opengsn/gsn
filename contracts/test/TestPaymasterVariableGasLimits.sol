@@ -6,6 +6,8 @@ import "./TestPaymasterEverythingAccepted.sol";
 
 contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
 
+    string public override versionPaymaster = "2.0.0-alpha.1+opengsn.test-vgl.ipaymaster";
+
     event SampleRecipientPreCallWithValues(
         uint256 gasleft,
         uint256 arcGasleft,
@@ -18,7 +20,7 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
     );
 
     function acceptRelayedCall(
-        GSNTypes.RelayRequest calldata relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -51,7 +53,7 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        GSNTypes.GasData calldata gasData
+        ISignatureVerifier.GasData calldata gasData
     )
     external
     override

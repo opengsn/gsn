@@ -1,2 +1,0 @@
-#!/bin/bash
-`dirname $0`/gsn-dock-relay with-ganache

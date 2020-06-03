@@ -6,12 +6,12 @@ import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import paymasterAbi from '../common/interfaces/IPaymaster.json'
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
-import forwarderAbi from '../common/interfaces/ITrustedForwarder.json'
+import forwarderAbi from '../common/interfaces/IForwarder.json'
 import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
-import { event2topic } from '../common/utils'
+import { event2topic } from '../common/Utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import {
   BaseRelayRecipientInstance,
@@ -20,7 +20,7 @@ import {
   IRelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance,
-  ITrustedForwarderInstance
+  IForwarderInstance
 } from '../../types/truffle-contracts'
 
 import { Address, IntString } from './types/Aliases'
@@ -43,7 +43,7 @@ export const StakePenalized: EventName = 'StakePenalized'
 export default class ContractInteractor {
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
-  private readonly IForwarderContract: Contract<ITrustedForwarderInstance>
+  private readonly IForwarderContract: Contract<IForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
@@ -72,7 +72,7 @@ export default class ContractInteractor {
     })
     // @ts-ignore
     this.IForwarderContract = TruffleContract({
-      contractName: 'ITrustedForwarder',
+      contractName: 'IForwarder',
       abi: forwarderAbi
     })
     // @ts-ignore
@@ -141,7 +141,7 @@ export default class ContractInteractor {
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async _createForwarder (address: Address): Promise<ITrustedForwarderInstance> {
+  async _createForwarder (address: Address): Promise<IForwarderInstance> {
     return this.IForwarderContract.at(address)
   }
 
@@ -172,14 +172,19 @@ export default class ContractInteractor {
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
     try {
+      // not really needed in client view call. only need to be large enough.
+      const externalGasLimit = 10e6
+
       const res = await relayHub.contract.methods.relayCall(
         relayRequest,
         signature,
-        approvalData
+        approvalData,
+        externalGasLimit
       )
         .call({
           from: relayRequest.relayData.relayWorker,
-          gasPrice: relayRequest.gasData.gasPrice
+          gasPrice: relayRequest.gasData.gasPrice,
+          gas: externalGasLimit
         })
       if (this.config.verbose) {
         console.log(res)
@@ -199,11 +204,11 @@ export default class ContractInteractor {
     }
   }
 
-  encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString): PrefixedHexString {
+  encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
     // TODO: check this works as expected
     // @ts-ignore
     const relayHub = new this.IRelayHubContract('')
-    return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData).encodeABI()
+    return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   topicsForManagers (relayManagers: Address[]): string[] {

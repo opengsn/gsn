@@ -8,9 +8,7 @@ import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-t
 import RelayHubABI from '../common/interfaces/IRelayHub.json'
 import PayMasterABI from '../common/interfaces/IPaymaster.json'
 import StakeManagerABI from '../common/interfaces/IStakeManager.json'
-import getDataToSign from '../common/EIP712/Eip712Helper'
 import RelayRequest from '../common/EIP712/RelayRequest'
-import utils from '../common/utils'
 import { StoredTx, transactionToStoredTx, TxStoreManager } from './TxStoreManager'
 
 import { Mutex } from 'async-mutex'
@@ -25,12 +23,13 @@ import { TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../relayclient/types/Environments'
+import VersionsManager from '../common/VersionsManager'
+import { calculateTransactionMaxPossibleGas } from '../common/Utils'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
 
-const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
 const VERSION = '0.9.2'
@@ -69,6 +68,7 @@ class StateError extends Error {
 export interface CreateTransactionDetails extends GsnTransactionDetails {
   // todo: gasLimit defined as "gas"
   gasLimit: PrefixedHexString
+  gasPrice: PrefixedHexString
   // todo: encodedFunction defined as "data"
   encodedFunction: PrefixedHexString
   approvalData: PrefixedHexString
@@ -136,6 +136,7 @@ export class RelayServer extends EventEmitter {
   private readonly web3provider: provider
   readonly keyManager: KeyManager
   private readonly contractInteractor: ContractInteractor
+  private readonly versionManager: VersionsManager
   readonly hubAddress: Address
   readonly trustedPaymasters: Address[]
   readonly baseRelayFee: number
@@ -149,6 +150,7 @@ export class RelayServer extends EventEmitter {
 
   constructor (params: RelayServerParams) {
     super()
+    this.versionManager = new VersionsManager()
     this.txStoreManager = params.txStoreManager
     this.web3provider = params.web3provider
     this.keyManager = params.keyManager
@@ -247,28 +249,24 @@ export class RelayServer extends EventEmitter {
     }
 
     // Check canRelay view function to see if we'll get paid for relaying this tx
-    const relayRequest = new RelayRequest({
-      senderAddress: req.from,
-      senderNonce: req.senderNonce,
+    const relayRequest: RelayRequest = {
       target: req.to,
       encodedFunction: req.encodedFunction,
-      baseRelayFee: req.baseRelayFee,
-      pctRelayFee: req.pctRelayFee,
-      gasPrice: req.gasPrice,
-      gasLimit: req.gasLimit,
-      paymaster: req.paymaster,
-      forwarder: req.forwarder,
-      relayWorker: this.getAddress(1)
-    })
-    // TODO: should not use signedData at all. only the relayRequest.
-    const signedData = getDataToSign({
-      chainId: this.chainId,
-      verifier: this.relayHubContract.address,
-      relayRequest
-    })
-    const method = this.relayHubContract.contract.methods.relayCall(signedData.message, req.signature, req.approvalData)
-    const calldataSize = method.encodeABI().length / 2
-    debug('calldatasize', calldataSize)
+      gasData: {
+        baseRelayFee: req.baseRelayFee,
+        pctRelayFee: req.pctRelayFee,
+        gasPrice: req.gasPrice,
+        gasLimit: req.gasLimit
+      },
+      relayData: {
+        senderAddress: req.from,
+        senderNonce: req.senderNonce,
+        paymaster: req.paymaster,
+        forwarder: req.forwarder,
+        relayWorker: this.getAddress(1)
+      }
+    }
+
     let gasLimits
     try {
       if (this.paymasterContract === undefined) {
@@ -291,23 +289,23 @@ export class RelayServer extends EventEmitter {
 
     const hubOverhead = (await this.relayHubContract.getHubOverhead()).toNumber()
     // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-    const maxPossibleGas = GAS_RESERVE + utils.calculateTransactionMaxPossibleGas({
+    const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: parseInt(req.gasLimit),
-      calldataSize,
-      gtxdatanonzero: gtxdatanonzero
+      relayCallGasLimit: req.gasLimit
     })
-
+    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
     let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       canRelayRet = await this.relayHubContract.contract.methods.relayCall(
-        signedData.message,
+        relayRequest,
         req.signature,
-        req.approvalData)
+        req.approvalData,
+        maxPossibleGas)
         .call({
           from: this.getAddress(workerIndex),
-          gasPrice: signedData.message.gasData.gasPrice
+          gasPrice: relayRequest.gasData.gasPrice,
+          gasLimit: maxPossibleGas
         })
     } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -340,8 +338,8 @@ export class RelayServer extends EventEmitter {
         signerIndex: workerIndex,
         method,
         destination: req.relayHubAddress,
-        gasLimit: maxPossibleGas,
-        gasPrice: req.gasPrice as string
+        gasLimit: maxPossibleGas.toString(),
+        gasPrice: req.gasPrice
       })
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishWorker(1)
@@ -413,8 +411,8 @@ export class RelayServer extends EventEmitter {
     } else {
       debug('code length', code.length)
     }
-    const version: string = await this.relayHubContract.version().catch(_ => 'no version() method')
-    if (version !== '1.0.0') {
+    const version = await this.relayHubContract.versionHub().catch(_ => 'no getVersion() method')
+    if (!this.versionManager.isHubVersionSupported(version)) {
       this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
     }
     const stakeManagerAddress = await this.relayHubContract.getStakeManager()

@@ -2,21 +2,21 @@ import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-he
 import BN from 'bn.js'
 import { expect } from 'chai'
 
-import { getEip712Signature } from '../src/common/utils'
-import RelayRequest from '../src/common/EIP712/RelayRequest'
+import { getEip712Signature } from '../src/common/Utils'
+import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
-import getDataToSign from '../src/common/EIP712/Eip712Helper'
+import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 
 import {
   RelayHubInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, TrustedForwarderInstance, PenalizerInstance
+  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, ForwarderInstance, PenalizerInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -40,7 +40,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let relayHubInstance: RelayHubInstance
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
-  let forwarderInstance: TrustedForwarderInstance
+  let forwarderInstance: ForwarderInstance
   let target: string
   let paymaster: string
   let forwarder: string
@@ -48,11 +48,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHubInstance = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
+    relayHubInstance = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     recipientContract = await TestRecipient.new()
     forwarder = await recipientContract.getTrustedForwarder()
-    forwarderInstance = await TrustedForwarder.at(forwarder)
+    forwarderInstance = await Forwarder.at(forwarder)
 
     target = recipientContract.address
     paymaster = paymasterContract.address
@@ -62,8 +62,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   })
 
   it('should retrieve version number', async function () {
-    const version = await relayHubInstance.version()
-    assert.equal(version, '1.0.0')
+    const version = await relayHubInstance.versionHub()
+    assert.match(version, /2\.\d*\.\d*-?.*\+opengsn\.hub\.irelayhub/)
   })
   describe.skip('balances', function () {
     async function testDeposit (sender: string, paymaster: string, amount: BN): Promise<void> {
@@ -163,34 +163,36 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     const gasPrice = '10'
     const gasLimit = '1000000'
     const senderNonce = '0'
-    // TODO: create class
-    let sharedRelayRequestData: any
+    let sharedRelayRequestData: RelayRequest
 
     beforeEach(function () {
       sharedRelayRequestData = {
-        senderAddress,
-        senderNonce,
         target,
-        pctRelayFee,
-        baseRelayFee,
-        gasPrice,
-        gasLimit,
-        relayWorker,
-        paymaster,
-        forwarder
+        encodedFunction: '',
+        gasData: {
+          pctRelayFee,
+          baseRelayFee,
+          gasPrice,
+          gasLimit
+        },
+        relayData: {
+          senderAddress,
+          senderNonce,
+          relayWorker,
+          paymaster,
+          forwarder
+        }
       }
     })
 
     context('with unknown worker', function () {
       const signature = '0xdeadbeef'
       const approvalData = '0x'
+      const gas = 4e6
       let relayRequest: RelayRequest
       beforeEach(async function () {
-        relayRequest = new RelayRequest(
-          {
-            encodedFunction: '0xdeadbeef',
-            ...sharedRelayRequestData
-          })
+        relayRequest = cloneRelayRequest(sharedRelayRequestData)
+        relayRequest.encodedFunction = '0xdeadbeef'
         await relayHubInstance.depositFor(paymaster, {
           from: other,
           value: ether('1'),
@@ -200,7 +202,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
       it('should not accept a relay call', async function () {
         await expectRevert(
-          relayHubInstance.relayCall(relayRequest, signature, approvalData, { from: relayWorker }),
+          relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, { from: relayWorker, gas }),
           'Unknown relay worker')
       })
 
@@ -218,7 +220,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
         it('should not accept a relay call', async function () {
           await expectRevert(
-            relayHubInstance.relayCall(relayRequest, signature, approvalData, { from: relayWorker }),
+            relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, { from: relayWorker, gas }),
             'relay manager not staked')
         })
       })
@@ -245,23 +247,43 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
         await relayHubInstance.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
-        relayRequest = new RelayRequest({
-          ...sharedRelayRequestData,
-          encodedFunction
-        })
-        const dataToSign = await getDataToSign({
+        relayRequest = cloneRelayRequest(sharedRelayRequestData)
+        relayRequest.encodedFunction = encodedFunction
+        const dataToSign = new TypedRequestData(
           chainId,
-          verifier: forwarder,
+          forwarder,
           relayRequest
-        })
-        signatureWithPermissivePaymaster = await getEip712Signature({
+        )
+        signatureWithPermissivePaymaster = await getEip712Signature(
           web3,
           dataToSign
-        })
+        )
 
         await relayHubInstance.depositFor(paymaster, {
           value: ether('1'),
           from: other
+        })
+      })
+
+      context('with relay worker that is not externally-owned account', function () {
+        it('should not accept relay requests', async function () {
+          const signature = '0xdeadbeef'
+          const gas = 4e6
+          const TestRelayWorkerContract = artifacts.require('TestRelayWorkerContract')
+          const testRelayWorkerContract = await TestRelayWorkerContract.new()
+          await relayHubInstance.addRelayWorkers([testRelayWorkerContract.address], {
+            from: relayManager
+          })
+          await expectRevert(
+            testRelayWorkerContract.relayCall(
+              relayHubInstance.address,
+              relayRequest,
+              signature,
+              gas,
+              {
+                gas
+              }),
+            'relay worker cannot be a smart contract')
         })
       })
 
@@ -276,15 +298,15 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             value: ether('1'),
             from: other
           })
-          relayRequestMisbehavingPaymaster = relayRequest.clone()
+          relayRequestMisbehavingPaymaster = cloneRelayRequest(relayRequest)
           relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
         })
 
         it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
           const relayCallView = await relayHubInstance.contract.methods.relayCall(
             relayRequest,
-            signatureWithPermissivePaymaster, '0x')
-            .call({ from: relayWorker })
+            signatureWithPermissivePaymaster, '0x', 7e6)
+            .call({ from: relayWorker, gas: 7e6 })
           assert.equal(relayCallView.paymasterAccepted, true)
           assert.equal(relayCallView.revertReason, '')
         })
@@ -293,14 +315,14 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const relayCallView =
             await relayHubInstance.contract.methods
-              .relayCall(relayRequestMisbehavingPaymaster, '0x', '0x')
+              .relayCall(relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
               .call({ from: relayWorker })
           assert.equal(relayCallView.paymasterAccepted, false)
           assert.equal(relayCallView.revertReason, 'invalid code')
         })
       })
 
-      context('with funded recipient', function () {
+      context('with funded paymaster', function () {
         let signature
 
         let paymasterWithContext
@@ -311,6 +333,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         let signatureWithMisbehavingPaymaster: string
         let relayRequestMisbehavingPaymaster: RelayRequest
+        const gas = 4e6
 
         beforeEach(async function () {
           paymasterWithContext = await TestPaymasterStoreContext.new()
@@ -325,48 +348,49 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             value: ether('1'),
             from: other
           })
-          let dataToSign = await getDataToSign({
+          let dataToSign = new TypedRequestData(
             chainId,
-            verifier: forwarder,
+            forwarder,
             relayRequest
-          })
+          )
 
-          signature = await getEip712Signature({
+          signature = await getEip712Signature(
             web3,
             dataToSign
-          })
+          )
 
-          relayRequestMisbehavingPaymaster = relayRequest.clone()
+          relayRequestMisbehavingPaymaster = cloneRelayRequest(relayRequest)
           relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
 
-          dataToSign = await getDataToSign({
+          dataToSign = new TypedRequestData(
             chainId,
-            verifier: forwarder,
-            relayRequest: relayRequestMisbehavingPaymaster
-          })
-          signatureWithMisbehavingPaymaster = await getEip712Signature({
+            forwarder,
+            relayRequestMisbehavingPaymaster
+          )
+          signatureWithMisbehavingPaymaster = await getEip712Signature(
             web3,
             dataToSign
-          })
+          )
 
-          relayRequestPaymasterWithContext = relayRequest.clone()
+          relayRequestPaymasterWithContext = cloneRelayRequest(relayRequest)
           relayRequestPaymasterWithContext.relayData.paymaster = paymasterWithContext.address
-          dataToSign = await getDataToSign({
+          dataToSign = new TypedRequestData(
             chainId,
-            verifier: forwarder,
-            relayRequest: relayRequestPaymasterWithContext
-          })
-          signatureWithContextPaymaster = await getEip712Signature({
+            forwarder,
+            relayRequestPaymasterWithContext
+          )
+          signatureWithContextPaymaster = await getEip712Signature(
             web3,
             dataToSign
-          })
+          )
         })
 
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
           const nonceBefore = await forwarderInstance.getNonce(senderAddress)
 
-          const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', {
+          const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
             from: relayWorker,
+            gas,
             gasPrice
           })
           const nonceAfter = await forwarderInstance.getNonce(senderAddress)
@@ -383,19 +407,20 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         // This test is added due to a regression that almost slipped to production.
         it('relayCall executes the transaction with no parameters', async function () {
           const encodedFunction = recipientContract.contract.methods.emitMessageNoParams().encodeABI()
-          const relayRequestNoCallData = relayRequest.clone()
+          const relayRequestNoCallData = cloneRelayRequest(relayRequest)
           relayRequestNoCallData.encodedFunction = encodedFunction
-          const dataToSign = await getDataToSign({
+          const dataToSign = new TypedRequestData(
             chainId,
-            verifier: forwarder,
-            relayRequest: relayRequestNoCallData
-          })
-          signature = await getEip712Signature({
+            forwarder,
+            relayRequestNoCallData
+          )
+          signature = await getEip712Signature(
             web3,
             dataToSign
-          })
-          const { tx } = await relayHubInstance.relayCall(relayRequestNoCallData, signature, '0x', {
+          )
+          const { tx } = await relayHubInstance.relayCall(relayRequestNoCallData, signature, '0x', gas, {
             from: relayWorker,
+            gas,
             gasPrice
           })
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
@@ -408,8 +433,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('preRelayedCall receives values returned in acceptRelayedCall', async function () {
           const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
-            signatureWithContextPaymaster, '0x', {
+            signatureWithContextPaymaster, '0x', gas, {
               from: relayWorker,
+              gas,
               gasPrice
             })
 
@@ -428,8 +454,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('postRelayedCall receives values returned in acceptRelayedCall', async function () {
           const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
-            signatureWithContextPaymaster, '0x', {
+            signatureWithContextPaymaster, '0x', gas, {
               from: relayWorker,
+              gas,
               gasPrice
             })
 
@@ -449,8 +476,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('relaying is aborted if the recipient returns an invalid status code', async function () {
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
-            signatureWithMisbehavingPaymaster, '0x', {
+            signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
+              gas,
               gasPrice
             })
 
@@ -460,23 +488,34 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('should not accept relay requests if gas limit is too low for a relayed transaction', async function () {
           // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
           const gasReserve = 99999
+          const gas = parseInt(gasLimit) + gasReserve
           await expectRevert(
-            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
+            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
               gasPrice,
-              gas: parseInt(gasLimit) + gasReserve
+              gas
             }),
-            'Not enough gas left for recipientCallsAtomic to complete')
+            'Not enough gas left for innerRelayCall to complete')
         })
 
         it('should not accept relay requests with gas price lower then user specified', async function () {
-          // Adding gasReserve is not enough by a few wei as some gas is spent before gasleft().
           await expectRevert(
-            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
+            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
+              gas,
               gasPrice: parseInt(gasPrice) - 1
             }),
             'Invalid gas price')
+        })
+
+        it('should not accept relay requests with gas limit higher then block gas limit', async function () {
+          await expectRevert(
+            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', 100000001, {
+              from: relayWorker,
+              gasPrice,
+              gas
+            }),
+            'Impossible gas limit')
         })
 
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
@@ -491,12 +530,13 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             })).toNumber()
             await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation
 
-            const relayRequestPaymaster2 = relayRequest.clone()
+            const relayRequestPaymaster2 = cloneRelayRequest(relayRequest)
             relayRequestPaymaster2.relayData.paymaster = paymaster2.address
 
             await expectRevert(
-              relayHubInstance.relayCall(relayRequestPaymaster2, signatureWithMisbehavingPaymaster, '0x', {
+              relayHubInstance.relayCall(relayRequestPaymaster2, signatureWithMisbehavingPaymaster, '0x', gas, {
                 from: relayWorker,
+                gas,
                 gasPrice
               }),
               'Paymaster balance too low')
@@ -508,8 +548,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           const startBlock = await web3.eth.getBlockNumber()
 
           const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
-            signatureWithMisbehavingPaymaster, '0x', {
+            signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
+              gas,
               gasPrice: gasPrice
             })
 
@@ -525,8 +566,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('should revert the \'relayedCall\' if \'postRelayedCall\' reverts', async function () {
           await misbehavingPaymaster.setRevertPostRelayCall(true)
           const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
-            signatureWithMisbehavingPaymaster, '0x', {
+            signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
+              gas,
               gasPrice: gasPrice
             })
 
@@ -553,17 +595,17 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               from: other
             })
 
-            relayRequestMisbehavingPaymaster = relayRequest.clone()
+            relayRequestMisbehavingPaymaster = cloneRelayRequest(relayRequest)
             relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
-            const dataToSign = await getDataToSign({
+            const dataToSign = new TypedRequestData(
               chainId,
-              verifier: forwarder,
-              relayRequest: relayRequestMisbehavingPaymaster
-            })
-            signature = await getEip712Signature({
+              forwarder,
+              relayRequestMisbehavingPaymaster
+            )
+            signature = await getEip712Signature(
               web3,
               dataToSign
-            })
+            )
           })
 
           it('reverts relayed call if recipient withdraws balance during preRelayedCall', async function () {
@@ -582,8 +624,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
 
           async function assertRevertWithRecipientBalanceChanged (): Promise<void> {
-            const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signature, '0x', {
+            const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signature, '0x', gas, {
               from: relayWorker,
+              gas,
               gasPrice
             })
             expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.RecipientBalanceChanged })

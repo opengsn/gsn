@@ -9,17 +9,18 @@ import "./interfaces/IRelayRecipient.sol";
  * A base contract to be inherited by any contract that want to receive relayed transactions
  * A subclass must use "_msgSender()" instead of "msg.sender"
  */
-contract BaseRelayRecipient is IRelayRecipient {
+abstract contract BaseRelayRecipient is IRelayRecipient {
 
-    /// the TrustedForwarder singleton we accept calls from.
-    // we trust it to verify the caller's signature, and pass the caller's address as last 20 bytes
+    /*
+     * Forwarder singleton we accept calls from
+     */
     address internal trustedForwarder;
 
     /*
      * require a function to be called through GSN only
      */
     modifier trustedForwarderOnly() {
-        require(msg.sender == address(trustedForwarder), "Function can only be called through trustedForwarder");
+        require(msg.sender == address(trustedForwarder), "Function can only be called through the trusted Forwarder");
         _;
     }
 

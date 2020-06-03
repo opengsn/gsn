@@ -14,13 +14,13 @@ import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { sleep, revert, snapshot, evmMine, evmMineMany, increaseTime } from './TestUtils'
-import { removeHexPrefix } from '../src/common/utils'
+import { removeHexPrefix } from '../src/common/Utils'
 import {
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance,
-  TrustedForwarderInstance
+  ForwarderInstance
 } from '../types/truffle-contracts'
 import { Address } from '../src/relayclient/types/Aliases'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
@@ -37,7 +37,7 @@ import Mutex from 'async-mutex/lib/Mutex'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
@@ -56,7 +56,7 @@ contract('RelayServer', function (accounts) {
   const pctRelayFee = 11
   const baseRelayFee = 12
   let rhub: RelayHubInstance
-  let forwarder: TrustedForwarderInstance
+  let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let sr: TestRecipientInstance
@@ -84,10 +84,10 @@ contract('RelayServer', function (accounts) {
 
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    rhub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
+    rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     sr = await TestRecipient.new()
     const forwarderAddress = await sr.getTrustedForwarder()
-    forwarder = await TrustedForwarder.at(forwarderAddress)
+    forwarder = await Forwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setRelayHub(rhub.address)

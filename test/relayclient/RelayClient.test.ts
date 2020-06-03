@@ -15,7 +15,6 @@ import {
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import RelayClient from '../../src/relayclient/RelayClient'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import { Address, AsyncApprovalData } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
@@ -61,7 +60,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+    relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
     testRecipient = await TestRecipient.new()
     forwarderAddress = await testRecipient.getTrustedForwarder()
     paymaster = await TestPaymasterEverythingAccepted.new()
@@ -264,7 +263,6 @@ contract('RelayClient', function (accounts) {
       const asyncApprovalData: AsyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
         return Promise.resolve('0x1234567890')
       }
-
       it('should use provided approval function', async function () {
         const relayClient =
           new RelayClient(underlyingProvider, gsnConfig, { asyncApprovalData })
