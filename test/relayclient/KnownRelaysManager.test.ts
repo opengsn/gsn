@@ -38,10 +38,10 @@ contract('KnownRelaysManager', function (
   [
     activeRelayWorkersAdded,
     activeRelayServerRegistered,
-    activeCanRelayFailed,
+    activePaymasterRejected,
     activeTransactionRelayed,
     notActiveRelay,
-    workerCanRelayFailed,
+    workerPaymasterRejected,
     workerTransactionRelayed,
     owner,
     other
@@ -77,10 +77,10 @@ contract('KnownRelaysManager', function (
       await paymaster.deposit({ value: ether('1') })
       await stake(stakeManager, relayHub, activeRelayWorkersAdded, owner)
       await stake(stakeManager, relayHub, activeRelayServerRegistered, owner)
-      await stake(stakeManager, relayHub, activeCanRelayFailed, owner)
+      await stake(stakeManager, relayHub, activePaymasterRejected, owner)
       await stake(stakeManager, relayHub, activeTransactionRelayed, owner)
       await stake(stakeManager, relayHub, notActiveRelay, owner)
-      const txCanRelayFailed = await prepareTransaction(testRecipient, other, workerCanRelayFailed, paymaster.address, web3)
+      const txPaymasterRejected = await prepareTransaction(testRecipient, other, workerPaymasterRejected, paymaster.address, web3)
       const txTransactionRelayed = await prepareTransaction(testRecipient, other, workerTransactionRelayed, paymaster.address, web3)
 
       /** events that are not supposed to be visible to the manager */
@@ -93,11 +93,11 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerTransactionRelayed], {
         from: activeTransactionRelayed
       })
-      await relayHub.addRelayWorkers([workerCanRelayFailed], {
-        from: activeCanRelayFailed
+      await relayHub.addRelayWorkers([workerPaymasterRejected], {
+        from: activePaymasterRejected
       })
       await relayHub.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
-      await relayHub.registerRelayServer('0', '0', '', { from: activeCanRelayFailed })
+      await relayHub.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
@@ -111,10 +111,10 @@ contract('KnownRelaysManager', function (
         gasPrice: txTransactionRelayed.relayRequest.gasData.gasPrice
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(txCanRelayFailed.relayRequest, txCanRelayFailed.signature, '0x', gas, {
-        from: workerCanRelayFailed,
+      await relayHub.relayCall(txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
+        from: workerPaymasterRejected,
         gas,
-        gasPrice: txCanRelayFailed.relayRequest.gasData.gasPrice
+        gasPrice: txPaymasterRejected.relayRequest.gasData.gasPrice
       })
     })
 
@@ -126,7 +126,7 @@ contract('KnownRelaysManager', function (
       assert.equal(actual[0], activeRelayServerRegistered)
       assert.equal(actual[1], activeRelayWorkersAdded)
       assert.equal(actual[2], activeTransactionRelayed)
-      assert.equal(actual[3], activeCanRelayFailed)
+      assert.equal(actual[3], activePaymasterRejected)
     })
   })
 })

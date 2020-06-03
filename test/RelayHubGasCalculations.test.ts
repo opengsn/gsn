@@ -193,15 +193,15 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         web3,
         dataToSign
       )
-      const canRelayResponse =
+      const viewRelayCallResponse =
         await relayHub.contract.methods
           .relayCall(relayRequestMisbehaving, signature, '0x', externalGasLimit)
           .call({
             from: relayRequestMisbehaving.relayData.relayWorker,
             gas: externalGasLimit
           })
-      assert.equal(canRelayResponse[0], false)
-      assert.equal(canRelayResponse[1], '') // no revert string on out-of-gas
+      assert.equal(viewRelayCallResponse[0], false)
+      assert.equal(viewRelayCallResponse[1], '') // no revert string on out-of-gas
 
       const res = await relayHub.relayCall(relayRequestMisbehaving, signature, '0x', externalGasLimit, {
         from: relayWorker,

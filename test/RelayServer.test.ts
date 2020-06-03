@@ -431,7 +431,7 @@ contract('RelayServer', function (accounts) {
           { signature: '0xdeadface00000a58b757da7dea5678548be5ff9b16e9d1d87c6157aff6889c0f6a406289908add9ea6c3ef06d033a058de67d057e2c0ae5a02b36854be13b0731c' })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: signature mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: signature mismatch')
       }
     })
 
@@ -441,7 +441,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { from: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: nonce mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
     })
     it('should fail to relay with wrong recipient', async function () {
@@ -499,7 +499,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { senderNonce: '123456' })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: nonce mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
       // Now we replay the same transaction so we get WrongNonce
       const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest(options)
@@ -509,7 +509,7 @@ contract('RelayServer', function (accounts) {
           { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: nonce mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
     })
     it('should fail to relay with wrong relayMaxNonce', async function () {
