@@ -23,7 +23,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest]) { // eslint-disable-line no-unused-vars
+contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),
@@ -516,6 +516,17 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gas
             }),
             'Impossible gas limit')
+        })
+
+        it('should not accept relay requests with incorrect relay worker', async function () {
+          await relayHubInstance.addRelayWorkers([incorrectWorker], { from: relayManager })
+          await expectRevert(
+            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
+              from: incorrectWorker,
+              gasPrice,
+              gas
+            }),
+            'Not a right worker')
         })
 
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
