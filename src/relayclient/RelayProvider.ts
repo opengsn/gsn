@@ -228,7 +228,6 @@ export class RelayProvider implements HttpProvider {
 
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
-      console.log(error, rpcResponse)
       if (rpcResponse != null && Array.isArray(rpcResponse.result)) {
         const ephemeralAccounts = this.relayClient.accountManager.getAccounts()
         rpcResponse.result = rpcResponse.result.concat(ephemeralAccounts)
