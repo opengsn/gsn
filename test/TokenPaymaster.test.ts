@@ -18,12 +18,12 @@ import {
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { getEip712Signature } from '../src/common/Utils'
 
-const TokenPaymaster = artifacts.require('TokenPaymaster.sol')
-const TokenGasCalculator = artifacts.require('TokenGasCalculator.sol')
-const TestUniswap = artifacts.require('TestUniswap.sol')
-const TestToken = artifacts.require('TestToken.sol')
-const RelayHub = artifacts.require('RelayHub.sol')
-const Forwarder = artifacts.require('./Forwarder.sol')
+const TokenPaymaster = artifacts.require('TokenPaymaster')
+const TokenGasCalculator = artifacts.require('TokenGasCalculator')
+const TestUniswap = artifacts.require('TestUniswap')
+const TestToken = artifacts.require('TestToken')
+const RelayHub = artifacts.require('RelayHub')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
@@ -57,6 +57,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     await token.mint(1e18.toString())
     await token.transfer(calc.address, 1e18.toString())
     const ret = await calc.calculatePostGas.call(testpaymaster.address)
+    // @ts-ignore (TypeChain does not know tuple components' names)
     const { gasUsedByPostWithPreCharge, gasUsedByPostWithoutPreCharge } = ret
     console.log('post calculator:', gasUsedByPostWithPreCharge.toString(), gasUsedByPostWithoutPreCharge.toString())
     console.log(ret)
@@ -66,7 +67,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
   before(async () => {
     // exchange rate 2 tokens per eth.
     uniswap = await TestUniswap.new(2, 1, {
-      value: 5e18,
+      value: (5e18).toString(),
       gas: 1e7
     })
     stakeManager = await StakeManager.new()

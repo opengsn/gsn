@@ -36,11 +36,9 @@ interface IRelayHub {
         uint256 amount
     );
 
-    // Emitted when an attempt to relay a call failed. This can happen due to incorrect relayCall arguments, or the
-    // recipient not accepting the relayed call.
-    // The actual relayed call was not executed, and the recipient not charged.
-    // The reason field contains an error code: values 1-10 correspond to CanRelayStatus entries, and values over 10
-    // are custom recipient error codes returned from acceptRelayedCall.
+    /// Emitted when an attempt to relay a call fails and Paymaster does not accept the transaction.
+    /// The actual relayed call was not executed, and the recipient not charged.
+    /// @param reason contains a revert reason returned from acceptRelayedCall.
     event TransactionRejectedByPaymaster(
         address indexed relayManager,
         address indexed paymaster,
@@ -114,19 +112,19 @@ interface IRelayHub {
 
 
     /// Relays a transaction. For this to succeed, multiple conditions must be met:
-    ///  - canRelay must return CanRelayStatus.OK
-    ///  - the sender must be a registered relayWorker
-    ///  - the transaction's gas price must be larger or equal to the one that was requested by the sender
+    ///  - Paymaster's "acceptRelayCall" method must succeed and not revert
+    ///  - the sender must be a registered Relay Worker that the user signed
+    ///  - the transaction's gas price must be equal or larger than the one that was signed by the sender
     ///  - the transaction must have enough gas to run all internal transactions if they use all gas available to them
-    ///  - the sponsor must have enough balance to pay the relayWorker for the scenario when all gas is spent
+    ///  - the Paymaster must have enough balance to pay the Relay Worker for the scenario when all gas is spent
     ///
     /// If all conditions are met, the call will be relayed and the recipient charged.
     ///
     /// Arguments:
-    /// @param relayRequest - all details of the requested relayWorker call
-    /// @param signature - client's signature over all previous params, plus the relayWorker and RelayHub addresses
+    /// @param relayRequest - all details of the requested relayed call
+    /// @param signature - client's EIP-712 signature over the relayRequest struct
     /// @param approvalData: dapp-specific data forwarded to acceptRelayedCall.
-    ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the sponsor.
+    ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the Paymaster
     /// @param externalGasLimit - the value passed as gasLimit to the transaction.
     ///
     /// Emits a TransactionRelayed event.

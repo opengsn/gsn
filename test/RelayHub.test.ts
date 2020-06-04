@@ -157,7 +157,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     })
   })
 
-  describe('canRelay & relayCall', function () {
+  describe('relayCall', function () {
     const baseRelayFee = '10000'
     const pctRelayFee = '10'
     const gasPrice = '10'
