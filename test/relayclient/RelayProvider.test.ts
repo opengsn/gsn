@@ -336,6 +336,25 @@ contract('RelayProvider', function (accounts) {
     })
   })
 
+  describe('_getAccounts', function () {
+    it('should append ephemeral accounts to the ones from the underlying provider', async function () {
+      const relayProvider = new RelayProvider(underlyingProvider, {})
+      const web3 = new Web3(relayProvider)
+      const accountsBefore = await web3.eth.getAccounts()
+      const newAccount = relayProvider.newAccount()
+      const address = '0x982a8cbe734cb8c29a6a7e02a3b0e4512148f6f9'
+      relayProvider.addAccount({
+        privateKey: Buffer.from('d353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c', 'hex'),
+        address
+      })
+      const accountsAfter = await web3.eth.getAccounts()
+      const newAccounts = accountsAfter.filter(value => !accountsBefore.includes(value)).map(it => it.toLowerCase())
+      assert.equal(newAccounts.length, 2)
+      assert.include(newAccounts, address)
+      assert.include(newAccounts, newAccount.address)
+    })
+  })
+
   describe('new contract deployment', function () {
     let TestRecipient: TestRecipientContract
     before(function () {

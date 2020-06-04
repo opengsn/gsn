@@ -53,6 +53,7 @@ contract('AccountManager', function (accounts) {
       const keypair = accountManager.newAccount()
       // @ts-ignore
       assert.equal(accountManager.accounts[0].privateKey.toString(), keypair.privateKey.toString())
+      assert.equal(accountManager.getAccounts()[0], keypair.address)
     })
   })
 
