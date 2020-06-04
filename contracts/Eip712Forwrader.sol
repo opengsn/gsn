@@ -46,9 +46,14 @@ contract Eip712Forwarder {
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnValue) = req.target.call{gas : req.gasLimit}(abi.encodePacked(req.encodedFunction, req.sender));
-        // TODO: use assembly to prevent double-wrapping of the revert reason (part of GSN-37)
-        require(success, GsnUtils.getError(returnValue));
+        (bool success, ) = req.target.call{gas : req.gasLimit}(abi.encodePacked(req.encodedFunction, req.sender));
+        if (!success) {
+            assembly { // This assembly ensure the revert contains the exact string data
+                let returnDataSize := returndatasize()
+                returndatacopy(0, 0, returnDataSize)
+                revert(0, returnDataSize)
+            }
+        }
     }
 
 
