@@ -238,7 +238,7 @@ contract('RelayProvider', function (accounts) {
   describe('_getTranslatedGsnResponseResult', function () {
     let relayProvider: RelayProvider
     let testRecipient: TestRecipientInstance
-    let canRelayFailedTxReceipt: BaseTransactionReceipt
+    let paymasterRejectedTxReceipt: BaseTransactionReceipt
     let innerTxFailedReceipt: BaseTransactionReceipt
     let innerTxSucceedReceipt: BaseTransactionReceipt
     let notRelayedTxReceipt: BaseTransactionReceipt
@@ -272,13 +272,13 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-      const canRelayFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
+      const paymasterRejectedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
         gasPrice: '1'
       })
-      expectEvent.inLogs(canRelayFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster')
-      canRelayFailedTxReceipt = await web3.eth.getTransactionReceipt(canRelayFailedReceiptTruffle.tx)
+      expectEvent.inLogs(paymasterRejectedReceiptTruffle.logs, 'TransactionRejectedByPaymaster')
+      paymasterRejectedTxReceipt = await web3.eth.getTransactionReceipt(paymasterRejectedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)
       await misbehavingPaymaster.setRevertPreRelayCall(true)
@@ -311,9 +311,9 @@ contract('RelayProvider', function (accounts) {
       notRelayedTxReceipt = await web3.eth.getTransactionReceipt(notRelayedTxReceiptTruffle.tx)
     })
 
-    it('should convert relayed transactions receipt with failed \'canRelay\' to be a failed transaction receipt', function () {
-      assert.equal(canRelayFailedTxReceipt.status, true)
-      const modifiedReceipt = relayProvider._getTranslatedGsnResponseResult(canRelayFailedTxReceipt)
+    it('should convert relayed transactions receipt with paymaster rejection to be a failed transaction receipt', function () {
+      assert.equal(paymasterRejectedTxReceipt.status, true)
+      const modifiedReceipt = relayProvider._getTranslatedGsnResponseResult(paymasterRejectedTxReceipt)
       assert.equal(modifiedReceipt.status, false)
     })
 

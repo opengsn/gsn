@@ -242,7 +242,7 @@ export class RelayServer extends EventEmitter {
       throw new Error(`Unacceptable relayMaxNonce: ${req.relayMaxNonce}. current nonce: ${nonce}`)
     }
 
-    // Check canRelay view function to see if we'll get paid for relaying this tx
+    // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const relayRequest: RelayRequest = {
       target: req.to,
       encodedFunction: req.encodedFunction,
@@ -289,9 +289,9 @@ export class RelayServer extends EventEmitter {
       relayCallGasLimit: req.gasLimit
     })
     const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
-    let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
+    let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
-      canRelayRet = await this.relayHubContract.contract.methods.relayCall(
+      viewRelayCallRet = await this.relayHubContract.contract.methods.relayCall(
         relayRequest,
         req.signature,
         req.approvalData,
@@ -305,9 +305,9 @@ export class RelayServer extends EventEmitter {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`relayCall reverted in server: ${e.message}`)
     }
-    debug('canRelayRet', canRelayRet)
-    if (!canRelayRet.paymasterAccepted) {
-      throw new Error(`canRelay failed in server: ${canRelayRet.returnValue}`)
+    debug('viewRelayCallRet', viewRelayCallRet)
+    if (!viewRelayCallRet.paymasterAccepted) {
+      throw new Error(`Paymaster rejected in server: ${viewRelayCallRet.returnValue}`)
     }
     // Send relayed transaction
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
