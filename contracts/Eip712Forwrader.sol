@@ -11,18 +11,17 @@ contract Eip712Forwarder {
     using ECDSA for bytes32;
 
     //all valid requests must start with this prefix.
-    // (note that the prefix is not a valid type by itself: it doesn't end with ")" (or ",", if more fields are added)
-    string constant typehashPrefix = "Forward(address sender, address target, bytes encodedFunction, uint256 gasLimit, address forwarder";
+    // request name is arbitrary, but the parameter block must match exactly these parameters
+    string public constant paramsPrefix = "address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit";
 
     mapping(bytes32 => bool) public typeHashes;
 
-    struct Forward {
-        address sender;
+    struct ForwardRequest {
         address target;
         bytes encodedFunction;
+        address senderAddress;
+        uint256 senderNonce;
         uint256 gasLimit;
-        uint256 nonce;
-        address forwarder;
     }
 
     // Nonces of senders, used to prevent replay attacks
@@ -32,23 +31,23 @@ contract Eip712Forwarder {
         return nonces[from];
     }
 
-    function verify(Forward memory req,
+    function verify(ForwardRequest memory req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public view {
 
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
     }
 
-    function verifyAndCall(Forward memory req,
+    function verifyAndCall(ForwardRequest memory req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public {
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = req.target.call{gas : req.gasLimit}(abi.encodePacked(req.encodedFunction, req.sender));
+        (bool success,) = req.target.call{gas : req.gasLimit}(abi.encodePacked(req.encodedFunction, req.senderAddress));
         if (!success) {
-            assembly { // This assembly ensure the revert contains the exact string data
+            assembly {// This assembly ensure the revert contains the exact string data
                 let returnDataSize := returndatasize()
                 returndatacopy(0, 0, returnDataSize)
                 revert(0, returnDataSize)
@@ -57,27 +56,53 @@ contract Eip712Forwarder {
     }
 
 
-    function _verifyNonce(Forward memory req) internal view {
-        require(nonces[req.sender] == req.nonce, "nonce mismatch");
+    function _verifyNonce(ForwardRequest memory req) internal view {
+        require(nonces[req.senderAddress] == req.senderNonce, "nonce mismatch");
     }
 
-    function _updateNonce(Forward memory req) internal {
-        nonces[req.sender]++;
+    function _updateNonce(ForwardRequest memory req) internal {
+        nonces[req.senderAddress]++;
     }
 
     //register a requestTypeHash
-    // the given requestType must have typehashPrefix as the beginning of the type string,
+    // the given requestType must have paramsPrefix as the beginning of the type string,
     // otherwise it can't be registered.
 
-    function registerRequestTypeHash(string calldata requestType) external {
+    /**
+     * Register a new Request typehash.
+     * @param requestType the request type string. The request parameters must start with
+     *    the exact string of params defined in GENERIC_PARAMS.
+     * NOTE: There is no validation on the string:
+     *  - struct name is any sequence of chars (except "(")
+     *  - parameters must start with 
+     */
+    function registerRequestType(string calldata requestType) external {
         bytes32 requestTypehash = keccak256(bytes(requestType));
         require(!typeHashes[requestTypehash], "typehash already registered");
-        require(bytes(requestType).length >= bytes(typehashPrefix).length, "invalid typehash prefix");
-        for (uint i = 0; i < bytes(typehashPrefix).length; i++) {
-            require(bytes(requestType)[i] == bytes(typehashPrefix)[i], "invalid typehash");
+        uint len = bytes(requestType).length;
+        uint pos = 0;
+        bytes1 c;
+        while (pos < len) {
+            c = (bytes(requestType)[pos]);
+            if (c == '(') {
+                break;
+            }
+            pos++;
+        }
+        require(pos > 0, "invalid type: no name");
+        require(c == '(', "invalid type: no params");
+        pos++;
+        uint prefixLength = bytes(paramsPrefix).length;
+        require(len - pos > prefixLength, "invalid type: too short");
+        for (uint i = 0; i < prefixLength; i++) {
+            require(bytes(requestType)[pos + i] == bytes(paramsPrefix)[i], "invalid type: params don't match");
         }
         typeHashes[requestTypehash] = true;
         emit RequestTypeRegistered(requestTypehash, requestType);
+    }
+
+    function isRegisteredTypehash(bytes32 typehash) public view returns (bool) {
+        return typeHashes[typehash];
     }
 
     event RequestTypeRegistered(bytes32 indexed typehash, string typeStr);
@@ -92,7 +117,7 @@ contract Eip712Forwarder {
     //            suffix-data
     //        )
     //    )
-    function _verifySig(Forward memory req,
+    function _verifySig(ForwardRequest memory req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) internal view {
 
         require(typeHashes[requestTypeHash], "invalid request typehash");
@@ -100,15 +125,14 @@ contract Eip712Forwarder {
                 "\x19\x10", domainSeparator,
                 keccak256(abi.encodePacked(
                     requestTypeHash,
-                    req.sender,
                     req.target,
                     keccak256(req.encodedFunction),
+                    req.senderAddress,
+                    req.senderNonce,
                     req.gasLimit,
-                    req.nonce,
-                    req.forwarder,
                     suffixData
                 ))
             ));
-        require(digest.recover(sig) == req.sender, "signature mismatch");
+        require(digest.recover(sig) == req.senderAddress, "signature mismatch");
     }
 }

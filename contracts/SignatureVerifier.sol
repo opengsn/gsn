@@ -23,7 +23,8 @@ contract SignatureVerifier is ISignatureVerifier{
     );
 
     // solhint-disable-next-line max-line-length
-    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256("RelayRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit,address forwarder,GasData gasData,RelayData relayData)GasData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address relayWorker,address paymaster)");
+    bytes public constant RELAY_REQUEST_TYPE = "RelayRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit,address forwarder,GasData gasData,RelayData relayData)GasData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)RelayData(address relayWorker,address paymaster)";
+    bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256(RELAY_REQUEST_TYPE);
 
     // solhint-disable-next-line max-line-length
     bytes32 public constant CALLDATA_TYPEHASH = keccak256("GasData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)");
@@ -67,7 +68,8 @@ contract SignatureVerifier is ISignatureVerifier{
             ));
     }
 
-    function hash(GasData memory req) internal pure returns (bytes32) {
+    //TODO: "internal" method is not accessible form another contract. need to change into a "library"
+    function hash(GasData memory req) public pure returns (bytes32) {
         return keccak256(abi.encode(
                 CALLDATA_TYPEHASH,
                 req.gasPrice,
@@ -76,7 +78,7 @@ contract SignatureVerifier is ISignatureVerifier{
             ));
     }
 
-    function hash(RelayData memory req) internal pure returns (bytes32) {
+    function hash(RelayData memory req) public pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
                 req.relayWorker,

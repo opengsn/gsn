@@ -36,7 +36,7 @@ contract RelayHub is IRelayHub {
     uint256 constant private MAXIMUM_RECIPIENT_DEPOSIT = 2 ether;
 
     /**
-    * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
+    * @dev the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
 
