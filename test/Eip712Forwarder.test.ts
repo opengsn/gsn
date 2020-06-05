@@ -1,9 +1,11 @@
 import {Eip712ForwarderInstance} from "../types/truffle-contracts"
-import {EIP712Domain, EIP712TypedData, recoverTypedSignature, signTypedData, TypedDataUtils} from "eth-sig-util";
-import TypedRequestData from "../src/common/EIP712/TypedRequestData";
+// @ts-ignore
+import {EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData} from "eth-sig-util";
 import {bufferToHex, privateToAddress, toBuffer} from "ethereumjs-util";
 
 const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+
+const keccak256 = web3.utils.keccak256
 
 function addr(n: number): string {
     return '0x' + n.toString().repeat(40)
@@ -24,6 +26,14 @@ async function res<T>(asyncFunc: Promise<T>): Promise<any> {
         }
         return e.message
     }
+}
+
+
+function getTypeAndHash(data: EIP712TypedData): [string, string] {
+    const typeName = data.primaryType
+    const params = data.types[typeName].map(e => `${e.type} ${e.name}`)
+    const type = `${typeName}(${params.join(',')})`
+    return [type, keccak256(type)]
 }
 
 contract('Eip712Forwarder', () => {
@@ -84,7 +94,7 @@ contract('Eip712Forwarder', () => {
         })
     })
 
-    describe('#verify', () => {
+    describe('#verify failures', () => {
         let typeName: string
         let typeHash: string
 
@@ -119,9 +129,8 @@ contract('Eip712Forwarder', () => {
             assert.include(await res(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x123456')), 'invalid signature length')
             assert.include(await res(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x' + '1b'.repeat(65))), 'signature mismatch')
         })
-        it('should verify valid signature', async () => {
-            const chainId = 1
-            const verifier = fwd.address
+
+        describe('#verify success', () => {
 
             const EIP712DomainType = [
                 {name: 'name', type: 'string'},
@@ -145,30 +154,89 @@ contract('Eip712Forwarder', () => {
                 senderNonce: 0,
                 gasLimit: 123
             };
-            const data: EIP712TypedData = {
-                domain: {
-                    name: 'Test Domain',
-                    version: '1',
-                    verifyingContract: fwd.address
-                },
-                primaryType: "TestVerify",
-                types: {
-                    EIP712Domain: EIP712DomainType,
-                    TestVerify: MessageType
-                },
-                message: req,
-            }
 
-            const sig = signTypedData(senderPrivateKey, {data})
-            const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
+            let data: EIP712TypedData
 
-            //sanity: verify that we calculated the type locally just like eth-utils:
-            const calcType = TypedDataUtils.encodeType('TestVerify', data.types)
-            assert.equal(calcType, typeName)
-            const calcTypeHash = bufferToHex(TypedDataUtils.hashType('TestVerify', data.types))
-            assert.equal(calcTypeHash, typeHash)
+            before(() => {
+                data = {
+                    domain: {
+                        name: 'Test Domain',
+                        version: '1',
+                        verifyingContract: fwd.address
+                    },
+                    primaryType: "TestVerify",
+                    types: {
+                        EIP712Domain: EIP712DomainType,
+                        TestVerify: MessageType
+                    },
+                    message: req,
+                }
+                //sanity: verify that we calculated the type locally just like eth-utils:
+                const calcType = TypedDataUtils.encodeType('TestVerify', data.types)
+                assert.equal(calcType, typeName)
+                const calcTypeHash = bufferToHex(TypedDataUtils.hashType('TestVerify', data.types))
+                assert.equal(calcTypeHash, typeHash)
+            })
 
-            await fwd.verify(req, bufferToHex(domainSeparator), typeHash, '0x', sig)
+            it('should verify valid signature', async () => {
+
+                const sig = signTypedData_v4(senderPrivateKey, {data})
+                const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
+
+                await fwd.verify(req, bufferToHex(domainSeparator), typeHash, '0x', sig)
+            })
+
+            it('should verify valid signature of extended type', async () => {
+
+                const ExtendedMessageType = [
+                    {name: 'target', type: 'address'},
+                    {name: 'encodedFunction', type: 'bytes'},
+                    {name: 'senderAddress', type: 'address'},
+                    {name: 'senderNonce', type: 'uint256'},
+                    {name: 'gasLimit', type: 'uint256'},
+                    {name: 'extraAddress', type: 'address'},    // <--extension
+                ]
+
+                const ExtendedMessageSuffixType = [
+                    {name: 'extraAddress', type: 'address'},    // <--extension
+                ]
+
+                let extendedReq = {
+                    target: addr(1),
+                    encodedFunction: '0x',
+                    senderAddress,
+                    senderNonce: 0,
+                    gasLimit: 123,
+                    extraAddress: addr(5)   // <-- extension
+                };
+
+                //we create extended data message
+                const extendedData = {
+                    domain: data.domain,
+                    primaryType: "ExtendedMessage",
+                    types: {
+                        EIP712Domain: EIP712DomainType,
+                        ExtendedMessage: ExtendedMessageType
+                    },
+                    message: extendedReq,
+                }
+
+                const [type,hash] = getTypeAndHash(extendedData)
+                console.log( 'type=',type)
+                await fwd.registerRequestType(type)
+
+                const sig = signTypedData(senderPrivateKey, {data:extendedData})
+
+                //same calculation of domainSeparator as with base (no-extension)
+                const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', extendedData.domain, extendedData.types)
+
+                //needed step: extract "suffixData" out of request: encodeData adds a 32-byte "type" info, which we remove.
+                const suffixData = bufferToHex(TypedDataUtils.encodeData('Suffix', extendedData.message, {
+                    Suffix: ExtendedMessageSuffixType
+                }).slice(32))
+
+                await fwd.verify(extendedReq, bufferToHex(domainSeparator), hash, suffixData, sig)
+            })
         })
 
 

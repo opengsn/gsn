@@ -122,15 +122,15 @@ contract Eip712Forwarder {
 
         require(typeHashes[requestTypeHash], "invalid request typehash");
         bytes32 digest = keccak256(abi.encodePacked(
-                "\x19\x10", domainSeparator,
-                keccak256(abi.encodePacked(
+                "\x19\x01", domainSeparator,
+                keccak256(abi.encodePacked(abi.encode(
                     requestTypeHash,
                     req.target,
                     keccak256(req.encodedFunction),
                     req.senderAddress,
                     req.senderNonce,
-                    req.gasLimit,
-                    suffixData
+                    req.gasLimit),
+                suffixData
                 ))
             ));
         require(digest.recover(sig) == req.senderAddress, "signature mismatch");
