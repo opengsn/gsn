@@ -5,7 +5,6 @@
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
 
 import { RelayProvider } from '../src/relayclient/RelayProvider'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { Address } from '../src/relayclient/types/Aliases'
 import {
   RelayHubInstance, StakeManagerInstance,
@@ -55,7 +54,7 @@ options.forEach(params => {
 
       sm = await StakeManager.new()
       const p = await Penalizer.new()
-      rhub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, sm.address, p.address, { gas: 10000000 })
+      rhub = await RelayHub.new(sm.address, p.address, { gas: 10000000 })
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
           stake: 1e18,
@@ -90,8 +89,6 @@ options.forEach(params => {
           relayHubAddress: rhub.address,
           stakeManagerAddress: sm.address,
           paymasterAddress: paymaster.address,
-          // override requested gas price
-          // override requested gas limit.
           verbose: false
         }
 
@@ -111,7 +108,8 @@ options.forEach(params => {
       console.log('running emitMessage (should succeed)')
       let res
       try {
-        res = await sr.emitMessage('hello', { from: from })
+        const gas = await sr.contract.methods.emitMessage('hello').estimateGas()
+        res = await sr.emitMessage('hello', { from: from, gas })
       } catch (e) {
         console.log('error is ', e.message)
         throw e
@@ -125,7 +123,7 @@ options.forEach(params => {
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed)')
       let ex: Error | undefined
       try {
-        const res = await sr.emitMessage('hello, from gasless', { from: gasless })
+        const res = await sr.emitMessage('hello, from gasless', { from: gasless, gas: 1e6 })
         console.log('res after gasless emit:', res.logs[0].args.message)
       } catch (e) {
         ex = e

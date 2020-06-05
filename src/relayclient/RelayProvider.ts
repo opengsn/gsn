@@ -79,6 +79,9 @@ export class RelayProvider implements HttpProvider {
         this._ethGetTransactionReceipt(payload, callback)
         return
       }
+      if (payload.method === 'eth_accounts') {
+        this._getAccounts(payload, callback)
+      }
     }
 
     this.origProviderSend(payload, (error: Error | null, result?: JsonRpcResponse) => {
@@ -147,13 +150,13 @@ export class RelayProvider implements HttpProvider {
       return fixedTransactionReceipt
     }
     const logs = abiDecoder.decodeLogs(respResult.logs)
-    const canRelayFailed = logs.find((e: any) => e != null && e.name === 'TransactionRejectedByPaymaster')
+    const paymasterRejectedEvents = logs.find((e: any) => e != null && e.name === 'TransactionRejectedByPaymaster')
 
-    if (canRelayFailed !== null && canRelayFailed !== undefined) {
-      const canRelayFailedReason: { value: string } = canRelayFailed.events.find((e: any) => e.name === 'reason')
-      if (canRelayFailedReason !== undefined) {
+    if (paymasterRejectedEvents !== null && paymasterRejectedEvents !== undefined) {
+      const paymasterRejectionReason: { value: string } = paymasterRejectedEvents.events.find((e: any) => e.name === 'reason')
+      if (paymasterRejectionReason !== undefined) {
         if (this.config.verbose) {
-          console.log(`canRelay failed: ${canRelayFailedReason.value}. changing status to zero`)
+          console.log(`Paymaster rejected on-chain: ${paymasterRejectionReason.value}. changing status to zero`)
         }
         fixedTransactionReceipt.status = false
       }
@@ -178,6 +181,9 @@ export class RelayProvider implements HttpProvider {
   }
 
   _useGSN (payload: JsonRpcPayload): boolean {
+    if (payload.method === 'eth_accounts') {
+      return true
+    }
     if (payload.params[0] === undefined) {
       return false
     }
@@ -218,5 +224,15 @@ export class RelayProvider implements HttpProvider {
 
   addAccount (keypair: AccountKeypair): void {
     this.relayClient.accountManager.addAccount(keypair)
+  }
+
+  _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
+      if (rpcResponse != null && Array.isArray(rpcResponse.result)) {
+        const ephemeralAccounts = this.relayClient.accountManager.getAccounts()
+        rpcResponse.result = rpcResponse.result.concat(ephemeralAccounts)
+      }
+      callback(error, rpcResponse)
+    })
   }
 }

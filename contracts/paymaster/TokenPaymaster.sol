@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../interfaces/ITrustedForwarder.sol";
+import "../interfaces/IForwarder.sol";
 import "../BasePaymaster.sol";
 
 import "./IUniswap.sol";
@@ -75,7 +75,7 @@ contract TokenPaymaster is BasePaymaster {
         (approvalData);
 
         // Verify the sender's request is valid for selected forwarder
-        ITrustedForwarder forwarder = ITrustedForwarder(relayRequest.forwarder);
+        IForwarder forwarder = IForwarder(relayRequest.forwarder);
         forwarder.verify(relayRequest, signature);
 
         address payer = this.getPayer(relayRequest);
@@ -129,8 +129,8 @@ contract TokenPaymaster is BasePaymaster {
         //solhint-disable-next-line
         uniswap.tokenToEthSwapOutput(ethActualCharge, uint(-1), block.timestamp+60*15);
         relayHub.depositFor{value:ethActualCharge}(address(this));
-        emit TokensCharged(gasUseWithoutPost, ethActualCharge, tokenActualCharge);
+        emit TokensCharged(gasUseWithoutPost, justPost, ethActualCharge, tokenActualCharge);
     }
 
-    event TokensCharged(uint gasUseWithoutPost, uint ethActualCharge, uint tokenActualCharge);
+    event TokensCharged(uint gasUseWithoutPost, uint gasJustPost, uint ethActualCharge, uint tokenActualCharge);
 }

@@ -40,7 +40,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
   before(async function () {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
+    relayHub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
 
@@ -64,6 +64,48 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     })
   })
 
+  async function prepareRelayCall (): Promise<{
+    gasPrice: BN
+    gasLimit: BN
+    relayRequest: RelayRequest
+    signature: string
+  }> {
+    const gasPrice = new BN('1')
+    const gasLimit = new BN('5000000')
+    const txData = recipient.contract.methods.emitMessage('').encodeABI()
+    const relayRequest: RelayRequest = {
+      target: recipient.address,
+      encodedFunction: txData,
+      relayData: {
+        senderAddress: sender,
+        senderNonce: '0',
+        relayWorker,
+        paymaster: paymaster.address,
+        forwarder
+      },
+      gasData: {
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimit.toString(),
+        baseRelayFee: '300',
+        pctRelayFee: '10'
+      }
+    }
+    const dataToSign = new TypedRequestData(
+      chainId,
+      forwarder,
+      relayRequest
+    )
+    const signature = await getEip712Signature(
+      web3,
+      dataToSign
+    )
+    return {
+      gasPrice,
+      gasLimit,
+      relayRequest,
+      signature
+    }
+  }
   describe('penalizations', function () {
     const reporter = other
     const stake = ether('1')
@@ -245,6 +287,25 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             penalizer.penalizeIllegalTransaction(penalizeTxDataSig.data, penalizeTxDataSig.signature, relayHub.address, opts))
         })
 
+        it('should penalize relays for lying about transaction gas limit RelayHub', async function () {
+          const { gasPrice, gasLimit, relayRequest, signature } = await prepareRelayCall()
+          await relayHub.depositFor(paymaster.address, {
+            from: other,
+            value: ether('1')
+          })
+          const relayCallTx = await relayHub.relayCall(relayRequest, signature, '0x', gasLimit.add(new BN(2e6)), {
+            from: relayWorker,
+            gas: gasLimit.add(new BN(1e6)),
+            gasPrice
+          })
+
+          const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx, chainId)
+
+          await expectPenalization(
+            async (opts) => penalizer.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address, opts)
+          )
+        })
+
         it('does not penalize legal relay transactions', async function () {
           // relayCall is a legal transaction
           const baseFee = new BN('300')
@@ -283,8 +344,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             from: other,
             value: ether('1')
           })
-          const relayCallTx = await relayHub.relayCall(relayRequest, signature, '0x', {
+          const externalGasLimit = gasLimit.add(new BN(1e6))
+          const relayCallTx = await relayHub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
             from: relayWorker,
+            gas: externalGasLimit,
             gasPrice
           })
 
@@ -369,7 +432,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             gasPrice: encodedCallArgs.gasPrice.toString()
           }
         }
-      const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x').encodeABI()
+      const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
 
       const transaction = new Transaction({
         nonce: relayCallArgs.nonce,

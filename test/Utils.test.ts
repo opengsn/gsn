@@ -11,7 +11,7 @@ import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
-const EIP712Sig = artifacts.require('./SignatureVerifier.sol')
+const SignatureVerifier = artifacts.require('./SignatureVerifier.sol')
 
 contract('Utils', function (accounts) {
   describe('#getEip712Signature()', function () {
@@ -64,8 +64,8 @@ contract('Utils', function (accounts) {
       })
       assert.strictEqual(senderAddress.toLowerCase(), recoveredAccount.toLowerCase())
 
-      const eip712Sig = await EIP712Sig.new(verifier)
-      const verify = await eip712Sig.verify(dataToSign.message, sig, { from: senderAddress })
+      const signatureVerifier = await SignatureVerifier.new(verifier)
+      const verify = await signatureVerifier.verify(dataToSign.message, sig, { from: senderAddress })
       assert.strictEqual(verify, true)
     })
   })

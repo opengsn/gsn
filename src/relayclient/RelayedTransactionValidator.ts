@@ -50,7 +50,8 @@ export default class RelayedTransactionValidator {
         paymaster: transactionJsonRequest.paymaster
       }
     }
-    const relayRequestAbiEncode = this.contractInteractor.encodeABI(relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData)
+    const externalGasLimit = bufferToHex(transaction.gasLimit)
+    const relayRequestAbiEncode = this.contractInteractor.encodeABI(relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData, externalGasLimit)
 
     if (
       isSameAddress(bufferToHex(transaction.to), this.config.relayHubAddress) &&

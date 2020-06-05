@@ -101,4 +101,8 @@ export default class AccountManager {
     // @ts-ignore
     return sigUtil.signTypedData_v4(keypair.privateKey, { data: signedData })
   }
+
+  getAccounts (): string[] {
+    return this.accounts.map(it => it.address)
+  }
 }

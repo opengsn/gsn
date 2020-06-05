@@ -30,7 +30,6 @@ abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
 
-const gtxdatanonzero = defaultEnvironment.gtxdatanonzero
 const mintxgascost = defaultEnvironment.mintxgascost
 
 const VERSION = '0.9.1'
@@ -243,7 +242,7 @@ export class RelayServer extends EventEmitter {
       throw new Error(`Unacceptable relayMaxNonce: ${req.relayMaxNonce}. current nonce: ${nonce}`)
     }
 
-    // Check canRelay view function to see if we'll get paid for relaying this tx
+    // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const relayRequest: RelayRequest = {
       target: req.to,
       encodedFunction: req.encodedFunction,
@@ -261,9 +260,7 @@ export class RelayServer extends EventEmitter {
         relayWorker: this.getAddress(1)
       }
     }
-    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData)
-    const calldataSize = method.encodeABI().length / 2
-    debug('calldatasize', calldataSize)
+
     let gasLimits
     try {
       if (this.paymasterContract === undefined) {
@@ -289,28 +286,28 @@ export class RelayServer extends EventEmitter {
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
-      relayCallGasLimit: req.gasLimit,
-      calldataSize,
-      gtxdatanonzero: gtxdatanonzero
+      relayCallGasLimit: req.gasLimit
     })
-
-    let canRelayRet: { paymasterAccepted: boolean, returnValue: string }
+    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
+    let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
-      canRelayRet = await this.relayHubContract.contract.methods.relayCall(
+      viewRelayCallRet = await this.relayHubContract.contract.methods.relayCall(
         relayRequest,
         req.signature,
-        req.approvalData)
+        req.approvalData,
+        maxPossibleGas)
         .call({
           from: this.getAddress(workerIndex),
-          gasPrice: relayRequest.gasData.gasPrice
+          gasPrice: relayRequest.gasData.gasPrice,
+          gasLimit: maxPossibleGas
         })
     } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`relayCall reverted in server: ${e.message}`)
     }
-    debug('canRelayRet', canRelayRet)
-    if (!canRelayRet.paymasterAccepted) {
-      throw new Error(`canRelay failed in server: ${canRelayRet.returnValue}`)
+    debug('viewRelayCallRet', viewRelayCallRet)
+    if (!viewRelayCallRet.paymasterAccepted) {
+      throw new Error(`Paymaster rejected in server: ${viewRelayCallRet.returnValue}`)
     }
     // Send relayed transaction
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)

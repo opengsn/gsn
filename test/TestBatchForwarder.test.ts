@@ -10,21 +10,22 @@ import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   RelayHubInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance, TrustedBatchForwarderInstance
+  TestRecipientInstance,
+  BatchForwarderInstance
 } from '../types/truffle-contracts'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const TrustedBatchForwarder = artifacts.require('./TrustedBatchForwarder.sol')
+const BatchForwarder = artifacts.require('./BatchForwarder.sol')
 const TestRecipient = artifacts.require('TestRecipient.sol')
 
-contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
+contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let recipient: TestRecipientInstance
   let hub: RelayHubInstance
-  let forwarder: TrustedBatchForwarderInstance
+  let forwarder: BatchForwarderInstance
   let sharedRelayRequestData: RelayRequest
   const chainId = defaultEnvironment.chainId
 
@@ -33,7 +34,7 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
 
     const stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
-    hub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address, { gas: 10000000 })
+    hub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     const relayHub = hub
     await stakeManager.stakeForAddress(relayManager, 2000, {
       value: ether('2'),
@@ -49,7 +50,7 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
 
     recipient = await TestRecipient.new()
-    forwarder = await TrustedBatchForwarder.new()
+    forwarder = await BatchForwarder.new()
     await recipient.setTrustedForwarder(forwarder.address)
 
     await paymaster.setRelayHub(hub.address)
@@ -95,7 +96,7 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         dataToSign
       )
 
-      const ret = await hub.relayCall(relayRequest, signature, '0x', {
+      const ret = await hub.relayCall(relayRequest, signature, '0x', 7e6, {
         from: relayWorker
       })
 
@@ -131,7 +132,7 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         dataToSign
       )
 
-      const ret = await hub.relayCall(relayRequest, signature, '0x', {
+      const ret = await hub.relayCall(relayRequest, signature, '0x', 7e6, {
         from: relayWorker
       })
       expectEvent(ret, 'TransactionRelayed', { status: '1' })
@@ -157,7 +158,7 @@ contract('TrustedBatchForwarder', ([from, relayManager, relayWorker, relayOwner]
         dataToSign
       )
 
-      const ret = await hub.relayCall(relayRequest, signature, '0x', {
+      const ret = await hub.relayCall(relayRequest, signature, '0x', 7e6, {
         from: relayWorker
       })
       expectEvent(ret, 'TransactionRelayed', { status: '1' })

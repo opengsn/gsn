@@ -6,7 +6,6 @@ import { TxStoreManager } from '../src/relayserver/TxStoreManager'
 import { KeyManager } from '../src/relayserver/KeyManager'
 import RelayHubABI from '../src/common/interfaces/IRelayHub.json'
 import PayMasterABI from '../src/common/interfaces/IPaymaster.json'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import * as ethUtils from 'ethereumjs-util'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 // @ts-ignore
@@ -20,7 +19,7 @@ import {
   RelayHubInstance,
   StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance,
-  TrustedForwarderInstance
+  ForwarderInstance
 } from '../types/truffle-contracts'
 import { Address } from '../src/relayclient/types/Aliases'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
@@ -37,7 +36,7 @@ import Mutex from 'async-mutex/lib/Mutex'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
-const TrustedForwarder = artifacts.require('TrustedForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
@@ -54,7 +53,7 @@ const workdir = '/tmp/gsn/test/relayserver'
 
 contract('RelayServer', function (accounts) {
   let rhub: RelayHubInstance
-  let forwarder: TrustedForwarderInstance
+  let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let sr: TestRecipientInstance
@@ -82,10 +81,10 @@ contract('RelayServer', function (accounts) {
 
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    rhub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, penalizer.address)
+    rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     sr = await TestRecipient.new()
     const forwarderAddress = await sr.getTrustedForwarder()
-    forwarder = await TrustedForwarder.at(forwarderAddress)
+    forwarder = await Forwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setRelayHub(rhub.address)
@@ -124,7 +123,6 @@ contract('RelayServer', function (accounts) {
      methodSuffix: string
      jsonStringifyRequest: boolean
      relayTimeoutGrace: number
-     gtxdatanonzero: number
      sliceSize: number
      verbose: boolean
      gasPriceFactorPercent: number
@@ -433,7 +431,7 @@ contract('RelayServer', function (accounts) {
           { signature: '0xdeadface00000a58b757da7dea5678548be5ff9b16e9d1d87c6157aff6889c0f6a406289908add9ea6c3ef06d033a058de67d057e2c0ae5a02b36854be13b0731c' })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: signature mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: signature mismatch')
       }
     })
 
@@ -443,7 +441,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { from: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: nonce mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
     })
     it('should fail to relay with wrong recipient', async function () {
@@ -501,7 +499,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(options, { senderNonce: '123456' })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: nonce mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
       // Now we replay the same transaction so we get WrongNonce
       const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest(options)
@@ -511,7 +509,7 @@ contract('RelayServer', function (accounts) {
           { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'canRelay failed in server: nonce mismatch')
+        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
     })
     it('should fail to relay with wrong relayMaxNonce', async function () {

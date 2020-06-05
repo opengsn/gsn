@@ -2,7 +2,7 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/ITrustedForwarder.sol";
+import "../interfaces/IForwarder.sol";
 import "../BasePaymaster.sol";
 
 contract TestPaymasterEverythingAccepted is BasePaymaster {
@@ -26,7 +26,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     view
     returns (bytes memory) {
         (relayRequest, signature, approvalData, maxPossibleGas);
-        ITrustedForwarder(relayRequest.forwarder).verify(relayRequest, signature);
+        IForwarder(relayRequest.forwarder).verify(relayRequest, signature);
         return "no revert here";
     }
 

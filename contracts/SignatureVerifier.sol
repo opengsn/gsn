@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/ISignatureVerifier.sol";
+import "./utils/GsnUtils.sol";
 
 contract SignatureVerifier is ISignatureVerifier{
 
@@ -14,12 +15,12 @@ contract SignatureVerifier is ISignatureVerifier{
     struct EIP712Domain {
         string name;
         string version;
-//        uint256 chainId;
+        uint256 chainId;
         address verifyingContract;
     }
 
     bytes32 public constant EIP712DOMAIN_TYPEHASH = keccak256(
-        "EIP712Domain(string name,string version,address verifyingContract)"
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
 
     // solhint-disable-next-line max-line-length
@@ -39,7 +40,7 @@ contract SignatureVerifier is ISignatureVerifier{
         DOMAIN_SEPARATOR = hash(EIP712Domain({
             name : "GSN Relayed Transaction",
             version : "1",
-//            chainId : getChainID(),
+            chainId : GsnUtils.getChainID(),
             verifyingContract : verifier
         }));
     }
@@ -49,7 +50,7 @@ contract SignatureVerifier is ISignatureVerifier{
                 EIP712DOMAIN_TYPEHASH,
                 keccak256(bytes(eip712Domain.name)),
                 keccak256(bytes(eip712Domain.version)),
-//                eip712Domain.chainId,
+                eip712Domain.chainId,
                 eip712Domain.verifyingContract
             ));
     }

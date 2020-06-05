@@ -4,7 +4,6 @@ import { HttpProvider } from 'web3-core'
 import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
 import {
   RelayHubInstance,
   StakeManagerInstance,
@@ -39,10 +38,10 @@ contract('KnownRelaysManager', function (
   [
     activeRelayWorkersAdded,
     activeRelayServerRegistered,
-    activeCanRelayFailed,
+    activePaymasterRejected,
     activeTransactionRelayed,
     notActiveRelay,
-    workerCanRelayFailed,
+    workerPaymasterRejected,
     workerTransactionRelayed,
     owner,
     other
@@ -59,13 +58,14 @@ contract('KnownRelaysManager', function (
     let workerRelayWorkersAdded
     let workerRelayServerRegistered
     let workerNotActive
+    const gas = 4e6
 
     before(async function () {
       workerRelayWorkersAdded = await web3.eth.personal.newAccount('password')
       workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
       workerNotActive = await web3.eth.personal.newAccount('password')
       stakeManager = await StakeManager.new()
-      relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+      relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
       config = configureGSN({
         relayHubAddress: relayHub.address,
         relayLookupWindowBlocks
@@ -77,10 +77,10 @@ contract('KnownRelaysManager', function (
       await paymaster.deposit({ value: ether('1') })
       await stake(stakeManager, relayHub, activeRelayWorkersAdded, owner)
       await stake(stakeManager, relayHub, activeRelayServerRegistered, owner)
-      await stake(stakeManager, relayHub, activeCanRelayFailed, owner)
+      await stake(stakeManager, relayHub, activePaymasterRejected, owner)
       await stake(stakeManager, relayHub, activeTransactionRelayed, owner)
       await stake(stakeManager, relayHub, notActiveRelay, owner)
-      const txCanRelayFailed = await prepareTransaction(testRecipient, other, workerCanRelayFailed, paymaster.address, web3)
+      const txPaymasterRejected = await prepareTransaction(testRecipient, other, workerPaymasterRejected, paymaster.address, web3)
       const txTransactionRelayed = await prepareTransaction(testRecipient, other, workerTransactionRelayed, paymaster.address, web3)
 
       /** events that are not supposed to be visible to the manager */
@@ -93,11 +93,11 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerTransactionRelayed], {
         from: activeTransactionRelayed
       })
-      await relayHub.addRelayWorkers([workerCanRelayFailed], {
-        from: activeCanRelayFailed
+      await relayHub.addRelayWorkers([workerPaymasterRejected], {
+        from: activePaymasterRejected
       })
       await relayHub.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
-      await relayHub.registerRelayServer('0', '0', '', { from: activeCanRelayFailed })
+      await relayHub.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
@@ -105,14 +105,16 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
         from: activeRelayWorkersAdded
       })
-      await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
+      await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
         from: workerTransactionRelayed,
+        gas,
         gasPrice: txTransactionRelayed.relayRequest.gasData.gasPrice
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(txCanRelayFailed.relayRequest, txCanRelayFailed.signature, '0x', {
-        from: workerCanRelayFailed,
-        gasPrice: txCanRelayFailed.relayRequest.gasData.gasPrice
+      await relayHub.relayCall(txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
+        from: workerPaymasterRejected,
+        gas,
+        gasPrice: txPaymasterRejected.relayRequest.gasData.gasPrice
       })
     })
 
@@ -124,7 +126,7 @@ contract('KnownRelaysManager', function (
       assert.equal(actual[0], activeRelayServerRegistered)
       assert.equal(actual[1], activeRelayWorkersAdded)
       assert.equal(actual[2], activeTransactionRelayed)
-      assert.equal(actual[3], activeCanRelayFailed)
+      assert.equal(actual[3], activePaymasterRejected)
     })
   })
 })
@@ -151,7 +153,7 @@ contract('KnownRelaysManager 2', function (accounts) {
 
     before(async function () {
       stakeManager = await StakeManager.new()
-      relayHub = await RelayHub.new(defaultEnvironment.gtxdatanonzero, stakeManager.address, constants.ZERO_ADDRESS)
+      relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090'],
         relayHubAddress: relayHub.address,

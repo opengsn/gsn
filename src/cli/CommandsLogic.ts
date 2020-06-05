@@ -13,7 +13,7 @@ import StakeManager from './compiled/StakeManager.json'
 import RelayHub from './compiled/RelayHub.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
-import Forwarder from './compiled/TrustedForwarder.json'
+import Forwarder from './compiled/Forwarder.json'
 
 import { Address, notNull } from '../relayclient/types/Aliases'
 import ContractInteractor from '../relayclient/ContractInteractor'
@@ -219,7 +219,7 @@ export default class CommandsLogic {
     const fInstance =
       await this.contract(Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
     const rInstance = await this.contract(RelayHub).deploy({
-      arguments: [16, sInstance.options.address, pInstance.options.address]
+      arguments: [sInstance.options.address, pInstance.options.address]
     }).send(merge(options, { gas: 5e6 }))
 
     await pmInstance.methods.setRelayHub(rInstance.options.address).send({
