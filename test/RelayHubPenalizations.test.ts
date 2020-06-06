@@ -76,16 +76,16 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     const relayRequest: RelayRequest = {
       target: recipient.address,
       encodedFunction: txData,
+      senderAddress: sender,
+      senderNonce: '0',
+      gasLimit: gasLimit.toString(),
+      forwarder,
       relayData: {
-        senderAddress: sender,
-        senderNonce: '0',
         relayWorker,
         paymaster: paymaster.address,
-        forwarder
       },
       gasData: {
         gasPrice: gasPrice.toString(),
-        gasLimit: gasLimit.toString(),
         baseRelayFee: '300',
         pctRelayFee: '10'
       }
