@@ -66,7 +66,7 @@ contract Eip712Forwarder {
     }
 
     //register a requestTypeHash
-    // the given requestType must have paramsPrefix as the beginning of the type string,
+    // the given requestType must have PARAMS_PREFIX as the beginning of the type string,
     // otherwise it can't be registered.
 
     /**

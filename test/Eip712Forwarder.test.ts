@@ -41,46 +41,46 @@ contract('Eip712Forwarder', () => {
   })
   describe('#registerRequestType', () => {
     it('should fail to register without a name', async () => {
-      assert.equal(await res(fwd.registerRequestType('')), 'revert invalid type: no name')
+      assert.include(await res(fwd.registerRequestType('')), 'revert invalid type: no name')
       assert.include(await res(fwd.registerRequestType('()')), 'revert invalid type: no name')
     })
 
     it('should fail with no parameters', async () => {
-      assert.equal(await res(fwd.registerRequestType('asd')), 'revert invalid type: no params')
-      assert.equal(await res(fwd.registerRequestType('asd(')), 'revert invalid type: too short')
-      assert.equal(await res(fwd.registerRequestType('asd()')), 'revert invalid type: too short')
+      assert.include(await res(fwd.registerRequestType('asd')), 'revert invalid type: no params')
+      assert.include(await res(fwd.registerRequestType('asd(')), 'revert invalid type: too short')
+      assert.include(await res(fwd.registerRequestType('asd()')), 'revert invalid type: too short')
     })
 
     it('should fail with incomplete parameters', async () => {
-      assert.equal(await res(fwd.registerRequestType('asd(' + 'a'.repeat(100))), 'revert invalid type: params don\'t match')
-      assert.equal(await res(fwd.registerRequestType('asd(' + await fwd.paramsPrefix())), 'revert invalid type: too short')
+      assert.include(await res(fwd.registerRequestType('asd(' + 'a'.repeat(100))), 'revert invalid type: params don\'t match')
+      assert.include(await res(fwd.registerRequestType('asd(' + await fwd.PARAMS_PREFIX())), 'revert invalid type: too short')
     })
 
     it('should accept type with exact parameters', async () => {
-      await fwd.registerRequestType('asd(' + await fwd.paramsPrefix() + ')')
-      await fwd.registerRequestType('veryLongName'.repeat(10) + '(' + await fwd.paramsPrefix() + ')')
+      await fwd.registerRequestType('asd(' + await fwd.PARAMS_PREFIX() + ')')
+      await fwd.registerRequestType('veryLongName'.repeat(10) + '(' + await fwd.PARAMS_PREFIX() + ')')
     })
 
     it('should accept extension type', async () => {
-      await fwd.registerRequestType('asd(' + await fwd.paramsPrefix() + 'extension)')
+      await fwd.registerRequestType('asd(' + await fwd.PARAMS_PREFIX() + 'extension)')
     })
 
     it('should emit typehash', async () => {
-      const typeName = 'anotherType(' + await fwd.paramsPrefix() + ')'
+      const typeName = 'anotherType(' + await fwd.PARAMS_PREFIX() + ')'
       const res = await fwd.registerRequestType(typeName)
       const { typehash, typeStr } = (res.logs.find(e => e.event == 'RequestTypeRegistered') as any).args
       assert.equal(typeStr, typeName)
       assert.equal(typehash, web3.utils.keccak256(typeName))
     })
     it('should reject repeated registration', async () => {
-      const typeName = 'anotherType(' + await fwd.paramsPrefix() + ')'
-      assert.equal(await res(fwd.registerRequestType(typeName)), 'revert typehash already registered')
+      const typeName = 'anotherType(' + await fwd.PARAMS_PREFIX() + ')'
+      assert.include(await res(fwd.registerRequestType(typeName)), 'revert typehash already registered')
     })
   })
   describe('#isRegisteredTypehash', () => {
     let typeName: string
     before(async () => {
-      typeName = 'testIsRegistered(' + await fwd.paramsPrefix() + ')'
+      typeName = 'testIsRegistered(' + await fwd.PARAMS_PREFIX() + ')'
     })
     it('should return false before registration', async () => {
       assert.equal(false, await fwd.isRegisteredTypehash(web3.utils.keccak256(typeName)))
@@ -108,7 +108,7 @@ contract('Eip712Forwarder', () => {
       forwarder: addr(3)
     }
     before(async () => {
-      typeName = 'TestVerify(' + await fwd.paramsPrefix() + ')'
+      typeName = 'TestVerify(' + await fwd.PARAMS_PREFIX() + ')'
       typeHash = web3.utils.keccak256(typeName)
       await fwd.registerRequestType(typeName)
     })
