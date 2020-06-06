@@ -12,7 +12,7 @@ contract Eip712Forwarder {
 
     //all valid requests must start with this prefix.
     // request name is arbitrary, but the parameter block must match exactly these parameters
-    string public constant paramsPrefix = "address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit";
+    string public constant PARAMS_PREFIX = "address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit";
 
     mapping(bytes32 => bool) public typeHashes;
 
@@ -47,6 +47,7 @@ contract Eip712Forwarder {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = req.target.call{gas : req.gasLimit}(abi.encodePacked(req.encodedFunction, req.senderAddress));
         if (!success) {
+            // solhint-disable-next-line no-inline-assembly
             assembly {// This assembly ensure the revert contains the exact string data
                 let returnDataSize := returndatasize()
                 returndatacopy(0, 0, returnDataSize)
@@ -74,7 +75,7 @@ contract Eip712Forwarder {
      *    the exact string of params defined in GENERIC_PARAMS.
      * NOTE: There is no validation on the string:
      *  - struct name is any sequence of chars (except "(")
-     *  - parameters must start with 
+     *  - parameters must start with PARAMS_PREFIX
      */
     function registerRequestType(string calldata requestType) external {
         bytes32 requestTypehash = keccak256(bytes(requestType));
@@ -84,18 +85,18 @@ contract Eip712Forwarder {
         bytes1 c;
         while (pos < len) {
             c = (bytes(requestType)[pos]);
-            if (c == '(') {
+            if (c == "(") {
                 break;
             }
             pos++;
         }
         require(pos > 0, "invalid type: no name");
-        require(c == '(', "invalid type: no params");
+        require(c == "(", "invalid type: no params");
         pos++;
-        uint prefixLength = bytes(paramsPrefix).length;
+        uint prefixLength = bytes(PARAMS_PREFIX).length;
         require(len - pos > prefixLength, "invalid type: too short");
         for (uint i = 0; i < prefixLength; i++) {
-            require(bytes(requestType)[pos + i] == bytes(paramsPrefix)[i], "invalid type: params don't match");
+            require(bytes(requestType)[pos + i] == bytes(PARAMS_PREFIX)[i], "invalid type: params don't match");
         }
         typeHashes[requestTypehash] = true;
         emit RequestTypeRegistered(requestTypehash, requestType);
