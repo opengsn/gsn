@@ -674,9 +674,9 @@ export class RelayServer extends EventEmitter {
     const txCost = toBN(gasLimit * parseInt(gasPrice))
 
     const managerBalance = await this.getManagerBalance()
+    // sending manager eth balance to owner
     if (managerBalance.gte(txCost)) {
       console.log(`Sending manager eth balance ${managerBalance.toString()} to owner`)
-      // sending manager eth balance to owner
       receipts.push((await this._sendTransaction({
         signerIndex: 0,
         destination: this.owner as string,
