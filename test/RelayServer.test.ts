@@ -52,7 +52,7 @@ abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 const localhostOne = 'http://localhost:8090'
 const workdir = '/tmp/gsn/test/relayserver'
 
-contract.only('RelayServer', function (accounts) {
+contract('RelayServer', function (accounts) {
   const pctRelayFee = 11
   const baseRelayFee = 12
   let rhub: RelayHubInstance
@@ -66,7 +66,7 @@ contract.only('RelayServer', function (accounts) {
   const dayInSec = 24 * 60 * 60
   const weekInSec = dayInSec * 7
   const oneEther = toBN(1e18)
-  let relayServer: RelayServer, defunctRelayServer: RelayServer
+  let relayServer: RelayServer, anotherRelayServer: RelayServer
   let serverWeb3provider: provider
   let ethereumNodeUrl: string
   let _web3: Web3
@@ -75,6 +75,42 @@ contract.only('RelayServer', function (accounts) {
   let relayClient: RelayClient
   let options: any, options2: any
   let keyManager: KeyManager
+
+  async function bringUpNewRelay (): Promise<RelayServer> {
+    const keyManager = new KeyManager(2, undefined, Date.now().toString())
+    const txStoreManager = new TxStoreManager({ workdir: workdir + '/defunct' + Date.now().toString() })
+    const params = {
+      txStoreManager,
+      keyManager,
+      // owner: relayOwner,
+      hubAddress: rhub.address,
+      url: localhostOne,
+      baseRelayFee: 0,
+      pctRelayFee: 0,
+      gasPriceFactor: 1,
+      web3provider: serverWeb3provider,
+      devMode: true
+    }
+    const newServer = new RelayServer(params as RelayServerParams)
+    newServer.on('error', (e) => {
+      console.log('defunct event', e.message)
+    })
+    await _web3.eth.sendTransaction({
+      to: newServer.getManagerAddress(),
+      from: relayOwner,
+      value: _web3.utils.toWei('2', 'ether')
+    })
+
+    await stakeManager.stakeForAddress(newServer.getManagerAddress(), weekInSec, {
+      from: relayOwner,
+      value: oneEther
+    })
+    await stakeManager.authorizeHub(newServer.getManagerAddress(), rhub.address, {
+      from: relayOwner
+    })
+
+    return newServer
+  }
 
   before(async function () {
     globalId = (await snapshot()).result
@@ -164,18 +200,28 @@ contract.only('RelayServer', function (accounts) {
     return receipt
   }
 
-  function assertRelayAdded (receipts: TransactionReceipt[], relayServer: RelayServer): void {
-    const receipt = receipts.find(r => {
-      const decodedLogs = abiDecoder.decodeLogs(r.logs).map(relayServer._parseEvent)
+  function assertRelayAdded (receipts: TransactionReceipt[], server: RelayServer, checkWorkers = true): void {
+    const registeredReceipt = receipts.find(r => {
+      const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server._parseEvent)
       return decodedLogs[0].name === 'RelayServerRegistered'
     })
-    const decodedLogs = abiDecoder.decodeLogs(receipt!.logs).map(relayServer._parseEvent)
-    assert.equal(decodedLogs.length, 1)
-    assert.equal(decodedLogs[0].name, 'RelayServerRegistered')
-    assert.equal(decodedLogs[0].args.relayManager.toLowerCase(), relayServer.getManagerAddress().toLowerCase())
-    assert.equal(decodedLogs[0].args.baseRelayFee, relayServer.baseRelayFee)
-    assert.equal(decodedLogs[0].args.pctRelayFee, relayServer.pctRelayFee)
-    assert.equal(decodedLogs[0].args.relayUrl, relayServer.url)
+    const registeredLogs = abiDecoder.decodeLogs(registeredReceipt!.logs).map(server._parseEvent)
+    assert.equal(registeredLogs.length, 1)
+    assert.equal(registeredLogs[0].name, 'RelayServerRegistered')
+    assert.equal(registeredLogs[0].args.relayManager.toLowerCase(), server.getManagerAddress().toLowerCase())
+    assert.equal(registeredLogs[0].args.baseRelayFee, server.baseRelayFee)
+    assert.equal(registeredLogs[0].args.pctRelayFee, server.pctRelayFee)
+    assert.equal(registeredLogs[0].args.relayUrl, server.url)
+
+    if (checkWorkers) {
+      const workersAddedReceipt = receipts.find(r => {
+        const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server._parseEvent)
+        return decodedLogs[0].name === 'RelayWorkersAdded'
+      })
+      const workersAddedLogs = abiDecoder.decodeLogs(workersAddedReceipt!.logs).map(server._parseEvent)
+      assert.equal(workersAddedLogs.length, 1)
+      assert.equal(workersAddedLogs[0].name, 'RelayWorkersAdded')
+    }
   }
 
   async function relayTransaction (options: any, overrideArgs?: Partial<CreateTransactionDetails>): Promise<PrefixedHexString> {
@@ -329,54 +375,24 @@ contract.only('RelayServer', function (accounts) {
   // When running server after both staking & funding it
   describe('single step server initialization', function () {
     it('should initialize relay after staking and funding it', async function () {
-      const keyManager = new KeyManager(2, undefined, Date.now().toString())
-      const txStoreManager = new TxStoreManager({ workdir: workdir + '/defunct' })
-      const params = {
-        txStoreManager,
-        keyManager,
-        // owner: relayOwner,
-        hubAddress: rhub.address,
-        url: localhostOne,
-        baseRelayFee: 0,
-        pctRelayFee: 0,
-        gasPriceFactor: 1,
-        web3provider: serverWeb3provider,
-        devMode: true
-      }
-      defunctRelayServer = new RelayServer(params as RelayServerParams)
-      defunctRelayServer.on('error', (e) => {
-        console.log('defunct event', e.message)
-      })
-      await _web3.eth.sendTransaction({
-        to: defunctRelayServer.getManagerAddress(),
-        from: relayOwner,
-        value: _web3.utils.toWei('2', 'ether')
-      })
-
-      await stakeManager.stakeForAddress(defunctRelayServer.getManagerAddress(), weekInSec, {
-        from: relayOwner,
-        value: oneEther
-      })
-      await stakeManager.authorizeHub(defunctRelayServer.getManagerAddress(), rhub.address, {
-        from: relayOwner
-      })
-      const stake = await defunctRelayServer.refreshStake()
+      anotherRelayServer = await bringUpNewRelay()
+      const stake = await anotherRelayServer.refreshStake()
       assert.deepEqual(stake, oneEther)
-      assert.equal(defunctRelayServer.owner, relayOwner, 'owner should be set after refreshing stake')
+      assert.equal(anotherRelayServer.owner, relayOwner, 'owner should be set after refreshing stake')
 
-      const expectedGasPrice = parseInt(await _web3.eth.getGasPrice()) * defunctRelayServer.gasPriceFactor
-      assert.equal(defunctRelayServer.ready, false)
+      const expectedGasPrice = parseInt(await _web3.eth.getGasPrice()) * anotherRelayServer.gasPriceFactor
+      assert.equal(anotherRelayServer.ready, false)
       const expectedLastScannedBlock = await _web3.eth.getBlockNumber()
-      assert.equal(defunctRelayServer.lastScannedBlock, 0)
-      const receipts = await defunctRelayServer._worker(await _web3.eth.getBlock('latest'))
-      assert.equal(defunctRelayServer.lastScannedBlock, expectedLastScannedBlock)
-      assert.equal(defunctRelayServer.gasPrice, expectedGasPrice)
-      assert.equal(defunctRelayServer.ready, true, 'relay no ready?')
-      await assertRelayAdded(receipts, defunctRelayServer)
+      assert.equal(anotherRelayServer.lastScannedBlock, 0)
+      const receipts = await anotherRelayServer._worker(await _web3.eth.getBlock('latest'))
+      assert.equal(anotherRelayServer.lastScannedBlock, expectedLastScannedBlock)
+      assert.equal(anotherRelayServer.gasPrice, expectedGasPrice)
+      assert.equal(anotherRelayServer.ready, true, 'relay no ready?')
+      await assertRelayAdded(receipts, anotherRelayServer)
     })
     after('txstore cleanup', async function () {
-      await defunctRelayServer.txStoreManager.clearAll()
-      assert.deepEqual([], await defunctRelayServer.txStoreManager.getAll())
+      await anotherRelayServer.txStoreManager.clearAll()
+      assert.deepEqual([], await anotherRelayServer.txStoreManager.getAll())
     })
   })
 
@@ -922,7 +938,6 @@ contract.only('RelayServer', function (accounts) {
     // TODO add failure tests
   })
 
-  // describe('network errors')
   describe('Function testing', function () {
     it('_workerSemaphore', async function () {
       // @ts-ignore
@@ -962,8 +977,50 @@ contract.only('RelayServer', function (accounts) {
     // })
     // it('_handleStakedEvent', async function () {
     // })
-    it.skip('_registerIfNeeded', async function () {
-      // todo add test for registering for all of the cases: when not registered, when registered but changed parameters, when registered and nothing changed ( should not re-register)
+    describe('_registerIfNeeded', function () {
+      // function assertRelayRegistered (receipts: TransactionReceipt[], server: RelayServer, assertWorkers = true): void {
+      //   const decodedLogs = abiDecoder.decodeLogs(receipts.map(r => r.logs).reduce((p, c) => p.concat(c))).map(server._parseEvent)
+      //   assert.equal(decodedLogs[0].name, 'RelayWorkersAdded')
+      // }
+      let newServer: RelayServer
+      beforeEach(async function () {
+        id = (await snapshot()).result
+        newServer = await bringUpNewRelay()
+        // @ts-ignore
+        newServer.authorizedHub = true
+        const stake = await newServer.refreshStake()
+        assert.deepEqual(stake, oneEther)
+        assert.equal(newServer.owner, relayOwner, 'owner should be set after refreshing stake')
+      })
+      afterEach(async function () {
+        await revert(id)
+      })
+      it('register server and add workers when not registered', async function () {
+        const receipts = await newServer._registerIfNeeded()
+        assertRelayAdded(receipts, newServer)
+      })
+      it('do not register server when already registered', async function () {
+        let receipts = await newServer._registerIfNeeded()
+        assertRelayAdded(receipts, newServer)
+        receipts = await newServer._registerIfNeeded()
+        assert.equal(receipts.length, 0, 'should not re-register if already registered')
+      })
+      it('re-register server when params changed', async function () {
+        let receipts = await newServer._registerIfNeeded()
+        assertRelayAdded(receipts, newServer)
+        // @ts-ignore
+        newServer.baseRelayFee += 1
+        receipts = await newServer._registerIfNeeded()
+        assertRelayAdded(receipts, newServer, false)
+        // @ts-ignore
+        newServer.pctRelayFee += 1
+        receipts = await newServer._registerIfNeeded()
+        assertRelayAdded(receipts, newServer, false)
+        // @ts-ignore
+        newServer.url = 'fakeUrl'
+        receipts = await newServer._registerIfNeeded()
+        assertRelayAdded(receipts, newServer, false)
+      })
     })
     // it('_resendUnconfirmedTransactions', async function () {
     // })

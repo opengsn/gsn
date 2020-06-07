@@ -626,10 +626,10 @@ export class RelayServer extends EventEmitter {
     })
     if (relayRegisteredEvents.find(
       (e: any) =>
-        e.returnValues.relayManager.toLowerCase() === this.managerAddress &&
-        e.returnValues.baseRelayFee === this.baseRelayFee &&
-        e.returnValues.pctRelayFee === this.pctRelayFee &&
-        e.returnValues.relayUrl === this.url) == null) {
+        e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase() &&
+        e.returnValues.baseRelayFee.toString() === this.baseRelayFee.toString() &&
+        e.returnValues.pctRelayFee.toString() === this.pctRelayFee.toString() &&
+        e.returnValues.relayUrl.toString() === this.url.toString()) == null) {
       const registerMethod = this.relayHubContract?.contract.methods
         .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
           this.url)
@@ -700,7 +700,7 @@ export class RelayServer extends EventEmitter {
         value: toHex(workerBalance.sub(txCost))
       })).receipt)
     } else {
-      console.log(`balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+      console.log(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
 
     this.emit('unstaked')
