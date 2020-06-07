@@ -12,7 +12,8 @@ contract Eip712Forwarder {
 
     //all valid requests must start with this prefix.
     // request name is arbitrary, but the parameter block must match exactly these parameters
-    string public constant PARAMS_PREFIX = "address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit";
+    string public constant GENERIC_PARAMS="_ForwardRequest request";
+    string public constant GENERIC_TYPE="_ForwardRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit)";
 
     mapping(bytes32 => bool) public typeHashes;
 
@@ -66,40 +67,31 @@ contract Eip712Forwarder {
     }
 
     //register a requestTypeHash
-    // the given requestType must have PARAMS_PREFIX as the beginning of the type string,
+    // the given requestType must have GENERIC_PARAMS as the beginning of the type string,
     // otherwise it can't be registered.
 
     /**
      * Register a new Request typehash.
-     * @param requestType the request type string. The request parameters must start with
-     *    the exact string of params defined in GENERIC_PARAMS.
-     * NOTE: There is no validation on the string:
-     *  - struct name is any sequence of chars (except "(")
-     *  - parameters must start with PARAMS_PREFIX
+     * @param typeName - the name of the request type.
+     * @param extraParams - params to add to the request type, after initial "_ForwardRequest request" param
+     * @param subTypes - subtypes used by the extraParams
+     * @param subTypes2 - more subtypes, if sorted after _ForwardRequest (e.g. if type starts with lowercase)
      */
-    function registerRequestType(string calldata requestType) external {
+    function registerRequestType(string calldata typeName,string calldata extraParams, string calldata subTypes, string calldata subTypes2) external {
+        string memory comma = bytes(extraParams).length > 0 ? "," : "";
+
+        bytes memory requestType = abi.encodePacked(
+            typeName, "(",
+            GENERIC_PARAMS, comma, extraParams, ")",
+            subTypes, GENERIC_TYPE, subTypes2
+        );
         bytes32 requestTypehash = keccak256(bytes(requestType));
+        uint len = bytes(subTypes).length;
+        //sanity: avoid redefining our type, e.g.: subType="_ForwardRequest(whatever)_z"
+        require( len==0 || bytes(subTypes)[len-1]==")", "invalid subType");
         require(!typeHashes[requestTypehash], "typehash already registered");
-        uint len = bytes(requestType).length;
-        uint pos = 0;
-        bytes1 c;
-        while (pos < len) {
-            c = (bytes(requestType)[pos]);
-            if (c == "(") {
-                break;
-            }
-            pos++;
-        }
-        require(pos > 0, "invalid type: no name");
-        require(c == "(", "invalid type: no params");
-        pos++;
-        uint prefixLength = bytes(PARAMS_PREFIX).length;
-        require(len - pos > prefixLength, "invalid type: too short");
-        for (uint i = 0; i < prefixLength; i++) {
-            require(bytes(requestType)[pos + i] == bytes(PARAMS_PREFIX)[i], "invalid type: params don't match");
-        }
         typeHashes[requestTypehash] = true;
-        emit RequestTypeRegistered(requestTypehash, requestType);
+        emit RequestTypeRegistered(requestTypehash, string(requestType));
     }
 
     function isRegisteredTypehash(bytes32 typehash) public view returns (bool) {
