@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ISignatureVerifier.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
+import "./SignatureVerifier.sol";
+import "./Eip712Forwarder.sol";
+import "./GsnEip712Library.sol";
 
 /**
  * Abstract base class to be inherited by a concrete Paymaster
@@ -18,6 +21,21 @@ import "./interfaces/IRelayHub.sol";
 abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
+
+    mapping(address=>SignatureVerifier) private forwarder2verifier;
+
+    //add a trusted forwarder.
+    // forwarder is a "verifyingContract" in the EIP712 sense, and is part of
+    // the "domain separator" signature
+    function addForwarder(address forwarder) public onlyOwner {
+        require(forwarder2verifier[forwarder]==SignatureVerifier(address(0)), "already added forwarder");
+        forwarder2verifier[forwarder] = new SignatureVerifier(forwarder);
+    }
+    
+    //un-trust this forwarder
+    function removeForwarder(address forwarder) public onlyOwner {
+        forwarder2verifier[forwarder] = SignatureVerifier(address(0));
+    }
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
@@ -75,5 +93,11 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     /// withdraw deposit from relayHub
     function withdrawRelayHubDepositTo(uint amount, address payable target) public onlyOwner {
         relayHub.withdraw(amount, target);
+    }
+
+    function callForwarderVerify(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal view {
+        SignatureVerifier sigVerifier = forwarder2verifier[req.forwarder];
+        require( address(sigVerifier)!=address(0), "untrusted forwarder");
+        GsnEip712Library.callForwarderVerify( req, sigVerifier, sig);
     }
 }
