@@ -50,7 +50,7 @@ const gasPricePercent = argv.gasPricePercent || config.gasPricePercent
 const ethereumNodeUrl = argv.ethereumNodeUrl || config.ethereumNodeUrl
 const workdir = argv.workdir || config.workdir || error('missing --Workdir')
 const devMode = argv.devMode || config.devMode
-const Debug = argv.debug || config.debug
+const debug = argv.debug || config.debug
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
@@ -70,7 +70,7 @@ const relay = new RelayServer({
   baseRelayFee: baseRelayFee,
   pctRelayFee: pctRelayFee,
   devMode,
-  Debug,
+  debug: debug,
   gasPriceFactor: gasPriceFactor
 })
 console.log('Starting server.')

@@ -978,10 +978,6 @@ contract('RelayServer', function (accounts) {
     // it('_handleStakedEvent', async function () {
     // })
     describe('_registerIfNeeded', function () {
-      // function assertRelayRegistered (receipts: TransactionReceipt[], server: RelayServer, assertWorkers = true): void {
-      //   const decodedLogs = abiDecoder.decodeLogs(receipts.map(r => r.logs).reduce((p, c) => p.concat(c))).map(server._parseEvent)
-      //   assert.equal(decodedLogs[0].name, 'RelayWorkersAdded')
-      // }
       let newServer: RelayServer
       beforeEach(async function () {
         id = (await snapshot()).result

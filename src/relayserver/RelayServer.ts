@@ -105,7 +105,7 @@ export interface RelayServerParams {
   readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
   readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
   readonly devMode: boolean // = false,
-  readonly Debug: boolean // = false,
+  readonly debug: boolean // = false,
 }
 
 export class RelayServer extends EventEmitter {
@@ -166,7 +166,7 @@ export class RelayServer extends EventEmitter {
     this.contractInteractor = params.contractInteractor ?? new ContractInteractor(this.web3provider,
       configureGSN({}))
 
-    DEBUG = params.Debug
+    DEBUG = params.debug
 
     // todo: initialize nonces for all signers (currently one manager, one worker)
     this.nonces = { 0: 0, 1: 0 }
