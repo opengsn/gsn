@@ -12,8 +12,9 @@ contract Eip712Forwarder {
 
     //all valid requests must start with this prefix.
     // request name is arbitrary, but the parameter block must match exactly these parameters
-    string public constant GENERIC_PARAMS="_ForwardRequest request";
-    string public constant GENERIC_TYPE="_ForwardRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit)";
+    string public constant GENERIC_PARAMS = "_ForwardRequest request";
+    string public constant GENERIC_TYPE = "_ForwardRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit)";
+    bytes32 public constant GENERIC_TYPEHASH = keccak256(bytes(GENERIC_TYPE));
 
     mapping(bytes32 => bool) public typeHashes;
 
@@ -74,21 +75,28 @@ contract Eip712Forwarder {
      * Register a new Request typehash.
      * @param typeName - the name of the request type.
      * @param extraParams - params to add to the request type, after initial "_ForwardRequest request" param
-     * @param subTypes - subtypes used by the extraParams
+     * @param subTypes - subtypes used by the extraParamsg
      * @param subTypes2 - more subtypes, if sorted after _ForwardRequest (e.g. if type starts with lowercase)
      */
-    function registerRequestType(string calldata typeName,string calldata extraParams, string calldata subTypes, string calldata subTypes2) external {
+    function registerRequestType(string calldata typeName, string calldata extraParams, string calldata subTypes, string calldata subTypes2) external {
+
+        require(bytes(typeName).length > 0, "invalid typeName");
+        bytes memory types = abi.encodePacked(subTypes, GENERIC_TYPE, subTypes2);
         string memory comma = bytes(extraParams).length > 0 ? "," : "";
 
         bytes memory requestType = abi.encodePacked(
             typeName, "(",
             GENERIC_PARAMS, comma, extraParams, ")",
-            subTypes, GENERIC_TYPE, subTypes2
+            types
         );
         bytes32 requestTypehash = keccak256(bytes(requestType));
         uint len = bytes(subTypes).length;
         //sanity: avoid redefining our type, e.g.: subType="_ForwardRequest(whatever)_z"
-        require( len==0 || bytes(subTypes)[len-1]==")", "invalid subType");
+        require(len == 0 || bytes(subTypes)[len - 1] == ")", "invalid subType");
+        //sanity: parameters should not end parameters block
+        for (uint i = 0; i < bytes(extraParams).length; i++) {
+            require(bytes(extraParams)[i] != ')', "invalid extraParams");
+        }
         require(!typeHashes[requestTypehash], "typehash already registered");
         typeHashes[requestTypehash] = true;
         emit RequestTypeRegistered(requestTypehash, string(requestType));
@@ -98,7 +106,7 @@ contract Eip712Forwarder {
         return typeHashes[typehash];
     }
 
-    event RequestTypeRegistered(bytes32 indexed typehash, string typeStr);
+    event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
 
 
     //EIP712 sig:
@@ -116,16 +124,27 @@ contract Eip712Forwarder {
         require(typeHashes[requestTypeHash], "invalid request typehash");
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", domainSeparator,
-                keccak256(abi.encodePacked(abi.encode(
-                    requestTypeHash,
-                    req.target,
-                    keccak256(req.encodedFunction),
-                    req.senderAddress,
-                    req.senderNonce,
-                    req.gasLimit),
-                suffixData
-                ))
+                keccak256(_getEncoded(req, requestTypeHash, suffixData))
             ));
         require(digest.recover(sig) == req.senderAddress, "signature mismatch");
+    }
+
+    function _getEncoded(ForwardRequest memory req,
+        bytes32 requestTypeHash, bytes memory suffixData) public pure returns (bytes memory) {
+        return abi.encodePacked(
+            requestTypeHash,
+            hash(req),
+            suffixData
+        );
+    }
+
+    function hash(ForwardRequest memory req) internal pure returns (bytes32) {
+        return keccak256(abi.encode(
+                GENERIC_TYPEHASH,
+                req.target,
+                keccak256(req.encodedFunction),
+                req.senderAddress,
+                req.senderNonce,
+                req.gasLimit));
     }
 }
