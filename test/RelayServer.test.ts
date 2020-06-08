@@ -13,14 +13,15 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { sleep, revert, snapshot, evmMine, evmMineMany, increaseTime } from './TestUtils'
+import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
+  ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
-  StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance,
-  ForwarderInstance
+  StakeManagerInstance,
+  TestPaymasterEverythingAcceptedInstance,
+  TestRecipientInstance
 } from '../types/truffle-contracts'
 import { Address } from '../src/relayclient/types/Aliases'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
