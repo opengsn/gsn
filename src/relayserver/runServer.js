@@ -16,7 +16,7 @@ function error (err) {
 
 // use all camel-case entries from environment as defaults.
 const envDefaults = Object.entries(process.env)
-  .filter(([k]) => /^[A-Z][a-z][A-Za-z]*$/.test(k))
+  .filter(([k]) => /^[a-z][A-Za-z]*$/.test(k))
   .reduce((obj, [k, v]) => ({ ...obj, [k]: v }), {})
 
 const argv = parseArgs(process.argv.slice(2), {
