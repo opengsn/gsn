@@ -95,7 +95,7 @@ contract Eip712Forwarder {
         require(len == 0 || bytes(subTypes)[len - 1] == ")", "invalid subType");
         //sanity: parameters should not end parameters block
         for (uint i = 0; i < bytes(extraParams).length; i++) {
-            require(bytes(extraParams)[i] != ')', "invalid extraParams");
+            require(bytes(extraParams)[i] != ")", "invalid extraParams");
         }
         require(!typeHashes[requestTypehash], "typehash already registered");
         typeHashes[requestTypehash] = true;
