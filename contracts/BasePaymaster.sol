@@ -31,6 +31,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     function getGasLimits()
     external
     override
+    virtual
     view
     returns (
         IPaymaster.GasLimits memory limits
