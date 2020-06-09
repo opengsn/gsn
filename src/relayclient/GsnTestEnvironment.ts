@@ -142,7 +142,7 @@ class GsnTestEnvironmentClass {
       baseRelayFee: 0,
       pctRelayFee: 0,
       devMode: true,
-      Debug: false
+      debug: false
     }
     const backend = new RelayServer(relayServerParams as RelayServerParams)
 
