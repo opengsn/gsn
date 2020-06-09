@@ -9,27 +9,41 @@ import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
+import {constants, expectRevert} from "@openzeppelin/test-helpers";
+import {AddressZero} from "ethers/constants";
 
 const assert = require('chai').use(chaiAsPromised).assert
 
-const SignatureVerifier = artifacts.require('./SignatureVerifier.sol')
+const TestUtil = artifacts.require('TestUtil')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const RelayHub = artifacts.require('RelayHub')
+const TestRecipient = artifacts.require('TestRecipient')
 
 contract('Utils', function (accounts) {
   describe('#getEip712Signature()', function () {
     it('should generate a valid EIP-712 compatible signature', async function () {
+
+      const recipient = await TestRecipient.new()
+
       const chainId = defaultEnvironment.chainId
       const senderAddress = accounts[0]
-      const senderNonce = '5'
-      const target = accounts[5]
+      const senderNonce = '0'
+      const target = recipient.address
       const encodedFunction = '0xdeadbeef'
       const pctRelayFee = '15'
       const baseRelayFee = '1000'
       const gasPrice = '10000000'
       const gasLimit = '500000'
-      const forwarder = accounts[6]
+      // const forwarder = accounts[6]
       const paymaster = accounts[7]
       const verifier = accounts[8]
       const relayWorker = accounts[9]
+
+      const forwarder = (await Eip712Forwarder.new()).address
+      await recipient.setTrustedForwarder(forwarder)
+
+      const hub = await RelayHub.new(constants.ZERO_ADDRESS,constants.ZERO_ADDRESS)
+      await hub.registerRequestType(forwarder)
 
       const relayRequest: RelayRequest = {
         request: {
@@ -48,7 +62,7 @@ contract('Utils', function (accounts) {
           pctRelayFee,
           baseRelayFee
         },
-        extraData: extraDataWithDomain(forwarder, chainId)
+        extraData: extraDataWithDomain(forwarder, 999)
       }
 
       const dataToSign = new TypedRequestData(
@@ -67,9 +81,15 @@ contract('Utils', function (accounts) {
       })
       assert.strictEqual(senderAddress.toLowerCase(), recoveredAccount.toLowerCase())
 
-      const signatureVerifier = await SignatureVerifier.new(verifier)
-      const verify = await signatureVerifier.verify(dataToSign.message, sig, { from: senderAddress })
-      assert.strictEqual(verify, true)
+      const testUtil = await TestUtil.new()
+      // const ret = await testUtil.splitRequest(relayRequest);
+      // console.log( 'ret=', ret)
+
+      //possible exceptions:
+      //  "invalid request typehash" - missing register type with relayHub.registerRequestType(forwarder)
+      //  "invalid nonce"
+      // "signature mismatch" means the only problem is the signature.
+      await testUtil.callForwarderVerify(relayRequest, sig)
     })
   })
 })

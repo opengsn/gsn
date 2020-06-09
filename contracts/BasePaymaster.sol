@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ISignatureVerifier.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
-import "./SignatureVerifier.sol";
 import "./Eip712Forwarder.sol";
 import "./GsnEip712Library.sol";
 
@@ -21,21 +20,6 @@ import "./GsnEip712Library.sol";
 abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
-
-    mapping(address=>SignatureVerifier) private forwarder2verifier;
-
-    //add a trusted forwarder.
-    // forwarder is a "verifyingContract" in the EIP712 sense, and is part of
-    // the "domain separator" signature
-    function addForwarder(address forwarder) public onlyOwner {
-        require(forwarder2verifier[forwarder]==SignatureVerifier(address(0)), "already added forwarder");
-        forwarder2verifier[forwarder] = new SignatureVerifier(forwarder);
-    }
-
-    //un-trust this forwarder
-    function removeForwarder(address forwarder) public onlyOwner {
-        forwarder2verifier[forwarder] = SignatureVerifier(address(0));
-    }
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
