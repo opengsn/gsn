@@ -37,7 +37,7 @@ contract SignatureVerifier is ISignatureVerifier{
     bytes32 public DOMAIN_SEPARATOR; //not constant - based on chainId
 
     constructor (address verifier) public {
-        DOMAIN_SEPARATOR = hash(EIP712Domain({
+        DOMAIN_SEPARATOR = hashDom(EIP712Domain({
             name : "GSN Relayed Transaction",
             version : "2",
             chainId : 1234, //GsnUtils.getChainID(),
@@ -45,7 +45,7 @@ contract SignatureVerifier is ISignatureVerifier{
         }));
     }
 
-    function hash(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {
+    function hashDom(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 EIP712DOMAIN_TYPEHASH,
                 keccak256(bytes(eip712Domain.name)),
@@ -56,7 +56,7 @@ contract SignatureVerifier is ISignatureVerifier{
     }
 
     //obsolete..
-    function hash(RelayRequest memory req) internal pure returns (bytes32) {
+    function hashReq(RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
                     req.request.target,
@@ -64,13 +64,13 @@ contract SignatureVerifier is ISignatureVerifier{
                     req.request.senderAddress,
                     req.request.senderNonce,
                     req.request.gasLimit,
-                    hash(req.gasData),
-                    hash(req.relayData)
+                    hashGas(req.gasData),
+                    hashRel(req.relayData)
             ));
     }
 
     //TODO: "internal" method is not accessible form another contract. need to change into a "library"
-    function hash(GasData memory req) public pure returns (bytes32) {
+    function hashGas(GasData memory req) public pure returns (bytes32) {
         return keccak256(abi.encode(
                 CALLDATA_TYPEHASH,
                 req.gasPrice,
@@ -79,7 +79,7 @@ contract SignatureVerifier is ISignatureVerifier{
             ));
     }
 
-    function hash(RelayData memory req) public pure returns (bytes32) {
+    function hashRel(RelayData memory req) public pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
                 req.relayWorker,
@@ -90,7 +90,7 @@ contract SignatureVerifier is ISignatureVerifier{
     function verify(RelayRequest memory req, bytes memory signature) public view returns (bool) {
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", DOMAIN_SEPARATOR,
-                hash(req)
+                hashReq(req)
             ));
         return digest.recover(signature) == req.request.senderAddress;
     }
