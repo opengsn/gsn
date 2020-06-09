@@ -27,23 +27,24 @@ export async function startRelay (
   const serverWorkDir = '/tmp/gsn/test/server'
 
   fs.rmdirSync(serverWorkDir, { recursive: true })
-  args.push('--Workdir', serverWorkDir)
-  args.push('--DevMode')
-  args.push('--RelayHubAddress', relayHubAddress)
-
-  if (options.EthereumNodeUrl) {
-    args.push('--EthereumNodeUrl', options.EthereumNodeUrl)
+  args.push('--workdir', serverWorkDir)
+  args.push('--devMode')
+  args.push('--relayHubAddress', relayHubAddress)
+  const configFile = path.resolve(__dirname, './server-config.json')
+  args.push('--config', configFile)
+  if (options.ethereumNodeUrl) {
+    args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
   }
-  if (options.GasPricePercent) {
-    args.push('--GasPricePercent', options.GasPricePercent)
+  if (options.gasPricePercent) {
+    args.push('--gasPricePercent', options.gasPricePercent)
   }
   if (options.pctRelayFee) {
-    args.push('--PercentFee', options.pctRelayFee)
+    args.push('--pctRelayFee', options.pctRelayFee)
   }
   if (options.baseRelayFee) {
-    args.push('--BaseFee', options.baseRelayFee)
+    args.push('--baseRelayFee', options.baseRelayFee)
   }
-  const runServerPath = path.resolve(__dirname, '../src/relayserver/runServer.js')
+  const runServerPath = path.resolve(__dirname, '../src/relayserver/runServer.ts')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('ts-node',
     [runServerPath, ...args])
 

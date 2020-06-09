@@ -20,12 +20,12 @@ services:
     volumes:
       - ./gsndata:/app/data    #can be left out, to keep private-key inside the docker
     environment:
-      Url: https://${HOST}
-      Port: 80
-      EthereumNodeUrl: ${NODE_URL}
-      RelayHubAddress: ${RELAY_HUB}
-      GasPricePercent: ${GAS_PRICE_PERCENT}
-      BaseFee: ${BASE_FEE}
-      PercentFee: ${PERCENT_FEE}
+      url: https://${HOST}
+      port: 80
+      ethereumNodeUrl: ${NODE_URL}
+      relayHubAddress: ${RELAY_HUB}
+      gasPricePercent: ${GAS_PRICE_PERCENT}
+      baseRelayFee: ${BASE_FEE}
+      pctRelayFee: ${PERCENT_FEE}
 
 

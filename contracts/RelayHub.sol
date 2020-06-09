@@ -55,14 +55,14 @@ contract RelayHub is IRelayHub {
 
 
     // maps relay worker's address to its manager's address
-    mapping(address => address) private workerToManager;
+    mapping(address => address) public workerToManager;
 
     // maps relay managers to the number of their workers
-    mapping(address => uint256) private workerCount;
+    mapping(address => uint256) public workerCount;
 
     uint256 constant public MAX_WORKER_COUNT = 10;
 
-    mapping(address => uint256) private balances;
+    mapping(address => uint256) public balances;
 
     StakeManager public stakeManager;
     Penalizer public penalizer;

@@ -74,7 +74,7 @@ export default class AccountManager {
       })
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Failed to sign relayed transaction for ${relayRequest.relayData.senderAddress}`)
+      throw new Error(`Failed to sign relayed transaction for ${relayRequest.relayData.senderAddress}: ${error.message}`)
     }
     if (!isSameAddress(relayRequest.relayData.senderAddress.toLowerCase(), rec)) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
