@@ -6,6 +6,8 @@ import "./utils/GsnUtils.sol";
 import "./interfaces/IForwarder.sol";
 import "./SignatureVerifier.sol";
 
+contract Forwarder is Eip712Forwarder {}
+/*
 contract Forwarder is IForwarder {
 
     function versionForwarder() external view virtual override returns (string memory){
@@ -59,3 +61,4 @@ contract Forwarder is IForwarder {
         require(signatureVerifier.verify(req, sig), "signature mismatch");
     }
 }
+*/

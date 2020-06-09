@@ -1,7 +1,9 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
 
+import "../Eip712Forwarder.sol";
+
+//TODO: not am interface anymore, but just a container of request type..
 interface ISignatureVerifier{
 
     struct GasData {
@@ -15,19 +17,17 @@ interface ISignatureVerifier{
         address paymaster;
     }
 
-    //note: must start with the generic forwarder fields
-    struct RelayRequest {
-        address target;
-        bytes encodedFunction;
-        address senderAddress;
-        uint256 senderNonce;
-        uint256 gasLimit;
+    struct ExtraData {
         address forwarder;
-        GasData gasData;
-        RelayData relayData;
+        bytes32 domainSeparator;
     }
 
-    function verify(RelayRequest calldata req, bytes calldata signature) external view returns (bool);
-
-    function versionSM() external view returns (string memory);
+    //note: must start with the ForwardRequest to be an extension of the generic forwarder
+    struct RelayRequest {
+        IForwarder.ForwardRequest request;
+        GasData gasData;
+        RelayData relayData;
+        // extra request data, not part of the signed struct
+        ExtraData extraData;
+    }
 }

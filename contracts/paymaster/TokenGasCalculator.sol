@@ -34,8 +34,8 @@ contract TokenGasCalculator is RelayHub, Ownable {
     function calculatePostGas(TokenPaymaster paymaster) public onlyOwner returns (uint gasUsedByPostWithPreCharge, uint gasUsedByPostWithoutPreCharge) {
         address paymasterAddress = address(paymaster);
         IERC20 token = paymaster.token();
-        require(token.balanceOf(address(this)) >= 1000, "must move some tokens to calculator first");
-        require(paymaster.owner() == address(this), "must set calculator as owner of paymaster");
+        require(token.balanceOf(address(this)) >= 1000);//, "must move some tokens to calculator first");
+        require(paymaster.owner() == address(this));//, "must set calculator as owner of paymaster");
         token.approve(paymasterAddress, uint(-1));
         token.approve(msg.sender, uint(-1));
         // emulate a "precharge"

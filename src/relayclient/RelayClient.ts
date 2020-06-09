@@ -14,6 +14,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
+import {extraDataWithDomain} from "../common/EIP712/ExtraData";
 
 // generate "approvalData" for a request. must return string-encoded bytes array
 export const EmptyApprovalData: AsyncApprovalData = async (): Promise<PrefixedHexString> => {
@@ -213,12 +214,13 @@ export default class RelayClient {
     const gasLimit = parseInt(gasLimitHex, 16).toString()
     const gasPrice = parseInt(gasPriceHex, 16).toString()
     const relayRequest: RelayRequest = {
-      target: gsnTransactionDetails.to,
-      encodedFunction: gsnTransactionDetails.data,
-      senderAddress: gsnTransactionDetails.from,
-      senderNonce,
-      gasLimit,
-      forwarder: forwarderAddress,
+      request: {
+        target: gsnTransactionDetails.to,
+        encodedFunction: gsnTransactionDetails.data,
+        senderAddress: gsnTransactionDetails.from,
+        senderNonce,
+        gasLimit,
+      },
       gasData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,
         baseRelayFee: relayInfo.relayInfo.baseRelayFee,
@@ -227,9 +229,10 @@ export default class RelayClient {
       relayData: {
         paymaster,
         relayWorker
-      }
+      },
+      extraData:extraDataWithDomain(forwarderAddress, this.accountManager.chainId)
     }
-    const signature = await this.accountManager.sign(relayRequest, forwarderAddress)
+    const signature = await this.accountManager.sign(relayRequest)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
@@ -239,7 +242,7 @@ export default class RelayClient {
     const httpRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
       encodedFunction: gsnTransactionDetails.data,
-      senderNonce: relayRequest.senderNonce,
+      senderNonce: relayRequest.request.senderNonce,
       from: gsnTransactionDetails.from,
       to: gsnTransactionDetails.to,
       pctRelayFee: relayInfo.relayInfo.pctRelayFee,

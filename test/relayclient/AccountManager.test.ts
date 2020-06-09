@@ -10,8 +10,11 @@ import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
+import {extraDataWithDomain} from "../../src/common/EIP712/ExtraData";
+import chaiAsPromised from "chai-as-promised";
 
-const expect = chai.expect
+const { expect, assert } = chai.use(chaiAsPromised)
+
 chai.use(sinonChai)
 
 contract('AccountManager', function (accounts) {
@@ -60,12 +63,13 @@ contract('AccountManager', function (accounts) {
   describe('#sign()', function () {
     accountManager.addAccount(keypair)
     const relayRequest: RelayRequest = {
-      target: constants.ZERO_ADDRESS,
-      encodedFunction: '0x123',
-      senderAddress: '',
-      senderNonce: '1',
-      gasLimit: '1',
-      forwarder: constants.ZERO_ADDRESS,
+      request: {
+        target: constants.ZERO_ADDRESS,
+        encodedFunction: '0x123',
+        senderAddress: '',
+        senderNonce: '1',
+        gasLimit: '1',
+      },
       relayData: {
         relayWorker: constants.ZERO_ADDRESS,
         paymaster: constants.ZERO_ADDRESS
@@ -74,49 +78,56 @@ contract('AccountManager', function (accounts) {
         pctRelayFee: '1',
         baseRelayFee: '1',
         gasPrice: '1'
-      }
+      },
+      extraData: extraDataWithDomain(constants.ZERO_ADDRESS, 1)
     }
     beforeEach(function () {
       sinon.resetHistory()
     })
 
+    function relayRequestWithoutExtraData( relayRequest: RelayRequest): RelayRequest {
+      const cloneRequest = { ...relayRequest }
+      delete cloneRequest.extraData
+      return cloneRequest
+    }
+
     it('should use internally controlled keypair for signing if available', async function () {
-      relayRequest.senderAddress = address
+      relayRequest.request.senderAddress = address
       const signedData = new TypedRequestData(
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
-        relayRequest
+        relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest, constants.ZERO_ADDRESS)
+      const signature = await accountManager.sign(relayRequest)
       // @ts-ignore
       const rec = sigUtil.recoverTypedSignature_v4({
         data: signedData,
         sig: signature
       })
-      assert.ok(isSameAddress(relayRequest.senderAddress.toLowerCase(), rec))
+      assert.ok(isSameAddress(relayRequest.request.senderAddress.toLowerCase(), rec))
       expect(accountManager._signWithControlledKey).to.have.been.calledWith(keypair, signedData)
       expect(accountManager._signWithProvider).to.have.not.been.called
     })
     it('should ask provider to sign if key is not controlled', async function () {
-      relayRequest.senderAddress = accounts[0]
+      relayRequest.request.senderAddress = accounts[0]
       const signedData = new TypedRequestData(
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
-        relayRequest
+        relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest, constants.ZERO_ADDRESS)
+      const signature = await accountManager.sign(relayRequest)
       // @ts-ignore
       const rec = sigUtil.recoverTypedSignature_v4({
         data: signedData,
         sig: signature
       })
-      assert.ok(isSameAddress(relayRequest.senderAddress.toLowerCase(), rec))
+      assert.ok(isSameAddress(relayRequest.request.senderAddress.toLowerCase(), rec))
       expect(accountManager._signWithProvider).to.have.been.calledWith(signedData)
       expect(accountManager._signWithControlledKey).to.have.not.been.called
     })
     it('should throw if web3 fails to sign with requested address', async function () {
-      relayRequest.senderAddress = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
-      const promise = accountManager.sign(relayRequest, constants.ZERO_ADDRESS)
+      relayRequest.request.senderAddress = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
+      const promise = accountManager.sign(relayRequest)
       await expect(promise).to.be.eventually.rejectedWith('Failed to sign relayed transaction for 0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee')
     })
   })

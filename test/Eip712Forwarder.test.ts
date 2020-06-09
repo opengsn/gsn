@@ -31,7 +31,7 @@ interface RegisterTypeParams {
 const EIP712DomainType = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
-  // { name: 'chainId', type: 'uint256' },
+  { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }
 ]
 
@@ -137,7 +137,6 @@ contract('Eip712Forwarder', () => {
         senderAddress,
         senderNonce: 0,
         gasLimit: 123,
-        forwarder: addr(3)
       }
 
       it('should fail on wrong nonce', async () => {
@@ -174,6 +173,7 @@ contract('Eip712Forwarder', () => {
           domain: {
             name: 'Test Domain',
             version: '1',
+            chainId: 1234,
             verifyingContract: fwd.address
           },
           primaryType: 'TestVerify',
@@ -272,6 +272,7 @@ contract('Eip712Forwarder', () => {
         domain: {
           name: 'Test Domain',
           version: '1',
+          chainId: 1234,
           verifyingContract: fwd.address
         },
         primaryType: 'TestCall',

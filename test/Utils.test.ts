@@ -8,6 +8,7 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -31,12 +32,13 @@ contract('Utils', function (accounts) {
       const relayWorker = accounts[9]
 
       const relayRequest: RelayRequest = {
-        target,
-        encodedFunction,
-        senderAddress,
-        senderNonce,
-        gasLimit,
-        forwarder,
+        request: {
+          target,
+          encodedFunction,
+          senderAddress,
+          senderNonce,
+          gasLimit,
+        },
         relayData: {
           relayWorker,
           paymaster
@@ -45,7 +47,8 @@ contract('Utils', function (accounts) {
           gasPrice,
           pctRelayFee,
           baseRelayFee
-        }
+        },
+        extraData: extraDataWithDomain(forwarder, chainId)
       }
 
       const dataToSign = new TypedRequestData(

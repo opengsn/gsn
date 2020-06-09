@@ -13,6 +13,7 @@ import {
   TestRecipientInstance,
   BatchForwarderInstance
 } from '../types/truffle-contracts'
+import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
@@ -56,12 +57,13 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     await paymaster.setRelayHub(hub.address)
 
     sharedRelayRequestData = {
-      target: recipient.address,
-      encodedFunction: '',
-      senderAddress: from,
-      senderNonce: '1',
-      gasLimit: 1e6.toString(),
-      forwarder: forwarder.address,
+      request: {
+        target: recipient.address,
+        encodedFunction: '',
+        senderAddress: from,
+        senderNonce: '1',
+        gasLimit: 1e6.toString(),
+      },
       gasData: {
         pctRelayFee: '1',
         baseRelayFee: '0',
@@ -70,17 +72,18 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       relayData: {
         relayWorker: relayWorker,
         paymaster: paymaster.address
-      }
+      },
+      extraData: extraDataWithDomain(forwarder.address, chainId)
     }
   })
 
   context('#sendBatch', function () {
     it('should send all methods in the batch', async () => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-      relayRequest.senderNonce = (await forwarder.getNonce(from)).toString()
-      relayRequest.target = forwarder.address
+      relayRequest.request.senderNonce = (await forwarder.getNonce(from)).toString()
+      relayRequest.request.target = forwarder.address
       relayRequest.gasData.gasPrice = 1e6.toString()
-      relayRequest.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
+      relayRequest.request.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
           recipient.contract.methods.emitMessage('world').encodeABI()
@@ -113,10 +116,10 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
 
     it('should revert all requests if one fails', async () => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-      relayRequest.senderNonce = (await forwarder.getNonce(from)).toString()
-      relayRequest.target = forwarder.address
+      relayRequest.request.senderNonce = (await forwarder.getNonce(from)).toString()
+      relayRequest.request.target = forwarder.address
       relayRequest.gasData.gasPrice = 1e6.toString()
-      relayRequest.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
+      relayRequest.request.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
           recipient.contract.methods.testRevert().encodeABI()
@@ -140,10 +143,10 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
 
     it('should not batch with wrong # of params', async () => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-      relayRequest.senderNonce = (await forwarder.getNonce(from)).toString()
-      relayRequest.target = forwarder.address
+      relayRequest.request.senderNonce = (await forwarder.getNonce(from)).toString()
+      relayRequest.request.target = forwarder.address
       relayRequest.gasData.gasPrice = 1e6.toString()
-      relayRequest.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
+      relayRequest.request.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI()
         ]).encodeABI()

@@ -17,6 +17,7 @@ import {
 
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { getEip712Signature } from '../src/common/Utils'
+import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
 
 const TokenPaymaster = artifacts.require('TokenPaymaster')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator')
@@ -87,13 +88,16 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
     // approve uniswap to take our tokens.
     await token.approve(uniswap.address, -1)
 
+    const chainId = defaultEnvironment.chainId
+
     relayRequest = {
-      target: recipient.address,
-      encodedFunction: recipient.contract.methods.test().encodeABI(),
-      senderAddress: from,
-      senderNonce: '0',
-      gasLimit: 1e6.toString(),
-      forwarder: forwarder.address,
+      request: {
+        target: recipient.address,
+        encodedFunction: recipient.contract.methods.test().encodeABI(),
+        senderAddress: from,
+        senderNonce: '0',
+        gasLimit: 1e6.toString(),
+      },
       relayData: {
         relayWorker: relay,
         paymaster: paymaster.address
@@ -102,10 +106,10 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         pctRelayFee: '1',
         baseRelayFee: '0',
         gasPrice: await web3.eth.getGasPrice()
-      }
+      },
+      extraData: extraDataWithDomain(forwarder.address, chainId)
     }
 
-    const chainId = defaultEnvironment.chainId
     const dataToSign = new TypedRequestData(
       chainId,
       forwarder.address,
@@ -162,8 +166,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
       // for simpler calculations: we don't take any fee, and gas price is '1', so actual charge
       // should be exactly gas usage. token is 2:1 to eth, so we expect to pay exactly twice the "charge"
       const _relayRequest = cloneRelayRequest(relayRequest)
-      _relayRequest.senderAddress = from
-      _relayRequest.senderNonce = (await forwarder.getNonce(from)).toString()
+      _relayRequest.request.senderAddress = from
+      _relayRequest.request.senderNonce = (await forwarder.getNonce(from)).toString()
       _relayRequest.gasData.gasPrice = '1'
       _relayRequest.gasData.pctRelayFee = '0'
       _relayRequest.gasData.baseRelayFee = '0'

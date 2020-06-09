@@ -2,26 +2,25 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import { Address, IntString } from '../../relayclient/types/Aliases'
 import GasData from './GasData'
 import RelayData from './RelayData'
+import ForwardRequest from "./ForwardRequest";
+import ExtraData from "./ExtraData";
 
 export default interface RelayRequest {
-  target: Address
-  encodedFunction: PrefixedHexString
-  senderAddress: Address
-  senderNonce: IntString
-  gasLimit: IntString
-  forwarder: Address
+  request: ForwardRequest
   gasData: GasData
   relayData: RelayData
+  extraData: ExtraData
 }
 
 export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
   return {
-    target: relayRequest.target,
-    encodedFunction: relayRequest.encodedFunction,
-    senderAddress: relayRequest.senderAddress,
-    senderNonce: relayRequest.senderNonce,
-    gasLimit: relayRequest.gasLimit,
-    forwarder: relayRequest.forwarder,
+    request: {
+      target: relayRequest.request.target,
+      encodedFunction: relayRequest.request.encodedFunction,
+      senderAddress: relayRequest.request.senderAddress,
+      senderNonce: relayRequest.request.senderNonce,
+      gasLimit: relayRequest.request.gasLimit,
+    },
     gasData: {
       gasPrice: relayRequest.gasData.gasPrice,
       pctRelayFee: relayRequest.gasData.pctRelayFee,
@@ -30,6 +29,10 @@ export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
     relayData: {
       paymaster: relayRequest.relayData.paymaster,
       relayWorker: relayRequest.relayData.relayWorker
+    },
+    extraData: {
+      forwarder: relayRequest.extraData.forwarder,
+      domainSeparator: relayRequest.extraData.domainSeparator
     }
   }
 }

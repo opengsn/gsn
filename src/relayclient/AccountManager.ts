@@ -25,7 +25,7 @@ export default class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
-  private readonly chainId: number
+  readonly chainId: number
 
   constructor (provider: HttpProvider, chainId: number, config: GSNConfig) {
     this.web3 = new Web3(provider)
@@ -52,15 +52,19 @@ export default class AccountManager {
     return keypair
   }
 
-  // TODO: make forwarder part of RelayRequest, why is it dangling??
-  async sign (relayRequest: RelayRequest, forwarderAddress: Address): Promise<PrefixedHexString> {
+  async sign (relayRequest: RelayRequest): Promise<PrefixedHexString> {
     let signature
+    const forwarder = relayRequest.extraData.forwarder
+
+    const cloneRequest = {...relayRequest}
+    delete cloneRequest.extraData
+
     const signedData = new TypedRequestData(
       this.chainId,
-      forwarderAddress,
-      relayRequest
+      forwarder,
+      cloneRequest
     )
-    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.senderAddress))
+    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.request.senderAddress))
     if (keypair != null) {
       signature = this._signWithControlledKey(keypair, signedData)
     } else {
@@ -76,11 +80,11 @@ export default class AccountManager {
       })
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Failed to sign relayed transaction for ${relayRequest.senderAddress}`)
+      throw new Error(`Failed to sign relayed transaction for ${relayRequest.request.senderAddress}: ${error}`)
     }
-    if (!isSameAddress(relayRequest.senderAddress.toLowerCase(), rec)) {
+    if (!isSameAddress(relayRequest.request.senderAddress.toLowerCase(), rec)) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.senderAddress}, recovered=${rec}`)
+      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.request.senderAddress}, recovered=${rec}`)
     }
     return signature
   }

@@ -86,6 +86,8 @@ contract('RelayServer', function (accounts) {
     const forwarderAddress = await sr.getTrustedForwarder()
     forwarder = await Forwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
+    //register hub's RelayRequest with forwarder, if not already done.
+    await rhub.registerRequestType(forwarderAddress) //.catch(()=>{})
 
     await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
@@ -196,15 +198,15 @@ contract('RelayServer', function (accounts) {
     // console.log('badArgs is', badArgs)
     const signedTx = await relayServer.createRelayTransaction(
       {
-        senderNonce: relayRequest.senderNonce,
+        senderNonce: relayRequest.request.senderNonce,
         gasPrice: relayRequest.gasData.gasPrice,
-        encodedFunction: relayRequest.encodedFunction,
+        encodedFunction: relayRequest.request.encodedFunction,
         approvalData,
         signature,
-        from: relayRequest.senderAddress,
-        to: relayRequest.target,
+        from: relayRequest.request.senderAddress,
+        to: relayRequest.request.target,
         paymaster: relayRequest.relayData.paymaster,
-        gasLimit: relayRequest.gasLimit,
+        gasLimit: relayRequest.request.gasLimit,
         relayMaxNonce,
         baseRelayFee: relayRequest.gasData.baseRelayFee,
         pctRelayFee: relayRequest.gasData.pctRelayFee,
@@ -213,7 +215,7 @@ contract('RelayServer', function (accounts) {
         ...badArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-    await assertTransactionRelayed(txhash, relayRequest.senderAddress)
+    await assertTransactionRelayed(txhash, relayRequest.request.senderAddress)
     return signedTx
   }
 

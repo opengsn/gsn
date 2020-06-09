@@ -1,6 +1,10 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 
+//TODO: temp - defined IForwarder there...
+import "../Eip712Forwarder.sol";
+
+/*
 import "./ISignatureVerifier.sol";
 pragma experimental ABIEncoderV2;
 
@@ -17,3 +21,4 @@ interface IForwarder {
 
     function versionForwarder() external view returns (string memory);
 }
+*/

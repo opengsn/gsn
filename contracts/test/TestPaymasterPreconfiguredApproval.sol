@@ -13,12 +13,12 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
     }
 
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
-        bytes calldata signature,
-        bytes calldata approvalData,
+        ISignatureVerifier.RelayRequest memory relayRequest,
+        bytes memory signature,
+        bytes memory approvalData,
         uint256 maxPossibleGas
     )
-    external
+    public
     override
     view
     returns (bytes memory) {

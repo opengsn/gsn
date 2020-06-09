@@ -1,34 +1,40 @@
-import { Address } from '../../relayclient/types/Aliases'
+import {Address, IntString} from '../../relayclient/types/Aliases'
 import RelayRequest from './RelayRequest'
-import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types } from 'eth-sig-util'
+import {EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types} from 'eth-sig-util'
+import {TypedDataUtils} from 'eth-sig-util'
+import {bufferToHex} from "ethereumjs-util";
+import {PrefixedHexString} from "ethereumjs-tx";
 
 const EIP712DomainType = [
-  { name: 'name', type: 'string' },
-  { name: 'version', type: 'string' },
-  { name: 'chainId', type: 'uint256' },
-  { name: 'verifyingContract', type: 'address' }
+  {name: 'name', type: 'string'},
+  {name: 'version', type: 'string'},
+  {name: 'chainId', type: 'uint256'},
+  {name: 'verifyingContract', type: 'address'}
 ]
 
 const GasDataType = [
-  { name: 'gasPrice', type: 'uint256' },
-  { name: 'pctRelayFee', type: 'uint256' },
-  { name: 'baseRelayFee', type: 'uint256' }
+  {name: 'gasPrice', type: 'uint256'},
+  {name: 'pctRelayFee', type: 'uint256'},
+  {name: 'baseRelayFee', type: 'uint256'}
 ]
 
 const RelayDataType = [
-  { name: 'relayWorker', type: 'address' },
-  { name: 'paymaster', type: 'address' }
+  {name: 'relayWorker', type: 'address'},
+  {name: 'paymaster', type: 'address'}
+]
+
+const ForwardRequestType = [
+  {name: 'target', type: 'address'},
+  {name: 'encodedFunction', type: 'bytes'},
+  {name: 'senderAddress', type: 'address'},
+  {name: 'senderNonce', type: 'uint256'},
+  {name: 'gasLimit', type: 'uint256'},
 ]
 
 const RelayRequestType = [
-  { name: 'target', type: 'address' },
-  { name: 'encodedFunction', type: 'bytes' },
-  { name: 'senderAddress', type: 'address' },
-  { name: 'senderNonce', type: 'uint256' },
-  { name: 'gasLimit', type: 'uint256' },
-  { name: 'forwarder', type: 'address' },
-  { name: 'gasData', type: 'GasData' },
-  { name: 'relayData', type: 'RelayData' }
+  {name: 'request', type: '_ForwardRequest'},
+  {name: 'gasData', type: 'GasData'},
+  {name: 'relayData', type: 'RelayData'}
 ]
 
 interface Types extends EIP712Types {
@@ -36,6 +42,20 @@ interface Types extends EIP712Types {
   RelayRequest: EIP712TypeProperty[]
   GasData: EIP712TypeProperty[]
   RelayData: EIP712TypeProperty[]
+  _ForwardRequest: EIP712TypeProperty[]
+}
+
+export function getDomainSeparator(verifier: Address, chainId: number) {
+  return {
+    name: 'GSN Relayed Transaction',
+    version: '2',
+    chainId: 1234, //chainId,
+    verifyingContract: verifier
+  };
+}
+
+export function getDomainSeparatorHash(verifier: Address, chainId: number): PrefixedHexString {
+  return bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', getDomainSeparator(verifier, chainId), {EIP712Domain: EIP712DomainType}))
 }
 
 export default class TypedRequestData implements EIP712TypedData {
@@ -44,7 +64,7 @@ export default class TypedRequestData implements EIP712TypedData {
   readonly primaryType: string
   readonly message: RelayRequest
 
-  constructor (
+  constructor(
     chainId: number,
     verifier: Address,
     relayRequest: RelayRequest) {
@@ -52,14 +72,10 @@ export default class TypedRequestData implements EIP712TypedData {
       EIP712Domain: EIP712DomainType,
       RelayRequest: RelayRequestType,
       GasData: GasDataType,
-      RelayData: RelayDataType
+      RelayData: RelayDataType,
+      _ForwardRequest: ForwardRequestType
     }
-    this.domain = {
-      name: 'GSN Relayed Transaction',
-      version: '1',
-      chainId: chainId,
-      verifyingContract: verifier
-    }
+    this.domain = getDomainSeparator(verifier, chainId)
     this.primaryType = 'RelayRequest'
     this.message = relayRequest
   }

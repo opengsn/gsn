@@ -18,6 +18,7 @@ import "./interfaces/IForwarder.sol";
 import "./BaseRelayRecipient.sol";
 import "./StakeManager.sol";
 import "./Penalizer.sol";
+import "./GsnEip712Library.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -147,7 +148,7 @@ contract RelayHub is IRelayHub {
             gasLimits.acceptRelayedCallGasLimit +
             gasLimits.preRelayedCallGasLimit +
             gasLimits.postRelayedCallGasLimit +
-            relayRequest.gasLimit;
+            relayRequest.request.gasLimit;
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
@@ -173,6 +174,10 @@ contract RelayHub is IRelayHub {
             relayRequest.relayData.paymaster.staticcall{gas:gasLimits.acceptRelayedCallGasLimit}(encodedTx);
     }
 
+    function registerRequestType(Eip712Forwarder forwarder) public {
+        GsnEip712Library.registerRequestType(forwarder);
+    }
+
     struct RelayCallData {
         bool success;
         bytes4 functionSelector;
@@ -180,6 +185,7 @@ contract RelayHub is IRelayHub {
         IPaymaster.GasLimits gasLimits;
         RelayCallStatus status;
     }
+
     function relayCall(
         ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -191,7 +197,7 @@ contract RelayHub is IRelayHub {
     returns (bool paymasterAccepted, string memory revertReason)
     {
         RelayCallData memory vars;
-        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.encodedFunction, 0);
+        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.encodedFunction, 0);
 
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
@@ -207,14 +213,15 @@ contract RelayHub is IRelayHub {
         (vars.success, vars.recipientContext, vars.gasLimits) =
             canRelay(
                 ISignatureVerifier.RelayRequest(
-                    relayRequest.target,
-                    relayRequest.encodedFunction,
-                    relayRequest.senderAddress,
-                    relayRequest.senderNonce,
-                    relayRequest.gasLimit,
-                    relayRequest.forwarder,
+                    IForwarder.ForwardRequest(
+                    relayRequest.request.target,
+                    relayRequest.request.encodedFunction,
+                    relayRequest.request.senderAddress,
+                    relayRequest.request.senderNonce,
+                    relayRequest.request.gasLimit),
                     relayRequest.gasData,
-                    relayRequest.relayData),
+                    relayRequest.relayData,
+                    relayRequest.extraData),
                     externalGasLimit, signature, approvalData);
 
         if (!vars.success) {
@@ -222,8 +229,8 @@ contract RelayHub is IRelayHub {
             emit TransactionRejectedByPaymaster(
                 workerToManager[msg.sender],
                 relayRequest.relayData.paymaster,
-                relayRequest.senderAddress,
-                relayRequest.target,
+                relayRequest.request.senderAddress,
+                relayRequest.request.target,
                 msg.sender,
                 vars.functionSelector,
                 revertReason);
@@ -241,7 +248,7 @@ contract RelayHub is IRelayHub {
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
         (, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
-            abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, vars.gasLimits,
+            abi.encodeWithSelector(this.innerRelayCall.selector, relayRequest, signature, vars.gasLimits,
                 innerGasLimit + externalGasLimit-gasleft() + GAS_OVERHEAD + POST_OVERHEAD, /*totalInitialGas*/
                 abi.decode(vars.recipientContext, (bytes)))
         );
@@ -262,8 +269,8 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(
             workerToManager[msg.sender],
             msg.sender,
-            relayRequest.senderAddress,
-            relayRequest.target,
+            relayRequest.request.senderAddress,
+            relayRequest.request.target,
             relayRequest.relayData.paymaster,
             vars.functionSelector,
             vars.status,
@@ -280,13 +287,13 @@ contract RelayHub is IRelayHub {
     }
 
     function innerRelayCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
-        bytes calldata signature,
-        IPaymaster.GasLimits calldata gasLimits,
+        ISignatureVerifier.RelayRequest memory relayRequest,
+        bytes memory signature,
+        IPaymaster.GasLimits memory gasLimits,
         uint256 totalInitialGas,
-        bytes calldata recipientContext
+        bytes memory recipientContext
     )
-    external
+    public
     returns (RelayCallStatus)
     {
         AtomicData memory atomicData;
@@ -321,10 +328,12 @@ contract RelayHub is IRelayHub {
             atomicData.preReturnValue = abi.decode(retData, (bytes32));
         }
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
-        (atomicData.relayedCallSuccess,) =
-        relayRequest.forwarder.call(
-            abi.encodeWithSelector(IForwarder.verifyAndCall.selector, relayRequest, signature)
-        );
+        //TODO try/catch
+        GsnEip712Library.callForwarderVerifyAndCall(relayRequest,signature);
+//        (atomicData.relayedCallSuccess,) =
+//        relayRequest.extraData.forwarder.call(
+//            abi.encodeWithSelector(IForwarder.verifyAndCall.selector, relayRequest, signature)
+//        );
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate

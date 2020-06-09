@@ -31,7 +31,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         require(forwarder2verifier[forwarder]==SignatureVerifier(address(0)), "already added forwarder");
         forwarder2verifier[forwarder] = new SignatureVerifier(forwarder);
     }
-    
+
     //un-trust this forwarder
     function removeForwarder(address forwarder) public onlyOwner {
         forwarder2verifier[forwarder] = SignatureVerifier(address(0));
@@ -95,9 +95,4 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         relayHub.withdraw(amount, target);
     }
 
-    function callForwarderVerify(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal view {
-        SignatureVerifier sigVerifier = forwarder2verifier[req.forwarder];
-        require( address(sigVerifier)!=address(0), "untrusted forwarder");
-        GsnEip712Library.callForwarderVerify( req, sigVerifier, sig);
-    }
 }

@@ -10,7 +10,7 @@ contract SignatureVerifier is ISignatureVerifier{
 
     using ECDSA for bytes32;
 
-    string public override versionSM = "2.0.0-alpha.1+opengsn.sv.isignatureverifier";
+    string public versionSM = "2.0.0-alpha.1+opengsn.sv.isignatureverifier";
 
     struct EIP712Domain {
         string name;
@@ -39,8 +39,8 @@ contract SignatureVerifier is ISignatureVerifier{
     constructor (address verifier) public {
         DOMAIN_SEPARATOR = hash(EIP712Domain({
             name : "GSN Relayed Transaction",
-            version : "1",
-            chainId : GsnUtils.getChainID(),
+            version : "2",
+            chainId : 1234, //GsnUtils.getChainID(),
             verifyingContract : verifier
         }));
     }
@@ -55,15 +55,15 @@ contract SignatureVerifier is ISignatureVerifier{
             ));
     }
 
+    //obsolete..
     function hash(RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
-                    req.target,
-                    keccak256(req.encodedFunction),
-                    req.senderAddress,
-                    req.senderNonce,
-                    req.gasLimit,
-                    req.forwarder,
+                    req.request.target,
+                    keccak256(req.request.encodedFunction),
+                    req.request.senderAddress,
+                    req.request.senderNonce,
+                    req.request.gasLimit,
                     hash(req.gasData),
                     hash(req.relayData)
             ));
@@ -87,11 +87,11 @@ contract SignatureVerifier is ISignatureVerifier{
             ));
     }
 
-    function verify(RelayRequest memory req, bytes memory signature) public view override returns (bool) {
+    function verify(RelayRequest memory req, bytes memory signature) public view returns (bool) {
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hash(req)
             ));
-        return digest.recover(signature) == req.senderAddress;
+        return digest.recover(signature) == req.request.senderAddress;
     }
 }

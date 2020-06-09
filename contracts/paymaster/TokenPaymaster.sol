@@ -9,6 +9,7 @@ import "../interfaces/IForwarder.sol";
 import "../BasePaymaster.sol";
 
 import "./IUniswap.sol";
+import "../GsnEip712Library.sol";
 
 /**
  * A Token-based paymaster.
@@ -46,7 +47,7 @@ contract TokenPaymaster is BasePaymaster {
     //return the payer of this request.
     // for account-based target, this is the target account.
     function getPayer(ISignatureVerifier.RelayRequest calldata relayRequest) external pure returns (address) {
-        return relayRequest.target;
+        return relayRequest.request.target;
     }
 
     event Received(uint eth);
@@ -63,20 +64,19 @@ contract TokenPaymaster is BasePaymaster {
      *  The methods preRelayedCall, postRelayedCall already handle such zero tokenPreCharge.
      */
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
-        bytes calldata signature,
-        bytes calldata approvalData,
+        ISignatureVerifier.RelayRequest memory relayRequest,
+        bytes memory signature,
+        bytes memory approvalData,
         uint256 maxPossibleGas
     )
-    external
+    public
     override
     view
     returns (bytes memory context) {
-        (approvalData);
+        (relayRequest,signature,approvalData,maxPossibleGas);
 
         // Verify the sender's request is valid for selected forwarder
-        IForwarder forwarder = IForwarder(relayRequest.forwarder);
-        forwarder.verify(relayRequest, signature);
+        GsnEip712Library.callForwarderVerify(relayRequest,signature);
 
         address payer = this.getPayer(relayRequest);
         uint ethMaxCharge = relayHub.calculateCharge(maxPossibleGas, relayRequest.gasData);

@@ -3,11 +3,31 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
-import "./utils/GsnUtils.sol";
+
+interface IForwarder {
+
+    struct ForwardRequest {
+        address target;
+        bytes encodedFunction;
+        address senderAddress;
+        uint256 senderNonce;
+        uint256 gasLimit;
+    }
+
+    function versionForwarder() external view returns (string memory);
+
+    function getNonce(address from) external view returns (uint256);
+
+    function verify(ForwardRequest calldata req,
+        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external view;
+
+    function verifyAndCall(ForwardRequest calldata req,
+        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external;
+}
 
 // a Generic EIP712 forwarder.
 // actual struct has to START with known fields, but may contain other fields
-contract Eip712Forwarder {
+contract Eip712Forwarder is IForwarder {
     using ECDSA for bytes32;
 
     //all valid requests must start with this prefix.
@@ -18,30 +38,26 @@ contract Eip712Forwarder {
 
     mapping(bytes32 => bool) public typeHashes;
 
-    struct ForwardRequest {
-        address target;
-        bytes encodedFunction;
-        address senderAddress;
-        uint256 senderNonce;
-        uint256 gasLimit;
-    }
-
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
 
-    function getNonce(address from) external view returns (uint256) {
+    function versionForwarder() external view virtual override returns (string memory) {
+        return "2.0.0-alpha.2+opengsn.forwarder.eip712";
+    }
+
+    function getNonce(address from) external override view returns (uint256) {
         return nonces[from];
     }
 
     function verify(ForwardRequest memory req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public view {
+        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public override view {
 
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
     }
 
     function verifyAndCall(ForwardRequest memory req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public {
+        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public override {
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);

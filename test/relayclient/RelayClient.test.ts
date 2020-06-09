@@ -63,6 +63,8 @@ contract('RelayClient', function (accounts) {
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
     testRecipient = await TestRecipient.new()
     forwarderAddress = await testRecipient.getTrustedForwarder()
+    //register hub's RelayRequest with forwarder, if not already done.
+    await relayHub.registerRequestType(forwarderAddress) //.catch(()=>{})
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setRelayHub(relayHub.address)

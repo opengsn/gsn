@@ -15,18 +15,19 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
 
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
-        bytes calldata signature,
-        bytes calldata approvalData,
+        ISignatureVerifier.RelayRequest memory relayRequest,
+        bytes memory signature,
+        bytes memory approvalData,
         uint256 maxPossibleGas
     )
-    external
+    public
     override
     virtual
     view
     returns (bytes memory) {
         (relayRequest, signature, approvalData, maxPossibleGas);
-        IForwarder(relayRequest.forwarder).verify(relayRequest, signature);
+
+        GsnEip712Library.callForwarderVerify(relayRequest,signature);
         return "no revert here";
     }
 

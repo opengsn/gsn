@@ -36,25 +36,25 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
      * This demonstrates how acceptRelayedCall can return 'context' data for reuse in preRelayedCall/postRelayedCall.
      */
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
-        bytes calldata signature,
-        bytes calldata approvalData,
+        ISignatureVerifier.RelayRequest memory relayRequest,
+        bytes memory signature,
+        bytes memory approvalData,
         uint256 maxPossibleGas
     )
-    external
+    public
     override
     view
     returns (bytes memory) {
         (signature);
         return abi.encode(
             relayRequest.relayData.relayWorker,
-            relayRequest.senderAddress,
-            relayRequest.encodedFunction,
+            relayRequest.request.senderAddress,
+            relayRequest.request.encodedFunction,
             relayRequest.gasData.baseRelayFee,
             relayRequest.gasData.pctRelayFee,
             relayRequest.gasData.gasPrice,
-            relayRequest.gasLimit,
-            relayRequest.senderNonce,
+            relayRequest.request.gasLimit,
+            relayRequest.request.senderNonce,
             approvalData,
             maxPossibleGas);
     }
