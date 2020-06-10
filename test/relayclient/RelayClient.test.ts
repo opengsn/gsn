@@ -33,6 +33,7 @@ const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 const expect = chai.expect
 chai.use(sinonChai)
@@ -61,8 +62,8 @@ contract('RelayClient', function (accounts) {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
-    testRecipient = await TestRecipient.new()
-    forwarderAddress = await testRecipient.getTrustedForwarder()
+    forwarderAddress = (await Eip712Forwarder.new()).address
+    testRecipient = await TestRecipient.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
     await relayHub.registerRequestType(forwarderAddress) // .catch(()=>{})
     paymaster = await TestPaymasterEverythingAccepted.new()

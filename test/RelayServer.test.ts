@@ -36,7 +36,7 @@ import Mutex from 'async-mutex/lib/Mutex'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
-const Forwarder = artifacts.require('Forwarder')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
@@ -82,9 +82,10 @@ contract('RelayServer', function (accounts) {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     rhub = await RelayHub.new(stakeManager.address, penalizer.address)
-    sr = await TestRecipient.new()
-    const forwarderAddress = await sr.getTrustedForwarder()
-    forwarder = await Forwarder.at(forwarderAddress)
+    const forwarderInstance = await Eip712Forwarder.new()
+    const forwarderAddress = forwarderInstance.address
+    sr = await TestRecipient.new(forwarderAddress)
+
     paymaster = await TestPaymasterEverythingAccepted.new()
     // register hub's RelayRequest with forwarder, if not already done.
     await rhub.registerRequestType(forwarderAddress) // .catch(()=>{})
@@ -211,7 +212,7 @@ contract('RelayServer', function (accounts) {
         baseRelayFee: relayRequest.gasData.baseRelayFee,
         pctRelayFee: relayRequest.gasData.pctRelayFee,
         relayHubAddress: rhub.address,
-        forwarder: relayRequest.relayData.forwarder,
+        forwarder: relayRequest.extraData.forwarder,
         ...badArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))

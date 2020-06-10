@@ -7,7 +7,7 @@ import "./interfaces/IForwarder.sol";
 import "./SignatureVerifier.sol";
 
 contract Forwarder is Eip712Forwarder {
-    function versionForwarder() external view virtual returns (string memory){
+    function versionForwarder() external view virtual override returns (string memory){
         return "2.0.0-alpha.1+opengsn.forwarder.iforwarder";
     }
 }

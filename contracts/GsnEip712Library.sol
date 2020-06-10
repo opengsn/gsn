@@ -45,7 +45,8 @@ library GsnEip712Library {
     returns (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) {
 
         //should be a struct copy - but ABIv2 struct requires manual field-by-field copy..
-        fwd = IForwarder.ForwardRequest(
+        fwd = //req.request;
+            IForwarder.ForwardRequest(
             req.request.target,
             req.request.encodedFunction,
             req.request.senderAddress,
@@ -80,10 +81,13 @@ library GsnEip712Library {
     /**
      * call forwarder.verifyAndCall()
      */
-    function callForwarderVerifyAndCall(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal {
+    function callForwarderVerifyAndCall(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal returns (bool success, bytes memory ret) {
         (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
-        Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
-        forwarder.verifyAndCall(fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig);
+        // Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
+        // forwarder.verifyAndCall(fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig);
+        return req.extraData.forwarder.call(abi.encodeWithSelector(IForwarder.verifyAndCall.selector,
+            fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig
+        ));
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

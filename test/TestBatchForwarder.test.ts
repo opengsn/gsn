@@ -50,9 +50,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     paymaster = await TestPaymasterEverythingAccepted.new({ gas: 1e7 })
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
 
-    recipient = await TestRecipient.new()
     forwarder = await BatchForwarder.new()
-    await recipient.setTrustedForwarder(forwarder.address)
+    recipient = await TestRecipient.new(forwarder.address)
 
     await paymaster.setRelayHub(hub.address)
 

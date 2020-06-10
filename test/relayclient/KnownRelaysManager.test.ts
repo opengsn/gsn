@@ -20,6 +20,7 @@ const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
   await stakeManager.stakeForAddress(manager, 1000, {
@@ -71,7 +72,12 @@ contract('KnownRelaysManager', function (
         relayLookupWindowBlocks
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
-      testRecipient = await TestRecipient.new()
+
+      const forwarderInstance = await Eip712Forwarder.new()
+      const forwarderAddress = forwarderInstance.address
+      testRecipient = await TestRecipient.new(forwarderAddress)
+      relayHub.registerRequestType(forwarderAddress)
+
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
       await paymaster.setRelayHub(relayHub.address)
       await paymaster.deposit({ value: ether('1') })

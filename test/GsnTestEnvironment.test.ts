@@ -4,14 +4,14 @@ import { TestRecipientInstance } from '../types/truffle-contracts'
 import RelayClient from '../src/relayclient/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'
 
-const TestRecipient = artifacts.require('tests/TestRecipient')
+const TestRecipient = artifacts.require('TestRecipient')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 contract('GsnTestEnvironment', function () {
-  let sr: TestRecipientInstance
   let host: string
 
   before(async function () {
-    sr = await TestRecipient.new()
+
     host = (web3.currentProvider as HttpProvider).host
   })
 
@@ -28,6 +28,7 @@ contract('GsnTestEnvironment', function () {
   })
 
   context('using RelayClient', () => {
+    let sr: TestRecipientInstance
     let sender: string
     let testEnvironment: TestEnvironment
     let relayClient: RelayClient
@@ -35,6 +36,7 @@ contract('GsnTestEnvironment', function () {
       sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
       relayClient = testEnvironment.relayProvider.relayClient
+      sr = await TestRecipient.new(testEnvironment.deploymentResult.forwarderAddress)
     })
 
     after(async () => {
@@ -57,11 +59,14 @@ contract('GsnTestEnvironment', function () {
   })
 
   context('using RelayProvider', () => {
+    let sr: TestRecipientInstance
     let sender: string
     let testEnvironment: TestEnvironment
     before(async function () {
       sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
+      sr = await TestRecipient.new(testEnvironment.deploymentResult.forwarderAddress)
+
       TestRecipient.web3.setProvider(testEnvironment.relayProvider)
     })
     after(async () => {

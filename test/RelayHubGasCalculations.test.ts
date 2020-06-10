@@ -23,6 +23,7 @@ const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 // TMP: skip until we finish the new Forwarder
 contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
@@ -54,9 +55,9 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
   let forwarder: string
 
   beforeEach(async function prepareForHub () {
-    recipient = await TestRecipient.new()
-    forwarder = await recipient.getTrustedForwarder()
-    forwarderInstance = await Forwarder.at(forwarder)
+    forwarderInstance = await Eip712Forwarder.new()
+    forwarder = forwarderInstance.address
+    recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()

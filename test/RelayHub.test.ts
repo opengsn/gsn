@@ -23,6 +23,7 @@ const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythi
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
@@ -51,12 +52,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     penalizer = await Penalizer.new()
     relayHubInstance = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
-    recipientContract = await TestRecipient.new()
-    forwarder = await recipientContract.getTrustedForwarder()
-    forwarderInstance = await Forwarder.at(forwarder)
-    // register hub's RelayRequest with forwarder, if not already done.
-    await relayHubInstance.registerRequestType(forwarder) // .catch(()=>{})
+    forwarderInstance = await Eip712Forwarder.new()
+    forwarder=forwarderInstance.address
+    recipientContract = await TestRecipient.new(forwarder)
 
+    // register hub's RelayRequest with forwarder, if not already done.
     await relayHubInstance.registerRequestType(forwarder)
 
     target = recipientContract.address

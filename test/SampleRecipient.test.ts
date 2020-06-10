@@ -5,6 +5,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 contract('SampleRecipient', function (accounts) {
   const expectedRealSender = accounts[0]
@@ -13,7 +14,8 @@ contract('SampleRecipient', function (accounts) {
   let paymaster: TestPaymasterEverythingAcceptedInstance
 
   before(async function () {
-    sample = await TestRecipient.new()
+    const forwarder = (await Eip712Forwarder.new()).address
+    sample = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterEverythingAccepted.new()
   })
 

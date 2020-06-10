@@ -100,9 +100,9 @@ contract('Eip712Forwarder', () => {
       assert.equal(typeHash, keccak256(typeStr))
     })
 
-    it('should reject repeated registration', async () => {
+    it('should allow silently repeated registration', async () => {
       await fwd.registerRequestType('test3', '', '', '')
-      expectRevert(fwd.registerRequestType('test3', '', '', ''), 'revert typehash already registered')
+      await fwd.registerRequestType('test3', '', '', '')
     })
   })
 
@@ -287,8 +287,8 @@ contract('Eip712Forwarder', () => {
       assert.equal(calcType, typeName)
       const calcTypeHash = bufferToHex(TypedDataUtils.hashType('TestCall', data.types))
       assert.equal(calcTypeHash, typeHash)
-      recipient = await TestRecipient.new()
-      await recipient.setTrustedForwarder(fwd.address)
+      recipient = await TestRecipient.new(fwd.address)
+
       domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
     })
 

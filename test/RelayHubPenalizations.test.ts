@@ -26,6 +26,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
@@ -42,10 +43,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     relayHub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
-    recipient = await TestRecipient.new()
-    forwarder = await recipient.getTrustedForwarder()
+    const forwarderInstance = await Eip712Forwarder.new()
+    forwarder = forwarderInstance.address
+    recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
-    await relayHub.registerRequestType(forwarder) // .catch(()=>{})
+    await relayHub.registerRequestType(forwarder)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     await stakeManager.stakeForAddress(relayManager, 1000, {

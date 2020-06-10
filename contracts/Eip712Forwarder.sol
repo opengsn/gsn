@@ -113,7 +113,6 @@ contract Eip712Forwarder is IForwarder {
         for (uint i = 0; i < bytes(extraParams).length; i++) {
             require(bytes(extraParams)[i] != ")", "invalid extraParams");
         }
-        require(!typeHashes[requestTypehash], "typehash already registered");
         typeHashes[requestTypehash] = true;
         emit RequestTypeRegistered(requestTypehash, string(requestType));
     }
