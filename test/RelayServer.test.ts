@@ -82,8 +82,8 @@ contract('RelayServer', function (accounts) {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     rhub = await RelayHub.new(stakeManager.address, penalizer.address)
-    const forwarderInstance = await Eip712Forwarder.new()
-    const forwarderAddress = forwarderInstance.address
+    forwarder = await Eip712Forwarder.new()
+    const forwarderAddress = forwarder.address
     sr = await TestRecipient.new(forwarderAddress)
 
     paymaster = await TestPaymasterEverythingAccepted.new()

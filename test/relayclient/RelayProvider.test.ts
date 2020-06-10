@@ -144,7 +144,7 @@ contract('RelayProvider', function (accounts) {
           message: 'hello world',
           realSender: gasLess
         })
-      }catch (e) {
+      } catch (e) {
         console.log(e)
         process.exit(1)
       }
@@ -175,13 +175,10 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should fail if transaction failed', async () => {
-      let transactionResponsePromise = testRecipient.testRevert({
+      await expectRevert(testRecipient.testRevert({
         from: gasLess,
         paymaster
-      });
-      console.log('==xlogs=',await relayHub.contract.getPastEvents(null,{fromBlock:1}))
-      console.log('xfail=', await transactionResponsePromise)
-      await expectRevert(transactionResponsePromise, 'always fail')
+      }), 'always fail')
     })
   })
 
@@ -192,7 +189,6 @@ contract('RelayProvider', function (accounts) {
     let jsonRpcPayload: JsonRpcPayload
 
     before(async function () {
-      const TestRecipient = artifacts.require('TestRecipient')
       const forwarderInstance = await Eip712Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
@@ -200,7 +196,7 @@ contract('RelayProvider', function (accounts) {
       // register hub's RelayRequest with forwarder, if not already done.
       await relayHub.registerRequestType(forwarderAddress)
 
-      gsnConfig = configureGSN({ relayHubAddress: relayHub.address, verbose:true })
+      gsnConfig = configureGSN({ relayHubAddress: relayHub.address, verbose: true })
       // call to emitMessage('hello world')
       jsonRpcPayload = {
         jsonrpc: '2.0',
@@ -271,7 +267,6 @@ contract('RelayProvider', function (accounts) {
     const gas = toBN(3e6).toString()
     // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
-      const TestRecipient = artifacts.require('TestRecipient')
       const forwarderInstance = await Eip712Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
@@ -294,6 +289,7 @@ contract('RelayProvider', function (accounts) {
         from: accounts[1]
       })
 
+      await relayHub.registerRequestType(forwarderAddress)
       // create desired transactions
       misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setRelayHub(relayHub.address)
@@ -386,7 +382,6 @@ contract('RelayProvider', function (accounts) {
   describe('new contract deployment', function () {
     let TestRecipient: TestRecipientContract
     before(function () {
-      TestRecipient = artifacts.require('TestRecipient')
       const gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
         stakeManagerAddress: stakeManager.address

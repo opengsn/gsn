@@ -17,13 +17,12 @@ import {
 import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
 const RelayHub = artifacts.require('RelayHub')
-const Forwarder = artifacts.require('Forwarder')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 // TMP: skip until we finish the new Forwarder
 contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
@@ -64,7 +63,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     relayHub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
-    await relayHub.registerRequestType(forwarder) // .catch(()=>{})
+    await relayHub.registerRequestType(forwarder)
 
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),

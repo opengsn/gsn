@@ -1,4 +1,4 @@
-import { Address, IntString } from '../../relayclient/types/Aliases'
+import { Address } from '../../relayclient/types/Aliases'
 import RelayRequest from './RelayRequest'
 import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types, TypedDataUtils } from 'eth-sig-util'
 
@@ -45,7 +45,7 @@ interface Types extends EIP712Types {
   _ForwardRequest: EIP712TypeProperty[]
 }
 
-export function getDomainSeparator (verifier: Address, chainId: number) {
+export function getDomainSeparator (verifier: Address, chainId: number): any {
   return {
     name: 'GSN Relayed Transaction',
     version: '2',

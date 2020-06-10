@@ -80,11 +80,14 @@ library GsnEip712Library {
 
     /**
      * call forwarder.verifyAndCall()
+     * note that we call it with address.call, and return (success,ret): this helper is a library
+     * function, and library function can't be wrapped with try/catch... (or called with address.call)
      */
     function callForwarderVerifyAndCall(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal returns (bool success, bytes memory ret) {
         (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
         // Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
         // forwarder.verifyAndCall(fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig);
+        /* solhint-disable avoid-low-level-calls */
         return req.extraData.forwarder.call(abi.encodeWithSelector(IForwarder.verifyAndCall.selector,
             fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig
         ));

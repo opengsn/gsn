@@ -3,7 +3,7 @@ import { Eip712ForwarderInstance, TestRecipientInstance } from '../types/truffle
 import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { expectRevert } from '@openzeppelin/test-helpers'
-import { toBN, toChecksumAddress } from 'web3-utils'
+import { toChecksumAddress } from 'web3-utils'
 
 const TestRecipient = artifacts.require('TestRecipient')
 

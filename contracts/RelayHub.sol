@@ -174,7 +174,7 @@ contract RelayHub is IRelayHub {
             relayRequest.relayData.paymaster.staticcall{gas:gasLimits.acceptRelayedCallGasLimit}(encodedTx);
     }
 
-    function registerRequestType(Eip712Forwarder forwarder) public {
+    function registerRequestType(Eip712Forwarder forwarder) public override {
         GsnEip712Library.registerRequestType(forwarder);
     }
 
@@ -329,11 +329,7 @@ contract RelayHub is IRelayHub {
         }
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         //TODO try/catch
-        GsnEip712Library.callForwarderVerifyAndCall(relayRequest,signature);
-//        (atomicData.relayedCallSuccess,) =
-//        relayRequest.extraData.forwarder.call(
-//            abi.encodeWithSelector(IForwarder.verifyAndCall.selector, relayRequest, signature)
-//        );
+        (atomicData.relayedCallSuccess,) = GsnEip712Library.callForwarderVerifyAndCall(relayRequest,signature);
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate

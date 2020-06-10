@@ -1,5 +1,6 @@
 import { TestPaymasterEverythingAcceptedInstance, TestRecipientInstance } from '../types/truffle-contracts'
 import BN from 'bn.js'
+import { PrefixedHexString } from 'ethereumjs-tx'
 const RelayHub = artifacts.require('./RelayHub.sol')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -12,9 +13,11 @@ contract('SampleRecipient', function (accounts) {
   const message = 'hello world'
   let sample: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
+  let forwarder: PrefixedHexString
 
   before(async function () {
-    const forwarder = (await Eip712Forwarder.new()).address
+    forwarder = (await Eip712Forwarder.new()).address
+
     sample = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterEverythingAccepted.new()
   })
@@ -36,6 +39,7 @@ contract('SampleRecipient', function (accounts) {
     const penalizer = await Penalizer.new()
     const rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(rhub.address)
+    await rhub.registerRequestType(forwarder)
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally
     // uses hub.depositFor)

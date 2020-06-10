@@ -17,13 +17,12 @@ import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
-const Forwarder = artifacts.require('Forwarder')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
@@ -53,7 +52,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     relayHubInstance = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Eip712Forwarder.new()
-    forwarder=forwarderInstance.address
+    forwarder = forwarderInstance.address
     recipientContract = await TestRecipient.new(forwarder)
 
     // register hub's RelayRequest with forwarder, if not already done.

@@ -222,7 +222,7 @@ export default class CommandsLogic {
       arguments: [sInstance.options.address, pInstance.options.address]
     }).send(merge(options, { gas: 5e6 }))
 
-    await rInstance.methods.registerRequestType(fInstance.options.address)
+    await rInstance.methods.registerRequestType(fInstance.options.address).send(options)
 
     await pmInstance.methods.setRelayHub(rInstance.options.address).send({
       from,

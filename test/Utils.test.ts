@@ -1,20 +1,18 @@
 /* global describe it web3 */
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/camelcase
-import {recoverTypedSignature_v4, TypedDataUtils} from 'eth-sig-util'
+import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import {defaultEnvironment} from '../src/relayclient/types/Environments'
-import {getEip712Signature} from '../src/common/Utils'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
-import {extraDataWithDomain} from '../src/common/EIP712/ExtraData'
-import {constants, expectEvent} from '@openzeppelin/test-helpers'
-import {en} from "ethers/wordlists";
-import {bufferToHex, ecrecover, toBuffer} from "ethereumjs-util";
-import {keccak256} from "web3-utils";
-import {Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance} from "../types/truffle-contracts";
-import {PrefixedHexString} from "ethereumjs-tx";
+import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
+import { constants, expectEvent } from '@openzeppelin/test-helpers'
+import { bufferToHex } from 'ethereumjs-util'
+import { TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
+import { PrefixedHexString } from 'ethereumjs-tx'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -33,7 +31,7 @@ contract('Utils', function (accounts) {
     let recipient: TestRecipientInstance
 
     before(async () => {
-      let forwarderInstance = await Eip712Forwarder.new();
+      const forwarderInstance = await Eip712Forwarder.new()
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
 
@@ -71,10 +69,8 @@ contract('Utils', function (accounts) {
         extraData: extraDataWithDomain(forwarder, 999)
       }
       testUtil = await TestUtil.new()
-
     })
     it('should generate a valid EIP-712 compatible signature', async function () {
-
       const dataToSign = new TypedRequestData(
         chainId,
         forwarder,
@@ -92,9 +88,8 @@ contract('Utils', function (accounts) {
       })
       assert.strictEqual(senderAddress.toLowerCase(), recoveredAccount.toLowerCase())
 
-
-      //perform the on-chain logic to calculate signature:
-      const ret: any = await testUtil.splitRequest(relayRequest);
+      // perform the on-chain logic to calculate signature:
+      const ret: any = await testUtil.splitRequest(relayRequest)
       // console.log( 'ret=', ret)
       // const {fwd, domainSeparator, typeHash, suffixData} = ret
       // const encodedForSig = await forwarderInstance._getEncoded(fwd, typeHash, suffixData)
@@ -102,7 +97,7 @@ contract('Utils', function (accounts) {
       //   fwd,domainSeparator,typeHash, suffixData, encodedForSig
       // })
 
-      //verify we calculated locally the same domainSeparator we pass to the forwarder:
+      // verify we calculated locally the same domainSeparator we pass to the forwarder:
       assert.equal(ret.domainSeparator, bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', dataToSign.domain, dataToSign.types)))
 
       // const digest = keccak256(bufferToHex(Buffer.concat([
@@ -118,7 +113,6 @@ contract('Utils', function (accounts) {
 
     describe('#callForwarderVerifyAndCall', () => {
       it('should return revert result', async function () {
-
         relayRequest.request.encodedFunction = await recipient.contract.methods.testRevert().encodeABI()
         const sig = await getEip712Signature(
           web3, new TypedRequestData(
@@ -134,7 +128,6 @@ contract('Utils', function (accounts) {
         })
       })
       it('should return revert', async function () {
-
         relayRequest.request.encodedFunction = await recipient.contract.methods.emitMessage('hello').encodeABI()
 
         const sig = await getEip712Signature(
@@ -148,10 +141,9 @@ contract('Utils', function (accounts) {
           success: true,
           error: ''
         })
-        const logs =  await recipient.contract.getPastEvents(null, {fromBlock:1})
+        const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
       })
-
     })
   })
 })

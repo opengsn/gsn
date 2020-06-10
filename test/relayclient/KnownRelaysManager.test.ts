@@ -76,7 +76,7 @@ contract('KnownRelaysManager', function (
       const forwarderInstance = await Eip712Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
-      relayHub.registerRequestType(forwarderAddress)
+      await relayHub.registerRequestType(forwarderAddress)
 
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
       await paymaster.setRelayHub(relayHub.address)

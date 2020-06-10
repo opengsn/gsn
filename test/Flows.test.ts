@@ -15,7 +15,6 @@ import { startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import {constants} from "@openzeppelin/test-helpers";
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -74,7 +73,7 @@ options.forEach(params => {
         from = accounts[0]
       }
 
-      let forwarder = await Eip712Forwarder.new();
+      const forwarder = await Eip712Forwarder.new()
       sr = await TestRecipient.new(forwarder.address)
 
       await rhub.registerRequestType(forwarder.address)
