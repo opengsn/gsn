@@ -63,7 +63,6 @@ function getRegisterParams (data: EIP712TypedData, genericParams: string, generi
 }
 
 contract('Eip712Forwarder', () => {
-
   const GENERIC_PARAMS = '_ForwardRequest request'
   const GENERIC_TYPE = '_ForwardRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit)'
 
@@ -136,7 +135,7 @@ contract('Eip712Forwarder', () => {
         encodedFunction: '0x',
         senderAddress,
         senderNonce: 0,
-        gasLimit: 123,
+        gasLimit: 123
       }
 
       it('should fail on wrong nonce', async () => {

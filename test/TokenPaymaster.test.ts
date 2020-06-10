@@ -17,7 +17,7 @@ import {
 
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { getEip712Signature } from '../src/common/Utils'
-import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
+import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
 const TokenPaymaster = artifacts.require('TokenPaymaster')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator')
@@ -96,7 +96,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
         encodedFunction: recipient.contract.methods.test().encodeABI(),
         senderAddress: from,
         senderNonce: '0',
-        gasLimit: 1e6.toString(),
+        gasLimit: 1e6.toString()
       },
       relayData: {
         relayWorker: relay,

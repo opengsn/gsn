@@ -23,7 +23,7 @@ import BadRelayClient from '../dummies/BadRelayClient'
 import { getEip712Signature } from '../../src/common/Utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
-import {extraDataWithDomain} from "../../src/common/EIP712/ExtraData";
+import { extraDataWithDomain } from '../../src/common/EIP712/ExtraData'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -46,7 +46,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       encodedFunction: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
       senderAddress: account,
       senderNonce,
-      gasLimit: '10000',
+      gasLimit: '10000'
     },
     relayData: {
       relayWorker,
@@ -178,8 +178,8 @@ contract('RelayProvider', function (accounts) {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new()
       const forwarder = await testRecipient.getTrustedForwarder()
-      //register hub's RelayRequest with forwarder, if not already done.
-      await relayHub.registerRequestType(forwarder) //.catch(()=>{})
+      // register hub's RelayRequest with forwarder, if not already done.
+      await relayHub.registerRequestType(forwarder) // .catch(()=>{})
 
       gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
       // call to emitMessage('hello world')

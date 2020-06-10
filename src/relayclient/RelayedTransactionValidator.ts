@@ -5,7 +5,7 @@ import { isSameAddress } from '../common/Utils'
 import ContractInteractor from './ContractInteractor'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import { GSNConfig } from './GSNConfigurator'
-import {extraDataWithDomain} from "../common/EIP712/ExtraData";
+import { extraDataWithDomain } from '../common/EIP712/ExtraData'
 
 export default class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
@@ -40,7 +40,7 @@ export default class RelayedTransactionValidator {
         encodedFunction: transactionJsonRequest.encodedFunction,
         gasLimit: transactionJsonRequest.gasLimit,
         senderAddress: transactionJsonRequest.from,
-        senderNonce: transactionJsonRequest.senderNonce,
+        senderNonce: transactionJsonRequest.senderNonce
       },
       gasData: {
         gasPrice: transactionJsonRequest.gasPrice,

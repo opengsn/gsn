@@ -86,8 +86,8 @@ contract('RelayServer', function (accounts) {
     const forwarderAddress = await sr.getTrustedForwarder()
     forwarder = await Forwarder.at(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
-    //register hub's RelayRequest with forwarder, if not already done.
-    await rhub.registerRequestType(forwarderAddress) //.catch(()=>{})
+    // register hub's RelayRequest with forwarder, if not already done.
+    await rhub.registerRequestType(forwarderAddress) // .catch(()=>{})
 
     await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })

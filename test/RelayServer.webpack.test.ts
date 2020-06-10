@@ -7,11 +7,11 @@ describe('RelayServer-webpack', () => {
   before('create webpack', function () {
     this.timeout(15000)
     const jsrelayDir = path.join(__dirname, '..', 'jsrelay')
-    console.log( 'jsrelayDir=', jsrelayDir)
+    console.log('jsrelayDir=', jsrelayDir)
     // const webpackEntry = require( jsrelayDir+'/webpack.config').entry
     // assert.ok( fs.existsSync(jsrelayDir+'/'+webpackEntry), 'missing entry file: '+webpackEntry)
     fs.rmdirSync(path.join(jsrelayDir, 'dist'), { recursive: true })
-    childProcess.execSync('sh -c "find . ../dist ; npx webpack"', { cwd: jsrelayDir,stdio:'inherit' })
+    childProcess.execSync('sh -c "find . ../dist ; npx webpack"', { cwd: jsrelayDir, stdio: 'inherit' })
     oneFileRelayer = path.join(jsrelayDir, 'dist', 'relayserver.js')
   })
 

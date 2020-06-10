@@ -56,7 +56,7 @@ export default class AccountManager {
     let signature
     const forwarder = relayRequest.extraData.forwarder
 
-    const cloneRequest = {...relayRequest}
+    const cloneRequest = { ...relayRequest }
     delete cloneRequest.extraData
 
     const signedData = new TypedRequestData(

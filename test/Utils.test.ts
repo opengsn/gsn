@@ -8,9 +8,8 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
-import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
-import {constants, expectRevert} from "@openzeppelin/test-helpers";
-import {AddressZero} from "ethers/constants";
+import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
+import { constants } from '@openzeppelin/test-helpers'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -22,7 +21,6 @@ const TestRecipient = artifacts.require('TestRecipient')
 contract('Utils', function (accounts) {
   describe('#getEip712Signature()', function () {
     it('should generate a valid EIP-712 compatible signature', async function () {
-
       const recipient = await TestRecipient.new()
 
       const chainId = defaultEnvironment.chainId
@@ -42,7 +40,7 @@ contract('Utils', function (accounts) {
       const forwarder = (await Eip712Forwarder.new()).address
       await recipient.setTrustedForwarder(forwarder)
 
-      const hub = await RelayHub.new(constants.ZERO_ADDRESS,constants.ZERO_ADDRESS)
+      const hub = await RelayHub.new(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
       await hub.registerRequestType(forwarder)
 
       const relayRequest: RelayRequest = {
@@ -51,7 +49,7 @@ contract('Utils', function (accounts) {
           encodedFunction,
           senderAddress,
           senderNonce,
-          gasLimit,
+          gasLimit
         },
         relayData: {
           relayWorker,
@@ -85,7 +83,7 @@ contract('Utils', function (accounts) {
       // const ret = await testUtil.splitRequest(relayRequest);
       // console.log( 'ret=', ret)
 
-      //possible exceptions:
+      // possible exceptions:
       //  "invalid request typehash" - missing register type with relayHub.registerRequestType(forwarder)
       //  "invalid nonce"
       // "signature mismatch" means the only problem is the signature.

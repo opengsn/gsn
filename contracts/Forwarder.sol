@@ -6,7 +6,11 @@ import "./utils/GsnUtils.sol";
 import "./interfaces/IForwarder.sol";
 import "./SignatureVerifier.sol";
 
-contract Forwarder is Eip712Forwarder {}
+contract Forwarder is Eip712Forwarder {
+    function versionForwarder() external view virtual returns (string memory){
+        return "2.0.0-alpha.1+opengsn.forwarder.iforwarder";
+    }
+}
 /*
 contract Forwarder is IForwarder {
 

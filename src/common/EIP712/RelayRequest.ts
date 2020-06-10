@@ -1,9 +1,7 @@
-import { PrefixedHexString } from 'ethereumjs-tx'
-import { Address, IntString } from '../../relayclient/types/Aliases'
 import GasData from './GasData'
 import RelayData from './RelayData'
-import ForwardRequest from "./ForwardRequest";
-import ExtraData from "./ExtraData";
+import ForwardRequest from './ForwardRequest'
+import ExtraData from './ExtraData'
 
 export default interface RelayRequest {
   request: ForwardRequest
@@ -19,7 +17,7 @@ export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
       encodedFunction: relayRequest.request.encodedFunction,
       senderAddress: relayRequest.request.senderAddress,
       senderNonce: relayRequest.request.senderNonce,
-      gasLimit: relayRequest.request.gasLimit,
+      gasLimit: relayRequest.request.gasLimit
     },
     gasData: {
       gasPrice: relayRequest.gasData.gasPrice,

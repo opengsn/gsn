@@ -97,6 +97,7 @@ library GsnEip712Library {
 
     function getChainID() internal pure returns (uint256) {
         uint256 id;
+        /* solhint-disable no-inline-assembly */
         assembly {
             id := chainid()
         }

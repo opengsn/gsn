@@ -1,10 +1,10 @@
 import BN from 'bn.js'
-import {ether, expectEvent} from '@openzeppelin/test-helpers'
+import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
-import {calculateTransactionMaxPossibleGas, getEip712Signature} from '../src/common/Utils'
+import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
-import {defaultEnvironment} from '../src/relayclient/types/Environments'
-import RelayRequest, {cloneRelayRequest} from '../src/common/EIP712/RelayRequest'
+import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,
@@ -14,7 +14,7 @@ import {
   IForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
-import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
+import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
 const RelayHub = artifacts.require('RelayHub')
 const Forwarder = artifacts.require('Forwarder')
@@ -24,7 +24,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-//TMP: skip until we finish the new Forwarder
+// TMP: skip until we finish the new Forwarder
 contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 1000
@@ -53,7 +53,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
   let relayRequest: RelayRequest
   let forwarder: string
 
-  beforeEach(async function prepareForHub() {
+  beforeEach(async function prepareForHub () {
     recipient = await TestRecipient.new()
     forwarder = await recipient.getTrustedForwarder()
     forwarderInstance = await Forwarder.at(forwarder)
@@ -62,8 +62,8 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     penalizer = await Penalizer.new()
     relayHub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(relayHub.address)
-    //register hub's RelayRequest with forwarder, if not already done.
-    await relayHub.registerRequestType(forwarder) //.catch(()=>{})
+    // register hub's RelayRequest with forwarder, if not already done.
+    await relayHub.registerRequestType(forwarder) // .catch(()=>{})
 
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
@@ -74,9 +74,9 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
       value: ether('2'),
       from: relayOwner
     })
-    await stakeManager.authorizeHub(relayManager, relayHub.address, {from: relayOwner})
-    await relayHub.addRelayWorkers([relayWorker], {from: relayManager})
-    await relayHub.registerRelayServer(0, fee, '', {from: relayManager})
+    await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+    await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
+    await relayHub.registerRelayServer(0, fee, '', { from: relayManager })
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
     relayRequest = {
       request: {
@@ -84,7 +84,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
         encodedFunction,
         senderAddress,
         senderNonce: senderNonce.toString(),
-        gasLimit: gasLimit.toString(),
+        gasLimit: gasLimit.toString()
       },
       relayData: {
         relayWorker,
@@ -131,7 +131,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'acceptRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
-        const {tx} = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
+        const { tx } = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
           from: relayWorker,
           gas: transactionGasLimit.toString(),
           gasPrice
@@ -161,7 +161,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
         gasPrice,
         pctRelayFee: 0,
         baseRelayFee: 0
-      }, {from: relayHub.address})) - 21000
+      }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
       const tx = await relayHub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
@@ -184,7 +184,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
       // TODO: extract preparation to 'before' block
       const misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setRelayHub(relayHub.address)
-      await misbehavingPaymaster.deposit({value: ether('0.1')})
+      await misbehavingPaymaster.deposit({ value: ether('0.1') })
       await misbehavingPaymaster.setOverspendAcceptGas(true)
 
       const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
@@ -221,7 +221,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     })
   })
 
-  async function getBalances(): Promise<{
+  async function getBalances (): Promise<{
     paymasters: BN
     relayWorkers: BN
     relayManagers: BN
@@ -237,7 +237,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     }
   }
 
-  function logOverhead(weiActualCharge: BN, workerGasUsed: BN): void {
+  function logOverhead (weiActualCharge: BN, workerGasUsed: BN): void {
     const gasDiff = workerGasUsed.sub(weiActualCharge).div(gasPrice).toString()
     if (gasDiff !== '0') {
       console.log('== zero-fee unmatched gas. RelayHub.GAS_OVERHEAD should be increased by: ' + gasDiff.toString())
@@ -246,7 +246,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
 
   describe('check calculation does not break for different fees', function () {
     before(async function () {
-      await relayHub.depositFor(relayOwner, {value: (1).toString()})
+      await relayHub.depositFor(relayOwner, { value: (1).toString() })
     });
 
     [0, 100, 1000, 50000]
@@ -269,7 +269,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
                   encodedFunction,
                   senderAddress,
                   senderNonce,
-                  gasLimit: gasLimit.toString(),
+                  gasLimit: gasLimit.toString()
                 },
                 relayData: {
                   relayWorker,

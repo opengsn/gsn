@@ -13,7 +13,7 @@ import {
   TestRecipientInstance,
   BatchForwarderInstance
 } from '../types/truffle-contracts'
-import {extraDataWithDomain} from "../src/common/EIP712/ExtraData";
+import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
@@ -62,7 +62,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         encodedFunction: '',
         senderAddress: from,
         senderNonce: '1',
-        gasLimit: 1e6.toString(),
+        gasLimit: 1e6.toString()
       },
       gasData: {
         pctRelayFee: '1',

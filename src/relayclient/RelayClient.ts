@@ -14,7 +14,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
-import {extraDataWithDomain} from "../common/EIP712/ExtraData";
+import { extraDataWithDomain } from '../common/EIP712/ExtraData'
 
 // generate "approvalData" for a request. must return string-encoded bytes array
 export const EmptyApprovalData: AsyncApprovalData = async (): Promise<PrefixedHexString> => {
@@ -219,7 +219,7 @@ export default class RelayClient {
         encodedFunction: gsnTransactionDetails.data,
         senderAddress: gsnTransactionDetails.from,
         senderNonce,
-        gasLimit,
+        gasLimit
       },
       gasData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,
@@ -230,7 +230,7 @@ export default class RelayClient {
         paymaster,
         relayWorker
       },
-      extraData:extraDataWithDomain(forwarderAddress, this.accountManager.chainId)
+      extraData: extraDataWithDomain(forwarderAddress, this.accountManager.chainId)
     }
     const signature = await this.accountManager.sign(relayRequest)
     const approvalData = await this.asyncApprovalData(relayRequest)
