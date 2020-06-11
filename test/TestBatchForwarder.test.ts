@@ -51,6 +51,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
 
     forwarder = await BatchForwarder.new()
+    hub.registerRequestType(forwarder.address)
     recipient = await TestRecipient.new(forwarder.address)
 
     await paymaster.setRelayHub(hub.address)
