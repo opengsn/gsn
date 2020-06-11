@@ -3,27 +3,7 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
-
-interface IForwarder {
-
-    struct ForwardRequest {
-        address target;
-        bytes encodedFunction;
-        address senderAddress;
-        uint256 senderNonce;
-        uint256 gasLimit;
-    }
-
-    function versionForwarder() external view returns (string memory);
-
-    function getNonce(address from) external view returns (uint256);
-
-    function verify(ForwardRequest calldata req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external view;
-
-    function verifyAndCall(ForwardRequest calldata req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external;
-}
+import "./interfaces/IForwarder.sol";
 
 // a Generic EIP712 forwarder.
 // actual struct has to START with known fields, but may contain other fields
