@@ -4,7 +4,7 @@
 /* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.6.9;
 pragma experimental ABIEncoderV2;
 
 import "./0x/LibBytesV06.sol";
@@ -42,10 +42,10 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 34835;
+    uint256 constant private GAS_OVERHEAD = 34877;
 
     //gas overhead to calculate gasUseWithoutPost
-    uint256 constant private POST_OVERHEAD = 8688;
+    uint256 constant private POST_OVERHEAD = 8808;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
@@ -128,10 +128,10 @@ contract RelayHub is IRelayHub {
     }
 
     function canRelay(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         uint256 initialGas,
-        bytes memory signature,
-        bytes memory approvalData
+        bytes calldata signature,
+        bytes calldata approvalData
     )
     private
     view
@@ -201,12 +201,7 @@ contract RelayHub is IRelayHub {
 
         // We now verify that the paymaster will agree to be charged for the transaction.
         (vars.success, vars.recipientContext, vars.gasLimits) =
-            canRelay(
-                ISignatureVerifier.RelayRequest(
-                    relayRequest.target,
-                    relayRequest.encodedFunction,
-                    relayRequest.gasData,
-                    relayRequest.relayData),
+            canRelay(relayRequest,
                     externalGasLimit, signature, approvalData);
 
         if (!vars.success) {

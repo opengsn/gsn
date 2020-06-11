@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ISignatureVerifier.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
+import "./interfaces/IForwarder.sol";
 
 /**
  * Abstract base class to be inherited by a concrete Paymaster
@@ -18,6 +19,7 @@ import "./interfaces/IRelayHub.sol";
 abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
+    IForwarder internal trustedForwarder;
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
@@ -42,6 +44,14 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         );
     }
 
+    function _verifySignature(
+        ISignatureVerifier.RelayRequest calldata relayRequest,
+        bytes calldata signature
+    ) internal {
+        require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        trustedForwarder.verify(relayRequest, signature);
+    }
+
     /*
      * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
      */
@@ -52,6 +62,10 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
 
     function setRelayHub(IRelayHub hub) public onlyOwner {
         relayHub = hub;
+    }
+
+    function setTrustedForwarder(IForwarder forwarder) public onlyOwner {
+        trustedForwarder = forwarder;
     }
 
     /// check current deposit on relay hub.
