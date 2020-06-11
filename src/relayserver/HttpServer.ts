@@ -7,7 +7,8 @@ import { Server } from 'http'
 
 export class HttpServer {
   app: Express
-  private serverInstance: Server | undefined;
+  private serverInstance?: Server
+
   constructor (private readonly port: number, readonly backend: RelayServer) {
     this.app = express()
     this.app.use(cors())
@@ -47,10 +48,7 @@ export class HttpServer {
 
   close (): void {
     console.log('Stopping relay worker...')
-    // stop (unsubscribe) is async..
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     this.backend.stop()
-    // process.exit()
   }
 
   // TODO: use this when changing to jsonrpc
@@ -60,23 +58,18 @@ export class HttpServer {
       let res
       // @ts-ignore
       const func = this.backend[req.body.method]
-      // @ts-ignore
       if (func != null) {
-        // @ts-ignore
         res = await func.apply(this.backend, [req.body.params]) ?? { code: 200 }
       } else {
         // @ts-ignore
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         throw Error(`Implementation of method ${req.body.params} not found on backend!`)
       }
-
-      // @ts-ignore
       status = jsonrpc.success(req.body.id, res)
     } catch (e) {
       let stack = e.stack.toString()
       // remove anything after 'rootHandler'
       stack = stack.replace(/(rootHandler.*)[\s\S]*/, '$1')
-      // @ts-ignore
       status = jsonrpc.error(req.body.id, new jsonrpc.JsonRpcError(stack, -125))
     }
     res.send(status)
@@ -95,7 +88,6 @@ export class HttpServer {
     }
 
     try {
-      // @ts-ignore
       const signedTx = await this.backend.createRelayTransaction(req.body)
       res.send({ signedTx })
     } catch (e) {

@@ -11,7 +11,6 @@ import Web3 from 'web3'
 import TypedRequestData from '../common/EIP712/TypedRequestData'
 
 require('source-map-support').install({ errorFormatterForce: true })
-
 export interface AccountKeypair {
   privateKey: Buffer
   address: Address
@@ -58,7 +57,6 @@ export default class AccountManager {
 
     const cloneRequest = { ...relayRequest }
     delete cloneRequest.extraData
-
     const signedData = new TypedRequestData(
       this.chainId,
       forwarder,

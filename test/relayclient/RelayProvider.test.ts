@@ -102,7 +102,7 @@ contract('RelayProvider', function (accounts) {
       stake: 1e18,
       url: 'asd',
       relayOwner: accounts[1],
-      EthereumNodeUrl: underlyingProvider.host
+      ethereumNodeUrl: underlyingProvider.host
     })
   })
 
