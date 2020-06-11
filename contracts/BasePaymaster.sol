@@ -47,7 +47,10 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     function _verifySignature(
         ISignatureVerifier.RelayRequest calldata relayRequest,
         bytes calldata signature
-    ) internal {
+    )
+    public
+    view
+    {
         require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
         trustedForwarder.verify(relayRequest, signature);
     }
