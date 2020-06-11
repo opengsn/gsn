@@ -24,7 +24,7 @@ const TokenGasCalculator = artifacts.require('TokenGasCalculator')
 const TestUniswap = artifacts.require('TestUniswap')
 const TestToken = artifacts.require('TestToken')
 const RelayHub = artifacts.require('RelayHub')
-const EIP712Forwarder = artifacts.require('EIP712Forwarder')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
@@ -82,7 +82,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner]) => {
 
     console.log('paymaster post with precharge=', await paymaster.gasUsedByPostWithPreCharge.toString())
     console.log('paymaster post without precharge=', await paymaster.gasUsedByPostWithoutPreCharge.toString())
-    forwarder = await EIP712Forwarder.new({ gas: 1e7 })
+    forwarder = await Eip712Forwarder.new({ gas: 1e7 })
     await hub.registerRequestType(forwarder.address)
     recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
 
