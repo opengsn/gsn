@@ -28,19 +28,18 @@ import { extraDataWithDomain } from '../../src/common/EIP712/ExtraData'
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
 const RelayHub = artifacts.require('RelayHub')
-const IForwarder = artifacts.require('IForwarder')
+const Forwarder = artifacts.require('Forwarder')
 const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
-const TestRecipient = artifacts.require('TestRecipient')
 
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
   const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
-  const testRecipientForwarder = await IForwarder.at(testRecipientForwarderAddress)
+  const testRecipientForwarder = await Forwarder.at(testRecipientForwarderAddress)
   const senderNonce = (await testRecipientForwarder.getNonce(account)).toString()
   const relayRequest: RelayRequest = {
     request: {
@@ -51,8 +50,8 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       gasLimit: '10000'
     },
     relayData: {
-      relayWorker,
-      paymaster
+      paymaster,
+      relayWorker
     },
     gasData: {
       pctRelayFee: '1',
@@ -88,8 +87,7 @@ contract('RelayProvider', function (accounts) {
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
-    // gasLess = await web3.eth.personal.newAccount('password')
-    gasLess = accounts[4]
+    gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
     const forwarderInstance = await Eip712Forwarder.new()
@@ -101,7 +99,6 @@ contract('RelayProvider', function (accounts) {
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
     relayProcess = await startRelay(relayHub.address, stakeManager, {
-      // relaylog:true,
       stake: 1e18,
       url: 'asd',
       relayOwner: accounts[1],
@@ -116,8 +113,8 @@ contract('RelayProvider', function (accounts) {
   describe('Use Provider to relay transparently', () => {
     let testRecipient: TestRecipientInstance
     before(async () => {
+      const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
-
       const gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
         stakeManagerAddress: stakeManager.address
@@ -131,23 +128,18 @@ contract('RelayProvider', function (accounts) {
       TestRecipient.web3.setProvider(relayProvider)
     })
     it('should relay transparently', async function () {
-      try {
-        const res = await testRecipient.emitMessage('hello world', {
-          from: gasLess,
-          forceGasPrice: '0x51f4d5c00',
-          // TODO: for some reason estimated values are crazy high!
-          gas: '100000',
-          paymaster
-        })
+      const res = await testRecipient.emitMessage('hello world', {
+        from: gasLess,
+        forceGasPrice: '0x51f4d5c00',
+        // TODO: for some reason estimated values are crazy high!
+        gas: '100000',
+        paymaster
+      })
 
-        expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
-          message: 'hello world',
-          realSender: gasLess
-        })
-      } catch (e) {
-        console.log(e)
-        process.exit(1)
-      }
+      expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
+        message: 'hello world',
+        realSender: gasLess
+      })
     })
 
     it('should subscribe to events', async () => {
@@ -189,14 +181,10 @@ contract('RelayProvider', function (accounts) {
     let jsonRpcPayload: JsonRpcPayload
 
     before(async function () {
-      const forwarderInstance = await Eip712Forwarder.new()
-      const forwarderAddress = forwarderInstance.address
+      const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
 
-      // register hub's RelayRequest with forwarder, if not already done.
-      await relayHub.registerRequestType(forwarderAddress)
-
-      gsnConfig = configureGSN({ relayHubAddress: relayHub.address, verbose: true })
+      gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
       // call to emitMessage('hello world')
       jsonRpcPayload = {
         jsonrpc: '2.0',
@@ -267,10 +255,8 @@ contract('RelayProvider', function (accounts) {
     const gas = toBN(3e6).toString()
     // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway
     before(async function () {
-      const forwarderInstance = await Eip712Forwarder.new()
-      const forwarderAddress = forwarderInstance.address
+      const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
-
       const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
       // @ts-ignore
       Object.keys(TestRecipient.events).forEach(function (topic) {
@@ -289,7 +275,6 @@ contract('RelayProvider', function (accounts) {
         from: accounts[1]
       })
 
-      await relayHub.registerRequestType(forwarderAddress)
       // create desired transactions
       misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setRelayHub(relayHub.address)
@@ -382,6 +367,7 @@ contract('RelayProvider', function (accounts) {
   describe('new contract deployment', function () {
     let TestRecipient: TestRecipientContract
     before(function () {
+      TestRecipient = artifacts.require('TestRecipient')
       const gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
         stakeManagerAddress: stakeManager.address
