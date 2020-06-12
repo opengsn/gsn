@@ -62,7 +62,7 @@ export default class AccountManager {
       forwarder,
       cloneRequest
     )
-    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.request.senderAddress))
+    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.request.from))
     if (keypair != null) {
       signature = this._signWithControlledKey(keypair, signedData)
     } else {
@@ -78,11 +78,11 @@ export default class AccountManager {
       })
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Failed to sign relayed transaction for ${relayRequest.request.senderAddress}: ${error}`)
+      throw new Error(`Failed to sign relayed transaction for ${relayRequest.request.from}: ${error}`)
     }
-    if (!isSameAddress(relayRequest.request.senderAddress.toLowerCase(), rec)) {
+    if (!isSameAddress(relayRequest.request.from.toLowerCase(), rec)) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.request.senderAddress}, recovered=${rec}`)
+      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.request.from}, recovered=${rec}`)
     }
     return signature
   }

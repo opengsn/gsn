@@ -160,7 +160,6 @@ contract('RelayServer', function (accounts) {
       verbose: process.env.DEBUG != null
     }
 
-
     const config = configureGSN(relayClientConfig)
     relayClient = new RelayClient(new Web3.providers.HttpProvider(ethereumNodeUrl), config)
 
@@ -237,16 +236,15 @@ contract('RelayServer', function (accounts) {
     // console.log('overrideArgs is', overrideArgs)
     const signedTx = await relayServer.createRelayTransaction(
       {
-        senderNonce: relayRequest.request.senderNonce,
+        senderNonce: relayRequest.request.nonce,
         gasPrice: relayRequest.gasData.gasPrice,
-        encodedFunction: relayRequest.request.encodedFunction,
-        data: relayRequest.encodedFunction,
+        data: relayRequest.request.data,
         approvalData,
         signature,
-        from: relayRequest.request.senderAddress,
-        to: relayRequest.request.target,
+        from: relayRequest.request.from,
+        to: relayRequest.request.to,
         paymaster: relayRequest.relayData.paymaster,
-        gasLimit: relayRequest.request.gasLimit,
+        gasLimit: relayRequest.request.gas,
         relayMaxNonce,
         baseRelayFee: relayRequest.gasData.baseRelayFee,
         pctRelayFee: relayRequest.gasData.pctRelayFee,
@@ -255,7 +253,7 @@ contract('RelayServer', function (accounts) {
         ...overrideArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-    await assertTransactionRelayed(txhash, relayRequest.request.senderAddress)
+    await assertTransactionRelayed(txhash, relayRequest.request.from)
     return signedTx
   }
 
@@ -406,7 +404,7 @@ contract('RelayServer', function (accounts) {
     })
     it('should fail to relay with undefined encodedFunction', async function () {
       try {
-        await relayTransaction(options, { encodedFunction: undefined })
+        await relayTransaction(options, { data: undefined })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')

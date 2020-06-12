@@ -13,11 +13,11 @@ export default interface RelayRequest {
 export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
   return {
     request: {
-      target: relayRequest.request.target,
-      encodedFunction: relayRequest.request.encodedFunction,
-      senderAddress: relayRequest.request.senderAddress,
-      senderNonce: relayRequest.request.senderNonce,
-      gasLimit: relayRequest.request.gasLimit
+      to: relayRequest.request.to,
+      data: relayRequest.request.data,
+      from: relayRequest.request.from,
+      nonce: relayRequest.request.nonce,
+      gas: relayRequest.request.gas
     },
     gasData: {
       gasPrice: relayRequest.gasData.gasPrice,

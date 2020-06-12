@@ -48,13 +48,13 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         (signature);
         return abi.encode(
             relayRequest.relayData.relayWorker,
-            relayRequest.request.senderAddress,
-            relayRequest.request.encodedFunction,
+            relayRequest.request.from,
+            relayRequest.request.data,
             relayRequest.gasData.baseRelayFee,
             relayRequest.gasData.pctRelayFee,
             relayRequest.gasData.gasPrice,
-            relayRequest.request.gasLimit,
-            relayRequest.request.senderNonce,
+            relayRequest.request.gas,
+            relayRequest.request.nonce,
             approvalData,
             maxPossibleGas);
     }

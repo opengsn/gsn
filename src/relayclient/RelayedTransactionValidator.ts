@@ -36,11 +36,11 @@ export default class RelayedTransactionValidator {
 
     const relayRequestOrig: RelayRequest = {
       request: {
-        target: transactionJsonRequest.to,
-        encodedFunction: transactionJsonRequest.encodedFunction,
-        gasLimit: transactionJsonRequest.gasLimit,
-        senderAddress: transactionJsonRequest.from,
-        senderNonce: transactionJsonRequest.senderNonce
+        to: transactionJsonRequest.to,
+        data: transactionJsonRequest.data,
+        gas: transactionJsonRequest.gasLimit,
+        from: transactionJsonRequest.from,
+        nonce: transactionJsonRequest.senderNonce
       },
       gasData: {
         gasPrice: transactionJsonRequest.gasPrice,

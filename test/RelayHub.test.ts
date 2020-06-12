@@ -172,11 +172,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     beforeEach(function () {
       sharedRelayRequestData = {
         request: {
-          target,
-          encodedFunction: '',
-          senderAddress,
-          senderNonce,
-          gasLimit
+          to: target,
+          data: '',
+          from: senderAddress,
+          nonce: senderNonce,
+          gas: gasLimit
         },
         gasData: {
           pctRelayFee,
@@ -198,7 +198,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       let relayRequest: RelayRequest
       beforeEach(async function () {
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
-        relayRequest.request.encodedFunction = '0xdeadbeef'
+        relayRequest.request.data = '0xdeadbeef'
         await relayHubInstance.depositFor(paymaster, {
           from: other,
           value: ether('1'),
@@ -254,7 +254,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
         await relayHubInstance.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
-        relayRequest.request.encodedFunction = encodedFunction
+        relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(
           chainId,
           forwarder,
@@ -413,7 +413,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('relayCall executes the transaction with no parameters', async function () {
           const encodedFunction = recipientContract.contract.methods.emitMessageNoParams().encodeABI()
           const relayRequestNoCallData = cloneRelayRequest(relayRequest)
-          relayRequestNoCallData.request.encodedFunction = encodedFunction
+          relayRequestNoCallData.request.data = encodedFunction
           const dataToSign = new TypedRequestData(
             chainId,
             forwarder,

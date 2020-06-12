@@ -24,11 +24,11 @@ const RelayDataType = [
 ]
 
 const ForwardRequestType = [
-  { name: 'target', type: 'address' },
-  { name: 'encodedFunction', type: 'bytes' },
-  { name: 'senderAddress', type: 'address' },
-  { name: 'senderNonce', type: 'uint256' },
-  { name: 'gasLimit', type: 'uint256' }
+  { name: 'to', type: 'address' },
+  { name: 'data', type: 'bytes' },
+  { name: 'from', type: 'address' },
+  { name: 'nonce', type: 'uint256' },
+  { name: 'gas', type: 'uint256' }
 ]
 
 const RelayRequestType = [

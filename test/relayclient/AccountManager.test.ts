@@ -64,11 +64,11 @@ contract('AccountManager', function (accounts) {
     accountManager.addAccount(keypair)
     const relayRequest: RelayRequest = {
       request: {
-        target: constants.ZERO_ADDRESS,
-        encodedFunction: '0x123',
-        senderAddress: '',
-        senderNonce: '1',
-        gasLimit: '1'
+        to: constants.ZERO_ADDRESS,
+        data: '0x123',
+        from: '',
+        nonce: '1',
+        gas: '1'
       },
       relayData: {
         relayWorker: constants.ZERO_ADDRESS,
@@ -92,7 +92,7 @@ contract('AccountManager', function (accounts) {
     }
 
     it('should use internally controlled keypair for signing if available', async function () {
-      relayRequest.request.senderAddress = address
+      relayRequest.request.from = address
       const signedData = new TypedRequestData(
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
@@ -104,12 +104,12 @@ contract('AccountManager', function (accounts) {
         data: signedData,
         sig: signature
       })
-      assert.ok(isSameAddress(relayRequest.request.senderAddress.toLowerCase(), rec))
+      assert.ok(isSameAddress(relayRequest.request.from.toLowerCase(), rec))
       expect(accountManager._signWithControlledKey).to.have.been.calledWith(keypair, signedData)
       expect(accountManager._signWithProvider).to.have.not.been.called
     })
     it('should ask provider to sign if key is not controlled', async function () {
-      relayRequest.request.senderAddress = accounts[0]
+      relayRequest.request.from = accounts[0]
       const signedData = new TypedRequestData(
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
@@ -121,12 +121,12 @@ contract('AccountManager', function (accounts) {
         data: signedData,
         sig: signature
       })
-      assert.ok(isSameAddress(relayRequest.request.senderAddress.toLowerCase(), rec))
+      assert.ok(isSameAddress(relayRequest.request.from.toLowerCase(), rec))
       expect(accountManager._signWithProvider).to.have.been.calledWith(signedData)
       expect(accountManager._signWithControlledKey).to.have.not.been.called
     })
     it('should throw if web3 fails to sign with requested address', async function () {
-      relayRequest.request.senderAddress = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
+      relayRequest.request.from = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
       const promise = accountManager.sign(relayRequest)
       await expect(promise).to.be.eventually.rejectedWith('Failed to sign relayed transaction for 0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee')
     })

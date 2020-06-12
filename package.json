@@ -33,6 +33,7 @@
     "test": "yarn run lint && yarn generate && yarn tsc && npm run test-js",
     "ganache": "ganache-cli --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "test-js": "run-with-testrpc --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'npx truffle --network npmtest test'",
+    "test-bail": "run-with-testrpc --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'npx truffle --network npmtest test --bail'",
     "extract_abi": "./scripts/extract_abi.js",
     "truffle-test": "yarn tsc && npx truffle test",
     "truffle-compile": "truffle compile",

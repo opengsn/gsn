@@ -36,11 +36,11 @@ const EIP712DomainType = [
 ]
 
 const ForwardRequestType = [
-  { name: 'target', type: 'address' },
-  { name: 'encodedFunction', type: 'bytes' },
-  { name: 'senderAddress', type: 'address' },
-  { name: 'senderNonce', type: 'uint256' },
-  { name: 'gasLimit', type: 'uint256' }
+  { name: 'to', type: 'address' },
+  { name: 'data', type: 'bytes' },
+  { name: 'from', type: 'address' },
+  { name: 'nonce', type: 'uint256' },
+  { name: 'gas', type: 'uint256' }
 ]
 
 // helper function:
@@ -64,7 +64,7 @@ function getRegisterParams (data: EIP712TypedData, genericParams: string, generi
 
 contract('Eip712Forwarder', () => {
   const GENERIC_PARAMS = '_ForwardRequest request'
-  const GENERIC_TYPE = '_ForwardRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit)'
+  const GENERIC_TYPE = '_ForwardRequest(address to,bytes data,address from,uint256 nonce,uint256 gas)'
 
   let fwd: Eip712ForwarderInstance
 
@@ -131,17 +131,17 @@ contract('Eip712Forwarder', () => {
       const dummyDomainSeparator = bytes32(1)
 
       const req = {
-        target: addr(1),
-        encodedFunction: '0x',
-        senderAddress,
-        senderNonce: 0,
-        gasLimit: 123
+        to: addr(1),
+        data: '0x',
+        from: senderAddress,
+        nonce: 0,
+        gas: 123
       }
 
       it('should fail on wrong nonce', async () => {
         await expectRevert(fwd.verify({
           ...req,
-          senderNonce: 123
+          nonce: 123
         }, dummyDomainSeparator, typeHash, '0x', '0x'), 'revert nonce mismatch')
       })
       it('should fail on invalid signature', async () => {
@@ -157,11 +157,11 @@ contract('Eip712Forwarder', () => {
 
       const req = {
         request: {
-          target: addr(1),
-          encodedFunction: '0x',
-          senderAddress,
-          senderNonce: 0,
-          gasLimit: 123
+          to: addr(1),
+          data: '0x',
+          from: senderAddress,
+          nonce: 0,
+          gas: 123
         }
       }
 
@@ -204,20 +204,20 @@ contract('Eip712Forwarder', () => {
         ]
 
         const ForwardRequestType = [
-          { name: 'target', type: 'address' },
-          { name: 'encodedFunction', type: 'bytes' },
-          { name: 'senderAddress', type: 'address' },
-          { name: 'senderNonce', type: 'uint256' },
-          { name: 'gasLimit', type: 'uint256' }
+          { name: 'to', type: 'address' },
+          { name: 'data', type: 'bytes' },
+          { name: 'from', type: 'address' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'gas', type: 'uint256' }
         ]
 
         const extendedReq = {
           request: {
-            target: addr(1),
-            encodedFunction: '0x',
-            senderAddress,
-            senderNonce: 0,
-            gasLimit: 123
+            to: addr(1),
+            data: '0x',
+            from: senderAddress,
+            nonce: 0,
+            gas: 123
           },
           extraAddress: addr(5) // <-- extension
         }
@@ -298,11 +298,11 @@ contract('Eip712Forwarder', () => {
 
       const req1 = {
         request: {
-          target: recipient.address,
-          encodedFunction: func,
-          senderAddress,
-          senderNonce: 0,
-          gasLimit: 1e6
+          to: recipient.address,
+          data: func,
+          from: senderAddress,
+          nonce: 0,
+          gas: 1e6
         }
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
@@ -321,11 +321,11 @@ contract('Eip712Forwarder', () => {
 
       const req1 = {
         request: {
-          target: recipient.address,
-          encodedFunction: func,
-          senderAddress,
-          senderNonce: (await fwd.getNonce(senderAddress)).toString(),
-          gasLimit: 1e6
+          to: recipient.address,
+          data: func,
+          from: senderAddress,
+          nonce: (await fwd.getNonce(senderAddress)).toString(),
+          gas: 1e6
         }
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })

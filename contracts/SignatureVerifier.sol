@@ -59,11 +59,11 @@ contract SignatureVerifier is ISignatureVerifier{
     function hashReq(RelayRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAY_REQUEST_TYPEHASH,
-                    req.request.target,
-                    keccak256(req.request.encodedFunction),
-                    req.request.senderAddress,
-                    req.request.senderNonce,
-                    req.request.gasLimit,
+                    req.request.to,
+                    keccak256(req.request.data),
+                    req.request.from,
+                    req.request.nonce,
+                    req.request.gas,
                     hashGas(req.gasData),
                     hashRel(req.relayData)
             ));
@@ -92,6 +92,6 @@ contract SignatureVerifier is ISignatureVerifier{
                 "\x19\x01", DOMAIN_SEPARATOR,
                 hashReq(req)
             ));
-        return digest.recover(signature) == req.request.senderAddress;
+        return digest.recover(signature) == req.request.from;
     }
 }

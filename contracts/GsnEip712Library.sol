@@ -13,7 +13,7 @@ library GsnEip712Library {
 
     //copied from Eip712Forwarder (can't reference string constants even from another library)
     string public constant GENERIC_PARAMS = "_ForwardRequest request";
-    string public constant GENERIC_TYPE = "_ForwardRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit)";
+    string public constant GENERIC_TYPE = "_ForwardRequest(address to,bytes data,address from,uint256 nonce,uint256 gas)";
     bytes32 public constant GENERIC_TYPEHASH = keccak256(bytes(GENERIC_TYPE));
 
     bytes public constant CALLDATA_TYPE = "GasData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)";
@@ -47,11 +47,11 @@ library GsnEip712Library {
         //should be a struct copy - but ABIv2 struct requires manual field-by-field copy..
         fwd = //req.request;
             IForwarder.ForwardRequest(
-            req.request.target,
-            req.request.encodedFunction,
-            req.request.senderAddress,
-            req.request.senderNonce,
-            req.request.gasLimit);
+            req.request.to,
+            req.request.data,
+            req.request.from,
+            req.request.nonce,
+            req.request.gas);
         suffixData = abi.encode(
             hashGasData(req.gasData),
             hashRelayData(req.relayData));
@@ -72,7 +72,7 @@ library GsnEip712Library {
      * call forwarder.verify()
      */
     function callForwarderVerify(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal view {
-        require( IRelayRecipient(req.request.target).isTrustedForwarder(req.extraData.forwarder), "invalid forwarder for recipient");
+        require( IRelayRecipient(req.request.to).isTrustedForwarder(req.extraData.forwarder), "invalid forwarder for recipient");
         (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
         Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
         forwarder.verify(fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig);

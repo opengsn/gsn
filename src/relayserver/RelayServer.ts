@@ -71,7 +71,6 @@ export interface CreateTransactionDetails extends GsnTransactionDetails {
   gasLimit: PrefixedHexString
   gasPrice: PrefixedHexString
   // todo: encodedFunction defined as "data"
-  encodedFunction: PrefixedHexString
   approvalData: PrefixedHexString
   signature: PrefixedHexString
   senderNonce: IntString
@@ -209,7 +208,7 @@ export class RelayServer extends EventEmitter {
 
   async createRelayTransaction (req: CreateTransactionDetails): Promise<PrefixedHexString> {
     debug('dump request params', arguments[0])
-    ow(req.encodedFunction, ow.string)
+    ow(req.data, ow.string)
     ow(req.approvalData, ow.string)
     ow(req.signature, ow.string)
 
@@ -252,11 +251,11 @@ export class RelayServer extends EventEmitter {
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const relayRequest: RelayRequest = {
       request: {
-        target: req.to,
-        encodedFunction: req.encodedFunction,
-        senderAddress: req.from,
-        senderNonce: req.senderNonce,
-        gasLimit: req.gasLimit
+        to: req.to,
+        data: req.data,
+        from: req.from,
+        nonce: req.senderNonce,
+        gas: req.gasLimit
       },
       gasData: {
         baseRelayFee: req.baseRelayFee,

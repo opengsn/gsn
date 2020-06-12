@@ -215,11 +215,11 @@ export default class RelayClient {
     const gasPrice = parseInt(gasPriceHex, 16).toString()
     const relayRequest: RelayRequest = {
       request: {
-        target: gsnTransactionDetails.to,
-        encodedFunction: gsnTransactionDetails.data,
-        senderAddress: gsnTransactionDetails.from,
-        senderNonce,
-        gasLimit
+        to: gsnTransactionDetails.to,
+        data: gsnTransactionDetails.data,
+        from: gsnTransactionDetails.from,
+        nonce: senderNonce,
+        gas: gasLimit
       },
       gasData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,
@@ -241,8 +241,8 @@ export default class RelayClient {
     //  Must teach server to accept correct types
     const httpRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
-      encodedFunction: gsnTransactionDetails.data,
-      senderNonce: relayRequest.request.senderNonce,
+      data: gsnTransactionDetails.data,
+      senderNonce: relayRequest.request.nonce,
       from: gsnTransactionDetails.from,
       to: gsnTransactionDetails.to,
       pctRelayFee: relayInfo.relayInfo.pctRelayFee,

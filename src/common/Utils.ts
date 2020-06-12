@@ -42,7 +42,7 @@ export async function getEip712Signature (
   methodSuffix = '',
   jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
-  const senderAddress = typedRequestData.message.request.senderAddress
+  const senderAddress = typedRequestData.message.request.from
   let dataToSign: TypedRequestData | string
   if (jsonStringifyRequest) {
     dataToSign = JSON.stringify(typedRequestData)

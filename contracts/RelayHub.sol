@@ -148,7 +148,7 @@ contract RelayHub is IRelayHub {
             gasLimits.acceptRelayedCallGasLimit +
             gasLimits.preRelayedCallGasLimit +
             gasLimits.postRelayedCallGasLimit +
-            relayRequest.request.gasLimit;
+            relayRequest.request.gas;
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
@@ -197,7 +197,7 @@ contract RelayHub is IRelayHub {
     returns (bool paymasterAccepted, string memory revertReason)
     {
         RelayCallData memory vars;
-        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.encodedFunction, 0);
+        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.data, 0);
 
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
@@ -214,11 +214,11 @@ contract RelayHub is IRelayHub {
             canRelay(
                 ISignatureVerifier.RelayRequest(
                     IForwarder.ForwardRequest(
-                    relayRequest.request.target,
-                    relayRequest.request.encodedFunction,
-                    relayRequest.request.senderAddress,
-                    relayRequest.request.senderNonce,
-                    relayRequest.request.gasLimit),
+                    relayRequest.request.to,
+                    relayRequest.request.data,
+                    relayRequest.request.from,
+                    relayRequest.request.nonce,
+                    relayRequest.request.gas),
                     relayRequest.gasData,
                     relayRequest.relayData,
                     relayRequest.extraData),
@@ -229,8 +229,8 @@ contract RelayHub is IRelayHub {
             emit TransactionRejectedByPaymaster(
                 workerToManager[msg.sender],
                 relayRequest.relayData.paymaster,
-                relayRequest.request.senderAddress,
-                relayRequest.request.target,
+                relayRequest.request.from,
+                relayRequest.request.to,
                 msg.sender,
                 vars.functionSelector,
                 revertReason);
@@ -269,8 +269,8 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(
             workerToManager[msg.sender],
             msg.sender,
-            relayRequest.request.senderAddress,
-            relayRequest.request.target,
+            relayRequest.request.from,
+            relayRequest.request.to,
             relayRequest.relayData.paymaster,
             vars.functionSelector,
             vars.status,

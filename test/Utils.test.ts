@@ -51,11 +51,11 @@ contract('Utils', function (accounts) {
 
       relayRequest = {
         request: {
-          target,
-          encodedFunction,
-          senderAddress,
-          senderNonce,
-          gasLimit
+          to: target,
+          data: encodedFunction,
+          from: senderAddress,
+          nonce: senderNonce,
+          gas: gasLimit
         },
         relayData: {
           relayWorker,
@@ -113,7 +113,7 @@ contract('Utils', function (accounts) {
 
     describe('#callForwarderVerifyAndCall', () => {
       it('should return revert result', async function () {
-        relayRequest.request.encodedFunction = await recipient.contract.methods.testRevert().encodeABI()
+        relayRequest.request.data = await recipient.contract.methods.testRevert().encodeABI()
         const sig = await getEip712Signature(
           web3, new TypedRequestData(
             chainId,
@@ -128,7 +128,7 @@ contract('Utils', function (accounts) {
         })
       })
       it('should return revert', async function () {
-        relayRequest.request.encodedFunction = await recipient.contract.methods.emitMessage('hello').encodeABI()
+        relayRequest.request.data = await recipient.contract.methods.emitMessage('hello').encodeABI()
 
         const sig = await getEip712Signature(
           web3, new TypedRequestData(

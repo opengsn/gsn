@@ -13,7 +13,7 @@ contract Eip712Forwarder is IForwarder {
     //all valid requests must start with this prefix.
     // request name is arbitrary, but the parameter block must match exactly these parameters
     string public constant GENERIC_PARAMS = "_ForwardRequest request";
-    string public constant GENERIC_TYPE = "_ForwardRequest(address target,bytes encodedFunction,address senderAddress,uint256 senderNonce,uint256 gasLimit)";
+    string public constant GENERIC_TYPE = "_ForwardRequest(address to,bytes data,address from,uint256 nonce,uint256 gas)";
     bytes32 public constant GENERIC_TYPEHASH = keccak256(bytes(GENERIC_TYPE));
 
     mapping(bytes32 => bool) public typeHashes;
@@ -43,7 +43,7 @@ contract Eip712Forwarder is IForwarder {
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success,) = req.target.call{gas : req.gasLimit}(abi.encodePacked(req.encodedFunction, req.senderAddress));
+        (bool success,) = req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
         if (!success) {
             // solhint-disable-next-line no-inline-assembly
             assembly {// This assembly ensure the revert contains the exact string data
@@ -56,11 +56,11 @@ contract Eip712Forwarder is IForwarder {
 
 
     function _verifyNonce(ForwardRequest memory req) internal view {
-        require(nonces[req.senderAddress] == req.senderNonce, "nonce mismatch");
+        require(nonces[req.from] == req.nonce, "nonce mismatch");
     }
 
     function _updateNonce(ForwardRequest memory req) internal {
-        nonces[req.senderAddress]++;
+        nonces[req.from]++;
     }
 
     //register a requestTypeHash
@@ -121,7 +121,7 @@ contract Eip712Forwarder is IForwarder {
                 "\x19\x01", domainSeparator,
                 keccak256(_getEncoded(req, requestTypeHash, suffixData))
             ));
-        require(digest.recover(sig) == req.senderAddress, "signature mismatch");
+        require(digest.recover(sig) == req.from, "signature mismatch");
     }
 
     function _getEncoded(ForwardRequest memory req,
@@ -136,10 +136,10 @@ contract Eip712Forwarder is IForwarder {
     function hash(ForwardRequest memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 GENERIC_TYPEHASH,
-                req.target,
-                keccak256(req.encodedFunction),
-                req.senderAddress,
-                req.senderNonce,
-                req.gasLimit));
+                req.to,
+                keccak256(req.data),
+                req.from,
+                req.nonce,
+                req.gas));
     }
 }

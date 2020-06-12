@@ -80,11 +80,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     const txData = recipient.contract.methods.emitMessage('').encodeABI()
     const relayRequest: RelayRequest = {
       request: {
-        target: recipient.address,
-        encodedFunction: txData,
-        senderAddress: sender,
-        senderNonce: '0',
-        gasLimit: gasLimit.toString()
+        to: recipient.address,
+        data: txData,
+        from: sender,
+        nonce: '0',
+        gas: gasLimit.toString()
       },
       relayData: {
         relayWorker,
@@ -324,11 +324,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const txData = recipient.contract.methods.emitMessage('').encodeABI()
           const relayRequest: RelayRequest = {
             request: {
-              target: recipient.address,
-              encodedFunction: txData,
-              senderAddress: sender,
-              senderNonce: senderNonce.toString(),
-              gasLimit: gasLimit.toString()
+              to: recipient.address,
+              data: txData,
+              from: sender,
+              nonce: senderNonce.toString(),
+              gas: gasLimit.toString()
             },
             relayData: {
               relayWorker,
@@ -427,11 +427,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       const relayRequest: RelayRequest =
         {
           request: {
-            target: encodedCallArgs.recipient,
-            encodedFunction: encodedCallArgs.data,
-            senderAddress: encodedCallArgs.sender,
-            senderNonce: encodedCallArgs.nonce.toString(),
-            gasLimit: encodedCallArgs.gasLimit.toString()
+            to: encodedCallArgs.recipient,
+            data: encodedCallArgs.data,
+            from: encodedCallArgs.sender,
+            nonce: encodedCallArgs.nonce.toString(),
+            gas: encodedCallArgs.gasLimit.toString()
           },
           relayData: {
             relayWorker,

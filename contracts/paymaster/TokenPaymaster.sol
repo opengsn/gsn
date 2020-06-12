@@ -47,7 +47,7 @@ contract TokenPaymaster is BasePaymaster {
     //return the payer of this request.
     // for account-based target, this is the target account.
     function getPayer(ISignatureVerifier.RelayRequest calldata relayRequest) external pure returns (address) {
-        return relayRequest.request.target;
+        return relayRequest.request.to;
     }
 
     event Received(uint eth);

@@ -80,11 +80,11 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
     relayRequest = {
       request: {
-        target: recipient.address,
-        encodedFunction,
-        senderAddress,
-        senderNonce: senderNonce.toString(),
-        gasLimit: gasLimit.toString()
+        to: recipient.address,
+        data: encodedFunction,
+        from: senderAddress,
+        nonce: senderNonce.toString(),
+        gas: gasLimit.toString()
       },
       relayData: {
         relayWorker,
@@ -190,7 +190,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
       const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
       const relayRequestMisbehaving = cloneRelayRequest(relayRequest)
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
-      relayRequestMisbehaving.request.senderNonce = senderNonce
+      relayRequestMisbehaving.request.nonce = senderNonce
       const dataToSign = new TypedRequestData(
         chainId,
         forwarder,
@@ -265,11 +265,11 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
               const baseRelayFee = '0'
               const relayRequest: RelayRequest = {
                 request: {
-                  target: recipient.address,
-                  encodedFunction,
-                  senderAddress,
-                  senderNonce,
-                  gasLimit: gasLimit.toString()
+                  to: recipient.address,
+                  data: encodedFunction,
+                  from: senderAddress,
+                  nonce: senderNonce,
+                  gas: gasLimit.toString()
                 },
                 relayData: {
                   relayWorker,
