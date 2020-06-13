@@ -16,7 +16,7 @@ import chaiAsPromised from 'chai-as-promised'
 import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
-  ForwarderInstance,
+  Eip712ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
@@ -57,7 +57,7 @@ contract('RelayServer', function (accounts) {
   const pctRelayFee = 11
   const baseRelayFee = 12
   let rhub: RelayHubInstance
-  let forwarder: ForwarderInstance
+  let forwarder: Eip712ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let sr: TestRecipientInstance

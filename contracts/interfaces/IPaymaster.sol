@@ -2,7 +2,7 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "./ISignatureVerifier.sol";
+import "./GsnTypes.sol";
 
 interface IPaymaster {
 
@@ -46,7 +46,7 @@ interface IPaymaster {
      *  @return a context to be passed to preRelayedCall and postRelayedCall.
      */
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -94,7 +94,7 @@ interface IPaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        ISignatureVerifier.RelayData calldata relayData
+        GsnTypes.RelayData calldata relayData
     ) external;
 
     function versionPaymaster() external view returns (string memory);

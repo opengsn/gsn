@@ -4,11 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./interfaces/ISignatureVerifier.sol";
+import "./interfaces/GsnTypes.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
-import "./Eip712Forwarder.sol";
-import "./GsnEip712Library.sol";
+import "./utils/GsnEip712Library.sol";
+import "./forwarder/Eip712Forwarder.sol";
 
 /**
  * Abstract base class to be inherited by a concrete Paymaster
@@ -49,7 +49,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     //call this method from acceptRelayCall, to validate that the trustedForwarder of the
     // recipient is approved by also paymaster, and that the request is verified.
     function _verifySignature(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature
     )
     public

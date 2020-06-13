@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 
-import "../Eip712Forwarder.sol";
+import "../forwarder/Eip712Forwarder.sol";
 
 //TODO: not am interface anymore, but just a container of request type..
-interface ISignatureVerifier{
+interface GsnTypes {
 
     struct RelayData {
         uint256 gasPrice;

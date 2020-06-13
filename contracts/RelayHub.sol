@@ -11,14 +11,14 @@ import "./0x/LibBytesV06.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/GsnUtils.sol";
-import "./interfaces/ISignatureVerifier.sol";
+import "./interfaces/GsnTypes.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
-import "./interfaces/IForwarder.sol";
+import "./forwarder/IForwarder.sol";
 import "./BaseRelayRecipient.sol";
 import "./StakeManager.sol";
 import "./Penalizer.sol";
-import "./GsnEip712Library.sol";
+import "./utils/GsnEip712Library.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -129,7 +129,7 @@ contract RelayHub is IRelayHub {
     }
 
     function canRelay(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGas,
         bytes calldata signature,
         bytes calldata approvalData
@@ -182,7 +182,7 @@ contract RelayHub is IRelayHub {
     }
 
     function relayCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint externalGasLimit
@@ -272,7 +272,7 @@ contract RelayHub is IRelayHub {
     }
 
     function innerRelayCall(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature,
         IPaymaster.GasLimits memory gasLimits,
         uint256 totalInitialGas,
@@ -356,7 +356,7 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gasUsed, ISignatureVerifier.RelayData memory relayData) public override virtual view returns (uint256) {
+    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData memory relayData) public override virtual view returns (uint256) {
         return relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
     }
 

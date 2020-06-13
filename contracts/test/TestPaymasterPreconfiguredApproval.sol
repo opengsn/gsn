@@ -13,7 +13,7 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
     }
 
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature,
         bytes memory approvalData,
         uint256 maxPossibleGas

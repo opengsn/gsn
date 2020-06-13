@@ -5,7 +5,6 @@ pragma solidity ^0.6.2;
 import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
-import "../Forwarder.sol";
 import "../interfaces/IKnowForwarderAddress.sol";
 
 contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {

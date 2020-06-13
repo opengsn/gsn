@@ -11,7 +11,7 @@ import {
   RelayHubInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, ForwarderInstance, PenalizerInstance
+  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, Eip712ForwarderInstance, PenalizerInstance
 } from '../types/truffle-contracts'
 import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
@@ -41,7 +41,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let relayHubInstance: RelayHubInstance
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
-  let forwarderInstance: ForwarderInstance
+  let Eip712ForwarderInstance: Eip712ForwarderInstance
   let target: string
   let paymaster: string
   let forwarder: string
@@ -51,8 +51,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     penalizer = await Penalizer.new()
     relayHubInstance = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
-    forwarderInstance = await Eip712Forwarder.new()
-    forwarder = forwarderInstance.address
+    Eip712ForwarderInstance = await Eip712Forwarder.new()
+    forwarder = Eip712ForwarderInstance.address
     recipientContract = await TestRecipient.new(forwarder)
 
     // register hub's RelayRequest with forwarder, if not already done.
@@ -389,14 +389,14 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
 
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
-          const nonceBefore = await forwarderInstance.getNonce(senderAddress)
+          const nonceBefore = await Eip712ForwarderInstance.getNonce(senderAddress)
 
           const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
             from: relayWorker,
             gas,
             gasPrice
           })
-          const nonceAfter = await forwarderInstance.getNonce(senderAddress)
+          const nonceAfter = await Eip712ForwarderInstance.getNonce(senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {

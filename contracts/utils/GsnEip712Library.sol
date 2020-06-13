@@ -2,9 +2,9 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/ISignatureVerifier.sol";
-import "./interfaces/IRelayRecipient.sol";
-import "./Eip712Forwarder.sol";
+import "../interfaces/GsnTypes.sol";
+import "../interfaces/IRelayRecipient.sol";
+import "../forwarder/Eip712Forwarder.sol";
 
 /**
  * Bridge Library to map GSN RelayRequest into a call of an Eip712Forwarder
@@ -38,7 +38,7 @@ library GsnEip712Library {
 
     //this is the method that maps a GSN RelayRequest into generic ForwardRequest
     // TODO: move the hash function into a library. no need for instance.
-    function splitRequest(ISignatureVerifier.RelayRequest memory req) internal pure
+    function splitRequest(GsnTypes.RelayRequest memory req) internal pure
     returns (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) {
 
         fwd = req.request;
@@ -60,7 +60,7 @@ library GsnEip712Library {
     /**
      * call forwarder.verify()
      */
-    function callForwarderVerify(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal view {
+    function callForwarderVerify(GsnTypes.RelayRequest memory req, bytes memory sig) internal view {
         require( IRelayRecipient(req.request.to).isTrustedForwarder(req.extraData.forwarder), "invalid forwarder for recipient");
         (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
         Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
@@ -72,7 +72,7 @@ library GsnEip712Library {
      * note that we call it with address.call, and return (success,ret): this helper is a library
      * function, and library function can't be wrapped with try/catch... (or called with address.call)
      */
-    function callForwarderVerifyAndCall(ISignatureVerifier.RelayRequest memory req, bytes memory sig) internal returns (bool success, bytes memory ret) {
+    function callForwarderVerifyAndCall(GsnTypes.RelayRequest memory req, bytes memory sig) internal returns (bool success, bytes memory ret) {
         (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
         // Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
         // forwarder.verifyAndCall(fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig);
@@ -109,7 +109,7 @@ library GsnEip712Library {
                 req.verifyingContract));
     }
 
-    function hashRelayData(ISignatureVerifier.RelayData memory req) internal pure returns (bytes32) {
+    function hashRelayData(GsnTypes.RelayData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
                 req.gasPrice,

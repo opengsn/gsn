@@ -3,7 +3,7 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
-import "./interfaces/IForwarder.sol";
+import "./IForwarder.sol";
 
 // a Generic EIP712 forwarder.
 // actual struct has to START with known fields, but may contain other fields

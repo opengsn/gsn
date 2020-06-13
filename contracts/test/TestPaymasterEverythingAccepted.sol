@@ -2,7 +2,7 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IForwarder.sol";
+import "../forwarder/IForwarder.sol";
 import "../BasePaymaster.sol";
 
 contract TestPaymasterEverythingAccepted is BasePaymaster {
@@ -15,7 +15,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
 
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature,
         bytes memory approvalData,
         uint256 maxPossibleGas
@@ -49,7 +49,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        ISignatureVerifier.RelayData calldata relayData
+        GsnTypes.RelayData calldata relayData
     )
     external
     override

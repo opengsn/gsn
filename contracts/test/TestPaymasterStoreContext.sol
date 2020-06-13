@@ -36,7 +36,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
      * This demonstrates how acceptRelayedCall can return 'context' data for reuse in preRelayedCall/postRelayedCall.
      */
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature,
         bytes memory approvalData,
         uint256 maxPossibleGas
@@ -80,7 +80,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        ISignatureVerifier.RelayData calldata relayData
+        GsnTypes.RelayData calldata relayData
     )
     external
     override

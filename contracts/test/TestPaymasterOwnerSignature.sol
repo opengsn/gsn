@@ -13,7 +13,7 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
      * This demonstrates how dapps can provide an off-chain signatures to relayed transactions.
      */
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature,
         bytes memory approvalData,
         uint256 maxPossibleGas

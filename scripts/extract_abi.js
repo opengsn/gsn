@@ -72,7 +72,9 @@ function compileFile (contractFile, c) {
 }
 */
 
-fs.readdirSync(contractsFolderToExtract).forEach(file => {
+let files = fs.readdirSync(contractsFolderToExtract)
+files.push( 'IForwarder.sol')
+files.forEach(file => {
   const c = 'interfaces/' + file.replace(/.sol/, '')
 
   const outNodeFile = outAbiFolder + '/' + c + '.json'
