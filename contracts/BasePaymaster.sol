@@ -20,6 +20,7 @@ import "./GsnEip712Library.sol";
 abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
+    IForwarder internal trustedForwarder;
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
@@ -45,6 +46,16 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         );
     }
 
+    function _verifySignature(
+        ISignatureVerifier.RelayRequest calldata relayRequest,
+        bytes calldata signature
+    )
+    public
+    view
+    {
+        require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        trustedForwarder.verify(relayRequest, signature);
+    }
     /*
      * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
      */
@@ -55,6 +66,10 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
 
     function setRelayHub(IRelayHub hub) public onlyOwner {
         relayHub = hub;
+    }
+
+    function setTrustedForwarder(IForwarder forwarder) public onlyOwner {
+        trustedForwarder = forwarder;
     }
 
     /// check current deposit on relay hub.
@@ -79,5 +94,4 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     function withdrawRelayHubDepositTo(uint amount, address payable target) public onlyOwner {
         relayHub.withdraw(amount, target);
     }
-
 }

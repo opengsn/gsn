@@ -4,7 +4,7 @@
 /* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.6.9;
 pragma experimental ABIEncoderV2;
 
 import "./0x/LibBytesV06.sol";
@@ -43,10 +43,10 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 34835;
+    uint256 constant private GAS_OVERHEAD = 34877;
 
     //gas overhead to calculate gasUseWithoutPost
-    uint256 constant private POST_OVERHEAD = 8688;
+    uint256 constant private POST_OVERHEAD = 8808;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
@@ -76,8 +76,6 @@ contract RelayHub is IRelayHub {
     function getStakeManager() external override view returns(address) {
         return address(stakeManager);
     }
-
-
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
         address relayManager = msg.sender;
@@ -131,10 +129,10 @@ contract RelayHub is IRelayHub {
     }
 
     function canRelay(
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        ISignatureVerifier.RelayRequest calldata relayRequest,
         uint256 initialGas,
-        bytes memory signature,
-        bytes memory approvalData
+        bytes calldata signature,
+        bytes calldata approvalData
     )
     private
     view
@@ -142,7 +140,6 @@ contract RelayHub is IRelayHub {
     {
         gasLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
-
         uint256 maxPossibleGas =
             GAS_OVERHEAD +
             gasLimits.acceptRelayedCallGasLimit +
@@ -165,7 +162,6 @@ contract RelayHub is IRelayHub {
         // for the maximum possible charge.
         require(maxPossibleCharge <= balances[relayRequest.relayData.paymaster],
             "Paymaster balance too low");
-
         bytes memory encodedTx = abi.encodeWithSelector(IPaymaster.acceptRelayedCall.selector,
             relayRequest, signature, approvalData, maxPossibleGas
         );
@@ -177,7 +173,6 @@ contract RelayHub is IRelayHub {
     function registerRequestType(Eip712Forwarder forwarder) public override {
         GsnEip712Library.registerRequestType(forwarder);
     }
-
     struct RelayCallData {
         bool success;
         bytes4 functionSelector;
@@ -198,7 +193,6 @@ contract RelayHub is IRelayHub {
     {
         RelayCallData memory vars;
         vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.data, 0);
-
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
@@ -244,6 +238,7 @@ contract RelayHub is IRelayHub {
         //How much gas to pass down to innerRelayCall. must be lower than the default 63/64
         // actually, min(gasleft*63/64, gasleft-GAS_RESERVE) might be enough.
         uint innerGasLimit = gasleft()*63/64-GAS_RESERVE;
+
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
@@ -327,6 +322,7 @@ contract RelayHub is IRelayHub {
             }
             atomicData.preReturnValue = abi.decode(retData, (bytes32));
         }
+
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
         //TODO try/catch
         (atomicData.relayedCallSuccess,) = GsnEip712Library.callForwarderVerifyAndCall(relayRequest,signature);
