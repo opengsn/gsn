@@ -53,13 +53,13 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        ISignatureVerifier.GasData calldata gasData
+        ISignatureVerifier.RelayData calldata relayData
     )
     external
     override
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, gasData);
+        (context, success, preRetVal, gasUseWithoutPost, relayData);
         emit SampleRecipientPostCallWithValues(gasleft(), gasUseWithoutPost);
     }
 }

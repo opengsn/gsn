@@ -42,12 +42,10 @@ export default class RelayedTransactionValidator {
         from: transactionJsonRequest.from,
         nonce: transactionJsonRequest.senderNonce
       },
-      gasData: {
+      relayData: {
         gasPrice: transactionJsonRequest.gasPrice,
         baseRelayFee: transactionJsonRequest.baseRelayFee,
-        pctRelayFee: transactionJsonRequest.pctRelayFee
-      },
-      relayData: {
+        pctRelayFee: transactionJsonRequest.pctRelayFee,
         relayWorker: transactionJsonRequest.relayWorker,
         paymaster: transactionJsonRequest.paymaster
       },

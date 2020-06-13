@@ -16,18 +16,15 @@ library GsnEip712Library {
     string public constant GENERIC_TYPE = "_ForwardRequest(address to,bytes data,address from,uint256 nonce,uint256 gas)";
     bytes32 public constant GENERIC_TYPEHASH = keccak256(bytes(GENERIC_TYPE));
 
-    bytes public constant CALLDATA_TYPE = "GasData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee)";
-
-    bytes public constant RELAYDATA_TYPE = "RelayData(address relayWorker,address paymaster)";
+    bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)";
 
     string public constant RELAY_REQUEST_NAME = "RelayRequest";
-    string public constant RELAY_REQUEST_PARAMS = "GasData gasData,RelayData relayData";
+    string public constant RELAY_REQUEST_PARAMS = "RelayData relayData";
 
     bytes public constant RELAY_REQUEST_TYPE = abi.encodePacked(
         RELAY_REQUEST_NAME,"(",GENERIC_PARAMS,",", RELAY_REQUEST_PARAMS,")",
-        CALLDATA_TYPE, RELAYDATA_TYPE, GENERIC_TYPE);
+        RELAYDATA_TYPE, GENERIC_TYPE);
 
-    bytes32 public constant CALLDATA_TYPEHASH = keccak256(CALLDATA_TYPE);
     bytes32 public constant RELAYDATA_TYPEHASH = keccak256(RELAYDATA_TYPE);
     bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256(RELAY_REQUEST_TYPE);
 
@@ -35,7 +32,7 @@ library GsnEip712Library {
     // (note that its a public method: anyone can register this GSN version)
     function registerRequestType(Eip712Forwarder forwarder) internal {
         forwarder.registerRequestType(
-            RELAY_REQUEST_NAME, RELAY_REQUEST_PARAMS, string(abi.encodePacked(CALLDATA_TYPE, RELAYDATA_TYPE)), "" );
+            RELAY_REQUEST_NAME, RELAY_REQUEST_PARAMS, string(RELAYDATA_TYPE), "" );
         require(forwarder.isRegisteredTypehash(RELAY_REQUEST_TYPEHASH), "Fatal: registration failed");
     }
 
@@ -44,16 +41,8 @@ library GsnEip712Library {
     function splitRequest(ISignatureVerifier.RelayRequest memory req) internal pure
     returns (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) {
 
-        //should be a struct copy - but ABIv2 struct requires manual field-by-field copy..
-        fwd = //req.request;
-            IForwarder.ForwardRequest(
-            req.request.to,
-            req.request.data,
-            req.request.from,
-            req.request.nonce,
-            req.request.gas);
+        fwd = req.request;
         suffixData = abi.encode(
-            hashGasData(req.gasData),
             hashRelayData(req.relayData));
     }
 
@@ -120,18 +109,12 @@ library GsnEip712Library {
                 req.verifyingContract));
     }
 
-    function hashGasData(ISignatureVerifier.GasData memory req) internal pure returns (bytes32) {
-        return keccak256(abi.encode(
-                CALLDATA_TYPEHASH,
-                req.gasPrice,
-                req.pctRelayFee,
-                req.baseRelayFee
-            ));
-    }
-
     function hashRelayData(ISignatureVerifier.RelayData memory req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
+                req.gasPrice,
+                req.pctRelayFee,
+                req.baseRelayFee,
                 req.relayWorker,
                 req.paymaster
             ));

@@ -1,11 +1,9 @@
-import GasData from './GasData'
 import RelayData from './RelayData'
 import ForwardRequest from './ForwardRequest'
 import ExtraData from './ExtraData'
 
 export default interface RelayRequest {
   request: ForwardRequest
-  gasData: GasData
   relayData: RelayData
   extraData: ExtraData
 }
@@ -19,12 +17,10 @@ export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
       nonce: relayRequest.request.nonce,
       gas: relayRequest.request.gas
     },
-    gasData: {
-      gasPrice: relayRequest.gasData.gasPrice,
-      pctRelayFee: relayRequest.gasData.pctRelayFee,
-      baseRelayFee: relayRequest.gasData.baseRelayFee
-    },
     relayData: {
+      gasPrice: relayRequest.relayData.gasPrice,
+      pctRelayFee: relayRequest.relayData.pctRelayFee,
+      baseRelayFee: relayRequest.relayData.baseRelayFee,
       paymaster: relayRequest.relayData.paymaster,
       relayWorker: relayRequest.relayData.relayWorker
     },

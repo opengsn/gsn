@@ -94,7 +94,7 @@ interface IPaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        ISignatureVerifier.GasData calldata gasData
+        ISignatureVerifier.RelayData calldata relayData
     ) external;
 
     function versionPaymaster() external view returns (string memory);

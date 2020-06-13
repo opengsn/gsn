@@ -178,12 +178,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           nonce: senderNonce,
           gas: gasLimit
         },
-        gasData: {
+        relayData: {
           pctRelayFee,
           baseRelayFee,
-          gasPrice
-        },
-        relayData: {
+          gasPrice,
           relayWorker,
           paymaster
         },
@@ -540,7 +538,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
               gasPrice,
               pctRelayFee,
-              baseRelayFee
+              baseRelayFee,
+              relayWorker,
+              paymaster:paymaster2.address
             })).toNumber()
             await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation
 

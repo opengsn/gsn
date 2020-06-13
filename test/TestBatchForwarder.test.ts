@@ -64,12 +64,10 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         nonce: '1',
         gas: 1e6.toString()
       },
-      gasData: {
+      relayData: {
         pctRelayFee: '1',
         baseRelayFee: '0',
-        gasPrice: await web3.eth.getGasPrice()
-      },
-      relayData: {
+        gasPrice: await web3.eth.getGasPrice(),
         relayWorker: relayWorker,
         paymaster: paymaster.address
       },
@@ -82,7 +80,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.gasData.gasPrice = 1e6.toString()
+      relayRequest.relayData.gasPrice = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
@@ -118,7 +116,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.gasData.gasPrice = 1e6.toString()
+      relayRequest.relayData.gasPrice = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
@@ -145,7 +143,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.gasData.gasPrice = 1e6.toString()
+      relayRequest.relayData.gasPrice = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI()

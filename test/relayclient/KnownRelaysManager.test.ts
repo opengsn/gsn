@@ -114,13 +114,13 @@ contract('KnownRelaysManager', function (
       await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
         from: workerTransactionRelayed,
         gas,
-        gasPrice: txTransactionRelayed.relayRequest.gasData.gasPrice
+        gasPrice: txTransactionRelayed.relayRequest.relayData.gasPrice
       })
       await paymaster.setReturnInvalidErrorCode(true)
       await relayHub.relayCall(txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
         from: workerPaymasterRejected,
         gas,
-        gasPrice: txPaymasterRejected.relayRequest.gasData.gasPrice
+        gasPrice: txPaymasterRejected.relayRequest.relayData.gasPrice
       })
     })
 

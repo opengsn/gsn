@@ -58,13 +58,11 @@ contract('Utils', function (accounts) {
           gas: gasLimit
         },
         relayData: {
-          relayWorker,
-          paymaster
-        },
-        gasData: {
           gasPrice,
           pctRelayFee,
-          baseRelayFee
+          baseRelayFee,
+          relayWorker,
+          paymaster
         },
         extraData: extraDataWithDomain(forwarder, 999)
       }

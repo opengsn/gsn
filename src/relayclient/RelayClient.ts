@@ -221,12 +221,10 @@ export default class RelayClient {
         nonce: senderNonce,
         gas: gasLimit
       },
-      gasData: {
+      relayData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,
         baseRelayFee: relayInfo.relayInfo.baseRelayFee,
-        gasPrice
-      },
-      relayData: {
+        gasPrice,
         paymaster,
         relayWorker
       },

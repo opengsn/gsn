@@ -87,13 +87,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         gas: gasLimit.toString()
       },
       relayData: {
-        relayWorker,
-        paymaster: paymaster.address
-      },
-      gasData: {
         gasPrice: gasPrice.toString(),
         baseRelayFee: '300',
-        pctRelayFee: '10'
+        pctRelayFee: '10',
+        relayWorker,
+        paymaster: paymaster.address
       },
       extraData: extraDataWithDomain(forwarder, chainId)
     }
@@ -331,13 +329,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
               gas: gasLimit.toString()
             },
             relayData: {
-              relayWorker,
-              paymaster: paymaster.address
-            },
-            gasData: {
               gasPrice: gasPrice.toString(),
               baseRelayFee: baseFee.toString(),
-              pctRelayFee: fee.toString()
+              pctRelayFee: fee.toString(),
+              relayWorker,
+              paymaster: paymaster.address
             },
             extraData: extraDataWithDomain(constants.ZERO_ADDRESS, 1)
           }
@@ -434,13 +430,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             gas: encodedCallArgs.gasLimit.toString()
           },
           relayData: {
-            relayWorker,
-            paymaster: encodedCallArgs.paymaster
-          },
-          gasData: {
             baseRelayFee: encodedCallArgs.baseFee.toString(),
             pctRelayFee: encodedCallArgs.fee.toString(),
-            gasPrice: encodedCallArgs.gasPrice.toString()
+            gasPrice: encodedCallArgs.gasPrice.toString(),
+            relayWorker,
+            paymaster: encodedCallArgs.paymaster
           },
           extraData: extraDataWithDomain(forwarder, chainId)
         }

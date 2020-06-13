@@ -50,13 +50,11 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       gas: '10000'
     },
     relayData: {
-      paymaster,
-      relayWorker
-    },
-    gasData: {
       pctRelayFee: '1',
       baseRelayFee: '1',
-      gasPrice: '1'
+      gasPrice: '1',
+      paymaster,
+      relayWorker
     },
     extraData: extraDataWithDomain(testRecipientForwarderAddress, defaultEnvironment.chainId)
   }

@@ -12,13 +12,11 @@ const EIP712DomainType = [
   { name: 'verifyingContract', type: 'address' }
 ]
 
-const GasDataType = [
-  { name: 'gasPrice', type: 'uint256' },
-  { name: 'pctRelayFee', type: 'uint256' },
-  { name: 'baseRelayFee', type: 'uint256' }
-]
 
 const RelayDataType = [
+  { name: 'gasPrice', type: 'uint256' },
+  { name: 'pctRelayFee', type: 'uint256' },
+  { name: 'baseRelayFee', type: 'uint256' },
   { name: 'relayWorker', type: 'address' },
   { name: 'paymaster', type: 'address' }
 ]
@@ -33,14 +31,12 @@ const ForwardRequestType = [
 
 const RelayRequestType = [
   { name: 'request', type: '_ForwardRequest' },
-  { name: 'gasData', type: 'GasData' },
   { name: 'relayData', type: 'RelayData' }
 ]
 
 interface Types extends EIP712Types {
   EIP712Domain: EIP712TypeProperty[]
   RelayRequest: EIP712TypeProperty[]
-  GasData: EIP712TypeProperty[]
   RelayData: EIP712TypeProperty[]
   _ForwardRequest: EIP712TypeProperty[]
 }
@@ -71,7 +67,6 @@ export default class TypedRequestData implements EIP712TypedData {
     this.types = {
       EIP712Domain: EIP712DomainType,
       RelayRequest: RelayRequestType,
-      GasData: GasDataType,
       RelayData: RelayDataType,
       _ForwardRequest: ForwardRequestType
     }

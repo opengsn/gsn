@@ -49,14 +49,14 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        ISignatureVerifier.GasData calldata gasData
+        ISignatureVerifier.RelayData calldata relayData
     )
     external
     override
     virtual
     relayHubOnly
     {
-        (context, gasUseWithoutPost, gasData);
+        (context, gasUseWithoutPost, relayData);
         emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
     }
 

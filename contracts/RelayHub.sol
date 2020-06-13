@@ -155,7 +155,7 @@ contract RelayHub is IRelayHub {
 
         uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
-            relayRequest.gasData
+            relayRequest.relayData
         );
 
         // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
@@ -200,7 +200,7 @@ contract RelayHub is IRelayHub {
             stakeManager.isRelayManagerStaked(workerToManager[msg.sender], MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
             "relay manager not staked"
         );
-        require(relayRequest.gasData.gasPrice <= tx.gasprice, "Invalid gas price");
+        require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         // We now verify that the paymaster will agree to be charged for the transaction.
@@ -243,7 +243,7 @@ contract RelayHub is IRelayHub {
     {
         // We now perform the actual charge calculation, based on the measured gas used
         uint256 gasUsed = (externalGasLimit - gasleft()) + GAS_OVERHEAD;
-        uint256 charge = calculateCharge(gasUsed, relayRequest.gasData);
+        uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         // We've already checked that the paymaster has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
@@ -326,7 +326,7 @@ contract RelayHub is IRelayHub {
             atomicData.relayedCallSuccess,
             atomicData.preReturnValue,
             totalInitialGas - gasleft(), /*gasUseWithoutPost*/
-            relayRequest.gasData
+            relayRequest.relayData
         );
 
         (bool successPost,) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(atomicData.data);
@@ -356,8 +356,8 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gasUsed, ISignatureVerifier.GasData memory gasData) public override virtual view returns (uint256) {
-        return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
+    function calculateCharge(uint256 gasUsed, ISignatureVerifier.RelayData memory relayData) public override virtual view returns (uint256) {
+        return relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
     }
 
     modifier penalizerOnly () {

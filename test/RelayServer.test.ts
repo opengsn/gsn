@@ -237,7 +237,7 @@ contract('RelayServer', function (accounts) {
     const signedTx = await relayServer.createRelayTransaction(
       {
         senderNonce: relayRequest.request.nonce,
-        gasPrice: relayRequest.gasData.gasPrice,
+        gasPrice: relayRequest.relayData.gasPrice,
         data: relayRequest.request.data,
         approvalData,
         signature,
@@ -246,8 +246,8 @@ contract('RelayServer', function (accounts) {
         paymaster: relayRequest.relayData.paymaster,
         gasLimit: relayRequest.request.gas,
         relayMaxNonce,
-        baseRelayFee: relayRequest.gasData.baseRelayFee,
-        pctRelayFee: relayRequest.gasData.pctRelayFee,
+        baseRelayFee: relayRequest.relayData.baseRelayFee,
+        pctRelayFee: relayRequest.relayData.pctRelayFee,
         relayHubAddress: rhub.address,
         forwarder: relayRequest.extraData.forwarder,
         ...overrideArgs

@@ -183,7 +183,7 @@ export default class ContractInteractor {
       )
         .call({
           from: relayRequest.relayData.relayWorker,
-          gasPrice: relayRequest.gasData.gasPrice,
+          gasPrice: relayRequest.relayData.gasPrice,
           gas: externalGasLimit
         })
       if (this.config.verbose) {

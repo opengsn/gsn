@@ -71,13 +71,11 @@ contract('AccountManager', function (accounts) {
         gas: '1'
       },
       relayData: {
-        relayWorker: constants.ZERO_ADDRESS,
-        paymaster: constants.ZERO_ADDRESS
-      },
-      gasData: {
         pctRelayFee: '1',
         baseRelayFee: '1',
-        gasPrice: '1'
+        gasPrice: '1',
+        relayWorker: constants.ZERO_ADDRESS,
+        paymaster: constants.ZERO_ADDRESS
       },
       extraData: extraDataWithDomain(constants.ZERO_ADDRESS, 1)
     }

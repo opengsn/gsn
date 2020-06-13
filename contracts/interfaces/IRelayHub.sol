@@ -144,7 +144,7 @@ interface IRelayHub {
     /// The fee is expressed as a base fee in wei plus percentage on actual charge.
     /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
     /// charged for 1.4 times the spent amount.
-    function calculateCharge(uint256 gasUsed, ISignatureVerifier.GasData calldata gasData) external view returns (uint256);
+    function calculateCharge(uint256 gasUsed, ISignatureVerifier.RelayData calldata relayData) external view returns (uint256);
 
     function versionHub() external view returns (string memory);
 

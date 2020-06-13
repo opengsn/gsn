@@ -87,13 +87,11 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
         gas: gasLimit.toString()
       },
       relayData: {
-        relayWorker,
-        paymaster: paymaster.address
-      },
-      gasData: {
         baseRelayFee: baseFee.toString(),
         pctRelayFee: fee.toString(),
-        gasPrice: gasPrice.toString()
+        gasPrice: gasPrice.toString(),
+        relayWorker,
+        paymaster: paymaster.address
       },
       extraData: extraDataWithDomain(forwarder, chainId)
 
@@ -115,13 +113,15 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
       const gasPrice = 1e9
       const baseRelayFee = 1000000
       const pctRelayFee = 10
-      const fee = {
+      const relayData = {
         pctRelayFee,
         baseRelayFee,
         gasPrice,
-        gasLimit: 0
+        gasLimit: 0,
+        relayWorker,
+        paymaster: paymaster.address
       }
-      const charge = await relayHub.calculateCharge(gasUsed.toString(), fee)
+      const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData)
       const expectedCharge = baseRelayFee + gasUsed * gasPrice * (pctRelayFee + 100) / 100
       assert.equal(charge.toString(), expectedCharge.toString())
     })
@@ -160,7 +160,9 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
       const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', 0, {
         gasPrice,
         pctRelayFee: 0,
-        baseRelayFee: 0
+        baseRelayFee: 0,
+        relayWorker,
+        paymaster:paymaster.address
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
@@ -272,13 +274,11 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
                   gas: gasLimit.toString()
                 },
                 relayData: {
-                  relayWorker,
-                  paymaster: paymaster.address
-                },
-                gasData: {
                   baseRelayFee,
                   pctRelayFee,
-                  gasPrice: gasPrice.toString()
+                  gasPrice: gasPrice.toString(),
+                  relayWorker,
+                  paymaster: paymaster.address
                 },
                 extraData: extraDataWithDomain(forwarder, chainId)
               }

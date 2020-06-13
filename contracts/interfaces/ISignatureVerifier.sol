@@ -6,13 +6,10 @@ import "../Eip712Forwarder.sol";
 //TODO: not am interface anymore, but just a container of request type..
 interface ISignatureVerifier{
 
-    struct GasData {
+    struct RelayData {
         uint256 gasPrice;
         uint256 pctRelayFee;
         uint256 baseRelayFee;
-    }
-
-    struct RelayData {
         address relayWorker;
         address paymaster;
     }
@@ -25,7 +22,6 @@ interface ISignatureVerifier{
     //note: must start with the ForwardRequest to be an extension of the generic forwarder
     struct RelayRequest {
         IForwarder.ForwardRequest request;
-        GasData gasData;
         RelayData relayData;
         // extra request data, not part of the signed struct
         ExtraData extraData;
