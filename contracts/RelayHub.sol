@@ -205,17 +205,7 @@ contract RelayHub is IRelayHub {
 
         // We now verify that the paymaster will agree to be charged for the transaction.
         (vars.success, vars.recipientContext, vars.gasLimits) =
-            canRelay(
-                ISignatureVerifier.RelayRequest(
-                    IForwarder.ForwardRequest(
-                    relayRequest.request.to,
-                    relayRequest.request.data,
-                    relayRequest.request.from,
-                    relayRequest.request.nonce,
-                    relayRequest.request.gas),
-                    relayRequest.gasData,
-                    relayRequest.relayData,
-                    relayRequest.extraData),
+            canRelay(relayRequest,
                     externalGasLimit, signature, approvalData);
 
         if (!vars.success) {
