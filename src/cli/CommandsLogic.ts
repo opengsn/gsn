@@ -1,8 +1,8 @@
 import Web3 from 'web3'
-import { Contract } from 'web3-eth-contract'
+import { Contract, SendOptions } from 'web3-eth-contract'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import BN from 'bn.js'
-import { ether } from '@openzeppelin/test-helpers'
+import { constants, ether } from '@openzeppelin/test-helpers'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { merge } from 'lodash'
 
@@ -20,6 +20,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
+import { IPaymasterInstance } from '../../types/truffle-contracts'
 
 interface RegisterOptions {
   from: Address
@@ -34,7 +35,7 @@ export interface DeploymentResult {
   stakeManagerAddress: Address
   penalizerAddress: Address
   forwarderAddress: Address
-  paymasterAddress: Address
+  naivePaymasterAddress: Address
 }
 
 interface RegistrationResult {
@@ -203,8 +204,8 @@ export default class CommandsLogic {
     return new this.web3.eth.Contract(file.abi, undefined, { data: file.bytecode })
   }
 
-  async deployGsnContracts (from: Address, gasPrice?: string, paymaster?: any, paymasterConstructorArgs?: any[], noSetTrustedForwarder?: boolean, gasLimit?: number): Promise<DeploymentResult> {
-    const options = {
+  async deployGsnContracts (from: Address, deployPaymaster: boolean = true, gasPrice?: string, gasLimit?: number): Promise<DeploymentResult> {
+    const options: SendOptions = {
       from,
       gas: gasLimit ?? 3e6,
       gasPrice: gasPrice ?? (1e9).toString()
@@ -214,30 +215,20 @@ export default class CommandsLogic {
       await this.contract(StakeManager).deploy({}).send(options)
     const pInstance =
       await this.contract(Penalizer).deploy({}).send(options)
-    const pmInstance =
-      await this.contract(paymaster ?? Paymaster).deploy({ arguments: paymasterConstructorArgs }).send(options)
     const fInstance =
       await this.contract(Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
     const rInstance = await this.contract(RelayHub).deploy({
       arguments: [sInstance.options.address, pInstance.options.address]
     }).send(merge(options, { gas: 5e6 }))
 
-    await pmInstance.methods.setRelayHub(rInstance.options.address).send({
-      from,
-      gas: 1e6,
-      gasPrice: 1e9
-    })
+    let paymasterAddress = constants.ZERO_ADDRESS
+    if (deployPaymaster) {
+      const pmInstance = await this.deployPaymaster(options, rInstance.options.address, from, fInstance)
+      paymasterAddress = pmInstance.options.address
 
-    if (noSetTrustedForwarder !== true) {
-      await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send({
-        from,
-        gas: 1e6,
-        gasPrice: 1e9
-      })
+      // Overriding saved configuration with newly deployed instances
+      this.config.paymasterAddress = paymasterAddress
     }
-
-    // Overriding saved configuration with newly deployed instances
-    this.config.paymasterAddress = pmInstance.options.address
     this.config.stakeManagerAddress = sInstance.options.address
     this.config.relayHubAddress = rInstance.options.address
 
@@ -246,7 +237,14 @@ export default class CommandsLogic {
       stakeManagerAddress: sInstance.options.address,
       penalizerAddress: pInstance.options.address,
       forwarderAddress: fInstance.options.address,
-      paymasterAddress: pmInstance.options.address
+      naivePaymasterAddress: paymasterAddress
     }
+  }
+
+  async deployPaymaster (options: SendOptions, hub: Address, from: string, fInstance: Contract): Promise<Contract> {
+    const pmInstance = await this.contract(Paymaster).deploy({}).send(options)
+    await pmInstance.methods.setRelayHub(hub).send(options)
+    await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send(options)
+    return pmInstance
   }
 }

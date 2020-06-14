@@ -46,7 +46,7 @@ contract('GsnTestEnvironment', function () {
         from: sender,
         to: sr.address,
         forwarder: await sr.getTrustedForwarder(),
-        paymaster: testEnvironment.deploymentResult.paymasterAddress,
+        paymaster: testEnvironment.deploymentResult.naivePaymasterAddress,
         gas: '0x' + 1e6.toString(16),
         data: sr.contract.methods.emitMessage('hello').encodeABI()
       })
@@ -71,7 +71,7 @@ contract('GsnTestEnvironment', function () {
     it('should send relayed transaction through RelayProvider', async () => {
       const txDetails = {
         from: sender,
-        paymaster: testEnvironment.deploymentResult.paymasterAddress,
+        paymaster: testEnvironment.deploymentResult.naivePaymasterAddress,
         forwarder: await sr.getTrustedForwarder()
       }
       const ret = await sr.emitMessage('hello', txDetails)

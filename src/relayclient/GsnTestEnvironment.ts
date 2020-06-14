@@ -26,11 +26,10 @@ class GsnTestEnvironmentClass {
   /**
    *
    * @param host:
-   * @param paymaster compile with truffle and pass `require('Paymaster.sjon')` here to deploy custom Paymaster for GSN
-   * @param paymasterConstructorArgs - constructor parameters to be passed to the Paymaster's constructor
+   * @param deployPaymaster - whether to deploy the naive paymaster instance for tests
    * @return
    */
-  async startGsn (host?: string, paymaster?: any, paymasterConstructorArgs?: any[]): Promise<TestEnvironment> {
+  async startGsn (host?: string, deployPaymaster: boolean = true): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     console.log('_host=', _host)
@@ -43,9 +42,11 @@ class GsnTestEnvironmentClass {
     if (from == null) {
       throw new Error('could not get unlocked account with sufficient balance')
     }
-    const deploymentResult = await commandsLogic.deployGsnContracts(from, undefined, paymaster, paymasterConstructorArgs)
-    const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
-    console.log('Sample Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
+    const deploymentResult = await commandsLogic.deployGsnContracts(from, deployPaymaster)
+    if (deployPaymaster) {
+      const balance = await commandsLogic.fundPaymaster(from, deploymentResult.naivePaymasterAddress, ether('1'))
+      console.log('Naive Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
+    }
 
     const port = await this._resolveAvailablePort()
     const relayUrl = 'http://127.0.0.1:' + port.toString()
@@ -73,7 +74,7 @@ class GsnTestEnvironmentClass {
     const config = configureGSN({
       relayHubAddress: deploymentResult.relayHubAddress,
       stakeManagerAddress: deploymentResult.stakeManagerAddress,
-      paymasterAddress: deploymentResult.paymasterAddress,
+      paymasterAddress: deploymentResult.naivePaymasterAddress,
       preferredRelays: [relayUrl]
     })
 
