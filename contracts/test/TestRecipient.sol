@@ -39,14 +39,14 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin);
+    event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 value);
 
-    function emitMessage(string memory message) public {
+    function emitMessage(string memory message) public payable {
         if (paymaster != address(0)) {
             withdrawAllBalance();
         }
 
-        emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin);
+        emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin, address(this).balance);
     }
 
     function withdrawAllBalance() public {
@@ -57,6 +57,6 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     function dontEmitMessage(string memory message) public {}
 
     function emitMessageNoParams() public {
-        emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin);
+        emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, address(this).balance);
     }
 }

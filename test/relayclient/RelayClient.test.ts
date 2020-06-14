@@ -118,7 +118,7 @@ contract('RelayClient', function (accounts) {
       const res = await web3.eth.getTransactionReceipt(txHash)
 
       // validate we've got the "SampleRecipientEmitted" event
-      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address)') ?? ''
+      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256)') ?? ''
       assert(res.logs.find(log => log.topics.includes(topic)))
 
       const destination: string = validTransaction.to.toString('hex')

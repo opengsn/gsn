@@ -35,9 +35,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 907,
-    pre: 1486,
-    post: 1613
+    arc: 907+21,
+    pre: 1486+66,
+    post: 1613-22
   }
 
   let relayHub: RelayHubInstance
@@ -85,6 +85,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         data: encodedFunction,
         from: senderAddress,
         nonce: senderNonce.toString(),
+        value: '0',
         gas: gasLimit.toString()
       },
       relayData: {
@@ -95,6 +96,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         forwarder,
         paymaster: paymaster.address
       }
+
     }
     const dataToSign = new TypedRequestData(
       chainId,
@@ -273,6 +275,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   data: encodedFunction,
                   from: senderAddress,
                   nonce: senderNonce,
+                  value: '0',
                   gas: gasLimit.toString()
                 },
                 relayData: {

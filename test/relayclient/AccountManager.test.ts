@@ -67,6 +67,7 @@ contract('AccountManager', function (accounts) {
         data: '0x123',
         from: '',
         nonce: '1',
+        value: '0',
         gas: '1'
       },
       relayData: {

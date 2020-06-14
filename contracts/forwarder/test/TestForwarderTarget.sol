@@ -22,6 +22,10 @@ contract TestForwarderTarget is BaseRelayRecipient {
         emit TestForwarderMessage(message, _msgSender(), msg.sender, tx.origin);
     }
 
+    function mustReceiveEth(uint value) public payable {
+        require( msg.value == value, "didn't receive value");
+    }
+
     event Reverting(string message);
 
     function testRevert() public {

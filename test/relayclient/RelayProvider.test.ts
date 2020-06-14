@@ -46,6 +46,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       data: testRecipient.contract.methods.emitMessage('hello world').encodeABI(),
       from: account,
       nonce: senderNonce,
+      value: '0',
       gas: '10000'
     },
     relayData: {
