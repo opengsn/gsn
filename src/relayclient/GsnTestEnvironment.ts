@@ -26,11 +26,11 @@ class GsnTestEnvironmentClass {
   /**
    *
    * @param host:
-   * @param paymaster TODO: will allow using custom paymaster (need to provide ABI file contents)
-   * @param args
+   * @param paymaster compile with truffle and pass `require('Paymaster.sjon')` here to deploy custom Paymaster for GSN
+   * @param paymasterConstructorArgs - constructor parameters to be passed to the Paymaster's constructor
    * @return
    */
-  async startGsn (host?: string, paymaster?: any, args?: any[]): Promise<TestEnvironment> {
+  async startGsn (host?: string, paymaster?: any, paymasterConstructorArgs?: any[]): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     console.log('_host=', _host)
@@ -43,7 +43,7 @@ class GsnTestEnvironmentClass {
     if (from == null) {
       throw new Error('could not get unlocked account with sufficient balance')
     }
-    const deploymentResult = await commandsLogic.deployGsnContracts(from, undefined, paymaster, args)
+    const deploymentResult = await commandsLogic.deployGsnContracts(from, undefined, paymaster, paymasterConstructorArgs)
     const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
     console.log('Sample Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
 
