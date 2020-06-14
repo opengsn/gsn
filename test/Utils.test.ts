@@ -60,6 +60,7 @@ contract('Utils', function (accounts) {
           data: encodedFunction,
           from: senderAddress,
           nonce: senderNonce,
+          value: '0',
           gas: gasLimit
         },
         relayData: {
@@ -101,6 +102,7 @@ contract('Utils', function (accounts) {
     })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
+
       assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 

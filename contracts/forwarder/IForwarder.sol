@@ -7,6 +7,7 @@ interface IForwarder {
     struct ForwardRequest {
         address to;
         bytes data;
+        uint256 value;
         address from;
         uint256 nonce;
         uint256 gas;
@@ -49,7 +50,7 @@ interface IForwarder {
         bytes calldata suffixData,
         bytes calldata signature
     )
-    external
+    external payable
     returns (bool success, bytes memory ret);
 
     /**

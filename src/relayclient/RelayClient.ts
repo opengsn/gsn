@@ -217,6 +217,7 @@ export default class RelayClient {
         to: gsnTransactionDetails.to,
         data: gsnTransactionDetails.data,
         from: gsnTransactionDetails.from,
+        value: '0',
         nonce: senderNonce,
         gas: gasLimit
       },

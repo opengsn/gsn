@@ -12,7 +12,7 @@ import "../forwarder/Eip712Forwarder.sol";
 library GsnEip712Library {
 
     //copied from Eip712Forwarder (can't reference string constants even from another library)
-    string public constant GENERIC_PARAMS = "address to,bytes data,address from,uint256 nonce,uint256 gas";
+    string public constant GENERIC_PARAMS = "address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas";
 
     bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)";
 
@@ -49,6 +49,7 @@ library GsnEip712Library {
         forwardRequest = IForwarder.ForwardRequest(
             req.request.to,
             req.request.data,
+            req.request.value,
             req.request.from,
             req.request.nonce,
             req.request.gas
@@ -71,7 +72,7 @@ library GsnEip712Library {
     function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
         (Eip712Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        Eip712Forwarder forwarder = Eip712Forwarder(relayRequest.relayData.forwarder);
+        Eip712Forwarder forwarder = Eip712Forwarder(payable(relayRequest.relayData.forwarder));
         forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 

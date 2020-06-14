@@ -6,7 +6,7 @@ import {
 // @ts-ignore
 import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
-import { expectRevert } from '@openzeppelin/test-helpers'
+import {ether, expectRevert} from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
 import Web3 from 'web3'
 
@@ -40,11 +40,12 @@ const EIP712DomainType = [
 ]
 
 const ForwardRequestType = [
-  { name: 'to', type: 'address' },
-  { name: 'data', type: 'bytes' },
-  { name: 'from', type: 'address' },
-  { name: 'nonce', type: 'uint256' },
-  { name: 'gas', type: 'uint256' }
+  {name: 'to', type: 'address'},
+  {name: 'data', type: 'bytes'},
+  {name: 'value', type: 'uint256'},
+  {name: 'from', type: 'address'},
+  {name: 'nonce', type: 'uint256'},
+  {name: 'gas', type: 'uint256'}
 ]
 
 // helper function:
@@ -66,10 +67,10 @@ function getRegisterParams (data: EIP712TypedData, genericParams: string): Regis
   return { typeName, typeSuffix }
 }
 
-contract('Eip712Forwarder', () => {
-  const GENERIC_PARAMS = 'address to,bytes data,address from,uint256 nonce,uint256 gas'
-  // our generic params has 5 bytes32 values
-  const count_params = 5
+contract('Eip712Forwarder', ([from]) => {
+  const GENERIC_PARAMS = 'address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas'
+  // our generic params has 6 bytes32 values
+  const count_params = 6
 
   let fwd: Eip712ForwarderInstance
 
@@ -132,6 +133,7 @@ contract('Eip712Forwarder', () => {
         to: addr(1),
         data: '0x',
         from: senderAddress,
+        value: '0',
         nonce: 0,
         gas: 123
       }
@@ -153,6 +155,7 @@ contract('Eip712Forwarder', () => {
       const req = {
         to: addr(1),
         data: '0x',
+        value: '0',
         from: senderAddress,
         nonce: 0,
         gas: 123
@@ -161,7 +164,6 @@ contract('Eip712Forwarder', () => {
       let data: EIP712TypedData
 
       before(() => {
-
         data = {
           domain: {
             name: 'Test Domain',
@@ -202,6 +204,7 @@ contract('Eip712Forwarder', () => {
         const extendedReq = {
           to: addr(1),
           data: '0x',
+          value: '0',
           from: senderAddress,
           nonce: 0,
           gas: 123,
@@ -287,6 +290,7 @@ contract('Eip712Forwarder', () => {
       const req1 = {
         to: recipient.address,
         data: func,
+        value: '0',
         from: senderAddress,
         nonce: 0,
         gas: 1e6
@@ -310,6 +314,7 @@ contract('Eip712Forwarder', () => {
       const req1 = {
         to: recipient.address,
         data: func,
+        value: '0',
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
         gas: 1e6
@@ -327,6 +332,7 @@ contract('Eip712Forwarder', () => {
       const req1 = {
         to: recipient.address,
         data: func,
+        value: 0,
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
         gas: 1e6
@@ -339,6 +345,102 @@ contract('Eip712Forwarder', () => {
       assert.equal(ret.logs[0].args.success, false)
 
       await expectRevert(testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
+    })
+
+    describe('value transfer', () => {
+      let recipient: TestForwarderTargetInstance
+
+      beforeEach(async () => {
+        recipient = await TestForwarderTarget.new(fwd.address)
+      })
+      afterEach('should not leave funds in the forwarder', async () => {
+        assert.equal(await web3.eth.getBalance(fwd.address), '0')
+      })
+
+      it('should fail to forward request if value specified but not provided', async () => {
+        const value = ether('1')
+        const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
+
+        const req1 = {
+          to: recipient.address,
+          data: func,
+          from: senderAddress,
+          nonce: (await fwd.getNonce(senderAddress)).toString(),
+          value: value.toString(),
+          gas: 1e6
+        }
+        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+
+        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
+        assert.equal(ret.logs[0].args.success, false)
+      })
+
+      it.skip('should fail to forward request if value specified but not enough not provided', async () => {
+        const value = ether('1')
+        const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
+
+        const req1 = {
+          to: recipient.address,
+          data: func,
+          from: senderAddress,
+          nonce: (await fwd.getNonce(senderAddress)).toString(),
+          value: ether('2').toString(),
+          gas: 1e6
+        }
+        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+
+        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { value })
+        assert.equal(ret.logs[0].args.success, false)
+      })
+
+      it('should forward request with value', async () => {
+        const value = ether('1')
+        const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
+
+        // value = ether('0');
+        const req1 = {
+          to: recipient.address,
+          data: func,
+          from: senderAddress,
+          nonce: (await fwd.getNonce(senderAddress)).toString(),
+          value: value.toString(),
+          gas: 1e6
+        }
+        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+
+        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { value })
+        assert.equal(ret.logs[0].args.error, '')
+        assert.equal(ret.logs[0].args.success, true)
+
+        assert.equal(await web3.eth.getBalance(recipient.address), value.toString())
+      })
+
+      it('should forward all funds left in forwarder to "from" address', async () => {
+        const value = ether('1')
+        const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
+
+        // value = ether('0');
+        const req1 = {
+          to: recipient.address,
+          data: func,
+          from: senderAddress,
+          nonce: (await fwd.getNonce(senderAddress)).toString(),
+          value: value.toString(),
+          gas: 1e6
+        }
+
+        const extraFunds = ether('4')
+        await web3.eth.sendTransaction({ from, to: fwd.address, value: extraFunds })
+
+        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+
+        // note: not transfering value in TX.
+        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
+        assert.equal(ret.logs[0].args.error, '')
+        assert.equal(ret.logs[0].args.success, true)
+
+        assert.equal(await web3.eth.getBalance(senderAddress), extraFunds.sub(value).toString())
+      })
     })
   })
 })

@@ -39,7 +39,8 @@ export default class RelayedTransactionValidator {
         data: transactionJsonRequest.data,
         gas: transactionJsonRequest.gasLimit,
         from: transactionJsonRequest.from,
-        nonce: transactionJsonRequest.senderNonce
+        nonce: transactionJsonRequest.senderNonce,
+        value: '0'
       },
       relayData: {
         gasPrice: transactionJsonRequest.gasPrice,
