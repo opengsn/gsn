@@ -27,6 +27,7 @@ class GsnTestEnvironmentClass {
    *
    * @param host:
    * @param paymaster TODO: will allow using custom paymaster (need to provide ABI file contents)
+   * @param args
    * @return
    */
   async startGsn (host?: string, paymaster?: any, args?: any[]): Promise<TestEnvironment> {

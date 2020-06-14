@@ -203,10 +203,10 @@ export default class CommandsLogic {
     return new this.web3.eth.Contract(file.abi, undefined, { data: file.bytecode })
   }
 
-  async deployGsnContracts (from: Address, gasPrice?: string, paymaster?: any, args?: any[], noSetTrustedForwarder?: boolean): Promise<DeploymentResult> {
+  async deployGsnContracts (from: Address, gasPrice?: string, paymaster?: any, paymasterConstructorArgs?: any[], noSetTrustedForwarder?: boolean, gasLimit?: number): Promise<DeploymentResult> {
     const options = {
       from,
-      gas: 9e7,
+      gas: gasLimit ?? 3e6,
       gasPrice: gasPrice ?? (1e9).toString()
     }
 
@@ -215,7 +215,7 @@ export default class CommandsLogic {
     const pInstance =
       await this.contract(Penalizer).deploy({}).send(options)
     const pmInstance =
-      await this.contract(paymaster ?? Paymaster).deploy({arguments: args}).send(options)
+      await this.contract(paymaster ?? Paymaster).deploy({ arguments: paymasterConstructorArgs }).send(options)
     const fInstance =
       await this.contract(Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
     const rInstance = await this.contract(RelayHub).deploy({
@@ -228,7 +228,7 @@ export default class CommandsLogic {
       gasPrice: 1e9
     })
 
-    if (noSetTrustedForwarder !== true){
+    if (noSetTrustedForwarder !== true) {
       await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send({
         from,
         gas: 1e6,
