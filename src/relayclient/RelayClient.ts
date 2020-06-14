@@ -268,9 +268,16 @@ export default class RelayClient {
   async resolveForwarder (gsnTransactionDetails: GsnTransactionDetails): Promise<Address> {
     let forwarderAddress = gsnTransactionDetails.forwarder ?? this.config.forwarderAddress
     if (forwarderAddress !== constants.ZERO_ADDRESS) {
-      const isTrusted = await this.contractInteractor.isTrustedForwarder(gsnTransactionDetails.to, forwarderAddress)
-      if (!isTrusted) {
-        throw new Error('The Forwarder address configured but is not trusted by the Recipient contract')
+      const recipientCode = await web3.eth.getCode(gsnTransactionDetails.to)
+      const isRecipientDeployed = recipientCode != '0x'
+      if (!isRecipientDeployed){
+        console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
+        Unless you are using some counterfactual contract deployment technique the transaction will fail!`)
+      } else {
+        const isTrusted = await this.contractInteractor.isTrustedForwarder(gsnTransactionDetails.to, forwarderAddress)
+        if (!isTrusted) {
+          throw new Error('The Forwarder address configured but is not trusted by the Recipient contract')
+        }
       }
     } else {
       try {
