@@ -72,8 +72,8 @@ function compileFile (contractFile, c) {
 }
 */
 
-let files = fs.readdirSync(contractsFolderToExtract)
-files.push( 'IForwarder.sol')
+const files = fs.readdirSync(contractsFolderToExtract)
+files.push('IForwarder.sol')
 files.forEach(file => {
   const c = 'interfaces/' + file.replace(/.sol/, '')
 
