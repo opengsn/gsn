@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@openeth/truffle-typings": "0.0.6",
-    "@openzeppelin/contracts": "3.0.1",
+    "@openzeppelin/contracts": "3.0.2",
     "@openzeppelin/test-helpers": "0.5.5",
     "@truffle/contract": "4.2.4",
     "@truffle/hdwallet-provider": "1.0.34",

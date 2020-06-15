@@ -314,7 +314,6 @@ contract RelayHub is IRelayHub {
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
-        //TODO try/catch
         (atomicData.relayedCallSuccess,) = GsnEip712Library.callForwarderVerifyAndCall(relayRequest,signature);
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate

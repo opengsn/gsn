@@ -21,4 +21,13 @@ interface IForwarder {
 
     function verifyAndCall(ForwardRequest calldata req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external;
+
+    /**
+     * Register a new Request typehash.
+     * @param typeName - the name of the request type.
+     * @param extraParams - params to add to the request type, after initial "_ForwardRequest request" param
+     * @param subTypes - subtypes used by the extraParams
+     * @param subTypes2 - more subtypes, if sorted after _ForwardRequest (e.g. if type starts with lowercase)
+     */
+    function registerRequestType(string calldata typeName, string calldata extraParams, string calldata subTypes, string calldata subTypes2) external;
 }

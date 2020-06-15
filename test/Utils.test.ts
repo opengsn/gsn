@@ -11,8 +11,9 @@ import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 import { constants, expectEvent } from '@openzeppelin/test-helpers'
 import { bufferToHex } from 'ethereumjs-util'
-import { TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
+import {Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance} from '../types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
+import Web3 from "web3";
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -23,15 +24,16 @@ const TestRecipient = artifacts.require('TestRecipient')
 
 contract('Utils', function (accounts) {
   describe('#getEip712Signature()', function () {
-    const chainId = defaultEnvironment.chainId
+    let chainId: number
     let forwarder: PrefixedHexString
     let relayRequest: RelayRequest
     const senderAddress = accounts[0]
     let testUtil: TestUtilInstance
     let recipient: TestRecipientInstance
 
+    let forwarderInstance: Eip712ForwarderInstance
     before(async () => {
-      const forwarderInstance = await Eip712Forwarder.new()
+      forwarderInstance = await Eip712Forwarder.new()
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
 

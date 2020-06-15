@@ -63,18 +63,14 @@ contract Eip712Forwarder is IForwarder {
         nonces[req.from]++;
     }
 
-    //register a requestTypeHash
-    // the given requestType must have GENERIC_PARAMS as the beginning of the type string,
-    // otherwise it can't be registered.
-
     /**
      * Register a new Request typehash.
      * @param typeName - the name of the request type.
      * @param extraParams - params to add to the request type, after initial "_ForwardRequest request" param
-     * @param subTypes - subtypes used by the extraParamsg
+     * @param subTypes - subtypes used by the extraParams
      * @param subTypes2 - more subtypes, if sorted after _ForwardRequest (e.g. if type starts with lowercase)
      */
-    function registerRequestType(string calldata typeName, string calldata extraParams, string calldata subTypes, string calldata subTypes2) external {
+    function registerRequestType(string calldata typeName, string calldata extraParams, string calldata subTypes, string calldata subTypes2) external override {
 
         require(bytes(typeName).length > 0, "invalid typeName");
         bytes memory types = abi.encodePacked(subTypes, GENERIC_TYPE, subTypes2);
@@ -103,16 +99,6 @@ contract Eip712Forwarder is IForwarder {
 
     event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
 
-
-    //EIP712 sig:
-    //    keccak(
-    //        "\0x19\x01" , domainSeparator,
-    //        keccak(
-    //            request_typehash,
-    //            known-fields,
-    //            suffix-data
-    //        )
-    //    )
     function _verifySig(ForwardRequest memory req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) internal view {
 

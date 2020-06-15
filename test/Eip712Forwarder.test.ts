@@ -4,6 +4,7 @@ import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
+import Web3 from "web3";
 
 const TestRecipient = artifacts.require('TestRecipient')
 
@@ -71,7 +72,9 @@ contract('Eip712Forwarder', () => {
   const senderPrivateKey = toBuffer(bytes32(1))
   const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
+  let chainId: number
   before(async () => {
+    chainId = await new Web3(web3.currentProvider).eth.getChainId()
     fwd = await Eip712Forwarder.new()
     assert.equal(await fwd.GENERIC_PARAMS(), GENERIC_PARAMS)
     assert.equal(await fwd.GENERIC_TYPE(), GENERIC_TYPE)

@@ -74,9 +74,7 @@ library GsnEip712Library {
      */
     function callForwarderVerifyAndCall(GsnTypes.RelayRequest memory req, bytes memory sig) internal returns (bool success, bytes memory ret) {
         (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
-        // Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
-        // forwarder.verifyAndCall(fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig);
-        /* solhint-disable avoid-low-level-calls */
+        /* solhint-disable-next-line avoid-low-level-calls */
         return req.extraData.forwarder.call(abi.encodeWithSelector(IForwarder.verifyAndCall.selector,
             fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig
         ));
@@ -86,7 +84,7 @@ library GsnEip712Library {
         return hashDomain(EIP712Domain({
             name : "GSN Relayed Transaction",
             version : "2",
-            chainId : 1234, // getChainID(),
+            chainId : getChainID(),
             verifyingContract : forwarder
             }));
     }
