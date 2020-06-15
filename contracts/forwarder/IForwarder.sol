@@ -20,7 +20,9 @@ interface IForwarder {
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external view;
 
     function verifyAndCall(ForwardRequest calldata req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external;
+        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig)
+    external
+    returns (bool success, bytes memory ret);
 
     /**
      * Register a new Request typehash.

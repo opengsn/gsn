@@ -1,22 +1,27 @@
-import { Eip712ForwarderInstance, TestRecipientInstance } from '../types/truffle-contracts'
+import {
+  Eip712ForwarderInstance,
+  TestEip712ForwarderInstance,
+  TestForwarderTargetInstance,
+} from '../types/truffle-contracts'
 // @ts-ignore
-import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
-import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
-import { expectRevert } from '@openzeppelin/test-helpers'
-import { toChecksumAddress } from 'web3-utils'
+import {EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData} from 'eth-sig-util'
+import {bufferToHex, privateToAddress, toBuffer} from 'ethereumjs-util'
+import {expectRevert} from '@openzeppelin/test-helpers'
+import {toChecksumAddress} from 'web3-utils'
 import Web3 from "web3";
 
-const TestRecipient = artifacts.require('TestRecipient')
+const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
 const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const TestEip712Forwarder = artifacts.require('TestEip712Forwarder')
 
 const keccak256 = web3.utils.keccak256
 
-function addr (n: number): string {
+function addr(n: number): string {
   return '0x' + n.toString().repeat(40)
 }
 
-function bytes32 (n: number): string {
+function bytes32(n: number): string {
   return '0x' + n.toString().repeat(64)
 }
 
@@ -30,32 +35,34 @@ interface RegisterTypeParams {
 // Global EIP712 type definitions.
 // (read from helper package?)
 const EIP712DomainType = [
-  { name: 'name', type: 'string' },
-  { name: 'version', type: 'string' },
-  { name: 'chainId', type: 'uint256' },
-  { name: 'verifyingContract', type: 'address' }
+  {name: 'name', type: 'string'},
+  {name: 'version', type: 'string'},
+  {name: 'chainId', type: 'uint256'},
+  {name: 'verifyingContract', type: 'address'}
 ]
 
 const ForwardRequestType = [
-  { name: 'to', type: 'address' },
-  { name: 'data', type: 'bytes' },
-  { name: 'from', type: 'address' },
-  { name: 'nonce', type: 'uint256' },
-  { name: 'gas', type: 'uint256' }
+  {name: 'to', type: 'address'},
+  {name: 'data', type: 'bytes'},
+  {name: 'from', type: 'address'},
+  {name: 'nonce', type: 'uint256'},
+  {name: 'gas', type: 'uint256'}
 ]
 
 // helper function:
 //  given a complete EIP712TypedData, validate it extends the ForwardRequest type,
 //  and extract the strings required for registering this type.
-function getRegisterParams (data: EIP712TypedData, genericParams: string, genericType: string): RegisterTypeParams {
+function getRegisterParams(data: EIP712TypedData, genericParams: string, genericType: string): RegisterTypeParams {
   // before placing the string into a regex, we need to escape special chars
-  function escaped (s: string): string {
+  function escaped(s: string): string {
     return s.replace(/([()])/g, '\\$1')
   }
 
   const type = TypedDataUtils.encodeType(data.primaryType, data.types)
   const m = new RegExp(`(\\w+)\\(${genericParams}(?:,(.+))?\\)(.*)${escaped(genericType)}(.*)`).exec(type)
-  if (m == null) { throw new Error(`type "${type}" doesn't contain "${genericParams}" or "${genericType}"`) }
+  if (m == null) {
+    throw new Error(`type "${type}" doesn't contain "${genericParams}" or "${genericType}"`)
+  }
 
   const [, name, extraParams, subTypes, subTypes2] = m
   return {
@@ -91,14 +98,14 @@ contract('Eip712Forwarder', () => {
 
     it('should accept type with no extra params', async () => {
       const ret = await fwd.registerRequestType('test1', '', '', '')
-      const { typeStr, typeHash } = ret.logs[0].args
+      const {typeStr, typeHash} = ret.logs[0].args
       assert.equal(typeStr, `test1(${GENERIC_PARAMS})${GENERIC_TYPE}`)
       assert.equal(typeHash, keccak256(typeStr))
     })
 
     it('should accept extension field', async () => {
       const ret = await fwd.registerRequestType('test2', 'SubType extra,subType extra2', 'SubType(uint a)', 'subType2(uint b)')
-      const { typeStr, typeHash } = ret.logs[0].args
+      const {typeStr, typeHash} = ret.logs[0].args
       assert.equal(typeStr, `test2(${GENERIC_PARAMS},SubType extra,subType extra2)SubType(uint a)${GENERIC_TYPE}subType2(uint b)`)
       assert.equal(typeHash, keccak256(typeStr))
     })
@@ -155,7 +162,7 @@ contract('Eip712Forwarder', () => {
     })
     describe('#verify success', () => {
       const TestVerifyType = [
-        { name: 'request', type: '_ForwardRequest' }
+        {name: 'request', type: '_ForwardRequest'}
       ]
 
       const req = {
@@ -194,7 +201,7 @@ contract('Eip712Forwarder', () => {
       })
 
       it('should verify valid signature', async () => {
-        const sig = signTypedData_v4(senderPrivateKey, { data })
+        const sig = signTypedData_v4(senderPrivateKey, {data})
         const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
 
         await fwd.verify(req.request, bufferToHex(domainSeparator), typeHash, '0x', sig)
@@ -202,16 +209,16 @@ contract('Eip712Forwarder', () => {
 
       it('should verify valid signature of extended type', async () => {
         const ExtendedMessageType = [
-          { name: 'request', type: '_ForwardRequest' },
-          { name: 'extraAddress', type: 'address' } // <--extension
+          {name: 'request', type: '_ForwardRequest'},
+          {name: 'extraAddress', type: 'address'} // <--extension
         ]
 
         const ForwardRequestType = [
-          { name: 'to', type: 'address' },
-          { name: 'data', type: 'bytes' },
-          { name: 'from', type: 'address' },
-          { name: 'nonce', type: 'uint256' },
-          { name: 'gas', type: 'uint256' }
+          {name: 'to', type: 'address'},
+          {name: 'data', type: 'bytes'},
+          {name: 'from', type: 'address'},
+          {name: 'nonce', type: 'uint256'},
+          {name: 'gas', type: 'uint256'}
         ]
 
         const extendedReq = {
@@ -237,10 +244,10 @@ contract('Eip712Forwarder', () => {
           message: extendedReq
         }
 
-        const { name, extraParams, subTypes, subTypes2 } = getRegisterParams(extendedData, GENERIC_PARAMS, GENERIC_TYPE)
-        const { logs } = await fwd.registerRequestType(name, extraParams, subTypes, subTypes2)
-        const { typeHash } = logs[0].args
-        const sig = signTypedData(senderPrivateKey, { data: extendedData })
+        const {name, extraParams, subTypes, subTypes2} = getRegisterParams(extendedData, GENERIC_PARAMS, GENERIC_TYPE)
+        const {logs} = await fwd.registerRequestType(name, extraParams, subTypes, subTypes2)
+        const {typeHash} = logs[0].args
+        const sig = signTypedData(senderPrivateKey, {data: extendedData})
 
         // same calculation of domainSeparator as with base (no-extension)
         const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', extendedData.domain, extendedData.types)
@@ -257,13 +264,14 @@ contract('Eip712Forwarder', () => {
 
   describe('#verifyAndCall', () => {
     const TestCallType = [
-      { name: 'request', type: '_ForwardRequest' }
+      {name: 'request', type: '_ForwardRequest'}
     ]
 
     let data: EIP712TypedData
     let typeName: string
     let typeHash: string
-    let recipient: TestRecipientInstance
+    let recipient: TestForwarderTargetInstance
+    let testfwd: TestEip712ForwarderInstance
     let domainSeparator: string
 
     before(async () => {
@@ -290,7 +298,8 @@ contract('Eip712Forwarder', () => {
       assert.equal(calcType, typeName)
       const calcTypeHash = bufferToHex(TypedDataUtils.hashType('TestCall', data.types))
       assert.equal(calcTypeHash, typeHash)
-      recipient = await TestRecipient.new(fwd.address)
+      recipient = await TestForwarderTarget.new(fwd.address)
+      testfwd = await TestEip712Forwarder.new()
 
       domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
     })
@@ -308,18 +317,18 @@ contract('Eip712Forwarder', () => {
           gas: 1e6
         }
       }
-      const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+      const sig = signTypedData_v4(senderPrivateKey, {data: {...data, message: req1}})
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
 
       await fwd.verifyAndCall(req1.request, bufferToHex(domainSeparator), typeHash, '0x', sig)
       // @ts-ignore
-      const logs = await recipient.getPastEvents('SampleRecipientEmitted')
-      assert.equal(logs.length, 1, 'TestRecipien should emit')
+      const logs = await recipient.getPastEvents('TestForwarderMessage')
+      assert.equal(logs.length, 1, 'TestRecipient should emit')
       assert.equal(logs[0].args.realSender, senderAddress, 'TestRecipient should "see" real sender of meta-tx')
       assert.equal('1', (await fwd.getNonce(senderAddress)).toString(), 'verifyAndCall should increment nonce')
     })
 
-    it('should revert with same reason as target method', async () => {
+    it('should return revert message of target revert', async () => {
       const func = recipient.contract.methods.testRevert().encodeABI()
 
       const req1 = {
@@ -331,9 +340,33 @@ contract('Eip712Forwarder', () => {
           gas: 1e6
         }
       }
-      const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+      const sig = signTypedData_v4(senderPrivateKey, {data: {...data, message: req1}})
 
-      await expectRevert(fwd.verifyAndCall(req1.request, domainSeparator, typeHash, '0x', sig), 'always fail')
+      //the helper simply emits the method return values
+      const ret = await testfwd.callVerifyAndCall(fwd.address, req1.request, domainSeparator, typeHash, '0x', sig);
+      assert.equal(ret.logs[0].args.error,'always fail')
+    })
+
+    it('should not be able to re-submit after revert (its repeated nonce)', async () => {
+      const func = recipient.contract.methods.testRevert().encodeABI()
+
+      const req1 = {
+        request: {
+          to: recipient.address,
+          data: func,
+          from: senderAddress,
+          nonce: (await fwd.getNonce(senderAddress)).toString(),
+          gas: 1e6
+        }
+      }
+      const sig = signTypedData_v4(senderPrivateKey, {data: {...data, message: req1}})
+
+      //the helper simply emits the method return values
+      const ret = await testfwd.callVerifyAndCall(fwd.address, req1.request, domainSeparator, typeHash, '0x', sig);
+      assert.equal(ret.logs[0].args.error,'always fail')
+      assert.equal(ret.logs[0].args.success,false)
+
+      await expectRevert( testfwd.callVerifyAndCall(fwd.address, req1.request, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
     })
   })
 })

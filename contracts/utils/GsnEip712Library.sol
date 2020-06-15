@@ -73,11 +73,24 @@ library GsnEip712Library {
      * function, and library function can't be wrapped with try/catch... (or called with address.call)
      */
     function callForwarderVerifyAndCall(GsnTypes.RelayRequest memory req, bytes memory sig) internal returns (bool success, bytes memory ret) {
+        try IRelayRecipient(req.request.to).isTrustedForwarder(req.extraData.forwarder) returns (bool isTrusted) {
+            require( isTrusted, "invalid forwarder for recipient");
+        } catch Error(string memory reason) {
+            revert(reason);
+        } catch {
+            revert("reverted: isTrustedForwarder");
+        }
         (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
         /* solhint-disable-next-line avoid-low-level-calls */
-        return req.extraData.forwarder.call(abi.encodeWithSelector(IForwarder.verifyAndCall.selector,
-            fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig
-        ));
+        try IForwarder(req.extraData.forwarder).verifyAndCall(
+            fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig)
+            returns (bool _success, bytes memory _ret) {
+            return (_success, _ret);
+        } catch Error(string memory reason) {
+            revert(reason);
+        } catch {
+            revert("reverted: verifyAndCall");
+        }
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

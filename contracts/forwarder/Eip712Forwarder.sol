@@ -36,22 +36,19 @@ contract Eip712Forwarder is IForwarder {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
     }
 
+    //note that verifyAndCall doesn't re-throw target's call revert, but instead return it as (success,ret).
+    // the nonce is incremented either if the target method reverts or not.
     function verifyAndCall(ForwardRequest memory req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public override {
+        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig)
+    public override
+    returns (bool success, bytes memory ret) {
+
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success,) = req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
-        if (!success) {
-            // solhint-disable-next-line no-inline-assembly
-            assembly {// This assembly ensure the revert contains the exact string data
-                let returnDataSize := returndatasize()
-                returndatacopy(0, 0, returnDataSize)
-                revert(0, returnDataSize)
-            }
-        }
+        return req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
     }
 
 
