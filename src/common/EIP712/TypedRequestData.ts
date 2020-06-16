@@ -29,7 +29,7 @@ const ForwardRequestType = [
 ]
 
 const RelayRequestType = [
-  { name: 'request', type: '_ForwardRequest' },
+  ...ForwardRequestType,
   { name: 'relayData', type: 'RelayData' }
 ]
 
@@ -37,7 +37,6 @@ interface Types extends EIP712Types {
   EIP712Domain: EIP712TypeProperty[]
   RelayRequest: EIP712TypeProperty[]
   RelayData: EIP712TypeProperty[]
-  _ForwardRequest: EIP712TypeProperty[]
 }
 
 export function getDomainSeparator (verifier: Address, chainId: number): any {
@@ -57,7 +56,7 @@ export default class TypedRequestData implements EIP712TypedData {
   readonly types: Types
   readonly domain: EIP712Domain
   readonly primaryType: string
-  readonly message: RelayRequest
+  readonly message: any
 
   constructor (
     chainId: number,
@@ -67,17 +66,19 @@ export default class TypedRequestData implements EIP712TypedData {
       EIP712Domain: EIP712DomainType,
       RelayRequest: RelayRequestType,
       RelayData: RelayDataType,
-      _ForwardRequest: ForwardRequestType
     }
     this.domain = getDomainSeparator(verifier, chainId)
     this.primaryType = 'RelayRequest'
-    this.message = relayRequest
+    //in the signature, all "request" fields are flattened out at the top structure.
+    // other params are inside "relayData" sub-type
+    this.message = {
+      ...relayRequest.request,
+      relayData: relayRequest.relayData
+    }
   }
 }
 
 export const GsnRequestType = {
   typeName: 'RelayRequest',
-  extraParams: 'RelayData relayData',
-  subTypes: 'RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)',
-  subTypes2: ''
+  typeSuffix: 'RelayData relayData)RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)',
 }

@@ -63,9 +63,7 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
 
     await relayHub.depositFor(paymaster.address, {

@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
 import "../forwarder/Eip712Forwarder.sol";
+import "solidity-string-utils/StringUtils.sol";
 
 /**
  * Bridge Library to map GSN RelayRequest into a call of an Eip712Forwarder
@@ -12,21 +13,19 @@ import "../forwarder/Eip712Forwarder.sol";
 library GsnEip712Library {
 
     //copied from Eip712Forwarder (can't reference string constants even from another library)
-    string public constant GENERIC_PARAMS = "_ForwardRequest request";
-    string public constant GENERIC_TYPE = "_ForwardRequest(address to,bytes data,address from,uint256 nonce,uint256 gas)";
-    bytes32 public constant GENERIC_TYPEHASH = keccak256(bytes(GENERIC_TYPE));
+    string public constant GENERIC_PARAMS = "address to,bytes data,address from,uint256 nonce,uint256 gas";
 
     bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)";
 
     string public constant RELAY_REQUEST_NAME = "RelayRequest";
-    string public constant RELAY_REQUEST_PARAMS = "RelayData relayData";
+    string public constant RELAY_REQUEST_SUFFIX = string(abi.encodePacked("RelayData relayData)", RELAYDATA_TYPE));
 
     bytes public constant RELAY_REQUEST_TYPE = abi.encodePacked(
-        RELAY_REQUEST_NAME,"(",GENERIC_PARAMS,",", RELAY_REQUEST_PARAMS,")",
-        RELAYDATA_TYPE, GENERIC_TYPE);
+        RELAY_REQUEST_NAME,"(",GENERIC_PARAMS,",", RELAY_REQUEST_SUFFIX);
 
     bytes32 public constant RELAYDATA_TYPEHASH = keccak256(RELAYDATA_TYPE);
     bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256(RELAY_REQUEST_TYPE);
+
 
     struct EIP712Domain {
         string name;
@@ -38,14 +37,6 @@ library GsnEip712Library {
     bytes32 public constant EIP712DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
-
-    // must call this method exactly once to register the GSN type.
-    // (note that its a public method: anyone can register this GSN version)
-    function registerRequestType(Eip712Forwarder forwarder) internal {
-        forwarder.registerRequestType(
-            RELAY_REQUEST_NAME, RELAY_REQUEST_PARAMS, string(RELAYDATA_TYPE), "");
-        require(forwarder.isRegisteredTypehash(RELAY_REQUEST_TYPEHASH), "Fatal: registration failed");
-    }
 
     function splitRequest(
         GsnTypes.RelayRequest calldata req

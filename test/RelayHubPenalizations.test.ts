@@ -48,9 +48,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
 
     paymaster = await TestPaymasterEverythingAccepted.new()

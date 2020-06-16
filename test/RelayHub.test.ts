@@ -60,9 +60,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     // register hub's RelayRequest with forwarder, if not already done.
     await eip712ForwarderInstance.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
 
     target = recipientContract.address

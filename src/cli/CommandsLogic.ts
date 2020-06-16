@@ -236,9 +236,7 @@ export default class CommandsLogic {
 
     const res = await fInstance.methods.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     ).send(options)
 
     return {

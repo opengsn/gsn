@@ -91,9 +91,7 @@ contract('RelayProvider', function (accounts) {
     forwarderAddress = forwarderInstance.address
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
 
     const paymasterInstance = await TestPaymasterEverythingAccepted.new()

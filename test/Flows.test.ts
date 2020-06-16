@@ -80,9 +80,7 @@ options.forEach(params => {
 
       await forwarder.registerRequestType(
         GsnRequestType.typeName,
-        GsnRequestType.extraParams,
-        GsnRequestType.subTypes,
-        GsnRequestType.subTypes2
+        GsnRequestType.typeSuffix
       )
 
       paymaster = await TestPaymasterEverythingAccepted.new()

@@ -129,9 +129,7 @@ contract('RelayServer', function (accounts) {
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarder.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
 
     await paymaster.setRelayHub(rhub.address)

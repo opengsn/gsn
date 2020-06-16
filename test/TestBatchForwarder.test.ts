@@ -52,9 +52,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     forwarder = await BatchForwarder.new()
     await forwarder.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
     recipient = await TestRecipient.new(forwarder.address)
 

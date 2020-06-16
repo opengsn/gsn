@@ -69,15 +69,12 @@ contract('RelayClient', function (accounts) {
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setRelayHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
-    gasLess = await web3.eth.personal.newAccount('password')
 
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       stake: 1e18,
@@ -91,6 +88,7 @@ contract('RelayClient', function (accounts) {
       stakeManagerAddress: stakeManager.address
     }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
+    gasLess = relayClient.accountManager.newAccount().address
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()

@@ -12,9 +12,9 @@ interface IForwarder {
         uint256 gas;
     }
 
-    function versionForwarder() external view returns (string memory);
-
-    function getNonce(address from) external view returns (uint256);
+    function getNonce(address from)
+    external view
+    returns(uint256);
 
     /**
      * verify the transaction would execute.
@@ -55,14 +55,8 @@ interface IForwarder {
     /**
      * Register a new Request typehash.
      * @param typeName - the name of the request type.
-     * @param extraParams - params to add to the request type, after initial "_ForwardRequest request" param
-     * @param subTypes - subtypes used by the extraParams
-     * @param subTypes2 - more subtypes, if sorted after _ForwardRequest (e.g. if type starts with lowercase)
+     * @param typeSuffix - anything after the generic params can be empty string (if no extra fields are needed)
+     *        if it does contain a value, then a comma is added first.
      */
-    function registerRequestType(
-        string calldata typeName,
-        string calldata extraParams,
-        string calldata subTypes,
-        string calldata subTypes2
-    ) external;
+    function registerRequestType(string calldata typeName, string calldata typeSuffix) external;
 }

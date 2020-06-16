@@ -12,10 +12,6 @@ import "./utils/GsnUtils.sol";
  */
 contract BatchForwarder is Eip712Forwarder, BaseRelayRecipient {
 
-    function versionForwarder() external view override returns (string memory){
-        return "2.0.0-alpha.1+opengsn.batched.iforwarder";
-    }
-
     string public override versionRecipient = "2.0.0-alpha.1+opengsn.batched.irelayrecipient";
 
     constructor() public {

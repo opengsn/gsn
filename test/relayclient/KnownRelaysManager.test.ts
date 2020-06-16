@@ -79,9 +79,7 @@ contract('KnownRelaysManager', function (
       testRecipient = await TestRecipient.new(forwarderAddress)
       await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
-        GsnRequestType.extraParams,
-        GsnRequestType.subTypes,
-        GsnRequestType.subTypes2
+        GsnRequestType.typeSuffix
       )
 
       paymaster = await TestPaymasterConfigurableMisbehavior.new()

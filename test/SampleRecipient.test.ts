@@ -48,9 +48,7 @@ contract('SampleRecipient', function (accounts) {
     await paymaster.setRelayHub(rhub.address)
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
-      GsnRequestType.extraParams,
-      GsnRequestType.subTypes,
-      GsnRequestType.subTypes2
+      GsnRequestType.typeSuffix
     )
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally

@@ -46,9 +46,7 @@ contract('Utils', function (accounts) {
 
       await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
-        GsnRequestType.extraParams,
-        GsnRequestType.subTypes,
-        GsnRequestType.subTypes2
+        GsnRequestType.typeSuffix
       )
 
       relayRequest = {

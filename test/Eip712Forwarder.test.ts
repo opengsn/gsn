@@ -26,10 +26,8 @@ function bytes32(n: number): string {
 }
 
 interface RegisterTypeParams {
-  name: string
-  extraParams: string
-  subTypes: string
-  subTypes2: string
+  typeName: string
+  typeSuffix: string
 }
 
 // Global EIP712 type definitions.
@@ -52,27 +50,29 @@ const ForwardRequestType = [
 // helper function:
 //  given a complete EIP712TypedData, validate it extends the ForwardRequest type,
 //  and extract the strings required for registering this type.
-function getRegisterParams(data: EIP712TypedData, genericParams: string, genericType: string): RegisterTypeParams {
-  // before placing the string into a regex, we need to escape special chars
-  function escaped(s: string): string {
-    return s.replace(/([()])/g, '\\$1')
+function getRegisterParams(data: EIP712TypedData, genericParams: string): RegisterTypeParams {
+
+  let typeName = data.primaryType;
+  const type = TypedDataUtils.encodeType(typeName, data.types)
+  let prefix = typeName+"("+genericParams;
+  if ( type.indexOf(prefix ) != 0 ) {
+    throw new Error(`type "${type}" doesn't start with  "${genericParams}"`)
   }
 
-  const type = TypedDataUtils.encodeType(data.primaryType, data.types)
-  const m = new RegExp(`(\\w+)\\(${genericParams}(?:,(.+))?\\)(.*)${escaped(genericType)}(.*)`).exec(type)
-  if (m == null) {
-    throw new Error(`type "${type}" doesn't contain "${genericParams}" or "${genericType}"`)
+  let typeSuffix = type.slice(prefix.length)
+  if ( typeSuffix == ')' )
+    typeSuffix =""
+  else {
+    //remove leading ","
+    typeSuffix = typeSuffix.slice(1)
   }
-
-  const [, name, extraParams, subTypes, subTypes2] = m
-  return {
-    name, extraParams, subTypes, subTypes2
-  }
+  return {typeName, typeSuffix}
 }
 
 contract('Eip712Forwarder', () => {
-  const GENERIC_PARAMS = '_ForwardRequest request'
-  const GENERIC_TYPE = '_ForwardRequest(address to,bytes data,address from,uint256 nonce,uint256 gas)'
+  const GENERIC_PARAMS = 'address to,bytes data,address from,uint256 nonce,uint256 gas'
+  //our generic params has 5 bytes32 values
+  const count_params = 5
 
   let fwd: Eip712ForwarderInstance
 
@@ -84,47 +84,43 @@ contract('Eip712Forwarder', () => {
     chainId = await new Web3(web3.currentProvider).eth.getChainId()
     fwd = await Eip712Forwarder.new()
     assert.equal(await fwd.GENERIC_PARAMS(), GENERIC_PARAMS)
-    assert.equal(await fwd.GENERIC_TYPE(), GENERIC_TYPE)
   })
 
   describe('#registerRequestType', () => {
-    it('should fail to register without a name', async () => {
-      await expectRevert(fwd.registerRequestType('', '', '', ''), 'invalid typeName')
-    })
-
-    it('should fail with invalid subtype', async () => {
-      await expectRevert(fwd.registerRequestType('asd', '', 'subtype', ''), 'invalid subType')
+    it('should fail to register with invalid name', async () => {
+      //this is an example of a typename that attempt to add a new field at the beginning.
+      await expectRevert(fwd.registerRequestType('asd(uint a,Request asd)Request(',')'), 'invalid typename')
     })
 
     it('should accept type with no extra params', async () => {
-      const ret = await fwd.registerRequestType('test1', '', '', '')
+      const ret = await fwd.registerRequestType('test1', '')
       const {typeStr, typeHash} = ret.logs[0].args
-      assert.equal(typeStr, `test1(${GENERIC_PARAMS})${GENERIC_TYPE}`)
+      assert.equal(typeStr, `test1(${GENERIC_PARAMS})`)
       assert.equal(typeHash, keccak256(typeStr))
     })
 
     it('should accept extension field', async () => {
-      const ret = await fwd.registerRequestType('test2', 'SubType extra,subType extra2', 'SubType(uint a)', 'subType2(uint b)')
+      const ret = await fwd.registerRequestType('test2', 'bool extra)')
       const {typeStr, typeHash} = ret.logs[0].args
-      assert.equal(typeStr, `test2(${GENERIC_PARAMS},SubType extra,subType extra2)SubType(uint a)${GENERIC_TYPE}subType2(uint b)`)
+      assert.equal(typeStr, `test2(${GENERIC_PARAMS},bool extra)`)
       assert.equal(typeHash, keccak256(typeStr))
     })
 
     it('should allow silently repeated registration', async () => {
-      await fwd.registerRequestType('test3', '', '', '')
-      await fwd.registerRequestType('test3', '', '', '')
+      await fwd.registerRequestType('test3', '')
+      await fwd.registerRequestType('test3', '')
     })
   })
 
-  describe('#isRegisteredTypehash', () => {
-    const fullType = `test4(${GENERIC_PARAMS})${GENERIC_TYPE}`
+  describe('registered typehash', () => {
+    const fullType = `test4(${GENERIC_PARAMS})`
     const hash = keccak256(fullType)
     it('should return false before registration', async () => {
-      assert.equal(await fwd.isRegisteredTypehash(hash), false)
+      assert.equal(await fwd.typeHashes(hash), false)
     })
     it('should return true after registration', async () => {
-      await fwd.registerRequestType('test4', '', '', '')
-      assert.equal(true, await fwd.isRegisteredTypehash(hash))
+      await fwd.registerRequestType('test4', '')
+      assert.equal(true, await fwd.typeHashes(hash))
     })
   })
 
@@ -132,9 +128,9 @@ contract('Eip712Forwarder', () => {
     let typeName: string
     let typeHash: string
     before(async () => {
-      typeName = `TestVerify(${GENERIC_PARAMS})${GENERIC_TYPE}`
+      typeName = `TestVerify(${GENERIC_PARAMS})`
       typeHash = web3.utils.keccak256(typeName)
-      await fwd.registerRequestType('TestVerify', '', '', '')
+      await fwd.registerRequestType('TestVerify', '')
     })
 
     describe('#verify failures', () => {
@@ -161,18 +157,14 @@ contract('Eip712Forwarder', () => {
       })
     })
     describe('#verify success', () => {
-      const TestVerifyType = [
-        {name: 'request', type: '_ForwardRequest'}
-      ]
+      const TestVerifyType = ForwardRequestType
 
       const req = {
-        request: {
-          to: addr(1),
-          data: '0x',
-          from: senderAddress,
-          nonce: 0,
-          gas: 123
-        }
+        to: addr(1),
+        data: '0x',
+        from: senderAddress,
+        nonce: 0,
+        gas: 123
       }
 
       let data: EIP712TypedData
@@ -188,8 +180,7 @@ contract('Eip712Forwarder', () => {
           primaryType: 'TestVerify',
           types: {
             EIP712Domain: EIP712DomainType,
-            TestVerify: TestVerifyType,
-            _ForwardRequest: ForwardRequestType
+            TestVerify: TestVerifyType
           },
           message: req
         }
@@ -204,32 +195,27 @@ contract('Eip712Forwarder', () => {
         const sig = signTypedData_v4(senderPrivateKey, {data})
         const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
 
-        await fwd.verify(req.request, bufferToHex(domainSeparator), typeHash, '0x', sig)
+        await fwd.verify(req, bufferToHex(domainSeparator), typeHash, '0x', sig)
       })
 
       it('should verify valid signature of extended type', async () => {
         const ExtendedMessageType = [
-          {name: 'request', type: '_ForwardRequest'},
-          {name: 'extraAddress', type: 'address'} // <--extension
+          ...ForwardRequestType,
+          {name: 'extra', type: 'ExtraData'} // <--extension param. uses a typed structure - though could be plain field
         ]
-
-        const ForwardRequestType = [
-          {name: 'to', type: 'address'},
-          {name: 'data', type: 'bytes'},
-          {name: 'from', type: 'address'},
-          {name: 'nonce', type: 'uint256'},
-          {name: 'gas', type: 'uint256'}
+        const ExtraDataType = [
+          {name: 'extraAddr', type: 'address'}
         ]
 
         const extendedReq = {
-          request: {
-            to: addr(1),
-            data: '0x',
-            from: senderAddress,
-            nonce: 0,
-            gas: 123
-          },
-          extraAddress: addr(5) // <-- extension
+          to: addr(1),
+          data: '0x',
+          from: senderAddress,
+          nonce: 0,
+          gas: 123,
+          extra: {
+            extraAddr: addr(5)
+          }
         }
 
         // we create extended data message
@@ -239,13 +225,15 @@ contract('Eip712Forwarder', () => {
           types: {
             EIP712Domain: EIP712DomainType,
             ExtendedMessage: ExtendedMessageType,
-            _ForwardRequest: ForwardRequestType
+            ExtraData: ExtraDataType
           },
           message: extendedReq
         }
 
-        const {name, extraParams, subTypes, subTypes2} = getRegisterParams(extendedData, GENERIC_PARAMS, GENERIC_TYPE)
-        const {logs} = await fwd.registerRequestType(name, extraParams, subTypes, subTypes2)
+        const typeName = 'ExtendedMessage'
+        const typeSuffix = 'ExtraData extra)ExtraData(address extraAddr)'
+
+        const {logs} = await fwd.registerRequestType(typeName, typeSuffix)
         const {typeHash} = logs[0].args
         const sig = signTypedData(senderPrivateKey, {data: extendedData})
 
@@ -254,18 +242,17 @@ contract('Eip712Forwarder', () => {
 
         // encode entire struct, to extract "suffixData" from it
         const encoded = TypedDataUtils.encodeData(extendedData.primaryType, extendedData.message, extendedData.types)
-        // when encoding an Extended message, there is 32-byte "typehash", 32-byte hash of ForwardRequest, so suffixData starts after 64 bytes:
-        const suffixData = bufferToHex(encoded.slice(64))
+        // skip default params: typehash, and 5 params, so 32*6
+        const suffixData = bufferToHex(encoded.slice((1 + count_params) * 32))
 
-        await fwd.verify(extendedReq.request, bufferToHex(domainSeparator), typeHash, suffixData, sig)
+        await fwd.verify(extendedReq, bufferToHex(domainSeparator), typeHash, suffixData, sig)
       })
     })
   })
 
   describe('#verifyAndCall', () => {
-    const TestCallType = [
-      {name: 'request', type: '_ForwardRequest'}
-    ]
+
+    const TestCallType = ForwardRequestType
 
     let data: EIP712TypedData
     let typeName: string
@@ -275,9 +262,9 @@ contract('Eip712Forwarder', () => {
     let domainSeparator: string
 
     before(async () => {
-      typeName = `TestCall(${GENERIC_PARAMS})${GENERIC_TYPE}`
+      typeName = `TestCall(${GENERIC_PARAMS})`
       typeHash = web3.utils.keccak256(typeName)
-      await fwd.registerRequestType('TestCall', '', '', '')
+      await fwd.registerRequestType('TestCall', '')
       data = {
         domain: {
           name: 'Test Domain',
@@ -289,7 +276,6 @@ contract('Eip712Forwarder', () => {
         types: {
           EIP712Domain: EIP712DomainType,
           TestCall: TestCallType,
-          _ForwardRequest: ForwardRequestType
         },
         message: {}
       }
@@ -309,18 +295,18 @@ contract('Eip712Forwarder', () => {
       // const func = recipient.contract.methods.testRevert().encodeABI()
 
       const req1 = {
-        request: {
-          to: recipient.address,
-          data: func,
-          from: senderAddress,
-          nonce: 0,
-          gas: 1e6
-        }
+        to: recipient.address,
+        data: func,
+        from: senderAddress,
+        nonce: 0,
+        gas: 1e6,
       }
       const sig = signTypedData_v4(senderPrivateKey, {data: {...data, message: req1}})
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
 
-      await fwd.execute(req1.request, bufferToHex(domainSeparator), typeHash, '0x', sig)
+      //note: we pass request as-is (with extra field): web3/truffle can only send javascript members that were
+      // declared in solidity
+      await fwd.execute(req1, bufferToHex(domainSeparator), typeHash, '0x', sig)
       // @ts-ignore
       const logs = await recipient.getPastEvents('TestForwarderMessage')
       assert.equal(logs.length, 1, 'TestRecipient should emit')
@@ -332,18 +318,16 @@ contract('Eip712Forwarder', () => {
       const func = recipient.contract.methods.testRevert().encodeABI()
 
       const req1 = {
-        request: {
-          to: recipient.address,
-          data: func,
-          from: senderAddress,
-          nonce: (await fwd.getNonce(senderAddress)).toString(),
-          gas: 1e6
-        }
+        to: recipient.address,
+        data: func,
+        from: senderAddress,
+        nonce: (await fwd.getNonce(senderAddress)).toString(),
+        gas: 1e6,
       }
       const sig = signTypedData_v4(senderPrivateKey, {data: {...data, message: req1}})
 
       //the helper simply emits the method return values
-      const ret = await testfwd.callVerifyAndCall(fwd.address, req1.request, domainSeparator, typeHash, '0x', sig);
+      const ret = await testfwd.callVerifyAndCall(fwd.address, req1, domainSeparator, typeHash, '0x', sig);
       assert.equal(ret.logs[0].args.error,'always fail')
     })
 
@@ -351,22 +335,20 @@ contract('Eip712Forwarder', () => {
       const func = recipient.contract.methods.testRevert().encodeABI()
 
       const req1 = {
-        request: {
-          to: recipient.address,
-          data: func,
-          from: senderAddress,
-          nonce: (await fwd.getNonce(senderAddress)).toString(),
-          gas: 1e6
-        }
+        to: recipient.address,
+        data: func,
+        from: senderAddress,
+        nonce: (await fwd.getNonce(senderAddress)).toString(),
+        gas: 1e6,
       }
       const sig = signTypedData_v4(senderPrivateKey, {data: {...data, message: req1}})
 
       //the helper simply emits the method return values
-      const ret = await testfwd.callVerifyAndCall(fwd.address, req1.request, domainSeparator, typeHash, '0x', sig);
+      const ret = await testfwd.callVerifyAndCall(fwd.address, req1, domainSeparator, typeHash, '0x', sig);
       assert.equal(ret.logs[0].args.error,'always fail')
       assert.equal(ret.logs[0].args.success,false)
 
-      await expectRevert( testfwd.callVerifyAndCall(fwd.address, req1.request, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
+      await expectRevert( testfwd.callVerifyAndCall(fwd.address, req1, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
     })
   })
 })
