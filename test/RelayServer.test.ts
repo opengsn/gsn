@@ -445,14 +445,14 @@ contract('RelayServer', function (accounts) {
         assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
     })
+
+    // TODO: this test does not belong in RelayServer tests. It is now allowed to relay a call to recipient that does not exist.
+    //  It can be `create2`-ed in the PreRelayedCall, but this is not a place for such test.
     it('should fail to relay with wrong recipient', async function () {
-      try {
-        await relayTransaction(options, { to: accounts[1] })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Cannot create instance of IRelayRecipient; no code at address')
-      }
+      await expect(relayTransaction(options, { to: accounts[1] }))
+        .to.be.eventually.rejectedWith('expected \'SampleRecipientPostCall\' to equal \'SampleRecipientEmitted\'')
     })
+
     it('should fail to relay with invalid paymaster', async function () {
       try {
         await relayTransaction(options, { paymaster: accounts[1] })
