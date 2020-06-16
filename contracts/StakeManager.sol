@@ -54,16 +54,19 @@ contract StakeManager is IStakeManager {
         emit StakeWithdrawn(relayManager, msg.sender, amount);
     }
 
-    function authorizeHub(address relayManager, address relayHub) external override {
-        StakeInfo storage info = stakes[relayManager];
-        require(info.owner == msg.sender, "not owner");
+    modifier ownerOrManagerOnly(address relayManager) {
+        StakeInfo storage infoByManager = stakes[relayManager];
+        StakeInfo storage infoBySender = stakes[msg.sender];
+        require(infoByManager.owner == msg.sender || infoBySender.owner != address(0), "not owner or manager");
+        _;
+    }
+
+    function authorizeHub(address relayManager, address relayHub) external override ownerOrManagerOnly(relayManager) {
         authorizedHubs[relayManager][relayHub].removalBlock = uint(-1);
         emit HubAuthorized(relayManager, relayHub);
     }
 
-    function unauthorizeHub(address relayManager, address relayHub) external override {
-        StakeInfo storage info = stakes[relayManager];
-        require(info.owner == msg.sender, "not owner");
+    function unauthorizeHub(address relayManager, address relayHub) external override ownerOrManagerOnly(relayManager) {
         RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
         require(hubInfo.removalBlock == uint(-1), "hub not authorized");
         uint256 removalBlock = block.number + stakes[relayManager].unstakeDelay;
