@@ -101,10 +101,10 @@ contract('Utils', function (accounts) {
             relayRequest
           ))
         const ret = await testUtil.callForwarderVerifyAndCall(relayRequest, sig)
-        assert.equal(ret.logs[0].event, 'Called')
-        assert.equal(ret.logs[0].args.success, false)
-        // TODO: decode revert reasons with GsnUtils
-        assert.include(ret.logs[0].args.error, 'always fail')
+        expectEvent(ret, 'Called', {
+          success: false,
+          error: 'always fail'
+        })
       })
       it('should return revert', async function () {
         relayRequest.request.data = await recipient.contract.methods.emitMessage('hello').encodeABI()

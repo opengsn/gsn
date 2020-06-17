@@ -265,7 +265,7 @@ contract RelayHub is IRelayHub {
         uint256 balanceBefore;
         bytes32 preReturnValue;
         bool relayedCallSuccess;
-        bytes relayedCallReturnValue;
+        string relayedCallReturnValue;
         bytes data;
     }
 

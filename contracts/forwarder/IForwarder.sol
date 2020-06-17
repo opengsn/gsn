@@ -31,7 +31,8 @@ interface IForwarder {
         bytes calldata suffixData,
         bytes calldata signature
     )
-    external;
+    external
+    returns (bool success, string memory ret);
 
     /**
      * Register a new Request typehash.

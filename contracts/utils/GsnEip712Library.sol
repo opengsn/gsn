@@ -82,15 +82,18 @@ library GsnEip712Library {
         forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 
-    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool success, bytes memory ret) {
+    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
         (Eip712Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        (success, ret) = relayRequest.relayData.forwarder.call(
-            abi.encodeWithSelector(
-                IForwarder.execute.selector,
+        try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
-            )
-        );
+        ) returns (bool _success, string memory _ret) {
+            return (_success, _ret);
+        } catch Error(string memory reason) {
+            return (false, reason);
+        } catch {
+            return (false, "call to forwarder reverted");
+        }
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

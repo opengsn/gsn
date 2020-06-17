@@ -4,6 +4,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./IForwarder.sol";
+// TODO now: move getError to the forwarder folder
+import "../utils/GsnUtils.sol";
 
 contract Eip712Forwarder is IForwarder {
     using ECDSA for bytes32;
@@ -41,14 +43,17 @@ contract Eip712Forwarder is IForwarder {
     )
     public
     override
-    {
+    returns (bool, string memory) {
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory ret) = req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
-        require(success, string(abi.encodePacked("forwarded call reverted with: ", ret)));
+        (bool executeSuccess, bytes memory ret) = req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
+        if (!executeSuccess){
+            return (false, GsnUtils.getError(ret));
+        }
+        return (true, "");
     }
 
     function _verifyNonce(ForwardRequest memory req) internal view {
