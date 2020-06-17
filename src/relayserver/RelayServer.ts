@@ -111,7 +111,6 @@ export interface RelayServerParams {
 export class RelayServer extends EventEmitter {
   lastScannedBlock = 0
   ready = false
-  removed = false
   nonceMutex = new Mutex()
   readonly nonces: Record<number, number> = {}
   private readonly managerAddress: PrefixedHexString
@@ -126,11 +125,10 @@ export class RelayServer extends EventEmitter {
   networkId: number | undefined
   private initialized = false
   stake = toBN(0)
-  private isAddressAdded = false
   lastError: string | undefined
   owner: Address | undefined
-  private unstakeDelay: BN | undefined | string
-  private withdrawBlock: BN | undefined | string
+  unstakeDelay: BN | undefined
+  withdrawBlock: BN | undefined
   authorizedHub = false
   readonly txStoreManager: TxStoreManager
   private readonly web3provider: provider
@@ -238,9 +236,6 @@ export class RelayServer extends EventEmitter {
     }
     // TODO: currently we hard-code a single worker. should find a "free" one to use from a pool
     const workerIndex = 1
-
-    // TODO: should replenish earlier, so client can validate the worker has funds to pay for the tx
-    await this.replenishWorker(1)
 
     // Check that max nonce is valid
     const nonce = await this._pollNonce(workerIndex)
@@ -433,7 +428,8 @@ export class RelayServer extends EventEmitter {
     this.initialized = true
   }
 
-  async replenishWorker (workerIndex: number): Promise<void> {
+  async replenishWorker (workerIndex: number): Promise<TransactionReceipt[]> {
+    const receipts: TransactionReceipt[] = []
     const workerAddress = this.getAddress(workerIndex)
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
@@ -447,18 +443,18 @@ export class RelayServer extends EventEmitter {
           toBN(1e18)).toString()} refill=${refill.div(toBN(1e18)).toString()}`)
       if (refill.lt(managerHubBalance.sub(toBN(minimumRelayBalance)))) {
         const method = this.relayHubContract?.contract.methods.withdraw(toHex(refill), workerAddress)
-        await this._sendTransaction({
+        receipts.push((await this._sendTransaction({
           signerIndex: 0,
           destination: this.relayHubContract?.address as string,
           method
-        })
+        })).receipt)
       } else if (refill.lt(balance.sub(toBN(minimumRelayBalance)))) {
-        await this._sendTransaction({
+        receipts.push((await this._sendTransaction({
           signerIndex: 0,
           destination: workerAddress,
           value: toHex(refill),
           gasLimit: mintxgascost.toString()
-        })
+        })).receipt)
       } else {
         const message = `== replenishWorker: can't replenish: mgr balance too low ${balance.div(toBN(1e18)).toString()} refill=${refill.div(
           toBN(1e18)).toString()}`
@@ -466,6 +462,7 @@ export class RelayServer extends EventEmitter {
         console.log(message)
       }
     }
+    return receipts
   }
 
   async _worker (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
@@ -483,6 +480,65 @@ export class RelayServer extends EventEmitter {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         `Server's balance too low ( ${balance}, required ${minimumRelayBalance}). Waiting for funding...`)
     }
+    let receipts = await this._handlePastEvents(blockHeader)
+    await this._resendUnconfirmedTransactions(blockHeader)
+    if (this.stake.eq(toBN(0))) {
+      throw new StateError('Waiting for stake')
+    }
+
+    const registered = await this._isRegistered()
+    if (!registered) {
+      throw new StateError('Not registered yet...')
+    }
+    if (!this.authorizedHub) {
+      this.emit('error', new Error('Hub not authorized...'))
+      this.ready = false
+      return receipts
+    }
+    receipts = receipts.concat(await this.replenishWorker(1))
+    const workerBalance = await this.getWorkerBalance(1)
+    if (workerBalance.lt(toBN(this.workerMinBalance))) {
+      this.emit('error', new Error('workers not funded...'))
+      this.ready = false
+      return receipts
+    }
+    if (!this.ready) {
+      console.log('Relay is Ready.')
+    }
+    this.ready = true
+    delete this.lastError
+    return receipts
+  }
+
+  async getManagerBalance (): Promise<BN> {
+    return toBN(await this.contractInteractor.getBalance(this.managerAddress))
+  }
+
+  async getWorkerBalance (workerIndex: number): Promise<BN> {
+    return toBN(await this.contractInteractor.getBalance(this.getAddress(workerIndex)))
+  }
+
+  async refreshStake (): Promise<BN> {
+    if (!this.initialized) {
+      await this._init()
+    }
+    const stakeInfo = await this.stakeManagerContract?.getStakeInfo(this.managerAddress)
+    this.stake = toBN(stakeInfo?.stake ?? '0')
+    if (this.stake.eq(toBN(0))) {
+      return this.stake
+    }
+
+    // first time getting stake, setting owner
+    if (this.owner == null) {
+      this.owner = stakeInfo?.owner
+      debug(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake.toString()}`)
+    }
+    this.unstakeDelay = toBN(stakeInfo?.unstakeDelay ?? '0')
+    this.withdrawBlock = toBN(stakeInfo?.withdrawBlock ?? '0')
+    return this.stake
+  }
+
+  async _handlePastEvents (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
     const options = {
       fromBlock: this.lastScannedBlock + 1,
       toBlock: 'latest',
@@ -513,51 +569,8 @@ export class RelayServer extends EventEmitter {
           break
       }
     }
-
-    if (this.stake.eq(toBN(0))) {
-      throw new StateError('Waiting for stake')
-    }
-    // todo check if registered!!
-    // TODO: now even more todo then before. This is a hotfix.
-    if (!this.isAddressAdded) {
-      throw new StateError('Not registered yet...')
-    }
     this.lastScannedBlock = blockHeader.number
-    if (!this.ready) {
-      console.log('Relay is Ready.')
-    }
-    this.ready = true
-    delete this.lastError
-    await this._resendUnconfirmedTransactions(blockHeader)
     return receipts
-  }
-
-  async getManagerBalance (): Promise<BN> {
-    return toBN(await this.contractInteractor.getBalance(this.managerAddress))
-  }
-
-  async getWorkerBalance (workerIndex: number): Promise<BN> {
-    return toBN(await this.contractInteractor.getBalance(this.getAddress(workerIndex)))
-  }
-
-  async refreshStake (): Promise<BN> {
-    if (!this.initialized) {
-      await this._init()
-    }
-    const stakeInfo = await this.stakeManagerContract?.getStakeInfo(this.managerAddress)
-    this.stake = toBN(stakeInfo?.stake ?? '0')
-    if (this.stake.eq(toBN(0))) {
-      return this.stake
-    }
-
-    // first time getting stake, setting owner
-    if (this.owner == null) {
-      this.owner = stakeInfo?.owner
-      debug(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake.toString()}`)
-    }
-    this.unstakeDelay = stakeInfo?.unstakeDelay
-    this.withdrawBlock = stakeInfo?.withdrawBlock
-    return this.stake
   }
 
   async _handleHubAuthorizedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
@@ -583,12 +596,12 @@ export class RelayServer extends EventEmitter {
     // todo send only workers' balances and manager's hub balance to owner (not manager eth balance)
     const gasPrice = await this.contractInteractor.getGasPrice()
     let receipts: TransactionReceipt[] = []
-    receipts = receipts.concat(await this._sendWorkersEthBalancesToOwner(gasPrice)).concat(await this._sendManagerHubBalanceToOwner(gasPrice))
+    receipts = receipts.concat(await this._sendWorkersEthBalancesToOwner(gasPrice)).concat(
+      await this._sendManagerHubBalanceToOwner(gasPrice))
     return receipts
   }
 
   async _handleStakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
-    // todo
     // sanity checks
     if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -605,14 +618,10 @@ export class RelayServer extends EventEmitter {
       debug(`can't register yet: auth=${this.authorizedHub} stake=${this.stake.toString()}`)
       return receipts
     }
-    const workersAddedEvents = await this.relayHubContract?.contract.getPastEvents('RelayWorkersAdded', {
-      fromBlock: 1,
-      filter: { relayManager: this.managerAddress }
-    })
 
     // add worker only if not already added
-    if (workersAddedEvents.find((e: any) => e.returnValues.newRelayWorkers
-      .map((a: string) => a.toLowerCase()).includes(this.getAddress(1).toLowerCase())) == null) {
+    const workersAdded = await this._areWorkersAdded()
+    if (!workersAdded) {
       // register on chain
       const addRelayWorkerMethod = this.relayHubContract?.contract.methods
         .addRelayWorkers([this.getAddress(1)])
@@ -622,16 +631,8 @@ export class RelayServer extends EventEmitter {
         destination: this.relayHubContract?.address as string
       })).receipt)
     }
-    const relayRegisteredEvents = await this.relayHubContract?.contract.getPastEvents('RelayServerRegistered', {
-      fromBlock: 1,
-      filter: { relayManager: this.managerAddress }
-    })
-    if (relayRegisteredEvents.find(
-      (e: any) =>
-        e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase() &&
-        e.returnValues.baseRelayFee.toString() === this.baseRelayFee.toString() &&
-        e.returnValues.pctRelayFee.toString() === this.pctRelayFee.toString() &&
-        e.returnValues.relayUrl.toString() === this.url.toString()) == null) {
+    const registered = await this._isRegistered()
+    if (!registered) {
       const registerMethod = this.relayHubContract?.contract.methods
         .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
           this.url)
@@ -642,8 +643,29 @@ export class RelayServer extends EventEmitter {
       })).receipt)
       debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
     }
-    this.isAddressAdded = true
     return receipts
+  }
+
+  async _isRegistered (): Promise<boolean> {
+    const relayRegisteredEvents = await this.relayHubContract?.contract.getPastEvents('RelayServerRegistered', {
+      fromBlock: 1,
+      filter: { relayManager: this.managerAddress }
+    })
+    return (relayRegisteredEvents.find(
+      (e: any) =>
+        e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase() &&
+        e.returnValues.baseRelayFee.toString() === this.baseRelayFee.toString() &&
+        e.returnValues.pctRelayFee.toString() === this.pctRelayFee.toString() &&
+        e.returnValues.relayUrl.toString() === this.url.toString()) != null)
+  }
+
+  async _areWorkersAdded (): Promise<boolean> {
+    const workersAddedEvents = await this.relayHubContract?.contract.getPastEvents('RelayWorkersAdded', {
+      fromBlock: 1,
+      filter: { relayManager: this.managerAddress }
+    })
+    return (workersAddedEvents.find((e: any) => e.returnValues.newRelayWorkers
+      .map((a: string) => a.toLowerCase()).includes(this.getAddress(1).toLowerCase())) != null)
   }
 
   async _handleUnstakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
@@ -653,6 +675,7 @@ export class RelayServer extends EventEmitter {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
     }
+    await this.refreshStake()
     let receipts: TransactionReceipt[] = []
     const gasPrice = await this.contractInteractor.getGasPrice()
     receipts = receipts.concat(await this._sendManagerHubBalanceToOwner(gasPrice))
