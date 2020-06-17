@@ -2,7 +2,7 @@ import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
-import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 
@@ -14,7 +14,6 @@ import {
   IForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
-import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
 const RelayHub = artifacts.require('RelayHub')
 const Eip712Forwarder = artifacts.require('Eip712Forwarder')
@@ -24,7 +23,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
+contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 1000
   const chainId = defaultEnvironment.chainId
@@ -62,7 +61,12 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     relayHub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
-    await relayHub.registerRequestType(forwarder)
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    )
 
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
@@ -90,10 +94,9 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
         pctRelayFee: fee.toString(),
         gasPrice: gasPrice.toString(),
         relayWorker,
+        forwarder,
         paymaster: paymaster.address
-      },
-      extraData: extraDataWithDomain(forwarder, chainId)
-
+      }
     }
     const dataToSign = new TypedRequestData(
       chainId,
@@ -118,6 +121,7 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
         gasPrice,
         gasLimit: 0,
         relayWorker,
+        forwarder,
         paymaster: paymaster.address
       }
       const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData)
@@ -161,7 +165,8 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
         pctRelayFee: 0,
         baseRelayFee: 0,
         relayWorker,
-        paymaster:paymaster.address
+        forwarder,
+        paymaster: paymaster.address
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
@@ -277,9 +282,9 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
                   pctRelayFee,
                   gasPrice: gasPrice.toString(),
                   relayWorker,
+                  forwarder,
                   paymaster: paymaster.address
-                },
-                extraData: extraDataWithDomain(forwarder, chainId)
+                }
               }
               const dataToSign = new TypedRequestData(
                 chainId,

@@ -20,12 +20,12 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
     );
 
     function acceptRelayedCall(
-        GsnTypes.RelayRequest memory relayRequest,
-        bytes memory signature,
-        bytes memory approvalData,
+        GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
+        bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    public
+    external
     override
     view
     returns (bytes memory) {

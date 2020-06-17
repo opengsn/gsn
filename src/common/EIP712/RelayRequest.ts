@@ -1,11 +1,9 @@
 import RelayData from './RelayData'
 import ForwardRequest from './ForwardRequest'
-import ExtraData from './ExtraData'
 
 export default interface RelayRequest {
   request: ForwardRequest
   relayData: RelayData
-  extraData: ExtraData
 }
 
 export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
@@ -22,11 +20,8 @@ export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
       pctRelayFee: relayRequest.relayData.pctRelayFee,
       baseRelayFee: relayRequest.relayData.baseRelayFee,
       paymaster: relayRequest.relayData.paymaster,
+      forwarder: relayRequest.relayData.forwarder,
       relayWorker: relayRequest.relayData.relayWorker
-    },
-    extraData: {
-      forwarder: relayRequest.extraData.forwarder,
-      domainSeparator: relayRequest.extraData.domainSeparator
     }
   }
 }

@@ -35,6 +35,7 @@ import { toBN, toHex } from 'web3-utils'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from '../src/relayclient/types/TmpRelayTransactionJsonRequest'
 import Mutex from 'async-mutex/lib/Mutex'
+import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
@@ -126,7 +127,12 @@ contract('RelayServer', function (accounts) {
     sr = await TestRecipient.new(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
     // register hub's RelayRequest with forwarder, if not already done.
-    await rhub.registerRequestType(forwarderAddress) // .catch(()=>{})
+    await forwarder.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    )
 
     await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
@@ -249,7 +255,7 @@ contract('RelayServer', function (accounts) {
         baseRelayFee: relayRequest.relayData.baseRelayFee,
         pctRelayFee: relayRequest.relayData.pctRelayFee,
         relayHubAddress: rhub.address,
-        forwarder: relayRequest.extraData.forwarder,
+        forwarder: relayRequest.relayData.forwarder,
         ...overrideArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
@@ -450,7 +456,7 @@ contract('RelayServer', function (accounts) {
     //  It can be `create2`-ed in the PreRelayedCall, but this is not a place for such test.
     it('should fail to relay with wrong recipient', async function () {
       await expect(relayTransaction(options, { to: accounts[1] }))
-        .to.be.eventually.rejectedWith('expected \'SampleRecipientPostCall\' to equal \'SampleRecipientEmitted\'')
+        .to.be.eventually.rejectedWith('Paymaster rejected in server: isTrustedForwarder returned invalid response')
     })
 
     it('should fail to relay with invalid paymaster', async function () {

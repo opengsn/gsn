@@ -53,10 +53,9 @@ export default class AccountManager {
 
   async sign (relayRequest: RelayRequest): Promise<PrefixedHexString> {
     let signature
-    const forwarder = relayRequest.extraData.forwarder
+    const forwarder = relayRequest.relayData.forwarder
 
     const cloneRequest = { ...relayRequest }
-    delete cloneRequest.extraData
     const signedData = new TypedRequestData(
       this.chainId,
       forwarder,

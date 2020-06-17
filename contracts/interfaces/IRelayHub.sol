@@ -147,8 +147,5 @@ interface IRelayHub {
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) external view returns (uint256);
 
     function versionHub() external view returns (string memory);
-
-    /// helper method: register current Hub's RelayRequest with the forwarder
-    function registerRequestType(Eip712Forwarder forwarder) external;
 }
 

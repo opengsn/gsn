@@ -16,13 +16,23 @@ interface IForwarder {
 
     function getNonce(address from) external view returns (uint256);
 
-    function verify(ForwardRequest calldata req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig) external view;
+    function verify(
+        ForwardRequest calldata forwardRequest,
+        bytes32 domainSeparator,
+        bytes32 requestTypeHash,
+        bytes calldata suffixData,
+        bytes calldata signature
+    ) external view;
 
-    function verifyAndCall(ForwardRequest calldata req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes calldata suffixData, bytes calldata sig)
+    function execute(
+        ForwardRequest calldata forwardRequest,
+        bytes32 domainSeparator,
+        bytes32 requestTypeHash,
+        bytes calldata suffixData,
+        bytes calldata signature
+    )
     external
-    returns (bool success, bytes memory ret);
+    returns (bool success, string memory ret);
 
     /**
      * Register a new Request typehash.
@@ -31,5 +41,10 @@ interface IForwarder {
      * @param subTypes - subtypes used by the extraParams
      * @param subTypes2 - more subtypes, if sorted after _ForwardRequest (e.g. if type starts with lowercase)
      */
-    function registerRequestType(string calldata typeName, string calldata extraParams, string calldata subTypes, string calldata subTypes2) external;
+    function registerRequestType(
+        string calldata typeName,
+        string calldata extraParams,
+        string calldata subTypes,
+        string calldata subTypes2
+    ) external;
 }

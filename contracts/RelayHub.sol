@@ -170,9 +170,6 @@ contract RelayHub is IRelayHub {
             relayRequest.relayData.paymaster.staticcall{gas:gasLimits.acceptRelayedCallGasLimit}(encodedTx);
     }
 
-    function registerRequestType(Eip712Forwarder forwarder) public override {
-        GsnEip712Library.registerRequestType(forwarder);
-    }
     struct RelayCallData {
         bool success;
         bytes4 functionSelector;
@@ -233,7 +230,7 @@ contract RelayHub is IRelayHub {
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
         (, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
-            abi.encodeWithSelector(this.innerRelayCall.selector, relayRequest, signature, vars.gasLimits,
+            abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, vars.gasLimits,
                 innerGasLimit + externalGasLimit-gasleft() + GAS_OVERHEAD + POST_OVERHEAD, /*totalInitialGas*/
                 abi.decode(vars.recipientContext, (bytes)))
         );
@@ -268,17 +265,18 @@ contract RelayHub is IRelayHub {
         uint256 balanceBefore;
         bytes32 preReturnValue;
         bool relayedCallSuccess;
+        string relayedCallReturnValue;
         bytes data;
     }
 
     function innerRelayCall(
-        GsnTypes.RelayRequest memory relayRequest,
-        bytes memory signature,
-        IPaymaster.GasLimits memory gasLimits,
+        GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
+        IPaymaster.GasLimits calldata gasLimits,
         uint256 totalInitialGas,
-        bytes memory recipientContext
+        bytes calldata recipientContext
     )
-    public
+    external
     returns (RelayCallStatus)
     {
         AtomicData memory atomicData;
@@ -314,7 +312,7 @@ contract RelayHub is IRelayHub {
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
-        (atomicData.relayedCallSuccess,) = GsnEip712Library.callForwarderVerifyAndCall(relayRequest,signature);
+        (atomicData.relayedCallSuccess, atomicData.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate

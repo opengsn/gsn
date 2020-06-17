@@ -22,6 +22,8 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     IRelayHub internal relayHub;
     IForwarder internal trustedForwarder;
 
+    bytes32 public domainSeparator;
+
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
     }
@@ -46,17 +48,17 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         );
     }
 
-    //call this method from acceptRelayCall, to validate that the trustedForwarder of the
-    // recipient is approved by also paymaster, and that the request is verified.
+    // this method must be called from acceptRelayedCall to validate that the forwarder
+    // is approved by the paymaster as well and that the request is verified.
     function _verifySignature(
-        GsnTypes.RelayRequest memory relayRequest,
-        bytes memory signature
+        GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature
     )
     public
     view
     {
-        require(address(trustedForwarder) == relayRequest.extraData.forwarder, "Forwarder is not trusted");
-        GsnEip712Library.callForwarderVerify(relayRequest,signature);
+        require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        GsnEip712Library.verify(relayRequest, signature);
     }
 
     /*
@@ -73,6 +75,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
 
     function setTrustedForwarder(IForwarder forwarder) public onlyOwner {
         trustedForwarder = forwarder;
+        domainSeparator = GsnEip712Library.domainSeparator(address(forwarder));
     }
 
     /// check current deposit on relay hub.

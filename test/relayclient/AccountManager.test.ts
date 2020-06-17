@@ -10,7 +10,6 @@ import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
-import { extraDataWithDomain } from '../../src/common/EIP712/ExtraData'
 import chaiAsPromised from 'chai-as-promised'
 
 const { expect, assert } = chai.use(chaiAsPromised)
@@ -75,9 +74,9 @@ contract('AccountManager', function (accounts) {
         baseRelayFee: '1',
         gasPrice: '1',
         relayWorker: constants.ZERO_ADDRESS,
+        forwarder: constants.ZERO_ADDRESS,
         paymaster: constants.ZERO_ADDRESS
-      },
-      extraData: extraDataWithDomain(constants.ZERO_ADDRESS, 1)
+      }
     }
     beforeEach(function () {
       sinon.resetHistory()
@@ -85,7 +84,6 @@ contract('AccountManager', function (accounts) {
 
     function relayRequestWithoutExtraData (relayRequest: RelayRequest): RelayRequest {
       const cloneRequest = { ...relayRequest }
-      delete cloneRequest.extraData
       return cloneRequest
     }
 

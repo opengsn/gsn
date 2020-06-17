@@ -28,24 +28,6 @@ library GsnEip712Library {
     bytes32 public constant RELAYDATA_TYPEHASH = keccak256(RELAYDATA_TYPE);
     bytes32 public constant RELAY_REQUEST_TYPEHASH = keccak256(RELAY_REQUEST_TYPE);
 
-    //must call this method exactly once to register the GSN type.
-    // (note that its a public method: anyone can register this GSN version)
-    function registerRequestType(Eip712Forwarder forwarder) internal {
-        forwarder.registerRequestType(
-            RELAY_REQUEST_NAME, RELAY_REQUEST_PARAMS, string(RELAYDATA_TYPE), "" );
-        require(forwarder.isRegisteredTypehash(RELAY_REQUEST_TYPEHASH), "Fatal: registration failed");
-    }
-
-    //this is the method that maps a GSN RelayRequest into generic ForwardRequest
-    // TODO: move the hash function into a library. no need for instance.
-    function splitRequest(GsnTypes.RelayRequest memory req) internal pure
-    returns (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) {
-
-        fwd = req.request;
-        suffixData = abi.encode(
-            hashRelayData(req.relayData));
-    }
-
     struct EIP712Domain {
         string name;
         string version;
@@ -57,39 +39,60 @@ library GsnEip712Library {
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
 
-    /**
-     * call forwarder.verify()
-     */
-    function callForwarderVerify(GsnTypes.RelayRequest memory req, bytes memory sig) internal view {
-        require( IRelayRecipient(req.request.to).isTrustedForwarder(req.extraData.forwarder), "invalid forwarder for recipient");
-        (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
-        Eip712Forwarder forwarder = Eip712Forwarder(req.extraData.forwarder);
-        forwarder.verify(fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig);
+    // must call this method exactly once to register the GSN type.
+    // (note that its a public method: anyone can register this GSN version)
+    function registerRequestType(Eip712Forwarder forwarder) internal {
+        forwarder.registerRequestType(
+            RELAY_REQUEST_NAME, RELAY_REQUEST_PARAMS, string(RELAYDATA_TYPE), "");
+        require(forwarder.isRegisteredTypehash(RELAY_REQUEST_TYPEHASH), "Fatal: registration failed");
     }
 
-    /**
-     * call forwarder.verifyAndCall()
-     * note that we call it with address.call, and return (success,ret): this helper is a library
-     * function, and library function can't be wrapped with try/catch... (or called with address.call)
-     */
-    function callForwarderVerifyAndCall(GsnTypes.RelayRequest memory req, bytes memory sig) internal returns (bool success, bytes memory ret) {
-        try IRelayRecipient(req.request.to).isTrustedForwarder(req.extraData.forwarder) returns (bool isTrusted) {
-            require( isTrusted, "invalid forwarder for recipient");
-        } catch Error(string memory reason) {
-            revert(reason);
-        } catch {
-            revert("reverted: isTrustedForwarder");
-        }
-        (Eip712Forwarder.ForwardRequest memory fwd, bytes memory suffixData) = splitRequest(req);
-        /* solhint-disable-next-line avoid-low-level-calls */
-        try IForwarder(req.extraData.forwarder).verifyAndCall(
-            fwd, req.extraData.domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, sig)
-            returns (bool _success, bytes memory _ret) {
+    function splitRequest(
+        GsnTypes.RelayRequest calldata req
+    )
+    internal
+    pure
+    returns (
+        Eip712Forwarder.ForwardRequest memory forwardRequest,
+        bytes memory suffixData
+    ) {
+        forwardRequest = IForwarder.ForwardRequest(
+            req.request.to,
+            req.request.data,
+            req.request.from,
+            req.request.nonce,
+            req.request.gas
+        );
+        suffixData = abi.encode(
+            hashRelayData(req.relayData));
+    }
+
+    function verify(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
+        (bool success, bytes memory ret) = relayRequest.request.to.staticcall(
+            abi.encodeWithSelector(
+                IRelayRecipient.isTrustedForwarder.selector, relayRequest.relayData.forwarder
+            )
+        );
+        require(success, "isTrustedForwarder reverted");
+        require(ret.length == 32, "isTrustedForwarder returned invalid response");
+        require(abi.decode(ret, (bool)), "invalid forwarder for recipient");
+        (Eip712Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
+        Eip712Forwarder forwarder = Eip712Forwarder(relayRequest.relayData.forwarder);
+        forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
+    }
+
+    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
+        (Eip712Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
+        try IForwarder(relayRequest.relayData.forwarder).execute(
+                forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
+        ) returns (bool _success, string memory _ret) {
             return (_success, _ret);
         } catch Error(string memory reason) {
-            revert(reason);
+            return (false, reason);
         } catch {
-            revert("reverted: verifyAndCall");
+            return (false, "call to forwarder reverted");
         }
     }
 
@@ -102,13 +105,11 @@ library GsnEip712Library {
             }));
     }
 
-    function getChainID() internal pure returns (uint256) {
-        uint256 id;
+    function getChainID() internal pure returns (uint256 id) {
         /* solhint-disable no-inline-assembly */
         assembly {
             id := chainid()
         }
-        return id;
     }
 
     function hashDomain(EIP712Domain memory req) internal pure returns (bytes32) {
@@ -120,7 +121,7 @@ library GsnEip712Library {
                 req.verifyingContract));
     }
 
-    function hashRelayData(GsnTypes.RelayData memory req) internal pure returns (bytes32) {
+    function hashRelayData(GsnTypes.RelayData calldata req) internal pure returns (bytes32) {
         return keccak256(abi.encode(
                 RELAYDATA_TYPEHASH,
                 req.gasPrice,
@@ -128,6 +129,7 @@ library GsnEip712Library {
                 req.baseRelayFee,
                 req.relayWorker,
                 req.paymaster
+//                req.forwarder
             ));
     }
 

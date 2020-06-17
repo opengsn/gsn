@@ -15,6 +15,7 @@ import { startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { PrefixedHexString } from 'ethereumjs-tx'
+import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -77,7 +78,12 @@ options.forEach(params => {
       const forwarder = await Eip712Forwarder.new()
       sr = await TestRecipient.new(forwarder.address)
 
-      await rhub.registerRequestType(forwarder.address)
+      await forwarder.registerRequestType(
+        GsnRequestType.typeName,
+        GsnRequestType.extraParams,
+        GsnRequestType.subTypes,
+        GsnRequestType.subTypes2
+      )
 
       paymaster = await TestPaymasterEverythingAccepted.new()
       await paymaster.setRelayHub(rhub.address)
