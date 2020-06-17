@@ -21,6 +21,7 @@ import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
 import { IPaymasterInstance } from '../../types/truffle-contracts'
+import {GsnRequestType} from "../common/EIP712/TypedRequestData";
 
 interface RegisterOptions {
   from: Address
@@ -217,6 +218,7 @@ export default class CommandsLogic {
       await this.contract(Penalizer).deploy({}).send(options)
     const fInstance =
       await this.contract(Eip712Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
+
     const rInstance = await this.contract(RelayHub).deploy({
       arguments: [sInstance.options.address, pInstance.options.address]
     }).send(merge(options, { gas: 5e6 }))
@@ -231,6 +233,13 @@ export default class CommandsLogic {
     }
     this.config.stakeManagerAddress = sInstance.options.address
     this.config.relayHubAddress = rInstance.options.address
+
+    const res = await fInstance.methods.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    ).send(options)
 
     return {
       relayHubAddress: rInstance.options.address,

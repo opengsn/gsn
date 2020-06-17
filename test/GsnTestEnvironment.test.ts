@@ -42,7 +42,7 @@ contract('GsnTestEnvironment', function () {
     })
 
     it('should relay using relayTransaction', async () => {
-      await relayClient.relayTransaction({
+      const ret = await relayClient.relayTransaction({
         from: sender,
         to: sr.address,
         forwarder: await sr.getTrustedForwarder(),
@@ -50,6 +50,7 @@ contract('GsnTestEnvironment', function () {
         gas: '0x' + 1e6.toString(16),
         data: sr.contract.methods.emitMessage('hello').encodeABI()
       })
+      assert.deepEqual([...ret.relayingErrors.values(), ...ret.pingErrors.values()], [])
       const events = await sr.contract.getPastEvents()
       assert.equal(events[0].event, 'SampleRecipientEmitted')
       assert.equal(events[0].returnValues.realSender.toLocaleLowerCase(), sender.toLocaleLowerCase())

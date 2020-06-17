@@ -430,7 +430,7 @@ export class RelayServer extends EventEmitter {
     this.rawTxOptions = this.contractInteractor.getRawTxOptions()
 
     // todo: fix typo AND fix metacoin
-    console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
+    // console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
 
