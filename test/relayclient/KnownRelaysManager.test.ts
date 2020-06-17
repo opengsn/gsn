@@ -15,6 +15,7 @@ import { prepareTransaction } from './RelayProvider.test'
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -76,7 +77,12 @@ contract('KnownRelaysManager', function (
       const forwarderInstance = await Eip712Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
-      await relayHub.registerRequestType(forwarderAddress)
+      await forwarderInstance.registerRequestType(
+        GsnRequestType.typeName,
+        GsnRequestType.extraParams,
+        GsnRequestType.subTypes,
+        GsnRequestType.subTypes2
+      )
 
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
       await paymaster.setRelayHub(relayHub.address)

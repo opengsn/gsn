@@ -10,7 +10,7 @@ import { expect } from 'chai'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
-import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   PenalizerInstance,
@@ -18,7 +18,6 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
-import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 import TransactionResponse = Truffle.TransactionResponse
 
 const RelayHub = artifacts.require('RelayHub')
@@ -47,7 +46,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
-    await relayHub.registerRequestType(forwarder)
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    )
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     await stakeManager.stakeForAddress(relayManager, 1000, {
@@ -91,9 +95,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         baseRelayFee: '300',
         pctRelayFee: '10',
         relayWorker,
+        forwarder,
         paymaster: paymaster.address
-      },
-      extraData: extraDataWithDomain(forwarder, chainId)
+      }
     }
     const dataToSign = new TypedRequestData(
       chainId,
@@ -333,9 +337,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
               baseRelayFee: baseFee.toString(),
               pctRelayFee: fee.toString(),
               relayWorker,
+              forwarder,
               paymaster: paymaster.address
-            },
-            extraData: extraDataWithDomain(constants.ZERO_ADDRESS, 1)
+            }
           }
           const dataToSign = new TypedRequestData(
             chainId,
@@ -434,9 +438,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             pctRelayFee: encodedCallArgs.fee.toString(),
             gasPrice: encodedCallArgs.gasPrice.toString(),
             relayWorker,
+            forwarder,
             paymaster: encodedCallArgs.paymaster
-          },
-          extraData: extraDataWithDomain(forwarder, chainId)
+          }
         }
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
 

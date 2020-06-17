@@ -25,7 +25,6 @@ import { configureGSN } from '../relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../relayclient/types/Environments'
 import VersionsManager from '../common/VersionsManager'
 import { calculateTransactionMaxPossibleGas } from '../common/Utils'
-import { extraDataWithDomain } from '../common/EIP712/ExtraData'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -262,9 +261,9 @@ export class RelayServer extends EventEmitter {
         pctRelayFee: req.pctRelayFee,
         gasPrice: req.gasPrice,
         paymaster: req.paymaster,
+        forwarder: req.forwarder,
         relayWorker: this.getAddress(1)
-      },
-      extraData: extraDataWithDomain(req.forwarder, this.contractInteractor.getChainId())
+      }
     }
 
     let gasLimits
@@ -324,7 +323,8 @@ export class RelayServer extends EventEmitter {
         gasPrice: req.gasPrice?.toString() ?? '0',
         pctRelayFee: req.pctRelayFee.toString(),
         baseRelayFee: req.baseRelayFee.toString(),
-        relayWorker: this.getAddress(1),  //TODO: use relayWorker from clietn's request..
+        relayWorker: this.getAddress(1), // TODO: use relayWorker from clietn's request..
+        forwarder: req.forwarder,
         paymaster: req.paymaster
       })
     const paymasterBalance = await this.relayHubContract.balanceOf(req.paymaster)

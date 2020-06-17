@@ -10,26 +10,41 @@ contract TestUtil {
 
 
     //helpers for test to call the library funcs:
-    function callForwarderVerify(GsnTypes.RelayRequest memory relayRequest,
-        bytes memory signature) public view {
-        (this);
-
-        GsnEip712Library.callForwarderVerify(relayRequest,signature);
+    function callForwarderVerify(
+        GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature
+    )
+    external
+    view {
+        GsnEip712Library.verify(relayRequest, signature);
     }
 
-    function callForwarderVerifyAndCall(GsnTypes.RelayRequest memory relayRequest,
-        bytes memory signature) public returns (bool success, bytes memory ret) {
-
-        (success, ret) = GsnEip712Library.callForwarderVerifyAndCall(relayRequest,signature);
+    function callForwarderVerifyAndCall(
+        GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature
+    )
+    external
+    returns (
+        bool success,
+        bytes memory ret
+    ) {
+        (success, ret) = GsnEip712Library.execute(relayRequest,signature);
         emit Called(success,ret, success==false ? GsnUtils.getError(ret):"");
     }
 
     event Called(bool success, bytes ret, string error);
 
-    function splitRequest(GsnTypes.RelayRequest memory req) public pure
-    returns (Eip712Forwarder.ForwardRequest memory fwd, bytes32 domainSeparator, bytes32 typeHash, bytes memory suffixData) {
-        (fwd, suffixData) = GsnEip712Library.splitRequest(req);
+    function splitRequest(
+        GsnTypes.RelayRequest calldata relayRequest
+    )
+    external
+    pure
+    returns (
+        Eip712Forwarder.ForwardRequest memory forwardRequest,
+        bytes32 typeHash,
+        bytes memory suffixData
+    ) {
+        (forwardRequest, suffixData) = GsnEip712Library.splitRequest(relayRequest);
         typeHash = GsnEip712Library.RELAY_REQUEST_TYPEHASH;
-        domainSeparator = req.extraData.domainSeparator;
     }
 }

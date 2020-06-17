@@ -6,4 +6,5 @@ export default interface RelayData {
   baseRelayFee: IntString
   relayWorker: Address
   paymaster: Address
+  forwarder: Address
 }

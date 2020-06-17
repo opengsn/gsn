@@ -8,12 +8,13 @@ import "../Eip712Forwarder.sol";
 contract TestEip712Forwarder {
     function callVerifyAndCall(Eip712Forwarder forwarder, Eip712Forwarder.ForwardRequest memory req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public {
-
+/*
         (bool success, bytes memory ret) = forwarder.verifyAndCall(req, domainSeparator, requestTypeHash, suffixData, sig);
         string memory error;
         if ( !success )
             error = this.decodeErrorMessage(ret);
         emit Result(success, ret, error);
+*/
     }
 
     event Result(bool success, bytes ret, string error);

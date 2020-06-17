@@ -5,13 +5,9 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./IForwarder.sol";
 
-// a Generic EIP712 forwarder.
-// actual struct has to START with known fields, but may contain other fields
 contract Eip712Forwarder is IForwarder {
     using ECDSA for bytes32;
 
-    //all valid requests must start with this prefix.
-    // request name is arbitrary, but the parameter block must match exactly these parameters
     string public constant GENERIC_PARAMS = "_ForwardRequest request";
     string public constant GENERIC_TYPE = "_ForwardRequest(address to,bytes data,address from,uint256 nonce,uint256 gas)";
     bytes32 public constant GENERIC_TYPEHASH = keccak256(bytes(GENERIC_TYPE));
@@ -22,7 +18,7 @@ contract Eip712Forwarder is IForwarder {
     mapping(address => uint256) private nonces;
 
     function versionForwarder() external view virtual override returns (string memory) {
-        return "2.0.0-alpha.2+opengsn.forwarder.eip712";
+        return "2.0.0-alpha.2+opengsn.generic_eip712.iforwarder";
     }
 
     function getNonce(address from) external override view returns (uint256) {
@@ -36,21 +32,24 @@ contract Eip712Forwarder is IForwarder {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
     }
 
-    //note that verifyAndCall doesn't re-throw target's call revert, but instead return it as (success,ret).
-    // the nonce is incremented either if the target method reverts or not.
-    function verifyAndCall(ForwardRequest memory req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig)
-    public override
-    returns (bool success, bytes memory ret) {
-
+    function execute(
+        ForwardRequest memory req,
+        bytes32 domainSeparator,
+        bytes32 requestTypeHash,
+        bytes memory suffixData,
+        bytes memory sig
+    )
+    public
+    override
+    {
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        return req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
+        (bool success, bytes memory ret) = req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
+        require(success, string(abi.encodePacked("forwarded call reverted with: ", ret)));
     }
-
 
     function _verifyNonce(ForwardRequest memory req) internal view {
         require(nonces[req.from] == req.nonce, "nonce mismatch");
@@ -67,8 +66,15 @@ contract Eip712Forwarder is IForwarder {
      * @param subTypes - subtypes used by the extraParams
      * @param subTypes2 - more subtypes, if sorted after _ForwardRequest (e.g. if type starts with lowercase)
      */
-    function registerRequestType(string calldata typeName, string calldata extraParams, string calldata subTypes, string calldata subTypes2) external override {
-
+    function registerRequestType(
+        string calldata typeName,
+        string calldata extraParams,
+        string calldata subTypes,
+        string calldata subTypes2
+    )
+    external
+    override
+    {
         require(bytes(typeName).length > 0, "invalid typeName");
         bytes memory types = abi.encodePacked(subTypes, GENERIC_TYPE, subTypes2);
         string memory comma = bytes(extraParams).length > 0 ? "," : "";
@@ -96,9 +102,15 @@ contract Eip712Forwarder is IForwarder {
 
     event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
 
-    function _verifySig(ForwardRequest memory req,
-        bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) internal view {
-
+    function _verifySig(
+        ForwardRequest memory req,
+        bytes32 domainSeparator,
+        bytes32 requestTypeHash,
+        bytes memory suffixData,
+        bytes memory sig)
+    internal
+    view
+    {
         require(typeHashes[requestTypeHash], "invalid request typehash");
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", domainSeparator,
@@ -107,8 +119,16 @@ contract Eip712Forwarder is IForwarder {
         require(digest.recover(sig) == req.from, "signature mismatch");
     }
 
-    function _getEncoded(ForwardRequest memory req,
-        bytes32 requestTypeHash, bytes memory suffixData) public pure returns (bytes memory) {
+    function _getEncoded(
+        ForwardRequest memory req,
+        bytes32 requestTypeHash,
+        bytes memory suffixData
+    )
+    public
+    pure
+    returns (
+        bytes memory
+    ) {
         return abi.encodePacked(
             requestTypeHash,
             hash(req),

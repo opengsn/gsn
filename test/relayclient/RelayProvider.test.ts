@@ -22,8 +22,7 @@ import BadRelayClient from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '../../src/common/Utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
-import { extraDataWithDomain } from '../../src/common/EIP712/ExtraData'
+import TypedRequestData, { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -54,9 +53,9 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       baseRelayFee: '1',
       gasPrice: '1',
       paymaster,
+      forwarder: testRecipientForwarderAddress,
       relayWorker
-    },
-    extraData: extraDataWithDomain(testRecipientForwarderAddress, defaultEnvironment.chainId)
+    }
   }
   const dataToSign = new TypedRequestData(
     defaultEnvironment.chainId,
@@ -90,7 +89,12 @@ contract('RelayProvider', function (accounts) {
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
     const forwarderInstance = await Eip712Forwarder.new()
     forwarderAddress = forwarderInstance.address
-    await relayHub.registerRequestType(forwarderAddress)
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    )
 
     const paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address

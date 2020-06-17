@@ -1,10 +1,15 @@
-import { TestPaymasterEverythingAcceptedInstance, TestRecipientInstance } from '../types/truffle-contracts'
+import {
+  Eip712ForwarderInstance,
+  TestPaymasterEverythingAcceptedInstance,
+  TestRecipientInstance
+} from '../types/truffle-contracts'
 import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-tx'
-const RelayHub = artifacts.require('./RelayHub.sol')
+import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const TestRecipient = artifacts.require('./test/TestRecipient.sol')
+const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
 const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
@@ -13,10 +18,12 @@ contract('SampleRecipient', function (accounts) {
   const message = 'hello world'
   let sample: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
+  let forwarderInstance: Eip712ForwarderInstance
   let forwarder: PrefixedHexString
 
   before(async function () {
-    forwarder = (await Eip712Forwarder.new()).address
+    forwarderInstance = await Eip712Forwarder.new()
+    forwarder = forwarderInstance.address
 
     sample = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterEverythingAccepted.new()
@@ -39,7 +46,12 @@ contract('SampleRecipient', function (accounts) {
     const penalizer = await Penalizer.new()
     const rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(rhub.address)
-    await rhub.registerRequestType(forwarder)
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    )
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally
     // uses hub.depositFor)

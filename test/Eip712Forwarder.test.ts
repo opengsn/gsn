@@ -320,7 +320,7 @@ contract('Eip712Forwarder', () => {
       const sig = signTypedData_v4(senderPrivateKey, {data: {...data, message: req1}})
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
 
-      await fwd.verifyAndCall(req1.request, bufferToHex(domainSeparator), typeHash, '0x', sig)
+      await fwd.execute(req1.request, bufferToHex(domainSeparator), typeHash, '0x', sig)
       // @ts-ignore
       const logs = await recipient.getPastEvents('TestForwarderMessage')
       assert.equal(logs.length, 1, 'TestRecipient should emit')

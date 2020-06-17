@@ -5,7 +5,6 @@ import { isSameAddress } from '../common/Utils'
 import ContractInteractor from './ContractInteractor'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import { GSNConfig } from './GSNConfigurator'
-import { extraDataWithDomain } from '../common/EIP712/ExtraData'
 
 export default class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
@@ -47,9 +46,9 @@ export default class RelayedTransactionValidator {
         baseRelayFee: transactionJsonRequest.baseRelayFee,
         pctRelayFee: transactionJsonRequest.pctRelayFee,
         relayWorker: transactionJsonRequest.relayWorker,
+        forwarder: transactionJsonRequest.forwarder,
         paymaster: transactionJsonRequest.paymaster
-      },
-      extraData: extraDataWithDomain(transactionJsonRequest.forwarder, this.contractInteractor.getChainId())
+      }
     }
     const externalGasLimit = bufferToHex(transaction.gasLimit)
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData, externalGasLimit)

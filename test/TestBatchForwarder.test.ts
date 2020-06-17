@@ -2,7 +2,7 @@
 
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
-import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 import { getEip712Signature } from '../src/common/Utils'
 
@@ -13,7 +13,6 @@ import {
   TestRecipientInstance,
   BatchForwarderInstance
 } from '../types/truffle-contracts'
-import { extraDataWithDomain } from '../src/common/EIP712/ExtraData'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
@@ -51,7 +50,12 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
 
     forwarder = await BatchForwarder.new()
-    await hub.registerRequestType(forwarder.address)
+    await forwarder.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    )
     recipient = await TestRecipient.new(forwarder.address)
 
     await paymaster.setRelayHub(hub.address)
@@ -69,9 +73,9 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         baseRelayFee: '0',
         gasPrice: await web3.eth.getGasPrice(),
         relayWorker: relayWorker,
+        forwarder: forwarder.address,
         paymaster: paymaster.address
-      },
-      extraData: extraDataWithDomain(forwarder.address, chainId)
+      }
     }
   })
 

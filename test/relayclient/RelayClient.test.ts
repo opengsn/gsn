@@ -28,6 +28,7 @@ import { startRelay, stopRelay } from '../TestUtils'
 import { constants } from '@openzeppelin/test-helpers'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
+import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -62,10 +63,16 @@ contract('RelayClient', function (accounts) {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
-    forwarderAddress = (await Eip712Forwarder.new()).address
+    const forwarderInstance = await Eip712Forwarder.new()
+    forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    await relayHub.registerRequestType(forwarderAddress) // .catch(()=>{})
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.extraParams,
+      GsnRequestType.subTypes,
+      GsnRequestType.subTypes2
+    )
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setRelayHub(relayHub.address)

@@ -12,7 +12,6 @@ const EIP712DomainType = [
   { name: 'verifyingContract', type: 'address' }
 ]
 
-
 const RelayDataType = [
   { name: 'gasPrice', type: 'uint256' },
   { name: 'pctRelayFee', type: 'uint256' },
@@ -45,7 +44,7 @@ export function getDomainSeparator (verifier: Address, chainId: number): any {
   return {
     name: 'GSN Relayed Transaction',
     version: '2',
-    chainId: 1234, // chainId,
+    chainId: chainId,
     verifyingContract: verifier
   }
 }
@@ -74,4 +73,11 @@ export default class TypedRequestData implements EIP712TypedData {
     this.primaryType = 'RelayRequest'
     this.message = relayRequest
   }
+}
+
+export const GsnRequestType = {
+  typeName: 'RelayRequest',
+  extraParams: 'RelayData relayData',
+  subTypes: 'RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)',
+  subTypes2: ''
 }
