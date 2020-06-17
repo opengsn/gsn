@@ -87,8 +87,11 @@ library GsnEip712Library {
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
-        ) returns (bool _success, string memory _ret) {
-            return (_success, _ret);
+        ) returns (bool _success, bytes memory _ret) {
+            if (!_success) {
+                return (false, GsnUtils.getError(_ret));
+            }
+            return (true, "");
         } catch Error(string memory reason) {
             return (false, reason);
         } catch {

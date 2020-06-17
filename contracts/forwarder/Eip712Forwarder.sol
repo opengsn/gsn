@@ -43,17 +43,13 @@ contract Eip712Forwarder is IForwarder {
     )
     public
     override
-    returns (bool, string memory) {
+    returns (bool, bytes memory) {
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool executeSuccess, bytes memory ret) = req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
-        if (!executeSuccess){
-            return (false, GsnUtils.getError(ret));
-        }
-        return (true, "");
+        return req.to.call{gas: req.gas}(abi.encodePacked(req.data, req.from));
     }
 
     function _verifyNonce(ForwardRequest memory req) internal view {

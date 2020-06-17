@@ -8,9 +8,18 @@ import "../Eip712Forwarder.sol";
 contract TestEip712Forwarder {
     function callVerifyAndCall(Eip712Forwarder forwarder, Eip712Forwarder.ForwardRequest memory req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public {
-        (bool success, string memory error) = forwarder.execute(req, domainSeparator, requestTypeHash, suffixData, sig);
-        emit Result(success, error);
+        (bool success, bytes memory error) = forwarder.execute(req, domainSeparator, requestTypeHash, suffixData, sig);
+        emit Result(success, success ? "" : this.decodeErrorMessage(error));
     }
 
     event Result(bool success, string error);
+
+    function decodeErrorMessage(bytes calldata ret) external pure returns (string memory message) {
+        //decode evert string: assume it has a standard Error(string) signature: simply skip the (selector,offset,length) fields
+        if ( ret.length>4+32+32 ) {
+            return abi.decode(ret[4:], (string));
+        }
+        //unknown buffer. return as-is
+        return string(ret);
+    }
 }
