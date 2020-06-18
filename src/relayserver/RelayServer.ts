@@ -16,7 +16,7 @@ import { KeyManager } from './KeyManager'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
 import { Address, IntString } from '../relayclient/types/Aliases'
-import GsnTransactionDetails from '../relayclient/types/GsnTransactionDetails'
+import TmpRelayTransactionJsonRequest from '../relayclient/types/TmpRelayTransactionJsonRequest'
 import { IPaymasterInstance, IRelayHubInstance, IStakeManagerInstance } from '../../types/truffle-contracts'
 import { BlockHeader } from 'web3-eth'
 import { TransactionReceipt } from 'web3-core'
@@ -65,22 +65,7 @@ function spam (...args: any): void {
 class StateError extends Error {
 }
 
-export interface CreateTransactionDetails extends GsnTransactionDetails {
-  // todo: gasLimit defined as "gas"
-  gasLimit: PrefixedHexString
-  gasPrice: PrefixedHexString
-  // todo: encodedFunction defined as "data"
-  encodedFunction: PrefixedHexString
-  approvalData: PrefixedHexString
-  signature: PrefixedHexString
-  senderNonce: IntString
-  relayMaxNonce: IntString
-  baseRelayFee: IntString
-  pctRelayFee: IntString
-  relayHubAddress: Address
-  paymaster: Address
-  forwarder: Address
-}
+export type CreateTransactionDetails = TmpRelayTransactionJsonRequest
 
 interface SendTransactionDetails {
   signerIndex: number
@@ -216,6 +201,13 @@ export class RelayServer extends EventEmitter {
         `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract?.address}, request's hub address: ${req.relayHubAddress}\n`)
     }
 
+    // Check the relayWorker (todo: once migrated to multiple relays, check if exists)
+    const workerIndex = 1
+    if (req.relayWorker.toLowerCase() !== this.getAddress(workerIndex).toLowerCase()) {
+      throw new Error(
+        `Wrong worker address: ${req.relayWorker}\n`)
+    }
+
     // if trusted paymaster, we trust it to handle fees
     if (!this.trustedPaymasters.includes(req.paymaster.toLowerCase())) {
       // Check that the fee is acceptable
@@ -234,12 +226,10 @@ export class RelayServer extends EventEmitter {
       throw new Error(
         `Unacceptable gasPrice: relayServer's gasPrice:${this.gasPrice} request's gasPrice: ${req.gasPrice}`)
     }
-    // TODO: currently we hard-code a single worker. should find a "free" one to use from a pool
-    const workerIndex = 1
 
     // Check that max nonce is valid
     const nonce = await this._pollNonce(workerIndex)
-    if (nonce > parseInt(req.relayMaxNonce)) {
+    if (nonce > req.relayMaxNonce) {
       throw new Error(`Unacceptable relayMaxNonce: ${req.relayMaxNonce}. current nonce: ${nonce}`)
     }
 
@@ -593,7 +583,6 @@ export class RelayServer extends EventEmitter {
     if (dlog.args.relayHub.toLowerCase() === this.relayHubContract?.address.toLowerCase()) {
       this.authorizedHub = false
     }
-    // todo send only workers' balances and manager's hub balance to owner (not manager eth balance)
     const gasPrice = await this.contractInteractor.getGasPrice()
     let receipts: TransactionReceipt[] = []
     receipts = receipts.concat(await this._sendWorkersEthBalancesToOwner(gasPrice)).concat(
@@ -886,7 +875,6 @@ export class RelayServer extends EventEmitter {
       this.rawTxOptions)
 
     debug('txToSign', txToSign)
-    // TODO: change to eip155 chainID
     const signedTx = this.keyManager.signTransaction(tx.from, txToSign)
     const storedTx = transactionToStoredTx(txToSign, tx.from, this.chainId, tx.attempts + 1)
     await this.txStoreManager.putTx(storedTx, true)

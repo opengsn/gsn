@@ -234,19 +234,20 @@ contract('RelayServer', function (accounts) {
   }
 
   async function relayTransaction (server: RelayServer, options: any, overrideArgs?: Partial<CreateTransactionDetails>): Promise<PrefixedHexString> {
-    const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest(server, { ...options, ...overrideArgs })
-    return relayTransactionFromRequest(server, overrideArgs ?? {}, { relayRequest, relayMaxNonce, approvalData, signature })
+    const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await prepareRelayRequest(server,
+      { ...options, ...overrideArgs })
+    return relayTransactionFromRequest(server, overrideArgs ?? {}, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest })
   }
 
-  async function relayTransactionFromRequest (server: RelayServer, overrideArgs: Partial<CreateTransactionDetails>, { relayRequest, relayMaxNonce, approvalData, signature }: any): Promise<PrefixedHexString> {
+  async function relayTransactionFromRequest (server: RelayServer, overrideArgs: Partial<CreateTransactionDetails>, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }: any): Promise<PrefixedHexString> {
     // console.log('relayRequest is', relayRequest, signature, approvalData)
     // console.log('overrideArgs is', overrideArgs)
     const signedTx = await server.createRelayTransaction(
       {
+        relayWorker: httpRequest.relayWorker,
         senderNonce: relayRequest.relayData.senderNonce,
         gasPrice: relayRequest.gasData.gasPrice,
         encodedFunction: relayRequest.encodedFunction,
-        data: relayRequest.encodedFunction,
         approvalData,
         signature,
         from: relayRequest.relayData.senderAddress,
@@ -467,6 +468,16 @@ contract('RelayServer', function (accounts) {
         assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
     })
+
+    it('should fail to relay with wrong relay worker', async function () {
+      try {
+        await relayTransaction(relayServer, options, { relayWorker: accounts[1] })
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, `Wrong worker address: ${accounts[1]}`)
+      }
+    })
+
     it('should fail to relay with wrong recipient', async function () {
       try {
         await relayTransaction(relayServer, options, { to: accounts[1] })
@@ -525,11 +536,11 @@ contract('RelayServer', function (accounts) {
         assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
       }
       // Now we replay the same transaction so we get WrongNonce
-      const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest(relayServer, options)
-      await relayTransactionFromRequest(relayServer, {}, { relayRequest, relayMaxNonce, approvalData, signature })
+      const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await prepareRelayRequest(relayServer, options)
+      await relayTransactionFromRequest(relayServer, {}, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest })
       try {
         await relayTransactionFromRequest(relayServer, {},
-          { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature })
+          { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature, httpRequest })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
@@ -537,7 +548,7 @@ contract('RelayServer', function (accounts) {
     })
     it('should fail to relay with wrong relayMaxNonce', async function () {
       try {
-        await relayTransaction(relayServer, options, { relayMaxNonce: '0' })
+        await relayTransaction(relayServer, options, { relayMaxNonce: 0 })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Unacceptable relayMaxNonce:')
