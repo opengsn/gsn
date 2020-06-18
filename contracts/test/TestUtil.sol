@@ -8,6 +8,21 @@ import "../utils/GsnUtils.sol";
 
 contract TestUtil {
 
+    function libRelayRequestName() public pure returns (string memory) {
+        return GsnEip712Library.RELAY_REQUEST_NAME;
+    }
+
+    function libRelayRequestType() public pure returns (string memory) {
+        return string(GsnEip712Library.RELAY_REQUEST_TYPE);
+    }
+
+    function libRelayRequestTypeHash() public pure returns (bytes32) {
+        return GsnEip712Library.RELAY_REQUEST_TYPEHASH;
+    }
+
+    function libRelayRequestSuffix() public pure returns (string memory) {
+        return GsnEip712Library.RELAY_REQUEST_SUFFIX;
+    }
 
     //helpers for test to call the library funcs:
     function callForwarderVerify(
@@ -28,7 +43,7 @@ contract TestUtil {
         bool success,
         string memory ret
     ) {
-        (success, ret) = GsnEip712Library.execute(relayRequest,signature);
+        (success, ret) = GsnEip712Library.execute(relayRequest, signature);
         emit Called(success, success == false ? ret : "");
     }
 
@@ -46,5 +61,13 @@ contract TestUtil {
     ) {
         (forwardRequest, suffixData) = GsnEip712Library.splitRequest(relayRequest);
         typeHash = GsnEip712Library.RELAY_REQUEST_TYPEHASH;
+    }
+
+    function libDomainSeparator(address forwarder) public pure returns (bytes32) {
+        return GsnEip712Library.domainSeparator(forwarder);
+    }
+
+    function libGetChainID() public pure returns (uint256) {
+        return GsnEip712Library.getChainID();
     }
 }

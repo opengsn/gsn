@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
 import "../forwarder/Eip712Forwarder.sol";
-import "solidity-string-utils/StringUtils.sol";
 
 /**
  * Bridge Library to map GSN RelayRequest into a call of an Eip712Forwarder

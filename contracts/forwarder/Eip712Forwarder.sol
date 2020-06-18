@@ -66,7 +66,7 @@ contract Eip712Forwarder is IForwarder {
 
         for (uint i = 0; i < bytes(typeName).length; i++) {
             bytes1 c = bytes(typeName)[i];
-            require(c != '(' && c != ')', "invalid typename");
+            require(c != "(" && c != ")", "invalid typename");
         }
 
         bytes1 separator = ")";

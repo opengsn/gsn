@@ -1,15 +1,18 @@
 /* global describe it web3 */
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/camelcase
-import { recoverTypedSignature_v4 } from 'eth-sig-util'
+import {recoverTypedSignature_v4, TypedDataUtils} from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import { getEip712Signature } from '../src/common/Utils'
-import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
-import { expectEvent } from '@openzeppelin/test-helpers'
-import { Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import {getEip712Signature} from '../src/common/Utils'
+import TypedRequestData, {getDomainSeparatorHash, GsnRequestType} from '../src/common/EIP712/TypedRequestData'
+import {expectEvent} from '@openzeppelin/test-helpers'
+import {Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance} from '../types/truffle-contracts'
+import {PrefixedHexString} from 'ethereumjs-tx'
+import {signTypedDataUtils} from "@0x/utils";
+import {bufferToHex} from "ethereumjs-util";
+import Web3 from "web3";
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -20,7 +23,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 contract('Utils', function (accounts) {
   describe('#getEip712Signature()', function () {
     // ganache always reports chainId as '1'
-    const chainId = 1
+    let chainId: number
     let forwarder: PrefixedHexString
     let relayRequest: RelayRequest
     const senderAddress = accounts[0]
@@ -29,6 +32,8 @@ contract('Utils', function (accounts) {
 
     let forwarderInstance: Eip712ForwarderInstance
     before(async () => {
+      testUtil = await TestUtil.new()
+      chainId = (await testUtil.libGetChainID()).toNumber()
       forwarderInstance = await Eip712Forwarder.new()
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
@@ -66,8 +71,40 @@ contract('Utils', function (accounts) {
           paymaster
         }
       }
-      testUtil = await TestUtil.new()
     })
+
+    it('#_getEncoded should extract data exactly as local encoded data', async () => {
+      // @ts-ignore
+      const {forwardRequest, typeHash, suffixData} = await testUtil.splitRequest(relayRequest)
+      const getEncoded = await forwarderInstance._getEncoded(forwardRequest, typeHash, suffixData)
+      const dataToSign = new TypedRequestData(
+        chainId,
+        forwarder,
+        relayRequest
+      )
+      const localEncoded = bufferToHex(TypedDataUtils.encodeData(dataToSign.primaryType, dataToSign.message, dataToSign.types))
+      assert.equal(getEncoded, localEncoded)
+    })
+
+    it('library constants should match RelayHub eip712 constants', async function () {
+      assert.equal(GsnRequestType.typeName, await testUtil.libRelayRequestName());
+      assert.equal(GsnRequestType.typeSuffix, await testUtil.libRelayRequestSuffix());
+
+      const res = await forwarderInstance.registerRequestType(
+        GsnRequestType.typeName,
+        GsnRequestType.typeSuffix
+      )
+      const {typeStr, typeHash} = res.logs[0].args
+
+      assert.equal(typeStr, await testUtil.libRelayRequestType())
+      assert.equal(typeHash, await testUtil.libRelayRequestTypeHash())
+    });
+
+    it('should use same domainSeparator on-chain and off-chain', async () => {
+
+      assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
+    })
+
     it('should generate a valid EIP-712 compatible signature', async function () {
       const dataToSign = new TypedRequestData(
         chainId,
@@ -104,7 +141,7 @@ contract('Utils', function (accounts) {
           error: 'always fail'
         })
       })
-      it('should return revert', async function () {
+      it('should call target', async function () {
         relayRequest.request.data = await recipient.contract.methods.emitMessage('hello').encodeABI()
         relayRequest.request.nonce = (await forwarderInstance.getNonce(relayRequest.request.from)).toString()
 
@@ -116,10 +153,9 @@ contract('Utils', function (accounts) {
           ))
         const ret = await testUtil.callForwarderVerifyAndCall(relayRequest, sig)
         expectEvent(ret, 'Called', {
-          success: true,
           error: ''
         })
-        const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
+        const logs = await recipient.contract.getPastEvents(null, {fromBlock: 1})
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
       })
     })

@@ -35,8 +35,8 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 3010,
-    pre: 1530,
+    arc: 3010-2103,
+    pre: 1530-44,
     post: 1568
   }
 

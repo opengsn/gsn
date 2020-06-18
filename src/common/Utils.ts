@@ -36,6 +36,7 @@ export function event2topic (contract: any, names: any): any {
     .map(abi.encodeEventSignature)
 }
 
+//caller provider's eth_signTypedData
 export async function getEip712Signature (
   web3: Web3,
   typedRequestData: TypedRequestData,

@@ -67,7 +67,7 @@ contract('RelayClient', function (accounts) {
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    await forwarderInstance.registerRequestType(
+    const res = await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
       GsnRequestType.typeSuffix
     )
@@ -88,7 +88,7 @@ contract('RelayClient', function (accounts) {
       stakeManagerAddress: stakeManager.address
     }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
-    gasLess = relayClient.accountManager.newAccount().address
+    gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()
