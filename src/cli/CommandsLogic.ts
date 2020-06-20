@@ -21,7 +21,7 @@ import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
 import { IPaymasterInstance } from '../../types/truffle-contracts'
-import {GsnRequestType} from "../common/EIP712/TypedRequestData";
+import { GsnRequestType } from '../common/EIP712/TypedRequestData'
 
 interface RegisterOptions {
   from: Address

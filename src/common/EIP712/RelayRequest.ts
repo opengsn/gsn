@@ -8,7 +8,7 @@ export default interface RelayRequest {
 
 export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
   return {
-    request: { ... relayRequest.request },
-    relayData: { ... relayRequest.relayData }
+    request: { ...relayRequest.request },
+    relayData: { ...relayRequest.relayData }
   }
 }

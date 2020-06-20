@@ -65,11 +65,11 @@ export default class TypedRequestData implements EIP712TypedData {
     this.types = {
       EIP712Domain: EIP712DomainType,
       RelayRequest: RelayRequestType,
-      RelayData: RelayDataType,
+      RelayData: RelayDataType
     }
     this.domain = getDomainSeparator(verifier, chainId)
     this.primaryType = 'RelayRequest'
-    //in the signature, all "request" fields are flattened out at the top structure.
+    // in the signature, all "request" fields are flattened out at the top structure.
     // other params are inside "relayData" sub-type
     this.message = {
       ...relayRequest.request,
@@ -80,5 +80,5 @@ export default class TypedRequestData implements EIP712TypedData {
 
 export const GsnRequestType = {
   typeName: 'RelayRequest',
-  typeSuffix: 'RelayData relayData)RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)',
+  typeSuffix: 'RelayData relayData)RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)'
 }

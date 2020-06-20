@@ -270,7 +270,7 @@ export default class RelayClient {
     if (forwarderAddress !== constants.ZERO_ADDRESS) {
       const recipientCode = await web3.eth.getCode(gsnTransactionDetails.to)
       const isRecipientDeployed = recipientCode != '0x'
-      if (!isRecipientDeployed){
+      if (!isRecipientDeployed) {
         console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
         Unless you are using some counterfactual contract deployment technique the transaction will fail!`)
       } else {

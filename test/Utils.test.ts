@@ -1,18 +1,18 @@
 /* global describe it web3 */
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/camelcase
-import {recoverTypedSignature_v4, TypedDataUtils} from 'eth-sig-util'
+import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import {getEip712Signature} from '../src/common/Utils'
-import TypedRequestData, {getDomainSeparatorHash, GsnRequestType} from '../src/common/EIP712/TypedRequestData'
-import {expectEvent} from '@openzeppelin/test-helpers'
-import {Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance} from '../types/truffle-contracts'
-import {PrefixedHexString} from 'ethereumjs-tx'
-import {signTypedDataUtils} from "@0x/utils";
-import {bufferToHex} from "ethereumjs-util";
-import Web3 from "web3";
+import { getEip712Signature } from '../src/common/Utils'
+import TypedRequestData, { getDomainSeparatorHash, GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import { expectEvent } from '@openzeppelin/test-helpers'
+import { Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
+import { PrefixedHexString } from 'ethereumjs-tx'
+import { signTypedDataUtils } from '@0x/utils'
+import { bufferToHex } from 'ethereumjs-util'
+import Web3 from 'web3'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -75,7 +75,7 @@ contract('Utils', function (accounts) {
 
     it('#_getEncoded should extract data exactly as local encoded data', async () => {
       // @ts-ignore
-      const {forwardRequest, typeHash, suffixData} = await testUtil.splitRequest(relayRequest)
+      const { forwardRequest, typeHash, suffixData } = await testUtil.splitRequest(relayRequest)
       const getEncoded = await forwarderInstance._getEncoded(forwardRequest, typeHash, suffixData)
       const dataToSign = new TypedRequestData(
         chainId,
@@ -87,21 +87,20 @@ contract('Utils', function (accounts) {
     })
 
     it('library constants should match RelayHub eip712 constants', async function () {
-      assert.equal(GsnRequestType.typeName, await testUtil.libRelayRequestName());
-      assert.equal(GsnRequestType.typeSuffix, await testUtil.libRelayRequestSuffix());
+      assert.equal(GsnRequestType.typeName, await testUtil.libRelayRequestName())
+      assert.equal(GsnRequestType.typeSuffix, await testUtil.libRelayRequestSuffix())
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
         GsnRequestType.typeSuffix
       )
-      const {typeStr, typeHash} = res.logs[0].args
+      const { typeStr, typeHash } = res.logs[0].args
 
       assert.equal(typeStr, await testUtil.libRelayRequestType())
       assert.equal(typeHash, await testUtil.libRelayRequestTypeHash())
-    });
+    })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
-
       assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 
@@ -155,7 +154,7 @@ contract('Utils', function (accounts) {
         expectEvent(ret, 'Called', {
           error: ''
         })
-        const logs = await recipient.contract.getPastEvents(null, {fromBlock: 1})
+        const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
       })
     })
