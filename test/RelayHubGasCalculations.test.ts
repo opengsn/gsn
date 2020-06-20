@@ -23,7 +23,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
+contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 1000
   const chainId = defaultEnvironment.chainId
@@ -35,9 +35,9 @@ contract.skip('RelayHub gas calculations', function ([_, relayOwner, relayWorker
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 3010-2103,
-    pre: 1530-44,
-    post: 1568
+    arc: 907,
+    pre: 1486,
+    post: 1613
   }
 
   let relayHub: RelayHubInstance
