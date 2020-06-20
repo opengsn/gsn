@@ -57,7 +57,7 @@ library GsnEip712Library {
             hashRelayData(req.relayData));
     }
 
-    function verify(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
+    function verifyForwarderTrusted(GsnTypes.RelayRequest calldata relayRequest) internal view {
         (bool success, bytes memory ret) = relayRequest.request.to.staticcall(
             abi.encodeWithSelector(
                 IRelayRecipient.isTrustedForwarder.selector, relayRequest.relayData.forwarder
@@ -66,10 +66,18 @@ library GsnEip712Library {
         require(success, "isTrustedForwarder reverted");
         require(ret.length == 32, "isTrustedForwarder returned invalid response");
         require(abi.decode(ret, (bool)), "invalid forwarder for recipient");
+    }
+
+    function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
         (Eip712Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         Eip712Forwarder forwarder = Eip712Forwarder(relayRequest.relayData.forwarder);
         forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
+    }
+
+    function verify(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
+        verifyForwarderTrusted(relayRequest);
+        verifySignature(relayRequest, signature);
     }
 
     function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
