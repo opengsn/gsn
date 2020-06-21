@@ -11,13 +11,14 @@ import "./0x/LibBytesV06.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/GsnUtils.sol";
-import "./interfaces/ISignatureVerifier.sol";
+import "./interfaces/GsnTypes.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
-import "./interfaces/IForwarder.sol";
+import "./forwarder/IForwarder.sol";
 import "./BaseRelayRecipient.sol";
 import "./StakeManager.sol";
 import "./Penalizer.sol";
+import "./utils/GsnEip712Library.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -37,15 +38,15 @@ contract RelayHub is IRelayHub {
     uint256 constant private MAXIMUM_RECIPIENT_DEPOSIT = 2 ether;
 
     /**
-    * the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
+    * @dev the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 34877;
+    uint256 constant private GAS_OVERHEAD = 35214;
 
     //gas overhead to calculate gasUseWithoutPost
-    uint256 constant private POST_OVERHEAD = 8808;
+    uint256 constant private POST_OVERHEAD = 8518;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
@@ -128,7 +129,7 @@ contract RelayHub is IRelayHub {
     }
 
     function canRelay(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGas,
         bytes calldata signature,
         bytes calldata approvalData
@@ -144,7 +145,7 @@ contract RelayHub is IRelayHub {
             gasLimits.acceptRelayedCallGasLimit +
             gasLimits.preRelayedCallGasLimit +
             gasLimits.postRelayedCallGasLimit +
-            relayRequest.gasData.gasLimit;
+            relayRequest.request.gas;
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
@@ -154,7 +155,7 @@ contract RelayHub is IRelayHub {
 
         uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
-            relayRequest.gasData
+            relayRequest.relayData
         );
 
         // We don't yet know how much gas will be used by the recipient, so we make sure there are enough funds to pay
@@ -178,7 +179,7 @@ contract RelayHub is IRelayHub {
     }
 
     function relayCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint externalGasLimit
@@ -188,7 +189,7 @@ contract RelayHub is IRelayHub {
     returns (bool paymasterAccepted, string memory revertReason)
     {
         RelayCallData memory vars;
-        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.encodedFunction, 0);
+        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.data, 0);
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
@@ -196,7 +197,7 @@ contract RelayHub is IRelayHub {
             stakeManager.isRelayManagerStaked(workerToManager[msg.sender], MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
             "relay manager not staked"
         );
-        require(relayRequest.gasData.gasPrice <= tx.gasprice, "Invalid gas price");
+        require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         // We now verify that the paymaster will agree to be charged for the transaction.
@@ -209,8 +210,8 @@ contract RelayHub is IRelayHub {
             emit TransactionRejectedByPaymaster(
                 workerToManager[msg.sender],
                 relayRequest.relayData.paymaster,
-                relayRequest.relayData.senderAddress,
-                relayRequest.target,
+                relayRequest.request.from,
+                relayRequest.request.to,
                 msg.sender,
                 vars.functionSelector,
                 revertReason);
@@ -233,13 +234,13 @@ contract RelayHub is IRelayHub {
                 innerGasLimit + externalGasLimit-gasleft() + GAS_OVERHEAD + POST_OVERHEAD, /*totalInitialGas*/
                 abi.decode(vars.recipientContext, (bytes)))
         );
-
         vars.status = abi.decode(relayCallStatus, (RelayCallStatus));
+
     }
     {
         // We now perform the actual charge calculation, based on the measured gas used
         uint256 gasUsed = (externalGasLimit - gasleft()) + GAS_OVERHEAD;
-        uint256 charge = calculateCharge(gasUsed, relayRequest.gasData);
+        uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         // We've already checked that the paymaster has enough balance to pay for the relayed transaction, this is only
         // a sanity check to prevent overflows in case of bugs.
@@ -250,8 +251,8 @@ contract RelayHub is IRelayHub {
         emit TransactionRelayed(
             workerToManager[msg.sender],
             msg.sender,
-            relayRequest.relayData.senderAddress,
-            relayRequest.target,
+            relayRequest.request.from,
+            relayRequest.request.to,
             relayRequest.relayData.paymaster,
             vars.functionSelector,
             vars.status,
@@ -264,11 +265,12 @@ contract RelayHub is IRelayHub {
         uint256 balanceBefore;
         bytes32 preReturnValue;
         bool relayedCallSuccess;
+        string relayedCallReturnValue;
         bytes data;
     }
 
     function innerRelayCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         IPaymaster.GasLimits calldata gasLimits,
         uint256 totalInitialGas,
@@ -310,10 +312,7 @@ contract RelayHub is IRelayHub {
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
-        (atomicData.relayedCallSuccess,) =
-        relayRequest.relayData.forwarder.call(
-            abi.encodeWithSelector(IForwarder.verifyAndCall.selector, relayRequest, signature)
-        );
+        (atomicData.relayedCallSuccess, atomicData.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate
@@ -324,7 +323,7 @@ contract RelayHub is IRelayHub {
             atomicData.relayedCallSuccess,
             atomicData.preReturnValue,
             totalInitialGas - gasleft(), /*gasUseWithoutPost*/
-            relayRequest.gasData
+            relayRequest.relayData
         );
 
         (bool successPost,) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(atomicData.data);
@@ -354,8 +353,8 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gasUsed, ISignatureVerifier.GasData memory gasData) public override virtual view returns (uint256) {
-        return gasData.baseRelayFee + (gasUsed * gasData.gasPrice * (100 + gasData.pctRelayFee)) / 100;
+    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData memory relayData) public override virtual view returns (uint256) {
+        return relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
     }
 
     modifier penalizerOnly () {

@@ -1,18 +1,16 @@
 import GsnTestEnvironment, { TestEnvironment } from '../src/relayclient/GsnTestEnvironment'
 import { HttpProvider } from 'web3-core'
-import { TestRecipientInstance } from '../types/truffle-contracts'
 import RelayClient from '../src/relayclient/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'
+import { TestRecipientInstance } from '../types/truffle-contracts'
 
-const TestRecipient = artifacts.require('tests/TestRecipient')
+const TestRecipient = artifacts.require('TestRecipient')
 
 contract('GsnTestEnvironment', function () {
-  let sr: TestRecipientInstance
   let host: string
 
-  before(async function () {
-    sr = await TestRecipient.new()
-    host = (web3.currentProvider as HttpProvider).host
+  before(function () {
+    host = (web3.currentProvider as HttpProvider).host || 'localhost'
   })
 
   describe('#startGsn()', function () {
@@ -28,6 +26,7 @@ contract('GsnTestEnvironment', function () {
   })
 
   context('using RelayClient', () => {
+    let sr: TestRecipientInstance
     let sender: string
     let testEnvironment: TestEnvironment
     let relayClient: RelayClient
@@ -35,6 +34,7 @@ contract('GsnTestEnvironment', function () {
       sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
       relayClient = testEnvironment.relayProvider.relayClient
+      sr = await TestRecipient.new(testEnvironment.deploymentResult.forwarderAddress)
     })
 
     after(async () => {
@@ -42,7 +42,7 @@ contract('GsnTestEnvironment', function () {
     })
 
     it('should relay using relayTransaction', async () => {
-      await relayClient.relayTransaction({
+      const ret = await relayClient.relayTransaction({
         from: sender,
         to: sr.address,
         forwarder: await sr.getTrustedForwarder(),
@@ -50,6 +50,7 @@ contract('GsnTestEnvironment', function () {
         gas: '0x' + 1e6.toString(16),
         data: sr.contract.methods.emitMessage('hello').encodeABI()
       })
+      assert.deepEqual([...ret.relayingErrors.values(), ...ret.pingErrors.values()], [])
       const events = await sr.contract.getPastEvents()
       assert.equal(events[0].event, 'SampleRecipientEmitted')
       assert.equal(events[0].returnValues.realSender.toLocaleLowerCase(), sender.toLocaleLowerCase())
@@ -57,11 +58,15 @@ contract('GsnTestEnvironment', function () {
   })
 
   context('using RelayProvider', () => {
+    let sr: TestRecipientInstance
     let sender: string
     let testEnvironment: TestEnvironment
     before(async function () {
       sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
+      sr = await TestRecipient.new(testEnvironment.deploymentResult.forwarderAddress)
+
+      // @ts-ignore
       TestRecipient.web3.setProvider(testEnvironment.relayProvider)
     })
     after(async () => {

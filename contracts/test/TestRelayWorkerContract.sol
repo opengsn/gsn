@@ -9,7 +9,7 @@ contract TestRelayWorkerContract {
 
     function relayCall(
         IRelayHub hub,
-        ISignatureVerifier.RelayRequest memory relayRequest,
+        GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature,
         uint externalGasLimit)
     public

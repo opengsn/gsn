@@ -2,7 +2,7 @@
 
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
-import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 import { getEip712Signature } from '../src/common/Utils'
 
@@ -49,27 +49,30 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     paymaster = await TestPaymasterEverythingAccepted.new({ gas: 1e7 })
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
 
-    recipient = await TestRecipient.new()
     forwarder = await BatchForwarder.new()
-    await recipient.setTrustedForwarder(forwarder.address)
+    await forwarder.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
+    recipient = await TestRecipient.new(forwarder.address)
 
     await paymaster.setRelayHub(hub.address)
 
     sharedRelayRequestData = {
-      target: recipient.address,
-      encodedFunction: '',
-      gasData: {
+      request: {
+        to: recipient.address,
+        data: '',
+        from,
+        nonce: '1',
+        gas: 1e6.toString()
+      },
+      relayData: {
         pctRelayFee: '1',
         baseRelayFee: '0',
         gasPrice: await web3.eth.getGasPrice(),
-        gasLimit: 1e6.toString()
-      },
-      relayData: {
-        senderAddress: from,
-        senderNonce: '1',
         relayWorker: relayWorker,
-        paymaster: paymaster.address,
-        forwarder: forwarder.address
+        forwarder: forwarder.address,
+        paymaster: paymaster.address
       }
     }
   })
@@ -77,10 +80,10 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   context('#sendBatch', function () {
     it('should send all methods in the batch', async () => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-      relayRequest.relayData.senderNonce = (await forwarder.getNonce(from)).toString()
-      relayRequest.target = forwarder.address
-      relayRequest.gasData.gasPrice = 1e6.toString()
-      relayRequest.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
+      relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
+      relayRequest.request.to = forwarder.address
+      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
           recipient.contract.methods.emitMessage('world').encodeABI()
@@ -113,10 +116,10 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
 
     it('should revert all requests if one fails', async () => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-      relayRequest.relayData.senderNonce = (await forwarder.getNonce(from)).toString()
-      relayRequest.target = forwarder.address
-      relayRequest.gasData.gasPrice = 1e6.toString()
-      relayRequest.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
+      relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
+      relayRequest.request.to = forwarder.address
+      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
           recipient.contract.methods.testRevert().encodeABI()
@@ -140,10 +143,10 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
 
     it('should not batch with wrong # of params', async () => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-      relayRequest.relayData.senderNonce = (await forwarder.getNonce(from)).toString()
-      relayRequest.target = forwarder.address
-      relayRequest.gasData.gasPrice = 1e6.toString()
-      relayRequest.encodedFunction = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
+      relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
+      relayRequest.request.to = forwarder.address
+      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI()
         ]).encodeABI()

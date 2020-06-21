@@ -104,7 +104,6 @@ export default class ContractInteractor {
 
   async _init (): Promise<void> {
     const chain = await this.web3.eth.net.getNetworkType()
-    console.log('== chain =', chain)
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
@@ -183,7 +182,7 @@ export default class ContractInteractor {
       )
         .call({
           from: relayRequest.relayData.relayWorker,
-          gasPrice: relayRequest.gasData.gasPrice,
+          gasPrice: relayRequest.relayData.gasPrice,
           gas: externalGasLimit
         })
       if (this.config.verbose) {

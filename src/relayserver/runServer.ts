@@ -49,7 +49,7 @@ const argv = parseArgs(process.argv.slice(2), {
   default: envDefaults
 })
 
-if (argv._.length > 0) error(`unknown extra params: ${argv._.toString() as string}`)
+if (argv._.length > 0) error(`unknown extra params: ${argv._.toString()}`)
 
 console.log('runServer start. args', argv)
 const config: ServerConfigParams = argv.config != null ? require(argv.config) : {}

@@ -2,7 +2,7 @@ import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
-import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 
@@ -16,7 +16,7 @@ import {
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
-const Forwarder = artifacts.require('Forwarder')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -37,7 +37,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const magicNumbers = {
     arc: 907,
     pre: 1486,
-    post: 1583
+    post: 1613
   }
 
   let relayHub: RelayHubInstance
@@ -52,14 +52,20 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let forwarder: string
 
   beforeEach(async function prepareForHub () {
-    recipient = await TestRecipient.new()
-    forwarder = await recipient.getTrustedForwarder()
-    forwarderInstance = await Forwarder.at(forwarder)
+    forwarderInstance = await Eip712Forwarder.new()
+    forwarder = forwarderInstance.address
+    recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     relayHub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(relayHub.address)
+    // register hub's RelayRequest with forwarder, if not already done.
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
+
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
       from: other
@@ -74,20 +80,20 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     await relayHub.registerRelayServer(0, fee, '', { from: relayManager })
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
     relayRequest = {
-      encodedFunction,
-      target: recipient.address,
-      relayData: {
-        senderAddress,
-        relayWorker,
-        senderNonce: senderNonce.toString(),
-        paymaster: paymaster.address,
-        forwarder
+      request: {
+        to: recipient.address,
+        data: encodedFunction,
+        from: senderAddress,
+        nonce: senderNonce.toString(),
+        gas: gasLimit.toString()
       },
-      gasData: {
+      relayData: {
         baseRelayFee: baseFee.toString(),
         pctRelayFee: fee.toString(),
         gasPrice: gasPrice.toString(),
-        gasLimit: gasLimit.toString()
+        relayWorker,
+        forwarder,
+        paymaster: paymaster.address
       }
     }
     const dataToSign = new TypedRequestData(
@@ -107,13 +113,16 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const gasPrice = 1e9
       const baseRelayFee = 1000000
       const pctRelayFee = 10
-      const fee = {
+      const relayData = {
         pctRelayFee,
         baseRelayFee,
         gasPrice,
-        gasLimit: 0
+        gasLimit: 0,
+        relayWorker,
+        forwarder,
+        paymaster: paymaster.address
       }
-      const charge = await relayHub.calculateCharge(gasUsed.toString(), fee)
+      const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData)
       const expectedCharge = baseRelayFee + gasUsed * gasPrice * (pctRelayFee + 100) / 100
       assert.equal(charge.toString(), expectedCharge.toString())
     })
@@ -150,10 +159,12 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     it('should set correct gas limits and pass correct \'gasUsedWithoutPost\' to the \'postRelayCall\'', async () => {
       const gasPrice = 1e9
       const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', 0, {
-        gasLimit: 0,
         gasPrice,
         pctRelayFee: 0,
-        baseRelayFee: 0
+        baseRelayFee: 0,
+        relayWorker,
+        forwarder,
+        paymaster: paymaster.address
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
@@ -183,7 +194,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
       const relayRequestMisbehaving = cloneRelayRequest(relayRequest)
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
-      relayRequestMisbehaving.relayData.senderNonce = senderNonce
+      relayRequestMisbehaving.request.nonce = senderNonce
       const dataToSign = new TypedRequestData(
         chainId,
         forwarder,
@@ -257,20 +268,20 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
               const baseRelayFee = '0'
               const relayRequest: RelayRequest = {
-                target: recipient.address,
-                encodedFunction,
-                relayData: {
-                  senderAddress,
-                  senderNonce,
-                  relayWorker,
-                  paymaster: paymaster.address,
-                  forwarder
+                request: {
+                  to: recipient.address,
+                  data: encodedFunction,
+                  from: senderAddress,
+                  nonce: senderNonce,
+                  gas: gasLimit.toString()
                 },
-                gasData: {
+                relayData: {
                   baseRelayFee,
                   pctRelayFee,
                   gasPrice: gasPrice.toString(),
-                  gasLimit: gasLimit.toString()
+                  relayWorker,
+                  forwarder,
+                  paymaster: paymaster.address
                 }
               }
               const dataToSign = new TypedRequestData(

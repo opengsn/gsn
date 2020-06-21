@@ -3,7 +3,7 @@ import { Address, IntString } from './Aliases'
 
 export default interface TmpRelayTransactionJsonRequest {
   relayWorker: Address
-  encodedFunction: PrefixedHexString
+  data: PrefixedHexString
   approvalData: PrefixedHexString
   signature: PrefixedHexString
   from: Address

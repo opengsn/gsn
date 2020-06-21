@@ -15,14 +15,16 @@ import { startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { PrefixedHexString } from 'ethereumjs-tx'
+import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
-const SampleRecipient = artifacts.require('tests/TestRecipient')
+const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
 const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymasterPreconfiguredApproval')
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 const options = [
   {
@@ -73,7 +75,14 @@ options.forEach(params => {
         from = accounts[0]
       }
 
-      sr = await SampleRecipient.new()
+      const forwarder = await Eip712Forwarder.new()
+      sr = await TestRecipient.new(forwarder.address)
+
+      await forwarder.registerRequestType(
+        GsnRequestType.typeName,
+        GsnRequestType.typeSuffix
+      )
+
       paymaster = await TestPaymasterEverythingAccepted.new()
       await paymaster.setRelayHub(rhub.address)
     })
@@ -101,7 +110,7 @@ options.forEach(params => {
         // NOTE: in real application its enough to set the provider in web3.
         // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
         // so changing the global one is not enough...
-        SampleRecipient.web3.setProvider(relayProvider)
+        TestRecipient.web3.setProvider(relayProvider)
       })
     }
 
@@ -156,7 +165,7 @@ options.forEach(params => {
             // @ts-ignore
             new RelayProvider(web3.currentProvider,
               relayClientConfig, { asyncApprovalData: async () => Promise.resolve(approvalData) })
-          SampleRecipient.web3.setProvider(relayProvider)
+          TestRecipient.web3.setProvider(relayProvider)
         })
 
         it(params.title + 'wait for specific approvalData', async () => {

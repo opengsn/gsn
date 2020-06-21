@@ -16,7 +16,7 @@ import chaiAsPromised from 'chai-as-promised'
 import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
-  ForwarderInstance,
+  Eip712ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
@@ -35,10 +35,11 @@ import { toBN, toHex } from 'web3-utils'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from '../src/relayclient/types/TmpRelayTransactionJsonRequest'
 import Mutex from 'async-mutex/lib/Mutex'
+import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
-const Forwarder = artifacts.require('Forwarder')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
@@ -57,7 +58,7 @@ contract('RelayServer', function (accounts) {
   const pctRelayFee = 11
   const baseRelayFee = 12
   let rhub: RelayHubInstance
-  let forwarder: ForwarderInstance
+  let forwarder: Eip712ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let sr: TestRecipientInstance
@@ -112,7 +113,6 @@ contract('RelayServer', function (accounts) {
 
     return newServer
   }
-
   before(async function () {
     globalId = (await snapshot()).result
     ethereumNodeUrl = (web3.currentProvider as HttpProvider).host
@@ -122,10 +122,15 @@ contract('RelayServer', function (accounts) {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     rhub = await RelayHub.new(stakeManager.address, penalizer.address)
-    sr = await TestRecipient.new()
-    const forwarderAddress = await sr.getTrustedForwarder()
-    forwarder = await Forwarder.at(forwarderAddress)
+    forwarder = await Eip712Forwarder.new()
+    const forwarderAddress = forwarder.address
+    sr = await TestRecipient.new(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
+    // register hub's RelayRequest with forwarder, if not already done.
+    await forwarder.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
 
     await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
@@ -235,25 +240,24 @@ contract('RelayServer', function (accounts) {
     // console.log('overrideArgs is', overrideArgs)
     const signedTx = await relayServer.createRelayTransaction(
       {
-        senderNonce: relayRequest.relayData.senderNonce,
-        gasPrice: relayRequest.gasData.gasPrice,
-        encodedFunction: relayRequest.encodedFunction,
-        data: relayRequest.encodedFunction,
+        senderNonce: relayRequest.request.nonce,
+        gasPrice: relayRequest.relayData.gasPrice,
+        data: relayRequest.request.data,
         approvalData,
         signature,
-        from: relayRequest.relayData.senderAddress,
-        to: relayRequest.target,
+        from: relayRequest.request.from,
+        to: relayRequest.request.to,
         paymaster: relayRequest.relayData.paymaster,
-        gasLimit: relayRequest.gasData.gasLimit,
+        gasLimit: relayRequest.request.gas,
         relayMaxNonce,
-        baseRelayFee: relayRequest.gasData.baseRelayFee,
-        pctRelayFee: relayRequest.gasData.pctRelayFee,
+        baseRelayFee: relayRequest.relayData.baseRelayFee,
+        pctRelayFee: relayRequest.relayData.pctRelayFee,
         relayHubAddress: rhub.address,
         forwarder: relayRequest.relayData.forwarder,
         ...overrideArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-    await assertTransactionRelayed(txhash, relayRequest.relayData.senderAddress)
+    await assertTransactionRelayed(txhash, relayRequest.request.from)
     return signedTx
   }
 
@@ -404,7 +408,7 @@ contract('RelayServer', function (accounts) {
     })
     it('should fail to relay with undefined encodedFunction', async function () {
       try {
-        await relayTransaction(options, { encodedFunction: undefined })
+        await relayTransaction(options, { data: undefined })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
@@ -450,7 +454,7 @@ contract('RelayServer', function (accounts) {
     //  It can be `create2`-ed in the PreRelayedCall, but this is not a place for such test.
     it('should fail to relay with wrong recipient', async function () {
       await expect(relayTransaction(options, { to: accounts[1] }))
-        .to.be.eventually.rejectedWith('expected \'SampleRecipientPostCall\' to equal \'SampleRecipientEmitted\'')
+        .to.be.eventually.rejectedWith('Paymaster rejected in server: isTrustedForwarder returned invalid response')
     })
 
     it('should fail to relay with invalid paymaster', async function () {
@@ -830,7 +834,6 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
     })
   })
-
   describe('listener task', function () {
     let origWorker: (blockHeader: BlockHeader) => Promise<TransactionReceipt[]>
     let started: boolean
@@ -933,6 +936,7 @@ contract('RelayServer', function (accounts) {
         await sendBalancesToOwner(managerHubBalanceBefore, managerBalanceBefore, workerBalanceBefore)
       })
     })
+
     it('_handleHubAuthorizedEvent')
 
     it('_handleStakedEvent')

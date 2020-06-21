@@ -13,7 +13,7 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
      * This demonstrates how dapps can provide an off-chain signatures to relayed transactions.
      */
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -24,7 +24,7 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
     returns (bytes memory) {
         (signature, maxPossibleGas);
         address signer =
-            keccak256(abi.encodePacked("I approve", relayRequest.relayData.senderAddress))
+            keccak256(abi.encodePacked("I approve", relayRequest.request.from))
             .toEthSignedMessageHash()
             .recover(approvalData);
         require(signer == owner(), "test: not approved");
