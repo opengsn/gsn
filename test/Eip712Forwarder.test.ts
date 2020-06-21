@@ -89,11 +89,9 @@ contract('Eip712Forwarder', () => {
       await expectRevert(fwd.registerRequestType('asd(uint a,Request asd)Request(', ')'), 'invalid typename')
     })
 
-    it('should accept type with no extra params', async () => {
-      const ret = await fwd.registerRequestType('test1', '')
-      const { typeStr, typeHash } = ret.logs[0].args
-      assert.equal(typeStr, `test1(${GENERIC_PARAMS})`)
-      assert.equal(typeHash, keccak256(typeStr))
+    it('should have a registered default type with no extra params', async () => {
+      const logs = await fwd.contract.getPastEvents('RequestTypeRegistered', {fromBlock:1});
+      assert.equal(logs[0].returnValues.typeStr, `ForwardRequest(${GENERIC_PARAMS})` )
     })
 
     it('should accept extension field', async () => {
@@ -110,25 +108,22 @@ contract('Eip712Forwarder', () => {
   })
 
   describe('registered typehash', () => {
-    const fullType = `test4(${GENERIC_PARAMS})`
+    const fullType = `test4(${GENERIC_PARAMS},bool extra)`
     const hash = keccak256(fullType)
     it('should return false before registration', async () => {
       assert.equal(await fwd.typeHashes(hash), false)
     })
     it('should return true after registration', async () => {
-      await fwd.registerRequestType('test4', '')
+      const res = await fwd.registerRequestType('test4', 'bool extra)')
+      assert.equal(res.logs[0].args.typeStr, fullType)
+      assert.equal(res.logs[0].args.typeHash, hash)
       assert.equal(true, await fwd.typeHashes(hash))
     })
   })
 
   describe('#verify', () => {
-    let typeName: string
-    let typeHash: string
-    before(async () => {
-      typeName = `TestVerify(${GENERIC_PARAMS})`
-      typeHash = web3.utils.keccak256(typeName)
-      await fwd.registerRequestType('TestVerify', '')
-    })
+    let typeName= `ForwardRequest(${GENERIC_PARAMS})`
+    let typeHash = keccak256(typeName)
 
     describe('#verify failures', () => {
       const dummyDomainSeparator = bytes32(1)
@@ -154,7 +149,6 @@ contract('Eip712Forwarder', () => {
       })
     })
     describe('#verify success', () => {
-      const TestVerifyType = ForwardRequestType
 
       const req = {
         to: addr(1),
@@ -167,6 +161,7 @@ contract('Eip712Forwarder', () => {
       let data: EIP712TypedData
 
       before(() => {
+
         data = {
           domain: {
             name: 'Test Domain',
@@ -174,17 +169,17 @@ contract('Eip712Forwarder', () => {
             chainId: 1234,
             verifyingContract: fwd.address
           },
-          primaryType: 'TestVerify',
+          primaryType: 'ForwardRequest',
           types: {
             EIP712Domain: EIP712DomainType,
-            TestVerify: TestVerifyType
+            ForwardRequest: ForwardRequestType
           },
           message: req
         }
         // sanity: verify that we calculated the type locally just like eth-utils:
-        const calcType = TypedDataUtils.encodeType('TestVerify', data.types)
+        const calcType = TypedDataUtils.encodeType('ForwardRequest', data.types)
         assert.equal(calcType, typeName)
-        const calcTypeHash = bufferToHex(TypedDataUtils.hashType('TestVerify', data.types))
+        const calcTypeHash = bufferToHex(TypedDataUtils.hashType('ForwardRequest', data.types))
         assert.equal(calcTypeHash, typeHash)
       })
 
@@ -248,7 +243,6 @@ contract('Eip712Forwarder', () => {
   })
 
   describe('#verifyAndCall', () => {
-    const TestCallType = ForwardRequestType
 
     let data: EIP712TypedData
     let typeName: string
@@ -258,7 +252,7 @@ contract('Eip712Forwarder', () => {
     let domainSeparator: string
 
     before(async () => {
-      typeName = `TestCall(${GENERIC_PARAMS})`
+      typeName = `ForwardRequest(${GENERIC_PARAMS})`
       typeHash = web3.utils.keccak256(typeName)
       await fwd.registerRequestType('TestCall', '')
       data = {
@@ -268,17 +262,17 @@ contract('Eip712Forwarder', () => {
           chainId: 1234,
           verifyingContract: fwd.address
         },
-        primaryType: 'TestCall',
+        primaryType: 'ForwardRequest',
         types: {
           EIP712Domain: EIP712DomainType,
-          TestCall: TestCallType
+          ForwardRequest: ForwardRequestType
         },
         message: {}
       }
       // sanity: verify that we calculated the type locally just like eth-utils:
-      const calcType = TypedDataUtils.encodeType('TestCall', data.types)
+      const calcType = TypedDataUtils.encodeType('ForwardRequest', data.types)
       assert.equal(calcType, typeName)
-      const calcTypeHash = bufferToHex(TypedDataUtils.hashType('TestCall', data.types))
+      const calcTypeHash = bufferToHex(TypedDataUtils.hashType('ForwardRequest', data.types))
       assert.equal(calcTypeHash, typeHash)
       recipient = await TestForwarderTarget.new(fwd.address)
       testfwd = await TestEip712Forwarder.new()
@@ -323,7 +317,7 @@ contract('Eip712Forwarder', () => {
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
       // the helper simply emits the method return values
-      const ret = await testfwd.callVerifyAndCall(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
+      const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
       assert.equal(ret.logs[0].args.error, 'always fail')
     })
 
@@ -340,11 +334,11 @@ contract('Eip712Forwarder', () => {
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
       // the helper simply emits the method return values
-      const ret = await testfwd.callVerifyAndCall(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
+      const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
       assert.equal(ret.logs[0].args.error, 'always fail')
       assert.equal(ret.logs[0].args.success, false)
 
-      await expectRevert(testfwd.callVerifyAndCall(fwd.address, req1, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
+      await expectRevert(testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
     })
   })
 })

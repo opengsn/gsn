@@ -6,7 +6,7 @@ import "../Eip712Forwarder.sol";
 
 // helper class for testing the forwarder.
 contract TestEip712Forwarder {
-    function callVerifyAndCall(Eip712Forwarder forwarder, Eip712Forwarder.ForwardRequest memory req,
+    function callExecute(Eip712Forwarder forwarder, Eip712Forwarder.ForwardRequest memory req,
         bytes32 domainSeparator, bytes32 requestTypeHash, bytes memory suffixData, bytes memory sig) public {
         (bool success, bytes memory error) = forwarder.execute(req, domainSeparator, requestTypeHash, suffixData, sig);
         emit Result(success, success ? "" : this.decodeErrorMessage(error));

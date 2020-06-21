@@ -23,6 +23,12 @@ contract Eip712Forwarder is IForwarder {
         return nonces[from];
     }
 
+    constructor() public {
+
+        string memory requestType = string(abi.encodePacked("ForwardRequest(", GENERIC_PARAMS, ")"));
+        registerRequestTypeInternal(requestType);
+    }
+
     function verify(
         ForwardRequest memory req,
         bytes32 domainSeparator,
@@ -69,10 +75,12 @@ contract Eip712Forwarder is IForwarder {
             require(c != "(" && c != ")", "invalid typename");
         }
 
-        bytes1 separator = ")";
-        if (bytes(typeSuffix).length > 0) separator = ",";
+        string memory requestType = string(abi.encodePacked(typeName, "(", GENERIC_PARAMS, ",", typeSuffix));
+        registerRequestTypeInternal(requestType);
+    }
 
-        bytes memory requestType = abi.encodePacked(typeName, "(", GENERIC_PARAMS, separator, typeSuffix);
+    function registerRequestTypeInternal(string memory requestType) internal {
+
         bytes32 requestTypehash = keccak256(bytes(requestType));
         typeHashes[requestTypehash] = true;
         emit RequestTypeRegistered(requestTypehash, string(requestType));
