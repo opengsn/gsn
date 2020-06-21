@@ -70,7 +70,6 @@ export interface CreateTransactionDetails extends GsnTransactionDetails {
   gasLimit: PrefixedHexString
   gasPrice: PrefixedHexString
   // todo: encodedFunction defined as "data"
-  encodedFunction: PrefixedHexString
   approvalData: PrefixedHexString
   signature: PrefixedHexString
   senderNonce: IntString
@@ -208,7 +207,7 @@ export class RelayServer extends EventEmitter {
 
   async createRelayTransaction (req: CreateTransactionDetails): Promise<PrefixedHexString> {
     debug('dump request params', arguments[0])
-    ow(req.encodedFunction, ow.string)
+    ow(req.data, ow.string)
     ow(req.approvalData, ow.string)
     ow(req.signature, ow.string)
 
@@ -250,17 +249,17 @@ export class RelayServer extends EventEmitter {
 
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const relayRequest: RelayRequest = {
-      target: req.to,
-      encodedFunction: req.encodedFunction,
-      gasData: {
+      request: {
+        to: req.to,
+        data: req.data,
+        from: req.from,
+        nonce: req.senderNonce,
+        gas: req.gasLimit
+      },
+      relayData: {
         baseRelayFee: req.baseRelayFee,
         pctRelayFee: req.pctRelayFee,
         gasPrice: req.gasPrice,
-        gasLimit: req.gasLimit
-      },
-      relayData: {
-        senderAddress: req.from,
-        senderNonce: req.senderNonce,
         paymaster: req.paymaster,
         forwarder: req.forwarder,
         relayWorker: this.getAddress(1)
@@ -304,7 +303,7 @@ export class RelayServer extends EventEmitter {
         maxPossibleGas)
         .call({
           from: this.getAddress(workerIndex),
-          gasPrice: relayRequest.gasData.gasPrice,
+          gasPrice: relayRequest.relayData.gasPrice,
           gasLimit: maxPossibleGas
         })
     } catch (e) {
@@ -324,7 +323,9 @@ export class RelayServer extends EventEmitter {
         gasPrice: req.gasPrice?.toString() ?? '0',
         pctRelayFee: req.pctRelayFee.toString(),
         baseRelayFee: req.baseRelayFee.toString(),
-        gasLimit: 0
+        relayWorker: this.getAddress(1), // TODO: use relayWorker from clietn's request..
+        forwarder: req.forwarder,
+        paymaster: req.paymaster
       })
     const paymasterBalance = await this.relayHubContract.balanceOf(req.paymaster)
     if (paymasterBalance.lt(maxCharge)) {
@@ -429,7 +430,7 @@ export class RelayServer extends EventEmitter {
     this.rawTxOptions = this.contractInteractor.getRawTxOptions()
 
     // todo: fix typo AND fix metacoin
-    console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
+    // console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
 

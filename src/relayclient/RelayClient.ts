@@ -213,23 +213,23 @@ export default class RelayClient {
     const gasLimit = parseInt(gasLimitHex, 16).toString()
     const gasPrice = parseInt(gasPriceHex, 16).toString()
     const relayRequest: RelayRequest = {
-      target: gsnTransactionDetails.to,
-      encodedFunction: gsnTransactionDetails.data,
-      gasData: {
+      request: {
+        to: gsnTransactionDetails.to,
+        data: gsnTransactionDetails.data,
+        from: gsnTransactionDetails.from,
+        nonce: senderNonce,
+        gas: gasLimit
+      },
+      relayData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,
         baseRelayFee: relayInfo.relayInfo.baseRelayFee,
         gasPrice,
-        gasLimit
-      },
-      relayData: {
-        senderAddress: gsnTransactionDetails.from,
-        senderNonce,
         paymaster,
         forwarder: forwarderAddress,
         relayWorker
       }
     }
-    const signature = await this.accountManager.sign(relayRequest, forwarderAddress)
+    const signature = await this.accountManager.sign(relayRequest)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
@@ -238,8 +238,8 @@ export default class RelayClient {
     //  Must teach server to accept correct types
     const httpRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
-      encodedFunction: gsnTransactionDetails.data,
-      senderNonce: relayRequest.relayData.senderNonce,
+      data: gsnTransactionDetails.data,
+      senderNonce: relayRequest.request.nonce,
       from: gsnTransactionDetails.from,
       to: gsnTransactionDetails.to,
       pctRelayFee: relayInfo.relayInfo.pctRelayFee,
@@ -270,7 +270,7 @@ export default class RelayClient {
     if (forwarderAddress !== constants.ZERO_ADDRESS) {
       const recipientCode = await web3.eth.getCode(gsnTransactionDetails.to)
       const isRecipientDeployed = recipientCode != '0x'
-      if (!isRecipientDeployed){
+      if (!isRecipientDeployed) {
         console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
         Unless you are using some counterfactual contract deployment technique the transaction will fail!`)
       } else {

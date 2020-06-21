@@ -29,7 +29,7 @@ class GsnTestEnvironmentClass {
    * @param deployPaymaster - whether to deploy the naive paymaster instance for tests
    * @return
    */
-  async startGsn (host?: string, deployPaymaster: boolean = true): Promise<TestEnvironment> {
+  async startGsn (host?: string, deployPaymaster: boolean = true, debug = false): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     console.log('_host=', _host)
@@ -50,7 +50,7 @@ class GsnTestEnvironmentClass {
 
     const port = await this._resolveAvailablePort()
     const relayUrl = 'http://127.0.0.1:' + port.toString()
-    this._runServer(_host, deploymentResult, from, relayUrl, port)
+    this._runServer(_host, deploymentResult, from, relayUrl, port, debug)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -121,7 +121,8 @@ class GsnTestEnvironmentClass {
     deploymentResult: DeploymentResult,
     from: Address,
     relayUrl: string,
-    port: number
+    port: number,
+    debug = true
   ): void {
     if (this.httpServer !== undefined) {
       return
@@ -144,7 +145,7 @@ class GsnTestEnvironmentClass {
       baseRelayFee: 0,
       pctRelayFee: 0,
       devMode: true,
-      debug: false
+      debug
     }
     const backend = new RelayServer(relayServerParams as RelayServerParams)
 

@@ -28,11 +28,13 @@ import { startRelay, stopRelay } from '../TestUtils'
 import { constants } from '@openzeppelin/test-helpers'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
+import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 const expect = chai.expect
 chai.use(sinonChai)
@@ -61,13 +63,18 @@ contract('RelayClient', function (accounts) {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
-    testRecipient = await TestRecipient.new()
-    forwarderAddress = await testRecipient.getTrustedForwarder()
+    const forwarderInstance = await Eip712Forwarder.new()
+    forwarderAddress = forwarderInstance.address
+    testRecipient = await TestRecipient.new(forwarderAddress)
+    // register hub's RelayRequest with forwarder, if not already done.
+    const res = await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setRelayHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
-    gasLess = await web3.eth.personal.newAccount('password')
 
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       stake: 1e18,
@@ -81,6 +88,7 @@ contract('RelayClient', function (accounts) {
       stakeManagerAddress: stakeManager.address
     }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
+    gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()

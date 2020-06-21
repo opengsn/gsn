@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await */
 // This rule seems to be flickering and buggy - does not understand async arrow functions correctly
-import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
+import { balance, constants, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
 import { Transaction } from 'ethereumjs-tx'
@@ -10,7 +10,7 @@ import { expect } from 'chai'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
-import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
 import {
   PenalizerInstance,
@@ -25,6 +25,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const Eip712Forwarder = artifacts.require('Eip712Forwarder')
 
 contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
@@ -41,8 +42,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     relayHub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
-    recipient = await TestRecipient.new()
-    forwarder = await recipient.getTrustedForwarder()
+    const forwarderInstance = await Eip712Forwarder.new()
+    forwarder = forwarderInstance.address
+    recipient = await TestRecipient.new(forwarder)
+    // register hub's RelayRequest with forwarder, if not already done.
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     await stakeManager.stakeForAddress(relayManager, 1000, {
@@ -74,20 +81,20 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     const gasLimit = new BN('5000000')
     const txData = recipient.contract.methods.emitMessage('').encodeABI()
     const relayRequest: RelayRequest = {
-      target: recipient.address,
-      encodedFunction: txData,
-      relayData: {
-        senderAddress: sender,
-        senderNonce: '0',
-        relayWorker,
-        paymaster: paymaster.address,
-        forwarder
+      request: {
+        to: recipient.address,
+        data: txData,
+        from: sender,
+        nonce: '0',
+        gas: gasLimit.toString()
       },
-      gasData: {
+      relayData: {
         gasPrice: gasPrice.toString(),
-        gasLimit: gasLimit.toString(),
         baseRelayFee: '300',
-        pctRelayFee: '10'
+        pctRelayFee: '10',
+        relayWorker,
+        forwarder,
+        paymaster: paymaster.address
       }
     }
     const dataToSign = new TypedRequestData(
@@ -308,7 +315,39 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         })
 
         it('does not penalize legal relay transactions', async function () {
-          const { gasPrice, gasLimit, relayRequest, signature } = await prepareRelayCall()
+          // relayCall is a legal transaction
+          const baseFee = new BN('300')
+          const fee = new BN('10')
+          const gasPrice = new BN('1')
+          const gasLimit = new BN('1000000')
+          const senderNonce = new BN('0')
+          const txData = recipient.contract.methods.emitMessage('').encodeABI()
+          const relayRequest: RelayRequest = {
+            request: {
+              to: recipient.address,
+              data: txData,
+              from: sender,
+              nonce: senderNonce.toString(),
+              gas: gasLimit.toString()
+            },
+            relayData: {
+              gasPrice: gasPrice.toString(),
+              baseRelayFee: baseFee.toString(),
+              pctRelayFee: fee.toString(),
+              relayWorker,
+              forwarder,
+              paymaster: paymaster.address
+            }
+          }
+          const dataToSign = new TypedRequestData(
+            chainId,
+            forwarder,
+            relayRequest
+          )
+          const signature = await getEip712Signature(
+            web3,
+            dataToSign
+          )
           await relayHub.depositFor(paymaster.address, {
             from: other,
             value: ether('1')
@@ -385,20 +424,20 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       // TODO: 'encodedCallArgs' is no longer needed. just keep the RelayRequest in test
       const relayRequest: RelayRequest =
         {
-          target: encodedCallArgs.recipient,
-          encodedFunction: encodedCallArgs.data,
-          relayData: {
-            senderAddress: encodedCallArgs.sender,
-            senderNonce: encodedCallArgs.nonce.toString(),
-            relayWorker,
-            paymaster: encodedCallArgs.paymaster,
-            forwarder
+          request: {
+            to: encodedCallArgs.recipient,
+            data: encodedCallArgs.data,
+            from: encodedCallArgs.sender,
+            nonce: encodedCallArgs.nonce.toString(),
+            gas: encodedCallArgs.gasLimit.toString()
           },
-          gasData: {
+          relayData: {
             baseRelayFee: encodedCallArgs.baseFee.toString(),
             pctRelayFee: encodedCallArgs.fee.toString(),
             gasPrice: encodedCallArgs.gasPrice.toString(),
-            gasLimit: encodedCallArgs.gasLimit.toString()
+            relayWorker,
+            forwarder,
+            paymaster: encodedCallArgs.paymaster
           }
         }
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()

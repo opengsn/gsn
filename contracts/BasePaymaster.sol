@@ -4,10 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./interfaces/ISignatureVerifier.sol";
+import "./interfaces/GsnTypes.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
-import "./interfaces/IForwarder.sol";
+import "./utils/GsnEip712Library.sol";
+import "./forwarder/Eip712Forwarder.sol";
 
 /**
  * Abstract base class to be inherited by a concrete Paymaster
@@ -20,6 +21,8 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
     IForwarder internal trustedForwarder;
+
+    bytes32 public domainSeparator;
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
@@ -45,15 +48,17 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         );
     }
 
+    // this method must be called from acceptRelayedCall to validate that the forwarder
+    // is approved by the paymaster as well and that the request is verified.
     function _verifySignature(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature
     )
     public
     view
     {
         require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
-        trustedForwarder.verify(relayRequest, signature);
+        GsnEip712Library.verify(relayRequest, signature);
     }
 
     /*
@@ -70,6 +75,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
 
     function setTrustedForwarder(IForwarder forwarder) public onlyOwner {
         trustedForwarder = forwarder;
+        domainSeparator = GsnEip712Library.domainSeparator(address(forwarder));
     }
 
     /// check current deposit on relay hub.
