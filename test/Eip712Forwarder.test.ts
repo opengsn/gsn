@@ -375,7 +375,7 @@ contract('Eip712Forwarder', ([from]) => {
         assert.equal(ret.logs[0].args.success, false)
       })
 
-      it.skip('should fail to forward request if value specified but not enough not provided', async () => {
+      it('should fail to forward request if value specified but not enough not provided', async () => {
         const value = ether('1')
         const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
 
@@ -416,6 +416,9 @@ contract('Eip712Forwarder', ([from]) => {
       })
 
       it('should forward all funds left in forwarder to "from" address', async () => {
+        const senderPrivateKey = toBuffer(bytes32(2))
+        const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
+
         const value = ether('1')
         const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
 
