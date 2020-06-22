@@ -49,10 +49,12 @@ contract('Utils', function (accounts) {
       const paymaster = accounts[7]
       const relayWorker = accounts[9]
 
-      await forwarderInstance.registerRequestType(
+      const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
         GsnRequestType.typeSuffix
       )
+
+      const typeName = res.logs[0].args.typeStr
 
       relayRequest = {
         request: {
@@ -60,6 +62,7 @@ contract('Utils', function (accounts) {
           data: encodedFunction,
           from: senderAddress,
           nonce: senderNonce,
+          value: '0',
           gas: gasLimit
         },
         relayData: {
@@ -71,6 +74,12 @@ contract('Utils', function (accounts) {
           paymaster
         }
       }
+      const dataToSign = new TypedRequestData(
+        chainId,
+        forwarder,
+        relayRequest
+      )
+      assert.equal(typeName, TypedDataUtils.encodeType(dataToSign.primaryType, dataToSign.types))
     })
 
     it('#_getEncoded should extract data exactly as local encoded data', async () => {
@@ -101,6 +110,7 @@ contract('Utils', function (accounts) {
     })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
+
       assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 

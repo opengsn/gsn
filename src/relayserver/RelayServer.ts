@@ -254,7 +254,8 @@ export class RelayServer extends EventEmitter {
         data: req.data,
         from: req.from,
         nonce: req.senderNonce,
-        gas: req.gasLimit
+        gas: req.gasLimit,
+        value: '0'
       },
       relayData: {
         baseRelayFee: req.baseRelayFee,
