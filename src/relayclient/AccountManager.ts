@@ -90,7 +90,7 @@ export default class AccountManager {
   // a) allow different implementations in the future, and
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
-    return getEip712Signature(
+    return await getEip712Signature(
       this.web3,
       signedData,
       this.config.methodSuffix ?? '',

@@ -1,6 +1,5 @@
 /* global describe it web3 */
 // @ts-ignore
-// eslint-disable-next-line @typescript-eslint/camelcase
 import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 
@@ -10,9 +9,7 @@ import TypedRequestData, { getDomainSeparatorHash, GsnRequestType } from '../src
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { signTypedDataUtils } from '@0x/utils'
 import { bufferToHex } from 'ethereumjs-util'
-import Web3 from 'web3'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -110,7 +107,6 @@ contract('Utils', function (accounts) {
     })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
-
       assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 

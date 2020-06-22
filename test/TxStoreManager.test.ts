@@ -26,7 +26,7 @@ contract('TxStoreManager', function (accounts) {
     cleanFolder()
     txmanager = new TxStoreManager({ workdir })
     await txmanager.clearAll()
-    assert.ok(txmanager, 'txstore uninitialized' + txmanager.toString())
+    assert.ok(txmanager, 'txstore uninitialized' + JSON.stringify(txmanager))
     assert.isTrue(fs.existsSync(workdir), 'test txstore dir should exist already')
     tx = new StoredTx({
       from: Buffer.from([]),

@@ -214,6 +214,7 @@ export class RelayServer extends EventEmitter {
     // Check that the relayHub is the correct one
     if (req.relayHubAddress !== this.relayHubContract?.address) {
       throw new Error(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract?.address}, request's hub address: ${req.relayHubAddress}\n`)
     }
 
@@ -555,6 +556,7 @@ export class RelayServer extends EventEmitter {
     // first time getting stake, setting owner
     if (this.owner == null) {
       this.owner = stakeInfo?.owner
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       debug(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake.toString()}`)
     }
     this.unstakeDelay = stakeInfo?.unstakeDelay
@@ -584,7 +586,7 @@ export class RelayServer extends EventEmitter {
       this.authorizedHub = true
     }
 
-    return this._registerIfNeeded()
+    return await this._registerIfNeeded()
   }
 
   async _handleStakedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
@@ -596,7 +598,7 @@ export class RelayServer extends EventEmitter {
     }
     await this.refreshStake()
 
-    return this._registerIfNeeded()
+    return await this._registerIfNeeded()
   }
 
   async _registerIfNeeded (): Promise<TransactionReceipt[]> {
@@ -640,6 +642,7 @@ export class RelayServer extends EventEmitter {
         method: registerMethod,
         destination: this.relayHubContract?.address as string
       })).receipt)
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
     }
     this.isAddressAdded = true
@@ -739,6 +742,7 @@ export class RelayServer extends EventEmitter {
         continue
       }
       if (receipt.blockNumber == null) {
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
         throw new Error(`invalid block number in receipt ${receipt.toString()}`)
       }
       const txBlockNumber = receipt.blockNumber
@@ -876,6 +880,7 @@ export class RelayServer extends EventEmitter {
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {
     if (event?.events === undefined) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       return `not event: ${event?.toString()}`
     }
     const args: Record<string, any> = {}

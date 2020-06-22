@@ -66,6 +66,7 @@ class GsnTestEnvironmentClass {
     if (registrationResult.success) {
       console.log('In-process relay successfully registered:', JSON.stringify(registrationResult))
     } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Failed to fund relay: ${registrationResult.error} : ${registrationResult?.transactions?.toString()}`)
     }
 

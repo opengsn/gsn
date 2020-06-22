@@ -67,7 +67,7 @@ contract('RelayClient', function (accounts) {
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    const res = await forwarderInstance.registerRequestType(
+    await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
       GsnRequestType.typeSuffix
     )
@@ -269,7 +269,7 @@ contract('RelayClient', function (accounts) {
 
     describe('#_prepareRelayHttpRequest()', function () {
       const asyncApprovalData: AsyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
-        return Promise.resolve('0x1234567890')
+        return await Promise.resolve('0x1234567890')
       }
       it('should use provided approval function', async function () {
         const relayClient =

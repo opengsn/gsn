@@ -283,9 +283,9 @@ contract('KnownRelaysManager 2', function (accounts) {
   describe('getRelaysSortedForTransaction', function () {
     const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<number> {
       if (relay.relayUrl === 'alex') {
-        return Promise.resolve(1000)
+        return await Promise.resolve(1000)
       } else {
-        return Promise.resolve(100)
+        return await Promise.resolve(100)
       }
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)

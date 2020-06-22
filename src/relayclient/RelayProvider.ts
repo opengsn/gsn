@@ -128,7 +128,7 @@ export class RelayProvider implements HttpProvider {
           callback(new Error(message))
         }
       }, (reason: any) => {
-        const reasonStr = reason instanceof Error ? reason.toString() : JSON.stringify(reason)
+        const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
         callback(new Error(`Rejected relayTransaction call - should not happen. Reason: ${reasonStr}`))
       })
   }

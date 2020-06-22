@@ -39,6 +39,6 @@ describe('HttpWrapper', () => {
         method: 'net_version',
         id: 123
       })
-    return expect(res).to.be.eventually.rejectedWith('timeout of 1ms exceeded')
+    return await expect(res).to.be.eventually.rejectedWith('timeout of 1ms exceeded')
   })
 })
