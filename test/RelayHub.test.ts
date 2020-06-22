@@ -181,6 +181,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           data: '',
           from: senderAddress,
           nonce: senderNonce,
+          value: '0',
           gas: gasLimit
         },
         relayData: {

@@ -10,12 +10,15 @@ import "../utils/GsnUtils.sol";
 contract Eip712Forwarder is IForwarder {
     using ECDSA for bytes32;
 
-    string public constant GENERIC_PARAMS = "address to,bytes data,address from,uint256 nonce,uint256 gas";
+    string public constant GENERIC_PARAMS = "address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas";
 
     mapping(bytes32 => bool) public typeHashes;
 
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
+
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 
     function getNonce(address from)
     public view override
@@ -48,17 +51,22 @@ contract Eip712Forwarder is IForwarder {
         bytes memory suffixData,
         bytes memory sig
     )
-    public
+    public payable
     override
-    returns (bool, bytes memory) {
-
+    returns (bool success, bytes memory ret) {
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
         // solhint-disable-next-line avoid-low-level-calls
-        return req.to.call{gas : req.gas}(abi.encodePacked(req.data, req.from));
+        (success,ret) = req.to.call{gas : req.gas, value : req.value}(abi.encodePacked(req.data, req.from));
+        if ( address(this).balance>0 ) {
+            //can't fail: req.from signed (off-chain) the request, so it must be an EOA...
+            payable(req.from).transfer(address(this).balance);
+        }
+        return (success,ret);
     }
+
 
     function _verifyNonce(ForwardRequest memory req) internal view {
         require(nonces[req.from] == req.nonce, "nonce mismatch");
@@ -86,7 +94,9 @@ contract Eip712Forwarder is IForwarder {
         emit RequestTypeRegistered(requestTypehash, string(requestType));
     }
 
+
     event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
+
 
     function _verifySig(
         ForwardRequest memory req,
@@ -121,6 +131,7 @@ contract Eip712Forwarder is IForwarder {
             abi.encode(
                 req.to,
                 keccak256(req.data),
+                req.value,
                 req.from,
                 req.nonce,
                 req.gas
