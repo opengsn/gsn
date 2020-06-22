@@ -4,14 +4,14 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
-import "../forwarder/Eip712Forwarder.sol";
+import "../forwarder/Forwarder.sol";
 
 /**
- * Bridge Library to map GSN RelayRequest into a call of an Eip712Forwarder
+ * Bridge Library to map GSN RelayRequest into a call of an Forwarder
  */
 library GsnEip712Library {
 
-    //copied from Eip712Forwarder (can't reference string constants even from another library)
+    //copied from Forwarder (can't reference string constants even from another library)
     string public constant GENERIC_PARAMS = "address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas";
 
     bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster)";
@@ -43,7 +43,7 @@ library GsnEip712Library {
     internal
     pure
     returns (
-        Eip712Forwarder.ForwardRequest memory forwardRequest,
+        Forwarder.ForwardRequest memory forwardRequest,
         bytes memory suffixData
     ) {
         forwardRequest = IForwarder.ForwardRequest(
@@ -70,9 +70,9 @@ library GsnEip712Library {
     }
 
     function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
-        (Eip712Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        (Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        Eip712Forwarder forwarder = Eip712Forwarder(payable(relayRequest.relayData.forwarder));
+        Forwarder forwarder = Forwarder(payable(relayRequest.relayData.forwarder));
         forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 
@@ -82,7 +82,7 @@ library GsnEip712Library {
     }
 
     function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
-        (Eip712Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        (Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature

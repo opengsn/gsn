@@ -8,7 +8,7 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData, { getDomainSeparatorHash, GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
+import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { signTypedDataUtils } from '@0x/utils'
 import { bufferToHex } from 'ethereumjs-util'
@@ -17,7 +17,7 @@ import Web3 from 'web3'
 const assert = require('chai').use(chaiAsPromised).assert
 
 const TestUtil = artifacts.require('TestUtil')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 const TestRecipient = artifacts.require('TestRecipient')
 
 contract('Utils', function (accounts) {
@@ -30,11 +30,11 @@ contract('Utils', function (accounts) {
     let testUtil: TestUtilInstance
     let recipient: TestRecipientInstance
 
-    let forwarderInstance: Eip712ForwarderInstance
+    let forwarderInstance: ForwarderInstance
     before(async () => {
       testUtil = await TestUtil.new()
       chainId = (await testUtil.libGetChainID()).toNumber()
-      forwarderInstance = await Eip712Forwarder.new()
+      forwarderInstance = await Forwarder.new()
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
 

@@ -16,7 +16,7 @@ import {
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -52,7 +52,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let forwarder: string
 
   beforeEach(async function prepareForHub () {
-    forwarderInstance = await Eip712Forwarder.new()
+    forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 
-import "../forwarder/Eip712Forwarder.sol";
+import "../forwarder/Forwarder.sol";
 
 interface GsnTypes {
     struct RelayData {

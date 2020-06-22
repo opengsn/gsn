@@ -16,7 +16,7 @@ import chaiAsPromised from 'chai-as-promised'
 import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
-  Eip712ForwarderInstance,
+  ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
@@ -39,7 +39,7 @@ import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('./StakeManager.sol')
 const Penalizer = artifacts.require('./Penalizer.sol')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
@@ -58,7 +58,7 @@ contract('RelayServer', function (accounts) {
   const pctRelayFee = 11
   const baseRelayFee = 12
   let rhub: RelayHubInstance
-  let forwarder: Eip712ForwarderInstance
+  let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let sr: TestRecipientInstance
@@ -122,7 +122,7 @@ contract('RelayServer', function (accounts) {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     rhub = await RelayHub.new(stakeManager.address, penalizer.address)
-    forwarder = await Eip712Forwarder.new()
+    forwarder = await Forwarder.new()
     const forwarderAddress = forwarder.address
     sr = await TestRecipient.new(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
