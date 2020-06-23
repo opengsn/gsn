@@ -24,7 +24,7 @@ const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymaste
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 
 const options = [
   {
@@ -75,7 +75,7 @@ options.forEach(params => {
         from = accounts[0]
       }
 
-      const forwarder = await Eip712Forwarder.new()
+      const forwarder = await Forwarder.new()
       sr = await TestRecipient.new(forwarder.address)
 
       await forwarder.registerRequestType(

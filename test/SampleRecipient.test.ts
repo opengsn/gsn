@@ -1,5 +1,5 @@
 import {
-  Eip712ForwarderInstance,
+  ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
@@ -11,18 +11,18 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 
 contract('SampleRecipient', function (accounts) {
   const expectedRealSender = accounts[0]
   const message = 'hello world'
   let sample: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
-  let forwarderInstance: Eip712ForwarderInstance
+  let forwarderInstance: ForwarderInstance
   let forwarder: PrefixedHexString
 
   before(async function () {
-    forwarderInstance = await Eip712Forwarder.new()
+    forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
 
     sample = await TestRecipient.new(forwarder)

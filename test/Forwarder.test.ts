@@ -1,6 +1,6 @@
 import {
-  Eip712ForwarderInstance,
-  TestEip712ForwarderInstance,
+  ForwarderInstance,
+  TestForwarderInstance,
   TestForwarderTargetInstance
 } from '../types/truffle-contracts'
 // @ts-ignore
@@ -11,8 +11,8 @@ import { toChecksumAddress } from 'web3-utils'
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
-const TestEip712Forwarder = artifacts.require('TestEip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
+const TestForwarder = artifacts.require('TestForwarder')
 
 const keccak256 = web3.utils.keccak256
 
@@ -42,18 +42,18 @@ const ForwardRequestType = [
   { name: 'gas', type: 'uint256' }
 ]
 
-contract('Eip712Forwarder', ([from]) => {
+contract('Forwarder', ([from]) => {
   const GENERIC_PARAMS = 'address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas'
   // our generic params has 6 bytes32 values
   const countParams = 6
 
-  let fwd: Eip712ForwarderInstance
+  let fwd: ForwarderInstance
 
   const senderPrivateKey = toBuffer(bytes32(1))
   const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
   before(async () => {
-    fwd = await Eip712Forwarder.new()
+    fwd = await Forwarder.new()
     assert.equal(await fwd.GENERIC_PARAMS(), GENERIC_PARAMS)
   })
 
@@ -222,7 +222,7 @@ contract('Eip712Forwarder', ([from]) => {
     let typeName: string
     let typeHash: string
     let recipient: TestForwarderTargetInstance
-    let testfwd: TestEip712ForwarderInstance
+    let testfwd: TestForwarderInstance
     let domainSeparator: string
 
     before(async () => {
@@ -249,7 +249,7 @@ contract('Eip712Forwarder', ([from]) => {
       const calcTypeHash = bufferToHex(TypedDataUtils.hashType('ForwardRequest', data.types))
       assert.equal(calcTypeHash, typeHash)
       recipient = await TestForwarderTarget.new(fwd.address)
-      testfwd = await TestEip712Forwarder.new()
+      testfwd = await TestForwarder.new()
 
       domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
     })
