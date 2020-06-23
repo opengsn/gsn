@@ -14,6 +14,7 @@ import {
   IForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
+import { ZERO_BYTES32 } from './TestUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const Forwarder = artifacts.require('Forwarder')
@@ -32,12 +33,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const gasPrice = new BN('10')
   const gasLimit = new BN('1000000')
   const externalGasLimit = 5e6.toString()
+  const paymasterData = ZERO_BYTES32
+  const clientId = '1'
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 928,
-    pre: 1552,
-    post: 1591
+    arc: 907 + 22,
+    pre: 1486 + 66,
+    post: 1613 - 22
   }
 
   let relayHub: RelayHubInstance
@@ -94,7 +97,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         gasPrice: gasPrice.toString(),
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }
 
     }
@@ -122,7 +127,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         gasLimit: 0,
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }
       const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData)
       const expectedCharge = baseRelayFee + gasUsed * gasPrice * (pctRelayFee + 100) / 100
@@ -166,7 +173,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         baseRelayFee: 0,
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
@@ -284,7 +293,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   gasPrice: gasPrice.toString(),
                   relayWorker,
                   forwarder,
-                  paymaster: paymaster.address
+                  paymaster: paymaster.address,
+                  paymasterData,
+                  clientId
                 }
               }
               const dataToSign = new TypedRequestData(

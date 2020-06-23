@@ -25,6 +25,7 @@ import { configureGSN } from '../relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../relayclient/types/Environments'
 import VersionsManager from '../common/VersionsManager'
 import { calculateTransactionMaxPossibleGas } from '../common/Utils'
+import { log } from 'util'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -79,6 +80,8 @@ export interface CreateTransactionDetails extends GsnTransactionDetails {
   relayHubAddress: Address
   paymaster: Address
   forwarder: Address
+  paymasterData: PrefixedHexString
+  clientId: IntString
 }
 
 interface SendTransactionDetails {
@@ -263,6 +266,8 @@ export class RelayServer extends EventEmitter {
         pctRelayFee: req.pctRelayFee,
         gasPrice: req.gasPrice,
         paymaster: req.paymaster,
+        paymasterData: req.paymasterData,
+        clientId: req.clientId,
         forwarder: req.forwarder,
         relayWorker: this.getAddress(1)
       }
@@ -314,7 +319,7 @@ export class RelayServer extends EventEmitter {
     }
     debug('viewRelayCallRet', viewRelayCallRet)
     if (!viewRelayCallRet.paymasterAccepted) {
-      throw new Error(`Paymaster rejected in server: ${viewRelayCallRet.returnValue}`)
+      throw new Error(`Paymaster rejected in server: ${viewRelayCallRet.returnValue} req=${JSON.stringify(relayRequest, null, 2)}`)
     }
     // Send relayed transaction
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
@@ -327,7 +332,9 @@ export class RelayServer extends EventEmitter {
         baseRelayFee: req.baseRelayFee.toString(),
         relayWorker: this.getAddress(1), // TODO: use relayWorker from clietn's request..
         forwarder: req.forwarder,
-        paymaster: req.paymaster
+        paymaster: req.paymaster,
+        paymasterData: req.paymasterData,
+        clientId: req.clientId
       })
     const paymasterBalance = await this.relayHubContract.balanceOf(req.paymaster)
     if (paymasterBalance.lt(maxCharge)) {
@@ -820,7 +827,7 @@ export class RelayServer extends EventEmitter {
       releaseMutex()
     }
     const receipt = await this.contractInteractor.sendSignedTransaction(signedTx)
-    console.log('\ntxhash is', receipt.transactionHash)
+    debug('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
@@ -858,7 +865,7 @@ export class RelayServer extends EventEmitter {
     debug('resending tx with nonce', txToSign.nonce, 'from', tx.from)
     debug('account nonce', await this.contractInteractor.getTransactionCount(tx.from))
     const receipt = await this.contractInteractor.sendSignedTransaction(signedTx)
-    console.log('\ntxhash is', receipt.transactionHash)
+    debug('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }

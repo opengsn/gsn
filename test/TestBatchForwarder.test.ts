@@ -13,6 +13,7 @@ import {
   TestRecipientInstance,
   BatchForwarderInstance
 } from '../types/truffle-contracts'
+import { ZERO_BYTES32 } from './TestUtils'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
 const RelayHub = artifacts.require('RelayHub.sol')
@@ -73,7 +74,9 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         gasPrice: await web3.eth.getGasPrice(),
         relayWorker: relayWorker,
         forwarder: forwarder.address,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData: ZERO_BYTES32,
+        clientId: '1'
       }
     }
   })

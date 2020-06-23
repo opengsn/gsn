@@ -10,6 +10,10 @@ import { expectEvent } from '@openzeppelin/test-helpers'
 import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
+import ContractInteractor from '../src/relayclient/ContractInteractor'
+import { configureGSN } from '../src/relayclient/GSNConfigurator'
+import Web3 from 'web3'
+import { ZERO_BYTES32 } from './TestUtils'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -45,6 +49,8 @@ contract('Utils', function (accounts) {
       // const forwarder = accounts[6]
       const paymaster = accounts[7]
       const relayWorker = accounts[9]
+      const paymasterData = ZERO_BYTES32
+      const clientId = '0'
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
@@ -68,7 +74,9 @@ contract('Utils', function (accounts) {
           baseRelayFee,
           relayWorker,
           forwarder,
-          paymaster
+          paymaster,
+          paymasterData,
+          clientId
         }
       }
       const dataToSign = new TypedRequestData(
@@ -107,6 +115,7 @@ contract('Utils', function (accounts) {
     })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
+
       assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 

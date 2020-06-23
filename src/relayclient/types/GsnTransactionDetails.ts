@@ -1,4 +1,4 @@
-import { Address } from './Aliases'
+import { Address, IntString } from './Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
 export default interface GsnTransactionDetails {
@@ -17,6 +17,9 @@ export default interface GsnTransactionDetails {
   // Required parameters for GSN, but assigned later
   readonly forwarder?: Address
   readonly paymaster?: Address
+
+  readonly paymasterData?: PrefixedHexString
+  readonly clientId?: IntString
 
   // Optional parameters for RelayProvider only:
   /**

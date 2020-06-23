@@ -1,5 +1,5 @@
 import { HttpProvider } from 'web3-core'
-import { Address, AsyncApprovalData, AsyncScoreCalculator, PingFilter, RelayFilter } from './types/Aliases'
+import { Address, AsyncPaymasterData, AsyncScoreCalculator, IntString, PingFilter, RelayFilter } from './types/Aliases'
 import { defaultEnvironment } from './types/Environments'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
@@ -7,7 +7,7 @@ import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
-import { EmptyApprovalData, GasPricePingFilter } from './RelayClient'
+import { EmptyPaymasterData, GasPricePingFilter } from './RelayClient'
 import { constants } from '@openzeppelin/test-helpers'
 
 const GAS_PRICE_PERCENT = 20
@@ -29,7 +29,8 @@ const defaultGsnConfig: GSNConfig = {
   stakeManagerAddress: constants.ZERO_ADDRESS,
   paymasterAddress: constants.ZERO_ADDRESS,
   forwarderAddress: constants.ZERO_ADDRESS,
-  verbose: false
+  verbose: false,
+  clientId: '1'
 }
 
 /**
@@ -61,6 +62,7 @@ export interface GSNConfig {
   paymasterAddress: Address
   forwarderAddress: Address
   chainId: number
+  clientId: IntString
 }
 
 export interface GSNDependencies {
@@ -71,7 +73,7 @@ export interface GSNDependencies {
   transactionValidator: RelayedTransactionValidator
   pingFilter: PingFilter
   relayFilter: RelayFilter
-  asyncApprovalData: AsyncApprovalData
+  asyncPaymasterData: AsyncPaymasterData
   scoreCalculator: AsyncScoreCalculator
   config: GSNConfig
 }
@@ -98,7 +100,7 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
   const httpClient = overrideDependencies?.httpClient ?? new HttpClient(new HttpWrapper(), config)
   const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
   const relayFilter = overrideDependencies?.relayFilter ?? EmptyFilter
-  const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyApprovalData
+  const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyPaymasterData
   const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
   const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, config, relayFilter)
   const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, config)
@@ -110,7 +112,7 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
     transactionValidator,
     pingFilter,
     relayFilter,
-    asyncApprovalData,
+    asyncPaymasterData,
     scoreCalculator,
     config
   }

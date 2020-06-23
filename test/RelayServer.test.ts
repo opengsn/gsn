@@ -13,7 +13,7 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot } from './TestUtils'
+import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot, ZERO_BYTES32 } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
   ForwarderInstance,
@@ -68,6 +68,9 @@ contract('RelayServer', function (accounts) {
   const dayInSec = 24 * 60 * 60
   const weekInSec = dayInSec * 7
   const oneEther = toBN(1e18)
+
+  const paymasterData = ZERO_BYTES32
+  const clientId = '0'
   let relayServer: RelayServer, anotherRelayServer: RelayServer
   let serverWeb3provider: provider
   let ethereumNodeUrl: string
@@ -173,7 +176,9 @@ contract('RelayServer', function (accounts) {
       to: sr.address,
       pctRelayFee: pctRelayFee,
       gas_limit: 1000000,
-      paymaster: paymaster.address
+      paymaster: paymaster.address,
+      paymasterData,
+      clientId
     }
     options2 = {
       ...options,
@@ -248,6 +253,8 @@ contract('RelayServer', function (accounts) {
         from: relayRequest.request.from,
         to: relayRequest.request.to,
         paymaster: relayRequest.relayData.paymaster,
+        paymasterData: relayRequest.relayData.paymasterData,
+        clientId: relayRequest.relayData.clientId,
         gasLimit: relayRequest.request.gas,
         relayMaxNonce,
         baseRelayFee: relayRequest.relayData.baseRelayFee,
@@ -282,6 +289,8 @@ contract('RelayServer', function (accounts) {
     }
     const gsnTransactionDetails: GsnTransactionDetails = {
       paymaster: options.paymaster,
+      paymasterData,
+      clientId,
       data: encodedFunction,
       forwarder: forwarder.address,
       from: options.from,

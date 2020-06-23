@@ -18,6 +18,7 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
+import { ZERO_BYTES32 } from './TestUtils'
 import TransactionResponse = Truffle.TransactionResponse
 
 const RelayHub = artifacts.require('RelayHub')
@@ -26,6 +27,9 @@ const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
+
+const paymasterData = ZERO_BYTES32
+const clientId = '0'
 
 contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
@@ -95,7 +99,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         pctRelayFee: '10',
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }
     }
     const dataToSign = new TypedRequestData(
@@ -338,7 +344,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
               pctRelayFee: fee.toString(),
               relayWorker,
               forwarder,
-              paymaster: paymaster.address
+              paymaster: paymaster.address,
+              paymasterData,
+              clientId
             }
           }
           const dataToSign = new TypedRequestData(
@@ -440,7 +448,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             gasPrice: encodedCallArgs.gasPrice.toString(),
             relayWorker,
             forwarder,
-            paymaster: encodedCallArgs.paymaster
+            paymaster: encodedCallArgs.paymaster,
+            paymasterData,
+            clientId
           }
         }
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
