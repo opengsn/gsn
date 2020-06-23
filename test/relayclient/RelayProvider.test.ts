@@ -213,7 +213,7 @@ contract('RelayProvider', function (accounts) {
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
-      await expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call - should not happen. Reason: Error: ${BadRelayClient.message}`)
+      await expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call - should not happen. Reason: ${BadRelayClient.message}`)
     })
 
     it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
