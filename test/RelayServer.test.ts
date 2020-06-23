@@ -232,7 +232,7 @@ contract('RelayServer', function (accounts) {
 
   async function relayTransaction (options: any, overrideArgs?: Partial<CreateTransactionDetails>): Promise<PrefixedHexString> {
     const { relayRequest, relayMaxNonce, approvalData, signature } = await prepareRelayRequest({ ...options, ...overrideArgs })
-    return relayTransactionFromRequest(overrideArgs ?? {}, { relayRequest, relayMaxNonce, approvalData, signature })
+    return await relayTransactionFromRequest(overrideArgs ?? {}, { relayRequest, relayMaxNonce, approvalData, signature })
   }
 
   async function relayTransactionFromRequest (overrideArgs: Partial<CreateTransactionDetails>, { relayRequest, relayMaxNonce, approvalData, signature }: any): Promise<PrefixedHexString> {
@@ -1010,11 +1010,11 @@ contract('RelayServer', function (accounts) {
         let receipts = await newServer._registerIfNeeded()
         assertRelayAdded(receipts, newServer)
         // @ts-ignore
-        newServer.baseRelayFee += 1
+        newServer.baseRelayFee = newServer.baseRelayFee + 1
         receipts = await newServer._registerIfNeeded()
         assertRelayAdded(receipts, newServer, false)
         // @ts-ignore
-        newServer.pctRelayFee += 1
+        newServer.pctRelayFee = newServer.pctRelayFee + 1
         receipts = await newServer._registerIfNeeded()
         assertRelayAdded(receipts, newServer, false)
         // @ts-ignore

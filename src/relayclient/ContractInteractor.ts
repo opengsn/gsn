@@ -121,42 +121,42 @@ export default class ContractInteractor {
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createKnowsForwarder (address: Address): Promise<IKnowForwarderAddressInstance> {
-    return this.IKnowForwarderAddress.at(address)
+    return await this.IKnowForwarderAddress.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
-    return this.IRelayRecipient.at(address)
+    return await this.IRelayRecipient.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
-    return this.IPaymasterContract.at(address)
+    return await this.IPaymasterContract.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createRelayHub (address: Address): Promise<IRelayHubInstance> {
-    return this.IRelayHubContract.at(address)
+    return await this.IRelayHubContract.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createForwarder (address: Address): Promise<IForwarderInstance> {
-    return this.IForwarderContract.at(address)
+    return await this.IForwarderContract.at(address)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
-    return this.IStakeManager.at(address)
+    return await this.IStakeManager.at(address)
   }
 
   async getForwarder (recipientAddress: Address): Promise<Address> {
     const recipient = await this._createKnowsForwarder(recipientAddress)
-    return recipient.getTrustedForwarder()
+    return await recipient.getTrustedForwarder()
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {
     const recipient = await this._createRecipient(recipientAddress)
-    return recipient.isTrustedForwarder(forwarder)
+    return await recipient.isTrustedForwarder(forwarder)
   }
 
   async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
@@ -218,12 +218,12 @@ export default class ContractInteractor {
 
   async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
-    return this._getPastEvents(relayHub.contract, names, extraTopics, options)
+    return await this._getPastEvents(relayHub.contract, names, extraTopics, options)
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const stakeManager = await this._createStakeManager(this.config.stakeManagerAddress)
-    return this._getPastEvents(stakeManager.contract, names, extraTopics, options)
+    return await this._getPastEvents(stakeManager.contract, names, extraTopics, options)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
@@ -238,44 +238,44 @@ export default class ContractInteractor {
   }
 
   async getPastLogs (options: PastLogsOptions): Promise<Log[]> {
-    return this.web3.eth.getPastLogs(options)
+    return await this.web3.eth.getPastLogs(options)
   }
 
   async getBalance (address: Address): Promise<string> {
-    return this.web3.eth.getBalance(address)
+    return await this.web3.eth.getBalance(address)
   }
 
   async getBlockNumber (): Promise<number> {
-    return this.web3.eth.getBlockNumber()
+    return await this.web3.eth.getBlockNumber()
   }
 
   async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
-    return this.web3.eth.sendSignedTransaction(rawTx)
+    return await this.web3.eth.sendSignedTransaction(rawTx)
   }
 
   async estimateGas (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
-    return this.web3.eth.estimateGas(gsnTransactionDetails)
+    return await this.web3.eth.estimateGas(gsnTransactionDetails)
   }
 
   async getGasPrice (): Promise<string> {
-    return this.web3.eth.getGasPrice()
+    return await this.web3.eth.getGasPrice()
   }
 
   async getTransactionCount (address: string, defaultBlock?: BlockNumber): Promise<number> {
     // @ts-ignore (web3 does not define 'defaultBlock' as optional)
-    return this.web3.eth.getTransactionCount(address, defaultBlock)
+    return await this.web3.eth.getTransactionCount(address, defaultBlock)
   }
 
   async getTransaction (transactionHash: string): Promise<Transaction> {
-    return this.web3.eth.getTransaction(transactionHash)
+    return await this.web3.eth.getTransaction(transactionHash)
   }
 
   async getBlock (blockHashOrBlockNumber: BlockNumber): Promise<BlockTransactionString> {
-    return this.web3.eth.getBlock(blockHashOrBlockNumber)
+    return await this.web3.eth.getBlock(blockHashOrBlockNumber)
   }
 
   async getCode (address: string): Promise<string> {
-    return this.web3.eth.getCode(address)
+    return await this.web3.eth.getCode(address)
   }
 
   getChainId (): number {

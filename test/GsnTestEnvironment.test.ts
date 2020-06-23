@@ -10,7 +10,7 @@ contract('GsnTestEnvironment', function () {
   let host: string
 
   before(function () {
-    host = (web3.currentProvider as HttpProvider).host || 'localhost'
+    host = (web3.currentProvider as HttpProvider).host ?? 'localhost'
   })
 
   describe('#startGsn()', function () {

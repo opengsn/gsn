@@ -284,13 +284,13 @@ contract('RelaySelectionManager', function (accounts) {
       stubPingResponse.callsFake(async (relayUrl: string): Promise<PingResponse> => {
         switch (relayUrl) {
           case slowRelay.relayInfo.relayUrl:
-            return slowPromise
+            return await slowPromise
           case fastRelay.relayInfo.relayUrl:
-            return fastPromise
+            return await fastPromise
           case slowFailRelay.relayInfo.relayUrl:
-            return slowFailPromise
+            return await slowFailPromise
           case fastFailRelay.relayInfo.relayUrl:
-            return fastFailPromise
+            return await fastFailPromise
         }
         throw new Error('Non test relay pinged')
       })

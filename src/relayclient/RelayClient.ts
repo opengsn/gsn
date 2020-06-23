@@ -17,7 +17,7 @@ import { RelayInfo } from './types/RelayInfo'
 
 // generate "approvalData" for a request. must return string-encoded bytes array
 export const EmptyApprovalData: AsyncApprovalData = async (): Promise<PrefixedHexString> => {
-  return Promise.resolve('0x')
+  return await Promise.resolve('0x')
 }
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
@@ -270,7 +270,7 @@ export default class RelayClient {
     let forwarderAddress = gsnTransactionDetails.forwarder ?? this.config.forwarderAddress
     if (forwarderAddress !== constants.ZERO_ADDRESS) {
       const recipientCode = await web3.eth.getCode(gsnTransactionDetails.to)
-      const isRecipientDeployed = recipientCode != '0x'
+      const isRecipientDeployed = recipientCode !== '0x'
       if (!isRecipientDeployed) {
         console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
         Unless you are using some counterfactual contract deployment technique the transaction will fail!`)

@@ -7,7 +7,7 @@ import "../interfaces/IRelayRecipient.sol";
 import "../forwarder/Forwarder.sol";
 
 /**
- * Bridge Library to map GSN RelayRequest into a call of an Forwarder
+ * Bridge Library to map GSN RelayRequest into a call of a Forwarder
  */
 library GsnEip712Library {
 

@@ -128,7 +128,7 @@ export default class RelaySelectionManager {
    */
   async _raceToSuccess (relays: RelayInfoUrl[]): Promise<RaceResult> {
     const errors: Map<string, Error> = new Map<string, Error>()
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       relays.forEach((relay: RelayInfoUrl) => {
         this._getRelayAddressPing(relay)
           .then((winner: PartialRelayInfo) => {
