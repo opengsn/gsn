@@ -34,20 +34,21 @@ export default class RelayedTransactionValidator {
     const signer = bufferToHex(transaction.getSenderAddress())
 
     const relayRequestOrig: RelayRequest = {
-      target: transactionJsonRequest.to,
-      encodedFunction: transactionJsonRequest.encodedFunction,
-      gasData: {
-        gasPrice: transactionJsonRequest.gasPrice,
-        gasLimit: transactionJsonRequest.gasLimit,
-        baseRelayFee: transactionJsonRequest.baseRelayFee,
-        pctRelayFee: transactionJsonRequest.pctRelayFee
+      request: {
+        to: transactionJsonRequest.to,
+        data: transactionJsonRequest.data,
+        gas: transactionJsonRequest.gasLimit,
+        from: transactionJsonRequest.from,
+        nonce: transactionJsonRequest.senderNonce,
+        value: '0'
       },
       relayData: {
-        senderAddress: transactionJsonRequest.from,
-        senderNonce: transactionJsonRequest.senderNonce,
+        gasPrice: transactionJsonRequest.gasPrice,
+        baseRelayFee: transactionJsonRequest.baseRelayFee,
+        pctRelayFee: transactionJsonRequest.pctRelayFee,
         relayWorker: transactionJsonRequest.relayWorker,
-        paymaster: transactionJsonRequest.paymaster,
-        forwarder: transactionJsonRequest.forwarder
+        forwarder: transactionJsonRequest.forwarder,
+        paymaster: transactionJsonRequest.paymaster
       }
     }
     const externalGasLimit = bufferToHex(transaction.gasLimit)

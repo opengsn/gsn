@@ -5,13 +5,16 @@ import { expect } from 'chai'
 import { getEip712Signature } from '../src/common/Utils'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 import { defaultEnvironment } from '../src/relayclient/types/Environments'
-import TypedRequestData from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 import {
   RelayHubInstance,
+  PenalizerInstance,
+  StakeManagerInstance,
   TestRecipientInstance,
+  ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, StakeManagerInstance, ForwarderInstance, PenalizerInstance
+  TestPaymasterConfigurableMisbehaviorInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
@@ -50,9 +53,15 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     penalizer = await Penalizer.new()
     relayHubInstance = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
-    recipientContract = await TestRecipient.new()
-    forwarder = await recipientContract.getTrustedForwarder()
-    forwarderInstance = await Forwarder.at(forwarder)
+    forwarderInstance = await Forwarder.new()
+    forwarder = forwarderInstance.address
+    recipientContract = await TestRecipient.new(forwarder)
+
+    // register hub's RelayRequest with forwarder, if not already done.
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
 
     target = recipientContract.address
     paymaster = paymasterContract.address
@@ -167,20 +176,21 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
     beforeEach(function () {
       sharedRelayRequestData = {
-        target,
-        encodedFunction: '',
-        gasData: {
+        request: {
+          to: target,
+          data: '',
+          from: senderAddress,
+          nonce: senderNonce,
+          value: '0',
+          gas: gasLimit
+        },
+        relayData: {
           pctRelayFee,
           baseRelayFee,
           gasPrice,
-          gasLimit
-        },
-        relayData: {
-          senderAddress,
-          senderNonce,
           relayWorker,
-          paymaster,
-          forwarder
+          forwarder,
+          paymaster
         }
       }
     })
@@ -192,7 +202,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       let relayRequest: RelayRequest
       beforeEach(async function () {
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
-        relayRequest.encodedFunction = '0xdeadbeef'
+        relayRequest.request.data = '0xdeadbeef'
         await relayHubInstance.depositFor(paymaster, {
           from: other,
           value: ether('1'),
@@ -202,7 +212,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
       it('should not accept a relay call', async function () {
         await expectRevert(
-          relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, { from: relayWorker, gas }),
+          relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, {
+            from: relayWorker,
+            gas
+          }),
           'Unknown relay worker')
       })
 
@@ -220,7 +233,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
         it('should not accept a relay call', async function () {
           await expectRevert(
-            relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, { from: relayWorker, gas }),
+            relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, {
+              from: relayWorker,
+              gas
+            }),
             'relay manager not staked')
         })
       })
@@ -248,7 +264,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
         await relayHubInstance.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
-        relayRequest.encodedFunction = encodedFunction
+        relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(
           chainId,
           forwarder,
@@ -286,7 +302,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             'relay worker cannot be a smart contract')
         })
       })
-
       context('with view functions only', function () {
         let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
         let relayRequestMisbehavingPaymaster: RelayRequest
@@ -306,9 +321,12 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           const relayCallView = await relayHubInstance.contract.methods.relayCall(
             relayRequest,
             signatureWithPermissivePaymaster, '0x', 7e6)
-            .call({ from: relayWorker, gas: 7e6 })
-          assert.equal(relayCallView.paymasterAccepted, true)
+            .call({
+              from: relayWorker,
+              gas: 7e6
+            })
           assert.equal(relayCallView.revertReason, '')
+          assert.equal(relayCallView.paymasterAccepted, true)
         })
 
         it('should get Paymaster\'s reject reason from view call result of \'relayCall\' for a transaction with a wrong signature', async function () {
@@ -408,7 +426,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('relayCall executes the transaction with no parameters', async function () {
           const encodedFunction = recipientContract.contract.methods.emitMessageNoParams().encodeABI()
           const relayRequestNoCallData = cloneRelayRequest(relayRequest)
-          relayRequestNoCallData.encodedFunction = encodedFunction
+          relayRequestNoCallData.request.data = encodedFunction
           const dataToSign = new TypedRequestData(
             chainId,
             forwarder,
@@ -528,7 +546,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             }),
             'Not a right worker')
         })
-
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
           async function () {
             const paymaster2 = await TestPaymasterEverythingAccepted.new()
@@ -537,7 +554,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gasPrice,
               pctRelayFee,
               baseRelayFee,
-              gasLimit: 0
+              relayWorker,
+              forwarder,
+              paymaster: paymaster2.address
             })).toNumber()
             await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation
 

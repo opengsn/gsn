@@ -26,10 +26,10 @@ class GsnTestEnvironmentClass {
   /**
    *
    * @param host:
-   * @param paymaster TODO: will allow using custom paymaster (need to provide ABI file contents)
+   * @param deployPaymaster - whether to deploy the naive paymaster instance for tests
    * @return
    */
-  async startGsn (host?: string, paymaster?: any): Promise<TestEnvironment> {
+  async startGsn (host?: string, deployPaymaster: boolean = true, debug = false): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     console.log('_host=', _host)
@@ -42,13 +42,15 @@ class GsnTestEnvironmentClass {
     if (from == null) {
       throw new Error('could not get unlocked account with sufficient balance')
     }
-    const deploymentResult = await commandsLogic.deployGsnContracts(from, undefined, paymaster)
-    const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
-    console.log('Sample Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
+    const deploymentResult = await commandsLogic.deployGsnContracts(from, deployPaymaster)
+    if (deployPaymaster) {
+      const balance = await commandsLogic.fundPaymaster(from, deploymentResult.naivePaymasterAddress, ether('1'))
+      console.log('Naive Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
+    }
 
     const port = await this._resolveAvailablePort()
     const relayUrl = 'http://127.0.0.1:' + port.toString()
-    this._runServer(_host, deploymentResult, from, relayUrl, port)
+    this._runServer(_host, deploymentResult, from, relayUrl, port, debug)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -64,6 +66,7 @@ class GsnTestEnvironmentClass {
     if (registrationResult.success) {
       console.log('In-process relay successfully registered:', JSON.stringify(registrationResult))
     } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Failed to fund relay: ${registrationResult.error} : ${registrationResult?.transactions?.toString()}`)
     }
 
@@ -72,7 +75,7 @@ class GsnTestEnvironmentClass {
     const config = configureGSN({
       relayHubAddress: deploymentResult.relayHubAddress,
       stakeManagerAddress: deploymentResult.stakeManagerAddress,
-      paymasterAddress: deploymentResult.paymasterAddress,
+      paymasterAddress: deploymentResult.naivePaymasterAddress,
       preferredRelays: [relayUrl]
     })
 
@@ -119,7 +122,8 @@ class GsnTestEnvironmentClass {
     deploymentResult: DeploymentResult,
     from: Address,
     relayUrl: string,
-    port: number
+    port: number,
+    debug = true
   ): void {
     if (this.httpServer !== undefined) {
       return
@@ -142,7 +146,7 @@ class GsnTestEnvironmentClass {
       baseRelayFee: 0,
       pctRelayFee: 0,
       devMode: true,
-      debug: false
+      debug
     }
     const backend = new RelayServer(relayServerParams as RelayServerParams)
 

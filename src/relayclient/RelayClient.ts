@@ -17,7 +17,7 @@ import { RelayInfo } from './types/RelayInfo'
 
 // generate "approvalData" for a request. must return string-encoded bytes array
 export const EmptyApprovalData: AsyncApprovalData = async (): Promise<PrefixedHexString> => {
-  return Promise.resolve('0x')
+  return await Promise.resolve('0x')
 }
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
@@ -213,23 +213,24 @@ export default class RelayClient {
     const gasLimit = parseInt(gasLimitHex, 16).toString()
     const gasPrice = parseInt(gasPriceHex, 16).toString()
     const relayRequest: RelayRequest = {
-      target: gsnTransactionDetails.to,
-      encodedFunction: gsnTransactionDetails.data,
-      gasData: {
+      request: {
+        to: gsnTransactionDetails.to,
+        data: gsnTransactionDetails.data,
+        from: gsnTransactionDetails.from,
+        value: '0',
+        nonce: senderNonce,
+        gas: gasLimit
+      },
+      relayData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,
         baseRelayFee: relayInfo.relayInfo.baseRelayFee,
         gasPrice,
-        gasLimit
-      },
-      relayData: {
-        senderAddress: gsnTransactionDetails.from,
-        senderNonce,
         paymaster,
         forwarder: forwarderAddress,
         relayWorker
       }
     }
-    const signature = await this.accountManager.sign(relayRequest, forwarderAddress)
+    const signature = await this.accountManager.sign(relayRequest)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
@@ -238,8 +239,8 @@ export default class RelayClient {
     //  Must teach server to accept correct types
     const httpRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
-      encodedFunction: gsnTransactionDetails.data,
-      senderNonce: relayRequest.relayData.senderNonce,
+      data: gsnTransactionDetails.data,
+      senderNonce: relayRequest.request.nonce,
       from: gsnTransactionDetails.from,
       to: gsnTransactionDetails.to,
       pctRelayFee: relayInfo.relayInfo.pctRelayFee,
@@ -268,9 +269,16 @@ export default class RelayClient {
   async resolveForwarder (gsnTransactionDetails: GsnTransactionDetails): Promise<Address> {
     let forwarderAddress = gsnTransactionDetails.forwarder ?? this.config.forwarderAddress
     if (forwarderAddress !== constants.ZERO_ADDRESS) {
-      const isTrusted = await this.contractInteractor.isTrustedForwarder(gsnTransactionDetails.to, forwarderAddress)
-      if (!isTrusted) {
-        throw new Error('The Forwarder address configured but is not trusted by the Recipient contract')
+      const recipientCode = await web3.eth.getCode(gsnTransactionDetails.to)
+      const isRecipientDeployed = recipientCode !== '0x'
+      if (!isRecipientDeployed) {
+        console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
+        Unless you are using some counterfactual contract deployment technique the transaction will fail!`)
+      } else {
+        const isTrusted = await this.contractInteractor.isTrustedForwarder(gsnTransactionDetails.to, forwarderAddress)
+        if (!isTrusted) {
+          throw new Error('The Forwarder address configured but is not trusted by the Recipient contract')
+        }
       }
     } else {
       try {

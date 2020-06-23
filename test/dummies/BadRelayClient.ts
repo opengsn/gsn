@@ -31,6 +31,6 @@ export default class BadRelayClient extends RelayClient {
         relayingErrors: new Map<string, Error>()
       }
     }
-    return super.relayTransaction(gsnTransactionDetails)
+    return await super.relayTransaction(gsnTransactionDetails)
   }
 }

@@ -10,6 +10,7 @@ import { HttpProvider } from 'web3-core'
 import Web3 from 'web3'
 import TypedRequestData from '../common/EIP712/TypedRequestData'
 
+require('source-map-support').install({ errorFormatterForce: true })
 export interface AccountKeypair {
   privateKey: Buffer
   address: Address
@@ -23,7 +24,7 @@ export default class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
-  private readonly chainId: number
+  readonly chainId: number
 
   constructor (provider: HttpProvider, chainId: number, config: GSNConfig) {
     this.web3 = new Web3(provider)
@@ -50,15 +51,17 @@ export default class AccountManager {
     return keypair
   }
 
-  // TODO: make forwarder part of RelayRequest, why is it dangling??
-  async sign (relayRequest: RelayRequest, forwarderAddress: Address): Promise<PrefixedHexString> {
+  async sign (relayRequest: RelayRequest): Promise<PrefixedHexString> {
     let signature
+    const forwarder = relayRequest.relayData.forwarder
+
+    const cloneRequest = { ...relayRequest }
     const signedData = new TypedRequestData(
       this.chainId,
-      forwarderAddress,
-      relayRequest
+      forwarder,
+      cloneRequest
     )
-    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.relayData.senderAddress))
+    const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.request.from))
     if (keypair != null) {
       signature = this._signWithControlledKey(keypair, signedData)
     } else {
@@ -74,11 +77,11 @@ export default class AccountManager {
       })
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Failed to sign relayed transaction for ${relayRequest.relayData.senderAddress}: ${error.message}`)
+      throw new Error(`Failed to sign relayed transaction for ${relayRequest.request.from}: ${error}`)
     }
-    if (!isSameAddress(relayRequest.relayData.senderAddress.toLowerCase(), rec)) {
+    if (!isSameAddress(relayRequest.request.from.toLowerCase(), rec)) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.relayData.senderAddress}, recovered=${rec}`)
+      throw new Error(`Internal RelayClient exception: signature is not correct: sender=${relayRequest.request.from}, recovered=${rec}`)
     }
     return signature
   }
@@ -87,7 +90,7 @@ export default class AccountManager {
   // a) allow different implementations in the future, and
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
-    return getEip712Signature(
+    return await getEip712Signature(
       this.web3,
       signedData,
       this.config.methodSuffix ?? '',

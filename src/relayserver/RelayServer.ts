@@ -191,13 +191,14 @@ export class RelayServer extends EventEmitter {
 
   async createRelayTransaction (req: CreateTransactionDetails): Promise<PrefixedHexString> {
     debug('dump request params', arguments[0])
-    ow(req.encodedFunction, ow.string)
+    ow(req.data, ow.string)
     ow(req.approvalData, ow.string)
     ow(req.signature, ow.string)
 
     // Check that the relayHub is the correct one
     if (req.relayHubAddress !== this.relayHubContract?.address) {
       throw new Error(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract?.address}, request's hub address: ${req.relayHubAddress}\n`)
     }
 
@@ -235,17 +236,18 @@ export class RelayServer extends EventEmitter {
 
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const relayRequest: RelayRequest = {
-      target: req.to,
-      encodedFunction: req.encodedFunction,
-      gasData: {
+      request: {
+        to: req.to,
+        data: req.data,
+        from: req.from,
+        nonce: req.senderNonce,
+        gas: req.gasLimit,
+        value: '0'
+      },
+      relayData: {
         baseRelayFee: req.baseRelayFee,
         pctRelayFee: req.pctRelayFee,
         gasPrice: req.gasPrice,
-        gasLimit: req.gasLimit
-      },
-      relayData: {
-        senderAddress: req.from,
-        senderNonce: req.senderNonce,
         paymaster: req.paymaster,
         forwarder: req.forwarder,
         relayWorker: this.getAddress(1)
@@ -289,7 +291,7 @@ export class RelayServer extends EventEmitter {
         maxPossibleGas)
         .call({
           from: this.getAddress(workerIndex),
-          gasPrice: relayRequest.gasData.gasPrice,
+          gasPrice: relayRequest.relayData.gasPrice,
           gasLimit: maxPossibleGas
         })
     } catch (e) {
@@ -309,7 +311,9 @@ export class RelayServer extends EventEmitter {
         gasPrice: req.gasPrice?.toString() ?? '0',
         pctRelayFee: req.pctRelayFee.toString(),
         baseRelayFee: req.baseRelayFee.toString(),
-        gasLimit: 0
+        relayWorker: req.relayWorker,
+        forwarder: req.forwarder,
+        paymaster: req.paymaster
       })
     const paymasterBalance = await this.relayHubContract.balanceOf(req.paymaster)
     if (paymasterBalance.lt(maxCharge)) {
@@ -414,7 +418,7 @@ export class RelayServer extends EventEmitter {
     this.rawTxOptions = this.contractInteractor.getRawTxOptions()
 
     // todo: fix typo AND fix metacoin
-    console.log('intialized', this.chainId, this.networkId, this.rawTxOptions)
+    debug('intialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
 
@@ -521,6 +525,7 @@ export class RelayServer extends EventEmitter {
     // first time getting stake, setting owner
     if (this.owner == null) {
       this.owner = stakeInfo?.owner
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       debug(`Got staked for the first time. Owner: ${this.owner}. Stake: ${this.stake.toString()}`)
     }
     this.unstakeDelay = toBN(stakeInfo?.unstakeDelay ?? '0')
@@ -572,7 +577,7 @@ export class RelayServer extends EventEmitter {
       this.authorizedHub = true
     }
 
-    return this._registerIfNeeded()
+    return await this._registerIfNeeded()
   }
 
   async _handleHubUnauthorizedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
@@ -598,7 +603,7 @@ export class RelayServer extends EventEmitter {
     }
     await this.refreshStake()
 
-    return this._registerIfNeeded()
+    return await this._registerIfNeeded()
   }
 
   async _registerIfNeeded (): Promise<TransactionReceipt[]> {
@@ -630,6 +635,7 @@ export class RelayServer extends EventEmitter {
         method: registerMethod,
         destination: this.relayHubContract?.address as string
       })).receipt)
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       debug(`Relay ${this.managerAddress} registered on hub ${this.relayHubContract?.address}. `)
     }
     return receipts
@@ -768,6 +774,7 @@ export class RelayServer extends EventEmitter {
         continue
       }
       if (receipt.blockNumber == null) {
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
         throw new Error(`invalid block number in receipt ${receipt.toString()}`)
       }
       const txBlockNumber = receipt.blockNumber
@@ -904,6 +911,7 @@ export class RelayServer extends EventEmitter {
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {
     if (event?.events === undefined) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       return `not event: ${event?.toString()}`
     }
     const args: Record<string, any> = {}

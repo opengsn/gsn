@@ -77,21 +77,21 @@ export interface GSNDependencies {
 }
 
 export function getDependencies (config: GSNConfig, provider?: HttpProvider, overrideDependencies?: Partial<GSNDependencies>): GSNDependencies {
-  let accountManager = overrideDependencies?.accountManager
-  if (accountManager == null) {
-    if (provider != null) {
-      accountManager = new AccountManager(provider, config.chainId ?? defaultEnvironment.chainId, config)
-    } else {
-      throw new Error('either account manager or web3 provider must be non-null')
-    }
-  }
-
   let contractInteractor = overrideDependencies?.contractInteractor
   if (contractInteractor == null) {
     if (provider != null) {
       contractInteractor = new ContractInteractor(provider, config)
     } else {
       throw new Error('either contract interactor or web3 provider must be non-null')
+    }
+  }
+
+  let accountManager = overrideDependencies?.accountManager
+  if (accountManager == null) {
+    if (provider != null) {
+      accountManager = new AccountManager(provider, config.chainId ?? contractInteractor.getChainId(), config)
+    } else {
+      throw new Error('either account manager or web3 provider must be non-null')
     }
   }
 

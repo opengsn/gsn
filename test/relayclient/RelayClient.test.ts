@@ -28,11 +28,13 @@ import { startRelay, stopRelay } from '../TestUtils'
 import { constants } from '@openzeppelin/test-helpers'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
+import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const Forwarder = artifacts.require('Forwarder')
 
 const expect = chai.expect
 chai.use(sinonChai)
@@ -61,13 +63,18 @@ contract('RelayClient', function (accounts) {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
-    testRecipient = await TestRecipient.new()
-    forwarderAddress = await testRecipient.getTrustedForwarder()
+    const forwarderInstance = await Forwarder.new()
+    forwarderAddress = forwarderInstance.address
+    testRecipient = await TestRecipient.new(forwarderAddress)
+    // register hub's RelayRequest with forwarder, if not already done.
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await paymaster.setRelayHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
-    gasLess = await web3.eth.personal.newAccount('password')
 
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       stake: 1e18,
@@ -81,6 +88,7 @@ contract('RelayClient', function (accounts) {
       stakeManagerAddress: stakeManager.address
     }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
+    gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()
@@ -110,7 +118,7 @@ contract('RelayClient', function (accounts) {
       const res = await web3.eth.getTransactionReceipt(txHash)
 
       // validate we've got the "SampleRecipientEmitted" event
-      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address)') ?? ''
+      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256)') ?? ''
       assert(res.logs.find(log => log.topics.includes(topic)))
 
       const destination: string = validTransaction.to.toString('hex')
@@ -261,7 +269,7 @@ contract('RelayClient', function (accounts) {
 
     describe('#_prepareRelayHttpRequest()', function () {
       const asyncApprovalData: AsyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
-        return Promise.resolve('0x1234567890')
+        return await Promise.resolve('0x1234567890')
       }
       it('should use provided approval function', async function () {
         const relayClient =

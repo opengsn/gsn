@@ -42,14 +42,14 @@ export async function getEip712Signature (
   methodSuffix = '',
   jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
-  const senderAddress = typedRequestData.message.relayData.senderAddress
+  const senderAddress = typedRequestData.message.from
   let dataToSign: TypedRequestData | string
   if (jsonStringifyRequest) {
     dataToSign = JSON.stringify(typedRequestData)
   } else {
     dataToSign = typedRequestData
   }
-  return new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     let method
     // @ts-ignore (the entire web3 typing is fucked up)
     if (typeof web3.currentProvider.sendAsync === 'function') {
@@ -128,7 +128,7 @@ export function isSameAddress (address1: Address, address2: Address): boolean {
 }
 
 export async function sleep (ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /**

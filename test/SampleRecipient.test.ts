@@ -1,19 +1,31 @@
-import { TestPaymasterEverythingAcceptedInstance, TestRecipientInstance } from '../types/truffle-contracts'
+import {
+  ForwarderInstance,
+  TestPaymasterEverythingAcceptedInstance,
+  TestRecipientInstance
+} from '../types/truffle-contracts'
 import BN from 'bn.js'
-const RelayHub = artifacts.require('./RelayHub.sol')
+import { PrefixedHexString } from 'ethereumjs-tx'
+import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const TestRecipient = artifacts.require('./test/TestRecipient.sol')
+const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
+const Forwarder = artifacts.require('Forwarder')
 
 contract('SampleRecipient', function (accounts) {
   const expectedRealSender = accounts[0]
   const message = 'hello world'
   let sample: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
+  let forwarderInstance: ForwarderInstance
+  let forwarder: PrefixedHexString
 
   before(async function () {
-    sample = await TestRecipient.new()
+    forwarderInstance = await Forwarder.new()
+    forwarder = forwarderInstance.address
+
+    sample = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterEverythingAccepted.new()
   })
 
@@ -34,6 +46,10 @@ contract('SampleRecipient', function (accounts) {
     const penalizer = await Penalizer.new()
     const rhub = await RelayHub.new(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(rhub.address)
+    await forwarderInstance.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally
     // uses hub.depositFor)

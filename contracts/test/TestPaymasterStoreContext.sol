@@ -36,7 +36,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
      * This demonstrates how acceptRelayedCall can return 'context' data for reuse in preRelayedCall/postRelayedCall.
      */
     function acceptRelayedCall(
-        ISignatureVerifier.RelayRequest calldata relayRequest,
+        GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
@@ -48,13 +48,13 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         (signature);
         return abi.encode(
             relayRequest.relayData.relayWorker,
-            relayRequest.relayData.senderAddress,
-            relayRequest.encodedFunction,
-            relayRequest.gasData.baseRelayFee,
-            relayRequest.gasData.pctRelayFee,
-            relayRequest.gasData.gasPrice,
-            relayRequest.gasData.gasLimit,
-            relayRequest.relayData.senderNonce,
+            relayRequest.request.from,
+            relayRequest.request.data,
+            relayRequest.relayData.baseRelayFee,
+            relayRequest.relayData.pctRelayFee,
+            relayRequest.relayData.gasPrice,
+            relayRequest.request.gas,
+            relayRequest.request.nonce,
             approvalData,
             maxPossibleGas);
     }
@@ -80,13 +80,13 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         bool success,
         bytes32 preRetVal,
         uint256 gasUseWithoutPost,
-        ISignatureVerifier.GasData calldata gasData
+        GsnTypes.RelayData calldata relayData
     )
     external
     override
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, gasData);
+        (context, success, preRetVal, gasUseWithoutPost, relayData);
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 baseRelayFee, uint256 pctRelayFee, uint256 gasPrice, uint256 gasLimit,

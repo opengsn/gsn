@@ -30,7 +30,7 @@ export default class BadHttpClient extends HttpClient {
     if (this.stubPing != null) {
       return this.stubPing
     }
-    return super.getPingResponse(relayUrl)
+    return await super.getPingResponse(relayUrl)
   }
 
   async relayTransaction (relayUrl: string, request: TmpRelayTransactionJsonRequest): Promise<PrefixedHexString> {
@@ -43,6 +43,6 @@ export default class BadHttpClient extends HttpClient {
     if (this.stubRelay != null) {
       return this.stubRelay
     }
-    return super.relayTransaction(relayUrl, request)
+    return await super.relayTransaction(relayUrl, request)
   }
 }

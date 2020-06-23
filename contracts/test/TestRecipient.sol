@@ -5,23 +5,21 @@ pragma solidity ^0.6.2;
 import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
-import "../Forwarder.sol";
 import "../interfaces/IKnowForwarderAddress.sol";
 
 contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
 
     string public override versionRecipient = "2.0.0-alpha.1+opengsn.test.irelayrecipient";
 
-    constructor() public {
-        //should be a singleton, since Paymaster should (eventually) trust it.
-        trustedForwarder = address(new Forwarder());
+    constructor(address forwarder) public {
+        setTrustedForwarder(forwarder);
     }
 
     function getTrustedForwarder() public override view returns(address) {
         return trustedForwarder;
     }
 
-    function setTrustedForwarder(address forwarder) external {
+    function setTrustedForwarder(address forwarder) internal {
         trustedForwarder = forwarder;
     }
 
@@ -41,14 +39,14 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin);
+    event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 value);
 
-    function emitMessage(string memory message) public {
+    function emitMessage(string memory message) public payable {
         if (paymaster != address(0)) {
             withdrawAllBalance();
         }
 
-        emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin);
+        emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin, address(this).balance);
     }
 
     function withdrawAllBalance() public {
@@ -59,6 +57,6 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     function dontEmitMessage(string memory message) public {}
 
     function emitMessageNoParams() public {
-        emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin);
+        emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, address(this).balance);
     }
 }

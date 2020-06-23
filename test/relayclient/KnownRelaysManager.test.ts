@@ -15,11 +15,13 @@ import { prepareTransaction } from './RelayProvider.test'
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const Forwarder = artifacts.require('Forwarder')
 
 export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
   await stakeManager.stakeForAddress(manager, 1000, {
@@ -71,7 +73,15 @@ contract('KnownRelaysManager', function (
         relayLookupWindowBlocks
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
-      testRecipient = await TestRecipient.new()
+
+      const forwarderInstance = await Forwarder.new()
+      const forwarderAddress = forwarderInstance.address
+      testRecipient = await TestRecipient.new(forwarderAddress)
+      await forwarderInstance.registerRequestType(
+        GsnRequestType.typeName,
+        GsnRequestType.typeSuffix
+      )
+
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
       await paymaster.setRelayHub(relayHub.address)
       await paymaster.deposit({ value: ether('1') })
@@ -108,13 +118,13 @@ contract('KnownRelaysManager', function (
       await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
         from: workerTransactionRelayed,
         gas,
-        gasPrice: txTransactionRelayed.relayRequest.gasData.gasPrice
+        gasPrice: txTransactionRelayed.relayRequest.relayData.gasPrice
       })
       await paymaster.setReturnInvalidErrorCode(true)
       await relayHub.relayCall(txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
         from: workerPaymasterRejected,
         gas,
-        gasPrice: txPaymasterRejected.relayRequest.gasData.gasPrice
+        gasPrice: txPaymasterRejected.relayRequest.relayData.gasPrice
       })
     })
 
@@ -273,9 +283,9 @@ contract('KnownRelaysManager 2', function (accounts) {
   describe('getRelaysSortedForTransaction', function () {
     const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<number> {
       if (relay.relayUrl === 'alex') {
-        return Promise.resolve(1000)
+        return await Promise.resolve(1000)
       } else {
-        return Promise.resolve(100)
+        return await Promise.resolve(100)
       }
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)

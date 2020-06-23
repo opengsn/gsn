@@ -58,7 +58,7 @@ export function saveDeployment (deploymentResult: DeploymentResult, workdir: str
   saveContractToFile(deploymentResult.stakeManagerAddress, workdir, 'StakeManager.json')
   saveContractToFile(deploymentResult.penalizerAddress, workdir, 'Penalizer.json')
   saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
-  saveContractToFile(deploymentResult.paymasterAddress, workdir, 'Paymaster.json')
+  saveContractToFile(deploymentResult.naivePaymasterAddress, workdir, 'Paymaster.json')
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
 }
 
@@ -71,7 +71,7 @@ export function showDeployment (deploymentResult: DeploymentResult, title: strin
   StakeManager: ${deploymentResult.stakeManagerAddress}
   Penalizer: ${deploymentResult.penalizerAddress}
   Forwarder: ${deploymentResult.forwarderAddress}
-  Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.paymasterAddress}`)
+  Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.naivePaymasterAddress}`)
 }
 
 export function loadDeployment (workdir: string): DeploymentResult {
@@ -86,7 +86,7 @@ export function loadDeployment (workdir: string): DeploymentResult {
     stakeManagerAddress: getAddress('StakeManager'),
     penalizerAddress: getAddress('Penalizer.json'),
     forwarderAddress: getAddress('Forwarder.json'),
-    paymasterAddress: getAddress('Paymaster.json')
+    naivePaymasterAddress: getAddress('Paymaster.json')
   }
 }
 

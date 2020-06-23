@@ -14,7 +14,7 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot } from './TestUtils'
+import { evmMine, evmMineMany, revert, sleep, snapshot } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
   ForwarderInstance,
@@ -36,6 +36,7 @@ import { toBN, toHex } from 'web3-utils'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from '../src/relayclient/types/TmpRelayTransactionJsonRequest'
 import Mutex from 'async-mutex/lib/Mutex'
+import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
@@ -130,10 +131,15 @@ contract('RelayServer', function (accounts) {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     rhub = await RelayHub.new(stakeManager.address, penalizer.address)
-    sr = await TestRecipient.new()
-    const forwarderAddress = await sr.getTrustedForwarder()
-    forwarder = await Forwarder.at(forwarderAddress)
+    forwarder = await Forwarder.new()
+    const forwarderAddress = forwarder.address
+    sr = await TestRecipient.new(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
+    // register hub's RelayRequest with forwarder, if not already done.
+    await forwarder.registerRequestType(
+      GsnRequestType.typeName,
+      GsnRequestType.typeSuffix
+    )
 
     await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
@@ -236,33 +242,34 @@ contract('RelayServer', function (accounts) {
   async function relayTransaction (server: RelayServer, options: any, overrideArgs?: Partial<CreateTransactionDetails>): Promise<PrefixedHexString> {
     const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await prepareRelayRequest(server,
       { ...options, ...overrideArgs })
-    return relayTransactionFromRequest(server, overrideArgs ?? {}, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest })
+    return await relayTransactionFromRequest(server, overrideArgs ?? {},
+      { relayRequest, relayMaxNonce, approvalData, signature, httpRequest })
   }
 
-  async function relayTransactionFromRequest (server: RelayServer, overrideArgs: Partial<CreateTransactionDetails>, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }: any): Promise<PrefixedHexString> {
+  async function relayTransactionFromRequest (server: RelayServer, overrideArgs: Partial<CreateTransactionDetails>, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }: { relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }): Promise<PrefixedHexString> {
     // console.log('relayRequest is', relayRequest, signature, approvalData)
     // console.log('overrideArgs is', overrideArgs)
     const signedTx = await server.createRelayTransaction(
       {
         relayWorker: httpRequest.relayWorker,
-        senderNonce: relayRequest.relayData.senderNonce,
-        gasPrice: relayRequest.gasData.gasPrice,
-        encodedFunction: relayRequest.encodedFunction,
+        senderNonce: relayRequest.request.nonce,
+        gasPrice: relayRequest.relayData.gasPrice,
+        data: relayRequest.request.data,
         approvalData,
         signature,
-        from: relayRequest.relayData.senderAddress,
-        to: relayRequest.target,
+        from: relayRequest.request.from,
+        to: relayRequest.request.to,
         paymaster: relayRequest.relayData.paymaster,
-        gasLimit: relayRequest.gasData.gasLimit,
+        gasLimit: relayRequest.request.gas,
         relayMaxNonce,
-        baseRelayFee: relayRequest.gasData.baseRelayFee,
-        pctRelayFee: relayRequest.gasData.pctRelayFee,
+        baseRelayFee: relayRequest.relayData.baseRelayFee,
+        pctRelayFee: relayRequest.relayData.pctRelayFee,
         relayHubAddress: rhub.address,
         forwarder: relayRequest.relayData.forwarder,
         ...overrideArgs
       })
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-    await assertTransactionRelayed(server, txhash, relayRequest.relayData.senderAddress)
+    await assertTransactionRelayed(server, txhash, relayRequest.request.from)
     return signedTx
   }
 
@@ -425,9 +432,9 @@ contract('RelayServer', function (accounts) {
     it('should relay transaction', async function () {
       await relayTransaction(relayServer, options)
     })
-    it('should fail to relay with undefined encodedFunction', async function () {
+    it('should fail to relay with undefined data', async function () {
       try {
-        await relayTransaction(relayServer, options, { encodedFunction: undefined })
+        await relayTransaction(relayServer, options, { data: undefined })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
@@ -483,7 +490,7 @@ contract('RelayServer', function (accounts) {
         await relayTransaction(relayServer, options, { to: accounts[1] })
         assert.fail()
       } catch (e) {
-        assert.include(e.message, 'Cannot create instance of IRelayRecipient; no code at address')
+        assert.include(e.message, 'Paymaster rejected in server: isTrustedForwarder returned invalid response')
       }
     })
     it('should fail to relay with invalid paymaster', async function () {
@@ -1092,11 +1099,11 @@ contract('RelayServer', function (accounts) {
         let receipts = await newServer._registerIfNeeded()
         assertRelayAdded(receipts, newServer)
         // @ts-ignore
-        newServer.baseRelayFee += 1
+        newServer.baseRelayFee++
         receipts = await newServer._registerIfNeeded()
         assertRelayAdded(receipts, newServer, false)
         // @ts-ignore
-        newServer.pctRelayFee += 1
+        newServer.pctRelayFee++
         receipts = await newServer._registerIfNeeded()
         assertRelayAdded(receipts, newServer, false)
         // @ts-ignore
