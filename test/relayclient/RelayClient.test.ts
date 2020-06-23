@@ -272,7 +272,7 @@ contract('RelayClient', function (accounts) {
     describe('#_prepareRelayHttpRequest()', function () {
       const paymasterData = '0x'.padEnd(66, '1')
       const asyncPaymasterData: AsyncPaymasterData = async function (_: RelayRequest): Promise<PaymasterData> {
-        return Promise.resolve({
+        return await Promise.resolve({
           approvalData: '0x1234567890',
           paymasterData
         })

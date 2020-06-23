@@ -166,7 +166,7 @@ options.forEach(params => {
           const relayProvider =
             // @ts-ignore
             new RelayProvider(web3.currentProvider,
-              relayClientConfig, { asyncPaymasterData: async () => ({approvalData}) })
+              relayClientConfig, { asyncPaymasterData: async () => ({ approvalData }) })
           TestRecipient.web3.setProvider(relayProvider)
         })
 

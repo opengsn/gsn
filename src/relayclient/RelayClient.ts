@@ -22,7 +22,7 @@ export const ZERO_BYTES32 = '0x'.padEnd(66, '0')
 // approvalData is string-encoded bytes array, (defaults to empty array)
 // either field can be missing, and filled with default
 export const EmptyPaymasterData: AsyncPaymasterData = async (): Promise<PaymasterData> => {
-  return Promise.resolve({})
+  return await Promise.resolve({})
 }
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
@@ -238,8 +238,8 @@ export default class RelayClient {
       }
     }
     const pmData = await this.asyncPaymasterData(relayRequest)
-    const paymasterData = pmData.paymasterData || ZERO_BYTES32
-    const approvalData = pmData.approvalData || '0x'
+    const paymasterData = pmData.paymasterData ?? ZERO_BYTES32
+    const approvalData = pmData.approvalData ?? '0x'
 
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = paymasterData

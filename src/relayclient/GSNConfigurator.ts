@@ -118,10 +118,10 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
     config
   }
 
-  //sanity check: overrides must on contain unknown fields.
-  for ( const key in overrideDependencies ) {
-    if ( (ret as any)[key]==null ) {
-      throw new Error( `Unexpected override key ${key}`)
+  // sanity check: overrides must on contain unknown fields.
+  for (const key in overrideDependencies) {
+    if ((ret as any)[key] == null) {
+      throw new Error(`Unexpected override key ${key}`)
     }
   }
 
