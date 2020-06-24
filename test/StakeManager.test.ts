@@ -174,7 +174,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     })
 
     it('should allow relayOwner to authorize new relay hub', async function () {
-      const { logs } = await stakeManager.authorizeHub(relayManager, anyRelayHub, { from: owner })
+      const { logs } = await stakeManager.authorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
       expectEvent.inLogs(logs, 'HubAuthorized', {
         relayManager,
         relayHub: anyRelayHub
@@ -182,7 +182,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     })
 
     it('should allow relayManager to authorize new relay hub', async function () {
-      const { logs } = await stakeManager.authorizeHub(relayManager, anyRelayHub, { from: relayManager })
+      const { logs } = await stakeManager.authorizeHubByManager(anyRelayHub, { from: relayManager })
       expectEvent.inLogs(logs, 'HubAuthorized', {
         relayManager,
         relayHub: anyRelayHub
@@ -198,12 +198,21 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
       })
     })
 
-    describe('should not allow not owner or manager to call to', function () {
-      it('authorize hub', async function () {
-        await expectRevert(stakeManager.authorizeHub(relayManager, anyRelayHub, { from: nonOwner }), 'not owner or manager')
+    describe('should not allow not owner to call to', function () {
+      it('authorize hub by owner', async function () {
+        await expectRevert(stakeManager.authorizeHubByOwner(relayManager, anyRelayHub, { from: nonOwner }), 'not owner')
       })
-      it('unauthorize hub', async function () {
-        await expectRevert(stakeManager.unauthorizeHub(relayManager, anyRelayHub, { from: nonOwner }), 'not owner or manager')
+      it('unauthorize hub by owner', async function () {
+        await expectRevert(stakeManager.unauthorizeHubByOwner(relayManager, anyRelayHub, { from: nonOwner }), 'not owner')
+      })
+    })
+
+    describe('should not allow not manager or to call to', function () {
+      it('authorize hub by manager', async function () {
+        await expectRevert(stakeManager.authorizeHubByManager(anyRelayHub, { from: nonOwner }), 'not manager')
+      })
+      it('unauthorize hub by manager', async function () {
+        await expectRevert(stakeManager.unauthorizeHubByManager(anyRelayHub, { from: nonOwner }), 'not manager')
       })
     })
   })
@@ -215,7 +224,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
         value: initialStake,
         from: owner
       })
-      await stakeManager.authorizeHub(relayManager, anyRelayHub, { from: owner })
+      await stakeManager.authorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
     })
 
     it('should allow querying relayManager\'s authorized hubs', async function () {
@@ -260,7 +269,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     testCanPenalize()
 
     it('should allow relayOwner to unauthorize an authorized hub', async function () {
-      const { logs, receipt } = await stakeManager.unauthorizeHub(relayManager, anyRelayHub, { from: owner })
+      const { logs, receipt } = await stakeManager.unauthorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
       const removalBlock = initialUnstakeDelay.addn(receipt.blockNumber)
       expectEvent.inLogs(logs, 'HubUnauthorized', {
         relayManager,
@@ -270,7 +279,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     })
 
     it('should allow relayManager to unauthorize an authorized hub', async function () {
-      const { logs, receipt } = await stakeManager.unauthorizeHub(relayManager, anyRelayHub, { from: relayManager })
+      const { logs, receipt } = await stakeManager.unauthorizeHubByManager(anyRelayHub, { from: relayManager })
       const removalBlock = initialUnstakeDelay.addn(receipt.blockNumber)
       expectEvent.inLogs(logs, 'HubUnauthorized', {
         relayManager,
@@ -280,7 +289,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     })
 
     it('should not allow owner to unauthorize non-authorized hub', async function () {
-      await expectRevert(stakeManager.unauthorizeHub(relayManager, nonOwner, { from: owner }), 'hub not authorized')
+      await expectRevert(stakeManager.unauthorizeHubByOwner(relayManager, nonOwner, { from: owner }), 'hub not authorized')
     })
 
     it('should allow owner to schedule stake unlock', async function () {
@@ -301,14 +310,14 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
         value: initialStake,
         from: owner
       })
-      await stakeManager.authorizeHub(relayManager, anyRelayHub, { from: owner })
-      await stakeManager.unauthorizeHub(relayManager, anyRelayHub, { from: owner })
+      await stakeManager.authorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
+      await stakeManager.unauthorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
     })
 
     testCanPenalize()
 
     it('should not allow owner to unauthorize hub again', async function () {
-      await expectRevert(stakeManager.unauthorizeHub(relayManager, anyRelayHub, { from: owner }), 'hub not authorized')
+      await expectRevert(stakeManager.unauthorizeHubByOwner(relayManager, anyRelayHub, { from: owner }), 'hub not authorized')
     })
 
     describe('after grace period elapses', function () {
@@ -332,7 +341,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
         value: initialStake,
         from: owner
       })
-      await stakeManager.authorizeHub(relayManager, anyRelayHub, { from: owner })
+      await stakeManager.authorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
       await stakeManager.unlockStake(relayManager, { from: owner })
     })
 

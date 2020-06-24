@@ -113,7 +113,7 @@ contract('RelayServer', function (accounts) {
       value: oneEther
     })
     assert.equal(stakeForAddressReceipt.logs[0].event, 'StakeAdded')
-    const authorizeHubReceipt = await stakeManager.authorizeHub(newServer.getManagerAddress(), rhub.address, {
+    const authorizeHubReceipt = await stakeManager.authorizeHubByOwner(newServer.getManagerAddress(), rhub.address, {
       from: relayOwner
     })
     assert.equal(authorizeHubReceipt.logs[0].event, 'HubAuthorized')
@@ -360,7 +360,7 @@ contract('RelayServer', function (accounts) {
         from: relayOwner,
         value: oneEther
       })
-      const res2 = await stakeManager.authorizeHub(relayServer.getManagerAddress(), rhub.address, { from: relayOwner })
+      const res2 = await stakeManager.authorizeHubByOwner(relayServer.getManagerAddress(), rhub.address, { from: relayOwner })
       assert.ok(res.receipt.status, 'stake failed')
       assert.ok(res2.receipt.status, 'authorize hub failed')
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
@@ -1004,7 +1004,7 @@ contract('RelayServer', function (accounts) {
         await revert(id)
       })
       it('send only manager hub balance and workers\' balances to owner (not manager eth balance)', async function () {
-        await stakeManager.unauthorizeHub(newServer.getManagerAddress(), rhub.address, { from: relayOwner })
+        await stakeManager.unauthorizeHubByOwner(newServer.getManagerAddress(), rhub.address, { from: relayOwner })
 
         const managerHubBalanceBefore = await rhub.balanceOf(newServer.getManagerAddress())
         const managerBalanceBefore = await newServer.getManagerBalance()

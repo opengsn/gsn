@@ -165,7 +165,7 @@ export default class CommandsLogic {
           gasPrice: 1e9
         })
       authorizeTx = await stakeManager
-        .authorizeHub(relayAddress, this.config.relayHubAddress, {
+        .authorizeHubByOwner(relayAddress, this.config.relayHubAddress, {
           from: options.from,
           gas: 1e6,
           gasPrice: 1e9

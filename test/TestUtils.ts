@@ -108,7 +108,7 @@ export async function startRelay (
     value: options.stake || ether('1')
   })
   await sleep(500)
-  await stakeManager.authorizeHub(relayManagerAddress, relayHubAddress, {
+  await stakeManager.authorizeHubByOwner(relayManagerAddress, relayHubAddress, {
     from: options.relayOwner
   })
 
@@ -164,7 +164,7 @@ export async function registerNewRelay (
     from: ownerAccount,
     value: stake
   })
-  await stakeManager.authorizeHub(relayManager, relayHub.address, { from: ownerAccount })
+  await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: ownerAccount })
   await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
   return await relayHub.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
 }

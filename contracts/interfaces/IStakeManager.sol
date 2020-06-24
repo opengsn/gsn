@@ -72,9 +72,13 @@ interface IStakeManager {
 
     function withdrawStake(address relayManager) external;
 
-    function authorizeHub(address relayManager, address relayHub) external;
+    function authorizeHubByOwner(address relayManager, address relayHub) external;
 
-    function unauthorizeHub(address relayManager, address relayHub) external;
+    function authorizeHubByManager(address relayHub) external;
+
+    function unauthorizeHubByOwner(address relayManager, address relayHub) external;
+
+    function unauthorizeHubByManager(address relayHub) external;
 
     function isRelayManagerStaked(address relayManager, uint256 minAmount, uint256 minUnstakeDelay)
     external

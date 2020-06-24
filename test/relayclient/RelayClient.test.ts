@@ -184,7 +184,7 @@ contract('RelayClient', function (accounts) {
         from: relayOwner,
         value: (2e18).toString()
       })
-      await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+      await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([RelayServerAddress], { from: relayManager })
       await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })

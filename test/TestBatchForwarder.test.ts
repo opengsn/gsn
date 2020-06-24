@@ -40,7 +40,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       value: ether('2'),
       from: relayOwner
     })
-    await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+    await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     const baseRelayFee = 1
     const pctRelayFee = 2
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })

@@ -272,7 +272,7 @@ contract('RelayProvider', function (accounts) {
         value: ether('1'),
         from: accounts[2]
       })
-      await stakeManager.authorizeHub(accounts[1], relayHub.address, { from: accounts[2] })
+      await stakeManager.authorizeHubByOwner(accounts[1], relayHub.address, { from: accounts[2] })
       await relayHub.addRelayWorkers([accounts[0]], {
         from: accounts[1]
       })
