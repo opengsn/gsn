@@ -13,8 +13,6 @@ require('source-map-support').install({ errorFormatterForce: true })
 
 const localhostOne = 'http://localhost:8090'
 
-export const ZERO_BYTES32 = '0x'.padEnd(66, '0')
-
 // start a background relay process.
 // rhub - relay hub contract
 // options:

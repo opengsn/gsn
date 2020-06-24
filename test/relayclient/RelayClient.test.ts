@@ -15,7 +15,7 @@ import {
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import RelayClient from '../../src/relayclient/RelayClient'
-import { Address, AsyncPaymasterData, PaymasterData } from '../../src/relayclient/types/Aliases'
+import { Address } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import replaceErrors from '../../src/common/ErrorReplacerJSON'
@@ -24,7 +24,7 @@ import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDet
 import BadHttpClient from '../dummies/BadHttpClient'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionValidator'
-import { startRelay, stopRelay, ZERO_BYTES32 } from '../TestUtils'
+import { startRelay, stopRelay } from '../TestUtils'
 import { constants } from '@openzeppelin/test-helpers'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
@@ -98,7 +98,7 @@ contract('RelayClient', function (accounts) {
       data,
       forwarder: forwarderAddress,
       paymaster: paymaster.address,
-      paymasterData: ZERO_BYTES32,
+      paymasterData: '0x',
       clientId: '1'
     }
   })
@@ -270,19 +270,19 @@ contract('RelayClient', function (accounts) {
     })
 
     describe('#_prepareRelayHttpRequest()', function () {
-      const paymasterData = '0x'.padEnd(66, '1')
-      const asyncPaymasterData: AsyncPaymasterData = async function (_: RelayRequest): Promise<PaymasterData> {
-        return await Promise.resolve({
-          approvalData: '0x1234567890',
-          paymasterData
-        })
+      const asyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+        return await Promise.resolve('0x1234567890')
       }
+      const asyncPaymasterData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+        return await Promise.resolve('0xabcd')
+      }
+
       it('should use provided approval function', async function () {
         const relayClient =
-          new RelayClient(underlyingProvider, gsnConfig, { asyncPaymasterData })
+          new RelayClient(underlyingProvider, gsnConfig, { asyncApprovalData, asyncPaymasterData })
         const { httpRequest } = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
         assert.equal(httpRequest.approvalData, '0x1234567890')
-        assert.equal(httpRequest.paymasterData, paymasterData)
+        assert.equal(httpRequest.paymasterData, '0xabcd')
       })
     })
   })

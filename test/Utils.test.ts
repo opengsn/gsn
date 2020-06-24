@@ -10,7 +10,6 @@ import { expectEvent } from '@openzeppelin/test-helpers'
 import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
-import { ZERO_BYTES32 } from './TestUtils'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
@@ -46,7 +45,7 @@ contract('Utils', function (accounts) {
       // const forwarder = accounts[6]
       const paymaster = accounts[7]
       const relayWorker = accounts[9]
-      const paymasterData = ZERO_BYTES32
+      const paymasterData = '0x'
       const clientId = '0'
 
       const res = await forwarderInstance.registerRequestType(

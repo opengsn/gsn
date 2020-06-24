@@ -13,7 +13,7 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot, ZERO_BYTES32 } from './TestUtils'
+import { evmMine, evmMineMany, increaseTime, revert, sleep, snapshot } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
   ForwarderInstance,
@@ -69,7 +69,7 @@ contract('RelayServer', function (accounts) {
   const weekInSec = dayInSec * 7
   const oneEther = toBN(1e18)
 
-  const paymasterData = ZERO_BYTES32
+  const paymasterData = '0x'
   const clientId = '0'
   let relayServer: RelayServer, anotherRelayServer: RelayServer
   let serverWeb3provider: provider

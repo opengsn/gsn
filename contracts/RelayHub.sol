@@ -353,7 +353,7 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData memory relayData) public override virtual view returns (uint256) {
+    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
         return relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
     }
 

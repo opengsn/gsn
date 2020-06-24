@@ -10,7 +10,7 @@ interface GsnTypes {
         uint256 baseRelayFee;
         address relayWorker;
         address paymaster;
-        bytes32 paymasterData;
+        bytes paymasterData;
         uint256 clientId;
         address forwarder;
     }

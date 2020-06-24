@@ -16,7 +16,6 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance
 } from '../types/truffle-contracts'
-import { ZERO_BYTES32 } from './TestUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -174,7 +173,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     const gasLimit = '1000000'
     const senderNonce = '0'
     let sharedRelayRequestData: RelayRequest
-    const paymasterData = ZERO_BYTES32
+    const paymasterData = '0x'
     const clientId = '1'
 
     beforeEach(function () {
@@ -562,7 +561,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               relayWorker,
               forwarder,
               paymaster: paymaster2.address,
-              paymasterData: ZERO_BYTES32,
+              paymasterData: '0x',
               clientId: '1'
             })).toNumber()
             await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation

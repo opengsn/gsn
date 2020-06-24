@@ -14,7 +14,6 @@ import {
   IForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
-import { ZERO_BYTES32 } from './TestUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const Forwarder = artifacts.require('Forwarder')
@@ -33,7 +32,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const gasPrice = new BN('10')
   const gasLimit = new BN('1000000')
   const externalGasLimit = 5e6.toString()
-  const paymasterData = ZERO_BYTES32
+  const paymasterData = '0x'
   const clientId = '1'
 
   const senderNonce = new BN('0')

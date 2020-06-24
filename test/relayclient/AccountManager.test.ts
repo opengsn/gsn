@@ -11,7 +11,6 @@ import sinonChai from 'sinon-chai'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
 import chaiAsPromised from 'chai-as-promised'
-import { ZERO_BYTES32 } from '../TestUtils'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -78,7 +77,7 @@ contract('AccountManager', function (accounts) {
         relayWorker: constants.ZERO_ADDRESS,
         forwarder: constants.ZERO_ADDRESS,
         paymaster: constants.ZERO_ADDRESS,
-        paymasterData: ZERO_BYTES32,
+        paymasterData: '0x',
         clientId: '1'
       }
     }

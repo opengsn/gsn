@@ -12,14 +12,8 @@ export type IntString = string
  * For legacy reasons, to filter out the relay this filter has to throw.
  * TODO: make ping filtering sane!
  */
-
-export interface PaymasterData {
-  approvalData? : PrefixedHexString
-  paymasterData?: PrefixedHexString
-}
-
 export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
-export type AsyncPaymasterData = (relayRequest: RelayRequest) => Promise<PaymasterData>
+export type AsyncDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
 
 export type RelayFilter = (registeredEventInfo: RelayRegisteredEventInfo) => boolean
 export type AsyncScoreCalculator = (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]) => Promise<number>

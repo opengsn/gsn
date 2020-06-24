@@ -5,7 +5,7 @@ import { constants } from '@openzeppelin/test-helpers'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { Address, AsyncPaymasterData, PaymasterData, PingFilter } from './types/Aliases'
+import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import RelaySelectionManager from './RelaySelectionManager'
@@ -15,14 +15,11 @@ import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
 
-export const ZERO_BYTES32 = '0x'.padEnd(66, '0')
-
 // generate "approvalData" and "paymasterData" for a request.
-// paymasterData must be valid bytes32 value (defaults to zero-bytes)
-// approvalData is string-encoded bytes array, (defaults to empty array)
-// either field can be missing, and filled with default
-export const EmptyPaymasterData: AsyncPaymasterData = async (): Promise<PaymasterData> => {
-  return await Promise.resolve({})
+// both are bytes arrays. paymasterData is part of the client request.
+// approvalData is created after request is filled and signed.
+export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHexString> => {
+  return await Promise.resolve('0x')
 }
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
@@ -50,7 +47,8 @@ export default class RelayClient {
   private readonly httpClient: HttpClient
   protected contractInteractor: ContractInteractor
   protected knownRelaysManager: IKnownRelaysManager
-  private readonly asyncPaymasterData: AsyncPaymasterData
+  private readonly asyncApprovalData: AsyncDataCallback
+  private readonly asyncPaymasterData: AsyncDataCallback
   private readonly transactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
 
@@ -75,6 +73,7 @@ export default class RelayClient {
     this.transactionValidator = dependencies.transactionValidator
     this.accountManager = dependencies.accountManager
     this.pingFilter = dependencies.pingFilter
+    this.asyncApprovalData = dependencies.asyncApprovalData
     this.asyncPaymasterData = dependencies.asyncPaymasterData
   }
 
@@ -237,13 +236,12 @@ export default class RelayClient {
         relayWorker
       }
     }
-    const pmData = await this.asyncPaymasterData(relayRequest)
-    const paymasterData = pmData.paymasterData ?? ZERO_BYTES32
-    const approvalData = pmData.approvalData ?? '0x'
+    const paymasterData = await this.asyncPaymasterData(relayRequest)
 
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = paymasterData
     const signature = await this.accountManager.sign(relayRequest)
+    const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap

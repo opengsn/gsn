@@ -17,7 +17,7 @@ import {
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { defaultEnvironment } from '../../src/relayclient/types/Environments'
-import { startRelay, stopRelay, ZERO_BYTES32 } from '../TestUtils'
+import { startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '../../src/common/Utils'
@@ -35,7 +35,7 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 
 const underlyingProvider = web3.currentProvider as HttpProvider
 
-const paymasterData = ZERO_BYTES32
+const paymasterData = '0x'
 const clientId = '1'
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
