@@ -43,10 +43,10 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 35313;
+    uint256 constant private GAS_OVERHEAD = 34948;
 
     //gas overhead to calculate gasUseWithoutPost
-    uint256 constant private POST_OVERHEAD = 8746;
+    uint256 constant private POST_OVERHEAD = 9944;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
