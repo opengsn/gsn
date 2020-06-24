@@ -37,6 +37,7 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from '../src/relayclient/types/TmpRelayTransactionJsonRequest'
 import Mutex from 'async-mutex/lib/Mutex'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import ContractInteractor from '../src/relayclient/ContractInteractor'
 
 const RelayHub = artifacts.require('./RelayHub.sol')
 const TestRecipient = artifacts.require('./test/TestRecipient.sol')
@@ -72,7 +73,6 @@ contract('RelayServer', function (accounts) {
   const weekInSec = dayInSec * 7
   const oneEther = toBN(1e18)
   let relayServer: RelayServer, anotherRelayServer: RelayServer
-  let serverWeb3provider: provider
   let ethereumNodeUrl: string
   let _web3: Web3
   let id: string, globalId: string
@@ -84,6 +84,9 @@ contract('RelayServer', function (accounts) {
   async function bringUpNewRelay (): Promise<RelayServer> {
     const keyManager = new KeyManager(2, undefined, Date.now().toString())
     const txStoreManager = new TxStoreManager({ workdir: workdir + '/defunct' + Date.now().toString() })
+    const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
+    const interactor = new ContractInteractor(serverWeb3provider,
+      configureGSN({}))
     const params = {
       txStoreManager,
       keyManager,
@@ -92,12 +95,12 @@ contract('RelayServer', function (accounts) {
       baseRelayFee: 0,
       pctRelayFee: 0,
       gasPriceFactor: 1,
-      web3provider: serverWeb3provider,
+      contractInteractor: interactor,
       devMode: true
     }
     const newServer = new RelayServer(params as RelayServerParams)
     newServer.on('error', (e) => {
-      console.log('defunct event', e.message)
+      console.log('newServer event', e.message)
     })
     await _web3.eth.sendTransaction({
       to: newServer.getManagerAddress(),
@@ -125,7 +128,7 @@ contract('RelayServer', function (accounts) {
   before(async function () {
     globalId = (await snapshot()).result
     ethereumNodeUrl = (web3.currentProvider as HttpProvider).host
-    serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
+    const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
     _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
 
     stakeManager = await StakeManager.new()
@@ -147,6 +150,8 @@ contract('RelayServer', function (accounts) {
     gasLess2 = await _web3.eth.personal.newAccount('password2')
     keyManager = new KeyManager(2, workdir)
     const txStoreManager = new TxStoreManager({ workdir })
+    const interactor = new ContractInteractor(serverWeb3provider,
+      configureGSN({}))
     const params = {
       txStoreManager,
       keyManager,
@@ -155,7 +160,7 @@ contract('RelayServer', function (accounts) {
       baseRelayFee: baseRelayFee,
       pctRelayFee: pctRelayFee,
       gasPriceFactor: 1,
-      web3provider: serverWeb3provider,
+      contractInteractor: interactor,
       trustedPaymasters: [paymaster.address],
       devMode: true
     }
@@ -375,6 +380,9 @@ contract('RelayServer', function (accounts) {
     it('should start again after restarting process', async () => {
       const newKeyManager = new KeyManager(2, workdir)
       const txStoreManager = new TxStoreManager({ workdir })
+      const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
+      const interactor = new ContractInteractor(serverWeb3provider,
+        configureGSN({}))
       const params = {
         txStoreManager,
         keyManager: newKeyManager,
@@ -383,7 +391,7 @@ contract('RelayServer', function (accounts) {
         baseRelayFee: 0,
         pctRelayFee: 0,
         gasPriceFactor: 1,
-        web3provider: serverWeb3provider,
+        contractInteractor: interactor,
         devMode: true
       }
       const newRelayServer = new RelayServer(params as RelayServerParams)
@@ -1124,5 +1132,19 @@ contract('RelayServer', function (accounts) {
     // })
     // it('_parseEvent', async function () {
     // })
+  })
+
+  describe('runServer', function () {
+    it('with config file', async function () {
+      // await startRelay()
+    })
+    it('with env vars', async function () {
+    })
+    it('with command line', async function () {
+    })
+    it(' command line > command line > env vars', async function () {
+    })
+    it('missing vars', async function () {
+    })
   })
 })

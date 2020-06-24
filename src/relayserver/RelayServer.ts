@@ -21,7 +21,6 @@ import { IPaymasterInstance, IRelayHubInstance, IStakeManagerInstance } from '..
 import { BlockHeader } from 'web3-eth'
 import { TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
-import { configureGSN } from '../relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../relayclient/types/Environments'
 import VersionsManager from '../common/VersionsManager'
 import { calculateTransactionMaxPossibleGas } from '../common/Utils'
@@ -78,7 +77,6 @@ interface SendTransactionDetails {
 
 export interface RelayServerParams {
   readonly txStoreManager: TxStoreManager
-  readonly web3provider: provider
   readonly keyManager: KeyManager
   readonly contractInteractor: ContractInteractor
   readonly hubAddress: Address
@@ -116,7 +114,6 @@ export class RelayServer extends EventEmitter {
   withdrawBlock: BN | undefined
   authorizedHub = false
   readonly txStoreManager: TxStoreManager
-  private readonly web3provider: provider
   readonly keyManager: KeyManager
   private readonly contractInteractor: ContractInteractor
   private readonly versionManager: VersionsManager
@@ -135,7 +132,6 @@ export class RelayServer extends EventEmitter {
     super()
     this.versionManager = new VersionsManager()
     this.txStoreManager = params.txStoreManager
-    this.web3provider = params.web3provider
     this.keyManager = params.keyManager
     this.hubAddress = params.hubAddress
     this.trustedPaymasters = params.trustedPaymasters?.map(e => e.toLowerCase()) ?? []
@@ -146,8 +142,7 @@ export class RelayServer extends EventEmitter {
     this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
     this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
     this.devMode = params.devMode
-    this.contractInteractor = params.contractInteractor ?? new ContractInteractor(this.web3provider,
-      configureGSN({}))
+    this.contractInteractor = params.contractInteractor
 
     DEBUG = params.debug
 
