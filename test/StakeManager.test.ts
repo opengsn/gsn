@@ -207,7 +207,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
       })
     })
 
-    describe('should not allow not manager or to call to', function () {
+    describe('should not allow not manager to call to', function () {
       it('authorize hub by manager', async function () {
         await expectRevert(stakeManager.authorizeHubByManager(anyRelayHub, { from: nonOwner }), 'not manager')
       })
