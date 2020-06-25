@@ -12,6 +12,7 @@ import { HttpServer } from '../relayserver/HttpServer'
 import { Address } from './types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
+import ContractInteractor from './ContractInteractor'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -136,8 +137,10 @@ class GsnTestEnvironmentClass {
       readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
       readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
      */
+    const interactor = new ContractInteractor(new Web3.providers.HttpProvider(host),
+      configureGSN({}))
     const relayServerParams = {
-      web3provider: new Web3.providers.HttpProvider(host),
+      contractInteractor: interactor,
       txStoreManager,
       keyManager,
       url: relayUrl,

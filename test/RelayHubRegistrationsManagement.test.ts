@@ -45,9 +45,9 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
           value: ether('2'),
           from: relayOwner
         })
-        await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+        await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
         await relayHub.addRelayWorkers([relayWorker1], { from: relayManager })
-        await stakeManager.unauthorizeHub(relayManager, relayHub.address, { from: relayOwner })
+        await stakeManager.unauthorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       })
 
       it('should not allow relayManager to register a relay server', async function () {
@@ -64,7 +64,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
         value: ether('2'),
         from: relayOwner
       })
-      await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+      await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     })
 
     it('should not allow relayManager to register a relay server', async function () {
@@ -97,7 +97,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
         value: ether('2'),
         from: relayOwner
       })
-      await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+      await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorker1], { from: relayManager })
     })
 

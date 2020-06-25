@@ -59,7 +59,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       from: relayOwner,
       value: ether('1')
     })
-    await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+    await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await paymaster.setRelayHub(relayHub.address)
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     // @ts-ignore
@@ -186,7 +186,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           value: stake,
           from: relayOwner
         })
-        await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+        await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       })
 
       describe('repeated relay nonce', function () {
@@ -283,7 +283,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             value: ether('1'),
             from: relayOwner
           })
-          await stakeManager.authorizeHub(otherRelayManager, relayHub.address, { from: relayOwner })
+          await stakeManager.authorizeHubByOwner(otherRelayManager, relayHub.address, { from: relayOwner })
           await relayHub.addRelayWorkers([otherRelayWorker], { from: otherRelayManager })
 
           // An illegal transaction is sent by it
@@ -411,7 +411,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           })
 
           before(async function () {
-            await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+            await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
             await relayHub.addRelayWorkers([thirdRelayWorker], { from: relayManager })
           })
 

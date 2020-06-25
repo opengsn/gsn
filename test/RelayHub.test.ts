@@ -229,11 +229,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             value: ether('1'),
             from: relayOwner
           })
-          await stakeManager.authorizeHub(relayManager, relayHub, { from: relayOwner })
+          await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
           await relayHubInstance.addRelayWorkers([relayWorker], {
             from: relayManager
           })
-          await stakeManager.unauthorizeHub(relayManager, relayHub, { from: relayOwner })
+          await stakeManager.unauthorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
         })
         it('should not accept a relay call', async function () {
           await expectRevert(
@@ -260,7 +260,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           value: ether('2'),
           from: relayOwner
         })
-        await stakeManager.authorizeHub(relayManager, relayHub, { from: relayOwner })
+        await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
 
         // truffle-contract doesn't let us create method data from the class, we need an actual instance
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()

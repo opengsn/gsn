@@ -77,7 +77,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       value: ether('2'),
       from: relayOwner
     })
-    await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+    await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     await relayHub.registerRelayServer(0, fee, '', { from: relayManager })
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
