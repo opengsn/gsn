@@ -13,7 +13,8 @@ export type IntString = string
  * TODO: make ping filtering sane!
  */
 export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
-export type AsyncApprovalData = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
+export type AsyncDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
+
 export type RelayFilter = (registeredEventInfo: RelayRegisteredEventInfo) => boolean
 export type AsyncScoreCalculator = (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]) => Promise<number>
 
