@@ -45,6 +45,8 @@ contract('Utils', function (accounts) {
       // const forwarder = accounts[6]
       const paymaster = accounts[7]
       const relayWorker = accounts[9]
+      const paymasterData = '0x'
+      const clientId = '0'
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
@@ -68,7 +70,9 @@ contract('Utils', function (accounts) {
           baseRelayFee,
           relayWorker,
           forwarder,
-          paymaster
+          paymaster,
+          paymasterData,
+          clientId
         }
       }
       const dataToSign = new TypedRequestData(

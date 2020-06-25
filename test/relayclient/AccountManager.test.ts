@@ -76,7 +76,9 @@ contract('AccountManager', function (accounts) {
         gasPrice: '1',
         relayWorker: constants.ZERO_ADDRESS,
         forwarder: constants.ZERO_ADDRESS,
-        paymaster: constants.ZERO_ADDRESS
+        paymaster: constants.ZERO_ADDRESS,
+        paymasterData: '0x',
+        clientId: '1'
       }
     }
     beforeEach(function () {

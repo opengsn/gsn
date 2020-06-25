@@ -73,7 +73,9 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         gasPrice: await web3.eth.getGasPrice(),
         relayWorker: relayWorker,
         forwarder: forwarder.address,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData: '0x',
+        clientId: '1'
       }
     }
   })

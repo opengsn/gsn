@@ -43,10 +43,10 @@ contract RelayHub is IRelayHub {
     */
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 35202;
+    uint256 constant private GAS_OVERHEAD = 34936;
 
     //gas overhead to calculate gasUseWithoutPost
-    uint256 constant private POST_OVERHEAD = 8516;
+    uint256 constant private POST_OVERHEAD = 9848;
 
     function getHubOverhead() external override view returns (uint256) {
         return GAS_OVERHEAD;
@@ -353,7 +353,7 @@ contract RelayHub is IRelayHub {
         }
     }
 
-    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData memory relayData) public override virtual view returns (uint256) {
+    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
         return relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
     }
 
