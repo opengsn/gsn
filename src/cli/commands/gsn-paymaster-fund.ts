@@ -18,6 +18,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
   const paymaster = getPaymasterAddress(commander.paymaster)
 
   if (hub == null || paymaster == null) {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     throw new Error(`Contracts not found: hub: ${hub} paymaster: ${paymaster} `)
   }
 

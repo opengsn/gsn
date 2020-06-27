@@ -13,14 +13,13 @@ import StakeManager from './compiled/StakeManager.json'
 import RelayHub from './compiled/RelayHub.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
-import Eip712Forwarder from './compiled/Eip712Forwarder.json'
+import Forwarder from './compiled/Forwarder.json'
 
 import { Address, notNull } from '../relayclient/types/Aliases'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
-import { IPaymasterInstance } from '../../types/truffle-contracts'
 import { GsnRequestType } from '../common/EIP712/TypedRequestData'
 
 interface RegisterOptions {
@@ -103,7 +102,7 @@ export default class CommandsLogic {
 
   async getPaymasterBalance (paymaster: Address): Promise<BN> {
     const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
-    return relayHub.balanceOf(paymaster)
+    return await relayHub.balanceOf(paymaster)
   }
 
   /**
@@ -166,7 +165,7 @@ export default class CommandsLogic {
           gasPrice: 1e9
         })
       authorizeTx = await stakeManager
-        .authorizeHub(relayAddress, this.config.relayHubAddress, {
+        .authorizeHubByOwner(relayAddress, this.config.relayHubAddress, {
           from: options.from,
           gas: 1e6,
           gasPrice: 1e9
@@ -183,7 +182,7 @@ export default class CommandsLogic {
       if (fundTx.transactionHash == null) {
         return {
           success: false,
-          error: `Fund transaction reverted: ${_fundTx.toString()}`
+          error: `Fund transaction reverted: ${JSON.stringify(_fundTx)}`
         }
       }
       await this.waitForRelay(options.relayUrl)
@@ -217,7 +216,7 @@ export default class CommandsLogic {
     const pInstance =
       await this.contract(Penalizer).deploy({}).send(options)
     const fInstance =
-      await this.contract(Eip712Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
+      await this.contract(Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
 
     const rInstance = await this.contract(RelayHub).deploy({
       arguments: [sInstance.options.address, pInstance.options.address]
@@ -234,7 +233,7 @@ export default class CommandsLogic {
     this.config.stakeManagerAddress = sInstance.options.address
     this.config.relayHubAddress = rInstance.options.address
 
-    const res = await fInstance.methods.registerRequestType(
+    await fInstance.methods.registerRequestType(
       GsnRequestType.typeName,
       GsnRequestType.typeSuffix
     ).send(options)

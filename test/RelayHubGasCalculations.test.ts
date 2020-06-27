@@ -16,7 +16,7 @@ import {
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -32,12 +32,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const gasPrice = new BN('10')
   const gasLimit = new BN('1000000')
   const externalGasLimit = 5e6.toString()
+  const paymasterData = '0x'
+  const clientId = '1'
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 907+21,
-    pre: 1486+66,
-    post: 1613-22
+    arc: 863,
+    pre: 1508,
+    post: 1598
   }
 
   let relayHub: RelayHubInstance
@@ -52,7 +54,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let forwarder: string
 
   beforeEach(async function prepareForHub () {
-    forwarderInstance = await Eip712Forwarder.new()
+    forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
@@ -75,7 +77,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       value: ether('2'),
       from: relayOwner
     })
-    await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+    await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     await relayHub.registerRelayServer(0, fee, '', { from: relayManager })
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
@@ -94,7 +96,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         gasPrice: gasPrice.toString(),
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }
 
     }
@@ -122,7 +126,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         gasLimit: 0,
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }
       const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData)
       const expectedCharge = baseRelayFee + gasUsed * gasPrice * (pctRelayFee + 100) / 100
@@ -166,7 +172,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         baseRelayFee: 0,
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
@@ -284,7 +292,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   gasPrice: gasPrice.toString(),
                   relayWorker,
                   forwarder,
-                  paymaster: paymaster.address
+                  paymaster: paymaster.address,
+                  paymasterData,
+                  clientId
                 }
               }
               const dataToSign = new TypedRequestData(

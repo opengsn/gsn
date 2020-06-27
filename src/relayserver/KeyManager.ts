@@ -9,9 +9,9 @@ import { toHex } from 'web3-utils'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 
 export class KeyManager {
-  private readonly hdkey: EthereumHDKey;
+  private readonly hdkey: EthereumHDKey
   private _privateKeys: Record<PrefixedHexString, Buffer> = {}
-  private nonces: Record<string, number> = {};
+  private nonces: Record<string, number> = {}
 
   /**
      * @param count - # of addresses managed by this manager

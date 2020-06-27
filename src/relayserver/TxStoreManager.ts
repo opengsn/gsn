@@ -102,7 +102,7 @@ export class TxStoreManager {
     ow(nonce, ow.any(ow.number, ow.string))
     ow(signer, ow.string)
 
-    return this.txstore.asyncFindOne({
+    return await this.txstore.asyncFindOne({
       nonceSigner: {
         signer: signer.toLowerCase(),
         nonce
@@ -113,14 +113,14 @@ export class TxStoreManager {
   async getTxById (txId: string): Promise<any> {
     ow(txId, ow.string)
 
-    return this.txstore.asyncFindOne({ txId: txId.toLowerCase() }, { _id: 0 })
+    return await this.txstore.asyncFindOne({ txId: txId.toLowerCase() }, { _id: 0 })
   }
 
   async removeTxByNonce (signer: PrefixedHexString, nonce: number): Promise<unknown> {
     ow(nonce, ow.any(ow.string, ow.number))
     ow(signer, ow.string)
 
-    return this.txstore.asyncRemove({
+    return await this.txstore.asyncRemove({
       $and: [
         { 'nonceSigner.nonce': nonce },
         { 'nonceSigner.signer': signer.toLowerCase() }]
@@ -131,7 +131,7 @@ export class TxStoreManager {
     ow(nonce, ow.number)
     ow(signer, ow.string)
 
-    return this.txstore.asyncRemove({
+    return await this.txstore.asyncRemove({
       $and: [
         { 'nonceSigner.nonce': { $lte: nonce } },
         { 'nonceSigner.signer': signer.toLowerCase() }]

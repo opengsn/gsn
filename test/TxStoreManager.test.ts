@@ -26,6 +26,7 @@ contract('TxStoreManager', function (accounts) {
     cleanFolder()
     txmanager = new TxStoreManager({ workdir })
     await txmanager.clearAll()
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     assert.ok(txmanager, 'txstore uninitialized' + txmanager.toString())
     assert.isTrue(fs.existsSync(workdir), 'test txstore dir should exist already')
     tx = new StoredTx({

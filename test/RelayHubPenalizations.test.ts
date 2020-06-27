@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await */
 // This rule seems to be flickering and buggy - does not understand async arrow functions correctly
-import { balance, constants, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
+import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
 import { Transaction } from 'ethereumjs-tx'
@@ -25,7 +25,10 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
+
+const paymasterData = '0x'
+const clientId = '0'
 
 contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
@@ -42,7 +45,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     relayHub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
-    const forwarderInstance = await Eip712Forwarder.new()
+    const forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
@@ -56,7 +59,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       from: relayOwner,
       value: ether('1')
     })
-    await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+    await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await paymaster.setRelayHub(relayHub.address)
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     // @ts-ignore
@@ -95,7 +98,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         pctRelayFee: '10',
         relayWorker,
         forwarder,
-        paymaster: paymaster.address
+        paymaster: paymaster.address,
+        paymasterData,
+        clientId
       }
     }
     const dataToSign = new TypedRequestData(
@@ -181,7 +186,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           value: stake,
           from: relayOwner
         })
-        await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+        await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       })
 
       describe('repeated relay nonce', function () {
@@ -189,7 +194,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const txDataSigA = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, relayCallArgs), chainId)
           const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(Object.assign({}, encodedCallArgs, { data: '0xabcd' }), relayCallArgs), chainId)
           await expectPenalization(async (opts) =>
-            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
+            await penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
           )
         })
 
@@ -198,7 +203,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, Object.assign({}, relayCallArgs, { gasLimit: 100 })), chainId)
 
           await expectPenalization(async (opts) =>
-            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
+            await penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
           )
         })
 
@@ -207,7 +212,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, Object.assign({}, relayCallArgs, { value: 100 })), chainId)
 
           await expectPenalization(async (opts) =>
-            penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
+            await penalizer.penalizeRepeatedNonce(txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address, opts)
           )
         })
 
@@ -258,7 +263,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const { transactionHash } = await send.ether(relayWorker, other, ether('0.5'))
           const { data, signature } = await getDataAndSignatureFromHash(transactionHash, chainId)
 
-          await expectPenalization(async (opts) => penalizer.penalizeIllegalTransaction(data, signature, relayHub.address, opts))
+          await expectPenalization(async (opts) => await penalizer.penalizeIllegalTransaction(data, signature, relayHub.address, opts))
         })
 
         it('penalizes relay worker transactions to illegal RelayHub functions (stake)', async function () {
@@ -269,7 +274,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           })
           const { data, signature } = await getDataAndSignatureFromHash(tx, chainId)
 
-          await expectPenalization(async (opts) => penalizer.penalizeIllegalTransaction(data, signature, relayHub.address, opts))
+          await expectPenalization(async (opts) => await penalizer.penalizeIllegalTransaction(data, signature, relayHub.address, opts))
         })
 
         it('penalizes relay worker transactions to illegal RelayHub functions (penalize)', async function () {
@@ -278,7 +283,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             value: ether('1'),
             from: relayOwner
           })
-          await stakeManager.authorizeHub(otherRelayManager, relayHub.address, { from: relayOwner })
+          await stakeManager.authorizeHubByOwner(otherRelayManager, relayHub.address, { from: relayOwner })
           await relayHub.addRelayWorkers([otherRelayWorker], { from: otherRelayManager })
 
           // An illegal transaction is sent by it
@@ -293,7 +298,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           // It can now be penalized for that
           const penalizeTxDataSig = await getDataAndSignatureFromHash(penalizeTx.tx, chainId)
           await expectPenalization(async (opts) =>
-            penalizer.penalizeIllegalTransaction(penalizeTxDataSig.data, penalizeTxDataSig.signature, relayHub.address, opts))
+            await penalizer.penalizeIllegalTransaction(penalizeTxDataSig.data, penalizeTxDataSig.signature, relayHub.address, opts))
         })
 
         it('should penalize relays for lying about transaction gas limit RelayHub', async function () {
@@ -311,7 +316,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx, chainId)
 
           await expectPenalization(
-            async (opts) => penalizer.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address, opts)
+            async (opts) => await penalizer.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address, opts)
           )
         })
 
@@ -338,7 +343,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
               pctRelayFee: fee.toString(),
               relayWorker,
               forwarder,
-              paymaster: paymaster.address
+              paymaster: paymaster.address,
+              paymasterData,
+              clientId
             }
           }
           const dataToSign = new TypedRequestData(
@@ -386,7 +393,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
         // All of these tests use the same penalization function (we one we set up in the beforeEach block)
         async function penalize (): Promise<TransactionResponse> {
-          return expectPenalization(async (opts) => penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, opts))
+          return await expectPenalization(async (opts) => await penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, opts))
         }
 
         context('with not owned relay worker', function () {
@@ -404,7 +411,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           })
 
           before(async function () {
-            await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+            await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
             await relayHub.addRelayWorkers([thirdRelayWorker], { from: relayManager })
           })
 
@@ -440,7 +447,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             gasPrice: encodedCallArgs.gasPrice.toString(),
             relayWorker,
             forwarder,
-            paymaster: encodedCallArgs.paymaster
+            paymaster: encodedCallArgs.paymaster,
+            paymasterData,
+            clientId
           }
         }
       const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()

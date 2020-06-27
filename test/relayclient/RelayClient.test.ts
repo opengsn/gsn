@@ -15,7 +15,7 @@ import {
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import RelayClient from '../../src/relayclient/RelayClient'
-import { Address, AsyncApprovalData } from '../../src/relayclient/types/Aliases'
+import { Address } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import replaceErrors from '../../src/common/ErrorReplacerJSON'
@@ -34,7 +34,7 @@ const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 
 const expect = chai.expect
 chai.use(sinonChai)
@@ -63,11 +63,11 @@ contract('RelayClient', function (accounts) {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
-    const forwarderInstance = await Eip712Forwarder.new()
+    const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    const res = await forwarderInstance.registerRequestType(
+    await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
       GsnRequestType.typeSuffix
     )
@@ -97,7 +97,9 @@ contract('RelayClient', function (accounts) {
       to,
       data,
       forwarder: forwarderAddress,
-      paymaster: paymaster.address
+      paymaster: paymaster.address,
+      paymasterData: '0x',
+      clientId: '1'
     }
   })
 
@@ -184,7 +186,7 @@ contract('RelayClient', function (accounts) {
         from: relayOwner,
         value: (2e18).toString()
       })
-      await stakeManager.authorizeHub(relayManager, relayHub.address, { from: relayOwner })
+      await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([RelayServerAddress], { from: relayManager })
       await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
@@ -268,14 +270,19 @@ contract('RelayClient', function (accounts) {
     })
 
     describe('#_prepareRelayHttpRequest()', function () {
-      const asyncApprovalData: AsyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
-        return Promise.resolve('0x1234567890')
+      const asyncApprovalData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+        return await Promise.resolve('0x1234567890')
       }
+      const asyncPaymasterData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+        return await Promise.resolve('0xabcd')
+      }
+
       it('should use provided approval function', async function () {
         const relayClient =
-          new RelayClient(underlyingProvider, gsnConfig, { asyncApprovalData })
+          new RelayClient(underlyingProvider, gsnConfig, { asyncApprovalData, asyncPaymasterData })
         const { httpRequest } = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
         assert.equal(httpRequest.approvalData, '0x1234567890')
+        assert.equal(httpRequest.paymasterData, '0xabcd')
       })
     })
   })

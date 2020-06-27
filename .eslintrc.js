@@ -1,16 +1,16 @@
 module.exports = {
   env: {
-    'browser': true,
-    'es6': true,
-    'jest': true,
-    'mocha': true,
-    'node': true,
+    browser: true,
+    es6: true,
+    jest: true,
+    mocha: true,
+    node: true
   },
   globals: {
-    'artifacts': false,
-    'assert': false,
-    'contract': false,
-    'web3': false,
+    artifacts: false,
+    assert: false,
+    contract: false,
+    web3: false
   },
   extends:
     [
@@ -20,13 +20,14 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   parserOptions: {
     // The 'tsconfig.eslint.json' is needed to add all JavaScript files to the project
-    'project': ['./tsconfig.json', './tsconfig.eslint.json']
+    project: ['./tsconfig.json', './tsconfig.eslint.json']
   },
   ignorePatterns: [
+    'types/truffle-contracts',
     'dist/'
   ],
   rules: {
-    'no-console': 'off',
+    'no-console': 'off'
   },
   overrides: [
     {
@@ -42,13 +43,14 @@ module.exports = {
       // otherwise it will raise an error in every JavaScript file
       files: ['*.ts'],
       rules: {
+        '@typescript-eslint/prefer-ts-expect-error': 'off',
         // allow using '${val}' with numbers, bool and null types
         '@typescript-eslint/restrict-template-expressions': [
           'error',
           {
-            'allowNumber': true,
-            'allowBoolean': true,
-            'allowNullable': true
+            allowNumber: true,
+            allowBoolean: true,
+            allowNullable: true
           }
         ]
       }

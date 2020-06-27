@@ -24,7 +24,7 @@ const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymaste
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 
 const options = [
   {
@@ -75,7 +75,7 @@ options.forEach(params => {
         from = accounts[0]
       }
 
-      const forwarder = await Eip712Forwarder.new()
+      const forwarder = await Forwarder.new()
       sr = await TestRecipient.new(forwarder.address)
 
       await forwarder.registerRequestType(
@@ -140,8 +140,10 @@ options.forEach(params => {
       }
 
       if (params.relay) {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         assert.ok(ex == null, `should succeed sending gasless transaction through relay. got: ${ex?.toString()}`)
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string,@typescript-eslint/restrict-template-expressions
         assert.ok(ex!.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
       }
     })
@@ -164,7 +166,7 @@ options.forEach(params => {
           const relayProvider =
             // @ts-ignore
             new RelayProvider(web3.currentProvider,
-              relayClientConfig, { asyncApprovalData: async () => Promise.resolve(approvalData) })
+              relayClientConfig, { asyncApprovalData: async () => await Promise.resolve(approvalData) })
           TestRecipient.web3.setProvider(relayProvider)
         })
 
@@ -228,6 +230,7 @@ options.forEach(params => {
       }
       assert.ok(ex != null, `Expected to throw ${msg} but threw nothing`)
       const isExpectedError = ex?.toString().includes(msg)
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       assert.ok(isExpectedError, `Expected to throw ${msg} but threw ${ex?.message}`)
     }
   })

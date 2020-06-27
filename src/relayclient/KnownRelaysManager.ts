@@ -25,19 +25,19 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   const transactionCost = baseFee + (gasLimit * gasPrice * (100 + pctFee)) / 100
   let score = Math.max(Number.MAX_SAFE_INTEGER - transactionCost, 0)
   score = score * Math.pow(0.9, failures.length)
-  return Promise.resolve(score)
+  return await Promise.resolve(score)
 }
 
 const activeManagerEvents = ['RelayServerRegistered', 'TransactionRelayed', 'TransactionRejectedByPaymaster', 'RelayWorkersAdded']
 
 export interface IKnownRelaysManager {
-  refresh (): Promise<void>
+  refresh: () => Promise<void>
 
-  saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void
+  saveRelayFailure: (lastErrorTime: number, relayManager: Address, relayUrl: string) => void
 
-  getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]>
+  getRelaysSortedForTransaction: (gsnTransactionDetails: GsnTransactionDetails) => Promise<RelayInfoUrl[][]>
 
-  getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]>
+  getRelayInfoForManagers: (relayManagers: Set<Address>) => Promise<RelayRegisteredEventInfo[]>
 }
 
 export default class KnownRelaysManager implements IKnownRelaysManager {

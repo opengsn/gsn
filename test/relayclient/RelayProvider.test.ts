@@ -28,12 +28,15 @@ const { expect, assert } = require('chai').use(chaiAsPromised)
 
 const RelayHub = artifacts.require('RelayHub')
 const IForwarder = artifacts.require('IForwarder')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 const underlyingProvider = web3.currentProvider as HttpProvider
+
+const paymasterData = '0x'
+const clientId = '1'
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
@@ -54,6 +57,8 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       baseRelayFee: '1',
       gasPrice: '1',
       paymaster,
+      paymasterData,
+      clientId,
       forwarder: testRecipientForwarderAddress,
       relayWorker
     }
@@ -88,7 +93,7 @@ contract('RelayProvider', function (accounts) {
     gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
     relayHub = await RelayHub.new(stakeManager.address, constants.ZERO_ADDRESS)
-    const forwarderInstance = await Eip712Forwarder.new()
+    const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
@@ -213,7 +218,7 @@ contract('RelayProvider', function (accounts) {
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
-      await expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call - should not happen. Reason: Error: ${BadRelayClient.message}`)
+      await expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call - should not happen. Reason: ${BadRelayClient.message}`)
     })
 
     it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
@@ -272,7 +277,7 @@ contract('RelayProvider', function (accounts) {
         value: ether('1'),
         from: accounts[2]
       })
-      await stakeManager.authorizeHub(accounts[1], relayHub.address, { from: accounts[2] })
+      await stakeManager.authorizeHubByOwner(accounts[1], relayHub.address, { from: accounts[2] })
       await relayHub.addRelayWorkers([accounts[0]], {
         from: accounts[1]
       })

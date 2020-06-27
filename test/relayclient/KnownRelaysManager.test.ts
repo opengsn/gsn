@@ -21,14 +21,14 @@ const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 
 export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
   await stakeManager.stakeForAddress(manager, 1000, {
     value: ether('1'),
     from: owner
   })
-  await stakeManager.authorizeHub(manager, relayHub.address, { from: owner })
+  await stakeManager.authorizeHubByOwner(manager, relayHub.address, { from: owner })
 }
 
 export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
@@ -74,7 +74,7 @@ contract('KnownRelaysManager', function (
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
 
-      const forwarderInstance = await Eip712Forwarder.new()
+      const forwarderInstance = await Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
       await forwarderInstance.registerRequestType(
@@ -187,7 +187,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       await register(relayHub, accounts[4], accounts[9], 'hubUnauthorized')
 
       await stakeManager.unlockStake(accounts[3])
-      await stakeManager.unauthorizeHub(accounts[4], relayHub.address)
+      await stakeManager.unauthorizeHubByOwner(accounts[4], relayHub.address)
     })
 
     after(async function () {
@@ -283,9 +283,9 @@ contract('KnownRelaysManager 2', function (accounts) {
   describe('getRelaysSortedForTransaction', function () {
     const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<number> {
       if (relay.relayUrl === 'alex') {
-        return Promise.resolve(1000)
+        return await Promise.resolve(1000)
       } else {
-        return Promise.resolve(100)
+        return await Promise.resolve(100)
       }
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)

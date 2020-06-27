@@ -21,7 +21,7 @@ export default class HttpWrapper {
         const errStr = ((typeof errData === 'string') ? errData : JSON.stringify(errData)).slice(0, LOGMAXLEN)
         const errUrl = error.response != null ? error.response.config.url : error.address
         console.log('got response:', errUrl, 'err=', errStr)
-        return Promise.reject(error)
+        return await Promise.reject(error)
       })
     }
   }

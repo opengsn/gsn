@@ -12,14 +12,14 @@ import {
   PenalizerInstance,
   StakeManagerInstance,
   TestRecipientInstance,
-  Eip712ForwarderInstance,
+  ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance
 } from '../types/truffle-contracts'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -43,7 +43,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let relayHubInstance: RelayHubInstance
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
-  let eip712ForwarderInstance: Eip712ForwarderInstance
+  let forwarderInstance: ForwarderInstance
   let target: string
   let paymaster: string
   let forwarder: string
@@ -53,12 +53,12 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     penalizer = await Penalizer.new()
     relayHubInstance = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
-    eip712ForwarderInstance = await Eip712Forwarder.new()
-    forwarder = eip712ForwarderInstance.address
+    forwarderInstance = await Forwarder.new()
+    forwarder = forwarderInstance.address
     recipientContract = await TestRecipient.new(forwarder)
 
     // register hub's RelayRequest with forwarder, if not already done.
-    await eip712ForwarderInstance.registerRequestType(
+    await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
       GsnRequestType.typeSuffix
     )
@@ -173,6 +173,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     const gasLimit = '1000000'
     const senderNonce = '0'
     let sharedRelayRequestData: RelayRequest
+    const paymasterData = '0x'
+    const clientId = '1'
 
     beforeEach(function () {
       sharedRelayRequestData = {
@@ -190,7 +192,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           gasPrice,
           relayWorker,
           forwarder,
-          paymaster
+          paymaster,
+          paymasterData,
+          clientId
         }
       }
     })
@@ -225,11 +229,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             value: ether('1'),
             from: relayOwner
           })
-          await stakeManager.authorizeHub(relayManager, relayHub, { from: relayOwner })
+          await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
           await relayHubInstance.addRelayWorkers([relayWorker], {
             from: relayManager
           })
-          await stakeManager.unauthorizeHub(relayManager, relayHub, { from: relayOwner })
+          await stakeManager.unauthorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
         })
         it('should not accept a relay call', async function () {
           await expectRevert(
@@ -256,7 +260,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           value: ether('2'),
           from: relayOwner
         })
-        await stakeManager.authorizeHub(relayManager, relayHub, { from: relayOwner })
+        await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
 
         // truffle-contract doesn't let us create method data from the class, we need an actual instance
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()
@@ -404,14 +408,14 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
 
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
-          const nonceBefore = await eip712ForwarderInstance.getNonce(senderAddress)
+          const nonceBefore = await forwarderInstance.getNonce(senderAddress)
 
           const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
             from: relayWorker,
             gas,
             gasPrice
           })
-          const nonceAfter = await eip712ForwarderInstance.getNonce(senderAddress)
+          const nonceAfter = await forwarderInstance.getNonce(senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
@@ -556,7 +560,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               baseRelayFee,
               relayWorker,
               forwarder,
-              paymaster: paymaster2.address
+              paymaster: paymaster2.address,
+              paymasterData: '0x',
+              clientId: '1'
             })).toNumber()
             await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation
 

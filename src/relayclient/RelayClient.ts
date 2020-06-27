@@ -5,7 +5,7 @@ import { constants } from '@openzeppelin/test-helpers'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { Address, AsyncApprovalData, PingFilter } from './types/Aliases'
+import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import RelaySelectionManager from './RelaySelectionManager'
@@ -15,9 +15,11 @@ import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
 
-// generate "approvalData" for a request. must return string-encoded bytes array
-export const EmptyApprovalData: AsyncApprovalData = async (): Promise<PrefixedHexString> => {
-  return Promise.resolve('0x')
+// generate "approvalData" and "paymasterData" for a request.
+// both are bytes arrays. paymasterData is part of the client request.
+// approvalData is created after request is filled and signed.
+export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHexString> => {
+  return await Promise.resolve('0x')
 }
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
@@ -45,7 +47,8 @@ export default class RelayClient {
   private readonly httpClient: HttpClient
   protected contractInteractor: ContractInteractor
   protected knownRelaysManager: IKnownRelaysManager
-  private readonly asyncApprovalData: AsyncApprovalData
+  private readonly asyncApprovalData: AsyncDataCallback
+  private readonly asyncPaymasterData: AsyncDataCallback
   private readonly transactionValidator: RelayedTransactionValidator
   private readonly pingFilter: PingFilter
 
@@ -71,6 +74,7 @@ export default class RelayClient {
     this.accountManager = dependencies.accountManager
     this.pingFilter = dependencies.pingFilter
     this.asyncApprovalData = dependencies.asyncApprovalData
+    this.asyncPaymasterData = dependencies.asyncPaymasterData
   }
 
   /**
@@ -226,10 +230,16 @@ export default class RelayClient {
         baseRelayFee: relayInfo.relayInfo.baseRelayFee,
         gasPrice,
         paymaster,
+        paymasterData: '', // temp value. filled in by asyncPaymasterData, below.
+        clientId: this.config.clientId,
         forwarder: forwarderAddress,
         relayWorker
       }
     }
+    const paymasterData = await this.asyncPaymasterData(relayRequest)
+
+    // put paymasterData into struct before signing
+    relayRequest.relayData.paymasterData = paymasterData
     const signature = await this.accountManager.sign(relayRequest)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
@@ -248,6 +258,8 @@ export default class RelayClient {
       gasPrice,
       gasLimit,
       paymaster: paymaster,
+      paymasterData,
+      clientId: this.config.clientId,
       forwarder: forwarderAddress,
       signature,
       approvalData,
@@ -270,7 +282,7 @@ export default class RelayClient {
     let forwarderAddress = gsnTransactionDetails.forwarder ?? this.config.forwarderAddress
     if (forwarderAddress !== constants.ZERO_ADDRESS) {
       const recipientCode = await web3.eth.getCode(gsnTransactionDetails.to)
-      const isRecipientDeployed = recipientCode != '0x'
+      const isRecipientDeployed = recipientCode !== '0x'
       if (!isRecipientDeployed) {
         console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
         Unless you are using some counterfactual contract deployment technique the transaction will fail!`)

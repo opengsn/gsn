@@ -1,6 +1,5 @@
 /* global describe it web3 */
 // @ts-ignore
-// eslint-disable-next-line @typescript-eslint/camelcase
 import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 
@@ -8,16 +7,14 @@ import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData, { getDomainSeparatorHash, GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { Eip712ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
+import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { signTypedDataUtils } from '@0x/utils'
 import { bufferToHex } from 'ethereumjs-util'
-import Web3 from 'web3'
 
 const assert = require('chai').use(chaiAsPromised).assert
 
 const TestUtil = artifacts.require('TestUtil')
-const Eip712Forwarder = artifacts.require('Eip712Forwarder')
+const Forwarder = artifacts.require('Forwarder')
 const TestRecipient = artifacts.require('TestRecipient')
 
 contract('Utils', function (accounts) {
@@ -30,11 +27,11 @@ contract('Utils', function (accounts) {
     let testUtil: TestUtilInstance
     let recipient: TestRecipientInstance
 
-    let forwarderInstance: Eip712ForwarderInstance
+    let forwarderInstance: ForwarderInstance
     before(async () => {
       testUtil = await TestUtil.new()
       chainId = (await testUtil.libGetChainID()).toNumber()
-      forwarderInstance = await Eip712Forwarder.new()
+      forwarderInstance = await Forwarder.new()
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
 
@@ -48,6 +45,8 @@ contract('Utils', function (accounts) {
       // const forwarder = accounts[6]
       const paymaster = accounts[7]
       const relayWorker = accounts[9]
+      const paymasterData = '0x'
+      const clientId = '0'
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
@@ -71,7 +70,9 @@ contract('Utils', function (accounts) {
           baseRelayFee,
           relayWorker,
           forwarder,
-          paymaster
+          paymaster,
+          paymasterData,
+          clientId
         }
       }
       const dataToSign = new TypedRequestData(
@@ -110,7 +111,6 @@ contract('Utils', function (accounts) {
     })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
-
       assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 

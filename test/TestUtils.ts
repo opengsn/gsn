@@ -71,7 +71,7 @@ export async function startRelay (
     const doaListener = (code: Object): void => {
       // @ts-ignore
       if (!proc.alreadystarted) {
-        relaylog(`died before init code=${code.toString()}`)
+        relaylog(`died before init code=${JSON.stringify(code)}`)
         reject(new Error(lastresponse))
       }
     }
@@ -108,7 +108,7 @@ export async function startRelay (
     value: options.stake || ether('1')
   })
   await sleep(500)
-  await stakeManager.authorizeHub(relayManagerAddress, relayHubAddress, {
+  await stakeManager.authorizeHubByOwner(relayManagerAddress, relayHubAddress, {
     from: options.relayOwner
   })
 
@@ -129,7 +129,7 @@ export async function startRelay (
 }
 
 export async function sleep (ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export function stopRelay (proc: ChildProcessWithoutNullStreams): void {
@@ -164,13 +164,13 @@ export async function registerNewRelay (
     from: ownerAccount,
     value: stake
   })
-  await stakeManager.authorizeHub(relayManager, relayHub.address, { from: ownerAccount })
+  await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: ownerAccount })
   await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-  return relayHub.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
+  return await relayHub.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
 }
 
 export async function increaseTime (time: number): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -193,7 +193,7 @@ export async function evmMineMany (count: number): Promise<void> {
 }
 
 export async function evmMine (): Promise<any> {
-  return new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -211,7 +211,7 @@ export async function evmMine (): Promise<any> {
 }
 
 export async function snapshot (): Promise<{ id: number, jsonrpc: string, result: string }> {
-  return new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -225,7 +225,7 @@ export async function snapshot (): Promise<{ id: number, jsonrpc: string, result
 }
 
 export async function revert (id: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',

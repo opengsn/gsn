@@ -7,7 +7,7 @@ import "./IForwarder.sol";
 // TODO now: move getError to the forwarder folder
 import "../utils/GsnUtils.sol";
 
-contract Eip712Forwarder is IForwarder {
+contract Forwarder is IForwarder {
     using ECDSA for bytes32;
 
     string public constant GENERIC_PARAMS = "address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas";

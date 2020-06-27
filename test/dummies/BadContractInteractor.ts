@@ -22,7 +22,7 @@ export default class BadContractInteractor extends ContractInteractor {
         returnValue: BadContractInteractor.message
       }
     }
-    return super.validateAcceptRelayCall(relayRequest, signature, approvalData)
+    return await super.validateAcceptRelayCall(relayRequest, signature, approvalData)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
