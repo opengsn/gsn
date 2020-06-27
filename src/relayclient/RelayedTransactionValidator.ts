@@ -48,7 +48,9 @@ export default class RelayedTransactionValidator {
         pctRelayFee: transactionJsonRequest.pctRelayFee,
         relayWorker: transactionJsonRequest.relayWorker,
         forwarder: transactionJsonRequest.forwarder,
-        paymaster: transactionJsonRequest.paymaster
+        paymaster: transactionJsonRequest.paymaster,
+        paymasterData: transactionJsonRequest.paymasterData,
+        clientId: transactionJsonRequest.clientId
       }
     }
     const externalGasLimit = bufferToHex(transaction.gasLimit)

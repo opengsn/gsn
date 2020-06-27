@@ -35,6 +35,9 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 
 const underlyingProvider = web3.currentProvider as HttpProvider
 
+const paymasterData = '0x'
+const clientId = '1'
+
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
   const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
@@ -54,6 +57,8 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       baseRelayFee: '1',
       gasPrice: '1',
       paymaster,
+      paymasterData,
+      clientId,
       forwarder: testRecipientForwarderAddress,
       relayWorker
     }
@@ -272,7 +277,7 @@ contract('RelayProvider', function (accounts) {
         value: ether('1'),
         from: accounts[2]
       })
-      await stakeManager.authorizeHub(accounts[1], relayHub.address, { from: accounts[2] })
+      await stakeManager.authorizeHubByOwner(accounts[1], relayHub.address, { from: accounts[2] })
       await relayHub.addRelayWorkers([accounts[0]], {
         from: accounts[1]
       })

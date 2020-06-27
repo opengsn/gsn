@@ -28,7 +28,7 @@ export async function stake (stakeManager: StakeManagerInstance, relayHub: Relay
     value: ether('1'),
     from: owner
   })
-  await stakeManager.authorizeHub(manager, relayHub.address, { from: owner })
+  await stakeManager.authorizeHubByOwner(manager, relayHub.address, { from: owner })
 }
 
 export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
@@ -187,7 +187,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       await register(relayHub, accounts[4], accounts[9], 'hubUnauthorized')
 
       await stakeManager.unlockStake(accounts[3])
-      await stakeManager.unauthorizeHub(accounts[4], relayHub.address)
+      await stakeManager.unauthorizeHubByOwner(accounts[4], relayHub.address)
     })
 
     after(async function () {

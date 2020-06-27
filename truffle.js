@@ -1,4 +1,4 @@
-require('ts-node/register')
+require('ts-node/register/transpile-only')
 
 var HDWalletProvider = require('truffle-hdwallet-provider')
 var mnemonic = 'digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six'
