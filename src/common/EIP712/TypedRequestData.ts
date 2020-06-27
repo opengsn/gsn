@@ -40,7 +40,7 @@ interface Types extends EIP712Types {
   RelayData: EIP712TypeProperty[]
 }
 
-export function getDomainSeparator (verifier: Address, chainId: number): any {
+export function getDomainSeparator (verifier: Address, chainId: number): EIP712Domain {
   return {
     name: 'GSN Relayed Transaction',
     version: '2',
