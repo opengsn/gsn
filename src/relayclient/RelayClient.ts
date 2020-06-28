@@ -216,12 +216,13 @@ export default class RelayClient {
     }
     const gasLimit = parseInt(gasLimitHex, 16).toString()
     const gasPrice = parseInt(gasPriceHex, 16).toString()
+    const value = gsnTransactionDetails.value ?? '0'
     const relayRequest: RelayRequest = {
       request: {
         to: gsnTransactionDetails.to,
         data: gsnTransactionDetails.data,
         from: gsnTransactionDetails.from,
-        value: '0',
+        value: value,
         nonce: senderNonce,
         gas: gasLimit
       },
@@ -247,7 +248,7 @@ export default class RelayClient {
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
-    const httpRequest = {
+    const httpRequest: TmpRelayTransactionJsonRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
       data: gsnTransactionDetails.data,
       senderNonce: relayRequest.request.nonce,
@@ -255,6 +256,7 @@ export default class RelayClient {
       to: gsnTransactionDetails.to,
       pctRelayFee: relayInfo.relayInfo.pctRelayFee,
       baseRelayFee: relayInfo.relayInfo.baseRelayFee,
+      value,
       gasPrice,
       gasLimit,
       paymaster: paymaster,

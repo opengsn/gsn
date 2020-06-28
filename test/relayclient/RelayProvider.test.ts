@@ -11,6 +11,7 @@ import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
   RelayHubInstance,
   StakeManagerInstance,
+  TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientContract,
   TestRecipientInstance
@@ -83,6 +84,7 @@ contract('RelayProvider', function (accounts) {
   let gasLess: Address
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
+  let paymasterInstance: TestPaymasterEverythingAcceptedInstance
   let paymaster: Address
   let relayProcess: ChildProcessWithoutNullStreams
   let relayProvider: provider
@@ -100,7 +102,7 @@ contract('RelayProvider', function (accounts) {
       GsnRequestType.typeSuffix
     )
 
-    const paymasterInstance = await TestPaymasterEverythingAccepted.new()
+    paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
@@ -145,7 +147,32 @@ contract('RelayProvider', function (accounts) {
 
       expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
         message: 'hello world',
-        realSender: gasLess
+        realSender: gasLess,
+        msgValue: '0',
+        balance: '0'
+      })
+    })
+
+    it('should relay transparently with value', async function () {
+      const value = 1e18.toString()
+      await web3.eth.sendTransaction({
+        from: accounts[0],
+        to: forwarderAddress,
+        value
+      })
+      const res = await testRecipient.emitMessage('hello world', {
+        from: gasLess,
+        forceGasPrice: '0x51f4d5c00',
+        value,
+        gas: '100000',
+        paymaster
+      })
+
+      expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
+        message: 'hello world',
+        realSender: gasLess,
+        msgValue: value,
+        balance: value
       })
     })
 
