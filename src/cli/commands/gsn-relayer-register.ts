@@ -13,7 +13,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
   )
   .option(
     '--funds <funds>',
-    'amount to transfer to the relayer to pay for relayed transactions, in wei (defaults to 5 Ether)'
+    'amount to transfer to the relayer to pay for relayed transactions, in wei (defaults to 2 Ether)'
   )
   .parse(process.argv);
 
