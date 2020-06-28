@@ -298,6 +298,11 @@ export default class ContractInteractor {
     }
     return this.networkType
   }
+
+  async isContractDeployed (address: Address): Promise<boolean> {
+    const code = await this.web3.eth.getCode(address)
+    return code !== '0x'
+  }
 }
 
 /**

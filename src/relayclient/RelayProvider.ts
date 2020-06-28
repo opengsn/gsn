@@ -24,9 +24,9 @@ interface ISendAsync {
 }
 
 export class RelayProvider implements HttpProvider {
-  private readonly origProvider: HttpProvider & ISendAsync
+  protected readonly origProvider: HttpProvider & ISendAsync
   private readonly origProviderSend: any
-  private readonly config: GSNConfig
+  protected readonly config: GSNConfig
 
   readonly relayClient: RelayClient
 
