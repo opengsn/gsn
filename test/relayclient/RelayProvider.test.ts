@@ -155,6 +155,9 @@ contract('RelayProvider', function (accounts) {
 
     it('should relay transparently with value', async function () {
       const value = 1e18.toString()
+      //note: this test only validates we process the "value" parameter of the request properly.
+      // a real use-case should have a paymaster to transfer the value into the forwarder, 
+      // probably by swapping user's tokens into eth.
       await web3.eth.sendTransaction({
         from: accounts[0],
         to: forwarderAddress,
