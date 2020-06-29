@@ -8,6 +8,7 @@ export default interface TmpRelayTransactionJsonRequest {
   signature: PrefixedHexString
   from: Address
   to: Address
+  value: IntString
   paymaster: Address
   paymasterData: PrefixedHexString
   clientId: IntString

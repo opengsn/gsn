@@ -269,6 +269,7 @@ contract('RelayServer', function (accounts) {
         signature,
         from: relayRequest.request.from,
         to: relayRequest.request.to,
+        value: '0',
         paymaster: relayRequest.relayData.paymaster,
         paymasterData: relayRequest.relayData.paymasterData,
         clientId: relayRequest.relayData.clientId,
