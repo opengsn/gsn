@@ -1,6 +1,5 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
-import { constants } from '@openzeppelin/test-helpers'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
@@ -14,6 +13,8 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -282,7 +283,7 @@ export default class RelayClient {
 
   async resolveForwarder (gsnTransactionDetails: GsnTransactionDetails): Promise<Address> {
     let forwarderAddress = gsnTransactionDetails.forwarder ?? this.config.forwarderAddress
-    if (forwarderAddress !== constants.ZERO_ADDRESS) {
+    if (forwarderAddress !== ZERO_ADDRESS) {
       const isRecipientDeployed = await this.contractInteractor.isContractDeployed(gsnTransactionDetails.to)
       if (!isRecipientDeployed) {
         console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!

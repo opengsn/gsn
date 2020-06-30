@@ -8,11 +8,11 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
 import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
-import { constants } from '@openzeppelin/test-helpers'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
@@ -25,10 +25,10 @@ const defaultGsnConfig: GSNConfig = {
   methodSuffix: '',
   jsonStringifyRequest: false,
   chainId: defaultEnvironment.chainId,
-  relayHubAddress: constants.ZERO_ADDRESS,
-  stakeManagerAddress: constants.ZERO_ADDRESS,
-  paymasterAddress: constants.ZERO_ADDRESS,
-  forwarderAddress: constants.ZERO_ADDRESS,
+  relayHubAddress: ZERO_ADDRESS,
+  stakeManagerAddress: ZERO_ADDRESS,
+  paymasterAddress: ZERO_ADDRESS,
+  forwarderAddress: ZERO_ADDRESS,
   verbose: false,
   clientId: '1'
 }
