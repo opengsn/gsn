@@ -6,6 +6,8 @@ import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
 import "../forwarder/Forwarder.sol";
 
+import "./GsnUtils.sol";
+
 /**
  * Bridge Library to map GSN RelayRequest into a call of a Forwarder
  */
