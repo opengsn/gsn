@@ -43,7 +43,7 @@ const ForwardRequestType = [
 ]
 
 contract('Forwarder', ([from]) => {
-  const GENERIC_PARAMS = 'address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas'
+  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data'
   // our generic params has 6 bytes32 values
   const countParams = ForwardRequestType.length
 

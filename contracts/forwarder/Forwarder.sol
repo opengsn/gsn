@@ -4,13 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./IForwarder.sol";
-// TODO now: move getError to the forwarder folder
-import "../utils/GsnUtils.sol";
 
 contract Forwarder is IForwarder {
     using ECDSA for bytes32;
 
-    string public constant GENERIC_PARAMS = "address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
 
     mapping(bytes32 => bool) public typeHashes;
 
