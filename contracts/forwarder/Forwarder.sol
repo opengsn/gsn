@@ -127,12 +127,12 @@ contract Forwarder is IForwarder {
         return abi.encodePacked(
             requestTypeHash,
             abi.encode(
-                req.to,
-                keccak256(req.data),
-                req.value,
                 req.from,
+                req.to,
+                req.value,
+                req.gas,
                 req.nonce,
-                req.gas
+                keccak256(req.data)
             ),
             suffixData
         );
