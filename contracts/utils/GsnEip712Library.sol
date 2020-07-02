@@ -49,12 +49,12 @@ library GsnEip712Library {
         bytes memory suffixData
     ) {
         forwardRequest = IForwarder.ForwardRequest(
-            req.request.to,
-            req.request.data,
-            req.request.value,
             req.request.from,
+            req.request.to,
+            req.request.value,
+            req.request.gas,
             req.request.nonce,
-            req.request.gas
+            req.request.data
         );
         suffixData = abi.encode(
             hashRelayData(req.relayData));
