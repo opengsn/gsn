@@ -34,9 +34,9 @@ contract Forwarder is IForwarder {
         ForwardRequest memory req,
         bytes32 domainSeparator,
         bytes32 requestTypeHash,
-        bytes memory suffixData,
-        bytes memory sig)
-    public override view {
+        bytes calldata suffixData,
+        bytes calldata sig)
+    external override view {
 
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
@@ -46,10 +46,10 @@ contract Forwarder is IForwarder {
         ForwardRequest memory req,
         bytes32 domainSeparator,
         bytes32 requestTypeHash,
-        bytes memory suffixData,
-        bytes memory sig
+        bytes calldata suffixData,
+        bytes calldata sig
     )
-    public payable
+    external payable
     override
     returns (bool success, bytes memory ret) {
         _verifyNonce(req);
