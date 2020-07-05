@@ -34,16 +34,16 @@ const EIP712DomainType = [
 ]
 
 const ForwardRequestType = [
-  { name: 'to', type: 'address' },
-  { name: 'data', type: 'bytes' },
-  { name: 'value', type: 'uint256' },
   { name: 'from', type: 'address' },
+  { name: 'to', type: 'address' },
+  { name: 'value', type: 'uint256' },
+  { name: 'gas', type: 'uint256' },
   { name: 'nonce', type: 'uint256' },
-  { name: 'gas', type: 'uint256' }
+  { name: 'data', type: 'bytes' }
 ]
 
 contract('Forwarder', ([from]) => {
-  const GENERIC_PARAMS = 'address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas'
+  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data'
   // our generic params has 6 bytes32 values
   const countParams = ForwardRequestType.length
 

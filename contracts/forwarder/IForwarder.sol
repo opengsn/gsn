@@ -5,12 +5,12 @@ pragma experimental ABIEncoderV2;
 interface IForwarder {
 
     struct ForwardRequest {
-        address to;
-        bytes data;
-        uint256 value;
         address from;
-        uint256 nonce;
+        address to;
+        uint256 value;
         uint256 gas;
+        uint256 nonce;
+        bytes data;
     }
 
     function getNonce(address from)

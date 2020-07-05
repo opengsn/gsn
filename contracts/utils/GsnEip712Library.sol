@@ -6,13 +6,15 @@ import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
 import "../forwarder/Forwarder.sol";
 
+import "./GsnUtils.sol";
+
 /**
  * Bridge Library to map GSN RelayRequest into a call of a Forwarder
  */
 library GsnEip712Library {
 
     //copied from Forwarder (can't reference string constants even from another library)
-    string public constant GENERIC_PARAMS = "address to,bytes data,uint256 value,address from,uint256 nonce,uint256 gas";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
 
     bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,bytes paymasterData,uint256 clientId)";
 
@@ -47,12 +49,12 @@ library GsnEip712Library {
         bytes memory suffixData
     ) {
         forwardRequest = IForwarder.ForwardRequest(
-            req.request.to,
-            req.request.data,
-            req.request.value,
             req.request.from,
+            req.request.to,
+            req.request.value,
+            req.request.gas,
             req.request.nonce,
-            req.request.gas
+            req.request.data
         );
         suffixData = abi.encode(
             hashRelayData(req.relayData));
