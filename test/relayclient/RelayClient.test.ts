@@ -14,7 +14,7 @@ import {
 } from '../../types/truffle-contracts'
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import RelayClient from '../../src/relayclient/RelayClient'
+import { RelayClient } from '../../src/relayclient/RelayClient'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
