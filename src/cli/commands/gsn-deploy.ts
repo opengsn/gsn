@@ -3,9 +3,9 @@ import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getMnemonic, getNetworkUrl, gsnCommander, saveDeployment, showDeployment } from '../utils'
 
-// TODO: support deploying custom paymasters by passing bytecode, ABI and constructor params
 gsnCommander(['n', 'f', 'm'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
+  .option('--forwarder <address>', 'address of forwarder deployed to the current network (optional; deploys new one by default)')
   .parse(process.argv);
 
 (async () => {
@@ -16,7 +16,11 @@ gsnCommander(['n', 'f', 'm'])
   const logic = new CommandsLogic(nodeURL, configureGSN({}), mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
 
-  const deploymentResult = await logic.deployGsnContracts(from)
+  const deploymentResult = await logic.deployGsnContracts({
+    from,
+    deployPaymaster: true,
+    forwarderAddress: commander.forwarder
+  })
   const paymasterName = 'Default'
 
   showDeployment(deploymentResult, `Deployed GSN to network: ${network}`, paymasterName)
