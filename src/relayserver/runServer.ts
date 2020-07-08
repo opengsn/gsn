@@ -71,7 +71,8 @@ if (devMode) {
   }
 }
 
-const keyManager = new KeyManager(2, workdir)
+const managerKeyManager = new KeyManager(1, workdir + '/manager')
+const workersKeyManager = new KeyManager(1, workdir + '/workers')
 const txStoreManager = new TxStoreManager({ workdir })
 const web3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
 const interactor = new ContractInteractor(web3provider,
@@ -79,7 +80,8 @@ const interactor = new ContractInteractor(web3provider,
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const params = {
   txStoreManager,
-  keyManager,
+  managerKeyManager,
+  workersKeyManager,
   hubAddress: relayHubAddress,
   contractInteractor: interactor,
   url,
