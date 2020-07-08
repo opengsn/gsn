@@ -1,4 +1,4 @@
-import RelayClient, { RelayingResult } from '../../src/relayclient/RelayClient'
+import { RelayClient, RelayingResult } from '../../src/relayclient/RelayClient'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { HttpProvider } from 'web3-core'
