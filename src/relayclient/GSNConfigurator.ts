@@ -8,7 +8,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
 import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
-import { constants } from '@openzeppelin/test-helpers'
+import { constants } from '../common/Utils'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3

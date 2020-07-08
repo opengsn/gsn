@@ -1,6 +1,6 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
-import { constants } from '@openzeppelin/test-helpers'
+import { constants } from '../common/Utils'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'

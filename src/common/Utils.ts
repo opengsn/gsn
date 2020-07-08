@@ -1,11 +1,12 @@
 import { JsonRpcResponse } from 'web3-core-helpers'
 import ethUtils from 'ethereumjs-util'
-import web3Utils from 'web3-utils'
+import web3Utils, { toWei } from 'web3-utils'
 import abi from 'web3-eth-abi'
 
 import TypedRequestData from './EIP712/TypedRequestData'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { Address } from '../relayclient/types/Aliases'
+import BN from 'bn.js'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -129,6 +130,18 @@ export function isSameAddress (address1: Address, address2: Address): boolean {
 
 export async function sleep (ms: number): Promise<void> {
   return await new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export function ether (n: string): BN {
+  return new BN(toWei(n, 'ether'))
+}
+
+export const constants = {
+  ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
+  ZERO_BYTES32: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  MAX_UINT256: new BN('2').pow(new BN('256')).sub(new BN('1')),
+  MAX_INT256: new BN('2').pow(new BN('255')).sub(new BN('1')),
+  MIN_INT256: new BN('2').pow(new BN('255')).mul(new BN('-1'))
 }
 
 /**
