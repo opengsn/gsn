@@ -1,6 +1,6 @@
 import commander from 'commander'
 import { gsnCommander, saveDeployment, showDeployment } from '../utils'
-import GsnTestEnvironment from '../../relayclient/GsnTestEnvironment'
+import { GsnTestEnvironment } from '../../relayclient/GsnTestEnvironment'
 
 gsnCommander(['n'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')

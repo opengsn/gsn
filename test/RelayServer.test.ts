@@ -1,7 +1,7 @@
 /* global artifacts describe */
 import Web3 from 'web3'
 import crypto from 'crypto'
-import RelayClient from '../src/relayclient/RelayClient'
+import { RelayClient } from '../src/relayclient/RelayClient'
 import { CreateTransactionDetails, RelayServer, RelayServerParams } from '../src/relayserver/RelayServer'
 import { TxStoreManager } from '../src/relayserver/TxStoreManager'
 import { KeyManager } from '../src/relayserver/KeyManager'
