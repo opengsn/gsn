@@ -28,6 +28,7 @@ class GsnTestEnvironmentClass {
    *
    * @param host:
    * @param deployPaymaster - whether to deploy the naive paymaster instance for tests
+   * @param debug
    * @return
    */
   async startGsn (host?: string, deployPaymaster: boolean = true, debug = false): Promise<TestEnvironment> {
@@ -164,5 +165,4 @@ class GsnTestEnvironmentClass {
   }
 }
 
-const GsnTestEnvironment = new GsnTestEnvironmentClass()
-export default GsnTestEnvironment
+export const GsnTestEnvironment = new GsnTestEnvironmentClass()

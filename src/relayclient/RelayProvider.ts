@@ -4,7 +4,7 @@ import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpProvider } from 'web3-core'
 
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
-import RelayClient, { RelayingResult } from './RelayClient'
+import { RelayClient, RelayingResult } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Transaction } from 'ethereumjs-tx'
