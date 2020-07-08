@@ -42,7 +42,7 @@ export interface RelayingResult {
   relayingErrors: Map<string, Error>
 }
 
-export default class RelayClient {
+export class RelayClient {
   readonly config: GSNConfig
   private readonly httpClient: HttpClient
   protected contractInteractor: ContractInteractor
