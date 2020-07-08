@@ -51,7 +51,6 @@
   "dependencies": {
     "@openeth/truffle-typings": "0.0.6",
     "@openzeppelin/contracts": "3.0.2",
-    "@openzeppelin/test-helpers": "0.5.5",
     "@truffle/contract": "4.2.4",
     "@truffle/hdwallet-provider": "1.0.34",
     "@types/chai": "4.2.11",
@@ -102,6 +101,7 @@
     "@0x/sol-profiler": "4.0.8",
     "@0x/sol-trace": "3.0.8",
     "@0x/subproviders": "4.1.0",
+    "@openzeppelin/test-helpers": "0.5.5",
     "@typescript-eslint/eslint-plugin": "3.0.2",
     "@typescript-eslint/parser": "3.0.2",
     "chai-as-promised": "7.1.1",
