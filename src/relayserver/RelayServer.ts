@@ -31,7 +31,7 @@ abiDecoder.addABI(StakeManagerABI)
 
 const mintxgascost = defaultEnvironment.mintxgascost
 
-const VERSION = '0.9.2'
+const VERSION = '2.0.0-alpha.1'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
@@ -130,7 +130,7 @@ export class RelayServer extends EventEmitter {
 
   constructor (params: RelayServerParams) {
     super()
-    this.versionManager = new VersionsManager()
+    this.versionManager = new VersionsManager(VERSION)
     this.txStoreManager = params.txStoreManager
     this.keyManager = params.keyManager
     this.hubAddress = params.hubAddress
@@ -400,7 +400,7 @@ export class RelayServer extends EventEmitter {
       debug('code length', code.length)
     }
     const version = await this.relayHubContract.versionHub().catch(_ => 'no getVersion() method')
-    if (!this.versionManager.isHubVersionSupported(version)) {
+    if (!this.versionManager.isMinorSameOrNewer(version)) {
       this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
     }
     const stakeManagerAddress = await this.relayHubContract.getStakeManager()
