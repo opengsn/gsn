@@ -8,16 +8,18 @@ import ow from 'ow'
 import { toHex } from 'web3-utils'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 
+export const KEYSTORE_FILENAME = 'keystore'
+
 export class KeyManager {
   private readonly hdkey: EthereumHDKey
   private _privateKeys: Record<PrefixedHexString, Buffer> = {}
   private nonces: Record<string, number> = {}
 
   /**
-     * @param count - # of addresses managed by this manager
-     * @param workdir - read seed from keystore file (or generate one and write it)
-     * @param seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
-     */
+   * @param count - # of addresses managed by this manager
+   * @param workdir - read seed from keystore file (or generate one and write it)
+   * @param seed - if working in memory (no workdir), you can specify a seed - or use randomly generated one.
+   */
   constructor (count: number, workdir?: string, seed?: string) {
     ow(count, ow.number)
     if (seed != null && workdir != null) {
@@ -31,7 +33,7 @@ export class KeyManager {
           fs.mkdirSync(workdir, { recursive: true })
         }
         let genseed
-        const keyStorePath = workdir + '/keystore'
+        const keyStorePath = workdir + '/' + KEYSTORE_FILENAME
         if (fs.existsSync(keyStorePath)) {
           genseed = JSON.parse(fs.readFileSync(keyStorePath).toString()).seed
         } else {
@@ -73,6 +75,10 @@ export class KeyManager {
 
   getAddresses (): PrefixedHexString[] {
     return Object.keys(this._privateKeys)
+  }
+
+  isSigner (signer: string): boolean {
+    return this._privateKeys[signer] != null
   }
 
   signTransaction (signer: string, tx: Transaction): PrefixedHexString {

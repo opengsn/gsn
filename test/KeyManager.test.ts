@@ -1,9 +1,7 @@
 /* global */
 
 import fs from 'fs'
-import { KeyManager } from '../src/relayserver/KeyManager'
-
-const KEYSTORE_FILENAME = 'keystore'
+import { KeyManager, KEYSTORE_FILENAME } from '../src/relayserver/KeyManager'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/key_manager'

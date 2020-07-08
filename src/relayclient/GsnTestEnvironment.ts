@@ -130,7 +130,8 @@ class GsnTestEnvironmentClass {
       return
     }
 
-    const keyManager = new KeyManager(2)
+    const managerKeyManager = new KeyManager(1)
+    const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true })
     /*
       readonly contractInteractor: ContractInteractor
@@ -142,7 +143,8 @@ class GsnTestEnvironmentClass {
     const relayServerParams = {
       contractInteractor: interactor,
       txStoreManager,
-      keyManager,
+      managerKeyManager,
+      workersKeyManager,
       url: relayUrl,
       hubAddress: deploymentResult.relayHubAddress,
       gasPriceFactor: 1,
