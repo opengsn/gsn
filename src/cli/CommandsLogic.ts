@@ -2,11 +2,10 @@ import Web3 from 'web3'
 import { Contract, SendOptions } from 'web3-eth-contract'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import BN from 'bn.js'
-import { constants, ether } from '@openzeppelin/test-helpers'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { merge } from 'lodash'
 
-import { sleep } from '../common/Utils'
+import { constants, ether, sleep } from '../common/Utils'
 
 // compiled folder populated by "prepublish"
 import StakeManager from './compiled/StakeManager.json'

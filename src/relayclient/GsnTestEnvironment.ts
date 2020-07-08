@@ -1,5 +1,5 @@
 import net from 'net'
-import { ether } from '@openzeppelin/test-helpers'
+import { ether } from '../common/Utils'
 
 import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
 import { KeyManager } from '../relayserver/KeyManager'
