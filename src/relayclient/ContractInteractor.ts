@@ -29,11 +29,11 @@ import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { BlockTransactionString } from 'web3-eth'
 import Common from 'ethereumjs-common'
+import { constants } from '@openzeppelin/test-helpers'
 
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
-import { constants } from '@openzeppelin/test-helpers'
 
 type EventName = string
 
