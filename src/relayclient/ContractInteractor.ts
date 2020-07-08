@@ -13,6 +13,7 @@ import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.
 
 import { event2topic } from '../common/Utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
+import VersionsManager from '../common/VersionsManager'
 import {
   BaseRelayRecipientInstance,
   IKnowForwarderAddressInstance,
@@ -32,6 +33,7 @@ import Common from 'ethereumjs-common'
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
+import { constants } from '@openzeppelin/test-helpers'
 
 type EventName = string
 
@@ -41,6 +43,8 @@ export const HubUnauthorized: EventName = 'HubUnauthorized'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export default class ContractInteractor {
+  private readonly VERSION = '2.0.0-alpha.1'
+
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
   private readonly IForwarderContract: Contract<IForwarderInstance>
@@ -51,12 +55,15 @@ export default class ContractInteractor {
   private readonly web3: Web3
   private readonly provider: provider
   private readonly config: GSNConfig
+  private readonly versionManager: VersionsManager
+
   private rawTxOptions?: TransactionOptions
   private chainId?: number
   private networkId?: number
   private networkType?: string
 
   constructor (provider: provider, config: GSNConfig) {
+    this.versionManager = new VersionsManager(this.VERSION)
     this.web3 = new Web3(provider)
     this.config = config
     this.provider = provider
@@ -103,12 +110,25 @@ export default class ContractInteractor {
   getWeb3 (): Web3 { return this.web3 }
 
   async _init (): Promise<void> {
+    await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain !== 'private' ? chain : 'mainnet')
+  }
+
+  async _validateCompatibility (): Promise<void> {
+    if (this.config.relayHubAddress === constants.ZERO_ADDRESS) {
+      return
+    }
+    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    const version = await hub.versionHub()
+    const isNewer = this.versionManager.isMinorSameOrNewer(version)
+    if (!isNewer) {
+      throw new Error(`Provided Hub version(${version}) is not supported by the current interactor(${this.VERSION})`)
+    }
   }
 
   // must use these options when creating Transaction object
