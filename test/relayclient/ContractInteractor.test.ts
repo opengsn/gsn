@@ -2,7 +2,7 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 
 import { TestVersionsInstance } from '../../types/truffle-contracts'
-import RelayClient from '../../src/relayclient/RelayClient'
+import { RelayClient } from '../../src/relayclient/RelayClient'
 import { HttpProvider } from 'web3-core'
 
 const { expect } = chai.use(chaiAsPromised)
