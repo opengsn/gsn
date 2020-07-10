@@ -43,7 +43,9 @@ contract TestUtil {
         bool success,
         string memory ret
     ) {
-        (success, ret) = GsnEip712Library.execute(relayRequest, signature);
+        bool forwarderSuccess;
+        (forwarderSuccess, success, ret) = GsnEip712Library.execute(relayRequest, signature);
+        require(forwarderSuccess, ret);
         emit Called(success, success == false ? ret : "");
     }
 

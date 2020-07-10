@@ -33,6 +33,7 @@ contract RelayHub is IRelayHub {
     IStakeManager override public stakeManager;
     address override public penalizer;
 
+
     // maps relay worker's address to its manager's address
     mapping(address => address) public workerToManager;
 
@@ -300,7 +301,12 @@ contract RelayHub is IRelayHub {
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
-        (atomicData.relayedCallSuccess, atomicData.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
+        {
+            bool forwarderSuccess;
+            string memory error;
+            (forwarderSuccess, atomicData.relayedCallSuccess, error) = GsnEip712Library.execute(relayRequest, signature);
+            require( forwarderSuccess, error);
+        }
 
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate

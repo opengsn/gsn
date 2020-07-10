@@ -83,20 +83,26 @@ library GsnEip712Library {
         verifySignature(relayRequest, signature);
     }
 
-    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
+    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool forwarderSuccess, bool callSuccess, string memory error) {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        try IForwarder(relayRequest.relayData.forwarder).execute(
-                forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
-        ) returns (bool _success, bytes memory _ret) {
-            if (!_success) {
-                return (false, GsnUtils.getError(_ret));
+        bytes memory ret;
+        (forwarderSuccess, ret) = relayRequest.relayData.forwarder.call(
+            abi.encodeWithSelector(IForwarder.execute.selector,
+            forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
+        ));
+        if ( !forwarderSuccess ) {
+            //forwarder.execute() itself reverted. must be nonce or signature failure
+            error = GsnUtils.getError(ret);
+        }
+
+        //decode return value of execute:
+        (callSuccess, ret) = abi.decode(ret, (bool, bytes));
+        if (!callSuccess) {
+            error = GsnUtils.getError(ret);
+            if (bytes(error).length==0) {
+                error = 'forwarder.execute() reverted';
             }
-            return (true, "");
-        } catch Error(string memory reason) {
-            return (false, reason);
-        } catch {
-            return (false, "call to forwarder reverted");
         }
     }
 
