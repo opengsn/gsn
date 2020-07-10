@@ -12,20 +12,19 @@ services:
       STAGE: 'production'
 
   gsn:
-    image: opengsn/jsrelay:${JSRELAY}
+    image: opengsn/jsrelay:${DOCKERTAG}
     restart: always
     ports:
       - '8090:80' #needed for debugging without https frontend
 
+    # creates a mapped volume so that relay server will keep keys outside of the container.
+    # can be left out, to keep private-key inside the docker.
     volumes:
-      - ./gsndata:/app/data    #can be left out, to keep private-key inside the docker
+      - ./gsndata:/app/data
+      - ./config:/app/config
+
     environment:
       url: https://${HOST}
       port: 80
-      ethereumNodeUrl: ${NODE_URL}
-      relayHubAddress: ${RELAY_HUB}
-      gasPricePercent: ${GAS_PRICE_PERCENT}
-      baseRelayFee: ${BASE_FEE}
-      pctRelayFee: ${PERCENT_FEE}
-
-
+      workdir: /app/data
+      config: /app/config/gsn-relay-config.json
