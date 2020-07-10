@@ -54,7 +54,10 @@ const argv = parseArgs(process.argv.slice(2), {
 if (argv._.length > 0) error(`unknown extra params: ${argv._.toString()}`)
 
 console.log('runServer start. args', argv)
-const config: ServerConfigParams = argv.config != null ? require(argv.config) : {}
+let config: ServerConfigParams = {}
+if (argv.config != null && fs.existsSync(argv.config)) {
+  config = JSON.parse(fs.readFileSync(argv.config, 'utf8'))
+}
 const baseRelayFee: string = argv.baseRelayFee ?? config.baseRelayFee?.toString() ?? error('missing --baseRelayFee')
 const pctRelayFee: string = argv.pctRelayFee ?? config.pctRelayFee?.toString() ?? error('missing --pctRelayFee')
 const url: string = argv.url ?? config.url ?? error('missing --url')
