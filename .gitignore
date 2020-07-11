@@ -23,3 +23,5 @@ cache
 /GsnTestEnvironment.ts
 artifacts
 /yarn-error.log
+/jsrelay/gsndata/
+/jsrelay/dist/relayserver.js

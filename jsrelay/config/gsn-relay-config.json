@@ -1,0 +1,10 @@
+{
+  "baseRelayFee": 70,
+  "pctRelayFee": 0,
+  "port": 8090,
+  "relayHubAddress": "0x254dffcd3277C0b1660F6d42EFbB754edaBAbC2B",
+  "gasPricePercent": 10,
+  "ethereumNodeUrl": "http://host.docker.internal:8545",
+  "devMode": true,
+  "debug": false
+}

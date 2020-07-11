@@ -1,4 +1,6 @@
 #!/bin/bash -xe
+
+# performs SSH into given machine and executes a DC command on it with args
 if [ -z $2 ]; then
 cat <<EOF
 rdc - remote docker-compose (on google cloud)

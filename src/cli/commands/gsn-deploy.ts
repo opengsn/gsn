@@ -25,6 +25,7 @@ gsnCommander(['n', 'f', 'm'])
 
   showDeployment(deploymentResult, `Deployed GSN to network: ${network}`, paymasterName)
   saveDeployment(deploymentResult, commander.workdir)
+  process.exit(0)
 })().catch(
   reason => {
     console.error(reason)

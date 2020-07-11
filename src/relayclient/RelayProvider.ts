@@ -14,7 +14,7 @@ abiDecoder.addABI(relayHubAbi)
 
 export interface BaseTransactionReceipt {
   logs: any[]
-  status: boolean
+  status: string | boolean
 }
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
@@ -158,7 +158,7 @@ export class RelayProvider implements HttpProvider {
         if (this.config.verbose) {
           console.log(`Paymaster rejected on-chain: ${paymasterRejectionReason.value}. changing status to zero`)
         }
-        fixedTransactionReceipt.status = false
+        fixedTransactionReceipt.status = '0'
       }
       return fixedTransactionReceipt
     }
@@ -173,7 +173,7 @@ export class RelayProvider implements HttpProvider {
           if (this.config.verbose) {
             console.log(`reverted relayed transaction, status code ${status}. changing status to zero`)
           }
-          fixedTransactionReceipt.status = false
+          fixedTransactionReceipt.status = '0'
         }
       }
     }
