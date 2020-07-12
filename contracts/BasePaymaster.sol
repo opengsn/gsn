@@ -27,7 +27,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     }
 
     // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
-    uint256 constant private ACCEPT_RELAYED_CALL_GAS_LIMIT = 50000;
+    uint256 constant private COMMITMENT_GAS_LIMIT = 150000;
     uint256 constant private PRE_RELAYED_CALL_GAS_LIMIT = 100000;
     uint256 constant private POST_RELAYED_CALL_GAS_LIMIT = 110000;
 
@@ -40,23 +40,10 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         IPaymaster.GasLimits memory limits
     ) {
         return IPaymaster.GasLimits(
-            ACCEPT_RELAYED_CALL_GAS_LIMIT,
+            COMMITMENT_GAS_LIMIT,
             PRE_RELAYED_CALL_GAS_LIMIT,
             POST_RELAYED_CALL_GAS_LIMIT
         );
-    }
-
-    // this method must be called from acceptRelayedCall to validate that the forwarder
-    // is approved by the paymaster as well and that the request is verified.
-    function _verifySignature(
-        GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature
-    )
-    public
-    view
-    {
-        require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
-        GsnEip712Library.verify(relayRequest, signature);
     }
 
     /*

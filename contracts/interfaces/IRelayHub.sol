@@ -46,6 +46,7 @@ interface IRelayHub {
         address to,
         address relayWorker,
         bytes4 selector,
+        uint256 innerGasUsed,
         string reason);
 
     // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
@@ -72,12 +73,16 @@ interface IRelayHub {
     /// @param OK - the transaction was successfully relayed and execution successful - never included in the event
     /// @param RelayedCallFailed - the transaction was relayed, but the relayed call failed
     /// @param PreRelayedFailed - the transaction was not relayed due to preRelatedCall reverting
+    /// @param ForwarderFailed - the transaction was not relayed due to forwrader check (signature,nonce)
+    /// @param TrustedRecipientFailed - the transaction was not relayed since Paymaster refuse to relay reverted recipient TX.
     /// @param PostRelayedFailed - the transaction was relayed and reverted due to postRelatedCall reverting
     /// @param RecipientBalanceChanged - the transaction was relayed and reverted due to the recipient balance change
     enum RelayCallStatus {
         OK,
         RelayedCallFailed,
         PreRelayedFailed,
+        ForwarderFailed,
+        RecipientFailed,
         PostRelayedFailed,
         RecipientBalanceChanged
     }

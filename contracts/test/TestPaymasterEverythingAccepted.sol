@@ -3,16 +3,16 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "../forwarder/IForwarder.sol";
-import "../BasePaymaster.sol";
+import "../LegacyBasePaymaster.sol";
 
-contract TestPaymasterEverythingAccepted is BasePaymaster {
+contract TestPaymasterEverythingAccepted is LegacyBasePaymaster {
 
     function versionPaymaster() external view override virtual returns (string memory){
         return "2.0.0-alpha.1+opengsn.test_pea.ipaymaster";
     }
 
     event SampleRecipientPreCall();
-    event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
+    event SampleRecipientPostCall(bool success, uint actualCharge);
 
     function acceptRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
@@ -25,8 +25,8 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     virtual
     view
     returns (bytes memory) {
-        (relayRequest, approvalData, maxPossibleGas);
-        GsnEip712Library.verify(relayRequest, signature);
+        (relayRequest, signature, approvalData, maxPossibleGas);
+        GsnEip712Library.verifyForwarderTrusted(relayRequest);
         return "no revert here";
     }
 
@@ -36,7 +36,6 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     external
     override
     virtual
-    relayHubOnly
     returns (bytes32) {
         (context);
         emit SampleRecipientPreCall();
@@ -46,17 +45,15 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     function postRelayedCall(
         bytes calldata context,
         bool success,
-        bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
     external
     override
     virtual
-    relayHubOnly
     {
         (context, gasUseWithoutPost, relayData);
-        emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
+        emit SampleRecipientPostCall(success, gasUseWithoutPost);
     }
 
     function deposit() public payable {

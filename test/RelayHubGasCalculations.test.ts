@@ -37,9 +37,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    arc: 906,
-    pre: 1552,
-    post: 1642
+    pre: 11911,
+    post: 761 + 788
   }
 
   let relayHub: RelayHubInstance
@@ -71,6 +70,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       relayHubConfiguration.MINIMUM_RELAY_BALANCE,
       relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
       relayHubConfiguration.MINIMUM_STAKE)
+    await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarderInstance.registerRequestType(
@@ -150,11 +150,12 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'acceptRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
-        const { tx } = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
+        const res = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
           from: relayWorker,
           gas: transactionGasLimit.toString(),
           gasPrice
         })
+        const { tx } = res
         const gasLimits = await paymaster.getGasLimits()
         const hubOverhead = (await relayHub.gasOverhead()).toNumber()
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
@@ -166,7 +167,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
           gasleft: (parseInt(gasLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
-          arcGasleft: (parseInt(gasLimits.acceptRelayedCallGasLimit) - magicNumbers.arc).toString(),
+          // arcGasleft: (parseInt(gasLimits.acceptRelayedCallGasLimit) - magicNumbers.arc).toString(),
           maxPossibleGas: maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPostCallWithValues', {
@@ -176,7 +177,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
     it('should set correct gas limits and pass correct \'gasUsedWithoutPost\' to the \'postRelayCall\'', async () => {
       const gasPrice = 1e9
-      const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', 0, {
+      const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', {
         gasPrice,
         pctRelayFee: 0,
         baseRelayFee: 0,
@@ -207,6 +208,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     it('should revert an attempt to use more than allowed gas for acceptRelayedCall', async function () {
       // TODO: extract preparation to 'before' block
       const misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+      await misbehavingPaymaster.setTrustedForwarder(forwarder)
       await misbehavingPaymaster.setRelayHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: ether('0.1') })
       await misbehavingPaymaster.setOverspendAcceptGas(true)

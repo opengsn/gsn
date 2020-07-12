@@ -62,7 +62,6 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     function preRelayedCall(bytes calldata context)
     external
     override
-    relayHubOnly
     returns (bytes32) {
         (
         address relay, address from, bytes memory encodedFunction,
@@ -78,7 +77,6 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     function postRelayedCall(
         bytes calldata context,
         bool success,
-        bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
@@ -86,7 +84,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     override
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, relayData);
+        (context, success, gasUseWithoutPost, relayData);
         (
         address relay, address from, bytes memory encodedFunction,
         uint256 baseRelayFee, uint256 pctRelayFee, uint256 gasPrice, uint256 gasLimit,

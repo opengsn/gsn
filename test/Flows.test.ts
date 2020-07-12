@@ -96,6 +96,7 @@ options.forEach(params => {
       )
 
       paymaster = await TestPaymasterEverythingAccepted.new()
+      await paymaster.setTrustedForwarder(forwarder.address)
       await paymaster.setRelayHub(rhub.address)
     })
 
@@ -173,6 +174,7 @@ options.forEach(params => {
         before(async function () {
           approvalPaymaster = await TestPaymasterPreconfiguredApproval.new()
           await approvalPaymaster.setRelayHub(rhub.address)
+          await approvalPaymaster.setTrustedForwarder(await sr.getTrustedForwarder())
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
 
           const relayProvider =

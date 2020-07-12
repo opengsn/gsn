@@ -31,8 +31,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),
     PreRelayedFailed: new BN('2'),
-    PostRelayedFailed: new BN('3'),
-    RecipientBalanceChanged: new BN('4')
+    ForwarderFailed: new BN('3'),
+    RecipientFailed: new BN('4'),
+    PostRelayedFailed: new BN('5'),
+    RecipientBalanceChanged: new BN('6')
   }
 
   const chainId = defaultEnvironment.chainId
@@ -78,6 +80,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     paymaster = paymasterContract.address
     relayHub = relayHubInstance.address
 
+    await paymasterContract.setTrustedForwarder(forwarder)
     await paymasterContract.setRelayHub(relayHub)
   })
 
@@ -323,6 +326,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         beforeEach(async function () {
           misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+          await misbehavingPaymaster.setTrustedForwarder(forwarder)
           await misbehavingPaymaster.setRelayHub(relayHub)
           await relayHubInstance.depositFor(misbehavingPaymaster.address, {
             value: ether('1'),
@@ -371,6 +375,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         beforeEach(async function () {
           paymasterWithContext = await TestPaymasterStoreContext.new()
           misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+          await paymasterWithContext.setTrustedForwarder(forwarder)
+          await misbehavingPaymaster.setTrustedForwarder(forwarder)
           await paymasterWithContext.setRelayHub(relayHub)
           await misbehavingPaymaster.setRelayHub(relayHub)
           await relayHubInstance.depositFor(paymasterWithContext.address, {
@@ -435,6 +441,23 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             msgSender: forwarder,
             origin: relayWorker
           })
+        })
+
+        it('relayCall should refuse to re-send transaction with same nonce', async function () {
+          const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
+            from: relayWorker,
+            gas,
+            gasPrice
+          })
+          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted')
+
+          const ret = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
+            from: relayWorker,
+            gas,
+            gasPrice
+          })
+
+          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: 'nonce mismatch' })
         })
 
         // This test is added due to a regression that almost slipped to production.
@@ -564,6 +587,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
           async function () {
             const paymaster2 = await TestPaymasterEverythingAccepted.new()
+            await paymaster2.setTrustedForwarder(forwarder)
             await paymaster2.setRelayHub(relayHub)
             const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
               gasPrice,
@@ -607,7 +631,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             toBlock: 'latest'
           })
           assert.equal(0, logsMessages.length)
-          expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.PreRelayedFailed })
+          expectEvent.inLogs(logs, 'TransactionRejectedByPaymaster', { reason: 'You asked me to revert, remember?' })
         })
 
         it('should revert the \'relayedCall\' if \'postRelayedCall\' reverts', async function () {
@@ -627,6 +651,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             toBlock: 'latest'
           })
           assert.equal(0, logsMessages.length)
+
           expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.PostRelayedFailed })
         })
 
@@ -636,6 +661,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           let signature: string
           beforeEach(async function () {
             misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+            await misbehavingPaymaster.setTrustedForwarder(forwarder)
             await misbehavingPaymaster.setRelayHub(relayHub)
             await relayHubInstance.depositFor(misbehavingPaymaster.address, {
               value: ether('1'),

@@ -67,6 +67,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     )
     recipient = await TestRecipient.new(forwarder.address)
 
+    await paymaster.setTrustedForwarder(forwarder.address)
     await paymaster.setRelayHub(hub.address)
 
     sharedRelayRequestData = {

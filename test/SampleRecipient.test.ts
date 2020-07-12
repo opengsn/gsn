@@ -7,7 +7,6 @@ import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { relayHubConfiguration } from '../src/common/Environments'
-
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -57,6 +56,7 @@ contract('SampleRecipient', function (accounts) {
       relayHubConfiguration.MINIMUM_RELAY_BALANCE,
       relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
       relayHubConfiguration.MINIMUM_STAKE)
+    await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(rhub.address)
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,

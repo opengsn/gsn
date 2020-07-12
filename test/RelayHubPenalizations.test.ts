@@ -71,6 +71,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       value: ether('1')
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
+    await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     // @ts-ignore

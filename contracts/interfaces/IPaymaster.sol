@@ -7,7 +7,9 @@ import "./GsnTypes.sol";
 interface IPaymaster {
 
     struct GasLimits {
-        uint256 acceptRelayedCallGasLimit;
+        //paymaster is commited to pay reverted transactions above this gas limit.
+        // This limit includes both preRelayedCall gaslimit AND forwrader's nonce and signature validation.
+        uint256 commitmentGasLimit;
         uint256 preRelayedCallGasLimit;
         uint256 postRelayedCallGasLimit;
     }
@@ -37,44 +39,31 @@ interface IPaymaster {
      * Called by Relay (and RelayHub), to validate if this recipient accepts this call.
      * revert to signal the paymaster will NOT pay for this call.
      * Note: Accepting this call means paying for the tx whether the relayed call reverted or not.
+     * Also, the call is rejected if the Forwarder reverts on recipient's nonce or signature errors.
      *  @param relayRequest - the full relay request structure
      *  @param signature - user's EIP712-compatible signature of the {@link relayRequest}
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      *  @param maxPossibleGas - based on values returned from {@link getGasLimits},
      *         the RelayHub will calculate the maximum possible amount of gas the user may be charged for.
      *         In order to convert this value to wei, the Paymaster has to call "relayHub.calculateCharge()"
-     *  @return a context to be passed to preRelayedCall and postRelayedCall.
+     *  return:
+     *      a context to be passed to postRelayedCall
+     *      isTrustedRecipient - TRUE if paymaster want to reject the TX if the recipient reverts.
+     *          This flag means the Paymaster trust the recipient to revert fast enough (within "commitment" gas limit)
      */
-    function acceptRelayedCall(
+    function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
-    view
-    returns (bytes memory);
-
-    /** this method is called before the actual relayed function call.
-     * It may be used to charge the caller before
-     * (in conjunction with refunding him later in postRelayedCall for example).
-     * the method is given all parameters of acceptRelayedCall and actual used gas.
-     *
-     *
-     * NOTICE: if this method modifies the contract's state, it must be
-     * protected with access control i.e. require msg.sender == getHubAddr()
-     *
-     *
-     * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
-     * (that is, the relay will still get compensated)
-     */
-    function preRelayedCall(bytes calldata context) external returns (bytes32);
+    returns (bytes memory context, bool isTrustedRecipient);
 
     /**
      * This method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
      * the method is given all parameters of acceptRelayedCall, and also the success/failure status and actual used gas.
-     *
      *
      * NOTICE: if this method modifies the contract's state,
      * it must be protected with access control i.e. require msg.sender == getHubAddr()
@@ -84,7 +73,6 @@ interface IPaymaster {
      * @param gasUseWithoutPost - the actual amount of gas used by the entire transaction.
               Does not included any estimate of how much gas PostRelayCall itself will consume.
               NOTE: The gas overhead estimation is included in this number.
-     * @param preRetVal - preRelayedCall() return value passed back to the recipient
      *
      * Revert in this functions causes a revert of the client's relayed call but not in the entire transaction
      * (that is, the relay will still get compensated)
@@ -92,7 +80,6 @@ interface IPaymaster {
     function postRelayedCall(
         bytes calldata context,
         bool success,
-        bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     ) external;

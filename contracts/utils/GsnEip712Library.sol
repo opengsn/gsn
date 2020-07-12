@@ -60,6 +60,8 @@ library GsnEip712Library {
             hashRelayData(req.relayData));
     }
 
+    //verify that the recipient trusts the given forwarder
+    // MUST be called by paymaster
     function verifyForwarderTrusted(GsnTypes.RelayRequest calldata relayRequest) internal view {
         (bool success, bytes memory ret) = relayRequest.request.to.staticcall(
             abi.encodeWithSelector(
@@ -87,6 +89,7 @@ library GsnEip712Library {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         bytes memory ret;
+        /* solhint-disable-next-line avoid-low-level-calls */
         (forwarderSuccess, ret) = relayRequest.relayData.forwarder.call(
             abi.encodeWithSelector(IForwarder.execute.selector,
             forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
@@ -94,15 +97,16 @@ library GsnEip712Library {
         if ( !forwarderSuccess ) {
             //forwarder.execute() itself reverted. must be nonce or signature failure
             error = GsnUtils.getError(ret);
-        }
+        } else {
 
         //decode return value of execute:
         (callSuccess, ret) = abi.decode(ret, (bool, bytes));
         if (!callSuccess) {
             error = GsnUtils.getError(ret);
             if (bytes(error).length==0) {
-                error = 'forwarder.execute() reverted';
+                error = "forwarder.execute() reverted";
             }
+        }
         }
     }
 

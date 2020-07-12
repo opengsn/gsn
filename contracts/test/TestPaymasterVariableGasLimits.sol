@@ -38,7 +38,6 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
     function preRelayedCall(bytes calldata context)
     external
     override
-    relayHubOnly
     returns (bytes32) {
         (
         uint256 arcGasleft, uint256 maxPossibleGas) =
@@ -51,7 +50,6 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
     function postRelayedCall(
         bytes calldata context,
         bool success,
-        bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
@@ -59,7 +57,7 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
     override
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, relayData);
+        (context, success, gasUseWithoutPost, relayData);
         emit SampleRecipientPostCallWithValues(gasleft(), gasUseWithoutPost);
     }
 }

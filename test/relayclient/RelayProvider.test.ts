@@ -114,6 +114,7 @@ contract('RelayProvider', function (accounts) {
 
     paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address
+    await paymasterInstance.setTrustedForwarder(forwarderAddress)
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
     relayProcess = await startRelay(relayHub.address, stakeManager, {
@@ -324,6 +325,7 @@ contract('RelayProvider', function (accounts) {
 
       // create desired transactions
       misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+      await misbehavingPaymaster.setTrustedForwarder(forwarderAddress)
       await misbehavingPaymaster.setRelayHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
@@ -344,8 +346,8 @@ contract('RelayProvider', function (accounts) {
         gas,
         gasPrice: '1'
       })
-      expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRelayed', {
-        status: '2'
+      expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster', {
+        reason: 'You asked me to revert, remember?'
       })
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 

@@ -58,7 +58,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function preRelayedCall(bytes calldata context)
     external
     override
-    relayHubOnly
     returns (bytes32) {
         (context);
         if (withdrawDuringPreRelayedCall) {
@@ -73,7 +72,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function postRelayedCall(
         bytes calldata context,
         bool success,
-        bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
@@ -81,7 +79,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     override
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, relayData);
+        (context, success, gasUseWithoutPost, relayData);
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
