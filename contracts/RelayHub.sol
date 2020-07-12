@@ -304,6 +304,7 @@ contract RelayHub is IRelayHub {
             bytes memory retData;
             // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
             // acceptRelayedCall that this will not happen.
+
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(atomicData.data);
             if (!success) {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed, retData);
@@ -312,6 +313,7 @@ contract RelayHub is IRelayHub {
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
+
         {
             bool forwarderSuccess;
             string memory error;
