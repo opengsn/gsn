@@ -17,7 +17,6 @@ import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
 import "./forwarder/IForwarder.sol";
 import "./interfaces/IStakeManager.sol";
-import "./interfaces/IPenalizer.sol";
 
 contract RelayHub is IRelayHub {
 
@@ -32,7 +31,7 @@ contract RelayHub is IRelayHub {
     uint256 public override gasReserve;
     uint256 public override maxWorkerCount;
     IStakeManager override public stakeManager;
-    IPenalizer override public penalizer;
+    address override public penalizer;
 
     // maps relay worker's address to its manager's address
     mapping(address => address) public workerToManager;
@@ -44,7 +43,7 @@ contract RelayHub is IRelayHub {
 
     constructor (
         IStakeManager _stakeManager,
-        IPenalizer _penalizer,
+        address _penalizer,
         uint256 _maxWorkerCount,
         uint256 _gasReserve,
         uint256 _postOverhead,
@@ -347,7 +346,7 @@ contract RelayHub is IRelayHub {
     }
 
     modifier penalizerOnly () {
-        require(msg.sender == address(penalizer), "Not penalizer");
+        require(msg.sender == penalizer, "Not penalizer");
         _;
     }
 

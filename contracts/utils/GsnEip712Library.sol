@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
-import "../forwarder/Forwarder.sol";
+import "../forwarder/IForwarder.sol";
 
 import "./GsnUtils.sol";
 
