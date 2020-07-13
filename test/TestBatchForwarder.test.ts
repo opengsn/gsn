@@ -6,7 +6,7 @@ import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequ
 
 import { getEip712Signature } from '../src/common/Utils'
 
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { defaultEnvironment, relayHubConfiguration } from '../src/common/Environments'
 import {
   RelayHubInstance,
   TestPaymasterEverythingAcceptedInstance,
@@ -15,11 +15,11 @@ import {
 } from '../types/truffle-contracts'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
-const RelayHub = artifacts.require('RelayHub.sol')
+const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
-const BatchForwarder = artifacts.require('./BatchForwarder.sol')
-const TestRecipient = artifacts.require('TestRecipient.sol')
+const BatchForwarder = artifacts.require('BatchForwarder')
+const TestRecipient = artifacts.require('TestRecipient')
 
 contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   let paymaster: TestPaymasterEverythingAcceptedInstance
@@ -34,7 +34,18 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
 
     const stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
-    hub = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
+    hub = await RelayHub.new(
+      stakeManager.address,
+      penalizer.address,
+      relayHubConfiguration.MAX_WORKER_COUNT,
+      relayHubConfiguration.GAS_RESERVE,
+      relayHubConfiguration.POST_OVERHEAD,
+      relayHubConfiguration.GAS_OVERHEAD,
+      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
+      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
+      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
+      relayHubConfiguration.MINIMUM_STAKE,
+      { gas: 10000000 })
     const relayHub = hub
     await stakeManager.stakeForAddress(relayManager, 2000, {
       value: ether('2'),

@@ -4,7 +4,7 @@ import { expect } from 'chai'
 
 import { getEip712Signature } from '../src/common/Utils'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { defaultEnvironment, relayHubConfiguration } from '../src/common/Environments'
 import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 
 import {
@@ -51,7 +51,18 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   beforeEach(async function () {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHubInstance = await RelayHub.new(stakeManager.address, penalizer.address, { gas: 10000000 })
+    relayHubInstance = await RelayHub.new(
+      stakeManager.address,
+      penalizer.address,
+      relayHubConfiguration.MAX_WORKER_COUNT,
+      relayHubConfiguration.GAS_RESERVE,
+      relayHubConfiguration.POST_OVERHEAD,
+      relayHubConfiguration.GAS_OVERHEAD,
+      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
+      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
+      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
+      relayHubConfiguration.MINIMUM_STAKE,
+      { gas: 10000000 })
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address

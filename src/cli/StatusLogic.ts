@@ -38,7 +38,7 @@ export default class StatusLogic {
     const fromBlock = Math.max(1, curBlockNumber - this.config.blockHistoryCount)
 
     const r = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
-    const stakeManager = await r.getStakeManager()
+    const stakeManager = await r.stakeManager()
     const totalStakesByRelays = await this.contractInteractor.getBalance(stakeManager)
 
     const relayRegisteredEventsData =

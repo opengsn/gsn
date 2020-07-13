@@ -5,7 +5,7 @@ import BN from 'bn.js'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { merge } from 'lodash'
 
-import { constants, ether, sleep } from '../common/Utils'
+import { ether, sleep } from '../common/Utils'
 
 // compiled folder populated by "prepublish"
 import StakeManager from './compiled/StakeManager.json'
@@ -20,6 +20,8 @@ import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
 import { GsnRequestType } from '../common/EIP712/TypedRequestData'
+import { constants } from '../common/Constants'
+import { relayHubConfiguration } from '../common/Environments'
 
 interface RegisterOptions {
   from: Address
@@ -162,7 +164,7 @@ export default class CommandsLogic {
       const response = await this.httpClient.getPingResponse(options.relayUrl)
       const relayAddress = response.RelayManagerAddress
       const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
-      const stakeManagerAddress = await relayHub.getStakeManager()
+      const stakeManagerAddress = await relayHub.stakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       stakeTx = await stakeManager
         .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
@@ -229,7 +231,17 @@ export default class CommandsLogic {
       fInstance = this.contract(Forwarder, deployOptions.forwarderAddress)
     }
     const rInstance = await this.contract(RelayHub).deploy({
-      arguments: [sInstance.options.address, pInstance.options.address]
+      arguments: [
+        sInstance.options.address,
+        pInstance.options.address,
+        relayHubConfiguration.MAX_WORKER_COUNT,
+        relayHubConfiguration.GAS_RESERVE,
+        relayHubConfiguration.POST_OVERHEAD,
+        relayHubConfiguration.GAS_OVERHEAD,
+        relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
+        relayHubConfiguration.MINIMUM_RELAY_BALANCE,
+        relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
+        relayHubConfiguration.MINIMUM_STAKE]
     }).send(merge(options, { gas: 5e6 }))
 
     let paymasterAddress = constants.ZERO_ADDRESS

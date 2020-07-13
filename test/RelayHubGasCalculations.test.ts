@@ -3,7 +3,7 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { defaultEnvironment, relayHubConfiguration } from '../src/common/Environments'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 
 import {
@@ -60,7 +60,17 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(stakeManager.address, penalizer.address)
+    relayHub = await RelayHub.new(
+      stakeManager.address,
+      penalizer.address,
+      relayHubConfiguration.MAX_WORKER_COUNT,
+      relayHubConfiguration.GAS_RESERVE,
+      relayHubConfiguration.POST_OVERHEAD,
+      relayHubConfiguration.GAS_OVERHEAD,
+      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
+      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
+      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
+      relayHubConfiguration.MINIMUM_STAKE)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarderInstance.registerRequestType(
@@ -146,7 +156,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           gasPrice
         })
         const gasLimits = await paymaster.getGasLimits()
-        const hubOverhead = (await relayHub.getHubOverhead()).toNumber()
+        const hubOverhead = (await relayHub.gasOverhead()).toNumber()
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasLimits,
           hubOverhead,

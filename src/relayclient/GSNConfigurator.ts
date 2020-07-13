@@ -1,6 +1,6 @@
 import { HttpProvider } from 'web3-core'
 import { Address, AsyncDataCallback, AsyncScoreCalculator, IntString, PingFilter, RelayFilter } from './types/Aliases'
-import { defaultEnvironment } from './types/Environments'
+import { defaultEnvironment } from '../common/Environments'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
@@ -8,7 +8,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
 import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
-import { constants } from '../common/Utils'
+import { constants } from '../common/Constants'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3

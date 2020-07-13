@@ -16,6 +16,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import { relayHubConfiguration } from '../src/common/Environments'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -56,7 +57,18 @@ options.forEach(params => {
 
       sm = await StakeManager.new()
       const p = await Penalizer.new()
-      rhub = await RelayHub.new(sm.address, p.address, { gas: 10000000 })
+      rhub = await RelayHub.new(
+        sm.address,
+        p.address,
+        relayHubConfiguration.MAX_WORKER_COUNT,
+        relayHubConfiguration.GAS_RESERVE,
+        relayHubConfiguration.POST_OVERHEAD,
+        relayHubConfiguration.GAS_OVERHEAD,
+        relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
+        relayHubConfiguration.MINIMUM_RELAY_BALANCE,
+        relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
+        relayHubConfiguration.MINIMUM_STAKE,
+        { gas: 10000000 })
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
           stake: 1e18,

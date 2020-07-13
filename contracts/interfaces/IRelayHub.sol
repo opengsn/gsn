@@ -3,9 +3,10 @@ pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import "./GsnTypes.sol";
+import "./IStakeManager.sol";
+import "./IPenalizer.sol";
 
 interface IRelayHub {
-
 
     /// Emitted when a relay server registers or updates its details
     /// Looking at these events lets a client discover relay servers
@@ -82,9 +83,6 @@ interface IRelayHub {
         RecipientBalanceChanged
     }
 
-    //return the stake manager of this RelayHub
-    function getStakeManager() external view returns(address);
-
     /// Add new worker addresses controlled by sender who must be a staked Relay Manager address.
     /// Emits a RelayWorkersAdded event.
     /// This function can be called multiple times, emitting new events
@@ -98,10 +96,6 @@ interface IRelayHub {
     // be withdrawn by the contract itself, by calling withdraw.
     // Emits a Deposited event.
     function depositFor(address target) external payable;
-
-
-    // Returns an account's deposits. These can be either a contract's funds, or a relay manager's revenue.
-    function balanceOf(address target) external view returns (uint256);
 
     // Withdraws from an account's balance, sending it back to it. Relay managers call this to retrieve their revenue, and
     // contracts can also use it to reduce their funding.
@@ -139,12 +133,49 @@ interface IRelayHub {
 
     function penalize(address relayWorker, address payable beneficiary) external;
 
-    function getHubOverhead() external view returns (uint256);
-
     /// The fee is expressed as a base fee in wei plus percentage on actual charge.
     /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
     /// charged for 1.4 times the spent amount.
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) external view returns (uint256);
+
+    /* getters */
+
+    /// Returns the stake manager of this RelayHub.
+    function stakeManager() external view returns(IStakeManager);
+    function penalizer() external view returns(IPenalizer);
+
+    /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.
+    function balanceOf(address target) external view returns (uint256);
+
+    // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
+    function minimumStake() external view returns (uint256);
+
+    // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
+    function minimumUnstakeDelay() external view returns (uint256);
+
+    // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
+    // will not be able to immediately start serving requests.
+    function minimumRelayBalance() external view returns (uint256);
+
+    // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
+    function maximumRecipientDeposit() external view returns (uint256);
+
+    //gas overhead to calculate gasUseWithoutPost
+    function postOverhead() external view returns (uint256);
+
+    // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
+    function gasReserve() external view returns (uint256);
+
+    // maximum number of worker account allowed per manager
+    function maxWorkerCount() external view returns (uint256);
+
+    /**
+    * @dev the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
+    * Assume that relay has non-zero balance (costs 15'000 more otherwise).
+    */
+
+    // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
+    function gasOverhead() external view returns (uint256);
 
     function versionHub() external view returns (string memory);
 }

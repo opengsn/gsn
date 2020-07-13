@@ -21,7 +21,7 @@ import { IPaymasterInstance, IRelayHubInstance, IStakeManagerInstance } from '..
 import { BlockHeader } from 'web3-eth'
 import { TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
-import { defaultEnvironment } from '../relayclient/types/Environments'
+import { defaultEnvironment } from '../common/Environments'
 import VersionsManager from '../common/VersionsManager'
 import { calculateTransactionMaxPossibleGas } from '../common/Utils'
 
@@ -275,7 +275,7 @@ export class RelayServer extends EventEmitter {
       throw new Error(`unknown paymaster error: ${e.message}`)
     }
 
-    const hubOverhead = (await this.relayHubContract.getHubOverhead()).toNumber()
+    const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
     // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
@@ -407,7 +407,7 @@ export class RelayServer extends EventEmitter {
     if (!this.versionManager.isMinorSameOrNewer(version)) {
       this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
     }
-    const stakeManagerAddress = await this.relayHubContract.getStakeManager()
+    const stakeManagerAddress = await this.relayHubContract.stakeManager()
     this.stakeManagerContract = await this.contractInteractor._createStakeManager(stakeManagerAddress)
     const stakeManagerTopics = [Object.keys(this.stakeManagerContract.contract.events).filter(x => (x.includes('0x')))]
     this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.managerAddress.slice(2)]])
@@ -420,8 +420,7 @@ export class RelayServer extends EventEmitter {
     }
     this.rawTxOptions = this.contractInteractor.getRawTxOptions()
 
-    // todo: fix typo AND fix metacoin
-    debug('intialized', this.chainId, this.networkId, this.rawTxOptions)
+    debug('initialized', this.chainId, this.networkId, this.rawTxOptions)
     this.initialized = true
   }
 

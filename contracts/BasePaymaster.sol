@@ -22,8 +22,6 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     IRelayHub internal relayHub;
     IForwarder internal trustedForwarder;
 
-    bytes32 public domainSeparator;
-
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
     }
@@ -75,7 +73,6 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
 
     function setTrustedForwarder(IForwarder forwarder) public onlyOwner {
         trustedForwarder = forwarder;
-        domainSeparator = GsnEip712Library.domainSeparator(address(forwarder));
     }
 
     /// check current deposit on relay hub.

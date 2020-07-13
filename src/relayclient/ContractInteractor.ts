@@ -11,7 +11,8 @@ import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
-import { constants, event2topic } from '../common/Utils'
+import { event2topic } from '../common/Utils'
+import { constants } from '../common/Constants'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import VersionsManager from '../common/VersionsManager'
 import {
