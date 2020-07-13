@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
-import "../forwarder/Forwarder.sol";
+import "../forwarder/IForwarder.sol";
 
 import "./GsnUtils.sol";
 
@@ -45,7 +45,7 @@ library GsnEip712Library {
     internal
     pure
     returns (
-        Forwarder.ForwardRequest memory forwardRequest,
+        IForwarder.ForwardRequest memory forwardRequest,
         bytes memory suffixData
     ) {
         forwardRequest = IForwarder.ForwardRequest(
@@ -72,9 +72,9 @@ library GsnEip712Library {
     }
 
     function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
-        (Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        Forwarder forwarder = Forwarder(payable(relayRequest.relayData.forwarder));
+        IForwarder forwarder = IForwarder(payable(relayRequest.relayData.forwarder));
         forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 
@@ -84,7 +84,7 @@ library GsnEip712Library {
     }
 
     function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
-        (Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature

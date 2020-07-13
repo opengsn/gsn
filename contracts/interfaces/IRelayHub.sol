@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "./GsnTypes.sol";
 import "./IStakeManager.sol";
-import "./IPenalizer.sol";
 
 interface IRelayHub {
 
@@ -142,7 +141,7 @@ interface IRelayHub {
 
     /// Returns the stake manager of this RelayHub.
     function stakeManager() external view returns(IStakeManager);
-    function penalizer() external view returns(IPenalizer);
+    function penalizer() external view returns(address);
 
     /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.
     function balanceOf(address target) external view returns (uint256);
