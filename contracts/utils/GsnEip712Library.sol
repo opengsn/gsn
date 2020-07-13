@@ -45,7 +45,7 @@ library GsnEip712Library {
     internal
     pure
     returns (
-        Forwarder.ForwardRequest memory forwardRequest,
+        IForwarder.ForwardRequest memory forwardRequest,
         bytes memory suffixData
     ) {
         forwardRequest = IForwarder.ForwardRequest(
