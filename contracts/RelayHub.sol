@@ -11,49 +11,28 @@ import "./0x/LibBytesV06.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/GsnUtils.sol";
+import "./utils/GsnEip712Library.sol";
 import "./interfaces/GsnTypes.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
 import "./forwarder/IForwarder.sol";
-import "./BaseRelayRecipient.sol";
-import "./StakeManager.sol";
-import "./Penalizer.sol";
-import "./utils/GsnEip712Library.sol";
+import "./interfaces/IStakeManager.sol";
+import "./interfaces/IPenalizer.sol";
 
 contract RelayHub is IRelayHub {
 
     string public override versionHub = "2.0.0-alpha.1+opengsn.hub.irelayhub";
 
-    // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
-    uint256 constant private MINIMUM_STAKE = 1 ether;
-
-    // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
-    uint256 constant private MINIMUM_UNSTAKE_DELAY = 1000;
-
-    // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
-    // will not be able to immediately start serving requests.
-    uint256 constant private MINIMUM_RELAY_BALANCE = 0.1 ether;
-
-    // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
-    uint256 constant private MAXIMUM_RECIPIENT_DEPOSIT = 2 ether;
-
-    /**
-    * @dev the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
-    * Assume that relay has non-zero balance (costs 15'000 more otherwise).
-    */
-
-    // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    uint256 constant private GAS_OVERHEAD = 34936;
-
-    //gas overhead to calculate gasUseWithoutPost
-    uint256 constant private POST_OVERHEAD = 9959;
-
-    function getHubOverhead() external override view returns (uint256) {
-        return GAS_OVERHEAD;
-    }
-    // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
-    uint256 constant private GAS_RESERVE = 100000;
-
+    uint256 public override minimumStake;
+    uint256 public override minimumUnstakeDelay;
+    uint256 public override minimumRelayBalance;
+    uint256 public override maximumRecipientDeposit;
+    uint256 public override gasOverhead;
+    uint256 public override postOverhead;
+    uint256 public override gasReserve;
+    uint256 public override maxWorkerCount;
+    IStakeManager override public stakeManager;
+    IPenalizer override public penalizer;
 
     // maps relay worker's address to its manager's address
     mapping(address => address) public workerToManager;
@@ -61,26 +40,36 @@ contract RelayHub is IRelayHub {
     // maps relay managers to the number of their workers
     mapping(address => uint256) public workerCount;
 
-    uint256 constant public MAX_WORKER_COUNT = 10;
+    mapping(address => uint256) private balances;
 
-    mapping(address => uint256) public balances;
-
-    StakeManager public stakeManager;
-    Penalizer public penalizer;
-
-    constructor (StakeManager _stakeManager, Penalizer _penalizer) public {
+    constructor (
+        IStakeManager _stakeManager,
+        IPenalizer _penalizer,
+        uint256 _maxWorkerCount,
+        uint256 _gasReserve,
+        uint256 _postOverhead,
+        uint256 _gasOverhead,
+        uint256 _maximumRecipientDeposit,
+        uint256 _minimumRelayBalance,
+        uint256 _minimumUnstakeDelay,
+        uint256 _minimumStake
+    ) public {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
-    }
-
-    function getStakeManager() external override view returns(address) {
-        return address(stakeManager);
+        maxWorkerCount = _maxWorkerCount;
+        gasReserve = _gasReserve;
+        postOverhead = _postOverhead;
+        gasOverhead = _gasOverhead;
+        maximumRecipientDeposit = _maximumRecipientDeposit;
+        minimumRelayBalance = _minimumRelayBalance;
+        minimumUnstakeDelay = _minimumUnstakeDelay;
+        minimumStake =  _minimumStake;
     }
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
         address relayManager = msg.sender;
         require(
-            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay),
             "relay manager not staked"
         );
         require(workerCount[relayManager] > 0, "no relay workers");
@@ -90,10 +79,10 @@ contract RelayHub is IRelayHub {
     function addRelayWorkers(address[] calldata newRelayWorkers) external override {
         address relayManager = msg.sender;
         workerCount[relayManager] = workerCount[relayManager] + newRelayWorkers.length;
-        require(workerCount[relayManager] <= MAX_WORKER_COUNT, "too many workers");
+        require(workerCount[relayManager] <= maxWorkerCount, "too many workers");
 
         require(
-            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay),
             "relay manager not staked"
         );
 
@@ -107,7 +96,7 @@ contract RelayHub is IRelayHub {
 
     function depositFor(address target) public override payable {
         uint256 amount = msg.value;
-        require(amount <= MAXIMUM_RECIPIENT_DEPOSIT, "deposit too big");
+        require(amount <= maximumRecipientDeposit, "deposit too big");
 
         balances[target] = SafeMath.add(balances[target], amount);
 
@@ -141,7 +130,7 @@ contract RelayHub is IRelayHub {
         gasLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
         uint256 maxPossibleGas =
-            GAS_OVERHEAD +
+            gasOverhead +
             gasLimits.acceptRelayedCallGasLimit +
             gasLimits.preRelayedCallGasLimit +
             gasLimits.postRelayedCallGasLimit +
@@ -194,7 +183,7 @@ contract RelayHub is IRelayHub {
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
         require(
-            stakeManager.isRelayManagerStaked(workerToManager[msg.sender], MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            stakeManager.isRelayManagerStaked(workerToManager[msg.sender], minimumStake, minimumUnstakeDelay),
             "relay manager not staked"
         );
         require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
@@ -224,14 +213,14 @@ contract RelayHub is IRelayHub {
     {
         //How much gas to pass down to innerRelayCall. must be lower than the default 63/64
         // actually, min(gasleft*63/64, gasleft-GAS_RESERVE) might be enough.
-        uint innerGasLimit = gasleft()*63/64-GAS_RESERVE;
+        uint innerGasLimit = gasleft()*63/64-gasReserve;
 
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
         (, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, vars.gasLimits,
-                innerGasLimit + externalGasLimit-gasleft() + GAS_OVERHEAD + POST_OVERHEAD, /*totalInitialGas*/
+                innerGasLimit + externalGasLimit-gasleft() + gasOverhead + postOverhead, /*totalInitialGas*/
                 abi.decode(vars.recipientContext, (bytes)))
         );
         vars.status = abi.decode(relayCallStatus, (RelayCallStatus));
@@ -239,7 +228,7 @@ contract RelayHub is IRelayHub {
     }
     {
         // We now perform the actual charge calculation, based on the measured gas used
-        uint256 gasUsed = (externalGasLimit - gasleft()) + GAS_OVERHEAD;
+        uint256 gasUsed = (externalGasLimit - gasleft()) + gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         // We've already checked that the paymaster has enough balance to pay for the relayed transaction, this is only
@@ -367,10 +356,10 @@ contract RelayHub is IRelayHub {
         // The worker must be controlled by a manager with a locked stake
         require(relayManager != address(0), "Unknown relay worker");
         require(
-            stakeManager.isRelayManagerStaked(relayManager, MINIMUM_STAKE, MINIMUM_UNSTAKE_DELAY),
+            stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay),
             "relay manager not staked"
         );
-        (uint256 totalStake, , , ) = stakeManager.stakes(relayManager);
-        stakeManager.penalizeRelayManager(relayManager, beneficiary, totalStake);
+        IStakeManager.StakeInfo memory stakeInfo = stakeManager.getStakeInfo(relayManager);
+        stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }
 }

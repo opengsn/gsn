@@ -8,7 +8,7 @@ import { KeyManager } from '../src/relayserver/KeyManager'
 import RelayHubABI from '../src/common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../src/common/interfaces/IPaymaster.json'
-import { defaultEnvironment } from '../src/relayclient/types/Environments'
+import { defaultEnvironment, relayHubConfiguration } from '../src/common/Environments'
 import * as ethUtils from 'ethereumjs-util'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 // @ts-ignore
@@ -40,19 +40,21 @@ import Mutex from 'async-mutex/lib/Mutex'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import ContractInteractor from '../src/relayclient/ContractInteractor'
 
-const RelayHub = artifacts.require('./RelayHub.sol')
-const TestRecipient = artifacts.require('./test/TestRecipient.sol')
+const RelayHub = artifacts.require('RelayHub')
+const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
-const StakeManager = artifacts.require('./StakeManager.sol')
-const Penalizer = artifacts.require('./Penalizer.sol')
-const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
+const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
+const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
 const { expect } = require('chai').use(chaiAsPromised).use(sinonChai)
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(StakeManagerABI)
 abiDecoder.addABI(PayMasterABI)
+// @ts-ignore
 abiDecoder.addABI(TestRecipient.abi)
+// @ts-ignore
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 
 const localhostOne = 'http://localhost:8090'
@@ -143,7 +145,17 @@ contract('RelayServer', function (accounts) {
 
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    rhub = await RelayHub.new(stakeManager.address, penalizer.address)
+    rhub = await RelayHub.new(
+      stakeManager.address,
+      penalizer.address,
+      relayHubConfiguration.MAX_WORKER_COUNT,
+      relayHubConfiguration.GAS_RESERVE,
+      relayHubConfiguration.POST_OVERHEAD,
+      relayHubConfiguration.GAS_OVERHEAD,
+      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
+      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
+      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
+      relayHubConfiguration.MINIMUM_STAKE)
     forwarder = await Forwarder.new()
     const forwarderAddress = forwarder.address
     sr = await TestRecipient.new(forwarderAddress)

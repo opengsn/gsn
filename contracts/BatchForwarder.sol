@@ -8,7 +8,7 @@ import "./utils/GsnUtils.sol";
 
 /**
  * batch forwarder support calling a method sendBatch in the forwarder itself.
- * NOTE: the "target" of the request should be the BatcherForwarder itself
+ * NOTE: the "target" of the request should be the BatchForwarder itself
  */
 contract BatchForwarder is Forwarder, BaseRelayRecipient {
 

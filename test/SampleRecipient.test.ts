@@ -6,11 +6,13 @@ import {
 import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import { relayHubConfiguration } from '../src/common/Environments'
+
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
-const TestPaymasterEverythingAccepted = artifacts.require('./test/TestPaymasterEverythingAccepted.sol')
+const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
 
 contract('SampleRecipient', function (accounts) {
@@ -44,7 +46,17 @@ contract('SampleRecipient', function (accounts) {
     const deposit = new BN('100000000000000000')
     const stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
-    const rhub = await RelayHub.new(stakeManager.address, penalizer.address)
+    const rhub = await RelayHub.new(
+      stakeManager.address,
+      penalizer.address,
+      relayHubConfiguration.MAX_WORKER_COUNT,
+      relayHubConfiguration.GAS_RESERVE,
+      relayHubConfiguration.POST_OVERHEAD,
+      relayHubConfiguration.GAS_OVERHEAD,
+      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
+      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
+      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
+      relayHubConfiguration.MINIMUM_STAKE)
     await paymaster.setRelayHub(rhub.address)
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,

@@ -11,7 +11,7 @@ import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
-import { constants, event2topic } from '../common/Utils'
+import { event2topic } from '../common/Utils'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import VersionsManager from '../common/VersionsManager'
 import {
@@ -33,6 +33,7 @@ import Common from 'ethereumjs-common'
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
+import { constants } from '../common/Constants'
 
 type EventName = string
 

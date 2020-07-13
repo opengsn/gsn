@@ -1,5 +1,5 @@
 import AccountManager from '../../src/relayclient/AccountManager'
-import { defaultEnvironment } from '../../src/relayclient/types/Environments'
+import { defaultEnvironment } from '../../src/common/Environments'
 import { HttpProvider } from 'web3-core'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { constants } from '@openzeppelin/test-helpers'
