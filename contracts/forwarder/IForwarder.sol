@@ -19,7 +19,7 @@ interface IForwarder {
 
     /**
      * verify the transaction would execute.
-     * validate the signatrue and the nonce of the request.
+     * validate the signature and the nonce of the request.
      * revert if either signature or nonce are incorrect.
      */
     function verify(

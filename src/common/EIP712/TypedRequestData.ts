@@ -18,6 +18,7 @@ const RelayDataType = [
   { name: 'baseRelayFee', type: 'uint256' },
   { name: 'relayWorker', type: 'address' },
   { name: 'paymaster', type: 'address' },
+  { name: 'forwarder', type: 'address' },
   { name: 'paymasterData', type: 'bytes' },
   { name: 'clientId', type: 'uint256' }
 ]
@@ -83,5 +84,5 @@ export default class TypedRequestData implements EIP712TypedData {
 
 export const GsnRequestType = {
   typeName: 'RelayRequest',
-  typeSuffix: 'RelayData relayData)RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,bytes paymasterData,uint256 clientId)'
+  typeSuffix: 'RelayData relayData)RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)'
 }

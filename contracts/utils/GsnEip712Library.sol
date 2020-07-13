@@ -16,7 +16,7 @@ library GsnEip712Library {
     //copied from Forwarder (can't reference string constants even from another library)
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
 
-    bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,bytes paymasterData,uint256 clientId)";
+    bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)";
 
     string public constant RELAY_REQUEST_NAME = "RelayRequest";
     string public constant RELAY_REQUEST_SUFFIX = string(abi.encodePacked("RelayData relayData)", RELAYDATA_TYPE));
@@ -133,9 +133,9 @@ library GsnEip712Library {
                 req.baseRelayFee,
                 req.relayWorker,
                 req.paymaster,
+                req.forwarder,
                 keccak256(req.paymasterData),
                 req.clientId
-//                req.forwarder
             ));
     }
 
