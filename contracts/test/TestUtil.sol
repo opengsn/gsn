@@ -55,7 +55,7 @@ contract TestUtil {
     external
     pure
     returns (
-        Forwarder.ForwardRequest memory forwardRequest,
+        IForwarder.ForwardRequest memory forwardRequest,
         bytes32 typeHash,
         bytes memory suffixData
     ) {

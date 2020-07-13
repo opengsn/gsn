@@ -74,7 +74,7 @@ library GsnEip712Library {
     function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        IForwarder forwarder = Forwarder(payable(relayRequest.relayData.forwarder));
+        IForwarder forwarder = IForwarder(payable(relayRequest.relayData.forwarder));
         forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 
@@ -84,7 +84,7 @@ library GsnEip712Library {
     }
 
     function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
-        (Forwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
