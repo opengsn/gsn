@@ -11,7 +11,7 @@ import { expect } from 'chai'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
-import { defaultEnvironment, relayHubConfiguration } from '../src/common/Environments'
+import { defaultEnvironment } from '../src/common/Environments'
 import {
   PenalizerInstance,
   RelayHubInstance, StakeManagerInstance,
@@ -19,6 +19,7 @@ import {
   TestRecipientInstance
 } from '../types/truffle-contracts'
 import TransactionResponse = Truffle.TransactionResponse
+import { deployHub } from './TestUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -44,18 +45,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
   before(async function () {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(
-      stakeManager.address,
-      penalizer.address,
-      relayHubConfiguration.MAX_WORKER_COUNT,
-      relayHubConfiguration.GAS_RESERVE,
-      relayHubConfiguration.POST_OVERHEAD,
-      relayHubConfiguration.GAS_OVERHEAD,
-      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-      relayHubConfiguration.MINIMUM_STAKE,
-      { gas: 10000000 })
+    relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)

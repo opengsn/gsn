@@ -3,7 +3,7 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
-import { defaultEnvironment, relayHubConfiguration } from '../src/common/Environments'
+import { defaultEnvironment } from '../src/common/Environments'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 
 import {
@@ -14,6 +14,7 @@ import {
   IForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
+import { deployHub } from './TestUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const Forwarder = artifacts.require('Forwarder')
@@ -60,17 +61,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHub = await RelayHub.new(
-      stakeManager.address,
-      penalizer.address,
-      relayHubConfiguration.MAX_WORKER_COUNT,
-      relayHubConfiguration.GAS_RESERVE,
-      relayHubConfiguration.POST_OVERHEAD,
-      relayHubConfiguration.GAS_OVERHEAD,
-      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-      relayHubConfiguration.MINIMUM_STAKE)
+    relayHub = await deployHub(stakeManager.address, penalizer.address)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarderInstance.registerRequestType(

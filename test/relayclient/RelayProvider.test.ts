@@ -1,4 +1,4 @@
-import { constants, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
@@ -17,8 +17,8 @@ import {
   TestRecipientInstance
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/relayclient/types/Aliases'
-import { defaultEnvironment, relayHubConfiguration } from '../../src/common/Environments'
-import { startRelay, stopRelay } from '../TestUtils'
+import { defaultEnvironment } from '../../src/common/Environments'
+import { deployHub, startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '../../src/common/Utils'
@@ -94,17 +94,7 @@ contract('RelayProvider', function (accounts) {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(
-      stakeManager.address,
-      constants.ZERO_ADDRESS,
-      relayHubConfiguration.MAX_WORKER_COUNT,
-      relayHubConfiguration.GAS_RESERVE,
-      relayHubConfiguration.POST_OVERHEAD,
-      relayHubConfiguration.GAS_OVERHEAD,
-      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-      relayHubConfiguration.MINIMUM_STAKE)
+    relayHub = await deployHub(stakeManager.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     await forwarderInstance.registerRequestType(
