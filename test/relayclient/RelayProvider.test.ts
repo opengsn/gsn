@@ -27,7 +27,6 @@ import TypedRequestData, { GsnRequestType } from '../../src/common/EIP712/TypedR
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
-const RelayHub = artifacts.require('RelayHub')
 const IForwarder = artifacts.require('IForwarder')
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -298,7 +297,7 @@ contract('RelayProvider', function (accounts) {
       // @ts-ignore
       Object.keys(TestRecipient.events).forEach(function (topic) {
         // @ts-ignore
-        RelayHub.network.events[topic] = TestRecipient.events[topic]
+        relayHub.constructor.network.events[topic] = TestRecipient.events[topic]
       })
       relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
 
