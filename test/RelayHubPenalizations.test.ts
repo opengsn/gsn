@@ -18,8 +18,10 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
-import TransactionResponse = Truffle.TransactionResponse
+
 import { deployHub } from './TestUtils'
+
+import TransactionResponse = Truffle.TransactionResponse
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')

@@ -16,7 +16,6 @@ import {
 import { deployHub } from './TestUtils'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const BatchForwarder = artifacts.require('BatchForwarder')

@@ -1,4 +1,4 @@
-import { constants, ether } from '@openzeppelin/test-helpers'
+import { ether } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 
 import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
@@ -16,9 +16,7 @@ import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
-import { defaultEnvironment } from '../../src/common/Environments'
 
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')

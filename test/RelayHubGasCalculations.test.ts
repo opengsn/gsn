@@ -16,7 +16,6 @@ import {
 } from '../types/truffle-contracts'
 import { deployHub } from './TestUtils'
 
-const RelayHub = artifacts.require('RelayHub')
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
