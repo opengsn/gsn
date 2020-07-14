@@ -41,7 +41,6 @@ interface IPaymaster {
      * Note: Accepting this call means paying for the tx whether the relayed call reverted or not.
      * Also, the call is rejected if the Forwarder reverts on recipient's nonce or signature errors.
      *  @param relayRequest - the full relay request structure
-     *  @param signature - user's EIP712-compatible signature of the {@link relayRequest}
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      *  @param maxPossibleGas - based on values returned from {@link getGasLimits},
      *         the RelayHub will calculate the maximum possible amount of gas the user may be charged for.
@@ -53,7 +52,6 @@ interface IPaymaster {
      */
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )

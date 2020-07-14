@@ -26,10 +26,13 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         return address(relayHub);
     }
 
-    // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
-    uint256 constant private COMMITMENT_GAS_LIMIT = 150000;
-    uint256 constant private PRE_RELAYED_CALL_GAS_LIMIT = 100000;
-    uint256 constant private POST_RELAYED_CALL_GAS_LIMIT = 110000;
+    //Paymaster is commited to pay for any reverted transaction above the commitment. it covers both preRelayedCall aod
+    // forwrader's check for nonce/signature.
+    // we assume 50k is more than enough for forwarder (10k bytes request takes ~30kgas)
+    uint256 constant public COMMITMENT_GAS_LIMIT = 150000;
+    //any revert in preRelayedCall is within "commitment"
+    uint256 constant public PRE_RELAYED_CALL_GAS_LIMIT = 100000;
+    uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
 
     function getGasLimits()
     external
@@ -44,6 +47,16 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
             PRE_RELAYED_CALL_GAS_LIMIT,
             POST_RELAYED_CALL_GAS_LIMIT
         );
+    }
+
+    // this method must be called from preRelayedCall to validate that the forwarder
+    // is approved by the paymaster as well as by the recipient contract.
+    function _verifyForwarder(GsnTypes.RelayRequest calldata relayRequest)
+    public
+    view
+    {
+        require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        GsnEip712Library.verifyForwarderTrusted(relayRequest);
     }
 
     /*

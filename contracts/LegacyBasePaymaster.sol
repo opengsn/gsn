@@ -14,29 +14,6 @@ import "./BasePaymaster.sol";
  */
 abstract contract LegacyBasePaymaster is BasePaymaster {
 
-
-    //Paymaster is commited to pay for any reverted transaction above the commitment. it covers both preRelayedCall aod
-    // forwrader's check for nonce/signature.
-    // we assume 50k is more than enough for forwarder (10k bytes request takes ~30kgas)
-    uint256 constant private COMMITMENT_GAS_LIMIT = 150000;
-    //any revert in preRelayedCall is within "commitment"
-    uint256 constant private PRE_RELAYED_CALL_GAS_LIMIT = 100000;
-    uint256 constant private POST_RELAYED_CALL_GAS_LIMIT = 110000;
-
-    function getGasLimits()
-    external
-    override
-    view
-    returns (
-        IPaymaster.GasLimits memory limits
-    ) {
-        return IPaymaster.GasLimits(
-            COMMITMENT_GAS_LIMIT,
-            PRE_RELAYED_CALL_GAS_LIMIT,
-            POST_RELAYED_CALL_GAS_LIMIT
-        );
-    }
-
     // "legacy mode" acceptRelayedCall
     function acceptRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
@@ -57,14 +34,14 @@ abstract contract LegacyBasePaymaster is BasePaymaster {
     //TEMPORARY: compatibility mode: use "old" pre/post for making the "newPreRelayedCall"
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external override virtual
     returns (bytes memory context, bool isTrustedRecipient) {
-        require( relayRequest.relayData.forwarder == address(trustedForwarder), "paymaster: unsupported forwarder");
-        context = this.acceptRelayedCall(relayRequest, signature, approvalData, maxPossibleGas);
+        this._verifyForwarder(relayRequest);
+        //NOTE: can't pass real signature, since we no longer get it.
+        context = this.acceptRelayedCall(relayRequest, "", approvalData, maxPossibleGas);
         this.preRelayedCall(context);
         return (context, false);
     }

@@ -297,7 +297,7 @@ contract RelayHub is IRelayHub {
         // Note: we open a new block to avoid growing the stack too much.
         atomicData.data = abi.encodeWithSelector(
             IPaymaster.preRelayedCall.selector,
-                relayRequest, signature, approvalData, maxPossibleGas
+                relayRequest, approvalData, maxPossibleGas
         );
         {
             bool success;

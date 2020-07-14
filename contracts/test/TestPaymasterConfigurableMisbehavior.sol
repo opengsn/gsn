@@ -96,6 +96,32 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         return balance;
     }
 
+    IPaymaster.GasLimits private limits = IPaymaster.GasLimits(
+        COMMITMENT_GAS_LIMIT,
+        PRE_RELAYED_CALL_GAS_LIMIT,
+        POST_RELAYED_CALL_GAS_LIMIT
+    );
+
+    function getGasLimits()
+    external override view
+    returns (IPaymaster.GasLimits memory) {
+        return limits;
+    }
+
+    bool private trustRecipientRevert;
+
+    function setGasLimits(uint commitmentGasLimit, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
+        limits = IPaymaster.GasLimits(
+            commitmentGasLimit,
+            preRelayedCallGasLimit,
+            postRelayedCallGasLimit
+        );
+    }
+
+    function setTrustRecipientRevert(bool on) public {
+        trustRecipientRevert = on;
+    }
+
     // solhint-disable-next-line no-empty-blocks
     receive() external override payable {}
 }

@@ -487,28 +487,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
         })
 
-        it('preRelayedCall receives values returned in acceptRelayedCall', async function () {
-          const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
-            signatureWithContextPaymaster, '0x', gas, {
-              from: relayWorker,
-              gas,
-              gasPrice
-            })
-
-          await expectEvent.inTransaction(tx, TestPaymasterStoreContext, 'SampleRecipientPreCallWithValues', {
-            relay: relayWorker,
-            from: senderAddress,
-            encodedFunction,
-            baseRelayFee,
-            pctRelayFee,
-            gasPrice,
-            gasLimit,
-            nonce: senderNonce,
-            approvalData: null
-          })
-        })
-
-        it('postRelayedCall receives values returned in acceptRelayedCall', async function () {
+        it('postRelayedCall receives values returned in preRelayedCall', async function () {
           const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
             signatureWithContextPaymaster, '0x', gas, {
               from: relayWorker,
