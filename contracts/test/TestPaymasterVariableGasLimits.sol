@@ -10,7 +10,6 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
 
     event SampleRecipientPreCallWithValues(
         uint256 gasleft,
-        uint256 arcGasleft,
         uint256 maxPossibleGas
     );
 
@@ -19,32 +18,18 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
         uint256 gasUseWithoutPost
     );
 
-    function acceptRelayedCall(
+    function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
     override
-    view
-    returns (bytes memory) {
-        (relayRequest, signature, approvalData);
-        return abi.encode(
-            gasleft(),
-            maxPossibleGas);
-    }
-
-    function preRelayedCall(bytes calldata context)
-    external
-    override
-    returns (bytes32) {
-        (
-        uint256 arcGasleft, uint256 maxPossibleGas) =
-            abi.decode(context, (uint256, uint256));
+    returns (bytes memory, bool) {
+        (relayRequest, approvalData);
         emit SampleRecipientPreCallWithValues(
-            gasleft(), arcGasleft, maxPossibleGas);
-        return 0;
+            gasleft(), maxPossibleGas);
+        return ("", false);
     }
 
     function postRelayedCall(

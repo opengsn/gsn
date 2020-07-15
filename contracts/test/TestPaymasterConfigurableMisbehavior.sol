@@ -32,17 +32,16 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         overspendAcceptGas = val;
     }
 
-    function acceptRelayedCall(
+    function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
     override
-    view
-    returns (bytes memory) {
-        (relayRequest, signature, approvalData, maxPossibleGas);
+    relayHubOnly
+    returns (bytes memory, bool) {
+        (relayRequest, approvalData, maxPossibleGas);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {
@@ -52,21 +51,13 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
         require(!returnInvalidErrorCode, "invalid code");
 
-        return "";
-    }
-
-    function preRelayedCall(bytes calldata context)
-    external
-    override
-    returns (bytes32) {
-        (context);
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
         }
         if (revertPreRelayCall) {
             revert("You asked me to revert, remember?");
         }
-        return 0;
+        return ("", trustRecipientRevert);
     }
 
     function postRelayedCall(

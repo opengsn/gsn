@@ -37,8 +37,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    pre: 18836,
-    post: 1578
+    pre: 621,
+    post: 1578 + 88
   }
 
   let relayHub: RelayHubInstance
@@ -199,9 +199,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const pmPostLog = pmlogs.find((e: any) => e.event === 'SampleRecipientPostCallWithValues')
 
       const gasUseWithoutPost = parseInt(pmPostLog.returnValues.gasUseWithoutPost)
-      const usedGas = tx.receipt.gasUsed
+      const usedGas = parseInt(tx.receipt.gasUsed)
       assert.closeTo(gasUseWithoutPost, usedGas - estimatePostGas, 100,
-        'POST_OVERHEAD: increase by ' + (usedGas - estimatePostGas - gasUseWithoutPost).toString()
+        `POST_OVERHEAD: increase by ${usedGas - estimatePostGas - gasUseWithoutPost}\
+        \n\tPOST_OVERHEAD: ${relayHubConfiguration.POST_OVERHEAD + usedGas - estimatePostGas - gasUseWithoutPost},`
       )
     })
 
@@ -267,6 +268,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     const gasDiff = workerGasUsed.sub(weiActualCharge).div(gasPrice).toString()
     if (gasDiff !== '0') {
       console.log('== zero-fee unmatched gas. RelayHub.GAS_OVERHEAD should be increased by: ' + gasDiff.toString())
+      relayHubConfiguration.GAS_OVERHEAD += parseInt(gasDiff)
+      console.log(`=== fixed:\n\tGAS_OVERHEAD: ${relayHubConfiguration.GAS_OVERHEAD},\n`)
     }
   }
 
@@ -275,9 +278,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       await relayHub.depositFor(relayOwner, { value: (1).toString() })
     });
 
-    [0, 100, 1000, 50000]
+    [0, /* 100, */ 1000, 50000]
       .forEach(messageLength =>
-        [0, 1, 10, 100, 1000]
+        [0, /* 1, */ 10, /* 100, */ 1000]
           .forEach(requestedFee => {
             // avoid duplicate coverage checks. they do the same, and take a lot of time:
             if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return

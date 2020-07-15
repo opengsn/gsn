@@ -33,7 +33,6 @@ contract RelayHub is IRelayHub {
     IStakeManager override public stakeManager;
     address override public penalizer;
 
-
     // maps relay worker's address to its manager's address
     mapping(address => address) public workerToManager;
 
@@ -201,7 +200,7 @@ contract RelayHub is IRelayHub {
         // RelayCallStatus value.
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasLimits,
-                innerGasLimit + vars.externalGasLimit - gasleft() + GAS_OVERHEAD + POST_OVERHEAD, /*totalInitialGas*/
+                innerGasLimit + vars.externalGasLimit - gasleft() + gasOverhead + postOverhead, /*totalInitialGas*/
                 vars.maxPossibleGas
                 )
         );
@@ -321,6 +320,7 @@ contract RelayHub is IRelayHub {
             if ( !forwarderSuccess ) {
                 revertWithStatus(RelayCallStatus.ForwarderFailed, bytes(error));
             }
+
             if ( atomicData.isTrustedRecipient && ! atomicData.relayedCallSuccess) {
                 //we trusted the recipient, but it reverted...
                 revertWithStatus(RelayCallStatus.RecipientFailed, bytes(error));
