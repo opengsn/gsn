@@ -26,8 +26,8 @@ export const environments = {
 }
 
 export const relayHubConfiguration = {
-  GAS_OVERHEAD: 34914,
-  POST_OVERHEAD: 10572,
+  GAS_OVERHEAD: 34948,
+  POST_OVERHEAD: 10756,
   GAS_RESERVE: 100000,
   MAX_WORKER_COUNT: 10,
   MINIMUM_STAKE: 1e18.toString(),
