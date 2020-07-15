@@ -17,6 +17,6 @@ for ((i=0;i<=END;i++)); do
   c=${CONTRACTS[$i]}
   c_flat=$TMPFOLDER"${c}"_flat.sol
   echo -e $PRAGMA > $c_flat
-  truffle-flattener $INFOLDER/${PATHS[$i]}$c.sol | grep -v pragma | grep -v SPDX >> $c_flat
-  solc --overwrite --evm-version istanbul -o $OUTFOLDER --bin --abi $c_flat
+  npx truffle-flattener $INFOLDER/${PATHS[$i]}$c.sol | grep -v pragma | grep -v SPDX >> $c_flat
+  npx solc --overwrite --evm-version istanbul -o $OUTFOLDER --bin --abi $c_flat
 done
