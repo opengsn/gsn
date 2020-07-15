@@ -163,7 +163,7 @@ contract('Utils', function (accounts) {
           ))
         const ret = await testUtil.callForwarderVerifyAndCall(relayRequest, sig)
         expectEvent(ret, 'Called', {
-          error: ''
+          error: null
         })
         const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
