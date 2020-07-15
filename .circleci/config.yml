@@ -8,6 +8,10 @@ jobs: # a collection of steps
     steps: # a collection of executable commands
       - checkout # special step to check out source code to working directory
 
+      - run: # run tests
+          name: global-install
+          command: yarn global add solc@0.6.10 truffle-flattener
+
       - restore_cache: # special step to restore the dependency cache
           key: dependency-cache-{{ checksum "package.json" }}-yarn2
       - run:
@@ -18,10 +22,6 @@ jobs: # a collection of steps
           key: dependency-cache-{{ checksum "package.json" }}-yarn2
           paths:
             - ./node_modules
-
-      - run: # run tests
-          name: global-install
-          command: yarn global add solc@0.6.10 truffle-flattener
 
       - run: # run tests
           name: test
