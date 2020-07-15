@@ -41,12 +41,13 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 msgValue, uint256 balance);
 
-    function emitMessage(string memory message) public payable {
+    function emitMessage(string memory message) public payable returns (string memory) {
         if (paymaster != address(0)) {
             withdrawAllBalance();
         }
 
         emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin, msg.value, address(this).balance);
+        return "emitMessage return value";
     }
 
     function withdrawAllBalance() public {

@@ -83,21 +83,23 @@ library GsnEip712Library {
         verifySignature(relayRequest, signature);
     }
 
-    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, string memory) {
+    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, bytes memory) {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
         ) returns (bool _success, bytes memory _ret) {
-            if (!_success) {
-                return (false, GsnUtils.getError(_ret));
-            }
-            return (true, "");
+            uint256 length = min(_ret.length, 256);
+            return (_success, LibBytesV06.slice(_ret, 0, length));
         } catch Error(string memory reason) {
-            return (false, reason);
+            return (false, bytes(reason));
         } catch {
-            return (false, "call to forwarder reverted");
+            return (false, bytes("call to forwarder reverted"));
         }
+    }
+
+    function min(uint a, uint b) private pure returns (uint) {
+        return a < b ? a : b;
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

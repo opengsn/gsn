@@ -162,6 +162,7 @@ contract RelayHub is IRelayHub {
         bool success;
         bytes4 functionSelector;
         bytes recipientContext;
+        bytes relayedCallReturnValue;
         IPaymaster.GasLimits gasLimits;
         RelayCallStatus status;
     }
@@ -222,8 +223,7 @@ contract RelayHub is IRelayHub {
                 innerGasLimit + externalGasLimit-gasleft() + gasOverhead + postOverhead, /*totalInitialGas*/
                 abi.decode(vars.recipientContext, (bytes)))
         );
-        vars.status = abi.decode(relayCallStatus, (RelayCallStatus));
-
+        (vars.status, vars.relayedCallReturnValue) = abi.decode(relayCallStatus, (RelayCallStatus, bytes));
     }
     {
         // We now perform the actual charge calculation, based on the measured gas used
@@ -244,6 +244,7 @@ contract RelayHub is IRelayHub {
             relayRequest.relayData.paymaster,
             vars.functionSelector,
             vars.status,
+            vars.relayedCallReturnValue,
             charge);
         return (true, "");
     }
@@ -253,7 +254,7 @@ contract RelayHub is IRelayHub {
         uint256 balanceBefore;
         bytes32 preReturnValue;
         bool relayedCallSuccess;
-        string relayedCallReturnValue;
+        bytes relayedCallReturnValue;
         bytes data;
     }
 
@@ -265,7 +266,7 @@ contract RelayHub is IRelayHub {
         bytes calldata recipientContext
     )
     external
-    returns (RelayCallStatus)
+    returns (RelayCallStatus, bytes memory)
     {
         AtomicData memory atomicData;
         // A new gas measurement is performed inside innerRelayCall, since
@@ -294,7 +295,7 @@ contract RelayHub is IRelayHub {
             // acceptRelayedCall that this will not happen.
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(atomicData.data);
             if (!success) {
-                revertWithStatus(RelayCallStatus.PreRelayedFailed);
+                revertWithStatus(RelayCallStatus.PreRelayedFailed, bytes(""));
             }
             atomicData.preReturnValue = abi.decode(retData, (bytes32));
         }
@@ -317,21 +318,21 @@ contract RelayHub is IRelayHub {
         (bool successPost,) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(atomicData.data);
 
         if (!successPost) {
-            revertWithStatus(RelayCallStatus.PostRelayedFailed);
+            revertWithStatus(RelayCallStatus.PostRelayedFailed, atomicData.relayedCallReturnValue);
         }
 
         if (balances[relayRequest.relayData.paymaster] < atomicData.balanceBefore) {
-            revertWithStatus(RelayCallStatus.RecipientBalanceChanged);
+            revertWithStatus(RelayCallStatus.RecipientBalanceChanged, atomicData.relayedCallReturnValue);
         }
 
-        return atomicData.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed;
+        return (atomicData.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed, atomicData.relayedCallReturnValue);
     }
 
     /**
      * @dev Reverts the transaction with return data set to the ABI encoding of the status argument.
      */
-    function revertWithStatus(RelayCallStatus status) private pure {
-        bytes memory data = abi.encode(status);
+    function revertWithStatus(RelayCallStatus status, bytes memory ret) private pure {
+        bytes memory data = abi.encode(status, ret);
 
         assembly {
             let dataSize := mload(data)

@@ -60,6 +60,7 @@ interface IRelayHub {
         address paymaster,
         bytes4 selector,
         RelayCallStatus status,
+        bytes returnValue,
         uint256 charge);
 
     event Penalized(
