@@ -20,6 +20,10 @@ jobs: # a collection of steps
             - ./node_modules
 
       - run: # run tests
+          name: global-install
+          command: yarn global add solc@0.6.10 truffle-flattener
+
+      - run: # run tests
           name: test
           command: yarn test | tee /tmp/test-results.log
 
