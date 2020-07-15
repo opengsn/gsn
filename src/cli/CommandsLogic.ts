@@ -1,3 +1,4 @@
+import fs from 'fs'
 import Web3 from 'web3'
 import { Contract, SendOptions } from 'web3-eth-contract'
 import HDWalletProvider from '@truffle/hdwallet-provider'
@@ -8,12 +9,6 @@ import { merge } from 'lodash'
 import { ether, sleep } from '../common/Utils'
 
 // compiled folder populated by "prepublish"
-import StakeManager from './compiled/StakeManager.json'
-import RelayHub from './compiled/RelayHub.json'
-import Penalizer from './compiled/Penalizer.json'
-import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
-import Forwarder from './compiled/Forwarder.json'
-
 import { Address, notNull } from '../relayclient/types/Aliases'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
@@ -210,8 +205,10 @@ export default class CommandsLogic {
     }
   }
 
-  contract (file: any, address?: string): Contract {
-    return new this.web3.eth.Contract(file.abi, address, { data: file.bytecode })
+  contract (name: string, address?: string): Contract {
+    const abi = JSON.parse(fs.readFileSync(`./compiled/${name}.abi`, { encoding: 'utf8' }))
+    const bytecode = fs.readFileSync(`./compiled/${name}.bin`, { encoding: 'utf8' })
+    return new this.web3.eth.Contract(abi, address, { data: bytecode })
   }
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<DeploymentResult> {
@@ -222,16 +219,16 @@ export default class CommandsLogic {
     }
 
     const sInstance =
-      await this.contract(StakeManager).deploy({}).send(options)
+      await this.contract('StakeManager').deploy({}).send(options)
     const pInstance =
-      await this.contract(Penalizer).deploy({}).send(options)
+      await this.contract('Penalizer').deploy({}).send(options)
     let fInstance
     if (deployOptions.forwarderAddress == null) {
-      fInstance = await this.contract(Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
+      fInstance = await this.contract('Forwarder').deploy({}).send(merge(options, { gas: 5e6 }))
     } else {
-      fInstance = this.contract(Forwarder, deployOptions.forwarderAddress)
+      fInstance = this.contract('Forwarder', deployOptions.forwarderAddress)
     }
-    const rInstance = await this.contract(RelayHub).deploy({
+    const rInstance = await this.contract('RelayHub').deploy({
       arguments: [
         sInstance.options.address,
         pInstance.options.address,
@@ -271,7 +268,7 @@ export default class CommandsLogic {
   }
 
   async deployPaymaster (options: SendOptions, hub: Address, from: string, fInstance: Contract): Promise<Contract> {
-    const pmInstance = await this.contract(Paymaster).deploy({}).send(options)
+    const pmInstance = await this.contract('TestPaymasterEverythingAccepted').deploy({}).send(options)
     await pmInstance.methods.setRelayHub(hub).send(options)
     await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send(options)
     return pmInstance

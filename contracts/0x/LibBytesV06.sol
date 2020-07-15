@@ -17,7 +17,7 @@
 
 */
 
-pragma solidity ^0.6.2;
+pragma solidity ^0.6.10;
 
 import "./errors/LibBytesRichErrorsV06.sol";
 import "./errors/LibRichErrorsV06.sol";
