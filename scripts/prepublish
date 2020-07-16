@@ -19,3 +19,4 @@ done
 tsc
 
 cp -r types dist/
+cp -r src/cli/compiled dist/src/cli/

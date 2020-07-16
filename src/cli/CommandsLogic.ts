@@ -17,6 +17,7 @@ import HttpWrapper from '../relayclient/HttpWrapper'
 import { GsnRequestType } from '../common/EIP712/TypedRequestData'
 import { constants } from '../common/Constants'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
+import path from 'path'
 
 interface RegisterOptions {
   from: Address
@@ -206,8 +207,11 @@ export default class CommandsLogic {
   }
 
   contract (name: string, address?: string): Contract {
-    const abi = JSON.parse(fs.readFileSync(`./compiled/${name}.abi`, { encoding: 'utf8' }))
-    const bytecode = fs.readFileSync(`./compiled/${name}.bin`, { encoding: 'utf8' })
+    const solcjsOutputBullshitName = `__build_flattened_${name}_flat_sol_${name}`
+    const abiFilePath = path.resolve(__dirname, `./compiled/${solcjsOutputBullshitName}.abi`)
+    const binFilePath = path.resolve(__dirname, `./compiled/${solcjsOutputBullshitName}.bin`)
+    const abi = JSON.parse(fs.readFileSync(abiFilePath, { encoding: 'utf8' }))
+    const bytecode = fs.readFileSync(binFilePath, { encoding: 'utf8' })
     return new this.web3.eth.Contract(abi, address, { data: bytecode })
   }
 
@@ -240,7 +244,7 @@ export default class CommandsLogic {
         deployOptions.relayHubConfiguration.minimumRelayBalance,
         deployOptions.relayHubConfiguration.minimumUnstakeDelay,
         deployOptions.relayHubConfiguration.minimumStake]
-    }).send(merge(options, { gas: 5e6 }))
+    }).send(merge(options, { gas: 7e6 }))
 
     let paymasterAddress = constants.ZERO_ADDRESS
     if (deployOptions.deployPaymaster === true) {
