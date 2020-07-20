@@ -98,11 +98,10 @@ library GsnEip712Library {
     }
 
     function getTruncatedData(bytes memory data) internal pure returns (bytes memory) {
-        return LibBytesV06.slice(data, 0, min(data.length, MAX_RETURN_SIZE));
-    }
-
-    function min(uint a, uint b) private pure returns (uint) {
-        return a < b ? a : b;
+        if (data.length > MAX_RETURN_SIZE) {
+            return LibBytesV06.slice(data, 0, MAX_RETURN_SIZE);
+        }
+        return data;
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {
