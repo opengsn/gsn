@@ -24,7 +24,6 @@ contract RelayHub is IRelayHub {
 
     uint256 public override minimumStake;
     uint256 public override minimumUnstakeDelay;
-    uint256 public override minimumRelayBalance;
     uint256 public override maximumRecipientDeposit;
     uint256 public override gasOverhead;
     uint256 public override postOverhead;
@@ -49,7 +48,6 @@ contract RelayHub is IRelayHub {
         uint256 _postOverhead,
         uint256 _gasOverhead,
         uint256 _maximumRecipientDeposit,
-        uint256 _minimumRelayBalance,
         uint256 _minimumUnstakeDelay,
         uint256 _minimumStake
     ) public {
@@ -60,7 +58,6 @@ contract RelayHub is IRelayHub {
         postOverhead = _postOverhead;
         gasOverhead = _gasOverhead;
         maximumRecipientDeposit = _maximumRecipientDeposit;
-        minimumRelayBalance = _minimumRelayBalance;
         minimumUnstakeDelay = _minimumUnstakeDelay;
         minimumStake =  _minimumStake;
     }
@@ -152,6 +149,7 @@ contract RelayHub is IRelayHub {
         bool success;
         bytes4 functionSelector;
         bytes recipientContext;
+        bytes relayedCallReturnValue;
         IPaymaster.GasLimits gasLimits;
         RelayCallStatus status;
         uint256 innerGasUsed;
@@ -204,10 +202,9 @@ contract RelayHub is IRelayHub {
                 vars.maxPossibleGas
                 )
         );
-
         vars.success = success;
         vars.innerGasUsed = vars.gasBeforeInner-gasleft();
-        (vars.status, vars.retData) = abi.decode(relayCallStatus, (RelayCallStatus, bytes));
+        (vars.status, vars.relayedCallReturnValue) = abi.decode(relayCallStatus, (RelayCallStatus, bytes));
     }
     {
         if (!vars.success) {
@@ -219,7 +216,7 @@ contract RelayHub is IRelayHub {
                     vars.status == RelayCallStatus.RecipientFailed  //can only be thrown if our preRelayedCall trusted it
             )) {
                 paymasterAccepted=false;
-                revertReason = GsnUtils.getError(vars.retData);
+                revertReason = GsnUtils.getError(vars.relayedCallReturnValue);
 
                 emit TransactionRejectedByPaymaster(
                     workerToManager[msg.sender],
@@ -251,6 +248,7 @@ contract RelayHub is IRelayHub {
             relayRequest.relayData.paymaster,
             vars.functionSelector,
             vars.status,
+            vars.relayedCallReturnValue,
             charge);
         return (true, "");
     }
@@ -260,7 +258,7 @@ contract RelayHub is IRelayHub {
         uint256 balanceBefore;
         bytes32 preReturnValue;
         bool relayedCallSuccess;
-        string relayedCallReturnValue;
+        bytes relayedCallReturnValue;
         bytes recipientContext;
         bytes data;
         bool isTrustedRecipient;
@@ -275,7 +273,7 @@ contract RelayHub is IRelayHub {
         uint256 maxPossibleGas
     )
     external
-    returns (RelayCallStatus callStatus, string memory err)
+    returns (RelayCallStatus, bytes memory)
     {
         AtomicData memory atomicData;
         // A new gas measurement is performed inside innerRelayCall, since
@@ -303,7 +301,6 @@ contract RelayHub is IRelayHub {
             bytes memory retData;
             // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
             // acceptRelayedCall that this will not happen.
-
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(atomicData.data);
             if (!success) {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed, retData);
@@ -315,15 +312,14 @@ contract RelayHub is IRelayHub {
 
         {
             bool forwarderSuccess;
-            string memory error;
-            (forwarderSuccess, atomicData.relayedCallSuccess, error) = GsnEip712Library.execute(relayRequest, signature);
+            (forwarderSuccess, atomicData.relayedCallSuccess, atomicData.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
             if ( !forwarderSuccess ) {
-                revertWithStatus(RelayCallStatus.ForwarderFailed, bytes(error));
+                revertWithStatus(RelayCallStatus.ForwarderFailed, atomicData.relayedCallReturnValue);
             }
 
             if ( atomicData.isTrustedRecipient && ! atomicData.relayedCallSuccess) {
                 //we trusted the recipient, but it reverted...
-                revertWithStatus(RelayCallStatus.RecipientFailed, bytes(error));
+                revertWithStatus(RelayCallStatus.RecipientFailed, atomicData.relayedCallReturnValue);
             }
         }
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
@@ -349,15 +345,14 @@ contract RelayHub is IRelayHub {
             revertWithStatus(RelayCallStatus.RecipientBalanceChanged, "");
         }
 
-        callStatus = atomicData.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed;
-        err = "";
+        return (atomicData.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed, atomicData.relayedCallReturnValue);
     }
 
     /**
      * @dev Reverts the transaction with return data set to the ABI encoding of the status argument (and revert reason data)
      */
-    function revertWithStatus(RelayCallStatus status, bytes memory errorData) private pure {
-        bytes memory data = abi.encode(status,errorData);
+    function revertWithStatus(RelayCallStatus status, bytes memory ret) private pure {
+        bytes memory data = abi.encode(status, ret);
 
         assembly {
             let dataSize := mload(data)

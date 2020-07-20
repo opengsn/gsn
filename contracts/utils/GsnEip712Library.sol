@@ -12,6 +12,8 @@ import "./GsnUtils.sol";
  * Bridge Library to map GSN RelayRequest into a call of a Forwarder
  */
 library GsnEip712Library {
+    // maximum length of return value/revert reason for 'execute' method. Will truncate result if exceeded.
+    uint256 private constant MAX_RETURN_SIZE = 1024;
 
     //copied from Forwarder (can't reference string constants even from another library)
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
@@ -85,29 +87,27 @@ library GsnEip712Library {
         verifySignature(relayRequest, signature);
     }
 
-    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool forwarderSuccess, bool callSuccess, string memory error) {
+    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool forwarderSuccess, bool callSuccess, bytes memory ret) {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        bytes memory ret;
         /* solhint-disable-next-line avoid-low-level-calls */
         (forwarderSuccess, ret) = relayRequest.relayData.forwarder.call(
             abi.encodeWithSelector(IForwarder.execute.selector,
             forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
         ));
-        if ( !forwarderSuccess ) {
-            //forwarder.execute() itself reverted. must be nonce or signature failure
-            error = GsnUtils.getError(ret);
-        } else {
+        if ( forwarderSuccess ) {
 
-        //decode return value of execute:
-        (callSuccess, ret) = abi.decode(ret, (bool, bytes));
-        if (!callSuccess) {
-            error = GsnUtils.getError(ret);
-            if (bytes(error).length==0) {
-                error = "forwarder.execute() reverted";
-            }
+          //decode return value of execute:
+          (callSuccess, ret) = abi.decode(ret, (bool, bytes));
         }
+        ret = getTruncatedData(ret);
+    }
+
+    function getTruncatedData(bytes memory data) internal pure returns (bytes memory) {
+        if (data.length > MAX_RETURN_SIZE) {
+            return LibBytesV06.slice(data, 0, MAX_RETURN_SIZE);
         }
+        return data;
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

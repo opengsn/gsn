@@ -27,7 +27,9 @@ contract BatchForwarder is Forwarder, BaseRelayRecipient {
             (bool success, bytes memory ret) = targets[i].call(abi.encodePacked(encodedFunctions[i], sender));
             // TODO: currently, relayed transaction does not report exception string. when it does, this
             // will propagate the inner call exception description
-            require(success, GsnUtils.getError(ret));
+              if (!success){
+                  revert(GsnUtils.getError(ret));
+              }
         }
     }
 }

@@ -17,6 +17,7 @@
       <w>gasleft</w>
       <w>gtransaction</w>
       <w>gtxdatanonzero</w>
+      <w>gwei</w>
       <w>ierc</w>
       <w>iforwarder</w>
       <w>interactor</w>
@@ -30,6 +31,7 @@
       <w>kovan</w>
       <w>mainnet</w>
       <w>metamask</w>
+      <w>mintxgascost</w>
       <w>mixedcase</w>
       <w>multiplicator</w>
       <w>nonces</w>

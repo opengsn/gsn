@@ -24,14 +24,11 @@ import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDet
 import BadHttpClient from '../dummies/BadHttpClient'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionValidator'
-import { startRelay, stopRelay } from '../TestUtils'
-import { constants } from '@openzeppelin/test-helpers'
+import { deployHub, startRelay, stopRelay } from '../TestUtils'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
-import { relayHubConfiguration } from '../../src/common/Environments'
 
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -63,17 +60,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(
-      stakeManager.address,
-      constants.ZERO_ADDRESS,
-      relayHubConfiguration.MAX_WORKER_COUNT,
-      relayHubConfiguration.GAS_RESERVE,
-      relayHubConfiguration.POST_OVERHEAD,
-      relayHubConfiguration.GAS_OVERHEAD,
-      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-      relayHubConfiguration.MINIMUM_STAKE)
+    relayHub = await deployHub(stakeManager.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)

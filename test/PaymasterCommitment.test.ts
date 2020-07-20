@@ -16,9 +16,8 @@ import {
 import { PrefixedHexString } from 'ethereumjs-tx'
 import ForwardRequest from '../src/common/EIP712/ForwardRequest'
 import RelayData from '../src/common/EIP712/RelayData'
-import { relayHubConfiguration } from '../src/common/Environments'
+import { deployHub } from './TestUtils'
 
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -94,17 +93,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   before(async function () {
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    relayHubInstance = await RelayHub.new(
-      stakeManager.address,
-      penalizer.address,
-      relayHubConfiguration.MAX_WORKER_COUNT,
-      relayHubConfiguration.GAS_RESERVE,
-      relayHubConfiguration.POST_OVERHEAD,
-      relayHubConfiguration.GAS_OVERHEAD,
-      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-      relayHubConfiguration.MINIMUM_STAKE)
+    relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
 
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address

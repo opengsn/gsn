@@ -1,4 +1,4 @@
-import { constants, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
@@ -17,8 +17,8 @@ import {
   TestRecipientInstance
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/relayclient/types/Aliases'
-import { defaultEnvironment, relayHubConfiguration } from '../../src/common/Environments'
-import { startRelay, stopRelay } from '../TestUtils'
+import { defaultEnvironment } from '../../src/common/Environments'
+import { deployHub, startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '../../src/common/Utils'
@@ -27,7 +27,6 @@ import TypedRequestData, { GsnRequestType } from '../../src/common/EIP712/TypedR
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
-const RelayHub = artifacts.require('RelayHub')
 const IForwarder = artifacts.require('IForwarder')
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -94,17 +93,7 @@ contract('RelayProvider', function (accounts) {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
-    relayHub = await RelayHub.new(
-      stakeManager.address,
-      constants.ZERO_ADDRESS,
-      relayHubConfiguration.MAX_WORKER_COUNT,
-      relayHubConfiguration.GAS_RESERVE,
-      relayHubConfiguration.POST_OVERHEAD,
-      relayHubConfiguration.GAS_OVERHEAD,
-      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-      relayHubConfiguration.MINIMUM_STAKE)
+    relayHub = await deployHub(stakeManager.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     await forwarderInstance.registerRequestType(
@@ -214,6 +203,8 @@ contract('RelayProvider', function (accounts) {
       assert.equal(log.returnValues.message, 'hello again')
     })
 
+    // note that the revert reason here was discovered via some truffle/ganache magic (see truffle/reason.js)
+    // this is not the way the revert reason is being reported by GSN solidity contracts
     it('should fail if transaction failed', async () => {
       await expectRevert(testRecipient.testRevert({
         from: gasLess,
@@ -309,7 +300,7 @@ contract('RelayProvider', function (accounts) {
       // @ts-ignore
       Object.keys(TestRecipient.events).forEach(function (topic) {
         // @ts-ignore
-        RelayHub.network.events[topic] = TestRecipient.events[topic]
+        relayHub.constructor.network.events[topic] = TestRecipient.events[topic]
       })
       relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
 

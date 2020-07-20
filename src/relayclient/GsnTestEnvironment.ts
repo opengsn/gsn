@@ -13,6 +13,7 @@ import { Address } from './types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
+import { defaultEnvironment } from '../common/Environments'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -46,7 +47,8 @@ class GsnTestEnvironmentClass {
     }
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
-      deployPaymaster
+      deployPaymaster,
+      relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
     if (deployPaymaster) {
       const balance = await commandsLogic.fundPaymaster(from, deploymentResult.naivePaymasterAddress, ether('1'))
