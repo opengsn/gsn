@@ -292,7 +292,7 @@ contract RelayHub is IRelayHub {
             // acceptRelayedCall that this will not happen.
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(atomicData.data);
             if (!success) {
-                revertWithStatus(RelayCallStatus.PreRelayedFailed, GsnEip712Library.getTruncatedData(retData, 256));
+                revertWithStatus(RelayCallStatus.PreRelayedFailed, GsnEip712Library.getTruncatedData(retData));
             }
             atomicData.preReturnValue = abi.decode(retData, (bytes32));
         }
