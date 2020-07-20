@@ -12,7 +12,7 @@ interface Environment {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 36666,
+  gasOverhead: 36660,
   postOverhead: 12006,
   gasReserve: 100000,
   maxWorkerCount: 10,

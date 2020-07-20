@@ -89,13 +89,17 @@ library GsnEip712Library {
         try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
         ) returns (bool _success, bytes memory _ret) {
-            uint256 length = min(_ret.length, 256);
-            return (_success, LibBytesV06.slice(_ret, 0, length));
+            return (_success, getTruncatedData(_ret, 256));
         } catch Error(string memory reason) {
             return (false, bytes(reason));
         } catch {
             return (false, bytes("call to forwarder reverted"));
         }
+    }
+
+    function getTruncatedData(bytes memory data, uint256 maxSize) internal pure returns (bytes memory) {
+        uint256 length = min(data.length, 256);
+        return LibBytesV06.slice(data, 0, length);
     }
 
     function min(uint a, uint b) private pure returns (uint) {
