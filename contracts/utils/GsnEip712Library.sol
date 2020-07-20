@@ -12,6 +12,8 @@ import "./GsnUtils.sol";
  * Bridge Library to map GSN RelayRequest into a call of a Forwarder
  */
 library GsnEip712Library {
+    // maximum length of return value/revert reason for 'execute' method. Will truncate result if exceeded.
+    uint256 private constant MAX_RETURN_SIZE = 1024;
 
     //copied from Forwarder (can't reference string constants even from another library)
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
@@ -89,17 +91,14 @@ library GsnEip712Library {
         try IForwarder(relayRequest.relayData.forwarder).execute(
                 forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
         ) returns (bool _success, bytes memory _ret) {
-            return (_success, getTruncatedData(_ret, 256));
-        } catch Error(string memory reason) {
-            return (false, bytes(reason));
-        } catch {
-            return (false, bytes("call to forwarder reverted"));
+            return (_success, getTruncatedData(_ret));
+        } catch (bytes memory _ret) {
+            return (false, getTruncatedData(_ret));
         }
     }
 
-    function getTruncatedData(bytes memory data, uint256 maxSize) internal pure returns (bytes memory) {
-        uint256 length = min(data.length, maxSize);
-        return LibBytesV06.slice(data, 0, length);
+    function getTruncatedData(bytes memory data) internal pure returns (bytes memory) {
+        return LibBytesV06.slice(data, 0, min(data.length, MAX_RETURN_SIZE));
     }
 
     function min(uint a, uint b) private pure returns (uint) {
