@@ -24,7 +24,6 @@ contract RelayHub is IRelayHub {
 
     uint256 public override minimumStake;
     uint256 public override minimumUnstakeDelay;
-    uint256 public override minimumRelayBalance;
     uint256 public override maximumRecipientDeposit;
     uint256 public override gasOverhead;
     uint256 public override postOverhead;
@@ -49,7 +48,6 @@ contract RelayHub is IRelayHub {
         uint256 _postOverhead,
         uint256 _gasOverhead,
         uint256 _maximumRecipientDeposit,
-        uint256 _minimumRelayBalance,
         uint256 _minimumUnstakeDelay,
         uint256 _minimumStake
     ) public {
@@ -60,7 +58,6 @@ contract RelayHub is IRelayHub {
         postOverhead = _postOverhead;
         gasOverhead = _gasOverhead;
         maximumRecipientDeposit = _maximumRecipientDeposit;
-        minimumRelayBalance = _minimumRelayBalance;
         minimumUnstakeDelay = _minimumUnstakeDelay;
         minimumStake =  _minimumStake;
     }

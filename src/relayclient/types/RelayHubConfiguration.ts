@@ -7,6 +7,5 @@ export interface RelayHubConfiguration {
   maxWorkerCount: number
   minimumUnstakeDelay: number
   minimumStake: IntString
-  minimumRelayBalance: IntString
   maximumRecipientDeposit: IntString
 }
