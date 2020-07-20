@@ -240,7 +240,6 @@ export default class CommandsLogic {
         deployOptions.relayHubConfiguration.postOverhead,
         deployOptions.relayHubConfiguration.gasOverhead,
         deployOptions.relayHubConfiguration.maximumRecipientDeposit,
-        deployOptions.relayHubConfiguration.minimumRelayBalance,
         deployOptions.relayHubConfiguration.minimumUnstakeDelay,
         deployOptions.relayHubConfiguration.minimumStake]
     }).send(merge(options, { gas: 5e6 }))

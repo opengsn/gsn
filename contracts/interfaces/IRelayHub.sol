@@ -153,10 +153,6 @@ interface IRelayHub {
     // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
     function minimumUnstakeDelay() external view returns (uint256);
 
-    // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
-    // will not be able to immediately start serving requests.
-    function minimumRelayBalance() external view returns (uint256);
-
     // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
     function maximumRecipientDeposit() external view returns (uint256);
 

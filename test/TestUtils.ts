@@ -221,7 +221,6 @@ export async function deployHub (
     defaultEnvironment.relayHubConfiguration.postOverhead,
     defaultEnvironment.relayHubConfiguration.gasOverhead,
     defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-    defaultEnvironment.relayHubConfiguration.minimumRelayBalance,
     defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
     defaultEnvironment.relayHubConfiguration.minimumStake)
 }

@@ -12,13 +12,12 @@ interface Environment {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 36666,
-  postOverhead: 12006,
+  gasOverhead: 36660,
+  postOverhead: 11840,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
-  minimumRelayBalance: 1e17.toString(),
   maximumRecipientDeposit: 2e18.toString()
 }
 
