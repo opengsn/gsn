@@ -202,6 +202,8 @@ contract('RelayProvider', function (accounts) {
       assert.equal(log.returnValues.message, 'hello again')
     })
 
+    // note that the revert reason here was discovered via some truffle/ganache magic (see truffle/reason.js)
+    // this is not the way the revert reason is being reported by GSN solidity contracts
     it('should fail if transaction failed', async () => {
       await expectRevert(testRecipient.testRevert({
         from: gasLess,

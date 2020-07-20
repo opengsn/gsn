@@ -4,7 +4,7 @@ import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import { getEip712Signature } from '../src/common/Utils'
+import { getEip712Signature, removeHexPrefix } from '../src/common/Utils'
 import TypedRequestData, { getDomainSeparatorHash, GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
@@ -145,9 +145,10 @@ contract('Utils', function (accounts) {
             relayRequest
           ))
         const ret = await testUtil.callForwarderVerifyAndCall(relayRequest, sig)
+        const expectedReturnValue = '0x08c379a0' + removeHexPrefix(web3.eth.abi.encodeParameter('string', 'always fail'))
         expectEvent(ret, 'Called', {
           success: false,
-          error: 'always fail'
+          error: expectedReturnValue
         })
       })
       it('should call target', async function () {
@@ -162,7 +163,7 @@ contract('Utils', function (accounts) {
           ))
         const ret = await testUtil.callForwarderVerifyAndCall(relayRequest, sig)
         expectEvent(ret, 'Called', {
-          error: ''
+          error: null
         })
         const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
