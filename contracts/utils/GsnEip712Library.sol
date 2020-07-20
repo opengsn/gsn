@@ -98,7 +98,7 @@ library GsnEip712Library {
     }
 
     function getTruncatedData(bytes memory data, uint256 maxSize) internal pure returns (bytes memory) {
-        uint256 length = min(data.length, 256);
+        uint256 length = min(data.length, maxSize);
         return LibBytesV06.slice(data, 0, length);
     }
 
