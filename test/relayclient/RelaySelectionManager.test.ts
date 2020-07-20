@@ -7,10 +7,9 @@ import { configureGSN, getDependencies, GSNDependencies } from '../../src/relayc
 import { PingFilter } from '../../src/relayclient/types/Aliases'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { PartialRelayInfo } from '../../src/relayclient/types/RelayInfo'
-import { constants } from '@openzeppelin/test-helpers'
 import { register, stake } from './KnownRelaysManager.test'
 import PingResponse from '../../src/common/PingResponse'
-import { relayHubConfiguration } from '../../src/common/Environments'
+import { deployHub } from '../TestUtils'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -94,20 +93,9 @@ contract('RelaySelectionManager', function (accounts) {
       let dependencyTree: GSNDependencies
 
       before(async function () {
-        const RelayHub = artifacts.require('RelayHub')
         const StakeManager = artifacts.require('StakeManager')
         const stakeManager = await StakeManager.new()
-        relayHub = await RelayHub.new(
-          stakeManager.address,
-          constants.ZERO_ADDRESS,
-          relayHubConfiguration.MAX_WORKER_COUNT,
-          relayHubConfiguration.GAS_RESERVE,
-          relayHubConfiguration.POST_OVERHEAD,
-          relayHubConfiguration.GAS_OVERHEAD,
-          relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-          relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-          relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-          relayHubConfiguration.MINIMUM_STAKE)
+        relayHub = await deployHub(stakeManager.address)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
 
