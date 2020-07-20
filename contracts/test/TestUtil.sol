@@ -41,13 +41,13 @@ contract TestUtil {
     external
     returns (
         bool success,
-        string memory ret
+        bytes memory ret
     ) {
         (success, ret) = GsnEip712Library.execute(relayRequest, signature);
-        emit Called(success, success == false ? ret : "");
+        emit Called(success, success == false ? ret : bytes(""));
     }
 
-    event Called(bool success, string error);
+    event Called(bool success, bytes error);
 
     function splitRequest(
         GsnTypes.RelayRequest calldata relayRequest
