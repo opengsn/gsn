@@ -21,7 +21,7 @@ import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
 import { GsnRequestType } from '../common/EIP712/TypedRequestData'
 import { constants } from '../common/Constants'
-import { relayHubConfiguration } from '../common/Environments'
+import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 
 interface RegisterOptions {
   from: Address
@@ -37,6 +37,7 @@ interface DeployOptions {
   gasLimit?: number
   deployPaymaster?: boolean
   forwarderAddress?: string
+  relayHubConfiguration: RelayHubConfiguration
 }
 
 export interface DeploymentResult {
@@ -234,14 +235,14 @@ export default class CommandsLogic {
       arguments: [
         sInstance.options.address,
         pInstance.options.address,
-        relayHubConfiguration.MAX_WORKER_COUNT,
-        relayHubConfiguration.GAS_RESERVE,
-        relayHubConfiguration.POST_OVERHEAD,
-        relayHubConfiguration.GAS_OVERHEAD,
-        relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-        relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-        relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-        relayHubConfiguration.MINIMUM_STAKE]
+        deployOptions.relayHubConfiguration.maxWorkerCount,
+        deployOptions.relayHubConfiguration.gasReserve,
+        deployOptions.relayHubConfiguration.postOverhead,
+        deployOptions.relayHubConfiguration.gasOverhead,
+        deployOptions.relayHubConfiguration.maximumRecipientDeposit,
+        deployOptions.relayHubConfiguration.minimumRelayBalance,
+        deployOptions.relayHubConfiguration.minimumUnstakeDelay,
+        deployOptions.relayHubConfiguration.minimumStake]
     }).send(merge(options, { gas: 5e6 }))
 
     let paymasterAddress = constants.ZERO_ADDRESS

@@ -1,4 +1,4 @@
-import { constants, ether } from '@openzeppelin/test-helpers'
+import { ether } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 
 import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
@@ -10,15 +10,13 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance
 } from '../../types/truffle-contracts'
-import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
-import { relayHubConfiguration } from '../../src/common/Environments'
 
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
@@ -68,17 +66,7 @@ contract('KnownRelaysManager', function (
       workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
       workerNotActive = await web3.eth.personal.newAccount('password')
       stakeManager = await StakeManager.new()
-      relayHub = await RelayHub.new(
-        stakeManager.address,
-        constants.ZERO_ADDRESS,
-        relayHubConfiguration.MAX_WORKER_COUNT,
-        relayHubConfiguration.GAS_RESERVE,
-        relayHubConfiguration.POST_OVERHEAD,
-        relayHubConfiguration.GAS_OVERHEAD,
-        relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-        relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-        relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-        relayHubConfiguration.MINIMUM_STAKE)
+      relayHub = await deployHub(stakeManager.address)
       config = configureGSN({
         relayHubAddress: relayHub.address,
         relayLookupWindowBlocks
@@ -174,17 +162,7 @@ contract('KnownRelaysManager 2', function (accounts) {
 
     before(async function () {
       stakeManager = await StakeManager.new()
-      relayHub = await RelayHub.new(
-        stakeManager.address,
-        constants.ZERO_ADDRESS,
-        relayHubConfiguration.MAX_WORKER_COUNT,
-        relayHubConfiguration.GAS_RESERVE,
-        relayHubConfiguration.POST_OVERHEAD,
-        relayHubConfiguration.GAS_OVERHEAD,
-        relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-        relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-        relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-        relayHubConfiguration.MINIMUM_STAKE)
+      relayHub = await deployHub(stakeManager.address)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090'],
         relayHubAddress: relayHub.address,

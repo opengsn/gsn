@@ -4,6 +4,7 @@ import fs from 'fs'
 import { Address } from '../relayclient/types/Aliases'
 import path from 'path'
 import { DeploymentResult } from './CommandsLogic'
+import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
@@ -29,6 +30,15 @@ export function getMnemonic (mnemonicFile: string): string | undefined {
   }
   console.log('Using mnemonic from file ' + mnemonicFile)
   return fs.readFileSync(mnemonicFile, { encoding: 'utf8' }).replace(/\r?\n|\r/g, '')
+}
+
+export function getRelayHubConfiguration (configFile: string): RelayHubConfiguration | undefined {
+  if (configFile == null) {
+    return
+  }
+  console.log('Using hub config from file ' + configFile)
+  const file = fs.readFileSync(configFile, { encoding: 'utf8' })
+  return JSON.parse(file)
 }
 
 export function getPaymasterAddress (paymaster?: string): string | undefined {
@@ -90,7 +100,7 @@ export function loadDeployment (workdir: string): DeploymentResult {
   }
 }
 
-type GsnOption = 'n' | 'f' | 'h' | 'm'
+type GsnOption = 'n' | 'f' | 'h' | 'm' | 'g'
 
 export function gsnCommander (options: GsnOption[]): CommanderStatic {
   options.forEach(option => {
@@ -106,6 +116,9 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         break
       case 'm':
         commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\' (default: empty)')
+        break
+      case 'g':
+        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction. Defaults to 1 gwei.', '1000000000')
         break
     }
   })

@@ -11,18 +11,16 @@ import {
   TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
-import { startRelay, stopRelay } from './TestUtils'
+import { deployHub, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
-import { relayHubConfiguration } from '../src/common/Environments'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
 const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymasterPreconfiguredApproval')
 
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const Forwarder = artifacts.require('Forwarder')
@@ -57,18 +55,7 @@ options.forEach(params => {
 
       sm = await StakeManager.new()
       const p = await Penalizer.new()
-      rhub = await RelayHub.new(
-        sm.address,
-        p.address,
-        relayHubConfiguration.MAX_WORKER_COUNT,
-        relayHubConfiguration.GAS_RESERVE,
-        relayHubConfiguration.POST_OVERHEAD,
-        relayHubConfiguration.GAS_OVERHEAD,
-        relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-        relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-        relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-        relayHubConfiguration.MINIMUM_STAKE,
-        { gas: 10000000 })
+      rhub = await deployHub(sm.address, p.address)
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
           stake: 1e18,

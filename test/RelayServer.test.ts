@@ -8,14 +8,14 @@ import { KeyManager } from '../src/relayserver/KeyManager'
 import RelayHubABI from '../src/common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../src/common/interfaces/IPaymaster.json'
-import { defaultEnvironment, relayHubConfiguration } from '../src/common/Environments'
+import { defaultEnvironment } from '../src/common/Environments'
 import * as ethUtils from 'ethereumjs-util'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { evmMine, evmMineMany, revert, sleep, snapshot } from './TestUtils'
+import { deployHub, evmMine, evmMineMany, revert, sleep, snapshot } from './TestUtils'
 import { removeHexPrefix } from '../src/common/Utils'
 import {
   ForwarderInstance,
@@ -40,7 +40,6 @@ import Mutex from 'async-mutex/lib/Mutex'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import ContractInteractor from '../src/relayclient/ContractInteractor'
 
-const RelayHub = artifacts.require('RelayHub')
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -145,17 +144,7 @@ contract('RelayServer', function (accounts) {
 
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
-    rhub = await RelayHub.new(
-      stakeManager.address,
-      penalizer.address,
-      relayHubConfiguration.MAX_WORKER_COUNT,
-      relayHubConfiguration.GAS_RESERVE,
-      relayHubConfiguration.POST_OVERHEAD,
-      relayHubConfiguration.GAS_OVERHEAD,
-      relayHubConfiguration.MAXIMUM_RECIPIENT_DEPOSIT,
-      relayHubConfiguration.MINIMUM_RELAY_BALANCE,
-      relayHubConfiguration.MINIMUM_UNSTAKE_DELAY,
-      relayHubConfiguration.MINIMUM_STAKE)
+    rhub = await deployHub(stakeManager.address, penalizer.address)
     forwarder = await Forwarder.new()
     const forwarderAddress = forwarder.address
     sr = await TestRecipient.new(forwarderAddress)
