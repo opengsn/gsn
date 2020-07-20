@@ -9,7 +9,7 @@ import "../0x/LibBytesV06.sol";
 // it should work)
 contract PayableWithEmit is BaseRelayRecipient {
 
-  string public override versionRecipient = "2.0.0-alpha.1+opengsn.payablewithemit.irelayrecipient";
+  string public override versionRecipient = "2.0.0-alpha.3+opengsn.payablewithemit.irelayrecipient";
 
   event Received(address sender, uint value, uint gasleft);
 
