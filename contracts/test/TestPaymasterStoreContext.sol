@@ -20,33 +20,23 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     );
 
     event SampleRecipientPostCallWithValues(
-        address relay,
-        address from,
-        bytes encodedFunction,
-        uint256 baseRelayFee,
-        uint256 pctRelayFee,
-        uint256 gasPrice,
-        uint256 gasLimit,
-        uint256 nonce,
-        bytes approvalData,
-        uint256 maxPossibleGas
+        string context
     );
 
     /**
      * This demonstrates how acceptRelayedCall can return 'context' data for reuse in preRelayedCall/postRelayedCall.
      */
-    function acceptRelayedCall(
+    function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
     override
-    view
-    returns (bytes memory) {
-        (signature);
-        return abi.encode(
+    returns (bytes memory, bool) {
+        _verifyForwarder(relayRequest);
+
+        emit SampleRecipientPreCallWithValues(
             relayRequest.relayData.relayWorker,
             relayRequest.request.from,
             relayRequest.request.data,
@@ -57,21 +47,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
             relayRequest.request.nonce,
             approvalData,
             maxPossibleGas);
-    }
-
-    function preRelayedCall(bytes calldata context)
-    external
-    override
-    returns (bytes32) {
-        (
-        address relay, address from, bytes memory encodedFunction,
-        uint256 baseRelayFee, uint256 pctRelayFee, uint256 gasPrice, uint256 gasLimit,
-        uint256 nonce, bytes memory approvalData, uint256 maxPossibleGas) =
-            abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, uint256, bytes, uint256));
-        emit SampleRecipientPreCallWithValues(
-            relay, from, encodedFunction, baseRelayFee, pctRelayFee,
-                gasPrice, gasLimit, nonce, approvalData, maxPossibleGas);
-        return 0;
+        return ("context passed from preRelayedCall to postRelayedCall",false);
     }
 
     function postRelayedCall(
@@ -85,13 +61,6 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     relayHubOnly
     {
         (context, success, gasUseWithoutPost, relayData);
-        (
-        address relay, address from, bytes memory encodedFunction,
-        uint256 baseRelayFee, uint256 pctRelayFee, uint256 gasPrice, uint256 gasLimit,
-        uint256 nonce, bytes memory approvalData, uint256 maxPossibleGas) =
-            abi.decode(context, (address, address, bytes, uint256, uint256, uint256, uint256, uint256, bytes, uint256));
-        emit SampleRecipientPostCallWithValues(
-            relay, from, encodedFunction, baseRelayFee, pctRelayFee, gasPrice,
-            gasLimit, nonce, approvalData, maxPossibleGas);
+        emit SampleRecipientPostCallWithValues(string(context));
     }
 }

@@ -12,20 +12,19 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
         expectedApprovalData = val;
     }
 
-    function acceptRelayedCall(
+    function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
     override
-    view
-    returns (bytes memory) {
-        (relayRequest, signature, approvalData, maxPossibleGas);
+    returns (bytes memory, bool) {
+        (relayRequest, approvalData, maxPossibleGas);
+        _verifyForwarder(relayRequest);
         require(keccak256(expectedApprovalData) == keccak256(approvalData),
             string(abi.encodePacked(
                 "test: unexpected approvalData: '", approvalData, "' instead of '", expectedApprovalData, "'")));
-        return "";
+        return ("",false);
     }
 }

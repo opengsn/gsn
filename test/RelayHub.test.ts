@@ -514,15 +514,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             })
 
           await expectEvent.inTransaction(tx, TestPaymasterStoreContext, 'SampleRecipientPostCallWithValues', {
-            relay: relayWorker,
-            from: senderAddress,
-            encodedFunction,
-            baseRelayFee,
-            pctRelayFee,
-            gasPrice,
-            gasLimit,
-            nonce: senderNonce,
-            approvalData: null
+            context: 'context passed from preRelayedCall to postRelayedCall'
           })
         })
 
