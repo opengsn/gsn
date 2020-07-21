@@ -172,7 +172,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const r = await makeRequest(web3, {
         request: {
           // nonce: '4',
-          data: recipientContract.contract.methods.emitMessageNoParams().encodeABI()
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
         },
         relayData: { paymaster }
 
@@ -202,7 +202,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const r = await makeRequest(web3, {
         request: {
-          data: recipientContract.contract.methods.emitMessageNoParams().encodeABI()
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
         }
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
@@ -225,7 +225,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const r = await makeRequest(web3, {
         request: {
           // nonce: '4',
-          data: recipientContract.contract.methods.emitMessageNoParams().encodeABI()
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
         },
         relayData: { paymaster }
 
@@ -248,7 +248,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const r = await makeRequest(web3, {
         request: {
           nonce: '4',
-          data: recipientContract.contract.methods.emitMessageNoParams().encodeABI()
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
         },
         relayData: { paymaster }
 
@@ -275,7 +275,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const r = await makeRequest(web3, {
         request: {
           nonce: '4',
-          data: recipientContract.contract.methods.emitMessageNoParams().encodeABI()
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
         },
         relayData: { paymaster }
 
