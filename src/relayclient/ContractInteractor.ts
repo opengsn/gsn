@@ -185,14 +185,18 @@ export default class ContractInteractor {
     return nonce.toString()
   }
 
+  async _getBlockGasLimit (): Promise<number> {
+    const latestBlock = await this.web3.eth.getBlock('latest')
+    return latestBlock.gasLimit
+  }
+
   async validateAcceptRelayCall (
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
     try {
-      // not really needed in client view call. only need to be large enough.
-      const externalGasLimit = 10e6
+      const externalGasLimit = await this._getBlockGasLimit()
 
       const res = await relayHub.contract.methods.relayCall(
         relayRequest,
