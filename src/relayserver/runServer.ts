@@ -21,6 +21,7 @@ export interface ServerConfigParams {
   workdir?: string
   devMode?: boolean
   debug?: boolean
+  registrationBlockRate?: number | string
 }
 
 function error (err: string): void {
@@ -68,6 +69,8 @@ const ethereumNodeUrl: string = argv.ethereumNodeUrl ?? config.ethereumNodeUrl ?
 const workdir: string = argv.workdir ?? config.workdir ?? error('missing --workdir')
 const devMode: boolean = argv.devMode ?? config.devMode ?? error('missing --devMode')
 const debug: boolean = argv.debug ?? config.debug ?? error('missing --debug')
+const registrationBlockRate: string = argv.registrationBlockRate ?? config.registrationBlockRate?.toString()
+console.log('wtf is registrationBlockRate?', registrationBlockRate)
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
@@ -92,7 +95,8 @@ const params = {
   pctRelayFee: parseInt(pctRelayFee),
   devMode,
   debug: debug,
-  gasPriceFactor: gasPriceFactor
+  gasPriceFactor: gasPriceFactor,
+  registrationBlockRate: parseInt(registrationBlockRate)
 }
 const relay = new RelayServer(params as RelayServerParams)
 console.log('Starting server.')

@@ -86,6 +86,7 @@ export interface RelayServerParams {
   readonly baseRelayFee: number | undefined
   readonly pctRelayFee: number | undefined
   readonly gasPriceFactor: number
+  readonly registrationBlockRate?: number
   readonly url?: string
   readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
   readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
@@ -125,6 +126,7 @@ export class RelayServer extends EventEmitter {
   readonly baseRelayFee: number
   readonly pctRelayFee: number
   readonly gasPriceFactor: number
+  readonly registrationBlockRate?: number
   readonly url: string
   readonly workerMinBalance: number
   readonly workerTargetBalance: number
@@ -142,6 +144,7 @@ export class RelayServer extends EventEmitter {
     this.baseRelayFee = params.baseRelayFee ?? 0
     this.pctRelayFee = params.pctRelayFee ?? 0
     this.gasPriceFactor = params.gasPriceFactor
+    this.registrationBlockRate = params.registrationBlockRate
     this.url = params.url ?? 'http://localhost:8090'
     this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
     this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
@@ -482,8 +485,8 @@ export class RelayServer extends EventEmitter {
       throw new StateError('Waiting for stake')
     }
 
-    const registered = await this._isRegistered()
-    if (!registered) {
+    const registeredBlock = await this._getRegistrationBlock()
+    if (registeredBlock === 0) {
       throw new StateError('Not registered yet...')
     }
     if (!this.authorizedHub) {
@@ -504,6 +507,7 @@ export class RelayServer extends EventEmitter {
     }
     this.ready = true
     delete this.lastError
+    receipts = receipts.concat(await this._registerIfNeeded())
     return receipts
   }
 
@@ -628,8 +632,10 @@ export class RelayServer extends EventEmitter {
         destination: this.relayHubContract?.address as string
       })).receipt)
     }
-    const registered = await this._isRegistered()
-    if (!registered) {
+    const registrationBlock = await this._getRegistrationBlock()
+    const currentBlock = await this.contractInteractor.getBlockNumber()
+    const shouldRegisterAgain = this.registrationBlockRate == null ? false : currentBlock - registrationBlock > this.registrationBlockRate
+    if (registrationBlock === 0 || shouldRegisterAgain) {
       const registerMethod = this.relayHubContract?.contract.methods
         .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
           this.url)
@@ -644,17 +650,18 @@ export class RelayServer extends EventEmitter {
     return receipts
   }
 
-  async _isRegistered (): Promise<boolean> {
+  async _getRegistrationBlock (): Promise<number> {
     const relayRegisteredEvents = await this.relayHubContract?.contract.getPastEvents('RelayServerRegistered', {
       fromBlock: 1,
       filter: { relayManager: this.managerAddress }
     })
-    return (relayRegisteredEvents.find(
+    const event = relayRegisteredEvents.find(
       (e: any) =>
         e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase() &&
         e.returnValues.baseRelayFee.toString() === this.baseRelayFee.toString() &&
         e.returnValues.pctRelayFee.toString() === this.pctRelayFee.toString() &&
-        e.returnValues.relayUrl.toString() === this.url.toString()) != null)
+        e.returnValues.relayUrl.toString() === this.url.toString())
+    return (event == null ? 0 : event.blockNumber)
   }
 
   async _areWorkersAdded (): Promise<boolean> {

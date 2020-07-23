@@ -39,6 +39,7 @@ import TmpRelayTransactionJsonRequest from '../src/relayclient/types/TmpRelayTra
 import Mutex from 'async-mutex/lib/Mutex'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import ContractInteractor from '../src/relayclient/ContractInteractor'
+import { ServerConfigParams } from '../src/relayserver/runServer'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
@@ -88,7 +89,7 @@ contract('RelayServer', function (accounts) {
   let options: any, options2: any
   let managerKeyManager, workersKeyManager: KeyManager
 
-  async function bringUpNewRelay (): Promise<RelayServer> {
+  async function bringUpNewRelay (overrideParams?: Partial<ServerConfigParams>): Promise<RelayServer> {
     const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
     const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
     assert.equal(await _web3.eth.getBalance(managerKeyManager.getAddress(0)), '0')
@@ -107,7 +108,8 @@ contract('RelayServer', function (accounts) {
       pctRelayFee: 0,
       gasPriceFactor: 1,
       contractInteractor: interactor,
-      devMode: true
+      devMode: true,
+      ...overrideParams
     }
     const newServer = new RelayServer(params as RelayServerParams)
     newServer.on('error', (e) => {
@@ -1109,43 +1111,72 @@ contract('RelayServer', function (accounts) {
     // })
     describe('_registerIfNeeded', function () {
       let newServer: RelayServer
-      beforeEach(async function () {
-        id = (await snapshot()).result
-        newServer = await bringUpNewRelay()
-        // @ts-ignore
-        newServer.authorizedHub = true
-        const stake = await newServer.refreshStake()
-        assert.deepEqual(stake, oneEther)
-        assert.equal(newServer.owner, relayOwner, 'owner should be set after refreshing stake')
+
+      function registrationTests (): void {
+        it('register server and add workers when not registered', async function () {
+          const receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer)
+        })
+        it('do not register server when already registered', async function () {
+          let receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer)
+          receipts = await newServer._registerIfNeeded()
+          assert.equal(receipts.length, 0, 'should not re-register if already registered')
+        })
+        it('re-register server when params changed', async function () {
+          let receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer)
+          // @ts-ignore
+          newServer.baseRelayFee++
+          receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer, false)
+          // @ts-ignore
+          newServer.pctRelayFee++
+          receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer, false)
+          // @ts-ignore
+          newServer.url = 'fakeUrl'
+          receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer, false)
+        })
+      }
+
+      describe('without re-registration', function () {
+        beforeEach(async function () {
+          id = (await snapshot()).result
+          newServer = await bringUpNewRelay()
+          // @ts-ignore
+          newServer.authorizedHub = true
+          const stake = await newServer.refreshStake()
+          assert.deepEqual(stake, oneEther)
+          assert.equal(newServer.owner, relayOwner, 'owner should be set after refreshing stake')
+          assert.equal(newServer.registrationBlockRate, undefined)
+        })
+        afterEach(async function () {
+          await revert(id)
+        })
+        registrationTests()
       })
-      afterEach(async function () {
-        await revert(id)
-      })
-      it('register server and add workers when not registered', async function () {
-        const receipts = await newServer._registerIfNeeded()
-        assertRelayAdded(receipts, newServer)
-      })
-      it('do not register server when already registered', async function () {
-        let receipts = await newServer._registerIfNeeded()
-        assertRelayAdded(receipts, newServer)
-        receipts = await newServer._registerIfNeeded()
-        assert.equal(receipts.length, 0, 'should not re-register if already registered')
-      })
-      it('re-register server when params changed', async function () {
-        let receipts = await newServer._registerIfNeeded()
-        assertRelayAdded(receipts, newServer)
-        // @ts-ignore
-        newServer.baseRelayFee++
-        receipts = await newServer._registerIfNeeded()
-        assertRelayAdded(receipts, newServer, false)
-        // @ts-ignore
-        newServer.pctRelayFee++
-        receipts = await newServer._registerIfNeeded()
-        assertRelayAdded(receipts, newServer, false)
-        // @ts-ignore
-        newServer.url = 'fakeUrl'
-        receipts = await newServer._registerIfNeeded()
-        assertRelayAdded(receipts, newServer, false)
+      describe('with re-registration', function () {
+        const registrationBlockRate = 1000
+        beforeEach(async function () {
+          id = (await snapshot()).result
+          newServer = await bringUpNewRelay({ registrationBlockRate })
+          // @ts-ignore
+          newServer.authorizedHub = true
+          const stake = await newServer.refreshStake()
+          assert.deepEqual(stake, oneEther)
+          assert.equal(newServer.owner, relayOwner, 'owner should be set after refreshing stake')
+        })
+        afterEach(async function () {
+          await revert(id)
+        })
+        registrationTests()
+        it('re-register server when registrationBlockRate passed', async function () {
+          await evmMineMany(registrationBlockRate)
+          const receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer)
+        })
       })
     })
     // it('_resendUnconfirmedTransactions', async function () {
