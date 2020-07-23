@@ -134,7 +134,7 @@ contract RelayHub is IRelayHub {
             initialGas >= maxPossibleGas,
             "Not enough gas left for innerRelayCall to complete");
 
-        uint maxPossibleCharge = calculateCharge(
+        uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
             relayRequest.relayData
         );
@@ -261,7 +261,7 @@ contract RelayHub is IRelayHub {
         bytes relayedCallReturnValue;
         bytes recipientContext;
         bytes data;
-        bool isTrustedRecipient;
+        bool revertOnRecipientRevert;
     }
 
     function innerRelayCall(
@@ -299,13 +299,11 @@ contract RelayHub is IRelayHub {
         {
             bool success;
             bytes memory retData;
-            // preRelayedCall may revert, but the recipient will still be charged: it should ensure in
-            // acceptRelayedCall that this will not happen.
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(atomicData.data);
             if (!success) {
-                revertWithStatus(RelayCallStatus.PreRelayedFailed, retData);
+                revertWithStatus(RelayCallStatus.PreRelayedFailed, GsnEip712Library.getTruncatedData(retData));
             }
-            (atomicData.recipientContext, atomicData.isTrustedRecipient) = abi.decode(retData, (bytes,bool));
+            (atomicData.recipientContext, atomicData.revertOnRecipientRevert) = abi.decode(retData, (bytes,bool));
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
@@ -317,7 +315,7 @@ contract RelayHub is IRelayHub {
                 revertWithStatus(RelayCallStatus.ForwarderFailed, atomicData.relayedCallReturnValue);
             }
 
-            if ( atomicData.isTrustedRecipient && ! atomicData.relayedCallSuccess) {
+            if ( atomicData.revertOnRecipientRevert && ! atomicData.relayedCallSuccess) {
                 //we trusted the recipient, but it reverted...
                 revertWithStatus(RelayCallStatus.RecipientFailed, atomicData.relayedCallReturnValue);
             }
@@ -337,7 +335,7 @@ contract RelayHub is IRelayHub {
         (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(atomicData.data);
 
         if (!successPost) {
-            revertWithStatus(RelayCallStatus.PostRelayedFailed, ret);
+            revertWithStatus(RelayCallStatus.PostRelayedFailed, GsnEip712Library.getTruncatedData(ret));
         }
         }
 

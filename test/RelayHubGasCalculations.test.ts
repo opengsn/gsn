@@ -37,7 +37,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    pre: 643,
+    pre: 5205,
     post: 1666
   }
 
@@ -137,7 +137,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   })
 
   describe('#relayCall()', function () {
-    it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'acceptRelayedCall\'',
+    it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'preRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
         const res = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
@@ -157,7 +157,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
           gasleft: (parseInt(gasLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
-          // arcGasleft: (parseInt(gasLimits.acceptRelayedCallGasLimit) - magicNumbers.arc).toString(),
           maxPossibleGas: maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPostCallWithValues', {
@@ -197,7 +196,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       )
     })
 
-    it('should revert an attempt to use more than allowed gas for acceptRelayedCall', async function () {
+    it('should revert an attempt to use more than allowed gas for preRelayedCall', async function () {
       // TODO: extract preparation to 'before' block
       const misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await misbehavingPaymaster.setTrustedForwarder(forwarder)
@@ -269,9 +268,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       await relayHub.depositFor(relayOwner, { value: (1).toString() })
     });
 
-    [0, /* 100, */ 1000, 50000]
+    [0, 100, 1000, 50000]
       .forEach(messageLength =>
-        [0, /* 1, */ 10, /* 100, */ 1000]
+        [0, 1, 10, 100, 1000]
           .forEach(requestedFee => {
             // avoid duplicate coverage checks. they do the same, and take a lot of time:
             if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return

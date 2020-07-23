@@ -21,6 +21,8 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
     override
     returns (bytes memory, bool) {
         ( maxPossibleGas);
+        _verifyForwarder(relayRequest);
+
         address signer =
             keccak256(abi.encodePacked("I approve", relayRequest.request.from))
             .toEthSignedMessageHash()

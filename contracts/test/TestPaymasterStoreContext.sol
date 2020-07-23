@@ -24,7 +24,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     );
 
     /**
-     * This demonstrates how acceptRelayedCall can return 'context' data for reuse in preRelayedCall/postRelayedCall.
+     * This demonstrates how preRelayedCall can return 'context' data for reuse in postRelayedCall.
      */
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,

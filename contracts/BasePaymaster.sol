@@ -13,7 +13,6 @@ import "./forwarder/Forwarder.sol";
 /**
  * Abstract base class to be inherited by a concrete Paymaster
  * A subclass must implement:
- *  - acceptRelayedCall
  *  - preRelayedCall
  *  - postRelayedCall
  */

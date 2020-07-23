@@ -38,7 +38,7 @@ interface IRelayHub {
 
     /// Emitted when an attempt to relay a call fails and Paymaster does not accept the transaction.
     /// The actual relayed call was not executed, and the recipient not charged.
-    /// @param reason contains a revert reason returned from acceptRelayedCall.
+    /// @param reason contains a revert reason returned from preRelayedCall or forwarder.
     event TransactionRejectedByPaymaster(
         address indexed relayManager,
         address indexed paymaster,
@@ -122,7 +122,7 @@ interface IRelayHub {
     /// Arguments:
     /// @param relayRequest - all details of the requested relayed call
     /// @param signature - client's EIP-712 signature over the relayRequest struct
-    /// @param approvalData: dapp-specific data forwarded to acceptRelayedCall.
+    /// @param approvalData: dapp-specific data forwarded to preRelayedCall.
     ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the Paymaster
     /// @param externalGasLimit - the value passed as gasLimit to the transaction.
     ///
