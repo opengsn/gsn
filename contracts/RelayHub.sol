@@ -205,6 +205,9 @@ contract RelayHub is IRelayHub {
         vars.success = success;
         vars.innerGasUsed = vars.gasBeforeInner-gasleft();
         (vars.status, vars.relayedCallReturnValue) = abi.decode(relayCallStatus, (RelayCallStatus, bytes));
+        if ( vars.relayedCallReturnValue.length>0 ) {
+            emit TransactionResult(vars.status, vars.relayedCallReturnValue );
+        }
     }
     {
         if (!vars.success) {
@@ -247,7 +250,6 @@ contract RelayHub is IRelayHub {
             relayRequest.relayData.paymaster,
             vars.functionSelector,
             vars.status,
-            vars.relayedCallReturnValue,
             charge);
         return (true, "");
     }

@@ -280,7 +280,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               const beforeBalances = await getBalances()
               const pctRelayFee = requestedFee.toString()
               const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
-              const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
+              let encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
+              if (messageLength === 0) {
+                encodedFunction = recipient.contract.methods.emitMessageNoParams().encodeABI()
+              }
               const baseRelayFee = '0'
               const relayRequest: RelayRequest = {
                 request: {
