@@ -23,7 +23,7 @@ import { TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import { defaultEnvironment } from '../common/Environments'
 import VersionsManager from '../common/VersionsManager'
-import { calculateTransactionMaxPossibleGas } from '../common/Utils'
+import { calculateTransactionMaxPossibleGas, decodeRevertReason } from '../common/Utils'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -301,7 +301,7 @@ export class RelayServer extends EventEmitter {
     }
     debug('viewRelayCallRet', viewRelayCallRet)
     if (!viewRelayCallRet.paymasterAccepted) {
-      throw new Error(`Paymaster rejected in server: ${viewRelayCallRet.returnValue} req=${JSON.stringify(relayRequest, null, 2)}`)
+      throw new Error(`Paymaster rejected in server: ${decodeRevertReason(viewRelayCallRet.returnValue)} req=${JSON.stringify(relayRequest, null, 2)}`)
     }
     // Send relayed transaction
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)

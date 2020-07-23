@@ -43,7 +43,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     relayHubOnly
     returns (bytes memory, bool) {
         (signature, approvalData, maxPossibleGas);
-        _verifyForwrader(relayRequest);
+        _verifyForwarder(relayRequest);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {

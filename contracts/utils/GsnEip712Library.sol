@@ -100,14 +100,11 @@ library GsnEip712Library {
           //decode return value of execute:
           (callSuccess, ret) = abi.decode(ret, (bool, bytes));
         }
-        ret = getTruncatedData(ret);
+        truncatedData(ret);
     }
 
-    function getTruncatedData(bytes memory data) internal pure returns (bytes memory) {
-        if (data.length > MAX_RETURN_SIZE) {
-            return LibBytesV06.slice(data, 0, MAX_RETURN_SIZE);
-        }
-        return data;
+    function truncatedData(bytes memory data) internal pure {
+        MinLibBytes.truncatedData(data, MAX_RETURN_SIZE);
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

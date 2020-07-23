@@ -18,7 +18,7 @@ import {
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { defaultEnvironment } from '../../src/common/Environments'
-import { deployHub, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '../../src/common/Utils'
@@ -338,7 +338,7 @@ contract('RelayProvider', function (accounts) {
         gasPrice: '1'
       })
       expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster', {
-        reason: 'You asked me to revert, remember?'
+        reason: encodeRevertReason('You asked me to revert, remember?')
       })
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 
