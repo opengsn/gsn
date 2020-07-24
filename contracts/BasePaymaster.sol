@@ -26,7 +26,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     }
 
     //Paymaster is commited to pay for any reverted transaction above the commitment. it covers both preRelayedCall aod
-    // forwrader's check for nonce/signature.
+    // forwarder's check for nonce/signature.
     // we assume 50k is more than enough for forwarder (10k bytes request takes ~30kgas)
     uint256 constant public COMMITMENT_GAS_LIMIT = 150000;
     //any revert in preRelayedCall is within "commitment"

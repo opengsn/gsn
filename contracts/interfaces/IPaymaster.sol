@@ -8,7 +8,7 @@ interface IPaymaster {
 
     struct GasLimits {
         //paymaster is committed to pay reverted transactions above this gas limit.
-        // This limit should cover both preRelayedCall gaslimit AND forwrader's nonce and signature validation.
+        // This limit should cover both preRelayedCall gaslimit AND forwarder's nonce and signature validation.
         uint256 commitmentGasLimit;
         uint256 preRelayedCallGasLimit;
         uint256 postRelayedCallGasLimit;
@@ -36,12 +36,12 @@ interface IPaymaster {
     );
 
     /**
-     * Called by Relay (and RelayHub), to validate if the paymaster accepts paying this call.
+     * Called by Relay (and RelayHub), to validate if the paymaster agrees to pay for this call.
      * revert to signal the paymaster will NOT pay for this call.
      *
      * MUST be protected with relayHubOnly() in case it modifies state.
      *
-     * Note that revert by the Forwrader (either on nonce or signature) will also reject the call.
+     * Note that revert by the Forwarder (either on nonce or signature) will also reject the call.
      * a paymaster may also set "revertOnRecipientRevert" to signal that revert by the recipient
      * contract should also be rejected. In this case, it means the Paymaster trust the recipient
      * to reject fast: both preRelayedCall, forwarder check and receipient checks must fit into

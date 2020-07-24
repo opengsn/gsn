@@ -181,7 +181,6 @@ contract RelayHub is IRelayHub {
         require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
-        // We now verify that the paymaster will agree to be charged for the transaction.
         (vars.gasLimits, vars.maxPossibleGas) =
             checkGasLimits(relayRequest, externalGasLimit);
 
@@ -208,12 +207,11 @@ contract RelayHub is IRelayHub {
     }
     {
         if (!vars.success) {
-//            (vars.status, relayCallStatus) = abi.decode(relayCallStatus, (RelayCallStatus, bytes));
             //Failure cases where the PM doesn't pay
             if ( (vars.innerGasUsed < vars.gasLimits.commitmentGasLimit ) && (
                     vars.status == RelayCallStatus.PreRelayedFailed ||
                     vars.status == RelayCallStatus.ForwarderFailed ||
-                    vars.status == RelayCallStatus.RecipientFailed  //can only be thrown if our preRelayedCall trusted it
+                    vars.status == RelayCallStatus.RecipientFailed  //can only be thrown if revertOnRecipientRevert==true
             )) {
                 paymasterAccepted=false;
                 revertReason = GsnUtils.getError(vars.relayedCallReturnValue);

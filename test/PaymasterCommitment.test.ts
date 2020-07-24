@@ -31,7 +31,7 @@ interface PartialRelayRequest {
 }
 
 // given partial request, fill it in from defaults, and return request and signature to send.
-// if nonce is not explicitly specified, read it from forwrader
+// if nonce is not explicitly specified, read it from forwarder
 async function makeRequest (web3: Web3, req: PartialRelayRequest, defaultRequest: RelayRequest, chainId: number, forwarderInstance: ForwarderInstance):
 Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
   const filledRequest = {
