@@ -34,7 +34,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     ForwarderFailed: new BN('3'),
     RecipientFailed: new BN('4'),
     PostRelayedFailed: new BN('5'),
-    RecipientBalanceChanged: new BN('6')
+    PaymasterBalanceChanged: new BN('6')
   }
 
   const chainId = defaultEnvironment.chainId
@@ -674,26 +674,26 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
           it('reverts relayed call if recipient withdraws balance during preRelayedCall', async function () {
             await misbehavingPaymaster.setWithdrawDuringPreRelayedCall(true)
-            await assertRevertWithRecipientBalanceChanged()
+            await assertRevertWithPaymasterBalanceChanged()
           })
 
           it('reverts relayed call if recipient withdraws balance during the relayed call', async function () {
             await recipientContract.setWithdrawDuringRelayedCall(misbehavingPaymaster.address)
-            await assertRevertWithRecipientBalanceChanged()
+            await assertRevertWithPaymasterBalanceChanged()
           })
 
           it('reverts relayed call if recipient withdraws balance during postRelayedCall', async function () {
             await misbehavingPaymaster.setWithdrawDuringPostRelayedCall(true)
-            await assertRevertWithRecipientBalanceChanged()
+            await assertRevertWithPaymasterBalanceChanged()
           })
 
-          async function assertRevertWithRecipientBalanceChanged (): Promise<void> {
+          async function assertRevertWithPaymasterBalanceChanged (): Promise<void> {
             const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signature, '0x', gas, {
               from: relayWorker,
               gas,
               gasPrice
             })
-            expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.RecipientBalanceChanged })
+            expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.PaymasterBalanceChanged })
           }
         })
       })

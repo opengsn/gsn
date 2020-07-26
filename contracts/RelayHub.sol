@@ -338,7 +338,7 @@ contract RelayHub is IRelayHub {
         }
 
         if (balances[relayRequest.relayData.paymaster] < vars.balanceBefore) {
-            revertWithStatus(RelayCallStatus.RecipientBalanceChanged, "");
+            revertWithStatus(RelayCallStatus.PaymasterBalanceChanged, "");
         }
 
         return (vars.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed, vars.relayedCallReturnValue);
