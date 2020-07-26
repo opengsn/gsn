@@ -25,16 +25,13 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         return address(relayHub);
     }
 
-    //Paymaster is commited to pay for any reverted transaction above the commitment. it covers both preRelayedCall aod
-    // forwarder's check for nonce/signature.
-    // we assume 50k is more than enough for forwarder (10k bytes request takes ~30kgas)
+    //These parameters are documented in IPaymaster.GasLimits
     uint256 constant public COMMITMENT_GAS_LIMIT = 150000;
-    //any revert in preRelayedCall is within "commitment"
     uint256 constant public PRE_RELAYED_CALL_GAS_LIMIT = 100000;
     uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
 
     function getGasLimits()
-    external
+    public
     override
     virtual
     view

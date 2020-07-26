@@ -88,14 +88,10 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         return balance;
     }
 
-    IPaymaster.GasLimits private limits = IPaymaster.GasLimits(
-        COMMITMENT_GAS_LIMIT,
-        PRE_RELAYED_CALL_GAS_LIMIT,
-        POST_RELAYED_CALL_GAS_LIMIT
-    );
+    IPaymaster.GasLimits private limits = super.getGasLimits();
 
     function getGasLimits()
-    external override view
+    public override view
     returns (IPaymaster.GasLimits memory) {
         return limits;
     }
