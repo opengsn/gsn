@@ -25,10 +25,13 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         return address(relayHub);
     }
 
+    //overhead of forwarder verify+signature, plus hub overhead.
+    uint256 constant public FORWRADER_HUB_OVERHEAD = 50000;
+
     //These parameters are documented in IPaymaster.GasLimits
-    uint256 constant public COMMITMENT_GAS_LIMIT = 150000;
     uint256 constant public PRE_RELAYED_CALL_GAS_LIMIT = 100000;
     uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
+    uint256 constant public PAYMASTER_PAYS_ABOVE = PRE_RELAYED_CALL_GAS_LIMIT + FORWRADER_HUB_OVERHEAD;
 
     function getGasLimits()
     public
@@ -39,7 +42,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         IPaymaster.GasLimits memory limits
     ) {
         return IPaymaster.GasLimits(
-            COMMITMENT_GAS_LIMIT,
+            PAYMASTER_PAYS_ABOVE,
             PRE_RELAYED_CALL_GAS_LIMIT,
             POST_RELAYED_CALL_GAS_LIMIT
         );

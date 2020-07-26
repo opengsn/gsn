@@ -16,6 +16,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
 
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
@@ -23,6 +24,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     override
     virtual
     returns (bytes memory, bool) {
+        (signature);
         _verifyForwarder(relayRequest);
         (approvalData, maxPossibleGas);
         emit SampleRecipientPreCall();

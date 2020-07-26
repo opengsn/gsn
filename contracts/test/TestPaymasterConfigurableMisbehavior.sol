@@ -34,6 +34,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
@@ -41,7 +42,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     override
     relayHubOnly
     returns (bytes memory, bool) {
-        (approvalData, maxPossibleGas);
+        (signature, approvalData, maxPossibleGas);
         _verifyForwarder(relayRequest);
         if (overspendAcceptGas) {
             uint i = 0;
@@ -98,9 +99,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
     bool private trustRecipientRevert;
 
-    function setGasLimits(uint commitmentGasLimit, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
+    function setGasLimits(uint paymasterPaysAbove, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
         limits = IPaymaster.GasLimits(
-            commitmentGasLimit,
+            paymasterPaysAbove,
             preRelayedCallGasLimit,
             postRelayedCallGasLimit
         );

@@ -7,12 +7,11 @@ import "./GsnTypes.sol";
 interface IPaymaster {
 
     /**
-     * @param commitmentGasLimit -
+     * @param paymasterPaysAbove -
      *      From a Relay's point of view, this is the highest gas value a paymaster might "grief" the relay,
-     *      since the paymaster is commited to pay anything above that.
-     *      the amount of gas a paymaster is committed to pay.
+     *      since the paymaster will pay anything above that (regardless if the tx reverts)
      *      From the Paymaster's view: this value is including preRelayedCallGasLimit, and also the overhead
-     *      used by the forwarder to verify the recipient.
+     *      used by the forwarder to verify the recipient. see value in BasePaymaster.PAYMASTER_PAYS_ABOVE
      * @param preRelayedCallGasLimit - the max gas usage of preRelayedCall. any revert (including OOG)
      *      of preRelayedCall is a reject by the paymaster
      * @param postRelayedCallGasLimit - the max gas usage of postRelayedCall.
@@ -22,7 +21,7 @@ interface IPaymaster {
     struct GasLimits {
         //paymaster is committed to pay reverted transactions above this gas limit.
         // This limit should cover both preRelayedCall gaslimit AND forwarder's nonce and signature validation.
-        uint256 commitmentGasLimit;
+        uint256 paymasterPaysAbove;
         uint256 preRelayedCallGasLimit;
         uint256 postRelayedCallGasLimit;
     }
@@ -58,9 +57,12 @@ interface IPaymaster {
      *    a paymaster may also set "revertOnRecipientRevert" to signal that revert by the recipient
      *    contract should also be rejected. In this case, it means the Paymaster trust the recipient
      *    to reject fast: both preRelayedCall, forwarder check and receipient checks must fit into
-     *    the GasLimits.commitmentGasLimit, otherwise the TX is paid by the Paymaster.
+     *    the GasLimits.paymasterPaysAbove, otherwise the TX is paid by the Paymaster.
      *
      *  @param relayRequest - the full relay request structure
+     *  @param signature - user's EIP712-compatible signature of the {@link relayRequest}.
+     *              Note that in most cases the paymaster shouldn't try use it at all. It is always checked
+     *              by the forwarder immediately after preRelayedCall returns.
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
      *  @param maxPossibleGas - based on values returned from {@link getGasLimits},
      *         the RelayHub will calculate the maximum possible amount of gas the user may be charged for.
@@ -73,6 +75,7 @@ interface IPaymaster {
      */
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )

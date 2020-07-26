@@ -14,13 +14,14 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
 
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
     override
     returns (bytes memory, bool) {
-        (relayRequest, approvalData, maxPossibleGas);
+        (relayRequest, signature, approvalData, maxPossibleGas);
         _verifyForwarder(relayRequest);
         require(keccak256(expectedApprovalData) == keccak256(approvalData),
             string(abi.encodePacked(

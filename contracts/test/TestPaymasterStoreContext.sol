@@ -14,7 +14,6 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         uint256 pctRelayFee,
         uint256 gasPrice,
         uint256 gasLimit,
-        uint256 nonce,
         bytes approvalData,
         uint256 maxPossibleGas
     );
@@ -28,12 +27,14 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
      */
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
     override
     returns (bytes memory, bool) {
+        (signature, approvalData, maxPossibleGas);
         _verifyForwarder(relayRequest);
 
         emit SampleRecipientPreCallWithValues(
@@ -44,7 +45,6 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
             relayRequest.relayData.pctRelayFee,
             relayRequest.relayData.gasPrice,
             relayRequest.request.gas,
-            relayRequest.request.nonce,
             approvalData,
             maxPossibleGas);
         return ("context passed from preRelayedCall to postRelayedCall",false);

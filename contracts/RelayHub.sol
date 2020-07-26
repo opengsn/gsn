@@ -124,7 +124,7 @@ contract RelayHub is IRelayHub {
             IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
         maxPossibleGas =
             gasOverhead +
-            gasLimits.commitmentGasLimit +
+            gasLimits.paymasterPaysAbove +
             gasLimits.postRelayedCallGasLimit +
             relayRequest.request.gas;
 
@@ -169,6 +169,7 @@ contract RelayHub is IRelayHub {
     override
     returns (bool paymasterAccepted, string memory revertReason)
     {
+        (signature);
         RelayCallData memory vars;
         vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.data, 0);
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
@@ -208,7 +209,7 @@ contract RelayHub is IRelayHub {
     {
         if (!vars.success) {
             //Failure cases where the PM doesn't pay
-            if ( (vars.innerGasUsed < vars.gasLimits.commitmentGasLimit ) && (
+            if ( (vars.innerGasUsed < vars.gasLimits.paymasterPaysAbove ) && (
                     vars.status == RelayCallStatus.PreRelayedFailed ||
                     vars.status == RelayCallStatus.ForwarderFailed ||
                     vars.status == RelayCallStatus.RecipientFailed  //can only be thrown if revertOnRecipientRevert==true
@@ -292,7 +293,7 @@ contract RelayHub is IRelayHub {
         // Note: we open a new block to avoid growing the stack too much.
         atomicData.data = abi.encodeWithSelector(
             IPaymaster.preRelayedCall.selector,
-                relayRequest, approvalData, maxPossibleGas
+                relayRequest, signature, approvalData, maxPossibleGas
         );
         {
             bool success;

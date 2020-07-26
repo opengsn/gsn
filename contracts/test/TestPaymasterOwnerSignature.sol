@@ -14,13 +14,14 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
      */
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
     external
     override
     returns (bytes memory, bool) {
-        ( maxPossibleGas);
+        (signature, maxPossibleGas);
         _verifyForwarder(relayRequest);
 
         address signer =
