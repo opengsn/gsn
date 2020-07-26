@@ -113,7 +113,7 @@ contract RelayHub is IRelayHub {
         emit Withdrawn(account, dest, amount);
     }
 
-    function checkGasLimits(
+    function verifyGasLimits(
         GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGas
     )
@@ -182,7 +182,7 @@ contract RelayHub is IRelayHub {
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         (vars.gasLimits, vars.maxPossibleGas) =
-            checkGasLimits(relayRequest, externalGasLimit);
+             verifyGasLimits(relayRequest, externalGasLimit);
 
     {
         vars.externalGasLimit = externalGasLimit;
