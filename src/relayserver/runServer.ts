@@ -70,7 +70,6 @@ const workdir: string = argv.workdir ?? config.workdir ?? error('missing --workd
 const devMode: boolean = argv.devMode ?? config.devMode ?? error('missing --devMode')
 const debug: boolean = argv.debug ?? config.debug ?? error('missing --debug')
 const registrationBlockRate: string = argv.registrationBlockRate ?? config.registrationBlockRate?.toString()
-console.log('wtf is registrationBlockRate?', registrationBlockRate)
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)

@@ -32,8 +32,10 @@ abiDecoder.addABI(StakeManagerABI)
 const mintxgascost = defaultEnvironment.mintxgascost
 
 const VERSION = '2.0.0-alpha.3'
-const minimumRelayBalance = 1e17 // 0.1 eth
-const defaultWorkerMinBalance = 0.01e18
+const defaultMinWithdrawalBalance = 0.1e18
+const defaultMinManagerBalance = 0.1e18 // 0.1 eth
+const defaultManagerTargetBalance = 0.3e18
+const defaultWorkerMinBalance = 0.1e18
 const defaultWorkerTargetBalance = 0.3e18
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
@@ -90,6 +92,8 @@ export interface RelayServerParams {
   readonly url?: string
   readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
   readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
+  readonly managerTargetBalance: number | undefined // = defaultManagerTargetBalance,
+  readonly minHubWithdrawalBalance: number | undefined // = defaultManagerTargetBalance,
   readonly devMode: boolean // = false,
   readonly debug: boolean // = false,
 }
@@ -130,6 +134,8 @@ export class RelayServer extends EventEmitter {
   readonly url: string
   readonly workerMinBalance: number
   readonly workerTargetBalance: number
+  readonly managerTargetBalance: number
+  readonly minHubWithdrawalBalance: number
   private readonly devMode: boolean
   private workerTask: any
 
@@ -148,6 +154,8 @@ export class RelayServer extends EventEmitter {
     this.url = params.url ?? 'http://localhost:8090'
     this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
     this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
+    this.managerTargetBalance = params.managerTargetBalance ?? defaultManagerTargetBalance
+    this.minHubWithdrawalBalance = params.minHubWithdrawalBalance ?? defaultMinWithdrawalBalance
     this.devMode = params.devMode
     this.contractInteractor = params.contractInteractor
 
@@ -337,7 +345,7 @@ export class RelayServer extends EventEmitter {
         gasPrice: req.gasPrice
       })
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
-    await this.replenishWorker(workerIndex)
+    await this.replenishServer(workerIndex)
     return signedTx
   }
 
@@ -427,27 +435,34 @@ export class RelayServer extends EventEmitter {
     this.initialized = true
   }
 
-  async replenishWorker (workerIndex: number): Promise<TransactionReceipt[]> {
+  async replenishServer (workerIndex: number): Promise<TransactionReceipt[]> {
     const receipts: TransactionReceipt[] = []
-    const workerAddress = this.getWorkerAddress(workerIndex)
+    let managerEthBalance = await this.getManagerBalance()
+    const managerHubBalance = await this.relayHubContract?.balanceOf(this.managerAddress) ?? toBN(0)
     const workerBalance = await this.getWorkerBalance(workerIndex)
-    if (workerBalance.lt(toBN(this.workerMinBalance))) {
-      const refill = toBN(this.workerTargetBalance).sub(workerBalance)
-      const balance = await this.getManagerBalance()
-      const managerHubBalance = await this.relayHubContract?.balanceOf(this.managerAddress) ?? toBN(0)
+    if (managerEthBalance.gte(toBN(this.managerTargetBalance.toString())) && workerBalance.gte(toBN(this.workerMinBalance.toString()))) {
+      // all filled, nothing to do
+      return receipts
+    }
+    if (managerEthBalance.lt(toBN(this.managerTargetBalance.toString())) && managerHubBalance.gte(toBN(defaultMinWithdrawalBalance))) {
+      console.log(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
+      // Refill manager eth balance from hub balance
+      const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.getManagerAddress())
+      receipts.push((await this._sendTransaction({
+        signer: this.getManagerAddress(),
+        destination: this.relayHubContract?.address as string,
+        method
+      })).receipt)
+    }
+    managerEthBalance = await this.getManagerBalance()
+    const workerAddress = this.getWorkerAddress(workerIndex)
+    if (workerBalance.lt(toBN(this.workerMinBalance.toString()))) {
+      const refill = toBN(this.workerTargetBalance.toString()).sub(workerBalance)
       console.log(
-        `== replenishWorker(${workerIndex}): mgr balance=${balance.div(
-          toBN(1e18)).toString()}  manager hub balance=${managerHubBalance.div(toBN(1e18)).toString()} 
-          worker balance=${workerBalance.div(
-          toBN(1e18)).toString()} refill=${refill.div(toBN(1e18)).toString()}`)
-      if (refill.lt(managerHubBalance.sub(toBN(minimumRelayBalance)))) {
-        const method = this.relayHubContract?.contract.methods.withdraw(toHex(refill), workerAddress)
-        receipts.push((await this._sendTransaction({
-          signer: this.getManagerAddress(),
-          destination: this.relayHubContract?.address as string,
-          method
-        })).receipt)
-      } else if (refill.lt(balance.sub(toBN(minimumRelayBalance)))) {
+        `== replenishServer: mgr balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()} 
+          worker balance=${workerBalance.toString()} refill=${refill.toString()}`)
+      if (refill.lt(managerEthBalance.sub(toBN(defaultMinManagerBalance)))) {
+        console.log('Replenishing worker balance by manager eth balance')
         receipts.push((await this._sendTransaction({
           signer: this.getManagerAddress(),
           destination: workerAddress,
@@ -455,8 +470,7 @@ export class RelayServer extends EventEmitter {
           gasLimit: mintxgascost.toString()
         })).receipt)
       } else {
-        const message = `== replenishWorker: can't replenish: mgr balance too low ${balance.div(toBN(1e18)).toString()} refill=${refill.div(
-          toBN(1e18)).toString()}`
+        const message = `== replenishServer: can't replenish: mgr balance too low ${managerEthBalance.toString()} refill=${refill.toString()}`
         this.emit('fundingNeeded', message)
         console.log(message)
       }
@@ -474,10 +488,10 @@ export class RelayServer extends EventEmitter {
       throw new StateError('Could not get gasPrice from node')
     }
     const balance = await this.getManagerBalance()
-    if (balance.lt(toBN(minimumRelayBalance))) {
+    if (balance.lt(toBN(defaultMinManagerBalance))) {
       throw new StateError(
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Server's balance too low ( ${balance}, required ${minimumRelayBalance}). Waiting for funding...`)
+        `Server's balance too low ( ${balance}, required ${defaultMinManagerBalance}). Waiting for funding...`)
     }
     let receipts = await this._handlePastEvents(blockHeader)
     await this._resendUnconfirmedTransactions(blockHeader)
@@ -495,7 +509,7 @@ export class RelayServer extends EventEmitter {
       return receipts
     }
     const workerIndex = 0
-    receipts = receipts.concat(await this.replenishWorker(workerIndex))
+    receipts = receipts.concat(await this.replenishServer(workerIndex))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.workerMinBalance))) {
       this.emit('error', new Error('workers not funded...'))
