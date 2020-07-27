@@ -71,7 +71,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     ForwarderFailed: new BN('3'),
     RecipientFailed: new BN('4'),
     PostRelayedFailed: new BN('5'),
-    RecipientBalanceChanged: new BN('6')
+    PaymasterBalanceChanged: new BN('6')
   }
 
   let chainId: number

@@ -77,7 +77,7 @@ interface IRelayHub {
     /// @param ForwarderFailed - the transaction was not relayed due to forwarder check (signature,nonce)
     /// @param TrustedRecipientFailed - the transaction was not relayed since Paymaster refuse to relay reverted recipient TX.
     /// @param PostRelayedFailed - the transaction was relayed and reverted due to postRelatedCall reverting
-    /// @param RecipientBalanceChanged - the transaction was relayed and reverted due to the recipient balance change
+    /// @param PaymasterBalanceChanged - the transaction was relayed and reverted due to the paymaster balance change
     enum RelayCallStatus {
         OK,
         RelayedCallFailed,
@@ -85,7 +85,7 @@ interface IRelayHub {
         ForwarderFailed,
         RecipientFailed,
         PostRelayedFailed,
-        RecipientBalanceChanged
+        PaymasterBalanceChanged
     }
 
     /// Add new worker addresses controlled by sender who must be a staked Relay Manager address.

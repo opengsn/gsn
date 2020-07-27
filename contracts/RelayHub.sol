@@ -113,7 +113,7 @@ contract RelayHub is IRelayHub {
         emit Withdrawn(account, dest, amount);
     }
 
-    function checkGasLimits(
+    function verifyGasLimits(
         GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGas
     )
@@ -183,7 +183,7 @@ contract RelayHub is IRelayHub {
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         (vars.gasLimits, vars.maxPossibleGas) =
-            checkGasLimits(relayRequest, externalGasLimit);
+             verifyGasLimits(relayRequest, externalGasLimit);
 
     {
         vars.externalGasLimit = externalGasLimit;
@@ -253,7 +253,7 @@ contract RelayHub is IRelayHub {
     }
     }
 
-    struct AtomicData {
+    struct InnerRelayCallData {
         uint256 balanceBefore;
         bytes32 preReturnValue;
         bool relayedCallSuccess;
@@ -274,7 +274,7 @@ contract RelayHub is IRelayHub {
     external
     returns (RelayCallStatus, bytes memory)
     {
-        AtomicData memory atomicData;
+        InnerRelayCallData memory vars;
         // A new gas measurement is performed inside innerRelayCall, since
         // due to EIP150 available gas amounts cannot be directly compared across external calls
 
@@ -287,62 +287,62 @@ contract RelayHub is IRelayHub {
 
         // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
         // post state to ensure this doesn't happen.
-        atomicData.balanceBefore = balances[relayRequest.relayData.paymaster];
+        vars.balanceBefore = balances[relayRequest.relayData.paymaster];
 
         // First preRelayedCall is executed.
         // Note: we open a new block to avoid growing the stack too much.
-        atomicData.data = abi.encodeWithSelector(
+        vars.data = abi.encodeWithSelector(
             IPaymaster.preRelayedCall.selector,
                 relayRequest, signature, approvalData, maxPossibleGas
         );
         {
             bool success;
             bytes memory retData;
-            (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(atomicData.data);
+            (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(vars.data);
             if (!success) {
                 revertWithStatus(RelayCallStatus.PreRelayedFailed, GsnEip712Library.getTruncatedData(retData));
             }
-            (atomicData.recipientContext, atomicData.revertOnRecipientRevert) = abi.decode(retData, (bytes,bool));
+            (vars.recipientContext, vars.revertOnRecipientRevert) = abi.decode(retData, (bytes,bool));
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
 
         {
             bool forwarderSuccess;
-            (forwarderSuccess, atomicData.relayedCallSuccess, atomicData.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
+            (forwarderSuccess, vars.relayedCallSuccess, vars.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
             if ( !forwarderSuccess ) {
-                revertWithStatus(RelayCallStatus.ForwarderFailed, atomicData.relayedCallReturnValue);
+                revertWithStatus(RelayCallStatus.ForwarderFailed, vars.relayedCallReturnValue);
             }
 
-            if ( atomicData.revertOnRecipientRevert && ! atomicData.relayedCallSuccess) {
+            if (vars.revertOnRecipientRevert && !vars.relayedCallSuccess) {
                 //we trusted the recipient, but it reverted...
-                revertWithStatus(RelayCallStatus.RecipientFailed, atomicData.relayedCallReturnValue);
+                revertWithStatus(RelayCallStatus.RecipientFailed, vars.relayedCallReturnValue);
             }
         }
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate
         // We now determine how much the recipient will be charged, to pass this value to postRelayedCall for accurate
         // accounting.
-        atomicData.data = abi.encodeWithSelector(
+        vars.data = abi.encodeWithSelector(
             IPaymaster.postRelayedCall.selector,
-            atomicData.recipientContext,
-            atomicData.relayedCallSuccess,
+            vars.recipientContext,
+            vars.relayedCallSuccess,
             totalInitialGas - gasleft(), /*gasUseWithoutPost*/
             relayRequest.relayData
         );
 
         {
-        (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(atomicData.data);
+        (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(vars.data);
 
         if (!successPost) {
             revertWithStatus(RelayCallStatus.PostRelayedFailed, GsnEip712Library.getTruncatedData(ret));
         }
         }
 
-        if (balances[relayRequest.relayData.paymaster] < atomicData.balanceBefore) {
-            revertWithStatus(RelayCallStatus.RecipientBalanceChanged, "");
+        if (balances[relayRequest.relayData.paymaster] < vars.balanceBefore) {
+            revertWithStatus(RelayCallStatus.PaymasterBalanceChanged, "");
         }
 
-        return (atomicData.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed, atomicData.relayedCallReturnValue);
+        return (vars.relayedCallSuccess ? RelayCallStatus.OK : RelayCallStatus.RelayedCallFailed, vars.relayedCallReturnValue);
     }
 
     /**
