@@ -155,7 +155,6 @@ contract RelayHub is IRelayHub {
         uint256 innerGasUsed;
         uint256 maxPossibleGas;
         uint256 gasBeforeInner;
-        uint256 externalGasLimit;
         bytes retData;
     }
 
@@ -186,19 +185,20 @@ contract RelayHub is IRelayHub {
              verifyGasLimits(relayRequest, externalGasLimit);
 
     {
-        vars.externalGasLimit = externalGasLimit;
 
         //How much gas to pass down to innerRelayCall. must be lower than the default 63/64
         // actually, min(gasleft*63/64, gasleft-GAS_RESERVE) might be enough.
-        uint innerGasLimit = gasleft()*63/64-gasReserve;
+        uint256 innerGasLimit = gasleft()*63/64-gasReserve;
         vars.gasBeforeInner = gasleft();
+
+        uint256 _tmpInitialGas = innerGasLimit + externalGasLimit + gasOverhead + postOverhead;
 
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasLimits,
-                innerGasLimit + vars.externalGasLimit - gasleft() + gasOverhead + postOverhead, /*totalInitialGas*/
+                _tmpInitialGas - gasleft(),
                 vars.maxPossibleGas
                 )
         );
