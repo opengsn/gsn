@@ -210,9 +210,9 @@ contract RelayHub is IRelayHub {
         if (!vars.success) {
             //Failure cases where the PM doesn't pay
             if ( (vars.innerGasUsed < vars.gasLimits.paymasterPaysAbove ) && (
-                    vars.status == RelayCallStatus.PreRelayedFailed ||
-                    vars.status == RelayCallStatus.ForwarderFailed ||
-                    vars.status == RelayCallStatus.RecipientFailed  //can only be thrown if revertOnRecipientRevert==true
+                    vars.status == RelayCallStatus.RejectedByPreRelayed ||
+                    vars.status == RelayCallStatus.RejectedByForwarder ||
+                    vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
             )) {
                 paymasterAccepted=false;
                 revertReason = GsnUtils.getError(vars.relayedCallReturnValue);
@@ -260,7 +260,7 @@ contract RelayHub is IRelayHub {
         bytes relayedCallReturnValue;
         bytes recipientContext;
         bytes data;
-        bool revertOnRecipientRevert;
+        bool rejectOnRecipientRevert;
     }
 
     function innerRelayCall(
@@ -300,9 +300,9 @@ contract RelayHub is IRelayHub {
             bytes memory retData;
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(vars.data);
             if (!success) {
-                revertWithStatus(RelayCallStatus.PreRelayedFailed, GsnEip712Library.getTruncatedData(retData));
+                revertWithStatus(RelayCallStatus.RejectedByPreRelayed, GsnEip712Library.getTruncatedData(retData));
             }
-            (vars.recipientContext, vars.revertOnRecipientRevert) = abi.decode(retData, (bytes,bool));
+            (vars.recipientContext, vars.rejectOnRecipientRevert) = abi.decode(retData, (bytes,bool));
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
@@ -311,12 +311,12 @@ contract RelayHub is IRelayHub {
             bool forwarderSuccess;
             (forwarderSuccess, vars.relayedCallSuccess, vars.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
             if ( !forwarderSuccess ) {
-                revertWithStatus(RelayCallStatus.ForwarderFailed, vars.relayedCallReturnValue);
+                revertWithStatus(RelayCallStatus.RejectedByForwarder, vars.relayedCallReturnValue);
             }
 
-            if (vars.revertOnRecipientRevert && !vars.relayedCallSuccess) {
+            if (vars.rejectOnRecipientRevert && !vars.relayedCallSuccess) {
                 //we trusted the recipient, but it reverted...
-                revertWithStatus(RelayCallStatus.RecipientFailed, vars.relayedCallReturnValue);
+                revertWithStatus(RelayCallStatus.RejectedByRecipientRevert, vars.relayedCallReturnValue);
             }
         }
         // Finally, postRelayedCall is executed, with the relayedCall execution's status and a charge estimate

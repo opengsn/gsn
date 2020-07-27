@@ -10,10 +10,14 @@ interface IPaymaster {
      * @param paymasterPaysAbove -
      *      From a Relay's point of view, this is the highest gas value a paymaster might "grief" the relay,
      *      since the paymaster will pay anything above that (regardless if the tx reverts)
-     *      From the Paymaster's view: this value is including preRelayedCallGasLimit, and also the overhead
-     *      used by the forwarder to verify the recipient. see value in BasePaymaster.PAYMASTER_PAYS_ABOVE
+     *      From the Paymaster's view: this a gas required by any calculations that might need to reject the
+     *      transaction, by preRelayedCall, forwarder and recipient.
+     *      See value in BasePaymaster.PAYMASTER_PAYS_ABOVE
+     *      NOTE: Modifying this value might make Paymaster open to a "grieving" attack.
      * @param preRelayedCallGasLimit - the max gas usage of preRelayedCall. any revert (including OOG)
-     *      of preRelayedCall is a reject by the paymaster
+     *      of preRelayedCall is a reject by the paymaster.
+     *      as long as paymasterPaysAbove is above preRelayedCallGasLimit, any such revert (including OOG)
+     *      is not payed by the paymaster.
      * @param postRelayedCallGasLimit - the max gas usage of postRelayedCall.
      *      note that an OOG will revert the transaction, but the paymaster already committed to pay,
      *      so the relay will get compensated, at the expense of the paymaster
@@ -49,15 +53,21 @@ interface IPaymaster {
 
     /**
      * Called by Relay (and RelayHub), to validate if the paymaster agrees to pay for this call.
-     * revert to signal the paymaster will NOT pay for this call.
      *
      * MUST be protected with relayHubOnly() in case it modifies state.
      *
-     * Note that a revert by the Forwarder (either on nonce or signature) will also reject the call.
-     *    a paymaster may also set "revertOnRecipientRevert" to signal that revert by the recipient
-     *    contract should also be rejected. In this case, it means the Paymaster trust the recipient
-     *    to reject fast: both preRelayedCall, forwarder check and receipient checks must fit into
-     *    the GasLimits.paymasterPaysAbove, otherwise the TX is paid by the Paymaster.
+     * The Paymaster rejects by the following "revert" operations
+     *  - preRelayedCall() method reverts
+     *  - the forwarder reverts because of nonce or signature error
+     *  - the paymaster returned "revertOnRecipientRevert", and the recipient contract reverted.
+     * In any of the above cases, all paymaster calls (and recipient call) are reverted.
+     * In any other case, the paymaster agrees to pay for the gas cost of the transaction (note
+     *  that this includes also postRelayedCall revert)
+     *
+     * The revertOnRecipientRevert flag means the Paymaster "delegate" the rejection to the recipient
+     *  code.  It also means the Paymaster trust the recipient to reject fast: both preRelayedCall,
+     *  forwarder check and receipient checks must fit into the GasLimits.paymasterPaysAbove,
+     *  otherwise the TX is paid by the Paymaster.
      *
      *  @param relayRequest - the full relay request structure
      *  @param signature - user's EIP712-compatible signature of the {@link relayRequest}.
@@ -69,9 +79,9 @@ interface IPaymaster {
      *         In order to convert this value to wei, the Paymaster has to call "relayHub.calculateCharge()"
      *  return:
      *      a context to be passed to postRelayedCall
-     *      revertOnRecipientRevert - TRUE if paymaster want to reject the TX if the recipient reverts.
+     *      rejectOnRecipientRevert - TRUE if paymaster want to reject the TX if the recipient reverts.
      *          FALSE means that rejects by the recipient will be completed on chain, and paid by the paymaster.
-     *          (note that in this case, the preRelayedCall and postRelayedCall are not reverted).
+     *          (note that in the latter case, the preRelayedCall and postRelayedCall are not reverted).
      */
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
@@ -80,7 +90,7 @@ interface IPaymaster {
         uint256 maxPossibleGas
     )
     external
-    returns (bytes memory context, bool revertOnRecipientRevert);
+    returns (bytes memory context, bool rejectOnRecipientRevert);
 
     /**
      * This method is called after the actual relayed function call.

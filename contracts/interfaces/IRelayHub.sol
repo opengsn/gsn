@@ -73,17 +73,16 @@ interface IRelayHub {
     /// Reason error codes for the TransactionRelayed event
     /// @param OK - the transaction was successfully relayed and execution successful - never included in the event
     /// @param RelayedCallFailed - the transaction was relayed, but the relayed call failed
-    /// @param PreRelayedFailed - the transaction was not relayed due to preRelatedCall reverting
-    /// @param ForwarderFailed - the transaction was not relayed due to forwarder check (signature,nonce)
-    /// @param TrustedRecipientFailed - the transaction was not relayed since Paymaster refuse to relay reverted recipient TX.
+    /// @param RejectedByPreRelayed - the transaction was not relayed due to preRelatedCall reverting
+    /// @param RejectedByForwarder - the transaction was not relayed due to forwarder check (signature,nonce)
     /// @param PostRelayedFailed - the transaction was relayed and reverted due to postRelatedCall reverting
     /// @param PaymasterBalanceChanged - the transaction was relayed and reverted due to the paymaster balance change
     enum RelayCallStatus {
         OK,
         RelayedCallFailed,
-        PreRelayedFailed,
-        ForwarderFailed,
-        RecipientFailed,
+        RejectedByPreRelayed,
+        RejectedByForwarder,
+        RejectedByRecipientRevert,
         PostRelayedFailed,
         PaymasterBalanceChanged
     }

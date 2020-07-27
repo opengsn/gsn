@@ -30,9 +30,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),
-    PreRelayedFailed: new BN('2'),
-    ForwarderFailed: new BN('3'),
-    RecipientFailed: new BN('4'),
+    RejectedByPreRelayed: new BN('2'),
+    RejectedByForwarder: new BN('3'),
+    RejectedByRecipientRevert: new BN('4'),
     PostRelayedFailed: new BN('5'),
     PaymasterBalanceChanged: new BN('6')
   }
