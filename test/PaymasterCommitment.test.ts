@@ -178,7 +178,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -206,7 +206,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         }
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -231,7 +231,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -254,7 +254,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -281,7 +281,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -300,7 +300,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -324,7 +324,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice

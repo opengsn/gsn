@@ -23,6 +23,7 @@ export default class RelayedTransactionValidator {
    */
   validateRelayResponse (
     transactionJsonRequest: TmpRelayTransactionJsonRequest,
+    maxAcceptanceBudget: number,
     returnedTx: PrefixedHexString
   ): boolean {
     const transaction = new Transaction(returnedTx, this.contractInteractor.getRawTxOptions())
@@ -54,7 +55,7 @@ export default class RelayedTransactionValidator {
       }
     }
     const externalGasLimit = bufferToHex(transaction.gasLimit)
-    const relayRequestAbiEncode = this.contractInteractor.encodeABI(relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData, externalGasLimit)
+    const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData, externalGasLimit)
 
     if (
       isSameAddress(bufferToHex(transaction.to), this.config.relayHubAddress) &&

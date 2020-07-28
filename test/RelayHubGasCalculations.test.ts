@@ -140,7 +140,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'preRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
-        const res = await relayHub.relayCall(relayRequest, signature, '0x', transactionGasLimit, {
+        const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit, {
           from: relayWorker,
           gas: transactionGasLimit.toString(),
           gasPrice
@@ -179,7 +179,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
-      const tx = await relayHub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
+      const tx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit.toString(),
         gasPrice
@@ -219,7 +219,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       )
       const viewRelayCallResponse =
         await relayHub.contract.methods
-          .relayCall(relayRequestMisbehaving, signature, '0x', externalGasLimit)
+          .relayCall(10e6, relayRequestMisbehaving, signature, '0x', externalGasLimit)
           .call({
             from: relayRequestMisbehaving.relayData.relayWorker,
             gas: externalGasLimit
@@ -227,7 +227,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       assert.equal(viewRelayCallResponse[0], false)
       assert.equal(viewRelayCallResponse[1], '') // no revert string on out-of-gas
 
-      const res = await relayHub.relayCall(relayRequestMisbehaving, signature, '0x', externalGasLimit, {
+      const res = await relayHub.relayCall(10e6, relayRequestMisbehaving, signature, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice: gasPrice
@@ -316,7 +316,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                 web3,
                 dataToSign
               )
-              const res = await relayHub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
+              const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', externalGasLimit, {
                 from: relayWorker,
                 gas: externalGasLimit,
                 gasPrice: gasPrice

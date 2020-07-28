@@ -14,7 +14,7 @@ export default class BadContractInteractor extends ContractInteractor {
     this.failValidateARC = failValidateARC
   }
 
-  async validateAcceptRelayCall (relayRequest: RelayRequest, signature: string, approvalData: string): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+  async validateAcceptRelayCall (paymasterMaxAcceptanceBudget: number, relayRequest: RelayRequest, signature: string, approvalData: string): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     if (this.failValidateARC) {
       return {
         paymasterAccepted: false,
@@ -22,7 +22,7 @@ export default class BadContractInteractor extends ContractInteractor {
         returnValue: BadContractInteractor.message
       }
     }
-    return await super.validateAcceptRelayCall(relayRequest, signature, approvalData)
+    return await super.validateAcceptRelayCall(10e6, relayRequest, signature, approvalData)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await

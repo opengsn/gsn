@@ -131,6 +131,7 @@ interface IRelayHub {
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
+        uint paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,

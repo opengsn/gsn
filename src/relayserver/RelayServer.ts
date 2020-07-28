@@ -35,6 +35,7 @@ const VERSION = '2.0.0-alpha.3'
 const minimumRelayBalance = 1e17 // 0.1 eth
 const defaultWorkerMinBalance = 0.01e18
 const defaultWorkerTargetBalance = 0.3e18
+const defaultMaxAcceptanceBudget = 200000
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const maxGasPrice = 100e9
@@ -86,6 +87,7 @@ export interface RelayServerParams {
   readonly baseRelayFee: number | undefined
   readonly pctRelayFee: number | undefined
   readonly gasPriceFactor: number
+  readonly maxAcceptanceBudget: number | undefined
   readonly url?: string
   readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
   readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
@@ -98,6 +100,7 @@ export class RelayServer extends EventEmitter {
   ready = false
   nonceMutex = new Mutex()
   readonly nonces: Record<Address, number> = {}
+  readonly maxAcceptanceBudget: number
   private readonly managerAddress: PrefixedHexString
   gasPrice: number = 0
   private relayHubContract: IRelayHubInstance | undefined
@@ -142,6 +145,7 @@ export class RelayServer extends EventEmitter {
     this.baseRelayFee = params.baseRelayFee ?? 0
     this.pctRelayFee = params.pctRelayFee ?? 0
     this.gasPriceFactor = params.gasPriceFactor
+    this.maxAcceptanceBudget = params.maxAcceptanceBudget ?? defaultMaxAcceptanceBudget
     this.url = params.url ?? 'http://localhost:8090'
     this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
     this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
@@ -183,6 +187,7 @@ export class RelayServer extends EventEmitter {
       RelayManagerAddress: this.managerAddress,
       RelayHubAddress: this.relayHubContract?.address ?? '',
       MinGasPrice: this.getMinGasPrice().toString(),
+      MaxAcceptanceBudget: this.maxAcceptanceBudget.toString(),
       Ready: this.isReady(),
       Version: VERSION
     }
@@ -282,10 +287,11 @@ export class RelayServer extends EventEmitter {
       hubOverhead,
       relayCallGasLimit: req.gasLimit
     })
-    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
+    const method = this.relayHubContract.contract.methods.relayCall(this.maxAcceptanceBudget, relayRequest, req.signature, req.approvalData, maxPossibleGas)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet = await this.relayHubContract.contract.methods.relayCall(
+        this.maxAcceptanceBudget,
         relayRequest,
         req.signature,
         req.approvalData,

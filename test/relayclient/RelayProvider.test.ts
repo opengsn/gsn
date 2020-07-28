@@ -321,7 +321,7 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-      const paymasterRejectedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
+      const paymasterRejectedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
         gasPrice: '1'
@@ -332,7 +332,7 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)
       await misbehavingPaymaster.setRevertPreRelayCall(true)
 
-      const innerTxFailedReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
+      const innerTxFailedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
         gasPrice: '1'
@@ -343,7 +343,7 @@ contract('RelayProvider', function (accounts) {
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setRevertPreRelayCall(false)
-      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(relayRequest, signature, '0x', gas, {
+      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
         gasPrice: '1'
