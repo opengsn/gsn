@@ -124,7 +124,7 @@ contract RelayHub is IRelayHub {
             IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
         maxPossibleGas =
             gasOverhead +
-            gasLimits.paymasterPaysAbove +
+            gasLimits.preRelayedCallGasLimit +
             gasLimits.postRelayedCallGasLimit +
             relayRequest.request.gas;
 
@@ -209,7 +209,7 @@ contract RelayHub is IRelayHub {
     {
         if (!vars.success) {
             //Failure cases where the PM doesn't pay
-            if ( (vars.innerGasUsed < vars.gasLimits.paymasterPaysAbove ) && (
+            if ( (vars.innerGasUsed < vars.gasLimits.acceptanceBudget ) && (
                     vars.status == RelayCallStatus.RejectedByPreRelayed ||
                     vars.status == RelayCallStatus.RejectedByForwarder ||
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true

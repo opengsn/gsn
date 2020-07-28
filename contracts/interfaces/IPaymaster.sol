@@ -7,31 +7,37 @@ import "./GsnTypes.sol";
 interface IPaymaster {
 
     /**
-     * @param paymasterPaysAbove -
-     *      From a Relay's point of view, this is the highest gas value a paymaster might "grief" the relay,
-     *      since the paymaster will pay anything above that (regardless if the tx reverts)
-     *      From the Paymaster's view: this a gas required by any calculations that might need to reject the
+     * @param acceptanceBudget -
+     *      Paymaster expected gas budget to accept (or reject) a request
+     *      This a gas required by any calculations that might need to reject the
      *      transaction, by preRelayedCall, forwarder and recipient.
      *      See value in BasePaymaster.PAYMASTER_PAYS_ABOVE
-     *      NOTE: Modifying this value might make Paymaster open to a "grieving" attack.
+     *      Transaction that gets rejected above that gas usage is on the paymaster's expense.
+     *      As long this value is above preRelayedCallGasLimit (see defaults in BasePaymaster), the
+     *      Paymaster is guaranteed it will never pay for rejected transactions.
+     *      If this value is below preRelayedCallGasLimt, it might might make Paymaster open to a "griefing" attack.
+     *
+     *      Specifying value too high might make the call rejected by some relayers.
+     *
+     *      From a Relay's point of view, this is the highest gas value a paymaster might "grief" the relay,
+     *      since the paymaster will pay anything above that (regardless if the tx reverts)
+     *
      * @param preRelayedCallGasLimit - the max gas usage of preRelayedCall. any revert (including OOG)
      *      of preRelayedCall is a reject by the paymaster.
-     *      as long as paymasterPaysAbove is above preRelayedCallGasLimit, any such revert (including OOG)
+     *      as long as acceptanceBudget is above preRelayedCallGasLimit, any such revert (including OOG)
      *      is not payed by the paymaster.
      * @param postRelayedCallGasLimit - the max gas usage of postRelayedCall.
      *      note that an OOG will revert the transaction, but the paymaster already committed to pay,
      *      so the relay will get compensated, at the expense of the paymaster
      */
     struct GasLimits {
-        //paymaster is committed to pay reverted transactions above this gas limit.
-        // This limit should cover both preRelayedCall gaslimit AND forwarder's nonce and signature validation.
-        uint256 paymasterPaysAbove;
+        uint256 acceptanceBudget;
         uint256 preRelayedCallGasLimit;
         uint256 postRelayedCallGasLimit;
     }
 
     /**
-     * The RelayHub will call accept-, pre-, and post-, RelayCall methods with these values for their gas limits.
+     * Return the GasLimits constants used by the Paymaster.
      */
     function getGasLimits()
     external
@@ -66,7 +72,7 @@ interface IPaymaster {
      *
      * The revertOnRecipientRevert flag means the Paymaster "delegate" the rejection to the recipient
      *  code.  It also means the Paymaster trust the recipient to reject fast: both preRelayedCall,
-     *  forwarder check and receipient checks must fit into the GasLimits.paymasterPaysAbove,
+     *  forwarder check and receipient checks must fit into the GasLimits.acceptanceBudget,
      *  otherwise the TX is paid by the Paymaster.
      *
      *  @param relayRequest - the full relay request structure

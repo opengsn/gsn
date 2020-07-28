@@ -99,9 +99,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
     bool private trustRecipientRevert;
 
-    function setGasLimits(uint paymasterPaysAbove, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
+    function setGasLimits(uint acceptanceBudget, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
         limits = IPaymaster.GasLimits(
-            paymasterPaysAbove,
+            acceptanceBudget,
             preRelayedCallGasLimit,
             postRelayedCallGasLimit
         );
