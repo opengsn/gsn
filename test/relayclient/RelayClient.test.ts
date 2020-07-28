@@ -70,7 +70,7 @@ contract('RelayClient', function (accounts) {
       GsnRequestType.typeSuffix
     )
     paymaster = await TestPaymasterEverythingAccepted.new()
-
+    await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
 

@@ -21,7 +21,7 @@ function addr (n: number): string {
 }
 
 function bytes32 (n: number): string {
-  return '0x' + n.toString().repeat(64)
+  return '0x' + n.toString().repeat(64).slice(0, 64)
 }
 
 // Global EIP712 type definitions.

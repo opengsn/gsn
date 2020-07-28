@@ -43,7 +43,11 @@ contract TestUtil {
         bool success,
         bytes memory ret
     ) {
-        (success, ret) = GsnEip712Library.execute(relayRequest, signature);
+        bool forwarderSuccess;
+        (forwarderSuccess, success, ret) = GsnEip712Library.execute(relayRequest, signature);
+        if ( !forwarderSuccess) {
+            revert(GsnUtils.getError(ret));
+        }
         emit Called(success, success == false ? ret : bytes(""));
     }
 

@@ -30,9 +30,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),
-    PreRelayedFailed: new BN('2'),
-    PostRelayedFailed: new BN('3'),
-    RecipientBalanceChanged: new BN('4')
+    RejectedByPreRelayed: new BN('2'),
+    RejectedByForwarder: new BN('3'),
+    RejectedByRecipientRevert: new BN('4'),
+    PostRelayedFailed: new BN('5'),
+    PaymasterBalanceChanged: new BN('6')
   }
 
   const chainId = defaultEnvironment.chainId
@@ -67,6 +69,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     paymaster = paymasterContract.address
     relayHub = relayHubInstance.address
 
+    await paymasterContract.setTrustedForwarder(forwarder)
     await paymasterContract.setRelayHub(relayHub)
   })
 
@@ -312,6 +315,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         beforeEach(async function () {
           misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+          await misbehavingPaymaster.setTrustedForwarder(forwarder)
           await misbehavingPaymaster.setRelayHub(relayHub)
           await relayHubInstance.depositFor(misbehavingPaymaster.address, {
             value: ether('1'),
@@ -360,6 +364,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         beforeEach(async function () {
           paymasterWithContext = await TestPaymasterStoreContext.new()
           misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+          await paymasterWithContext.setTrustedForwarder(forwarder)
+          await misbehavingPaymaster.setTrustedForwarder(forwarder)
           await paymasterWithContext.setRelayHub(relayHub)
           await misbehavingPaymaster.setRelayHub(relayHub)
           await relayHubInstance.depositFor(paymasterWithContext.address, {
@@ -424,7 +430,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             msgSender: forwarder,
             origin: relayWorker
           })
-
           const expectedReturnValue = web3.eth.abi.encodeParameter('string', 'emitMessage return value')
           expectEvent.inLogs(logs, 'TransactionRelayed', {
             status: RelayCallStatusCodes.OK,
@@ -432,6 +437,22 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
         })
 
+        it('relayCall should refuse to re-send transaction with same nonce', async function () {
+          const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
+            from: relayWorker,
+            gas,
+            gasPrice
+          })
+          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted')
+
+          const ret = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
+            from: relayWorker,
+            gas,
+            gasPrice
+          })
+
+          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: 'nonce mismatch' })
+        })
         // This test is added due to a regression that almost slipped to production.
         it('relayCall executes the transaction with no parameters', async function () {
           const encodedFunction = recipientContract.contract.methods.emitMessageNoParams().encodeABI()
@@ -484,29 +505,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             returnValue: expectedReturnValue
           })
         })
-
-        it('preRelayedCall receives values returned in acceptRelayedCall', async function () {
-          const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
-            signatureWithContextPaymaster, '0x', gas, {
-              from: relayWorker,
-              gas,
-              gasPrice
-            })
-
-          await expectEvent.inTransaction(tx, TestPaymasterStoreContext, 'SampleRecipientPreCallWithValues', {
-            relay: relayWorker,
-            from: senderAddress,
-            encodedFunction,
-            baseRelayFee,
-            pctRelayFee,
-            gasPrice,
-            gasLimit,
-            nonce: senderNonce,
-            approvalData: null
-          })
-        })
-
-        it('postRelayedCall receives values returned in acceptRelayedCall', async function () {
+        it('postRelayedCall receives values returned in preRelayedCall', async function () {
           const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
             signatureWithContextPaymaster, '0x', gas, {
               from: relayWorker,
@@ -515,19 +514,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             })
 
           await expectEvent.inTransaction(tx, TestPaymasterStoreContext, 'SampleRecipientPostCallWithValues', {
-            relay: relayWorker,
-            from: senderAddress,
-            encodedFunction,
-            baseRelayFee,
-            pctRelayFee,
-            gasPrice,
-            gasLimit,
-            nonce: senderNonce,
-            approvalData: null
+            context: 'context passed from preRelayedCall to postRelayedCall'
           })
         })
 
-        it('relaying is aborted if the paymaster reverts the acceptRelayedCall', async function () {
+        it('relaying is aborted if the paymaster reverts the preRelayedCall', async function () {
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
             signatureWithMisbehavingPaymaster, '0x', gas, {
@@ -582,10 +573,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             }),
             'Not a right worker')
         })
-
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
           async function () {
             const paymaster2 = await TestPaymasterEverythingAccepted.new()
+            await paymaster2.setTrustedForwarder(forwarder)
             await paymaster2.setRelayHub(relayHub)
             const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
               gasPrice,
@@ -629,10 +620,9 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             toBlock: 'latest'
           })
           assert.equal(0, logsMessages.length)
-          const expectedReturnValue = '0x08c379a0' + removeHexPrefix(web3.eth.abi.encodeParameter('string', 'You asked me to revert, remember?'))
-          expectEvent.inLogs(logs, 'TransactionRelayed', {
-            status: RelayCallStatusCodes.PreRelayedFailed,
-            returnValue: expectedReturnValue
+          // const expectedReturnValue = '0x08c379a0' + removeHexPrefix(web3.eth.abi.encodeParameter('string', 'You asked me to revert, remember?'))
+          expectEvent.inLogs(logs, 'TransactionRejectedByPaymaster', {
+            reason: 'You asked me to revert, remember?'
           })
         })
 
@@ -662,6 +652,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           let signature: string
           beforeEach(async function () {
             misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+            await misbehavingPaymaster.setTrustedForwarder(forwarder)
             await misbehavingPaymaster.setRelayHub(relayHub)
             await relayHubInstance.depositFor(misbehavingPaymaster.address, {
               value: ether('1'),
@@ -683,26 +674,26 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
           it('reverts relayed call if recipient withdraws balance during preRelayedCall', async function () {
             await misbehavingPaymaster.setWithdrawDuringPreRelayedCall(true)
-            await assertRevertWithRecipientBalanceChanged()
+            await assertRevertWithPaymasterBalanceChanged()
           })
 
           it('reverts relayed call if recipient withdraws balance during the relayed call', async function () {
             await recipientContract.setWithdrawDuringRelayedCall(misbehavingPaymaster.address)
-            await assertRevertWithRecipientBalanceChanged()
+            await assertRevertWithPaymasterBalanceChanged()
           })
 
           it('reverts relayed call if recipient withdraws balance during postRelayedCall', async function () {
             await misbehavingPaymaster.setWithdrawDuringPostRelayedCall(true)
-            await assertRevertWithRecipientBalanceChanged()
+            await assertRevertWithPaymasterBalanceChanged()
           })
 
-          async function assertRevertWithRecipientBalanceChanged (): Promise<void> {
+          async function assertRevertWithPaymasterBalanceChanged (): Promise<void> {
             const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signature, '0x', gas, {
               from: relayWorker,
               gas,
               gasPrice
             })
-            expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.RecipientBalanceChanged })
+            expectEvent.inLogs(logs, 'TransactionRelayed', { status: RelayCallStatusCodes.PaymasterBalanceChanged })
           }
         })
       })

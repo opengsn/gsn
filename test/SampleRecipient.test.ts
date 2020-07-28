@@ -46,6 +46,7 @@ contract('SampleRecipient', function (accounts) {
     const stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
     const rhub = await deployHub(stakeManager.address, penalizer.address)
+    await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(rhub.address)
     await forwarderInstance.registerRequestType(
       GsnRequestType.typeName,
