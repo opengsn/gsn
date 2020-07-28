@@ -282,6 +282,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
               let encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
               if (messageLength === 0) {
+                // test with different method: emitMessageNoParams doesn't return a value, while emitMessage does.
+                // this makes sure gas calculation is not dependent on return values.
                 encodedFunction = recipient.contract.methods.emitMessageNoParams().encodeABI()
               }
               const baseRelayFee = '0'
