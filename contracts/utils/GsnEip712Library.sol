@@ -100,11 +100,14 @@ library GsnEip712Library {
           //decode return value of execute:
           (callSuccess, ret) = abi.decode(ret, (bool, bytes));
         }
-        truncatedData(ret);
+        truncateInPlace(ret);
     }
 
-    function truncatedData(bytes memory data) internal pure {
-        MinLibBytes.truncatedData(data, MAX_RETURN_SIZE);
+    //truncate the given parameter (in-place) if its length is above the given maximum length
+    // do nothing otherwise.
+    //NOTE: solidity warns unless the method is marked "pure", but it DOES modify its parameter.
+    function truncateInPlace(bytes memory data) internal pure {
+        MinLibBytes.truncateInPlace(data, MAX_RETURN_SIZE);
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

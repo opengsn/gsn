@@ -6,10 +6,10 @@ pragma solidity ^0.6.2;
 
 library MinLibBytes {
 
-    //truncate the given parameter if its length is above the given maximum length
+    //truncate the given parameter (in-place) if its length is above the given maximum length
     // do nothing otherwise.
-    //NOTE: the truncation is done in-place
-    function truncatedData(bytes memory data, uint256 maxlen) internal pure {
+    //NOTE: solidity warns unless the method is marked "pure", but it DOES modify its parameter.
+    function truncateInPlace(bytes memory data, uint256 maxlen) internal pure {
         if (data.length > maxlen) {
             assembly { mstore(data, maxlen) }
         }

@@ -300,7 +300,7 @@ contract RelayHub is IRelayHub {
             bytes memory retData;
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(vars.data);
             if (!success) {
-                GsnEip712Library.truncatedData(retData);
+                GsnEip712Library.truncateInPlace(retData);
                 revertWithStatus(RelayCallStatus.RejectedByPreRelayed, retData);
             }
             (vars.recipientContext, vars.rejectOnRecipientRevert) = abi.decode(retData, (bytes,bool));
@@ -351,7 +351,7 @@ contract RelayHub is IRelayHub {
      */
     function revertWithStatus(RelayCallStatus status, bytes memory ret) private pure {
         bytes memory data = abi.encode(status, ret);
-        GsnEip712Library.truncatedData(data);
+        GsnEip712Library.truncateInPlace(data);
 
         assembly {
             let dataSize := mload(data)
