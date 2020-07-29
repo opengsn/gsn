@@ -144,7 +144,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       })
       const expectedReturnValue = encodeRevertReason('always fail')
 
-      expectEvent(ret, 'TransactionRelayed', {
+      expectEvent(ret, 'TransactionResult', {
         status: '1',
         returnValue: expectedReturnValue
       })
