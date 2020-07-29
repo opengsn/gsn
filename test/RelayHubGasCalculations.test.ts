@@ -225,7 +225,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             gas: externalGasLimit
           })
       assert.equal(viewRelayCallResponse[0], false)
-      assert.equal(viewRelayCallResponse[1], '') // no revert string on out-of-gas
+      assert.equal(viewRelayCallResponse[1], null) // no revert string on out-of-gas
 
       const res = await relayHub.relayCall(relayRequestMisbehaving, signature, '0x', externalGasLimit, {
         from: relayWorker,
@@ -234,7 +234,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       })
 
       assert.equal('TransactionRejectedByPaymaster', res.logs[0].event)
-      assert.equal(res.logs[0].args.reason, '')
+      assert.equal(res.logs[0].args.reason, null)
     })
   })
 

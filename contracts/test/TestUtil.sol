@@ -46,7 +46,7 @@ contract TestUtil {
         bool forwarderSuccess;
         (forwarderSuccess, success, ret) = GsnEip712Library.execute(relayRequest, signature);
         if ( !forwarderSuccess) {
-            revert(GsnUtils.getError(ret));
+            GsnUtils.revertWithData(ret);
         }
         emit Called(success, success == false ? ret : bytes(""));
     }

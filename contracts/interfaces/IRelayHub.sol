@@ -47,7 +47,7 @@ interface IRelayHub {
         address relayWorker,
         bytes4 selector,
         uint256 innerGasUsed,
-        string reason);
+        bytes reason);
 
     // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
     // indicated in the status field.
@@ -137,7 +137,7 @@ interface IRelayHub {
         uint externalGasLimit
     )
     external
-    returns (bool paymasterAccepted, string memory returnValue);
+    returns (bool paymasterAccepted, bytes memory returnValue);
 
     function penalize(address relayWorker, address payable beneficiary) external;
 
