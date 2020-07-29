@@ -13,7 +13,7 @@ import {
   TestRecipientInstance,
   BatchForwarderInstance
 } from '../types/truffle-contracts'
-import { deployHub } from './TestUtils'
+import { deployHub, encodeRevertReason } from './TestUtils'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
 const StakeManager = artifacts.require('StakeManager')
@@ -142,7 +142,12 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const ret = await hub.relayCall(relayRequest, signature, '0x', 7e6, {
         from: relayWorker
       })
-      expectEvent(ret, 'TransactionRelayed', { status: '1' })
+      const expectedReturnValue = encodeRevertReason('always fail')
+
+      expectEvent(ret, 'TransactionResult', {
+        status: '1',
+        returnValue: expectedReturnValue
+      })
     })
 
     it('should not batch with wrong # of params', async () => {

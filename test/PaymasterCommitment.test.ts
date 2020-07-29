@@ -16,7 +16,7 @@ import {
 import { PrefixedHexString } from 'ethereumjs-tx'
 import ForwardRequest from '../src/common/EIP712/ForwardRequest'
 import RelayData from '../src/common/EIP712/RelayData'
-import { deployHub } from './TestUtils'
+import { deployHub, encodeRevertReason } from './TestUtils'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -237,7 +237,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         gasPrice
       })
 
-      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: '' })
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: null })
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.equal(paid, 0)
@@ -260,7 +260,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         gasPrice
       })
 
-      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: 'nonce mismatch' })
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.equal(paid, 0)
@@ -306,7 +306,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         gasPrice
       })
 
-      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: 'always fail' })
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('always fail') })
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.equal(paid, 0)

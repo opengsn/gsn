@@ -7,7 +7,7 @@
 pragma solidity ^0.6.9;
 pragma experimental ABIEncoderV2;
 
-import "./0x/LibBytesV06.sol";
+import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/GsnUtils.sol";
@@ -166,11 +166,11 @@ contract RelayHub is IRelayHub {
     )
     external
     override
-    returns (bool paymasterAccepted, string memory revertReason)
+    returns (bool paymasterAccepted, bytes memory returnValue)
     {
         (signature);
         RelayCallData memory vars;
-        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.data, 0);
+        vars.functionSelector = MinLibBytes.readBytes4(relayRequest.request.data, 0);
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
@@ -192,7 +192,6 @@ contract RelayHub is IRelayHub {
         vars.gasBeforeInner = gasleft();
 
         uint256 _tmpInitialGas = innerGasLimit + externalGasLimit + gasOverhead + postOverhead;
-
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
@@ -218,7 +217,6 @@ contract RelayHub is IRelayHub {
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
             )) {
                 paymasterAccepted=false;
-                revertReason = GsnUtils.getError(vars.relayedCallReturnValue);
 
                 emit TransactionRejectedByPaymaster(
                     workerToManager[msg.sender],
@@ -228,8 +226,8 @@ contract RelayHub is IRelayHub {
                     msg.sender,
                     vars.functionSelector,
                     vars.innerGasUsed,
-                    revertReason);
-                return (false, revertReason);
+                    vars.relayedCallReturnValue);
+                return (false, vars.relayedCallReturnValue);
             }
         }
         // We now perform the actual charge calculation, based on the measured gas used
@@ -302,7 +300,8 @@ contract RelayHub is IRelayHub {
             bytes memory retData;
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(vars.data);
             if (!success) {
-                revertWithStatus(RelayCallStatus.RejectedByPreRelayed, GsnEip712Library.getTruncatedData(retData));
+                GsnEip712Library.truncateInPlace(retData);
+                revertWithStatus(RelayCallStatus.RejectedByPreRelayed, retData);
             }
             (vars.recipientContext, vars.rejectOnRecipientRevert) = abi.decode(retData, (bytes,bool));
         }
@@ -336,7 +335,7 @@ contract RelayHub is IRelayHub {
         (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(vars.data);
 
         if (!successPost) {
-            revertWithStatus(RelayCallStatus.PostRelayedFailed, GsnEip712Library.getTruncatedData(ret));
+            revertWithStatus(RelayCallStatus.PostRelayedFailed, ret);
         }
         }
 
@@ -352,6 +351,7 @@ contract RelayHub is IRelayHub {
      */
     function revertWithStatus(RelayCallStatus status, bytes memory ret) private pure {
         bytes memory data = abi.encode(status, ret);
+        GsnEip712Library.truncateInPlace(data);
 
         assembly {
             let dataSize := mload(data)
