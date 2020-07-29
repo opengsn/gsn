@@ -430,10 +430,14 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             msgSender: forwarder,
             origin: relayWorker
           })
+
           const expectedReturnValue = web3.eth.abi.encodeParameter('string', 'emitMessage return value')
-          expectEvent.inLogs(logs, 'TransactionRelayed', {
+          expectEvent.inLogs(logs, 'TransactionResult', {
             status: RelayCallStatusCodes.OK,
             returnValue: expectedReturnValue
+          })
+          expectEvent.inLogs(logs, 'TransactionRelayed', {
+            status: RelayCallStatusCodes.OK
           })
         })
 
@@ -500,11 +504,15 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
 
           const expectedReturnValue = '0x08c379a0' + removeHexPrefix(web3.eth.abi.encodeParameter('string', 'always fail'))
-          expectEvent.inLogs(logs, 'TransactionRelayed', {
+          expectEvent.inLogs(logs, 'TransactionResult', {
             status: RelayCallStatusCodes.RelayedCallFailed,
             returnValue: expectedReturnValue
           })
+          expectEvent.inLogs(logs, 'TransactionRelayed', {
+            status: RelayCallStatusCodes.RelayedCallFailed
+          })
         })
+
         it('postRelayedCall receives values returned in preRelayedCall', async function () {
           const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
             signatureWithContextPaymaster, '0x', gas, {
@@ -573,6 +581,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             }),
             'Not a right worker')
         })
+
         it('should not accept relay requests if destination recipient doesn\'t have a balance to pay for it',
           async function () {
             const paymaster2 = await TestPaymasterEverythingAccepted.new()
