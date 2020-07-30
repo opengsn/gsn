@@ -235,9 +235,6 @@ contract RelayHub is IRelayHub {
         uint256 gasUsed = (externalGasLimit - gasleft()) + gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
-        // We've already checked that the paymaster has enough balance to pay for the relayed transaction, this is only
-        // a sanity check to prevent overflows in case of bugs.
-        require(balances[relayRequest.relayData.paymaster] >= charge, "Should not get here");
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
         balances[workerToManager[msg.sender]] = balances[workerToManager[msg.sender]].add(charge);
 
@@ -363,7 +360,7 @@ contract RelayHub is IRelayHub {
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
-        return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(100 + relayData.pctRelayFee)).div(100));
+        return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 
     modifier penalizerOnly () {
