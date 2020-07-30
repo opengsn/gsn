@@ -11,7 +11,7 @@ interface IPaymaster {
      *      Paymaster expected gas budget to accept (or reject) a request
      *      This a gas required by any calculations that might need to reject the
      *      transaction, by preRelayedCall, forwarder and recipient.
-     *      See value in BasePaymaster.PAYMASTER_PAYS_ABOVE
+     *      See value in BasePaymaster.PAYMASTER_ACCEPTANCE_BUDGET
      *      Transaction that gets rejected above that gas usage is on the paymaster's expense.
      *      As long this value is above preRelayedCallGasLimit (see defaults in BasePaymaster), the
      *      Paymaster is guaranteed it will never pay for rejected transactions.
