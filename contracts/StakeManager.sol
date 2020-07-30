@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IStakeManager.sol";
 
 contract StakeManager is IStakeManager {
+    using SafeMath for uint256;
 
     string public override versionSM = "2.0.0-alpha.3+opengsn.stakemanager.istakemanager";
 
@@ -39,7 +40,7 @@ contract StakeManager is IStakeManager {
         StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock == 0, "already pending");
-        info.withdrawBlock = block.number + info.unstakeDelay;
+        info.withdrawBlock = block.number.add(info.unstakeDelay);
         emit StakeUnlocked(relayManager, msg.sender, info.withdrawBlock);
     }
 
@@ -90,7 +91,7 @@ contract StakeManager is IStakeManager {
     function _unauthorizeHub(address relayManager, address relayHub) internal {
         RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
         require(hubInfo.removalBlock == uint(-1), "hub not authorized");
-        uint256 removalBlock = block.number + stakes[relayManager].unstakeDelay;
+        uint256 removalBlock = block.number.add(stakes[relayManager].unstakeDelay);
         hubInfo.removalBlock = removalBlock;
         emit HubUnauthorized(relayManager, relayHub, removalBlock);
     }
