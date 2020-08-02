@@ -33,22 +33,6 @@ const defaultGsnConfig: GSNConfig = {
   clientId: '1'
 }
 
-export async function resolveGSNDeploymentFromPaymaster (provider: provider, partialConfig: Partial<GSNConfig>): Promise<Partial<GSNConfig>> {
-  if (partialConfig.paymasterAddress == null) {
-    throw new Error('Cannot resolve GSN deployment without paymaster address')
-  }
-  const contractInteractor = new ContractInteractor(provider, defaultGsnConfig)
-  const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
-  const relayHubAddress = await paymasterInstance.getHubAddr()
-  const relayHubInstance = await contractInteractor._createRelayHub(relayHubAddress)
-  const stakeManagerAddress = await relayHubInstance.stakeManager()
-  return {
-    ...partialConfig,
-    relayHubAddress,
-    stakeManagerAddress
-  }
-}
-
 /**
  * All classes in GSN must be configured correctly with non-null values.
  * Yet it is tedious to provide default values to all configuration fields on new instance creation.
@@ -67,8 +51,19 @@ export async function resolveConfigurationGSN (provider: provider, partialConfig
   if (partialConfig.stakeManagerAddress != null || partialConfig.relayHubAddress != null) {
     throw new Error('Resolve cannot override passed values')
   }
-  const resolvedConfig = await resolveGSNDeploymentFromPaymaster(provider, partialConfig)
-  return Object.assign({}, defaultGsnConfig, resolvedConfig) as GSNConfig
+  if (partialConfig.paymasterAddress == null) {
+    throw new Error('Cannot resolve GSN deployment without paymaster address')
+  }
+  const contractInteractor = new ContractInteractor(provider, defaultGsnConfig)
+  const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
+  const relayHubAddress = await paymasterInstance.getHubAddr()
+  const relayHubInstance = await contractInteractor._createRelayHub(relayHubAddress)
+  const stakeManagerAddress = await relayHubInstance.stakeManager()
+  const resolvedConfig = {
+    relayHubAddress,
+    stakeManagerAddress
+  }
+  return Object.assign({}, defaultGsnConfig, partialConfig, resolvedConfig) as GSNConfig
 }
 
 /**

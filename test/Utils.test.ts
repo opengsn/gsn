@@ -14,7 +14,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { encodeRevertReason } from './TestUtils'
 import CommandsLogic from '../src/cli/CommandsLogic'
-import { configureGSN, GSNConfig, resolveGSNDeploymentFromPaymaster } from '../src/relayclient/GSNConfigurator'
+import { configureGSN, GSNConfig, resolveConfigurationGSN } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
 
 const { expect, assert } = chai.use(chaiAsPromised)
@@ -180,7 +180,8 @@ contract('Utils', function (accounts) {
   describe('#resolveGSNDeploymentFromPaymaster()', function () {
     it('should resolve the deployment from paymaster', async function () {
       const host = (web3.currentProvider as HttpProvider).host
-      const commandsLogic = new CommandsLogic(host, configureGSN({}))
+      const defaultConfiguration = configureGSN({})
+      const commandsLogic = new CommandsLogic(host, defaultConfiguration)
       const deploymentResult = await commandsLogic.deployGsnContracts({
         from: accounts[0],
         deployPaymaster: true,
@@ -191,16 +192,16 @@ contract('Utils', function (accounts) {
         paymasterAddress: deploymentResult.naivePaymasterAddress,
         minGasPrice
       }
-      const resolvedPartialConfig = await resolveGSNDeploymentFromPaymaster(web3.currentProvider, partialConfig)
+      const resolvedPartialConfig = await resolveConfigurationGSN(web3.currentProvider, partialConfig)
       assert.equal(resolvedPartialConfig.paymasterAddress, deploymentResult.naivePaymasterAddress)
       assert.equal(resolvedPartialConfig.stakeManagerAddress, deploymentResult.stakeManagerAddress)
       assert.equal(resolvedPartialConfig.relayHubAddress, deploymentResult.relayHubAddress)
       assert.equal(resolvedPartialConfig.minGasPrice, minGasPrice, 'Input value lost')
-      assert.equal(resolvedPartialConfig.sliceSize, undefined, 'Unexpected value appeared')
+      assert.equal(resolvedPartialConfig.sliceSize, defaultConfiguration.sliceSize, 'Unexpected value appeared')
     })
 
     it('should throw if no paymaster at address', async function () {
-      await expect(resolveGSNDeploymentFromPaymaster(
+      await expect(resolveConfigurationGSN(
         web3.currentProvider, {})
       ).to.be.eventually.rejectedWith('Cannot resolve GSN deployment without paymaster address')
     })
