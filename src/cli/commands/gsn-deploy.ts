@@ -14,6 +14,10 @@ import { defaultEnvironment } from '../../common/Environments'
 gsnCommander(['n', 'f', 'm', 'g'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
   .option('--forwarder <address>', 'address of forwarder deployed to the current network (optional; deploys new one by default)')
+  .option('--stakeManager <address>', 'stakeManager')
+  .option('--relayHub <address>', 'relayHub')
+  .option('--penalizer <address>', 'penalizer')
+  .option('--yes, --skipConfirmation', 'skip con')
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .parse(process.argv);
 
@@ -25,14 +29,26 @@ gsnCommander(['n', 'f', 'm', 'g'])
   const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? defaultEnvironment.relayHubConfiguration
   const logic = new CommandsLogic(nodeURL, configureGSN({}), mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
-  const gasPrice = commander.gasPrice
+
+  async function getGasPrice (): Promise<string> {
+    const gasPrice = await web3.eth.getGasPrice()
+    console.log(`Using network gas price of ${gasPrice}`)
+    return gasPrice
+  }
+
+  const gasPrice = commander.gasPrice ?? await getGasPrice()
 
   const deploymentResult = await logic.deployGsnContracts({
     from,
     gasPrice,
     relayHubConfiguration,
     deployPaymaster: true,
-    forwarderAddress: commander.forwarder
+    verbose: true,
+    skipConfirmation: commander.skipConfirmation,
+    forwarderAddress: commander.forwarder,
+    stakeManagerAddress: commander.stakeManager,
+    relayHubAddress: commander.relayHub,
+    penalizerAddress: commander.penalizer
   })
   const paymasterName = 'Default'
 
