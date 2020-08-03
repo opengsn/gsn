@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - '80:80'
+      - '443:443'
+    restart: always
+    environment:
+      DOMAINS: '${HOST} -> http://router'
+      STAGE: ${HTTPS_STAGE}
+
+  router:
+    image: opengsn/prefixrouter
+    restart: always
+    ports: [ '8080:80' ] #bypass https-portal
+    # add line for each relay
+    command: 
+      - gsn1 
+#ADD-SERVER: add new server name above this line
+
+####-BEGIN-TEMPLATE. duplicate for more instances. update "gsn1" for unique name
+#### make sure to add instance name to the router command above
+
+  gsn1:
+    image: opengsn/jsrelay:2.0.0-alpha.3-patch.1
+    restart: on-failure
+
+    # gsndata: creates a mapped volume so that relay server will keep keys outside of the container.
+    #   MUST be unique for each instance.
+    # config: global config to all relays.
+    volumes:
+      - ./gsndata/gsn1:/app/data
+      - ./config:/app/config
+
+    environment:
+      url: https://${HOST}/gsn1
+      port: 80
+      workdir: /app/data
+      config: /app/config/gsn-relay-config.json
+
+####-END-TEMPLATE
+
