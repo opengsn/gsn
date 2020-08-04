@@ -37,6 +37,10 @@ export function event2topic (contract: any, names: any): any {
     .map(abi.encodeEventSignature)
 }
 
+export function address2topic (address: string): string {
+  return '0x' + '0'.repeat(24) + address.slice(2)
+}
+
 // extract revert reason from a revert bytes array.
 export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string {
   if (!revertBytes.startsWith('0x08c379a0')) {

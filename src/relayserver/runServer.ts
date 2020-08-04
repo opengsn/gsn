@@ -21,6 +21,7 @@ export interface ServerConfigParams {
   workdir?: string
   devMode?: boolean
   debug?: boolean
+  registrationBlockRate?: number | string
 }
 
 function error (err: string): void {
@@ -62,12 +63,14 @@ const baseRelayFee: string = argv.baseRelayFee ?? config.baseRelayFee?.toString(
 const pctRelayFee: string = argv.pctRelayFee ?? config.pctRelayFee?.toString() ?? error('missing --pctRelayFee')
 const url: string = argv.url ?? config.url ?? error('missing --url')
 const port: string = argv.port ?? config.port?.toString() ?? error('missing --port')
-const relayHubAddress: string = getRelayHubAddress(argv.relayHubAddress) as string ?? config.relayHubAddress ?? error('missing --relayHubAddress')
+const relayHubAddress: string = getRelayHubAddress(argv.relayHubAddress) as string ?? config.relayHubAddress ?? error(
+  'missing --relayHubAddress')
 const gasPricePercent: string = argv.gasPricePercent ?? config.gasPricePercent?.toString() ?? error('missing --gasPricePercent')
 const ethereumNodeUrl: string = argv.ethereumNodeUrl ?? config.ethereumNodeUrl ?? error('missing --ethereumNodeUrl')
 const workdir: string = argv.workdir ?? config.workdir ?? error('missing --workdir')
 const devMode: boolean = argv.devMode ?? config.devMode ?? error('missing --devMode')
 const debug: boolean = argv.debug ?? config.debug ?? error('missing --debug')
+const registrationBlockRate: string = argv.registrationBlockRate ?? config.registrationBlockRate?.toString()
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
@@ -79,7 +82,7 @@ const workersKeyManager = new KeyManager(1, workdir + '/workers')
 const txStoreManager = new TxStoreManager({ workdir })
 const web3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
 const interactor = new ContractInteractor(web3provider,
-  configureGSN({}))
+  configureGSN({ relayHubAddress }))
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const params = {
   txStoreManager,
@@ -92,7 +95,8 @@ const params = {
   pctRelayFee: parseInt(pctRelayFee),
   devMode,
   debug: debug,
-  gasPriceFactor: gasPriceFactor
+  gasPriceFactor: gasPriceFactor,
+  registrationBlockRate: parseInt(registrationBlockRate)
 }
 const relay = new RelayServer(params as RelayServerParams)
 console.log('Starting server.')

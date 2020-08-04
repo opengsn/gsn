@@ -144,7 +144,7 @@ class GsnTestEnvironmentClass {
       readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
      */
     const interactor = new ContractInteractor(new Web3.providers.HttpProvider(host),
-      configureGSN({}))
+      configureGSN({ relayHubAddress: deploymentResult.relayHubAddress }))
     const relayServerParams = {
       contractInteractor: interactor,
       txStoreManager,
