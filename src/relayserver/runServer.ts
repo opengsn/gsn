@@ -63,7 +63,8 @@ const baseRelayFee: string = argv.baseRelayFee ?? config.baseRelayFee?.toString(
 const pctRelayFee: string = argv.pctRelayFee ?? config.pctRelayFee?.toString() ?? error('missing --pctRelayFee')
 const url: string = argv.url ?? config.url ?? error('missing --url')
 const port: string = argv.port ?? config.port?.toString() ?? error('missing --port')
-const relayHubAddress: string = getRelayHubAddress(argv.relayHubAddress) as string ?? config.relayHubAddress ?? error('missing --relayHubAddress')
+const relayHubAddress: string = getRelayHubAddress(argv.relayHubAddress) as string ?? config.relayHubAddress ?? error(
+  'missing --relayHubAddress')
 const gasPricePercent: string = argv.gasPricePercent ?? config.gasPricePercent?.toString() ?? error('missing --gasPricePercent')
 const ethereumNodeUrl: string = argv.ethereumNodeUrl ?? config.ethereumNodeUrl ?? error('missing --ethereumNodeUrl')
 const workdir: string = argv.workdir ?? config.workdir ?? error('missing --workdir')
@@ -81,7 +82,7 @@ const workersKeyManager = new KeyManager(1, workdir + '/workers')
 const txStoreManager = new TxStoreManager({ workdir })
 const web3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
 const interactor = new ContractInteractor(web3provider,
-  configureGSN({}))
+  configureGSN({ relayHubAddress }))
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
 const params = {
   txStoreManager,

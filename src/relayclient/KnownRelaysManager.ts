@@ -9,6 +9,7 @@ import ContractInteractor, {
 import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
+import { constants } from '../common/Constants'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -27,8 +28,6 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   score = score * Math.pow(0.9, failures.length)
   return await Promise.resolve(score)
 }
-
-const activeManagerEvents = ['RelayServerRegistered', 'TransactionRelayed', 'TransactionRejectedByPaymaster', 'RelayWorkersAdded']
 
 export interface IKnownRelaysManager {
   refresh: () => Promise<void>
@@ -105,7 +104,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(activeManagerEvents, [], {
+    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [], {
       fromBlock,
       toBlock
     })

@@ -24,6 +24,7 @@ import { toBN, toHex } from 'web3-utils'
 import { defaultEnvironment } from '../common/Environments'
 import VersionsManager from '../common/VersionsManager'
 import { calculateTransactionMaxPossibleGas } from '../common/Utils'
+import { constants } from '../common/Constants'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -421,7 +422,7 @@ export class RelayServer extends EventEmitter {
     const stakeManagerAddress = await this.relayHubContract.stakeManager()
     this.stakeManagerContract = await this.contractInteractor._createStakeManager(stakeManagerAddress)
     const stakeManagerTopics = [Object.keys(this.stakeManagerContract.contract.events).filter(x => (x.includes('0x')))]
-    this.topics = stakeManagerTopics.concat([['0x' + '0'.repeat(24) + this.managerAddress.slice(2)]])
+    this.topics = stakeManagerTopics.concat([[this.address2topic(this.managerAddress)]])
 
     this.chainId = await this.contractInteractor.getChainId()
     this.networkId = await this.contractInteractor.getNetworkId()
@@ -648,7 +649,8 @@ export class RelayServer extends EventEmitter {
     }
     const registrationBlock = await this._getRegistrationBlock()
     const currentBlock = await this.contractInteractor.getBlockNumber()
-    const shouldRegisterAgain = this.registrationBlockRate == null ? false : currentBlock - registrationBlock > this.registrationBlockRate
+    const latestTxBlockNumber = await this._getLatestTxBlockNumber()
+    const shouldRegisterAgain = this.registrationBlockRate == null ? false : currentBlock - latestTxBlockNumber >= this.registrationBlockRate
     if (registrationBlock === 0 || shouldRegisterAgain) {
       const registerMethod = this.relayHubContract?.contract.methods
         .registerRelayServer(this.baseRelayFee, this.pctRelayFee,
@@ -676,6 +678,25 @@ export class RelayServer extends EventEmitter {
         e.returnValues.pctRelayFee.toString() === this.pctRelayFee.toString() &&
         e.returnValues.relayUrl.toString() === this.url.toString())
     return (event == null ? 0 : event.blockNumber)
+  }
+
+  async _getLatestTxBlockNumber (): Promise<number> {
+    const events: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [this.address2topic(this.managerAddress)], {
+      fromBlock: 1
+    })
+    // const events = await this.relayHubContract?.contract.getPastEvents('allEvents', {
+    //   fromBlock: 1,
+    //   // filter: { relayManager: this.managerAddress }
+    //   topics: [
+    //     null,
+    //     this.address2topic(this.managerAddress)
+    //   ]
+    // })
+    const latestBlock = events.filter(
+      (e: any) => /* e.returnValues.relayManager != null && */
+        e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase()).map((e: any) => e.blockNumber).reduce(
+      (b1: any, b2: any) => Math.max(b1, b2))
+    return latestBlock
   }
 
   async _areWorkersAdded (): Promise<boolean> {
@@ -969,5 +990,9 @@ export class RelayServer extends EventEmitter {
       return 10
     }
     return 1000
+  }
+
+  address2topic (address: string): string {
+    return '0x' + '0'.repeat(24) + address.slice(2)
   }
 }

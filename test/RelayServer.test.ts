@@ -97,7 +97,7 @@ contract('RelayServer', function (accounts) {
     const txStoreManager = new TxStoreManager({ workdir: workdir + '/defunct' + Date.now().toString() })
     const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
     const interactor = new ContractInteractor(serverWeb3provider,
-      configureGSN({}))
+      configureGSN({ relayHubAddress: rhub.address }))
     const params = {
       txStoreManager,
       managerKeyManager,
@@ -165,7 +165,7 @@ contract('RelayServer', function (accounts) {
     workersKeyManager = new KeyManager(1, workersWorkdir)
     const txStoreManager = new TxStoreManager({ workdir })
     const interactor = new ContractInteractor(serverWeb3provider,
-      configureGSN({}))
+      configureGSN({ relayHubAddress: rhub.address }))
     const params = {
       txStoreManager,
       managerKeyManager,
@@ -405,7 +405,7 @@ contract('RelayServer', function (accounts) {
       const txStoreManager = new TxStoreManager({ workdir })
       const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
       const interactor = new ContractInteractor(serverWeb3provider,
-        configureGSN({}))
+        configureGSN({ relayHubAddress: rhub.address }))
       const params = {
         txStoreManager,
         managerKeyManager,
@@ -861,7 +861,8 @@ contract('RelayServer', function (accounts) {
     })
     it('should not replenish when all balances are sufficient', async function () {
       await _web3.eth.sendTransaction({ from: accounts[0], to: relayServer.getManagerAddress(), value: relayServer.managerTargetBalance })
-      await _web3.eth.sendTransaction({ from: accounts[0], to: relayServer.getWorkerAddress(workerIndex), value: relayServer.workerTargetBalance })
+      await _web3.eth.sendTransaction(
+        { from: accounts[0], to: relayServer.getWorkerAddress(workerIndex), value: relayServer.workerTargetBalance })
       const currentBlockNumber = await _web3.eth.getBlockNumber()
       const receipts = await relayServer.replenishServer(workerIndex)
       assert.deepEqual(receipts, [])
@@ -1184,7 +1185,7 @@ contract('RelayServer', function (accounts) {
         registrationTests()
       })
       describe('with re-registration', function () {
-        const registrationBlockRate = 1000
+        const registrationBlockRate = 100
         beforeEach(async function () {
           id = (await snapshot()).result
           newServer = await bringUpNewRelay({ registrationBlockRate })
@@ -1198,11 +1199,31 @@ contract('RelayServer', function (accounts) {
           await revert(id)
         })
         registrationTests()
-        it('re-register server when registrationBlockRate passed', async function () {
-          await evmMineMany(registrationBlockRate)
-          const receipts = await newServer._registerIfNeeded()
+        it('re-register server when registrationBlockRate passed from any tx', async function () {
+          let receipts = await newServer._registerIfNeeded()
           assertRelayAdded(receipts, newServer)
+          await evmMineMany(registrationBlockRate)
+          receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer, false)
         })
+        it('do not re-register server before registrationBlockRate passed from any tx', async function () {
+          let receipts = await newServer._registerIfNeeded()
+          assertRelayAdded(receipts, newServer)
+          await evmMineMany(registrationBlockRate - 1)
+          receipts = await newServer._registerIfNeeded()
+          assert.equal(receipts.length, 0, 'should not re-register if already registered')
+        })
+        it('do not re-register server when registrationBlockRate passed from registration but not from relayed tx',
+          async function () {
+            let receipts = await newServer._registerIfNeeded()
+            assertRelayAdded(receipts, newServer)
+            await newServer._worker(await _web3.eth.getBlock('latest'))
+            await evmMineMany(registrationBlockRate - 10)
+            await relayTransaction(newServer, options)
+            await evmMineMany(registrationBlockRate - 20)
+            receipts = await newServer._registerIfNeeded()
+            assert.equal(receipts.length, 0)
+          })
       })
     })
     // it('_resendUnconfirmedTransactions', async function () {
