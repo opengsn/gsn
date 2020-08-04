@@ -186,6 +186,7 @@ contract('Utils', function (accounts) {
         from: accounts[0],
         gasPrice: '1',
         deployPaymaster: true,
+        skipConfirmation: true,
         relayHubConfiguration: defaultEnvironment.relayHubConfiguration
       })
       const minGasPrice = 777
