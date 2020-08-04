@@ -46,6 +46,7 @@ class GsnTestEnvironmentClass {
       from,
       gasPrice: '1',
       deployPaymaster,
+      skipConfirmation: true,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
     if (deployPaymaster) {
