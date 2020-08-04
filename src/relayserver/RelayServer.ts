@@ -684,14 +684,6 @@ export class RelayServer extends EventEmitter {
     const events: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [this.address2topic(this.managerAddress)], {
       fromBlock: 1
     })
-    // const events = await this.relayHubContract?.contract.getPastEvents('allEvents', {
-    //   fromBlock: 1,
-    //   // filter: { relayManager: this.managerAddress }
-    //   topics: [
-    //     null,
-    //     this.address2topic(this.managerAddress)
-    //   ]
-    // })
     const latestBlock = events.filter(
       (e: any) => /* e.returnValues.relayManager != null && */
         e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase()).map((e: any) => e.blockNumber).reduce(
