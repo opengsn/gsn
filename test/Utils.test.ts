@@ -184,7 +184,9 @@ contract('Utils', function (accounts) {
       const commandsLogic = new CommandsLogic(host, defaultConfiguration)
       const deploymentResult = await commandsLogic.deployGsnContracts({
         from: accounts[0],
+        gasPrice: '1',
         deployPaymaster: true,
+        skipConfirmation: true,
         relayHubConfiguration: defaultEnvironment.relayHubConfiguration
       })
       const minGasPrice = 777

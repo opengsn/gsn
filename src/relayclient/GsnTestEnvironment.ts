@@ -42,12 +42,11 @@ class GsnTestEnvironmentClass {
     }
     const commandsLogic = new CommandsLogic(_host, configureGSN({}))
     const from = await commandsLogic.findWealthyAccount()
-    if (from == null) {
-      throw new Error('could not get unlocked account with sufficient balance')
-    }
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
+      gasPrice: '1',
       deployPaymaster,
+      skipConfirmation: true,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
     if (deployPaymaster) {
