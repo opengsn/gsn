@@ -10,6 +10,7 @@ import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
+import { PrefixedHexString } from 'ethereumjs-tx'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -208,6 +209,16 @@ export async function revert (id: string): Promise<void> {
       return resolve(result)
     })
   })
+}
+
+// encode revert reason string as a byte error returned by revert(stirng)
+export function encodeRevertReason (reason: string): PrefixedHexString {
+  return web3.eth.abi.encodeFunctionCall({
+    name: 'Error',
+    type: 'function',
+    inputs: [{ name: 'error', type: 'string' }]
+  }, [reason])
+  // return '0x08c379a0' + removeHexPrefix(web3.eth.abi.encodeParameter('string', reason))
 }
 
 export async function deployHub (

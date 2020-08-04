@@ -62,6 +62,8 @@ library GsnEip712Library {
             hashRelayData(req.relayData));
     }
 
+    //verify that the recipient trusts the given forwarder
+    // MUST be called by paymaster
     function verifyForwarderTrusted(GsnTypes.RelayRequest calldata relayRequest) internal view {
         (bool success, bytes memory ret) = relayRequest.request.to.staticcall(
             abi.encodeWithSelector(
@@ -85,23 +87,27 @@ library GsnEip712Library {
         verifySignature(relayRequest, signature);
     }
 
-    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool, bytes memory) {
+    function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool forwarderSuccess, bool callSuccess, bytes memory ret) {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
-        try IForwarder(relayRequest.relayData.forwarder).execute(
-                forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
-        ) returns (bool _success, bytes memory _ret) {
-            return (_success, getTruncatedData(_ret));
-        } catch (bytes memory _ret) {
-            return (false, getTruncatedData(_ret));
+        /* solhint-disable-next-line avoid-low-level-calls */
+        (forwarderSuccess, ret) = relayRequest.relayData.forwarder.call(
+            abi.encodeWithSelector(IForwarder.execute.selector,
+            forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
+        ));
+        if ( forwarderSuccess ) {
+
+          //decode return value of execute:
+          (callSuccess, ret) = abi.decode(ret, (bool, bytes));
         }
+        truncateInPlace(ret);
     }
 
-    function getTruncatedData(bytes memory data) internal pure returns (bytes memory) {
-        if (data.length > MAX_RETURN_SIZE) {
-            return LibBytesV06.slice(data, 0, MAX_RETURN_SIZE);
-        }
-        return data;
+    //truncate the given parameter (in-place) if its length is above the given maximum length
+    // do nothing otherwise.
+    //NOTE: solidity warns unless the method is marked "pure", but it DOES modify its parameter.
+    function truncateInPlace(bytes memory data) internal pure {
+        MinLibBytes.truncateInPlace(data, MAX_RETURN_SIZE);
     }
 
     function domainSeparator(address forwarder) internal pure returns (bytes32) {

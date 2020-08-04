@@ -3,7 +3,7 @@ pragma solidity ^0.6.2;
 
 contract TestVersions {
 
-    function versionHub() external view returns (string memory) {
+    function versionHub() external pure returns (string memory) {
         return "3.0.0";
     }
 }

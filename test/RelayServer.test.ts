@@ -157,6 +157,7 @@ contract('RelayServer', function (accounts) {
       GsnRequestType.typeSuffix
     )
 
+    await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
     gasLess = await _web3.eth.personal.newAccount('password')
@@ -227,13 +228,14 @@ contract('RelayServer', function (accounts) {
   async function assertTransactionRelayed (server: RelayServer, txhash: PrefixedHexString, gasLess: Address): Promise<TransactionReceipt> {
     const receipt = await _web3.eth.getTransactionReceipt(txhash)
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(server._parseEvent)
-    assert.equal(decodedLogs[1].name, 'SampleRecipientEmitted')
-    assert.equal(decodedLogs[1].args.message, 'hello world')
-    assert.equal(decodedLogs[3].name, 'TransactionRelayed')
-    assert.equal(decodedLogs[3].args.relayWorker.toLowerCase(), server.getWorkerAddress(workerIndex).toLowerCase())
-    assert.equal(decodedLogs[3].args.from.toLowerCase(), gasLess.toLowerCase())
-    assert.equal(decodedLogs[3].args.to.toLowerCase(), sr.address.toLowerCase())
-    assert.equal(decodedLogs[3].args.paymaster.toLowerCase(), paymaster.address.toLowerCase())
+    const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
+    assert.equal(event1.args.message, 'hello world')
+    const event2 = decodedLogs.find((e: { name: string }) => e.name === 'TransactionRelayed')
+    assert.equal(event2.name, 'TransactionRelayed')
+    assert.equal(event2.args.relayWorker.toLowerCase(), server.getWorkerAddress(workerIndex).toLowerCase())
+    assert.equal(event2.args.from.toLowerCase(), gasLess.toLowerCase())
+    assert.equal(event2.args.to.toLowerCase(), sr.address.toLowerCase())
+    assert.equal(event2.args.paymaster.toLowerCase(), paymaster.address.toLowerCase())
     return receipt
   }
 
@@ -574,22 +576,22 @@ contract('RelayServer', function (accounts) {
       }
     })
     it('should fail to relay with wrong senderNonce', async function () {
-      // First we change the senderNonce and see nonce failure
+      // @ts-ignore
+      const contractInteractor = relayServer.contractInteractor
+      const saveGetSenderNonce = contractInteractor.getSenderNonce
       try {
-        await relayTransaction(relayServer, options, { senderNonce: '123456' })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
-      }
-      // Now we replay the same transaction so we get WrongNonce
-      const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await prepareRelayRequest(relayServer, options)
-      await relayTransactionFromRequest(relayServer, {}, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest })
-      try {
-        await relayTransactionFromRequest(relayServer, {},
-          { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature, httpRequest })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
+        contractInteractor.getSenderNonce = async () => await Promise.resolve('1234')
+        const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await prepareRelayRequest(relayServer, options)
+        await relayTransactionFromRequest(relayServer, {}, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest })
+        try {
+          await relayTransactionFromRequest(relayServer, {},
+            { relayRequest, relayMaxNonce: relayMaxNonce + 1, approvalData, signature, httpRequest })
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
+        }
+      } finally {
+        contractInteractor.getSenderNonce = saveGetSenderNonce
       }
     })
     it('should fail to relay with wrong relayMaxNonce', async function () {

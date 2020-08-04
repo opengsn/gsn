@@ -32,7 +32,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         overspendAcceptGas = val;
     }
 
-    function acceptRelayedCall(
+    function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -40,9 +40,10 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     )
     external
     override
-    view
-    returns (bytes memory) {
-        (relayRequest, signature, approvalData, maxPossibleGas);
+    relayHubOnly
+    returns (bytes memory, bool) {
+        (signature, approvalData, maxPossibleGas);
+        _verifyForwarder(relayRequest);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {
@@ -52,28 +53,18 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
         require(!returnInvalidErrorCode, "invalid code");
 
-        return "";
-    }
-
-    function preRelayedCall(bytes calldata context)
-    external
-    override
-    relayHubOnly
-    returns (bytes32) {
-        (context);
         if (withdrawDuringPreRelayedCall) {
             withdrawAllBalance();
         }
         if (revertPreRelayCall) {
             revert("You asked me to revert, remember?");
         }
-        return 0;
+        return ("", trustRecipientRevert);
     }
 
     function postRelayedCall(
         bytes calldata context,
         bool success,
-        bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
@@ -81,7 +72,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     override
     relayHubOnly
     {
-        (context, success, preRetVal, gasUseWithoutPost, relayData);
+        (context, success, gasUseWithoutPost, relayData);
         if (withdrawDuringPostRelayedCall) {
             withdrawAllBalance();
         }
@@ -96,6 +87,28 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         uint256 balance = relayHub.balanceOf(address(this));
         relayHub.withdraw(balance, address(this));
         return balance;
+    }
+
+    IPaymaster.GasLimits private limits = super.getGasLimits();
+
+    function getGasLimits()
+    public override view
+    returns (IPaymaster.GasLimits memory) {
+        return limits;
+    }
+
+    bool private trustRecipientRevert;
+
+    function setGasLimits(uint acceptanceBudget, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
+        limits = IPaymaster.GasLimits(
+            acceptanceBudget,
+            preRelayedCallGasLimit,
+            postRelayedCallGasLimit
+        );
+    }
+
+    function setTrustRecipientRevert(bool on) public {
+        trustRecipientRevert = on;
     }
 
     // solhint-disable-next-line no-empty-blocks
