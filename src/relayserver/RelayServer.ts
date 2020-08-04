@@ -33,8 +33,8 @@ abiDecoder.addABI(StakeManagerABI)
 const mintxgascost = defaultEnvironment.mintxgascost
 
 const VERSION = '2.0.0-alpha.3'
-const defaultMinWithdrawalBalance = 0.1e18
-const defaultMinManagerBalance = 0.1e18 // 0.1 eth
+const defaultMinHubWithdrawalBalance = 0.1e18
+const defaultManagerMinBalance = 0.1e18 // 0.1 eth
 const defaultManagerTargetBalance = 0.3e18
 const defaultWorkerMinBalance = 0.1e18
 const defaultWorkerTargetBalance = 0.3e18
@@ -93,8 +93,9 @@ export interface RelayServerParams {
   readonly url?: string
   readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
   readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
+  readonly managerMinBalance: number | undefined // = defaultManagerMinBalance,
   readonly managerTargetBalance: number | undefined // = defaultManagerTargetBalance,
-  readonly minHubWithdrawalBalance: number | undefined // = defaultManagerTargetBalance,
+  readonly minHubWithdrawalBalance: number | undefined // = defaultMinHubWithdrawalBalance,
   readonly devMode: boolean // = false,
   readonly debug: boolean // = false,
 }
@@ -135,6 +136,7 @@ export class RelayServer extends EventEmitter {
   readonly url: string
   readonly workerMinBalance: number
   readonly workerTargetBalance: number
+  readonly managerMinBalance: number
   readonly managerTargetBalance: number
   readonly minHubWithdrawalBalance: number
   private readonly devMode: boolean
@@ -155,8 +157,9 @@ export class RelayServer extends EventEmitter {
     this.url = params.url ?? 'http://localhost:8090'
     this.workerMinBalance = params.workerMinBalance ?? defaultWorkerMinBalance
     this.workerTargetBalance = params.workerTargetBalance ?? defaultWorkerTargetBalance
+    this.managerMinBalance = params.managerMinBalance ?? defaultManagerMinBalance
     this.managerTargetBalance = params.managerTargetBalance ?? defaultManagerTargetBalance
-    this.minHubWithdrawalBalance = params.minHubWithdrawalBalance ?? defaultMinWithdrawalBalance
+    this.minHubWithdrawalBalance = params.minHubWithdrawalBalance ?? defaultMinHubWithdrawalBalance
     this.devMode = params.devMode
     this.contractInteractor = params.contractInteractor
 
@@ -445,7 +448,7 @@ export class RelayServer extends EventEmitter {
       // all filled, nothing to do
       return receipts
     }
-    if (managerEthBalance.lt(toBN(this.managerTargetBalance.toString())) && managerHubBalance.gte(toBN(defaultMinWithdrawalBalance))) {
+    if (managerEthBalance.lt(toBN(this.managerTargetBalance.toString())) && managerHubBalance.gte(toBN(this.minHubWithdrawalBalance))) {
       console.log(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
       const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.getManagerAddress())
@@ -462,7 +465,7 @@ export class RelayServer extends EventEmitter {
       console.log(
         `== replenishServer: mgr balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()} 
           worker balance=${workerBalance.toString()} refill=${refill.toString()}`)
-      if (refill.lt(managerEthBalance.sub(toBN(defaultMinManagerBalance)))) {
+      if (refill.lt(managerEthBalance.sub(toBN(this.managerMinBalance)))) {
         console.log('Replenishing worker balance by manager eth balance')
         receipts.push((await this._sendTransaction({
           signer: this.getManagerAddress(),
@@ -489,10 +492,10 @@ export class RelayServer extends EventEmitter {
       throw new StateError('Could not get gasPrice from node')
     }
     const balance = await this.getManagerBalance()
-    if (balance.lt(toBN(defaultMinManagerBalance))) {
+    if (balance.lt(toBN(this.managerMinBalance))) {
       throw new StateError(
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Server's balance too low ( ${balance}, required ${defaultMinManagerBalance}). Waiting for funding...`)
+        `Server's balance too low ( ${balance}, required ${this.managerMinBalance}). Waiting for funding...`)
     }
     let receipts = await this._handlePastEvents(blockHeader)
     await this._resendUnconfirmedTransactions(blockHeader)
