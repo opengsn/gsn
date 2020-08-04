@@ -23,7 +23,7 @@ import { TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import { defaultEnvironment } from '../common/Environments'
 import VersionsManager from '../common/VersionsManager'
-import { calculateTransactionMaxPossibleGas, decodeRevertReason } from '../common/Utils'
+import { calculateTransactionMaxPossibleGas, decodeRevertReason, address2topic } from '../common/Utils'
 import { constants } from '../common/Constants'
 
 abiDecoder.addABI(RelayHubABI)
@@ -425,7 +425,7 @@ export class RelayServer extends EventEmitter {
     const stakeManagerAddress = await this.relayHubContract.stakeManager()
     this.stakeManagerContract = await this.contractInteractor._createStakeManager(stakeManagerAddress)
     const stakeManagerTopics = [Object.keys(this.stakeManagerContract.contract.events).filter(x => (x.includes('0x')))]
-    this.topics = stakeManagerTopics.concat([[this.address2topic(this.managerAddress)]])
+    this.topics = stakeManagerTopics.concat([[address2topic(this.managerAddress)]])
 
     this.chainId = await this.contractInteractor.getChainId()
     this.networkId = await this.contractInteractor.getNetworkId()
@@ -684,7 +684,7 @@ export class RelayServer extends EventEmitter {
   }
 
   async _getLatestTxBlockNumber (): Promise<number> {
-    const events: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [this.address2topic(this.managerAddress)], {
+    const events: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [address2topic(this.managerAddress)], {
       fromBlock: 1
     })
     const latestBlock = events.filter(
@@ -985,9 +985,5 @@ export class RelayServer extends EventEmitter {
       return 10
     }
     return 1000
-  }
-
-  address2topic (address: string): string {
-    return '0x' + '0'.repeat(24) + address.slice(2)
   }
 }
