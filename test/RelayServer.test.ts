@@ -1141,20 +1141,7 @@ contract('RelayServer', function (accounts) {
     describe('_registerIfNeeded', function () {
       let newServer: RelayServer
 
-      describe('without re-registration', function () {
-        beforeEach(async function () {
-          id = (await snapshot()).result
-          newServer = await bringUpNewRelay()
-          // @ts-ignore
-          newServer.authorizedHub = true
-          const stake = await newServer.refreshStake()
-          assert.deepEqual(stake, oneEther)
-          assert.equal(newServer.owner, relayOwner, 'owner should be set after refreshing stake')
-          assert.equal(newServer.registrationBlockRate, undefined)
-        })
-        afterEach(async function () {
-          await revert(id)
-        })
+      function registrationTests (): void {
         it('register server and add workers when not registered', async function () {
           const receipts = await newServer._registerIfNeeded()
           assertRelayAdded(receipts, newServer)
@@ -1181,6 +1168,23 @@ contract('RelayServer', function (accounts) {
           receipts = await newServer._registerIfNeeded()
           assertRelayAdded(receipts, newServer, false)
         })
+      }
+
+      describe('without re-registration', function () {
+        beforeEach(async function () {
+          id = (await snapshot()).result
+          newServer = await bringUpNewRelay()
+          // @ts-ignore
+          newServer.authorizedHub = true
+          const stake = await newServer.refreshStake()
+          assert.deepEqual(stake, oneEther)
+          assert.equal(newServer.owner, relayOwner, 'owner should be set after refreshing stake')
+          assert.equal(newServer.registrationBlockRate, undefined)
+        })
+        afterEach(async function () {
+          await revert(id)
+        })
+        registrationTests()
       })
       describe('with re-registration', function () {
         const registrationBlockRate = 100
@@ -1196,6 +1200,7 @@ contract('RelayServer', function (accounts) {
         afterEach(async function () {
           await revert(id)
         })
+        registrationTests()
         it('re-register server when registrationBlockRate passed from any tx', async function () {
           let receipts = await newServer._registerIfNeeded()
           assertRelayAdded(receipts, newServer)
