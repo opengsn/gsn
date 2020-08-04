@@ -43,6 +43,30 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
 }
 
 /**
+ * Same as {@link configureGSN} but also resolves the GSN deployment from Paymaster
+ * @param provider - web3 provider needed to query blockchain
+ * @param partialConfig
+ */
+export async function resolveConfigurationGSN (provider: provider, partialConfig: Partial<GSNConfig>): Promise<GSNConfig> {
+  if (partialConfig.stakeManagerAddress != null || partialConfig.relayHubAddress != null) {
+    throw new Error('Resolve cannot override passed values')
+  }
+  if (partialConfig.paymasterAddress == null) {
+    throw new Error('Cannot resolve GSN deployment without paymaster address')
+  }
+  const contractInteractor = new ContractInteractor(provider, defaultGsnConfig)
+  const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
+  const relayHubAddress = await paymasterInstance.getHubAddr()
+  const relayHubInstance = await contractInteractor._createRelayHub(relayHubAddress)
+  const stakeManagerAddress = await relayHubInstance.stakeManager()
+  const resolvedConfig = {
+    relayHubAddress,
+    stakeManagerAddress
+  }
+  return Object.assign({}, defaultGsnConfig, partialConfig, resolvedConfig) as GSNConfig
+}
+
+/**
  * @field methodSuffix - allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask
  * @field jsonStringifyRequest - should be 'true' for Metamask, false for ganache
  */

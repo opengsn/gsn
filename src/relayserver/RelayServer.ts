@@ -32,7 +32,7 @@ abiDecoder.addABI(StakeManagerABI)
 
 const mintxgascost = defaultEnvironment.mintxgascost
 
-const VERSION = '2.0.0-alpha.3'
+const VERSION = '2.0.0-beta.1'
 const defaultMinHubWithdrawalBalance = 0.1e18
 const defaultManagerMinBalance = 0.1e18 // 0.1 eth
 const defaultManagerTargetBalance = 0.3e18
