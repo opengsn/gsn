@@ -22,6 +22,7 @@ import {
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
+  TestPaymasterConfigurableMisbehaviorInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
@@ -46,6 +47,7 @@ const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 const { expect } = require('chai').use(chaiAsPromised).use(sinonChai)
 
@@ -56,13 +58,15 @@ abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(TestRecipient.abi)
 // @ts-ignore
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
+// @ts-ignore
+abiDecoder.addABI(TestPaymasterConfigurableMisbehavior.abi)
 
 const localhostOne = 'http://localhost:8090'
 const workdir = '/tmp/gsn/test/relayserver'
 const managerWorkdir = workdir + '/manager'
 const workersWorkdir = workdir + '/workers'
 
-contract('RelayServer', function (accounts) {
+contract.only('RelayServer', function (accounts) {
   const pctRelayFee = 11
   const baseRelayFee = 12
   const workerIndex = 0
@@ -72,6 +76,7 @@ contract('RelayServer', function (accounts) {
   let penalizer: PenalizerInstance
   let sr: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
+  let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
   let gasLess: Address, gasLess2: Address
   const relayOwner = accounts[1]
   const dayInSec = 24 * 60 * 60
@@ -151,6 +156,7 @@ contract('RelayServer', function (accounts) {
     const forwarderAddress = forwarder.address
     sr = await TestRecipient.new(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
+    rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
     // register hub's RelayRequest with forwarder, if not already done.
     await forwarder.registerRequestType(
       GsnRequestType.typeName,
@@ -160,6 +166,10 @@ contract('RelayServer', function (accounts) {
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(rhub.address)
     await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
+    await rejectingPaymaster.setTrustedForwarder(forwarderAddress)
+    await rejectingPaymaster.setRelayHub(rhub.address)
+    await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
+    await rejectingPaymaster.setRevertPreRelayCallOnEvenBlock(true)
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')
     managerKeyManager = new KeyManager(1, managerWorkdir)
@@ -295,6 +305,10 @@ contract('RelayServer', function (accounts) {
         forwarder: relayRequest.relayData.forwarder,
         ...overrideArgs
       })
+    // ts compiler doesn't understand assert.isTrue(signedTx != null) as null check
+    if (signedTx == null) {
+      assert.fail('createRelayTransaction returned null')
+    }
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
     await assertTransactionRelayed(server, txhash, relayRequest.request.from)
     return signedTx
@@ -1240,6 +1254,28 @@ contract('RelayServer', function (accounts) {
     // })
     // it('_parseEvent', async function () {
     // })
+  })
+
+  describe.only('Alerted state as griefing mitigation', function () {
+    let newServer: RelayServer
+    beforeEach(async function () {
+      id = (await snapshot()).result
+      newServer = await bringUpNewRelay()
+      await newServer._worker(await _web3.eth.getBlock('latest'))
+    })
+    afterEach(async function () {
+      await revert(id)
+    })
+    it('should enter alerted state after paymaster rejecting an on-chain tx', async function () {
+      const currentBlock = await _web3.eth.getBlockNumber()
+      if (currentBlock % 2 === 0) {
+        await evmMine()
+      }
+      await relayTransaction(newServer, options, { paymaster: rejectingPaymaster.address })
+    })
+    it.skip('should exit alerted state after the configured blocks delay', async function () {
+
+    })
   })
 
   describe.skip('runServer', function () {

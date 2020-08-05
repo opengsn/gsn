@@ -38,6 +38,7 @@ const defaultManagerMinBalance = 0.1e18 // 0.1 eth
 const defaultManagerTargetBalance = 0.3e18
 const defaultWorkerMinBalance = 0.1e18
 const defaultWorkerTargetBalance = 0.3e18
+const defaultAlertedBlockDelay = 6000
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const maxGasPrice = 100e9
@@ -103,6 +104,8 @@ export interface RelayServerParams {
 export class RelayServer extends EventEmitter {
   lastScannedBlock = 0
   ready = false
+  alerted = false
+  alertedBlock: number = 0
   nonceMutex = new Mutex()
   readonly nonces: Record<Address, number> = {}
   private readonly managerAddress: PrefixedHexString
@@ -203,7 +206,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async createRelayTransaction (req: CreateTransactionDetails): Promise<PrefixedHexString> {
+  async createRelayTransaction (req: CreateTransactionDetails): Promise<PrefixedHexString | undefined> {
     debug('dump request params', arguments[0])
     ow(req.data, ow.string)
     ow(req.approvalData, ow.string)
@@ -279,8 +282,7 @@ export class RelayServer extends EventEmitter {
       gasLimits = await this.paymasterContract.getGasLimits()
     } catch (e) {
       if (
-        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-        e.message.includes(
+        (e as Error).message.includes(
           'Returned values aren\'t valid, did it run Out of Gas?'
         )
       ) {
@@ -291,38 +293,32 @@ export class RelayServer extends EventEmitter {
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
-    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
       relayCallGasLimit: req.gasLimit
     })
-    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
+    const method = this.relayHubContract.contract.methods.relayCall(
+      relayRequest, req.signature, req.approvalData, maxPossibleGas)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
-      viewRelayCallRet = await this.relayHubContract.contract.methods.relayCall(
-        relayRequest,
-        req.signature,
-        req.approvalData,
-        maxPossibleGas)
-        .call({
-          from: this.getWorkerAddress(workerIndex),
-          gasPrice: relayRequest.relayData.gasPrice,
-          gasLimit: maxPossibleGas
-        })
+      viewRelayCallRet = await method.call({
+        from: this.getWorkerAddress(workerIndex),
+        gasPrice: relayRequest.relayData.gasPrice,
+        gasLimit: maxPossibleGas
+      })
     } catch (e) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`relayCall reverted in server: ${e.message}`)
+      throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
     debug('viewRelayCallRet', viewRelayCallRet)
     if (!viewRelayCallRet.paymasterAccepted) {
-      throw new Error(`Paymaster rejected in server: ${decodeRevertReason(viewRelayCallRet.returnValue)} req=${JSON.stringify(relayRequest, null, 2)}`)
+      throw new Error(
+        `Paymaster rejected in server: ${decodeRevertReason(viewRelayCallRet.returnValue)} req=${JSON.stringify(relayRequest, null, 2)}`)
     }
     // Send relayed transaction
     debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
 
     const maxCharge =
-      // @ts-ignore
       await this.relayHubContract.calculateCharge(maxPossibleGas, {
         gasPrice: req.gasPrice?.toString() ?? '0',
         pctRelayFee: req.pctRelayFee.toString(),
@@ -338,19 +334,29 @@ export class RelayServer extends EventEmitter {
       throw new Error(`paymaster balance too low: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
     }
     console.log(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     console.log(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
-    const { signedTx } = await this._sendTransaction(
-      {
-        signer: this.getWorkerAddress(workerIndex),
-        method,
-        destination: req.relayHubAddress,
-        gasLimit: maxPossibleGas.toString(),
-        gasPrice: req.gasPrice
-      })
-    // after sending a transaction is a good time to check the worker's balance, and replenish it.
-    await this.replenishServer(workerIndex)
-    return signedTx
+    try {
+      const { signedTx } = await this._sendTransaction(
+        {
+          signer: this.getWorkerAddress(workerIndex),
+          method,
+          destination: req.relayHubAddress,
+          gasLimit: maxPossibleGas.toString(),
+          gasPrice: req.gasPrice
+        })
+      // after sending a transaction is a good time to check the worker's balance, and replenish it.
+      await this.replenishServer(workerIndex)
+      return signedTx
+    } catch (e) {
+      console.log('error is', e.message)
+      if (e instanceof Error && e.message.includes('TransactionRejectedByPaymaster')) {
+        console.log('Relay entered alerted state')
+        this.alerted = true
+        this.alertedBlock = await this.contractInteractor.getBlockNumber()
+      } else {
+        throw e
+      }
+    }
   }
 
   start (): void {
@@ -494,8 +500,7 @@ export class RelayServer extends EventEmitter {
     const balance = await this.getManagerBalance()
     if (balance.lt(toBN(this.managerMinBalance))) {
       throw new StateError(
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Server's balance too low ( ${balance}, required ${this.managerMinBalance}). Waiting for funding...`)
+        `Server's balance too low ( ${balance.toString()}, required ${this.managerMinBalance}). Waiting for funding...`)
     }
     let receipts = await this._handlePastEvents(blockHeader)
     await this._resendUnconfirmedTransactions(blockHeader)
@@ -524,6 +529,10 @@ export class RelayServer extends EventEmitter {
       console.log('Relay is Ready.')
     }
     this.ready = true
+    if (this.alerted && this.alertedBlock + defaultAlertedBlockDelay > blockHeader.number) {
+      console.log('Relay exit alerted state')
+      this.alerted = false
+    }
     delete this.lastError
     receipts = receipts.concat(await this._registerIfNeeded())
     return receipts
@@ -684,9 +693,10 @@ export class RelayServer extends EventEmitter {
   }
 
   async _getLatestTxBlockNumber (): Promise<number> {
-    const events: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [address2topic(this.managerAddress)], {
-      fromBlock: 1
-    })
+    const events: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents,
+      [address2topic(this.managerAddress)], {
+        fromBlock: 1
+      })
     const latestBlock = events.filter(
       (e: any) => /* e.returnValues.relayManager != null && */
         e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase()).map((e: any) => e.blockNumber).reduce(
