@@ -23,7 +23,7 @@ import { Log, TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import { defaultEnvironment } from '../common/Environments'
 import VersionsManager from '../common/VersionsManager'
-import { calculateTransactionMaxPossibleGas, decodeRevertReason, address2topic } from '../common/Utils'
+import { calculateTransactionMaxPossibleGas, decodeRevertReason, address2topic, randomInRange, sleep } from '../common/Utils'
 import { constants } from '../common/Constants'
 
 abiDecoder.addABI(RelayHubABI)
@@ -97,6 +97,7 @@ export interface RelayServerParams {
   readonly managerMinBalance: number | undefined // = defaultManagerMinBalance,
   readonly managerTargetBalance: number | undefined // = defaultManagerTargetBalance,
   readonly minHubWithdrawalBalance: number | undefined // = defaultMinHubWithdrawalBalance,
+  readonly alertedBlockDelay: number | undefined
   readonly devMode: boolean // = false,
   readonly debug: boolean // = false,
 }
@@ -107,6 +108,8 @@ export class RelayServer extends EventEmitter {
   alerted = false
   alertedBlock: number = 0
   nonceMutex = new Mutex()
+  minAlertedDelayMS = 5000
+  maxAlertedDelayMS = 40000
   readonly nonces: Record<Address, number> = {}
   private readonly managerAddress: PrefixedHexString
   gasPrice: number = 0
@@ -143,6 +146,7 @@ export class RelayServer extends EventEmitter {
   readonly managerMinBalance: number
   readonly managerTargetBalance: number
   readonly minHubWithdrawalBalance: number
+  readonly alertedBlockDelay: number
   private readonly devMode: boolean
   private workerTask: any
 
@@ -164,6 +168,7 @@ export class RelayServer extends EventEmitter {
     this.managerMinBalance = params.managerMinBalance ?? defaultManagerMinBalance
     this.managerTargetBalance = params.managerTargetBalance ?? defaultManagerTargetBalance
     this.minHubWithdrawalBalance = params.minHubWithdrawalBalance ?? defaultMinHubWithdrawalBalance
+    this.alertedBlockDelay = params.alertedBlockDelay ?? defaultAlertedBlockDelay
     this.devMode = params.devMode
     this.contractInteractor = params.contractInteractor
 
@@ -346,6 +351,10 @@ export class RelayServer extends EventEmitter {
       })
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(workerIndex)
+    if (this.alerted) {
+      console.log('Alerted state: slowing down traffic')
+      await sleep(randomInRange(this.minAlertedDelayMS, this.maxAlertedDelayMS))
+    }
     return signedTx
   }
 
@@ -520,8 +529,8 @@ export class RelayServer extends EventEmitter {
       console.log('Relay is Ready.')
     }
     this.ready = true
-    if (this.alerted && this.alertedBlock + defaultAlertedBlockDelay < blockHeader.number) {
-      console.log('Relay exited alerted state')
+    if (this.alerted && this.alertedBlock + this.alertedBlockDelay < blockHeader.number) {
+      console.log(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockHeader.number}`)
       this.alerted = false
     }
     delete this.lastError
@@ -560,7 +569,7 @@ export class RelayServer extends EventEmitter {
 
   async _getContractLogs (address: string | undefined, topics: string[][] | undefined): Promise<Log[]> {
     const options = {
-      fromBlock: this.lastScannedBlock,
+      fromBlock: this.lastScannedBlock + 1,
       toBlock: 'latest',
       address: address,
       topics: topics
@@ -594,7 +603,6 @@ export class RelayServer extends EventEmitter {
           receipts = receipts.concat(await this._handleUnstakedEvent(dlog))
           break
         case 'TransactionRejectedByPaymaster':
-          console.log('wtf fuccccccck')
           await this._handleTransactionRejectedByPaymasterEvent(dlog, blockHeader.number)
           break
       }
@@ -739,9 +747,9 @@ export class RelayServer extends EventEmitter {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relayManager}`)
     }
-    console.log('Relay entered alerted state')
     this.alerted = true
     this.alertedBlock = blockNumber
+    console.log(`Relay entered alerted state. Block number: ${blockNumber}`)
   }
 
   async _sendMangerEthBalanceToOwner (gasPrice: string): Promise<TransactionReceipt[]> {

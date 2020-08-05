@@ -72,7 +72,7 @@ const workdir = '/tmp/gsn/test/relayserver'
 const managerWorkdir = workdir + '/manager'
 const workersWorkdir = workdir + '/workers'
 
-contract.only('RelayServer', function (accounts) {
+contract('RelayServer', function (accounts) {
   const pctRelayFee = 11
   const baseRelayFee = 12
   const workerIndex = 0
@@ -244,7 +244,6 @@ contract.only('RelayServer', function (accounts) {
   async function assertTransactionRelayed (server: RelayServer, txhash: PrefixedHexString, gasLess: Address): Promise<TransactionReceipt> {
     const receipt = await _web3.eth.getTransactionReceipt(txhash)
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(server._parseEvent)
-    console.log('wtf is decoded logs?', decodedLogs)
     const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
     assert.equal(event1.args.message, 'hello world')
     const event2 = decodedLogs.find((e: { name: string }) => e.name === 'TransactionRelayed')
@@ -920,10 +919,6 @@ contract.only('RelayServer', function (accounts) {
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
         `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
       const managerEthBalanceAfter = await relayServer.getManagerBalance()
-      console.log('wtf is balances', managerEthBalanceAfter.toString(), managerEthBalanceBefore.toString(),
-        managerHubBalanceBefore.toString(), refill.toString(), totalTxCosts.toString())
-      console.log('wtf is diff',
-        managerEthBalanceAfter.sub(managerEthBalanceBefore.add(managerHubBalanceBefore).sub(refill).sub(totalTxCosts)).toString())
       assert.isTrue(managerEthBalanceAfter.eq(managerEthBalanceBefore.add(managerHubBalanceBefore).sub(refill).sub(totalTxCosts)),
         'manager eth balance should increase by hub balance minus txs costs')
     })
@@ -1265,34 +1260,48 @@ contract.only('RelayServer', function (accounts) {
     // })
   })
 
-  describe.only('Alerted state as griefing mitigation', function () {
+  describe('Alerted state as griefing mitigation', function () {
     let newServer: RelayServer
-    beforeEach(async function () {
+    beforeEach('should enter an alerted state for a configured blocks delay after paymaster rejecting an on-chain tx', async function () {
       id = (await snapshot()).result
-      newServer = await bringUpNewRelay()
+      newServer = await bringUpNewRelay({ alertedBlockDelay: 100 })
       await newServer._worker(await _web3.eth.getBlock('latest'))
+      await attackTheServer(newServer)
     })
     afterEach(async function () {
       await revert(id)
     })
-    it('should enter alerted state after paymaster rejecting an on-chain tx', async function () {
-      const _sendTransactionOrig = newServer._sendTransaction
+
+    async function attackTheServer (server: RelayServer): Promise<void> {
+      const _sendTransactionOrig = server._sendTransaction
       const _sendTransaction = async function ({ signer, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
-        console.log('wtf hooked')
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore
-        return (await _sendTransactionOrig.call(newServer, ...arguments))
+        return (await _sendTransactionOrig.call(server, ...arguments))
       }
-      newServer._sendTransaction = _sendTransaction
-      await relayTransaction(newServer, options, { paymaster: rejectingPaymaster.address }, false)
+      server._sendTransaction = _sendTransaction
+      await relayTransaction(server, options, { paymaster: rejectingPaymaster.address }, false)
       const currentBlock = await _web3.eth.getBlock('latest')
-      await newServer._worker(currentBlock)
-      assert.isTrue(newServer.alerted, 'server not alerted')
-      assert.equal(newServer.alertedBlock, currentBlock.number, 'server alerted block incorrect')
+      await server._worker(currentBlock)
+      assert.isTrue(server.alerted, 'server not alerted')
+      assert.equal(server.alertedBlock, currentBlock.number, 'server alerted block incorrect')
+    }
 
+    it('delay txs in alerted state', async function () {
+      newServer.minAlertedDelayMS = 300
+      newServer.maxAlertedDelayMS = 350
+      const timeBefore = Date.now()
+      await relayTransaction(newServer, options)
+      const timeAfter = Date.now()
+      assert.isTrue((timeAfter - timeBefore) > 300, 'checking that enough time passed')
     })
-    it.skip('should exit alerted state after the configured blocks delay', async function () {
-
+    it('should exit alerted state after the configured blocks delay', async function () {
+      await evmMineMany(newServer.alertedBlockDelay - 1)
+      await newServer._worker(await _web3.eth.getBlock('latest'))
+      assert.isTrue(newServer.alerted, 'server not alerted')
+      await evmMineMany(2)
+      await newServer._worker(await _web3.eth.getBlock('latest'))
+      assert.isFalse(newServer.alerted, 'server alerted')
     })
   })
 
