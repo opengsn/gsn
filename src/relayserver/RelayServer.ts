@@ -19,7 +19,7 @@ import { Address, IntString } from '../relayclient/types/Aliases'
 import TmpRelayTransactionJsonRequest from '../relayclient/types/TmpRelayTransactionJsonRequest'
 import { IPaymasterInstance, IRelayHubInstance, IStakeManagerInstance } from '../../types/truffle-contracts'
 import { BlockHeader } from 'web3-eth'
-import { TransactionReceipt } from 'web3-core'
+import { Log, TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import { defaultEnvironment } from '../common/Environments'
 import VersionsManager from '../common/VersionsManager'
@@ -52,7 +52,7 @@ interface DecodeLogsEvent {
   args: any
 }
 
-interface SignedTransactionDetails {
+export interface SignedTransactionDetails {
   receipt: TransactionReceipt
   signedTx: PrefixedHexString
 }
@@ -70,7 +70,7 @@ class StateError extends Error {
 
 export type CreateTransactionDetails = TmpRelayTransactionJsonRequest
 
-interface SendTransactionDetails {
+export interface SendTransactionDetails {
   signer: Address
   method?: any
   destination: Address
@@ -116,7 +116,8 @@ export class RelayServer extends EventEmitter {
   rawTxOptions: TransactionOptions | undefined
   private _workerSemaphoreOn = false
   private stakeManagerContract: IStakeManagerInstance | undefined
-  private topics: string[][] | undefined
+  private smTopics: string[][] | undefined
+  private rhTopics: string[][] | undefined
   networkId: number | undefined
   private initialized = false
   stake = toBN(0)
@@ -335,28 +336,17 @@ export class RelayServer extends EventEmitter {
     }
     console.log(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
     console.log(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
-    try {
-      const { signedTx } = await this._sendTransaction(
-        {
-          signer: this.getWorkerAddress(workerIndex),
-          method,
-          destination: req.relayHubAddress,
-          gasLimit: maxPossibleGas.toString(),
-          gasPrice: req.gasPrice
-        })
-      // after sending a transaction is a good time to check the worker's balance, and replenish it.
-      await this.replenishServer(workerIndex)
-      return signedTx
-    } catch (e) {
-      console.log('error is', e.message)
-      if (e instanceof Error && e.message.includes('TransactionRejectedByPaymaster')) {
-        console.log('Relay entered alerted state')
-        this.alerted = true
-        this.alertedBlock = await this.contractInteractor.getBlockNumber()
-      } else {
-        throw e
-      }
-    }
+    const { signedTx } = await this._sendTransaction(
+      {
+        signer: this.getWorkerAddress(workerIndex),
+        method,
+        destination: req.relayHubAddress,
+        gasLimit: maxPossibleGas.toString(),
+        gasPrice: req.gasPrice
+      })
+    // after sending a transaction is a good time to check the worker's balance, and replenish it.
+    await this.replenishServer(workerIndex)
+    return signedTx
   }
 
   start (): void {
@@ -431,8 +421,9 @@ export class RelayServer extends EventEmitter {
     const stakeManagerAddress = await this.relayHubContract.stakeManager()
     this.stakeManagerContract = await this.contractInteractor._createStakeManager(stakeManagerAddress)
     const stakeManagerTopics = [Object.keys(this.stakeManagerContract.contract.events).filter(x => (x.includes('0x')))]
-    this.topics = stakeManagerTopics.concat([[address2topic(this.managerAddress)]])
-
+    this.smTopics = stakeManagerTopics.concat([[address2topic(this.managerAddress)]])
+    const relayHubTopics = [Object.keys(this.relayHubContract.contract.events).filter(x => (x.includes('0x')))]
+    this.rhTopics = relayHubTopics.concat([[address2topic(this.managerAddress)]])
     this.chainId = await this.contractInteractor.getChainId()
     this.networkId = await this.contractInteractor.getNetworkId()
     if (this.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
@@ -529,8 +520,8 @@ export class RelayServer extends EventEmitter {
       console.log('Relay is Ready.')
     }
     this.ready = true
-    if (this.alerted && this.alertedBlock + defaultAlertedBlockDelay > blockHeader.number) {
-      console.log('Relay exit alerted state')
+    if (this.alerted && this.alertedBlock + defaultAlertedBlockDelay < blockHeader.number) {
+      console.log('Relay exited alerted state')
       this.alerted = false
     }
     delete this.lastError
@@ -567,17 +558,23 @@ export class RelayServer extends EventEmitter {
     return this.stake
   }
 
-  async _handlePastEvents (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
+  async _getContractLogs (address: string | undefined, topics: string[][] | undefined): Promise<Log[]> {
     const options = {
-      fromBlock: this.lastScannedBlock + 1,
+      fromBlock: this.lastScannedBlock,
       toBlock: 'latest',
-      address: this.stakeManagerContract?.address,
-      topics: this.topics
+      address: address,
+      topics: topics
     }
-    const logs = await this.contractInteractor.getPastLogs(options)
-    spam('logs?', logs)
     spam('options? ', options)
-    const decodedLogs = abiDecoder.decodeLogs(logs).map(this._parseEvent)
+    return await this.contractInteractor.getPastLogs(options)
+  }
+
+  async _handlePastEvents (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
+    const smLogs = await this._getContractLogs(this.stakeManagerContract?.address, this.smTopics)
+    const rhLogs = await this._getContractLogs(this.relayHubContract?.address, this.rhTopics)
+    spam('logs?', smLogs, rhLogs)
+    let decodedLogs = abiDecoder.decodeLogs(smLogs).map(this._parseEvent)
+    decodedLogs = decodedLogs.concat(abiDecoder.decodeLogs(rhLogs).map(this._parseEvent))
     spam('decodedLogs?', decodedLogs, this.lastScannedBlock)
     let receipts: TransactionReceipt[] = []
     // TODO: what about 'penalize' events? should send balance to owner, I assume
@@ -596,6 +593,10 @@ export class RelayServer extends EventEmitter {
         case 'StakeUnlocked':
           receipts = receipts.concat(await this._handleUnstakedEvent(dlog))
           break
+        case 'TransactionRejectedByPaymaster':
+          console.log('wtf fuccccccck')
+          await this._handleTransactionRejectedByPaymasterEvent(dlog, blockHeader.number)
+          break
       }
     }
     this.lastScannedBlock = blockHeader.number
@@ -605,7 +606,7 @@ export class RelayServer extends EventEmitter {
   async _handleHubAuthorizedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
     if (dlog.name !== 'HubAuthorized' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
+      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relayManager}`)
     }
     if (dlog.args.relayHub.toLowerCase() === this.relayHubContract?.address.toLowerCase()) {
       this.authorizedHub = true
@@ -617,7 +618,7 @@ export class RelayServer extends EventEmitter {
   async _handleHubUnauthorizedEvent (dlog: DecodeLogsEvent): Promise<TransactionReceipt[]> {
     if (dlog.name !== 'HubUnauthorized' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
+      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relayManager}`)
     }
     if (dlog.args.relayHub.toLowerCase() === this.relayHubContract?.address.toLowerCase()) {
       this.authorizedHub = false
@@ -633,7 +634,7 @@ export class RelayServer extends EventEmitter {
     // sanity checks
     if (dlog.name !== 'StakeAdded' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
+      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relayManager}`)
     }
     await this.refreshStake()
 
@@ -718,7 +719,7 @@ export class RelayServer extends EventEmitter {
     // sanity checks
     if (dlog.name !== 'StakeUnlocked' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relay}`)
+      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relayManager}`)
     }
     await this.refreshStake()
     let receipts: TransactionReceipt[] = []
@@ -729,6 +730,18 @@ export class RelayServer extends EventEmitter {
 
     this.emit('unstaked')
     return receipts
+  }
+
+  async _handleTransactionRejectedByPaymasterEvent (dlog: DecodeLogsEvent, blockNumber: number): Promise<void> {
+    console.log('handle TransactionRejectedByPaymaster event', dlog)
+    // sanity checks
+    if (dlog.name !== 'TransactionRejectedByPaymaster' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`PANIC: handling wrong event ${dlog.name} or wrong event relay ${dlog.args.relayManager}`)
+    }
+    console.log('Relay entered alerted state')
+    this.alerted = true
+    this.alertedBlock = blockNumber
   }
 
   async _sendMangerEthBalanceToOwner (gasPrice: string): Promise<TransactionReceipt[]> {

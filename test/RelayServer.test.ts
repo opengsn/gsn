@@ -2,7 +2,13 @@
 import Web3 from 'web3'
 import crypto from 'crypto'
 import { RelayClient } from '../src/relayclient/RelayClient'
-import { CreateTransactionDetails, RelayServer, RelayServerParams } from '../src/relayserver/RelayServer'
+import {
+  CreateTransactionDetails,
+  RelayServer,
+  RelayServerParams,
+  SendTransactionDetails,
+  SignedTransactionDetails
+} from '../src/relayserver/RelayServer'
 import { TxStoreManager } from '../src/relayserver/TxStoreManager'
 import { KeyManager } from '../src/relayserver/KeyManager'
 import RelayHubABI from '../src/common/interfaces/IRelayHub.json'
@@ -169,7 +175,7 @@ contract.only('RelayServer', function (accounts) {
     await rejectingPaymaster.setTrustedForwarder(forwarderAddress)
     await rejectingPaymaster.setRelayHub(rhub.address)
     await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
-    await rejectingPaymaster.setRevertPreRelayCallOnEvenBlock(true)
+    // await rejectingPaymaster.setRevertPreRelayCallOnEvenBlock(true)
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')
     managerKeyManager = new KeyManager(1, managerWorkdir)
@@ -238,6 +244,7 @@ contract.only('RelayServer', function (accounts) {
   async function assertTransactionRelayed (server: RelayServer, txhash: PrefixedHexString, gasLess: Address): Promise<TransactionReceipt> {
     const receipt = await _web3.eth.getTransactionReceipt(txhash)
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(server._parseEvent)
+    console.log('wtf is decoded logs?', decodedLogs)
     const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
     assert.equal(event1.args.message, 'hello world')
     const event2 = decodedLogs.find((e: { name: string }) => e.name === 'TransactionRelayed')
@@ -273,14 +280,14 @@ contract.only('RelayServer', function (accounts) {
     }
   }
 
-  async function relayTransaction (server: RelayServer, options: any, overrideArgs?: Partial<CreateTransactionDetails>): Promise<PrefixedHexString> {
+  async function relayTransaction (server: RelayServer, options: any, overrideArgs?: Partial<CreateTransactionDetails>, assertRelayed = true): Promise<PrefixedHexString> {
     const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await prepareRelayRequest(server,
       { ...options, ...overrideArgs })
     return await relayTransactionFromRequest(server, overrideArgs ?? {},
-      { relayRequest, relayMaxNonce, approvalData, signature, httpRequest })
+      { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }, assertRelayed)
   }
 
-  async function relayTransactionFromRequest (server: RelayServer, overrideArgs: Partial<CreateTransactionDetails>, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }: { relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }): Promise<PrefixedHexString> {
+  async function relayTransactionFromRequest (server: RelayServer, overrideArgs: Partial<CreateTransactionDetails>, { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }: { relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }, assertRelayed = true): Promise<PrefixedHexString> {
     // console.log('relayRequest is', relayRequest, signature, approvalData)
     // console.log('overrideArgs is', overrideArgs)
     const signedTx = await server.createRelayTransaction(
@@ -310,7 +317,9 @@ contract.only('RelayServer', function (accounts) {
       assert.fail('createRelayTransaction returned null')
     }
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-    await assertTransactionRelayed(server, txhash, relayRequest.request.from)
+    if (assertRelayed) {
+      await assertTransactionRelayed(server, txhash, relayRequest.request.from)
+    }
     return signedTx
   }
 
@@ -1267,11 +1276,20 @@ contract.only('RelayServer', function (accounts) {
       await revert(id)
     })
     it('should enter alerted state after paymaster rejecting an on-chain tx', async function () {
-      const currentBlock = await _web3.eth.getBlockNumber()
-      if (currentBlock % 2 === 0) {
-        await evmMine()
+      const _sendTransactionOrig = newServer._sendTransaction
+      const _sendTransaction = async function ({ signer, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
+        console.log('wtf hooked')
+        await rejectingPaymaster.setRevertPreRelayCall(true)
+        // @ts-ignore
+        return (await _sendTransactionOrig.call(newServer, ...arguments))
       }
-      await relayTransaction(newServer, options, { paymaster: rejectingPaymaster.address })
+      newServer._sendTransaction = _sendTransaction
+      await relayTransaction(newServer, options, { paymaster: rejectingPaymaster.address }, false)
+      const currentBlock = await _web3.eth.getBlock('latest')
+      await newServer._worker(currentBlock)
+      assert.isTrue(newServer.alerted, 'server not alerted')
+      assert.equal(newServer.alertedBlock, currentBlock.number, 'server alerted block incorrect')
+
     })
     it.skip('should exit alerted state after the configured blocks delay', async function () {
 
