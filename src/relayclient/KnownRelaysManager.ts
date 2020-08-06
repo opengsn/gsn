@@ -102,30 +102,36 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
 
   async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
     const toBlock = await this.contractInteractor.getBlockNumber()
-    const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [], {
-      fromBlock,
-      toBlock
-    })
+    let i = 1
+    let fromBlock = 1
+    while (fromBlock !== 0 && i <= this.config.lookupWindowsMaxCount) {
+      fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks * i++)
 
-    if (this.config.verbose) {
-      console.log('fetchRelaysAdded: found ', `${relayEvents.length} events`)
+      const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [], {
+        fromBlock,
+        toBlock
+      })
+
+      const foundRelayManagers: Set<Address> = new Set()
+      relayEvents.forEach((event: any) => {
+        // TODO: remove relay managers who are not staked
+        // if (event.event === 'RelayRemoved') {
+        //   foundRelays.delete(event.returnValues.relay)
+        // } else {
+        foundRelayManagers.add(event.returnValues.relayManager)
+      })
+
+      if (this.config.verbose) {
+        console.log(`fetchRelaysAdded in blocks ${fromBlock} to ${toBlock}: found ${relayEvents.length} events`)
+        console.log('fetchRelaysAdded: found unique relays:', foundRelayManagers)
+      }
+      if (foundRelayManagers.size > 0) {
+        return foundRelayManagers
+      }
+      this.latestScannedBlock = toBlock
     }
-    const foundRelayManagers: Set<Address> = new Set()
-    relayEvents.forEach((event: any) => {
-      // TODO: remove relay managers who are not staked
-      // if (event.event === 'RelayRemoved') {
-      //   foundRelays.delete(event.returnValues.relay)
-      // } else {
-      foundRelayManagers.add(event.returnValues.relayManager)
-    })
-
-    if (this.config.verbose) {
-      console.log('fetchRelaysAdded: found unique relays:', foundRelayManagers)
-    }
-    this.latestScannedBlock = toBlock
-    return foundRelayManagers
+    return new Set<Address>()
   }
 
   _refreshFailures (): void {

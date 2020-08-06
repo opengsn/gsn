@@ -138,6 +138,15 @@ contract('KnownRelaysManager', function (
       assert.equal(actual[2], activeTransactionRelayed)
       assert.equal(actual[3], activePaymasterRejected)
     })
+
+    it('should contain relay managers from older blocks if none found in the latest window', async function () {
+      await evmMineMany(relayLookupWindowBlocks * 2)
+      const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
+      const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
+      const actual = Array.from(res.values())
+      assert.equal(actual.length, 1)
+      assert.equal(actual[0], activePaymasterRejected)
+    })
   })
 })
 

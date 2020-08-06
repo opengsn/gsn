@@ -18,6 +18,7 @@ const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
   relayLookupWindowBlocks: 6000,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
+  lookupWindowsMaxCount: 3,
   minGasPrice: 0,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   sliceSize: 3,
@@ -73,6 +74,7 @@ export async function resolveConfigurationGSN (provider: provider, partialConfig
 export interface GSNConfig {
   preferredRelays: string[]
   relayLookupWindowBlocks: number
+  lookupWindowsMaxCount: number
   methodSuffix: string
   jsonStringifyRequest: boolean
   relayTimeoutGrace: number
