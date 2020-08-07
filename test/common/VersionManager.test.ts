@@ -1,5 +1,6 @@
 /* eslint-disable no-new */
 import VersionsManager from '../../src/common/VersionsManager'
+require('source-map-support').install({ errorFormatterForce: true })
 
 describe('VersionManager', function () {
   context('constructor', function () {
@@ -31,6 +32,27 @@ describe('VersionManager', function () {
       assert.isFalse(isNewerPatchFalse)
       assert.isFalse(isNewerMinorFalse)
       assert.isFalse(isNewerMajorFalse)
+    })
+    context( 'version check', ()=> {
+      const manager = new VersionsManager('3.4.5')
+      it('sameness', function () {
+        assert.isTrue(manager.isMinorSameOrNewer('3.4.5'))
+      })
+      it('different patch', function () {
+        //accept any patch change
+        assert.isTrue(manager.isMinorSameOrNewer('3.4.9'))
+        assert.isTrue(manager.isMinorSameOrNewer('3.4.1'))
+      })
+      it('different minor', function () {
+        //accept higher minor, but not lower
+        assert.isTrue(manager.isMinorSameOrNewer('3.5.5'))
+        assert.isFalse(manager.isMinorSameOrNewer('3.2.5'))
+      })
+      it('different major', function () {
+        //don't accept any major change
+        assert.isFalse(manager.isMinorSameOrNewer('2.4.5'))
+        assert.isFalse(manager.isMinorSameOrNewer('4.4.5'))
+      })
     })
   })
 })
