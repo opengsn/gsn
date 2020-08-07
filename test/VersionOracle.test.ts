@@ -2,28 +2,17 @@ import {
   VersionOracleInstance
 } from '../types/truffle-contracts'
 import { expectRevert } from '@openzeppelin/test-helpers'
-import { hexlify } from 'ethers/utils'
 import { increaseTime } from './TestUtils'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { VersionOracle, bytes32toString, string32 } from '../src/common/VersionOracle'
 
 require('source-map-support').install({ errorFormatterForce: true })
-const VersionOracle = artifacts.require('VersionOracle')
+const VersionOracleContract = artifacts.require('VersionOracle')
 
 contract('VersionOracle', () => {
   let oracle: VersionOracleInstance
 
-  // convert string to bytes32 value (padded with zeros)
-  function string32 (s: string): PrefixedHexString {
-    return hexlify(Buffer.from(s))
-  }
-
-  // convert a bytes32 into a string, removing any trailing zeros
-  function bytes32toString (s: PrefixedHexString): string {
-    return Buffer.from(s.replace(/^(?:0x)?(.*?)(00)*$/, '$1'), 'hex').toString()
-  }
-
   before(async () => {
-    oracle = await VersionOracle.new()
+    oracle = await VersionOracleContract.new()
     await oracle.addVersion(string32('id'), string32('ver'), 'value')
   })
   it('should fail to add without id', async () => {
@@ -155,6 +144,25 @@ contract('VersionOracle', () => {
 
           assert.deepInclude(versions[0], { version: 'ver3', value: 'value3', canceled: false })
           assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: true })
+        })
+      })
+      context('typescript VersionOracle class', () => {
+        let jsOracle: VersionOracle
+        before(() => {
+          jsOracle = new VersionOracle(web3.currentProvider, oracle.address)
+        })
+
+        it('#getVersion', async () => {
+          assert.deepInclude(await jsOracle.getVersion('id', 1), {
+            value: 'value3', version: 'ver3'
+          })
+        })
+        it('#getAllVersions', async () => {
+          // deliberately start with a small blockSize, so it should retry...
+          const ret = await jsOracle.getAllVersions('id', 1)
+          assert.equal(ret.length, 3)
+          assert.deepEqual(ret[0], { version: 'ver3', value: 'value3', time: new Date((now - 100) * 1000), canceled: false })
+          assert.deepEqual(ret[1], { version: 'ver2', value: 'value2', time: new Date((now - 200) * 1000), canceled: true })
         })
       })
     })
