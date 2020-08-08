@@ -121,13 +121,15 @@ contract('VersionOracle', () => {
             value: ver.value
           }))
 
-          assert.closeTo(now - versions[0].time, 100, 2)
-          assert.closeTo(now - versions[1].time, 200, 2)
-
           assert.deepInclude(versions[0], { version: 'ver3', value: 'value3', canceled: false })
           assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: true })
           assert.deepInclude(versions[2], { version: 'ver', value: 'value', canceled: false })
           assert.deepInclude(versions[3], { version: '', value: '', canceled: false })
+
+          assert.closeTo(now - versions[0].time, 100, 2)
+          assert.closeTo(now - versions[1].time, 200, 2)
+          assert.closeTo(now - versions[2].time, 300, 2)
+
         })
 
         it('should return some versions if buffer too small', async () => {
@@ -163,6 +165,9 @@ contract('VersionOracle', () => {
           assert.equal(ret.length, 3)
           assert.deepEqual(ret[0], { version: 'ver3', value: 'value3', time: new Date((now - 100) * 1000), canceled: false })
           assert.deepEqual(ret[1], { version: 'ver2', value: 'value2', time: new Date((now - 200) * 1000), canceled: true })
+
+          const ret2 = await jsOracle.getAllVersions('id', 10)
+          assert.deepEqual(ret2, ret)
         })
       })
     })

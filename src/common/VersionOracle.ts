@@ -63,7 +63,7 @@ export class VersionOracle {
       const { count, ret } = await this.oracle.methods
         .getAllVersions(string32(id), blockSize).call()
 
-      if (count === blockSize) {
+      if (count.toString() === blockSize.toString()) {
         blockSize = blockSize * 4
         continue
       }
