@@ -1,6 +1,6 @@
 import parseArgs from 'minimist'
 import * as fs from 'fs'
-import { VersionOracle } from '../common/VersionOracle'
+import { string32, VersionOracle } from '../common/VersionOracle'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 
@@ -8,20 +8,27 @@ require('source-map-support').install({ errorFormatterForce: true })
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
-  baseRelayFee?: number | string
-  pctRelayFee?: number | string
+  baseRelayFee: number
+  pctRelayFee: number
   url: string
-  port: number | string
+  port: number
   versionOracleAddress: string
   versionOracleDelayPeriod?: number
   relayHubId?: string
-  relayHubAddress?: string
-  gasPricePercent?: number | string
-  ethereumNodeUrl?: string
-  workdir?: string
-  devMode?: boolean
-  debug?: boolean
-  registrationBlockRate?: number | string
+  relayHubAddress: string
+  gasPricePercent: number
+  ethereumNodeUrl: string
+  workdir: string
+  devMode: boolean
+  debug: boolean
+  registrationBlockRate: number
+  alertedBlockDelay: number
+
+  workerMinBalance: number
+  workerTargetBalance: number
+  managerMinBalance: number
+  managerTargetBalance: number
+  minHubWithdrawalBalance: number
 }
 
 const ServerDefaultParams: Partial<ServerConfigParams> = {
@@ -48,7 +55,15 @@ const ConfigParamsTypes = {
   workdir: 'string',
   devMode: 'boolean',
   debug: 'boolean',
-  registrationBlockRate: 'number'
+  registrationBlockRate: 'number',
+  alertedBlockDelay: 'number',
+
+  workerMinBalance: 'number',
+  workerTargetBalance: 'number',
+  managerMinBalance: 'number',
+  managerTargetBalance: 'number',
+  minHubWithdrawalBalance: 'number'
+
 } as any
 
 // by default: no waiting period - use VersionOracle entries immediately.
@@ -145,8 +160,11 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
       error('VersionOracle: no contract at address ' + config.versionOracleAddress)
     }
 
-    const { version, value, time } = await new VersionOracle(web3provider, config.versionOracleAddress).getVersion(relayHubId, config.versionOracleDelayPeriod ?? DefaultOracleDelayPeriod)
-    console.log(`Using RelayHub ID ${relayHubId} version ${version} created at ${time.toLocaleDateString()}. address = ${value}`)
+    const versionOracle = new VersionOracle(web3provider, config.versionOracleAddress)
+    console.log('hubid', relayHubId, 'hex=', string32(relayHubId))
+    console.log('all versions=', await versionOracle.getAllVersions(relayHubId))
+    const { version, value, time } = await versionOracle.getVersion(relayHubId, config.versionOracleDelayPeriod ?? DefaultOracleDelayPeriod)
+    console.log(`Using RelayHub ID:${relayHubId} version:${version} created at:${time.toLocaleDateString()}. address:${value}`)
     config.relayHubAddress = value
   } else {
     if (config.relayHubAddress == null) {
@@ -157,6 +175,6 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (!await contractInteractor.isContract(config.relayHubAddress)) {
     error('RelayHub: no contract at address ' + config.relayHubAddress)
   }
-
+  console.log(6)
   return { ...ServerDefaultParams, ...config }
 }

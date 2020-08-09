@@ -40,7 +40,7 @@ import TmpRelayTransactionJsonRequest from '../../src/relayclient/types/TmpRelay
 import Mutex from 'async-mutex/lib/Mutex'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { ServerConfigParams } from '../../src/relayserver/runServer'
+import { ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
