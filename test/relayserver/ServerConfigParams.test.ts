@@ -1,5 +1,19 @@
-import { entriesToObj, filterMembers, filterType, parseServerConfig } from '../../src/relayserver/ServerConfigParams'
+import {
+  entriesToObj,
+  filterMembers,
+  filterType,
+  parseServerConfig,
+  resolveServerConfig
+} from '../../src/relayserver/ServerConfigParams'
 import * as fs from 'fs'
+import { expectRevert } from '@openzeppelin/test-helpers'
+import {
+  VersionOracleInstance
+} from '../../types/truffle-contracts'
+import { string32 } from '../../src/common/VersionOracle'
+
+require('source-map-support').install({ errorFormatterForce: true })
+const VersionOracleContract = artifacts.require('VersionOracle')
 
 function expectThrow (func: () => void, match: string): void {
   try {
@@ -9,6 +23,10 @@ function expectThrow (func: () => void, match: string): void {
     return
   }
   assert.fail('expected to fail with: ' + match)
+}
+
+function addr (n: number): string {
+  return '0x'.padEnd(42, n.toString())
 }
 
 context('#ServerConfigParams', () => {
@@ -73,6 +91,52 @@ context('#ServerConfigParams', () => {
       assert.deepEqual(
         parseServerConfig(['--config', tmpConfigfile, '--port', '111'], { baseRelayFee: 222 }),
         { baseRelayFee: 222, config: tmpConfigfile, pctRelayFee: 123, port: 111 })
+    })
+  })
+  context('#resolveServerConfig', () => {
+    const provider = web3.currentProvider
+    it('should fail on missing hub/oracle', async () => {
+      await expectRevert(resolveServerConfig({}, provider), 'must have either relayHubAddress or versionOracleAddress')
+    })
+
+    it('should fail on invalid relayhub address', async () => {
+      const config = { relayHubAddress: '123' }
+      await expectRevert(resolveServerConfig(config, provider), 'invalid address: 123')
+    })
+    it('should fail on no-contract relayhub address', async () => {
+      const config = { relayHubAddress: addr(1) }
+      await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x1111111111111111111111111111111111111111')
+    })
+    it('should fail on missing hubid for versionoracle', async () => {
+      const config = { versionOracleAddress: addr(1) }
+      await expectRevert(resolveServerConfig(config, provider), 'missing relayHubId to read from versionOracle')
+    })
+    it('should fail on no-contract versionOracle address', async () => {
+      const config = { versionOracleAddress: addr(1), relayHubId: 'hubid' }
+      await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
+    })
+    contract('with versionOracle', () => {
+      let oracle: VersionOracleInstance
+
+      before(async () => {
+        oracle = await VersionOracleContract.new()
+        await oracle.addVersion(string32('hub-invalidaddr'), string32('1.0'), 'notaddress')
+        await oracle.addVersion(string32('hub-nocontract'), string32('1.0'), addr(2))
+        await oracle.addVersion(string32('hub-wrongcontract'), string32('1.0'), oracle.address)
+      })
+
+      it('should fail on invalid hub address in oracle', async () => {
+        const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
+        await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
+      })
+      it('should fail on no contract at hub address in oracle', async () => {
+        const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-nocontract' }
+        await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
+      })
+      it('should fail on wrong contract (not relayhub) at hub address in oracle', async () => {
+        const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-wrongcontract' }
+        await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
+      })
     })
   })
 })

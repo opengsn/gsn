@@ -1,8 +1,37 @@
 import parseArgs from 'minimist'
 import * as fs from 'fs'
 import { VersionOracle } from '../common/VersionOracle'
+import ContractInteractor from '../relayclient/ContractInteractor'
+import { configureGSN } from '../relayclient/GSNConfigurator'
 
 require('source-map-support').install({ errorFormatterForce: true })
+
+// TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
+export interface ServerConfigParams {
+  baseRelayFee?: number | string
+  pctRelayFee?: number | string
+  url: string
+  port: number | string
+  versionOracleAddress: string
+  versionOracleDelayPeriod?: number
+  relayHubId?: string
+  relayHubAddress?: string
+  gasPricePercent?: number | string
+  ethereumNodeUrl?: string
+  workdir?: string
+  devMode?: boolean
+  debug?: boolean
+  registrationBlockRate?: number | string
+}
+
+const ServerDefaultParams: Partial<ServerConfigParams> = {
+  baseRelayFee: 0,
+  pctRelayFee: 0,
+  port: 8090,
+  gasPricePercent: 0,
+  devMode: false,
+  debug: false
+}
 
 const ConfigParamsTypes = {
   config: 'string',
@@ -22,7 +51,11 @@ const ConfigParamsTypes = {
   registrationBlockRate: 'number'
 } as any
 
-function error (err: string): void {
+// by default: no waiting period - use VersionOracle entries immediately.
+const DefaultOracleDelayPeriod = 0
+
+// helper function: throw and never return..
+function error (err: string): never {
   throw new Error(err)
 }
 
@@ -48,7 +81,6 @@ export function filterMembers (env: any, config: any): any {
 function explicitType ([key, val]: [string, any]): any {
   const type = ConfigParamsTypes[key]
   if (type === undefined) {
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     error(`unexpected param ${key}=${val}`)
   }
   switch (type) {
@@ -66,7 +98,6 @@ function explicitType ([key, val]: [string, any]): any {
     default:
       return [key, val]
   }
-  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   error(`Invalid ${type}: ${key} = ${val}`)
 }
 
@@ -84,14 +115,14 @@ export function parseServerConfig (args: string[], env: any): any {
     default: envDefaults
   })
   if (argv._.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    error(`unexpected param ${argv._}`)
+    error(`unexpected param(s) ${argv._.join(',')}`)
   }
   delete argv._
   let configFile = {}
   if (argv.config != null) {
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    if (!fs.existsSync(argv.config)) { error(`unable to read config file "${argv.config}"`) }
+    if (!fs.existsSync(argv.config)) {
+      error(`unable to read config file "${argv.config}"`)
+    }
     configFile = JSON.parse(fs.readFileSync(argv.config, 'utf8'))
   }
   const config = { ...configFile, ...argv }
@@ -102,3 +133,30 @@ function isDefined (obj: any): boolean {
   return obj !== null && obj !== undefined
 }
 
+// resolve params, and validate the resulting struct
+export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
+  const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  if (config.versionOracleAddress != null) {
+    if (config.relayHubAddress != null) {
+      error('must have either relayHubAddress or versionOracleAddress')
+    }
+    const relayHubId = config.relayHubId ?? error('missing relayHubId to read from versionOracle')
+    if (!await contractInteractor.isContract(config.versionOracleAddress)) {
+      error('VersionOracle: no contract at address ' + config.versionOracleAddress)
+    }
+
+    const { version, value, time } = await new VersionOracle(web3provider, config.versionOracleAddress).getVersion(relayHubId, config.versionOracleDelayPeriod ?? DefaultOracleDelayPeriod)
+    console.log(`Using RelayHub ID ${relayHubId} version ${version} created at ${time.toLocaleDateString()}. address = ${value}`)
+    config.relayHubAddress = value
+  } else {
+    if (config.relayHubAddress == null) {
+      error('must have either relayHubAddress or versionOracleAddress')
+    }
+  }
+
+  if (!await contractInteractor.isContract(config.relayHubAddress)) {
+    error('RelayHub: no contract at address ' + config.relayHubAddress)
+  }
+
+  return { ...ServerDefaultParams, ...config }
+}
