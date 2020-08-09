@@ -175,7 +175,6 @@ contract('RelayServer', function (accounts) {
     await rejectingPaymaster.setTrustedForwarder(forwarderAddress)
     await rejectingPaymaster.setRelayHub(rhub.address)
     await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
-    // await rejectingPaymaster.setRevertPreRelayCallOnEvenBlock(true)
     gasLess = await _web3.eth.personal.newAccount('password')
     gasLess2 = await _web3.eth.personal.newAccount('password2')
     managerKeyManager = new KeyManager(1, managerWorkdir)
@@ -1260,7 +1259,7 @@ contract('RelayServer', function (accounts) {
     // })
   })
 
-  describe('Alerted state as griefing mitigation', function () {
+  describe('alerted state as griefing mitigation', function () {
     let newServer: RelayServer
     beforeEach('should enter an alerted state for a configured blocks delay after paymaster rejecting an on-chain tx', async function () {
       id = (await snapshot()).result
@@ -1287,7 +1286,7 @@ contract('RelayServer', function (accounts) {
       assert.equal(server.alertedBlock, currentBlock.number, 'server alerted block incorrect')
     }
 
-    it('delay txs in alerted state', async function () {
+    it('should delay transactions in alerted state', async function () {
       newServer.minAlertedDelayMS = 300
       newServer.maxAlertedDelayMS = 350
       const timeBefore = Date.now()
