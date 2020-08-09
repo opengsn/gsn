@@ -16,7 +16,7 @@ interface IVersionOracle {
     event VersionAdded(bytes32 indexed id, bytes32 version, string value);
 
     //event emitted whenever a version is canceled
-    event VersionCanceled(bytes32 indexed id, bytes32 version);
+    event VersionCanceled(bytes32 indexed id, bytes32 version, string reason);
 
     /**
      * add a version
@@ -29,7 +29,7 @@ interface IVersionOracle {
     /**
      * cancel a version.
      */
-    function cancelVersion(bytes32 id, bytes32 version) external;
+    function cancelVersion(bytes32 id, bytes32 version, string calldata reason) external;
 
     /**
      * return all (up to maxVersions) version entries from the registry for the given id, in reverse order

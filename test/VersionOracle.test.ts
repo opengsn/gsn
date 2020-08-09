@@ -84,13 +84,13 @@ contract('VersionOracle', () => {
     })
 
     it('should fail to cancel missing id', async () => {
-      await expectRevert(oracle.cancelVersion(string32('noid'), string32('ver')), 'cancelVersion: no such version for id')
-      await expectRevert(oracle.cancelVersion(string32('id'), string32('nover')), 'cancelVersion: no such version for id')
+      await expectRevert(oracle.cancelVersion(string32('noid'), string32('ver'), 'reason'), 'cancelVersion: no such version for id')
+      await expectRevert(oracle.cancelVersion(string32('id'), string32('nover'), 'reason'), 'cancelVersion: no such version for id')
     })
 
     describe('with canceled version', () => {
       before(async () => {
-        await oracle.cancelVersion(string32('id'), string32('ver2'))
+        await oracle.cancelVersion(string32('id'), string32('ver2'), 'reason')
         // at this point:
         // ver1 - 300 sec old
         // ver2 - 200 sec old - canceled
@@ -98,7 +98,7 @@ contract('VersionOracle', () => {
       })
 
       it('should fail to re-cancel event', async () => {
-        await expectRevert(oracle.cancelVersion(string32('id'), string32('ver2')), 'cancelVersion: already canceled')
+        await expectRevert(oracle.cancelVersion(string32('id'), string32('ver2'), 'reason'), 'cancelVersion: already canceled')
       })
 
       it('getVersion should ignore canceled version', async () => {
@@ -129,7 +129,6 @@ contract('VersionOracle', () => {
           assert.closeTo(now - versions[0].time, 100, 2)
           assert.closeTo(now - versions[1].time, 200, 2)
           assert.closeTo(now - versions[2].time, 300, 2)
-
         })
 
         it('should return some versions if buffer too small', async () => {

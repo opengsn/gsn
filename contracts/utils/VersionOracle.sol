@@ -28,11 +28,11 @@ contract VersionOracle is IVersionOracle, Ownable {
         emit VersionAdded(id, version, value);
     }
 
-    function cancelVersion(bytes32 id, bytes32 version) external override onlyOwner {
+    function cancelVersion(bytes32 id, bytes32 version, string calldata reason) external  override onlyOwner {
         require(values[id][version].time != 0, "cancelVersion: no such version for id");
         require(!values[id][version].canceled, "cancelVersion: already canceled");
         values[id][version].canceled = true;
-        emit VersionCanceled(id, version);
+        emit VersionCanceled(id, version, reason);
     }
 
     function getAllVersions(bytes32 id, uint maxVersions) external override view returns (uint count, VersionInfo[] memory ret) {
