@@ -53,7 +53,7 @@ contract VersionOracle is IVersionOracle, Ownable {
             ver = versionHistory[id][ver];
             if (v.canceled)
                 continue;
-            if (v.time < block.timestamp - delayPeriod) {
+            if (v.time <= block.timestamp - delayPeriod) {
                 return v;
             }
             if (v.version == optInVersion) {

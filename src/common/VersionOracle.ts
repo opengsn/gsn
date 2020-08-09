@@ -47,9 +47,13 @@ export class VersionOracle {
    * @return version info that include actual version used, its timestamp and value.
    */
   async getVersion (id: string, delayPeriod: number, optInVersion = ''): Promise<VersionInfo> {
-    const ret = await this.oracle.methods
-      .getVersion(string32(id), string32(optInVersion), delayPeriod).call()
-    return parseContractVersionInfo(ret)
+    try {
+      const ret = await this.oracle.methods
+        .getVersion(string32(id), string32(optInVersion), delayPeriod).call()
+      return parseContractVersionInfo(ret)
+    } catch (e) {
+      throw new Error(`getVersion(${id}): ${e.message}`)
+    }
   }
 
   /**

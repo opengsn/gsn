@@ -24,6 +24,12 @@ contract('VersionOracle', () => {
   it('should fail to add same version', async () => {
     await expectRevert(oracle.addVersion(string32('id'), string32('ver'), 'value2'), 'version already set')
   })
+
+  it('should return latest version if age=0', async () => {
+    const ret = await oracle.getVersion(string32('id'), string32(''), 0)
+    assert.equal(ret.value, 'value')
+  })
+
   describe('with more versions', () => {
     let now: number
     before(async () => {
