@@ -120,22 +120,18 @@ context('#ServerConfigParams', () => {
 
       before(async () => {
         oracle = await VersionOracleContract.new()
-        await oracle.addVersion(string32('hub-invalidaddr'), string32('1.0'), 'notaddress')
+        await oracle.addVersion(string32('hub-invalidaddr'), string32('1.0'), 'garbagevalue')
         await oracle.addVersion(string32('hub-nocontract'), string32('1.0'), addr(2))
         await oracle.addVersion(string32('hub-wrongcontract'), string32('1.0'), oracle.address)
       })
 
       it('should fail on invalid hub address in oracle', async () => {
         const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
-        await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
+        await expectRevert(resolveServerConfig(config, provider), 'Invalid relayHubId hub-invalidaddr@1.0: not an address: garbagevalue')
       })
       it('should fail on no contract at hub address in oracle', async () => {
         const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-nocontract' }
-        await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
-      })
-      it('should fail on wrong contract (not relayhub) at hub address in oracle', async () => {
-        const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-wrongcontract' }
-        await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
+        await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x2222222222222222222222222222222222222222')
       })
     })
   })

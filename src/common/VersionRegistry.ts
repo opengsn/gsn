@@ -22,6 +22,7 @@ export interface VersionInfo {
   canceled: boolean
 }
 
+
 export class VersionRegistry {
   registryContract: Contract
   web3: Web3

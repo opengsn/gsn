@@ -1,6 +1,6 @@
 import parseArgs from 'minimist'
 import * as fs from 'fs'
-import { string32, VersionOracle } from '../common/VersionOracle'
+import { VersionOracle } from '../common/VersionOracle'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 
@@ -161,10 +161,13 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     }
 
     const versionOracle = new VersionOracle(web3provider, config.versionOracleAddress)
-    console.log('hubid', relayHubId, 'hex=', string32(relayHubId))
-    console.log('all versions=', await versionOracle.getAllVersions(relayHubId))
     const { version, value, time } = await versionOracle.getVersion(relayHubId, config.versionOracleDelayPeriod ?? DefaultOracleDelayPeriod)
-    console.log(`Using RelayHub ID:${relayHubId} version:${version} created at:${time.toLocaleDateString()}. address:${value}`)
+    try {
+      contractInteractor.validateAddress(value)
+    } catch (e) {
+      error(`Invalid relayHubId ${relayHubId}@${version}: not an address: ${value}`)
+    }
+    console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value
   } else {
     if (config.relayHubAddress == null) {
