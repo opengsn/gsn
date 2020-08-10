@@ -43,7 +43,7 @@ async function run (): Promise<void> {
   const txStoreManager = new TxStoreManager({ workdir })
   const gasPriceFactor = (config.gasPricePercent + 100) / 100
   const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
-  const contractInteractor = new ContractInteractor(web3provider, configureGSN({}))
+  const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress}))
 
   const params = {
     contractInteractor,
@@ -57,6 +57,7 @@ async function run (): Promise<void> {
 
   const relay = new RelayServer(params as RelayServerParams)
   console.log('Starting server.')
+  console.log('Using server config:', config)
   console.log(
     `server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)
   const httpServer = new HttpServer(port, relay)

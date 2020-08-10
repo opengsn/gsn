@@ -62,7 +62,9 @@ const ConfigParamsTypes = {
   workerTargetBalance: 'number',
   managerMinBalance: 'number',
   managerTargetBalance: 'number',
-  minHubWithdrawalBalance: 'number'
+  minHubWithdrawalBalance: 'number',
+
+  trustedPaymasters: 'list'
 
 } as any
 
@@ -153,11 +155,11 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
   if (config.versionOracleAddress != null) {
     if (config.relayHubAddress != null) {
-      error('must have either relayHubAddress or versionOracleAddress')
+      error('missing param: must have either relayHubAddress or versionOracleAddress')
     }
-    const relayHubId = config.relayHubId ?? error('missing relayHubId to read from versionOracle')
+    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from versionOracle')
     if (!await contractInteractor.isContract(config.versionOracleAddress)) {
-      error('VersionOracle: no contract at address ' + config.versionOracleAddress)
+      error('Invalid param versionOracleAddress: no contract at address ' + config.versionOracleAddress)
     }
 
     const versionOracle = new VersionOracle(web3provider, config.versionOracleAddress)
@@ -165,19 +167,20 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     try {
       contractInteractor.validateAddress(value)
     } catch (e) {
-      error(`Invalid relayHubId ${relayHubId}@${version}: not an address: ${value}`)
+      error(`Invalid param relayHubId ${relayHubId}@${version}: not an address: ${value}`)
     }
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value
   } else {
     if (config.relayHubAddress == null) {
-      error('must have either relayHubAddress or versionOracleAddress')
+      error('missing param: must have either relayHubAddress or versionOracleAddress')
     }
   }
 
   if (!await contractInteractor.isContract(config.relayHubAddress)) {
     error('RelayHub: no contract at address ' + config.relayHubAddress)
   }
-  console.log(6)
+  if ( config.url == null ) error( 'missing param: url')
+  if ( config.workdir == null ) error( 'missing param: workdir')
   return { ...ServerDefaultParams, ...config }
 }
