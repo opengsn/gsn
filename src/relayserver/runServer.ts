@@ -22,6 +22,7 @@ export interface ServerConfigParams {
   devMode?: boolean
   debug?: boolean
   registrationBlockRate?: number | string
+  alertedBlockDelay?: number
 }
 
 function error (err: string): void {
@@ -71,6 +72,7 @@ const workdir: string = argv.workdir ?? config.workdir ?? error('missing --workd
 const devMode: boolean = argv.devMode ?? config.devMode ?? error('missing --devMode')
 const debug: boolean = argv.debug ?? config.debug ?? error('missing --debug')
 const registrationBlockRate: string = argv.registrationBlockRate ?? config.registrationBlockRate?.toString()
+const alertedBlockDelay: number = argv.alertedBlockDelay ?? config.alertedBlockDelay
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
     fs.unlinkSync(`${workdir}/${TXSTORE_FILENAME}`)
@@ -96,7 +98,8 @@ const params = {
   devMode,
   debug: debug,
   gasPriceFactor: gasPriceFactor,
-  registrationBlockRate: parseInt(registrationBlockRate)
+  registrationBlockRate: parseInt(registrationBlockRate),
+  alertedBlockDelay
 }
 const relay = new RelayServer(params as RelayServerParams)
 console.log('Starting server.')
