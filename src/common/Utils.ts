@@ -37,6 +37,21 @@ export function event2topic (contract: any, names: any): any {
     .map(abi.encodeEventSignature)
 }
 
+export function address2topic (address: string): string {
+  return '0x' + '0'.repeat(24) + address.slice(2)
+}
+
+// extract revert reason from a revert bytes array.
+export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string {
+  if (!revertBytes.startsWith('0x08c379a0')) {
+    if (throwOnError) {
+      throw new Error('invalid revert bytes: ' + revertBytes)
+    }
+    return revertBytes
+  }
+  return web3.eth.abi.decodeParameter('string', '0x' + revertBytes.slice(10)) as any
+}
+
 export async function getEip712Signature (
   web3: Web3,
   typedRequestData: TypedRequestData,
@@ -86,7 +101,6 @@ export function calculateTransactionMaxPossibleGas (
   }: TransactionGasComponents): number {
   return hubOverhead +
     parseInt(relayCallGasLimit) +
-    parseInt(gasLimits.acceptRelayedCallGasLimit) +
     parseInt(gasLimits.preRelayedCallGasLimit) +
     parseInt(gasLimits.postRelayedCallGasLimit)
 }
@@ -136,6 +150,10 @@ export function ether (n: string): BN {
   return new BN(toWei(n, 'ether'))
 }
 
+export function randomInRange (min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min) + min)
+}
+
 /**
  * @param gasLimits
  * @param hubOverhead
@@ -150,7 +168,7 @@ interface TransactionGasComponents {
 }
 
 interface PaymasterGasLimits {
-  acceptRelayedCallGasLimit: string
+  acceptanceBudget: string
   preRelayedCallGasLimit: string
   postRelayedCallGasLimit: string
 }

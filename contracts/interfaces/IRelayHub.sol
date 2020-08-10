@@ -38,7 +38,7 @@ interface IRelayHub {
 
     /// Emitted when an attempt to relay a call fails and Paymaster does not accept the transaction.
     /// The actual relayed call was not executed, and the recipient not charged.
-    /// @param reason contains a revert reason returned from acceptRelayedCall.
+    /// @param reason contains a revert reason returned from preRelayedCall or forwarder.
     event TransactionRejectedByPaymaster(
         address indexed relayManager,
         address indexed paymaster,
@@ -46,7 +46,8 @@ interface IRelayHub {
         address to,
         address relayWorker,
         bytes4 selector,
-        string reason);
+        uint256 innerGasUsed,
+        bytes reason);
 
     // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
     // indicated in the status field.
@@ -62,6 +63,11 @@ interface IRelayHub {
         RelayCallStatus status,
         uint256 charge);
 
+    event TransactionResult(
+        RelayCallStatus status,
+        bytes returnValue
+    );
+
     event Penalized(
         address indexed relayWorker,
         address sender,
@@ -71,15 +77,18 @@ interface IRelayHub {
     /// Reason error codes for the TransactionRelayed event
     /// @param OK - the transaction was successfully relayed and execution successful - never included in the event
     /// @param RelayedCallFailed - the transaction was relayed, but the relayed call failed
-    /// @param PreRelayedFailed - the transaction was not relayed due to preRelatedCall reverting
+    /// @param RejectedByPreRelayed - the transaction was not relayed due to preRelatedCall reverting
+    /// @param RejectedByForwarder - the transaction was not relayed due to forwarder check (signature,nonce)
     /// @param PostRelayedFailed - the transaction was relayed and reverted due to postRelatedCall reverting
-    /// @param RecipientBalanceChanged - the transaction was relayed and reverted due to the recipient balance change
+    /// @param PaymasterBalanceChanged - the transaction was relayed and reverted due to the paymaster balance change
     enum RelayCallStatus {
         OK,
         RelayedCallFailed,
-        PreRelayedFailed,
+        RejectedByPreRelayed,
+        RejectedByForwarder,
+        RejectedByRecipientRevert,
         PostRelayedFailed,
-        RecipientBalanceChanged
+        PaymasterBalanceChanged
     }
 
     /// Add new worker addresses controlled by sender who must be a staked Relay Manager address.
@@ -116,7 +125,7 @@ interface IRelayHub {
     /// Arguments:
     /// @param relayRequest - all details of the requested relayed call
     /// @param signature - client's EIP-712 signature over the relayRequest struct
-    /// @param approvalData: dapp-specific data forwarded to acceptRelayedCall.
+    /// @param approvalData: dapp-specific data forwarded to preRelayedCall.
     ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the Paymaster
     /// @param externalGasLimit - the value passed as gasLimit to the transaction.
     ///
@@ -128,7 +137,7 @@ interface IRelayHub {
         uint externalGasLimit
     )
     external
-    returns (bool paymasterAccepted, string memory returnValue);
+    returns (bool paymasterAccepted, bytes memory returnValue);
 
     function penalize(address relayWorker, address payable beneficiary) external;
 
@@ -151,10 +160,6 @@ interface IRelayHub {
 
     // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
     function minimumUnstakeDelay() external view returns (uint256);
-
-    // Minimum balance required for a relay to register or re-register. Prevents user error in registering a relay that
-    // will not be able to immediately start serving requests.
-    function minimumRelayBalance() external view returns (uint256);
 
     // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
     function maximumRecipientDeposit() external view returns (uint256);

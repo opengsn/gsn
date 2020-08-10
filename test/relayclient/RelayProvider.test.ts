@@ -18,7 +18,7 @@ import {
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { defaultEnvironment } from '../../src/common/Environments'
-import { deployHub, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '../../src/common/Utils'
@@ -103,6 +103,7 @@ contract('RelayProvider', function (accounts) {
 
     paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address
+    await paymasterInstance.setTrustedForwarder(forwarderAddress)
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
     relayProcess = await startRelay(relayHub.address, stakeManager, {
@@ -202,6 +203,8 @@ contract('RelayProvider', function (accounts) {
       assert.equal(log.returnValues.message, 'hello again')
     })
 
+    // note that the revert reason here was discovered via some truffle/ganache magic (see truffle/reason.js)
+    // this is not the way the revert reason is being reported by GSN solidity contracts
     it('should fail if transaction failed', async () => {
       await expectRevert(testRecipient.testRevert({
         from: gasLess,
@@ -313,6 +316,7 @@ contract('RelayProvider', function (accounts) {
 
       // create desired transactions
       misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+      await misbehavingPaymaster.setTrustedForwarder(forwarderAddress)
       await misbehavingPaymaster.setRelayHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
@@ -333,8 +337,8 @@ contract('RelayProvider', function (accounts) {
         gas,
         gasPrice: '1'
       })
-      expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRelayed', {
-        status: '2'
+      expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster', {
+        reason: encodeRevertReason('You asked me to revert, remember?')
       })
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 

@@ -9,7 +9,7 @@ import "../interfaces/IKnowForwarderAddress.sol";
 
 contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
 
-    string public override versionRecipient = "2.0.0-alpha.1+opengsn.test.irelayrecipient";
+    string public override versionRecipient = "2.0.0-beta.1+opengsn.test.irelayrecipient";
 
     constructor(address forwarder) public {
         setTrustedForwarder(forwarder);
@@ -41,12 +41,13 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 msgValue, uint256 balance);
 
-    function emitMessage(string memory message) public payable {
+    function emitMessage(string memory message) public payable returns (string memory) {
         if (paymaster != address(0)) {
             withdrawAllBalance();
         }
 
         emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin, msg.value, address(this).balance);
+        return "emitMessage return value";
     }
 
     function withdrawAllBalance() public {
@@ -59,4 +60,24 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     function emitMessageNoParams() public {
         emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, 0, address(this).balance);
     }
+
+    //return (or revert) with a string in the given length
+    function checkReturnValues(uint len, bool doRevert) public view returns (string memory) {
+        (this);
+        string memory mesg = "this is a long message that we are going to return a small part from. we don't use a loop since we want a fixed gas usage of the method itself.";
+        require( bytes(mesg).length>=len, "invalid len: too large");
+
+        /* solhint-disable no-inline-assembly */
+        //cut the msg at that length
+        assembly { mstore(mesg, len) }
+        require(!doRevert, mesg);
+        return mesg;
+    }
+
+    //function with no return value (also test revert with no msg.
+    function checkNoReturnValues(bool doRevert) public view {
+        (this);
+        require(!doRevert);
+    }
+
 }

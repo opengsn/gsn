@@ -1691,6 +1691,11 @@ atob@^2.1.2:
   resolved "https://registry.yarnpkg.com/atob/-/atob-2.1.2.tgz#6d9517eb9e030d2436666651e86bd9f6f13533c9"
   integrity sha512-Wm6ukoaOGJi/73p/cl2GvLjTI5JM1k/O14isD73YML8StrH/7/lRFgmg8nICZgD3bZZvjwCGxtMOD3wWNAu8cg==
 
+await-lock@1.1.3:
+  version "1.1.3"
+  resolved "https://registry.yarnpkg.com/await-lock/-/await-lock-1.1.3.tgz#e059319aa8212dab51a1a3dd2d888145b9fa40db"
+  integrity sha512-e0jRB8X/VVxulahjW16cM1dHsO7xjyZBP8p2AnVmg2Vn3q5xJ5sTUAybmkp96+s+QcrtidSJqpCGfWhVOX7NGg==
+
 aws-sign2@~0.7.0:
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/aws-sign2/-/aws-sign2-0.7.0.tgz#b46e890934a9591f2d2f6f86d7e6a9f1b3fe76a8"
@@ -3134,6 +3139,13 @@ console-control-strings@^1.0.0, console-control-strings@~1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/console-control-strings/-/console-control-strings-1.1.0.tgz#3d7cf4464db6446ea644bf4b39507f9851008e8e"
   integrity sha1-PXz0Rk22RG6mRL9LOVB/mFEAjo4=
+
+console-read-write@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/console-read-write/-/console-read-write-0.1.1.tgz#d04da22616a9291390b95c3c854e1aa9d2fcdefe"
+  integrity sha512-oznwP8YnhYzN+72C6+LA4LnbcletRyz4ZQfNCBdvtXnE/RnpnRskaTljl7X4EAijkc2PQ3oYHU+C5r88Y8JC3A==
+  dependencies:
+    await-lock "1.1.3"
 
 constants-browserify@^1.0.0:
   version "1.0.0"

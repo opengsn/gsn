@@ -82,6 +82,7 @@ contract('KnownRelaysManager', function (
       )
 
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
+      await paymaster.setTrustedForwarder(forwarderAddress)
       await paymaster.setRelayHub(relayHub.address)
       await paymaster.deposit({ value: ether('1') })
       await stake(stakeManager, relayHub, activeRelayWorkersAdded, owner)

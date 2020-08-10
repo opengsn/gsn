@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0-alpha.1",
+  "version": "2.0.0-beta.1",
   "description": "Open Gas Stations Network",
   "name": "@opengsn/gsn",
   "license": "MIT",
@@ -74,6 +74,7 @@
     "body-parser": "1.19.0",
     "chai": "4.2.0",
     "commander": "5.1.0",
+    "console-read-write": "^0.1.1",
     "eth-sig-util": "2.5.2",
     "ethereumjs-common": "^1.5.0",
     "ethereumjs-tx": "2.1.2",

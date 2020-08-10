@@ -8,13 +8,13 @@ import "../BasePaymaster.sol";
 contract TestPaymasterEverythingAccepted is BasePaymaster {
 
     function versionPaymaster() external view override virtual returns (string memory){
-        return "2.0.0-alpha.1+opengsn.test_pea.ipaymaster";
+        return "2.0.0-beta.1+opengsn.test_pea.ipaymaster";
     }
 
     event SampleRecipientPreCall();
-    event SampleRecipientPostCall(bool success, uint actualCharge, bytes32 preRetVal);
+    event SampleRecipientPostCall(bool success, uint actualCharge);
 
-    function acceptRelayedCall(
+    function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -23,40 +23,26 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     external
     override
     virtual
-    view
-    returns (bytes memory) {
-        (relayRequest, approvalData, maxPossibleGas);
-        GsnEip712Library.verify(relayRequest, signature);
-        return "no revert here";
-    }
-
-    function preRelayedCall(
-        bytes calldata context
-    )
-    external
-    override
-    virtual
-    relayHubOnly
-    returns (bytes32) {
-        (context);
+    returns (bytes memory, bool) {
+        (signature);
+        _verifyForwarder(relayRequest);
+        (approvalData, maxPossibleGas);
         emit SampleRecipientPreCall();
-        return bytes32(uint(123456));
+        return ("no revert here",false);
     }
 
     function postRelayedCall(
         bytes calldata context,
         bool success,
-        bytes32 preRetVal,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
     external
     override
     virtual
-    relayHubOnly
     {
         (context, gasUseWithoutPost, relayData);
-        emit SampleRecipientPostCall(success, gasUseWithoutPost, preRetVal);
+        emit SampleRecipientPostCall(success, gasUseWithoutPost);
     }
 
     function deposit() public payable {

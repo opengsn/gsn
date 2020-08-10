@@ -43,7 +43,7 @@ export const HubUnauthorized: EventName = 'HubUnauthorized'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export default class ContractInteractor {
-  private readonly VERSION = '2.0.0-alpha.1'
+  private readonly VERSION = '2.0.0-beta.1'
 
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
@@ -116,7 +116,7 @@ export default class ContractInteractor {
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
-    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain !== 'private' ? chain : 'mainnet')
+    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -185,14 +185,18 @@ export default class ContractInteractor {
     return nonce.toString()
   }
 
+  async _getBlockGasLimit (): Promise<number> {
+    const latestBlock = await this.web3.eth.getBlock('latest')
+    return latestBlock.gasLimit
+  }
+
   async validateAcceptRelayCall (
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
     try {
-      // not really needed in client view call. only need to be large enough.
-      const externalGasLimit = 10e6
+      const externalGasLimit = await this._getBlockGasLimit()
 
       const res = await relayHub.contract.methods.relayCall(
         relayRequest,
@@ -334,9 +338,12 @@ export default class ContractInteractor {
  * @return {{common: Common}}
  */
 export function getRawTxOptions (chainId: number, networkId: number, chain?: string): TransactionOptions {
+  if (chain == null || chain === 'main' || chain === 'private') {
+    chain = 'mainnet'
+  }
   return {
     common: Common.forCustomChain(
-      chain ?? 'mainnet',
+      chain,
       {
         chainId,
         networkId

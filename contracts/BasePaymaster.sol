@@ -13,7 +13,6 @@ import "./forwarder/Forwarder.sol";
 /**
  * Abstract base class to be inherited by a concrete Paymaster
  * A subclass must implement:
- *  - acceptRelayedCall
  *  - preRelayedCall
  *  - postRelayedCall
  */
@@ -26,13 +25,16 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         return address(relayHub);
     }
 
-    // Gas stipends for acceptRelayedCall, preRelayedCall and postRelayedCall
-    uint256 constant private ACCEPT_RELAYED_CALL_GAS_LIMIT = 50000;
-    uint256 constant private PRE_RELAYED_CALL_GAS_LIMIT = 100000;
-    uint256 constant private POST_RELAYED_CALL_GAS_LIMIT = 110000;
+    //overhead of forwarder verify+signature, plus hub overhead.
+    uint256 constant public FORWARDER_HUB_OVERHEAD = 50000;
+
+    //These parameters are documented in IPaymaster.GasLimits
+    uint256 constant public PRE_RELAYED_CALL_GAS_LIMIT = 100000;
+    uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
+    uint256 constant public PAYMASTER_ACCEPTANCE_BUDGET = PRE_RELAYED_CALL_GAS_LIMIT + FORWARDER_HUB_OVERHEAD;
 
     function getGasLimits()
-    external
+    public
     override
     virtual
     view
@@ -40,23 +42,20 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         IPaymaster.GasLimits memory limits
     ) {
         return IPaymaster.GasLimits(
-            ACCEPT_RELAYED_CALL_GAS_LIMIT,
+            PAYMASTER_ACCEPTANCE_BUDGET,
             PRE_RELAYED_CALL_GAS_LIMIT,
             POST_RELAYED_CALL_GAS_LIMIT
         );
     }
 
-    // this method must be called from acceptRelayedCall to validate that the forwarder
-    // is approved by the paymaster as well and that the request is verified.
-    function _verifySignature(
-        GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature
-    )
+    // this method must be called from preRelayedCall to validate that the forwarder
+    // is approved by the paymaster as well as by the recipient contract.
+    function _verifyForwarder(GsnTypes.RelayRequest calldata relayRequest)
     public
     view
     {
         require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
-        GsnEip712Library.verify(relayRequest, signature);
+        GsnEip712Library.verifyForwarderTrusted(relayRequest);
     }
 
     /*

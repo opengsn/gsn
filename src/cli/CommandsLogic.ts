@@ -4,6 +4,8 @@ import HDWalletProvider from '@truffle/hdwallet-provider'
 import BN from 'bn.js'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { merge } from 'lodash'
+// @ts-ignore
+import io from 'console-read-write'
 
 import { ether, sleep } from '../common/Utils'
 
@@ -33,10 +35,14 @@ interface RegisterOptions {
 
 interface DeployOptions {
   from: Address
-  gasPrice?: string
-  gasLimit?: number
+  gasPrice: string
   deployPaymaster?: boolean
   forwarderAddress?: string
+  relayHubAddress?: string
+  stakeManagerAddress?: string
+  penalizerAddress?: string
+  verbose?: boolean
+  skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
 }
 
@@ -72,18 +78,21 @@ export default class CommandsLogic {
     this.web3 = new Web3(provider)
   }
 
-  async findWealthyAccount (requiredBalance = ether('2')): Promise<string | undefined> {
+  async findWealthyAccount (requiredBalance = ether('2')): Promise<string> {
+    let accounts: string[] = []
     try {
-      const accounts = await this.web3.eth.getAccounts()
+      accounts = await this.web3.eth.getAccounts()
       for (const account of accounts) {
         const balance = new BN(await this.web3.eth.getBalance(account))
         if (balance.gte(requiredBalance)) {
+          console.log(`Found funded account ${account}`)
           return account
         }
       }
     } catch (error) {
       console.error('Failed to retrieve accounts and balances:', error)
     }
+    throw new Error(`could not find unlocked account with sufficient balance; all accounts: ${accounts.toString()}`)
   }
 
   async isRelayReady (relayUrl: string): Promise<boolean> {
@@ -215,23 +224,17 @@ export default class CommandsLogic {
   }
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<DeploymentResult> {
-    const options: SendOptions = {
+    const options: Required<SendOptions> = {
       from: deployOptions.from,
-      gas: deployOptions.gasLimit ?? 3e6,
+      gas: 0, // gas limit will be filled in at deployment
+      value: 0,
       gasPrice: deployOptions.gasPrice ?? (1e9).toString()
     }
 
-    const sInstance =
-      await this.contract(StakeManager).deploy({}).send(options)
-    const pInstance =
-      await this.contract(Penalizer).deploy({}).send(options)
-    let fInstance
-    if (deployOptions.forwarderAddress == null) {
-      fInstance = await this.contract(Forwarder).deploy({}).send(merge(options, { gas: 5e6 }))
-    } else {
-      fInstance = this.contract(Forwarder, deployOptions.forwarderAddress)
-    }
-    const rInstance = await this.contract(RelayHub).deploy({
+    const sInstance = await this.getContractInstance(StakeManager, {}, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const pInstance = await this.getContractInstance(Penalizer, {}, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const rInstance = await this.getContractInstance(RelayHub, {
       arguments: [
         sInstance.options.address,
         pInstance.options.address,
@@ -240,14 +243,13 @@ export default class CommandsLogic {
         deployOptions.relayHubConfiguration.postOverhead,
         deployOptions.relayHubConfiguration.gasOverhead,
         deployOptions.relayHubConfiguration.maximumRecipientDeposit,
-        deployOptions.relayHubConfiguration.minimumRelayBalance,
         deployOptions.relayHubConfiguration.minimumUnstakeDelay,
         deployOptions.relayHubConfiguration.minimumStake]
-    }).send(merge(options, { gas: 5e6 }))
+    }, deployOptions.relayHubAddress, merge({}, options, { gas: 5e6 }), deployOptions.skipConfirmation)
 
     let paymasterAddress = constants.ZERO_ADDRESS
     if (deployOptions.deployPaymaster === true) {
-      const pmInstance = await this.deployPaymaster(options, rInstance.options.address, deployOptions.from, fInstance)
+      const pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
       paymasterAddress = pmInstance.options.address
 
       // Overriding saved configuration with newly deployed instances
@@ -270,10 +272,51 @@ export default class CommandsLogic {
     }
   }
 
-  async deployPaymaster (options: SendOptions, hub: Address, from: string, fInstance: Contract): Promise<Contract> {
-    const pmInstance = await this.contract(Paymaster).deploy({}).send(options)
+  private async getContractInstance (json: any, constructorArgs: any, address: Address | undefined, options: Required<SendOptions>, skipConfirmation: boolean = false): Promise<Contract> {
+    const contractName: string = json.contractName
+    let contractInstance
+    if (address == null) {
+      const sendMethod = this
+        .contract(json)
+        .deploy(constructorArgs)
+      options.gas = await sendMethod.estimateGas()
+      const maxCost = new BN(options.gasPrice).muln(options.gas)
+      const oneEther = ether('1')
+      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} and maximum cost of ~ ${maxCost.toNumber() / parseFloat(oneEther.toString())} ETH`)
+      if (!skipConfirmation) {
+        await this.confirm()
+      }
+      const deployPromise = sendMethod.send(merge(options, { gas: 5e6 }))
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      deployPromise.on('transactionHash', function (hash) {
+        console.log(`Transaction broadcast: ${hash}`)
+      })
+      contractInstance = await deployPromise
+      console.log(`Deployed ${contractName} at address ${contractInstance.options.address}\n\n`)
+    } else {
+      console.log(`Using ${contractName} at given address ${address}\n\n`)
+      contractInstance = this.contract(json, address)
+    }
+    return contractInstance
+  }
+
+  async deployPaymaster (options: Required<SendOptions>, hub: Address, from: string, fInstance: Contract, skipConfirmation: boolean | undefined): Promise<Contract> {
+    const pmInstance = await this.getContractInstance(Paymaster, {}, undefined, Object.assign({}, options), skipConfirmation)
     await pmInstance.methods.setRelayHub(hub).send(options)
     await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send(options)
     return pmInstance
+  }
+
+  async confirm (): Promise<void> {
+    let input
+    while (true) {
+      console.log('Confirm (yes/no)?')
+      input = await io.read()
+      if (input === 'yes') {
+        return
+      } else if (input === 'no') {
+        throw new Error('User rejected')
+      }
+    }
   }
 }
