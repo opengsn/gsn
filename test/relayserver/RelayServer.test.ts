@@ -2,7 +2,12 @@
 import Web3 from 'web3'
 import crypto from 'crypto'
 import { RelayClient } from '../../src/relayclient/RelayClient'
-import { CreateTransactionDetails, RelayServer, RelayServerParams } from '../../src/relayserver/RelayServer'
+import {
+  CreateTransactionDetails,
+  RelayServer,
+  RelayServerParams,
+  SendTransactionDetails, SignedTransactionDetails
+} from '../../src/relayserver/RelayServer'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import { KeyManager } from '../../src/relayserver/KeyManager'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
