@@ -3,35 +3,46 @@ import {
 } from '../types/truffle-contracts'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import { increaseTime } from './TestUtils'
-import { VersionOracle, bytes32toString, string32 } from '../src/common/VersionOracle'
+import { VersionOracle, string32 } from '../src/common/VersionOracle'
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+
+const { expect, assert } = chai.use(chaiAsPromised)
 
 require('source-map-support').install({ errorFormatterForce: true })
 const VersionOracleContract = artifacts.require('VersionOracle')
 
-contract('VersionOracle', () => {
+context('VersionOracle', () => {
+  let now: number
   let oracle: VersionOracleInstance
+  let jsOracle: VersionOracle
 
-  before(async () => {
+  before('create oracle', async () => {
     oracle = await VersionOracleContract.new()
     await oracle.addVersion(string32('id'), string32('ver'), 'value')
+    await oracle.addVersion(string32('another'), string32('ver'), 'anothervalue')
+    jsOracle = new VersionOracle(web3.currentProvider, oracle.address)
   })
-  it('should fail to add without id', async () => {
-    await expectRevert(oracle.addVersion(string32(''), string32(''), 'value'), 'missing id')
-  })
-  it('should fail to add without version', async () => {
-    await expectRevert(oracle.addVersion(string32('id'), string32(''), 'value'), 'missing version')
-  })
-  it('should fail to add same version', async () => {
-    await expectRevert(oracle.addVersion(string32('id'), string32('ver'), 'value2'), 'version already set')
-  })
-
-  it('should return latest version if age=0', async () => {
-    const ret = await oracle.getVersion(string32('id'), string32(''), 0)
-    assert.equal(ret.value, 'value')
+  context('param validations', () => {
+    it('should fail to add without id', async () => {
+      await expectRevert(oracle.addVersion(string32(''), string32(''), 'value'), 'missing id')
+    })
+    it('should fail to add without version', async () => {
+      await expectRevert(oracle.addVersion(string32('id'), string32(''), 'value'), 'missing version')
+    })
   })
 
-  describe('with more versions', () => {
-    let now: number
+  context('basic getAllVersions', () => {
+    it('should return nothing for unknown id', async () => {
+      assert.deepEqual(await jsOracle.getAllVersions('nosuchid'), [])
+    })
+    it('should get version of specific id', async () => {
+      const versions = await jsOracle.getAllVersions('id')
+      assert.deepInclude(versions[0], { version: 'ver', value: 'value', canceled: false })
+    })
+  })
+
+  context('with more versions', () => {
     before(async () => {
       await increaseTime(100)
       await oracle.addVersion(string32('id'), string32('ver2'), 'value2')
@@ -39,59 +50,79 @@ contract('VersionOracle', () => {
       await oracle.addVersion(string32('id'), string32('ver3'), 'value3')
       await increaseTime(100)
 
-      await oracle.addVersion(string32('id1'), string32('ver3'), '1'.repeat(200))
-
-      now = parseInt((await web3.eth.getBlock('latest')).timestamp.toString())
-
       // at this point:
       // ver1 - 300 sec old
       // ver2 - 200 sec old
       // ver3 - 100 sec old
+
+      now = parseInt((await web3.eth.getBlock('latest')).timestamp.toString())
+    })
+    context('#getAllVersions', () => {
+      it('should return all versions', async () => {
+        const versions = await jsOracle.getAllVersions('id')
+
+        assert.equal(versions.length, 3)
+        assert.deepInclude(versions[0], { version: 'ver3', value: 'value3', canceled: false })
+        assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: false })
+        assert.deepInclude(versions[2], { version: 'ver', value: 'value', canceled: false })
+
+        assert.closeTo(now - versions[0].time, 100, 2)
+        assert.closeTo(now - versions[1].time, 200, 2)
+        assert.closeTo(now - versions[2].time, 300, 2)
+      })
+
+      it('should ignore repeated added version (can\'t modify history: only adding to it)', async () => {
+        await oracle.addVersion(string32('id'), string32('ver2'), 'new-value2')
+        const versions = await jsOracle.getAllVersions('id')
+
+        assert.equal(versions.length, 3)
+        assert.deepInclude(versions[0], { version: 'ver3', value: 'value3', canceled: false })
+        assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: false })
+        assert.deepInclude(versions[2], { version: 'ver', value: 'value', canceled: false })
+      })
     })
 
     describe('#getVersion', () => {
       it('should revert if has no version', async () => {
-        expectRevert(oracle.getVersion(string32('nosuchid'), string32(''), 1), 'no version found')
+        await expect(jsOracle.getVersion('nosuchid', 1)).to.eventually.rejectedWith('no version found')
       })
 
       it('should revert if no version is mature', async () => {
-        expectRevert(oracle.getVersion(string32('id'), string32(''), 10000), 'no version found')
+        try {
+          await jsOracle.getVersion('id', 10000)
+        } catch (e) {
+          assert.include(e.toString(), 'no version found')
+          return
+        }
+        assert.fail('should revert')
       })
 
       it('should return latest version', async () => {
-        const { version, value } = await oracle.getVersion(string32('id'), string32(''), 1)
-        const versionStr = bytes32toString(version)
-        assert.deepEqual({ versionStr, value }, { versionStr: 'ver3', value: 'value3' })
+        const { version, value, time } = await jsOracle.getVersion('id', 1)
+        assert.deepEqual({ version, value }, { version: 'ver3', value: 'value3' })
+        assert.closeTo(time, now - 100, 2)
       })
 
       it('should return latest "mature" version', async () => {
         // ignore entries in the past 150 seconds
-        const { version, value } = await oracle.getVersion(string32('id'), string32(''), 150)
-        const versionStr = bytes32toString(version)
+        const { version, value } = await jsOracle.getVersion('id', 150)
 
-        assert.deepEqual({ versionStr, value }, { versionStr: 'ver2', value: 'value2' })
+        assert.deepEqual({ version, value }, { version: 'ver2', value: 'value2' })
       })
 
       it('should return "young" version if opted-in', async () => {
         // ignore entries in the past 150 seconds (unless explicitly opted-in)
-        const { version, value } = await oracle.getVersion(string32('id'), string32('ver3'), 150)
-        const versionStr = bytes32toString(version)
+        const { version, value } = await jsOracle.getVersion('id', 150, 'ver3')
 
-        assert.deepEqual({ versionStr, value }, { versionStr: 'ver3', value: 'value3' })
+        assert.deepEqual({ version, value }, { version: 'ver3', value: 'value3' })
       })
 
       it('should ignore opt-in if later version exists', async () => {
         // ignore entries in the past 150 seconds
-        const { version, value } = await oracle.getVersion(string32('id'), string32('ver1'), 150)
-        const versionStr = bytes32toString(version)
+        const { version, value } = await jsOracle.getVersion('id', 150, 'ver1')
 
-        assert.deepEqual({ versionStr, value }, { versionStr: 'ver2', value: 'value2' })
+        assert.deepEqual({ version, value }, { version: 'ver2', value: 'value2' })
       })
-    })
-
-    it('should fail to cancel missing id', async () => {
-      await expectRevert(oracle.cancelVersion(string32('noid'), string32('ver'), 'reason'), 'cancelVersion: no such version for id')
-      await expectRevert(oracle.cancelVersion(string32('id'), string32('nover'), 'reason'), 'cancelVersion: no such version for id')
     })
 
     describe('with canceled version', () => {
@@ -103,77 +134,10 @@ contract('VersionOracle', () => {
         // ver3 - 100 sec old
       })
 
-      it('should fail to re-cancel event', async () => {
-        await expectRevert(oracle.cancelVersion(string32('id'), string32('ver2'), 'reason'), 'cancelVersion: already canceled')
-      })
-
       it('getVersion should ignore canceled version', async () => {
         // ignore entries in the past 150 seconds
-        const { version, value } = await oracle.getVersion(string32('id'), string32(''), 150)
-        const versionStr = bytes32toString(version)
-        assert.deepEqual({ versionStr, value }, { versionStr: 'ver', value: 'value' })
-      })
-
-      context('#getAllVersions', () => {
-        it('should return all versions', async () => {
-          const ret = await oracle.getAllVersions(string32('id'), 10)
-          const count = ret[0].toNumber()
-          assert.equal(count, 3)
-
-          const versions = ret[1].map((ver: any) => ({
-            time: ver.time,
-            canceled: ver.canceled,
-            version: bytes32toString(ver.version),
-            value: ver.value
-          }))
-
-          assert.deepInclude(versions[0], { version: 'ver3', value: 'value3', canceled: false })
-          assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: true })
-          assert.deepInclude(versions[2], { version: 'ver', value: 'value', canceled: false })
-          assert.deepInclude(versions[3], { version: '', value: '', canceled: false })
-
-          assert.closeTo(now - versions[0].time, 100, 2)
-          assert.closeTo(now - versions[1].time, 200, 2)
-          assert.closeTo(now - versions[2].time, 300, 2)
-        })
-
-        it('should return some versions if buffer too small', async () => {
-          const ret = await oracle.getAllVersions(string32('id'), 2)
-          const count = ret[0].toNumber()
-          assert.equal(count, 2)
-
-          const versions = ret[1].map((ver: any) => ({
-            time: ver.time,
-            canceled: ver.canceled,
-            version: bytes32toString(ver.version),
-            value: ver.value
-          }))
-
-          assert.deepInclude(versions[0], { version: 'ver3', value: 'value3', canceled: false })
-          assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: true })
-        })
-      })
-      context('typescript VersionOracle class', () => {
-        let jsOracle: VersionOracle
-        before(() => {
-          jsOracle = new VersionOracle(web3.currentProvider, oracle.address)
-        })
-
-        it('#getVersion', async () => {
-          assert.deepInclude(await jsOracle.getVersion('id', 1), {
-            value: 'value3', version: 'ver3'
-          })
-        })
-        it('#getAllVersions', async () => {
-          // deliberately start with a small blockSize, so it should retry...
-          const ret = await jsOracle.getAllVersions('id', 1)
-          assert.equal(ret.length, 3)
-          assert.deepEqual(ret[0], { version: 'ver3', value: 'value3', time: new Date((now - 100) * 1000), canceled: false })
-          assert.deepEqual(ret[1], { version: 'ver2', value: 'value2', time: new Date((now - 200) * 1000), canceled: true })
-
-          const ret2 = await jsOracle.getAllVersions('id', 10)
-          assert.deepEqual(ret2, ret)
-        })
+        const { version, value } = await jsOracle.getVersion('id', 150)
+        assert.deepEqual({ version, value }, { version: 'ver', value: 'value' })
       })
     })
   })
