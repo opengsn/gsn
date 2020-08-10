@@ -47,7 +47,8 @@ contract('KnownRelaysManager', function (
     owner,
     other
   ]) {
-  const relayLookupWindowBlocks = 100
+  const relayLookupWindowSliceSize = 20
+  const lookupWindowSliceCount = 5
 
   describe('#_fetchRecentlyActiveRelayManagers()', function () {
     let config: GSNConfig
@@ -69,7 +70,8 @@ contract('KnownRelaysManager', function (
       relayHub = await deployHub(stakeManager.address)
       config = configureGSN({
         relayHubAddress: relayHub.address,
-        relayLookupWindowBlocks
+        relayLookupWindowSliceSize,
+        lookupWindowSliceCount
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
 
@@ -109,42 +111,37 @@ contract('KnownRelaysManager', function (
       await relayHub.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
       await relayHub.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
 
-      await evmMineMany(relayLookupWindowBlocks)
+      await evmMineMany(relayLookupWindowSliceSize * lookupWindowSliceCount)
       /** events that are supposed to be visible to the manager */
       await relayHub.registerRelayServer('0', '0', '', { from: activeRelayServerRegistered })
+      await evmMineMany(relayLookupWindowSliceSize)
       await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
         from: activeRelayWorkersAdded
       })
+      await evmMineMany(relayLookupWindowSliceSize)
       await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
         from: workerTransactionRelayed,
         gas,
         gasPrice: txTransactionRelayed.relayRequest.relayData.gasPrice
       })
+      await evmMineMany(relayLookupWindowSliceSize)
       await paymaster.setReturnInvalidErrorCode(true)
       await relayHub.relayCall(txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
         from: workerPaymasterRejected,
         gas,
         gasPrice: txPaymasterRejected.relayRequest.relayData.gasPrice
       })
+      await evmMineMany(relayLookupWindowSliceSize)
     })
 
-    it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks', async function () {
+    it('should contain all relay managers only if their workers were active in the lookup window blocks', async function () {
       const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
       const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
       const actual = Array.from(res.values())
       assert.equal(actual.length, 4)
-      assert.equal(actual[0], activeRelayServerRegistered)
-      assert.equal(actual[1], activeRelayWorkersAdded)
-      assert.equal(actual[2], activeTransactionRelayed)
-      assert.equal(actual[3], activePaymasterRejected)
-    })
-
-    it('should contain relay managers from older blocks if none found in the latest window', async function () {
-      await evmMineMany(relayLookupWindowBlocks * 2)
-      const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
-      const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
-      const actual = Array.from(res.values())
-      assert.equal(actual.length, 1)
+      assert.equal(actual[3], activeRelayServerRegistered)
+      assert.equal(actual[2], activeRelayWorkersAdded)
+      assert.equal(actual[1], activeTransactionRelayed)
       assert.equal(actual[0], activePaymasterRejected)
     })
   })
@@ -292,9 +289,9 @@ contract('KnownRelaysManager 2', function (accounts) {
   describe('getRelaysSortedForTransaction', function () {
     const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<number> {
       if (relay.relayUrl === 'alex') {
-        return await Promise.resolve(1000)
+        return 1000
       } else {
-        return await Promise.resolve(100)
+        return 100
       }
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)

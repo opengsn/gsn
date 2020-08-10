@@ -1,3 +1,5 @@
+import { EventData } from 'web3-eth-contract'
+
 import { Address, AsyncScoreCalculator, RelayFilter } from './types/Aliases'
 import RelayFailureInfo from './types/RelayFailureInfo'
 import ContractInteractor, {
@@ -26,7 +28,7 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   const transactionCost = baseFee + (gasLimit * gasPrice * (100 + pctFee)) / 100
   let score = Math.max(Number.MAX_SAFE_INTEGER - transactionCost, 0)
   score = score * Math.pow(0.9, failures.length)
-  return await Promise.resolve(score)
+  return score
 }
 
 export interface IKnownRelaysManager {
@@ -101,37 +103,37 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
   }
 
   async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
-    const toBlock = await this.contractInteractor.getBlockNumber()
+    const eventsPromises: Array<Promise<EventData[]>> = new Array<Promise<EventData[]>>()
+    const lastBlockNumber = await this.contractInteractor.getBlockNumber()
+    for (let i = 0; i < this.config.lookupWindowSliceCount; i++) {
+      const toBlock = lastBlockNumber - this.config.relayLookupWindowSliceSize * i
+      const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowSliceSize)
 
-    let i = 1
-    let fromBlock = 1
-    while (fromBlock !== 0 && i <= this.config.lookupWindowsMaxCount) {
-      fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks * i++)
-
-      const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [], {
+      const relayEventsPromise = this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [], {
         fromBlock,
         toBlock
       })
-
-      const foundRelayManagers: Set<Address> = new Set()
-      relayEvents.forEach((event: any) => {
-        // TODO: remove relay managers who are not staked
-        // if (event.event === 'RelayRemoved') {
-        //   foundRelays.delete(event.returnValues.relay)
-        // } else {
-        foundRelayManagers.add(event.returnValues.relayManager)
-      })
-
-      if (this.config.verbose) {
-        console.log(`fetchRelaysAdded in blocks ${fromBlock} to ${toBlock}: found ${relayEvents.length} events`)
-        console.log('fetchRelaysAdded: found unique relays:', foundRelayManagers)
-      }
-      if (foundRelayManagers.size > 0) {
-        return foundRelayManagers
-      }
-      this.latestScannedBlock = toBlock
+      eventsPromises.push(relayEventsPromise)
     }
-    return new Set<Address>()
+
+    const relayingEventsSliced = await Promise.all(eventsPromises)
+    const relayEvents = relayingEventsSliced.flat()
+    const foundRelayManagers: Set<Address> = new Set()
+
+    relayEvents.forEach((event: any) => {
+      // TODO: remove relay managers who are not staked
+      // if (event.event === 'RelayRemoved') {
+      //   foundRelays.delete(event.returnValues.relay)
+      // } else {
+      foundRelayManagers.add(event.returnValues.relayManager)
+    })
+    if (this.config.verbose) {
+      const lookupWindowSize = this.config.relayLookupWindowSliceSize * this.config.lookupWindowSliceCount
+      console.log(`fetchRelaysAdded: in latest ${lookupWindowSize} blocks: found ${relayEvents.length} events`)
+      console.log('fetchRelaysAdded: found unique relays:', foundRelayManagers)
+    }
+    this.latestScannedBlock = lastBlockNumber
+    return foundRelayManagers
   }
 
   _refreshFailures (): void {

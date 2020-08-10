@@ -13,12 +13,13 @@ import { constants } from '../common/Constants'
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
+const BLOCKS_PER_MONTH = 30 * 24 * 60 * 6 // 259200, assuming 10 seconds block time
 
 const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
-  relayLookupWindowBlocks: 6000,
+  relayLookupWindowSliceSize: BLOCKS_PER_MONTH,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
-  lookupWindowsMaxCount: 3,
+  lookupWindowSliceCount: 1,
   minGasPrice: 0,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   sliceSize: 3,
@@ -73,8 +74,8 @@ export async function resolveConfigurationGSN (provider: provider, partialConfig
  */
 export interface GSNConfig {
   preferredRelays: string[]
-  relayLookupWindowBlocks: number
-  lookupWindowsMaxCount: number
+  relayLookupWindowSliceSize: number
+  lookupWindowSliceCount: number
   methodSuffix: string
   jsonStringifyRequest: boolean
   relayTimeoutGrace: number
