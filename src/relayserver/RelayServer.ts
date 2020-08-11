@@ -39,6 +39,7 @@ const defaultManagerTargetBalance = 0.3e18
 const defaultWorkerMinBalance = 0.1e18
 const defaultWorkerTargetBalance = 0.3e18
 const defaultAlertedBlockDelay = 6000
+const defaultPaymasterAcceptanceBudget = 15e4 // currently set as PRE_RELAYED_CALL_GAS_LIMIT + FORWARDER_HUB_OVERHEAD == 15e4 in BasePaymaster
 const confirmationsNeeded = 12
 const pendingTransactionTimeout = 5 * 60 * 1000 // 5 minutes in milliseconds
 const maxGasPrice = 100e9
@@ -98,6 +99,7 @@ export interface RelayServerParams {
   readonly managerTargetBalance: number | undefined // = defaultManagerTargetBalance,
   readonly minHubWithdrawalBalance: number | undefined // = defaultMinHubWithdrawalBalance,
   readonly alertedBlockDelay: number | undefined
+  readonly paymasterAcceptanceBudget: number | undefined
   readonly devMode: boolean // = false,
   readonly debug: boolean // = false,
 }
@@ -147,6 +149,7 @@ export class RelayServer extends EventEmitter {
   readonly managerTargetBalance: number
   readonly minHubWithdrawalBalance: number
   readonly alertedBlockDelay: number
+  readonly paymasterAcceptanceBudget: number
   private readonly devMode: boolean
   private workerTask: any
 
@@ -169,6 +172,7 @@ export class RelayServer extends EventEmitter {
     this.managerTargetBalance = params.managerTargetBalance ?? defaultManagerTargetBalance
     this.minHubWithdrawalBalance = params.minHubWithdrawalBalance ?? defaultMinHubWithdrawalBalance
     this.alertedBlockDelay = params.alertedBlockDelay ?? defaultAlertedBlockDelay
+    this.paymasterAcceptanceBudget = params.paymasterAcceptanceBudget ?? defaultPaymasterAcceptanceBudget
     this.devMode = params.devMode
     this.contractInteractor = params.contractInteractor
 
@@ -233,7 +237,7 @@ export class RelayServer extends EventEmitter {
     }
 
     // if trusted paymaster, we trust it to handle fees
-    if (!this.trustedPaymasters.includes(req.paymaster.toLowerCase())) {
+    if (!this._isTrustedPaymaster(req.paymaster)) {
       // Check that the fee is acceptable
       if (isNaN(parseInt(req.pctRelayFee)) || parseInt(req.pctRelayFee) < this.pctRelayFee) {
         throw new Error(`Unacceptable pctRelayFee: ${req.pctRelayFee} relayServer's pctRelayFee: ${this.pctRelayFee}`)
@@ -298,6 +302,10 @@ export class RelayServer extends EventEmitter {
       throw new Error(`unknown paymaster error: ${e.message}`)
     }
 
+    if (!this._isTrustedPaymaster(req.paymaster) && parseInt(gasLimits.acceptanceBudget) > this.paymasterAcceptanceBudget) {
+      throw new Error(
+        `paymaster acceptance budget too high. given: ${gasLimits.acceptanceBudget} max allowed: ${this.paymasterAcceptanceBudget}`)
+    }
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
@@ -992,6 +1000,10 @@ export class RelayServer extends EventEmitter {
       this.nonces[signer] = nonce
     }
     return nonce
+  }
+
+  _isTrustedPaymaster (paymaster: string): boolean {
+    return this.trustedPaymasters.includes(paymaster.toLowerCase())
   }
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {

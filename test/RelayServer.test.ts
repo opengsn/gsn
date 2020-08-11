@@ -46,7 +46,6 @@ import TmpRelayTransactionJsonRequest from '../src/relayclient/types/TmpRelayTra
 import Mutex from 'async-mutex/lib/Mutex'
 import { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import ContractInteractor from '../src/relayclient/ContractInteractor'
-import { ServerConfigParams } from '../src/relayserver/runServer'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
@@ -100,7 +99,7 @@ contract('RelayServer', function (accounts) {
   let options: any, options2: any
   let managerKeyManager, workersKeyManager: KeyManager
 
-  async function bringUpNewRelay (overrideParams?: Partial<ServerConfigParams>): Promise<RelayServer> {
+  async function bringUpNewRelay (overrideParams?: Partial<RelayServerParams>): Promise<RelayServer> {
     const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
     const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
     assert.equal(await _web3.eth.getBalance(managerKeyManager.getAddress(0)), '0')
@@ -240,7 +239,7 @@ contract('RelayServer', function (accounts) {
   before(clearStorage)
   after(clearStorage)
 
-  async function assertTransactionRelayed (server: RelayServer, txhash: PrefixedHexString, gasLess: Address): Promise<TransactionReceipt> {
+  async function assertTransactionRelayed (server: RelayServer, txhash: PrefixedHexString, gasLess: Address, overrideArgs?: Partial<CreateTransactionDetails>): Promise<TransactionReceipt> {
     const receipt = await _web3.eth.getTransactionReceipt(txhash)
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(server._parseEvent)
     const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
@@ -250,7 +249,8 @@ contract('RelayServer', function (accounts) {
     assert.equal(event2.args.relayWorker.toLowerCase(), server.getWorkerAddress(workerIndex).toLowerCase())
     assert.equal(event2.args.from.toLowerCase(), gasLess.toLowerCase())
     assert.equal(event2.args.to.toLowerCase(), sr.address.toLowerCase())
-    assert.equal(event2.args.paymaster.toLowerCase(), paymaster.address.toLowerCase())
+    const pm = overrideArgs?.paymaster != null ? overrideArgs.paymaster : paymaster.address
+    assert.equal(event2.args.paymaster.toLowerCase(), pm.toLowerCase())
     return receipt
   }
 
@@ -316,7 +316,7 @@ contract('RelayServer', function (accounts) {
     }
     const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
     if (assertRelayed) {
-      await assertTransactionRelayed(server, txhash, relayRequest.request.from)
+      await assertTransactionRelayed(server, txhash, relayRequest.request.from, overrideArgs)
     }
     return signedTx
   }
@@ -1301,6 +1301,36 @@ contract('RelayServer', function (accounts) {
       await evmMineMany(2)
       await newServer._worker(await _web3.eth.getBlock('latest'))
       assert.isFalse(newServer.alerted, 'server alerted')
+    })
+  })
+
+  describe('relay max exposure to paymaster rejections', function () {
+    let newServer: RelayServer
+    beforeEach(async function () {
+      id = (await snapshot()).result
+      newServer = await bringUpNewRelay({ trustedPaymasters: [rejectingPaymaster.address] })
+      await newServer._worker(await _web3.eth.getBlock('latest'))
+      await rejectingPaymaster.setGreedyAcceptanceBudget(true)
+    })
+    afterEach(async function () {
+      await revert(id)
+    })
+    it('should reject a transaction from paymaster returning above configured max exposure', async function () {
+      try {
+        const scepticServer = await bringUpNewRelay()
+        await scepticServer._worker(await _web3.eth.getBlock('latest'))
+        await relayTransaction(scepticServer, options, { paymaster: rejectingPaymaster.address })
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, 'paymaster acceptance budget too high')
+      }
+    })
+    it('should accept a transaction from paymaster returning below configured max exposure', async function () {
+      await rejectingPaymaster.setGreedyAcceptanceBudget(false)
+      await relayTransaction(newServer, options, { paymaster: rejectingPaymaster.address })
+    })
+    it('should accept a transaction from trusted paymaster returning above configured max exposure', async function () {
+      await relayTransaction(newServer, options, { paymaster: rejectingPaymaster.address })
     })
   })
 
