@@ -1,0 +1,21 @@
+#!/bin/bash
+# route to hosts based on first path element.
+# arguments: list of hosts
+# maps  http://hostname/prefix/something  to http://prefix/something
+# that is, the path prefix becomes a hostname.
+conf=/etc/nginx.conf
+
+#create config on each launch.
+echo "daemon off;" > $conf
+
+echo "events { worker_connections  1024; }" >> $conf
+echo "http { server {" >> $conf
+
+for prefix in $*; do
+	echo "/$prefix/ => http://$prefix/"
+	echo "  location /$prefix/ { proxy_pass http://$prefix/; }" >> $conf
+done
+
+echo "} }" >> $conf
+
+nginx -c $conf

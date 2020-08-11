@@ -1,0 +1,30 @@
+#!/usr/bin/perl
+die "usage: add-server docker-compose.yml
+
+add a new server instance to the docker-compose file.
+NOTE: the newly added server still has the same tag and command-line, and
+these should be fix.
+" unless $ARGV[0];
+
+undef $/;
+
+$input=<>;
+
+($template) = $input=~/BEGIN-TEMPLATE.*([\s\S]*)\n.*END-TEMPLATE/;
+
+die "no template found\n" unless $template;
+
+#find highest instance number already in file
+while ( $input=~/gsn(\d+)/g ) {
+	$max= $max>$1 ? $max:$1;
+}
+
+die "unable to parse template\n" unless $max;
+
+$max++;
+
+$template=~s/gsn1/gsn$max/g;
+$input=~s/(.*ADD-SERVER)/      - gsn$max\n$1/;
+print $input,$template;
+
+
