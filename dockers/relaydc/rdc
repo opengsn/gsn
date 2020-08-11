@@ -1,4 +1,4 @@
-#!/bin/bash -xe
+#!/bin/bash -e
 
 # performs SSH into given machine and executes a relaydc command on it with args
 if [ -z $2 ]; then
@@ -16,7 +16,7 @@ shift
 args="$@"
 
 
-RDC='docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=$PWD -v $PWD/.env:/.env opengsn/relaydc'
+RDC='docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=$PWD -v $PWD/.env:/.env opengsn/relaydc'
 
 if [ $host == 'local' ]; then
 sh -c "$RDC $args"
