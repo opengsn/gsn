@@ -12,7 +12,7 @@ import "./utils/GsnUtils.sol";
  */
 contract BatchForwarder is Forwarder, BaseRelayRecipient {
 
-    string public override versionRecipient = "2.0.0-alpha.3+opengsn.batched.irelayrecipient";
+    string public override versionRecipient = "2.0.0-beta.1+opengsn.batched.irelayrecipient";
 
     constructor() public {
         //needed for sendBatch
@@ -27,9 +27,10 @@ contract BatchForwarder is Forwarder, BaseRelayRecipient {
             (bool success, bytes memory ret) = targets[i].call(abi.encodePacked(encodedFunctions[i], sender));
             // TODO: currently, relayed transaction does not report exception string. when it does, this
             // will propagate the inner call exception description
-              if (!success){
-                  revert(GsnUtils.getError(ret));
-              }
+            if (!success){
+                //re-throw the revert with the same revert reason.
+                GsnUtils.revertWithData(ret);
+            }
         }
     }
 }

@@ -14,6 +14,7 @@ import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
+import { decodeRevertReason } from '../common/Utils'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -169,7 +170,7 @@ export class RelayClient {
       } else {
         message = 'paymaster rejected in local view call to \'relayCall()\' '
       }
-      return { error: new Error(`${message}: ${acceptRelayCallResult.returnValue}`) }
+      return { error: new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`) }
     }
     let hexTransaction: PrefixedHexString
     try {

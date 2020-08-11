@@ -43,7 +43,7 @@ export const HubUnauthorized: EventName = 'HubUnauthorized'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export default class ContractInteractor {
-  private readonly VERSION = '2.0.0-alpha.3'
+  private readonly VERSION = '2.0.0-beta.1'
 
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>

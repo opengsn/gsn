@@ -9,7 +9,7 @@ describe('VersionManager', function () {
       }).to.throw('Component version is not valid')
     })
     it('should not throw on valid semver string', function () {
-      new VersionsManager('2.0.0-alpha.3+opengsn.something')
+      new VersionsManager('2.0.0-beta.1+opengsn.something')
     })
   })
 

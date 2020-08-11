@@ -38,7 +38,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const senderNonce = new BN('0')
   const magicNumbers = {
     pre: 5451,
-    post: 1666
+    post: 1644
   }
 
   let relayHub: RelayHubInstance
@@ -225,7 +225,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             gas: externalGasLimit
           })
       assert.equal(viewRelayCallResponse[0], false)
-      assert.equal(viewRelayCallResponse[1], '') // no revert string on out-of-gas
+      assert.equal(viewRelayCallResponse[1], null) // no revert string on out-of-gas
 
       const res = await relayHub.relayCall(10e6, relayRequestMisbehaving, signature, '0x', externalGasLimit, {
         from: relayWorker,
@@ -234,7 +234,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       })
 
       assert.equal('TransactionRejectedByPaymaster', res.logs[0].event)
-      assert.equal(res.logs[0].args.reason, '')
+      assert.equal(res.logs[0].args.reason, null)
     })
   })
 
@@ -254,6 +254,23 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     }
   }
 
+  async function diffBalances (startBalances: {
+    paymasters: BN
+    relayWorkers: BN
+    relayManagers: BN
+  }): Promise<{
+      paymasters: BN
+      relayWorkers: BN
+      relayManagers: BN
+    }> {
+    const balances = await getBalances()
+    return {
+      paymasters: startBalances.paymasters.sub(balances.paymasters),
+      relayWorkers: startBalances.relayWorkers.sub(balances.relayWorkers),
+      relayManagers: startBalances.relayManagers.sub(balances.relayManagers)
+    }
+  }
+
   function logOverhead (weiActualCharge: BN, workerGasUsed: BN): void {
     const gasDiff = workerGasUsed.sub(weiActualCharge).div(gasPrice).toString()
     if (gasDiff !== '0') {
@@ -263,14 +280,73 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     }
   }
 
+  context('charge calculation should not depend on return/revert value of request', () => {
+    [[true, 0], [true, 20], [false, 0], [false, 50]]
+      .forEach(([doRevert, len, b]) => {
+        it(`should calculate overhead regardless of return value len (${len}) or revert (${doRevert})`, async () => {
+          const beforeBalances = getBalances()
+          const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
+          let encodedFunction
+          if (len === 0) {
+            encodedFunction = recipient.contract.methods.checkNoReturnValues(doRevert).encodeABI()
+          } else {
+            encodedFunction = recipient.contract.methods.checkReturnValues(len, doRevert).encodeABI()
+          }
+          const relayRequest: RelayRequest = {
+            request: {
+              to: recipient.address,
+              data: encodedFunction,
+              from: senderAddress,
+              nonce: senderNonce,
+              value: '0',
+              gas: gasLimit.toString()
+            },
+            relayData: {
+              baseRelayFee: '0',
+              pctRelayFee: '0',
+              gasPrice: '1',
+              relayWorker,
+              forwarder,
+              paymaster: paymaster.address,
+              paymasterData,
+              clientId
+            }
+          }
+          const dataToSign = new TypedRequestData(
+            chainId,
+            forwarder,
+            relayRequest
+          )
+          const signature = await getEip712Signature(
+            web3,
+            dataToSign
+          )
+          const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', externalGasLimit, {
+            from: relayWorker,
+            gas: externalGasLimit,
+            gasPrice: gasPrice
+          })
+          const resultEvent = res.logs.find(e => e.event === 'TransactionResult')
+          if (len === 0) {
+            assert.equal(resultEvent, null, 'should not get TransactionResult with zero len')
+          } else {
+            assert.notEqual(resultEvent, null, 'didn\'t get TrasnactionResult where it should.')
+          }
+          const gasUsed = res.receipt.gasUsed
+          const diff = await diffBalances(await beforeBalances)
+          assert.equal(diff.paymasters, gasUsed)
+        })
+      })
+  })
+
   describe('check calculation does not break for different fees', function () {
     before(async function () {
       await relayHub.depositFor(relayOwner, { value: (1).toString() })
     });
 
-    [0, 100, 1000, 50000]
+    [0, 1000]
       .forEach(messageLength =>
-        [0, 1, 10, 100, 1000]
+        [0, 1, 100]
           .forEach(requestedFee => {
             // avoid duplicate coverage checks. they do the same, and take a lot of time:
             if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return
@@ -280,12 +356,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               const beforeBalances = await getBalances()
               const pctRelayFee = requestedFee.toString()
               const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
-              let encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
-              if (messageLength === 0) {
-                // test with different method: emitMessageNoParams doesn't return a value, while emitMessage does.
-                // this makes sure gas calculation is not dependent on return values.
-                encodedFunction = recipient.contract.methods.emitMessageNoParams().encodeABI()
-              }
+              const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
               const baseRelayFee = '0'
               const relayRequest: RelayRequest = {
                 request: {

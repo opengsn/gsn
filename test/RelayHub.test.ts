@@ -2,7 +2,7 @@ import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-he
 import BN from 'bn.js'
 import { expect } from 'chai'
 
-import { getEip712Signature, removeHexPrefix } from '../src/common/Utils'
+import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '../src/common/Utils'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 import { defaultEnvironment } from '../src/common/Environments'
 import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
@@ -16,7 +16,7 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance
 } from '../types/truffle-contracts'
-import { deployHub } from './TestUtils'
+import { deployHub, encodeRevertReason } from './TestUtils'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -335,7 +335,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               from: relayWorker,
               gas: 7e6
             })
-          assert.equal(relayCallView.revertReason, '')
+          assert.equal(relayCallView.returnValue, null)
           assert.equal(relayCallView.paymasterAccepted, true)
         })
 
@@ -345,8 +345,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             await relayHubInstance.contract.methods
               .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
               .call({ from: relayWorker })
+
           assert.equal(relayCallView.paymasterAccepted, false)
-          assert.equal(relayCallView.revertReason, 'invalid code')
+
+          assert.equal(relayCallView.returnValue, encodeRevertReason('invalid code'))
+          assert.equal(decodeRevertReason(relayCallView.returnValue), 'invalid code')
         })
       })
 
@@ -457,7 +460,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             gasPrice
           })
 
-          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: 'nonce mismatch' })
+          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
         })
         // This test is added due to a regression that almost slipped to production.
         it('relayCall executes the transaction with no parameters', async function () {
@@ -537,7 +540,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gasPrice
             })
 
-          expectEvent.inLogs(logs, 'TransactionRejectedByPaymaster', { reason: 'invalid code' })
+          expectEvent.inLogs(logs, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('invalid code') })
         })
 
         it('should not accept relay requests if gas limit is too low for a relayed transaction', async function () {
@@ -633,7 +636,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           assert.equal(0, logsMessages.length)
           // const expectedReturnValue = '0x08c379a0' + removeHexPrefix(web3.eth.abi.encodeParameter('string', 'You asked me to revert, remember?'))
           expectEvent.inLogs(logs, 'TransactionRejectedByPaymaster', {
-            reason: 'You asked me to revert, remember?'
+            reason: encodeRevertReason('You asked me to revert, remember?')
           })
         })
 

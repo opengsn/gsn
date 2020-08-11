@@ -7,7 +7,7 @@
 pragma solidity ^0.6.9;
 pragma experimental ABIEncoderV2;
 
-import "./0x/LibBytesV06.sol";
+import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/GsnUtils.sol";
@@ -19,8 +19,9 @@ import "./forwarder/IForwarder.sol";
 import "./interfaces/IStakeManager.sol";
 
 contract RelayHub is IRelayHub {
+    using SafeMath for uint256;
 
-    string public override versionHub = "2.0.0-alpha.3+opengsn.hub.irelayhub";
+    string public override versionHub = "2.0.0-beta.1+opengsn.hub.irelayhub";
 
     uint256 public override minimumStake;
     uint256 public override minimumUnstakeDelay;
@@ -94,7 +95,7 @@ contract RelayHub is IRelayHub {
         uint256 amount = msg.value;
         require(amount <= maximumRecipientDeposit, "deposit too big");
 
-        balances[target] = SafeMath.add(balances[target], amount);
+        balances[target] = balances[target].add(amount);
 
         emit Deposited(target, msg.sender, amount);
     }
@@ -107,7 +108,7 @@ contract RelayHub is IRelayHub {
         address payable account = msg.sender;
         require(balances[account] >= amount, "insufficient funds");
 
-        balances[account] -= amount;
+        balances[account] = balances[account].sub(amount);
         dest.transfer(amount);
 
         emit Withdrawn(account, dest, amount);
@@ -127,10 +128,10 @@ contract RelayHub is IRelayHub {
         require(paymasterMaxAcceptanceBudget > gasLimits.acceptanceBudget, "unexpected high acceptanceBudget");
 
         maxPossibleGas =
-            gasOverhead +
-            gasLimits.preRelayedCallGasLimit +
-            gasLimits.postRelayedCallGasLimit +
-            relayRequest.request.gas;
+            gasOverhead.add(
+            gasLimits.preRelayedCallGasLimit).add(
+            gasLimits.postRelayedCallGasLimit).add(
+            relayRequest.request.gas);
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
@@ -171,11 +172,11 @@ contract RelayHub is IRelayHub {
     )
     external
     override
-    returns (bool paymasterAccepted, string memory revertReason)
+    returns (bool paymasterAccepted, bytes memory returnValue)
     {
         (signature);
         RelayCallData memory vars;
-        vars.functionSelector = LibBytesV06.readBytes4(relayRequest.request.data, 0);
+        vars.functionSelector = MinLibBytes.readBytes4(relayRequest.request.data, 0);
         require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
@@ -197,7 +198,6 @@ contract RelayHub is IRelayHub {
         vars.gasBeforeInner = gasleft();
 
         uint256 _tmpInitialGas = innerGasLimit + externalGasLimit + gasOverhead + postOverhead;
-
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
@@ -223,7 +223,6 @@ contract RelayHub is IRelayHub {
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
             )) {
                 paymasterAccepted=false;
-                revertReason = GsnUtils.getError(vars.relayedCallReturnValue);
 
                 emit TransactionRejectedByPaymaster(
                     workerToManager[msg.sender],
@@ -233,19 +232,16 @@ contract RelayHub is IRelayHub {
                     msg.sender,
                     vars.functionSelector,
                     vars.innerGasUsed,
-                    revertReason);
-                return (false, revertReason);
+                    vars.relayedCallReturnValue);
+                return (false, vars.relayedCallReturnValue);
             }
         }
         // We now perform the actual charge calculation, based on the measured gas used
         uint256 gasUsed = (externalGasLimit - gasleft()) + gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
-        // We've already checked that the paymaster has enough balance to pay for the relayed transaction, this is only
-        // a sanity check to prevent overflows in case of bugs.
-        require(balances[relayRequest.relayData.paymaster] >= charge, "Should not get here");
-        balances[relayRequest.relayData.paymaster] -= charge;
-        balances[workerToManager[msg.sender]] += charge;
+        balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
+        balances[workerToManager[msg.sender]] = balances[workerToManager[msg.sender]].add(charge);
 
         emit TransactionRelayed(
             workerToManager[msg.sender],
@@ -307,7 +303,8 @@ contract RelayHub is IRelayHub {
             bytes memory retData;
             (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(vars.data);
             if (!success) {
-                revertWithStatus(RelayCallStatus.RejectedByPreRelayed, GsnEip712Library.getTruncatedData(retData));
+                GsnEip712Library.truncateInPlace(retData);
+                revertWithStatus(RelayCallStatus.RejectedByPreRelayed, retData);
             }
             (vars.recipientContext, vars.rejectOnRecipientRevert) = abi.decode(retData, (bytes,bool));
         }
@@ -341,7 +338,7 @@ contract RelayHub is IRelayHub {
         (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(vars.data);
 
         if (!successPost) {
-            revertWithStatus(RelayCallStatus.PostRelayedFailed, GsnEip712Library.getTruncatedData(ret));
+            revertWithStatus(RelayCallStatus.PostRelayedFailed, ret);
         }
         }
 
@@ -357,6 +354,7 @@ contract RelayHub is IRelayHub {
      */
     function revertWithStatus(RelayCallStatus status, bytes memory ret) private pure {
         bytes memory data = abi.encode(status, ret);
+        GsnEip712Library.truncateInPlace(data);
 
         assembly {
             let dataSize := mload(data)
@@ -367,7 +365,8 @@ contract RelayHub is IRelayHub {
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
-        return relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
+        //       relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
+        return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 
     modifier penalizerOnly () {
