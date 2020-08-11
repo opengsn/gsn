@@ -1,0 +1,25 @@
+#!/bin/bash -xe
+
+# performs SSH into given machine and executes a relaydc command on it with args
+if [ -z $2 ]; then
+cat <<EOF
+rdc - remote relaydc (to google cloud)
+usage: $0 {user@host} {docker-compose params}
+To run on local machine:
+  $0 local {docker-compose params}
+EOF
+exit 1
+fi
+
+host=$1
+shift
+args="$@"
+
+
+RDC='docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=$PWD -v $PWD/.env:/.env opengsn/relaydc'
+
+if [ $host == 'local' ]; then
+sh -c "$RDC $args"
+else
+ssh $host $RDC $args 
+fi
