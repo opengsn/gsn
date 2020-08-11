@@ -120,7 +120,7 @@ context('#ServerConfigParams', () => {
   context('#resolveServerConfig', () => {
     const provider = web3.currentProvider
     it('should fail on missing hub/oracle', async () => {
-      await expectRevert(resolveServerConfig({}, provider), 'must have either relayHubAddress or VersionRegistryAddress')
+      await expectRevert(resolveServerConfig({}, provider), 'missing param: must have either relayHubAddress or versionRegistryAddress')
     })
 
     it('should fail on invalid relayhub address', async () => {
