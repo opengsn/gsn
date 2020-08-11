@@ -1,6 +1,6 @@
 import parseArgs from 'minimist'
 import * as fs from 'fs'
-import { VersionOracle } from '../common/VersionOracle'
+import { VersionRegistry } from '../common/VersionRegistry'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 
@@ -12,8 +12,8 @@ export interface ServerConfigParams {
   pctRelayFee: number
   url: string
   port: number
-  versionOracleAddress: string
-  versionOracleDelayPeriod?: number
+  versionRegistryAddress: string
+  versionRegistryDelayPeriod?: number
   relayHubId?: string
   relayHubAddress: string
   gasPricePercent: number
@@ -46,8 +46,8 @@ const ConfigParamsTypes = {
   pctRelayFee: 'number',
   url: 'string',
   port: 'number',
-  versionOracleAddress: 'string',
-  versionOracleDelayPeriod: 'number',
+  versionRegistryAddress: 'string',
+  versionRegistryDelayPeriod: 'number',
   relayHubId: 'string',
   relayHubAddress: 'string',
   gasPricePercent: 'number',
@@ -68,8 +68,8 @@ const ConfigParamsTypes = {
 
 } as any
 
-// by default: no waiting period - use VersionOracle entries immediately.
-const DefaultOracleDelayPeriod = 0
+// by default: no waiting period - use VersionRegistry entries immediately.
+const DefaultRegistryDelayPeriod = 0
 
 // helper function: throw and never return..
 function error (err: string): never {
@@ -154,17 +154,17 @@ function isDefined (obj: any): boolean {
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
-  if (config.versionOracleAddress != null) {
+  if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
-      error('missing param: must have either relayHubAddress or versionOracleAddress')
+      error('missing param: must have either relayHubAddress or versionRegistryAddress')
     }
-    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from versionOracle')
-    if (!await contractInteractor.isContract(config.versionOracleAddress)) {
-      error('Invalid param versionOracleAddress: no contract at address ' + config.versionOracleAddress)
+    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
+    if (!await contractInteractor.isContract(config.versionRegistryAddress)) {
+      error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }
 
-    const versionOracle = new VersionOracle(web3provider, config.versionOracleAddress)
-    const { version, value, time } = await versionOracle.getVersion(relayHubId, config.versionOracleDelayPeriod ?? DefaultOracleDelayPeriod)
+    const versionRegistry = new VersionRegistry(web3provider, config.versionRegistryAddress)
+    const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
     try {
       contractInteractor.validateAddress(value)
     } catch (e) {
@@ -174,12 +174,12 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     config.relayHubAddress = value
   } else {
     if (config.relayHubAddress == null) {
-      error('missing param: must have either relayHubAddress or versionOracleAddress')
+      error('missing param: must have either relayHubAddress or versionRegistryAddress')
     }
   }
 
   if (!await contractInteractor.isContract(config.relayHubAddress)) {
-    error('RelayHub: no contract at address ' + config.relayHubAddress)
+    error(`RelayHub: no contract at address ${config.relayHubAddress}`)
   }
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')

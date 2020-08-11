@@ -8,12 +8,12 @@ import {
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import {
-  VersionOracleInstance
+  VersionRegistryInstance
 } from '../../types/truffle-contracts'
-import { string32 } from '../../src/common/VersionOracle'
+import { string32 } from '../../src/common/VersionRegistry'
 
 require('source-map-support').install({ errorFormatterForce: true })
-const VersionOracleContract = artifacts.require('VersionOracle')
+const VersionRegistryContract = artifacts.require('VersionRegistry')
 
 function expectThrow (func: () => void, match: string): void {
   try {
@@ -120,7 +120,7 @@ context('#ServerConfigParams', () => {
   context('#resolveServerConfig', () => {
     const provider = web3.currentProvider
     it('should fail on missing hub/oracle', async () => {
-      await expectRevert(resolveServerConfig({}, provider), 'must have either relayHubAddress or versionOracleAddress')
+      await expectRevert(resolveServerConfig({}, provider), 'must have either relayHubAddress or VersionRegistryAddress')
     })
 
     it('should fail on invalid relayhub address', async () => {
@@ -133,33 +133,33 @@ context('#ServerConfigParams', () => {
       await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x1111111111111111111111111111111111111111')
     })
 
-    it('should fail on missing hubid for versionoracle', async () => {
-      const config = { versionOracleAddress: addr(1) }
-      await expectRevert(resolveServerConfig(config, provider), 'missing param: relayHubId to read from versionOracle')
+    it('should fail on missing hubid for VersionRegistry', async () => {
+      const config = { versionRegistryAddress: addr(1) }
+      await expectRevert(resolveServerConfig(config, provider), 'missing param: relayHubId to read from VersionRegistry')
     })
 
-    it('should fail on no-contract versionOracle address', async () => {
-      const config = { versionOracleAddress: addr(1), relayHubId: 'hubid' }
-      await expectRevert(resolveServerConfig(config, provider), 'Invalid param versionOracleAddress: no contract at address 0x1111111111111111111111111111111111111111')
+    it('should fail on no-contract VersionRegistry address', async () => {
+      const config = { versionRegistryAddress: addr(1), relayHubId: 'hubid' }
+      await expectRevert(resolveServerConfig(config, provider), 'Invalid param versionRegistryAddress: no contract at address 0x1111111111111111111111111111111111111111')
     })
 
-    contract('with versionOracle', () => {
-      let oracle: VersionOracleInstance
+    contract('with VersionRegistry', () => {
+      let oracle: VersionRegistryInstance
 
       before(async () => {
-        oracle = await VersionOracleContract.new()
+        oracle = await VersionRegistryContract.new()
         await oracle.addVersion(string32('hub-invalidaddr'), string32('1.0'), 'garbagevalue')
         await oracle.addVersion(string32('hub-nocontract'), string32('1.0'), addr(2))
         await oracle.addVersion(string32('hub-wrongcontract'), string32('1.0'), oracle.address)
       })
 
       it('should fail on invalid hub address in oracle', async () => {
-        const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
+        const config = { versionRegistryAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
         await expectRevert(resolveServerConfig(config, provider), 'Invalid param relayHubId hub-invalidaddr@1.0: not an address: garbagevalue')
       })
 
       it('should fail on no contract at hub address in oracle', async () => {
-        const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-nocontract' }
+        const config = { versionRegistryAddress: oracle.address, relayHubId: 'hub-nocontract' }
         await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x2222222222222222222222222222222222222222')
       })
     })
