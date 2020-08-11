@@ -50,7 +50,6 @@ module.exports = {
           {
             allowNumber: true,
             allowBoolean: true,
-            allowAny: true,
             allowNullish: true,
             allowNullable: true
           }

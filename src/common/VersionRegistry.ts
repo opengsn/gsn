@@ -1,9 +1,9 @@
-// accessor class for the on-chain version oracle
+// accessor class for the on-chain version registry
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { Contract } from 'web3-eth-contract'
 
-import versionOracleAbi from '../common/interfaces/IVersionOracle.json'
+import versionRegistryAbi from '../common/interfaces/IVersionRegistry.json'
 import Web3 from 'web3'
 
 export function string32 (s: string): PrefixedHexString {
@@ -22,17 +22,18 @@ export interface VersionInfo {
   canceled: boolean
 }
 
-export class VersionOracle {
-  oracle: Contract
+export class VersionRegistry {
+  registryContract: Contract
   web3: Web3
 
-  constructor (web3provider: any, oracleAddress: PrefixedHexString) {
+  constructor (web3provider: any, registryAddress: PrefixedHexString) {
     this.web3 = new Web3(web3provider)
-    this.oracle = new this.web3.eth.Contract(versionOracleAbi as any, oracleAddress)
+    this.registryContract = new this.web3.eth.Contract(versionRegistryAbi as any, registryAddress)
   }
 
   /**
-   * return the latest "mature" version from teh oracle
+   * return the latest "mature" version from the registry
+   *
    * @param id object id to return a version for
    * @param delayPeriod - don't return entries younger than that (in seconds)
    * @param optInVersion - if set, return this version even if it is young
@@ -55,7 +56,7 @@ export class VersionOracle {
    * @param id object id to return version history for
    */
   async getAllVersions (id: string): Promise<VersionInfo[]> {
-    const events = await this.oracle.getPastEvents('allEvents', { fromBlock: 1, topics: [null, string32(id)] })
+    const events = await this.registryContract.getPastEvents('allEvents', { fromBlock: 1, topics: [null, string32(id)] })
     const canceled = new Set<string>(events.filter(e => e.event === 'VersionCanceled').map(e => e.returnValues.version))
     const found = new Set<string>()
     return events

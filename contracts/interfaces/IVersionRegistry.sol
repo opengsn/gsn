@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
 
-interface IVersionOracle {
+interface IVersionRegistry {
 
     //event emitted whenever a version is added
     event VersionAdded(bytes32 indexed id, bytes32 version, string value, uint time);

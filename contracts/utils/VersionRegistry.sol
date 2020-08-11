@@ -2,10 +2,10 @@
 pragma solidity ^0.6.2;
 // solhint-disable not-rely-on-time
 
-import "../interfaces/IVersionOracle.sol";
+import "../interfaces/IVersionRegistry.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract VersionOracle is IVersionOracle, Ownable {
+contract VersionRegistry is IVersionRegistry, Ownable {
 
     function addVersion(bytes32 id, bytes32 version, string calldata value) external override onlyOwner {
         require(id != bytes32(0), "missing id");
