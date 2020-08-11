@@ -96,9 +96,9 @@ export function filterMembers (env: any, config: any): any {
 // map value from string into its explicit type (number, boolean)
 // TODO; maybe we can use it for more specific types, such as "address"..
 function explicitType ([key, val]: [string, any]): any {
-  const type = ConfigParamsTypes[key]
+  const type = ConfigParamsTypes[key] as string
   if (type === undefined) {
-    error(`unexpected param ${key}=${val}`)
+    error(`unexpected param ${key}=${val as string}`)
   }
   switch (type) {
     case 'boolean' :
@@ -115,7 +115,7 @@ function explicitType ([key, val]: [string, any]): any {
     default:
       return [key, val]
   }
-  error(`Invalid ${type}: ${key} = ${val}`)
+  error(`Invalid ${type}: ${key} = ${val as string}`)
 }
 
 /**
@@ -136,11 +136,12 @@ export function parseServerConfig (args: string[], env: any): any {
   }
   delete argv._
   let configFile = {}
-  if (argv.config != null) {
-    if (!fs.existsSync(argv.config)) {
-      error(`unable to read config file "${argv.config}"`)
+  const configFileName = argv.config as string
+  if (configFileName != null) {
+    if (!fs.existsSync(configFileName)) {
+      error(`unable to read config file "${configFileName}"`)
     }
-    configFile = JSON.parse(fs.readFileSync(argv.config, 'utf8'))
+    configFile = JSON.parse(fs.readFileSync(configFileName, 'utf8'))
   }
   const config = { ...configFile, ...argv }
   return entriesToObj(Object.entries(config).map(explicitType))
@@ -180,7 +181,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (!await contractInteractor.isContract(config.relayHubAddress)) {
     error('RelayHub: no contract at address ' + config.relayHubAddress)
   }
-  if ( config.url == null ) error( 'missing param: url')
-  if ( config.workdir == null ) error( 'missing param: workdir')
+  if (config.url == null) error('missing param: url')
+  if (config.workdir == null) error('missing param: workdir')
   return { ...ServerDefaultParams, ...config }
 }

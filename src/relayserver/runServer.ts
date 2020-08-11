@@ -43,7 +43,7 @@ async function run (): Promise<void> {
   const txStoreManager = new TxStoreManager({ workdir })
   const gasPriceFactor = (config.gasPricePercent + 100) / 100
   const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
-  const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress}))
+  const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
 
   const params = {
     contractInteractor,

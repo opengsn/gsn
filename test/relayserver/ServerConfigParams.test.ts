@@ -61,6 +61,24 @@ context('#ServerConfigParams', () => {
         parseServerConfig(['--devMode=true', '--relayHubAddress=123'], {}),
         { devMode: true, relayHubAddress: '123' })
     })
+
+    it('cmdline should override env, which should override file', async () => {
+      fs.writeFileSync(tmpConfigfile, JSON.stringify({ url: 'fileparam' }))
+      const env = { url: 'envparam' }
+      // just file
+      assert.deepInclude(
+        parseServerConfig(['--config', tmpConfigfile], {}),
+        { url: 'fileparam' })
+      // file+env
+      assert.deepInclude(
+        parseServerConfig(['--config', tmpConfigfile], env),
+        { url: 'envparam' })
+      // file+env+cmdline
+      assert.deepInclude(
+        parseServerConfig(['--config', tmpConfigfile, '--url', 'cmdparam'], env),
+        { url: 'cmdparam' })
+    })
+
     it('should use env as defaults', function () {
       assert.deepEqual(
         parseServerConfig(['--devMode=true', '--relayHubAddress=123'], {
@@ -69,23 +87,29 @@ context('#ServerConfigParams', () => {
         }),
         { devMode: true, relayHubAddress: '123', url: 'urlFromEnv' })
     })
+
     it('should throw on unknown cmdline param', function () {
       expectThrow(() => parseServerConfig(['--asdasd'], {}), 'unexpected param asdasd')
     })
+
     it('should throw on invalid type of cmdline param', function () {
       expectThrow(() => parseServerConfig(['--debug=asd'], {}), 'Invalid boolean: debug')
     })
+
     it('should throw on missing config file', function () {
       expectThrow(() => parseServerConfig(['--config=nosuchfile'], {}), 'unable to read config file')
     })
+
     it('should abort on invalid config file', function () {
       fs.writeFileSync(tmpConfigfile, 'asdasd')
       expectThrow(() => parseServerConfig(['--config', tmpConfigfile], {}), 'SyntaxError')
     })
+
     it('should abort on unknown param in config file', function () {
       fs.writeFileSync(tmpConfigfile, '{"asd":123}')
       expectThrow(() => parseServerConfig(['--config', tmpConfigfile], {}), 'unexpected param asd')
     })
+
     it('should read param from file if no commandline or env', function () {
       fs.writeFileSync(tmpConfigfile, '{"pctRelayFee":123, "baseRelayFee":234, "port":345}')
       assert.deepEqual(
@@ -103,18 +127,22 @@ context('#ServerConfigParams', () => {
       const config = { relayHubAddress: '123' }
       await expectRevert(resolveServerConfig(config, provider), 'invalid address: 123')
     })
+
     it('should fail on no-contract relayhub address', async () => {
       const config = { relayHubAddress: addr(1) }
       await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x1111111111111111111111111111111111111111')
     })
+
     it('should fail on missing hubid for versionoracle', async () => {
       const config = { versionOracleAddress: addr(1) }
-      await expectRevert(resolveServerConfig(config, provider), 'missing relayHubId to read from versionOracle')
+      await expectRevert(resolveServerConfig(config, provider), 'missing param: relayHubId to read from versionOracle')
     })
+
     it('should fail on no-contract versionOracle address', async () => {
       const config = { versionOracleAddress: addr(1), relayHubId: 'hubid' }
-      await expectRevert(resolveServerConfig(config, provider), 'VersionOracle: no contract at address 0x1111111111111111111111111111111111111111')
+      await expectRevert(resolveServerConfig(config, provider), 'Invalid param versionOracleAddress: no contract at address 0x1111111111111111111111111111111111111111')
     })
+
     contract('with versionOracle', () => {
       let oracle: VersionOracleInstance
 
@@ -127,8 +155,9 @@ context('#ServerConfigParams', () => {
 
       it('should fail on invalid hub address in oracle', async () => {
         const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
-        await expectRevert(resolveServerConfig(config, provider), 'Invalid relayHubId hub-invalidaddr@1.0: not an address: garbagevalue')
+        await expectRevert(resolveServerConfig(config, provider), 'Invalid param relayHubId hub-invalidaddr@1.0: not an address: garbagevalue')
       })
+
       it('should fail on no contract at hub address in oracle', async () => {
         const config = { versionOracleAddress: oracle.address, relayHubId: 'hub-nocontract' }
         await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x2222222222222222222222222222222222222222')
