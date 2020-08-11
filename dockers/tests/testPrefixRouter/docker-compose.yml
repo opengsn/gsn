@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+    router: 
+      image: opengsn/prefixrouter:test
+      ports:
+        - 12345:80
+      command:
+        - proca
+        - procb
+
+    proca: 
+      image: containous/whoami
+      command: -name proca
+
+    procb: 
+      image: containous/whoami
+      command: -name procb
+
+#Using "whoami" mini http service, which dumps the environment and docker name and HTTP request 
