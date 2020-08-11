@@ -749,6 +749,7 @@ export class RelayServer extends EventEmitter {
   }
 
   async _handleTransactionRejectedByPaymasterEvent (dlog: DecodeLogsEvent, blockNumber: number): Promise<void> {
+    console.log('handle TransactionRejectedByPaymaster event', dlog)
     // sanity checks
     if (dlog.name !== 'TransactionRejectedByPaymaster' || dlog.args.relayManager.toLowerCase() !== this.managerAddress.toLowerCase()) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

@@ -65,12 +65,12 @@ interface IPaymaster {
      * The Paymaster rejects by the following "revert" operations
      *  - preRelayedCall() method reverts
      *  - the forwarder reverts because of nonce or signature error
-     *  - the paymaster returned "revertOnRecipientRevert", and the recipient contract reverted.
+     *  - the paymaster returned "rejectOnRecipientRevert", and the recipient contract reverted.
      * In any of the above cases, all paymaster calls (and recipient call) are reverted.
      * In any other case, the paymaster agrees to pay for the gas cost of the transaction (note
      *  that this includes also postRelayedCall revert)
      *
-     * The revertOnRecipientRevert flag means the Paymaster "delegate" the rejection to the recipient
+     * The rejectOnRecipientRevert flag means the Paymaster "delegate" the rejection to the recipient
      *  code.  It also means the Paymaster trust the recipient to reject fast: both preRelayedCall,
      *  forwarder check and receipient checks must fit into the GasLimits.acceptanceBudget,
      *  otherwise the TX is paid by the Paymaster.
