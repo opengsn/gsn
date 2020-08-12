@@ -1,0 +1,2 @@
+docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=$PWD -v $PWD/.env:/.env opengsn/relaydc:test2 "$@"
+

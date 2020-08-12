@@ -109,7 +109,7 @@ export default class CommandsLogic {
       try {
         isReady = await this.isRelayReady(relayUrl)
       } catch (e) {
-        console.log(e)
+        console.log(e.message)
       }
       if (isReady) {
         return
@@ -173,7 +173,9 @@ export default class CommandsLogic {
 
       const response = await this.httpClient.getPingResponse(options.relayUrl)
       const relayAddress = response.RelayManagerAddress
-      const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
+      const relayHubAddress = this.config.relayHubAddress ?? response.RelayHubAddress
+
+      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       stakeTx = await stakeManager
@@ -184,7 +186,7 @@ export default class CommandsLogic {
           gasPrice: 1e9
         })
       authorizeTx = await stakeManager
-        .authorizeHubByOwner(relayAddress, this.config.relayHubAddress, {
+        .authorizeHubByOwner(relayAddress, relayHubAddress, {
           from: options.from,
           gas: 1e6,
           gasPrice: 1e9
