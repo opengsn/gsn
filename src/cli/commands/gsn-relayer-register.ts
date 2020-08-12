@@ -30,6 +30,11 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
     relayUrl: commander.relayUrl ?? 'http://localhost:8090',
     unstakeDelay: commander.unstakeDelay ?? 1000
   }
+  if (registerOptions.from == null) {
+    console.error('Failed to find a wealthy "from" address')
+    process.exit(1)
+  }
+
   const result = await logic.registerRelay(registerOptions)
   if (result.success) {
     console.log('Relay registered successfully! Transactions:\n', result.transactions)
