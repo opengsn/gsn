@@ -191,6 +191,7 @@ export default class ContractInteractor {
   }
 
   async validateAcceptRelayCall (
+    paymasterMaxAcceptanceBudget: number,
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
@@ -199,6 +200,7 @@ export default class ContractInteractor {
       const externalGasLimit = await this._getBlockGasLimit()
 
       const res = await relayHub.contract.methods.relayCall(
+        paymasterMaxAcceptanceBudget,
         relayRequest,
         signature,
         approvalData,
@@ -227,11 +229,11 @@ export default class ContractInteractor {
     }
   }
 
-  encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
+  encodeABI (paymasterMaxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
     // TODO: check this works as expected
     // @ts-ignore
     const relayHub = new this.IRelayHubContract('')
-    return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+    return relayHub.contract.methods.relayCall(paymasterMaxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   topicsForManagers (relayManagers: Address[]): string[] {

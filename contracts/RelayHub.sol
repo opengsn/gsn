@@ -115,6 +115,7 @@ contract RelayHub is IRelayHub {
     }
 
     function verifyGasLimits(
+        uint256 paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGas
     )
@@ -123,6 +124,9 @@ contract RelayHub is IRelayHub {
     returns (IPaymaster.GasLimits memory gasLimits, uint256 maxPossibleGas) {
         gasLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
+
+        require(paymasterMaxAcceptanceBudget >= gasLimits.acceptanceBudget, "unexpected high acceptanceBudget");
+
         maxPossibleGas =
             gasOverhead.add(
             gasLimits.preRelayedCallGasLimit).add(
@@ -160,6 +164,7 @@ contract RelayHub is IRelayHub {
     }
 
     function relayCall(
+        uint paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -183,7 +188,7 @@ contract RelayHub is IRelayHub {
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         (vars.gasLimits, vars.maxPossibleGas) =
-             verifyGasLimits(relayRequest, externalGasLimit);
+             verifyGasLimits(paymasterMaxAcceptanceBudget, relayRequest, externalGasLimit);
 
     {
 
