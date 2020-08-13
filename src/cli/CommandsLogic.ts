@@ -15,7 +15,7 @@ import RelayHub from './compiled/RelayHub.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
-
+import VersionRegistryAbi from './compiled/VersionRegistry.json'
 import { Address, notNull } from '../relayclient/types/Aliases'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
@@ -24,6 +24,7 @@ import HttpWrapper from '../relayclient/HttpWrapper'
 import { GsnRequestType } from '../common/EIP712/TypedRequestData'
 import { constants } from '../common/Constants'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
+import { string32 } from '../common/VersionRegistry'
 
 interface RegisterOptions {
   from: Address
@@ -41,6 +42,8 @@ interface DeployOptions {
   relayHubAddress?: string
   stakeManagerAddress?: string
   penalizerAddress?: string
+  registryAddress?: string
+  registryHubId?: string
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
@@ -51,6 +54,7 @@ export interface DeploymentResult {
   stakeManagerAddress: Address
   penalizerAddress: Address
   forwarderAddress: Address
+  versionRegistryAddress: Address
   naivePaymasterAddress: Address
 }
 
@@ -249,6 +253,12 @@ export default class CommandsLogic {
         deployOptions.relayHubConfiguration.minimumStake]
     }, deployOptions.relayHubAddress, merge({}, options, { gas: 5e6 }), deployOptions.skipConfirmation)
 
+    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    if (deployOptions.registryHubId != null) {
+      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ from: deployOptions.from })
+      console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
+    }
+
     let paymasterAddress = constants.ZERO_ADDRESS
     if (deployOptions.deployPaymaster === true) {
       const pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
@@ -270,6 +280,7 @@ export default class CommandsLogic {
       stakeManagerAddress: sInstance.options.address,
       penalizerAddress: pInstance.options.address,
       forwarderAddress: fInstance.options.address,
+      versionRegistryAddress: regInstance.options.address,
       naivePaymasterAddress: paymasterAddress
     }
   }

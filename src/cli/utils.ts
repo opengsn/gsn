@@ -70,6 +70,7 @@ export function saveDeployment (deploymentResult: DeploymentResult, workdir: str
   saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
   saveContractToFile(deploymentResult.naivePaymasterAddress, workdir, 'Paymaster.json')
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
+  saveContractToFile(deploymentResult.versionRegistryAddress, workdir, 'VersionRegistry.json')
 }
 
 export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
@@ -80,23 +81,23 @@ export function showDeployment (deploymentResult: DeploymentResult, title: strin
   RelayHub: ${deploymentResult.relayHubAddress}
   StakeManager: ${deploymentResult.stakeManagerAddress}
   Penalizer: ${deploymentResult.penalizerAddress}
+  VersionRegistry: ${deploymentResult.versionRegistryAddress}
   Forwarder: ${deploymentResult.forwarderAddress}
   Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.naivePaymasterAddress}`)
 }
 
 export function loadDeployment (workdir: string): DeploymentResult {
   function getAddress (name: string): string {
-    const address = getAddressFromFile(path.join(workdir, name + '.json'))
-    if (address != null) { return address }
-    throw new Error('no address for ' + name)
+    return getAddressFromFile(path.join(workdir, name + '.json')) as string
   }
 
   return {
     relayHubAddress: getAddress('RelayHub'),
     stakeManagerAddress: getAddress('StakeManager'),
-    penalizerAddress: getAddress('Penalizer.json'),
-    forwarderAddress: getAddress('Forwarder.json'),
-    naivePaymasterAddress: getAddress('Paymaster.json')
+    penalizerAddress: getAddress('Penalizer'),
+    forwarderAddress: getAddress('Forwarder'),
+    versionRegistryAddress: getAddress('VersionRegistry'),
+    naivePaymasterAddress: getAddress('Paymaster')
   }
 }
 

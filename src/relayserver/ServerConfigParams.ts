@@ -157,7 +157,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
     }
     const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
-    contractInteractor.validateAddress(config.versionRegistryAddress)
+    contractInteractor.validateAddress(config.versionRegistryAddress, 'Invalid param versionRegistryAddress: ')
     if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
       error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }

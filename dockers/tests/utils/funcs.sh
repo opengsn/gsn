@@ -26,8 +26,11 @@ function print {
 #print "progress" message - without newline.
 # next print/progress will clear it out, and dump over it.
 function progress {
+	#just in case progress is called twice in a sequence
+    printf "$cleanprogress"
     printf "${NC}$*${NC}\r"
-    cleanprogress="                                                                                   \r"
+ 	#cleanprogress is a whitespace string long enough to hige the above progress text.."
+    cleanprogress="\r`echo "$*"|sed -e 's/./ /g'`\r"
 }
 
 function reportfail {
@@ -121,7 +124,7 @@ function waitForUrl {
   count=$TIMEOUT
   test -z "$count" && count=10
 
-  progress "waiting for: $url"
+  progress "waiting for: $title"
 
   while [ $count != "0" ]; do 
     resp=`curl -s $url`
@@ -148,7 +151,9 @@ case `uname` in
         test -z "$MYIP" && export MYIP=`ifconfig|grep -v 127.0.0.1| awk '/inet / {print $2}'`
         ;;
     *)
-        fatal "No implementation for MYIP under `uname`"
+	#TODO: validate implemetation!!
+        test -z "$MYIP" && export MYIP=`hostname -I | awk '{print $1}'`
+	;;
 esac
 
 
