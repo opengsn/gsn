@@ -115,13 +115,13 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
         from: activeRelayWorkersAdded
       })
-      await relayHub.relayCall(txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
+      await relayHub.relayCall(10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
         from: workerTransactionRelayed,
         gas,
         gasPrice: txTransactionRelayed.relayRequest.relayData.gasPrice
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
+      await relayHub.relayCall(10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
         from: workerPaymasterRejected,
         gas,
         gasPrice: txPaymasterRejected.relayRequest.relayData.gasPrice

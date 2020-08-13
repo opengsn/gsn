@@ -11,10 +11,10 @@ export default class BadRelayedTransactionValidator extends RelayedTransactionVa
     this.failValidation = failValidation
   }
 
-  validateRelayResponse (transactionJsonRequest: TmpRelayTransactionJsonRequest, returnedTx: string): boolean {
+  validateRelayResponse (transactionJsonRequest: TmpRelayTransactionJsonRequest, maxAcceptanceBudget: number, returnedTx: string): boolean {
     if (this.failValidation) {
       return false
     }
-    return super.validateRelayResponse(transactionJsonRequest, returnedTx)
+    return super.validateRelayResponse(transactionJsonRequest, maxAcceptanceBudget, returnedTx)
   }
 }

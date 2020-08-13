@@ -160,9 +160,9 @@ export class RelayClient {
     if (this.config.verbose) {
       console.log(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
     }
-    const { relayRequest, approvalData, signature, httpRequest } =
+    const { relayRequest, approvalData, signature, httpRequest, maxAcceptanceBudget } =
       await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
-    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(relayRequest, signature, approvalData)
+    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(maxAcceptanceBudget, relayRequest, signature, approvalData)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {
@@ -185,7 +185,7 @@ export class RelayClient {
       return { error }
     }
     const transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())
-    if (!this.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
+    if (!this.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
       this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return { error: new Error('Returned transaction did not pass validation') }
     }
@@ -198,7 +198,7 @@ export class RelayClient {
   async _prepareRelayHttpRequest (
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
-  ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
+  ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, maxAcceptanceBudget: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
     const forwarderAddress = await this.resolveForwarder(gsnTransactionDetails)
     const paymaster = gsnTransactionDetails.paymaster != null ? gsnTransactionDetails.paymaster : this.config.paymasterAddress
 
@@ -272,9 +272,12 @@ export class RelayClient {
     if (this.config.verbose) {
       console.log(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
     }
+    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.MaxAcceptanceBudget)
+
     return {
       relayRequest,
       relayMaxNonce,
+      maxAcceptanceBudget,
       approvalData,
       signature,
       httpRequest
