@@ -92,7 +92,7 @@ export function entriesToObj (entries: any[]): any {
 // filter and return from env only members that appear in "config"
 export function filterMembers (env: any, config: any): any {
   return entriesToObj(Object.entries(env)
-    .filter(e => isDefined(config[e[0]])))
+    .filter(e => config[e[0]] != null))
 }
 
 // map value from string into its explicit type (number, boolean)
@@ -147,10 +147,6 @@ export function parseServerConfig (args: string[], env: any): any {
   }
   const config = { ...configFile, ...argv }
   return entriesToObj(Object.entries(config).map(explicitType))
-}
-
-function isDefined (obj: any): boolean {
-  return obj !== null && obj !== undefined
 }
 
 // resolve params, and validate the resulting struct
