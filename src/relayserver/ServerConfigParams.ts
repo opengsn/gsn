@@ -22,6 +22,7 @@ export interface ServerConfigParams {
   devMode: boolean
   debug: boolean
   registrationBlockRate: number
+  maxAcceptanceBudget: number
   alertedBlockDelay: number
 
   workerMinBalance: number
@@ -56,6 +57,7 @@ const ConfigParamsTypes = {
   devMode: 'boolean',
   debug: 'boolean',
   registrationBlockRate: 'number',
+  maxAcceptanceBudget: 'number',
   alertedBlockDelay: 'number',
 
   workerMinBalance: 'number',
