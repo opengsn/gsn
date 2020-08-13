@@ -49,6 +49,10 @@ export function getRelayHubAddress (defaultAddress?: string): string | undefined
   return getAddressFromFile('build/gsn/RelayHub.json', defaultAddress)
 }
 
+export function getRegistryAddress (defaultAddress?: string): string | undefined {
+  return getAddressFromFile('build/gsn/VersionRegistry.json', defaultAddress)
+}
+
 function getAddressFromFile (path: string, defaultAddress?: string): string | undefined {
   if (defaultAddress == null) {
     if (fs.existsSync(path)) {

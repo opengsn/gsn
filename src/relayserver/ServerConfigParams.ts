@@ -164,7 +164,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
 
     const versionRegistry = new VersionRegistry(web3provider, config.versionRegistryAddress)
     const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
-    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId}@${version}: not an address:`)
+    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
 
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value
