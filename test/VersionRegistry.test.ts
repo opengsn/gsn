@@ -12,23 +12,33 @@ const { expect, assert } = chai.use(chaiAsPromised)
 require('source-map-support').install({ errorFormatterForce: true })
 const VersionRegistryContract = artifacts.require('VersionRegistry')
 
-context('VersionRegistry', () => {
+contract('VersionRegistry', ([account]) => {
   let now: number
   let registryContract: VersionRegistryInstance
   let jsRegistry: VersionRegistry
 
   before('create registry', async () => {
     registryContract = await VersionRegistryContract.new()
-    await registryContract.addVersion(string32('id'), string32('ver'), 'value')
-    await registryContract.addVersion(string32('another'), string32('ver'), 'anothervalue')
-    jsRegistry = new VersionRegistry(web3.currentProvider, registryContract.address)
+    jsRegistry = new VersionRegistry(web3.currentProvider, registryContract.address, { from: account })
+    await jsRegistry.addVersion('id', 'ver', 'value')
+    await jsRegistry.addVersion('another', 'ver', 'anothervalue')
   })
-  context('param validations', () => {
+  context('contract param validations', () => {
     it('should fail to add without id', async () => {
       await expectRevert(registryContract.addVersion(string32(''), string32(''), 'value'), 'missing id')
     })
     it('should fail to add without version', async () => {
       await expectRevert(registryContract.addVersion(string32('id'), string32(''), 'value'), 'missing version')
+    })
+  })
+  context('javascript param validations', () => {
+    it('should reject adding the same version again', async () => {
+      await expect(jsRegistry.addVersion('id', 'ver', 'changevalue'))
+        .to.eventually.be.rejectedWith('version already exists')
+    })
+    it('should rejecting canceling non-existent version', async () => {
+      await expect(jsRegistry.cancelVersion('nosuchid', 'ver', 'changevalue'))
+        .to.eventually.be.rejectedWith('version does not exist')
     })
   })
 
@@ -45,9 +55,9 @@ context('VersionRegistry', () => {
   context('with more versions', () => {
     before(async () => {
       await increaseTime(100)
-      await registryContract.addVersion(string32('id'), string32('ver2'), 'value2')
+      await jsRegistry.addVersion('id', 'ver2', 'value2')
       await increaseTime(100)
-      await registryContract.addVersion(string32('id'), string32('ver3'), 'value3')
+      await jsRegistry.addVersion('id', 'ver3', 'value3')
       await increaseTime(100)
 
       // at this point:
@@ -72,6 +82,7 @@ context('VersionRegistry', () => {
       })
 
       it('should ignore repeated added version (can\'t modify history: only adding to it)', async () => {
+        // note that the javascript class reject such double-adding. we add directly through the contract API:
         await registryContract.addVersion(string32('id'), string32('ver2'), 'new-value2')
         const versions = await jsRegistry.getAllVersions('id')
 
@@ -138,6 +149,14 @@ context('VersionRegistry', () => {
         // ignore entries in the past 150 seconds
         const { version, value } = await jsRegistry.getVersion('id', 150)
         assert.deepEqual({ version, value }, { version: 'ver', value: 'value' })
+      })
+      it('getAllVersions should return also canceled versions', async () => {
+        const versions = await jsRegistry.getAllVersions('id')
+
+        assert.equal(versions.length, 3)
+        assert.deepInclude(versions[0], { version: 'ver3', value: 'value3', canceled: false, cancelReason: undefined })
+        assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: true, cancelReason: 'reason' })
+        assert.deepInclude(versions[2], { version: 'ver', value: 'value', canceled: false, cancelReason: undefined })
       })
     })
   })

@@ -1,11 +1,16 @@
 #!/bin/bash -e
 
 # performs SSH into given machine and executes a relaydc command on it with args
+
+#you can also add this as alias on the host itself:
+RDC='docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=$PWD -v $PWD/.env:/.env opengsn/relaydc'
+
 if [ -z $2 ]; then
 cat <<EOF
 rdc - remote relaydc (to google cloud)
 usage: $0 {user@host} {docker-compose params}
-To run on local machine:
+  $0 addalias - add the "rdc" alias to .bashrc
+To run on local machine without ssh:
   $0 local {docker-compose params}
 EOF
 exit 1
@@ -15,8 +20,11 @@ host=$1
 shift
 args="$@"
 
-
-RDC='docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=$PWD -v $PWD/.env:/.env opengsn/relaydc'
+if [ $args == 'addalias' ]; then
+	ssh $host "grep rdc= .bashrc" || \
+	ssh $host "echo alias rdc=\'$RDC\' >> .bashrc " && echo added alias on $host
+	exit 0
+fi
 
 if [ $host == 'local' ]; then
 sh -c "$RDC $args"
