@@ -17,6 +17,8 @@ gsnCommander(['n', 'f', 'm', 'g'])
   .option('--stakeManager <address>', 'stakeManager')
   .option('--relayHub <address>', 'relayHub')
   .option('--penalizer <address>', 'penalizer')
+  .option('--registry <address>', 'versionRegistry')
+  .option('--registryHubId <string>', 'save the address of the relayHub to the registry, with this hub-id')
   .option('--yes, --skipConfirmation', 'skip con')
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .parse(process.argv);
@@ -48,7 +50,9 @@ gsnCommander(['n', 'f', 'm', 'g'])
     forwarderAddress: commander.forwarder,
     stakeManagerAddress: commander.stakeManager,
     relayHubAddress: commander.relayHub,
-    penalizerAddress: commander.penalizer
+    penalizerAddress: commander.penalizer,
+    registryAddress: commander.registry,
+    registryHubId: commander.registryHubId
   })
   const paymasterName = 'Default'
 

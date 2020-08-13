@@ -7,7 +7,7 @@ yarn generate
 
 mkdir -p src/cli/compiled/
 
-CONTRACTS="RelayHub StakeManager Penalizer Forwarder TestPaymasterEverythingAccepted"
+CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
 BUILDFOLDER=./build/contracts
 OUTFOLDER=./src/cli/compiled/
 for c in $CONTRACTS; do

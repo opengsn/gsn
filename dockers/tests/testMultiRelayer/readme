@@ -3,8 +3,11 @@ test for multi-instance relayer.
 note that currently these instances are the same image (in production, we only bring a 2nd instance
 when we need a different image)
 - bring up ganache docker, deploy contacts
-- create 2-instances relayer docker config
-- configuration is in build/relaydc2
+- save hub address as "hubid" in the registry
+- configuration already has this hubid set, so no need to update relay address
+- set registry address in config file (not relayhub)
+- create 2-instances relayer docker-compose.yml config file
+- configuration is built in build/relaydc2
 - register relayer
 - verify registering one will also make the 2nd instance registered
 - verify the router works, and instances are separate
