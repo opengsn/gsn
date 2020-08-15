@@ -1,0 +1,1 @@
+docker run --rm -ti -v $PWD:$PWD -w $PWD opengsn/cli "$@"

@@ -63,6 +63,10 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
     error(`Not a valid registry address: ${versionRegistryAddress}`)
   }
 
+  if (commander.args.length > 0) {
+    error('unexpected param(s): ' + commander.args.join(', '))
+  }
+
   if (commander.list != null) {
     const ids = await versionRegistry.listIds()
     console.log('All registered IDs:')
@@ -94,6 +98,7 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
     const from = commander.from ?? await logic.findWealthyAccount()
     const sendOptions = {
       gasPrice: commander.gasPrice,
+      gas: 1e6,
       from
     }
     if (version == null) {
