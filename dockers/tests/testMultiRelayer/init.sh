@@ -34,11 +34,13 @@ docker build -t opengsn/relaydc:test2 ./build/relaydc2
 
 #start ganache
 docker run --name ganache-docker -d -p 8545:8545 trufflesuite/ganache-cli:latest
-waitForUrl http://localhost:8545 Bad 8545 "start ganache"
+waitForUrl http://localhost:8545 Bad "start ganache"
 
-node ../../../dist/src/cli/commands/gsn-deploy.js --yes --registryHubId hubid
+node ../../../dist/src/cli/commands/gsn-deploy.js --yes
 export HUB=`jq -r .address < ./build/gsn/RelayHub.json`
 export REG=`jq -r .address < ./build/gsn/VersionRegistry.json`
+node ../../../dist/src/cli/commands/gsn-registry.js --registry $REG --id hub --ver test --add $HUB
+
 echo "registry=$REG hub=$HUB myip=$MYIP"
 test -n "$MYIP" || fatal "unable to find MYIP"
 test -n "$REG" || fatal "unable to find VersionRegistry"
