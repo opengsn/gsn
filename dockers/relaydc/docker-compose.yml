@@ -50,6 +50,8 @@ services:
       port: 80
       workdir: /app/data
       config: /app/config/gsn-relay-config.json
+      relayHubId: hub
+
 
 ####-END-TEMPLATE
 

@@ -82,6 +82,7 @@ function fatal {
     exit 1
 }
 
+#call at end of script, to report status of all assertXX/expectXX
 function exitWithTestSummary {
     test -z "$success$failed" && fatal "no success/failed test results";
     print "${BLUE}Test Summary:"
@@ -111,20 +112,23 @@ function expectUrl {
     fi
 }
 
-#url - URL to ping
-#expect - OK value to return
-#STOPWAIT - failure string to return immediately with error, without timeout
-#otherwise, wait for TIMEOUT (default=10 seconds)
+#usage: waitForUrl url expect title
+#- url - URL to ping
+#- expect - OK value to return
+#- title - display title (defaults to url)
+#env vars:
+#- STOPWAIT - failure string to return immediately with error, without timeout
+#- TIMEOUT - wait for "expect" string. (default=10 seconds)
 function waitForUrl {
   url=$1
   expect=$2
-  title=$4
+  title=$3
   test -n "$title" || title=$url
 
   count=$TIMEOUT
   test -z "$count" && count=10
 
-  progress "waiting for: $title"
+  progress "${GRAY}WAIT${NC}: $title"
 
   while [ $count != "0" ]; do 
     resp=`curl -s $url`
