@@ -96,7 +96,7 @@ export default class CommandsLogic {
     } catch (error) {
       console.error('Failed to retrieve accounts and balances:', error)
     }
-    throw new Error(`could not find unlocked account with sufficient balance; all accounts: ${accounts.toString()}`)
+    throw new Error(`could not find unlocked account with sufficient balance; all accounts:\n - ${accounts.join('\n - ')}`)
   }
 
   async isRelayReady (relayUrl: string): Promise<boolean> {

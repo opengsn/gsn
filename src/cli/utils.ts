@@ -6,13 +6,14 @@ import path from 'path'
 import { DeploymentResult } from './CommandsLogic'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 
+const cliInfuraId = '41a7aa85a67641f3bd6e31cb60753698'
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
   ['xdai', 'https://dai.poa.network'],
-  ['ropsten', 'https://ropsten.infura.io/v3/c3422181d0594697a38defe7706a1e5b'],
-  ['rinkeby', 'https://rinkeby.infura.io/v3/c3422181d0594697a38defe7706a1e5b'],
-  ['kovan', 'https://kovan.infura.io/v3/c3422181d0594697a38defe7706a1e5b'],
-  ['mainnet', 'https://mainnet.infura.io/v3/c3422181d0594697a38defe7706a1e5b']
+  ['ropsten', 'https://ropsten.infura.io/v3/' + cliInfuraId],
+  ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
+  ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
+  ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId]
 ])
 
 export function supportedNetworks (): string[] {
