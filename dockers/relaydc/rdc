@@ -21,8 +21,9 @@ shift
 args="$@"
 
 if [ $args == 'addalias' ]; then
+	rdc1=`echo "$RDC"|tr '$' '^'`
 	ssh $host "grep rdc= .bashrc" || \
-	ssh $host "echo alias rdc=\'$RDC\' >> .bashrc " && echo added alias on $host
+	  ssh $host "echo alias rdc=\'$rdc1\' |tr \'^\' \'$\' >> .bashrc " && echo added alias on $host
 	exit 0
 fi
 
