@@ -51,7 +51,9 @@ rm -rf build/gsn
 #update hub address in configuration
 perl -pe 's/\$(\w+)/$ENV{$1}/ge' gsn-relay-config.json.template > config/gsn-relay-config.json
 
-./r up -d
+#force rdc to use the test-created custom docker image, and not "latest"
+./testrdc up -d
+
 #wait for servers to be up and ready. takes ~10-20 seconds for a server to be ready 
 STOPWAIT=missing TIMEOUT=30 waitForUrl http://$MYIP:8080/gsn1/getaddr RelayHubAddress.*0x || fatal "no relayer gsn1"
 STOPWAIT=missing waitForUrl http://$MYIP:8080/gsn2/getaddr RelayHubAddress.*0x || fatal "no relayer gsn2"

@@ -14,6 +14,8 @@ NC='\033[0m'
 OK="${GREEN}OK${NC}"
 FAILED="${RED}FAILED${NC}"
 
+testTotal=0
+
 #first, clean any "preogress" message.
 # then print line, cleaning colors before/after
 function print {
@@ -33,14 +35,23 @@ function progress {
     cleanprogress="\r`echo "$*"|sed -e 's/./ /g'`\r"
 }
 
+function testResult {
+    let testTotal=testTotal+1
+    if [ "ok" == "$*" ] ; then
+      let success=success+1
+    else
+      let failed=failed+1
+    fi
+}
+
 function reportfail {
-    print "$FAILED: $*"
-    let failed=failed+1
+    testResult fail
+    print "${BLUE}Test #$testTotal${NC} $FAILED: $*"
 }
 
 function reportok {
-    print "$OK: $*"
-    let success=success+1
+    testResult ok
+    print "${BLUE}Test #$testTotal${NC} $OK: $*"
 }
 
 function assertEq {
@@ -49,10 +60,11 @@ function assertEq {
     title=$3
     if [ "$value" == "$expected" ]; then
         #silently show nothing if OK and no title...
-	   if [ -n "$title" ] ; then
-            print "$OK - $title"
+	if [ -n "$title" ] ; then
+            reportok "$title"
+        else
+            testResult ok
         fi
-        let success=success+1
     else
         reportfail $title
         print "  expected: $expected"
@@ -66,10 +78,10 @@ function assertNotEq {
     title=$3
     if [ "$value" != "$unexpected" ]; then
         #silently show nothing if OK and no title...
+        testResult ok
        if [ -n "$title" ] ; then
-            print "$OK - $title"
+            print "${BLUE}Test #$testTotal${NC} $OK - $title"
         fi
-        let success=success+1
     else
         reportfail $title
         print "     actual: $value"
@@ -103,12 +115,12 @@ function expectUrl {
 
     data=`curl -s $url`
     if echo $data|grep -q "$search"; then
-        printf "$title - ${GREEN}OK${NC}\n"
-        let success=success+1
+        reportok "$title"
+        testResult ok
     else
         printf "$title - ${RED}failed${NC}\n"
-	echo expectd: $search. data=$data
-        let failed=failed+1
+	echo expected: $search. data=$data
+        testResult fail
     fi
 }
 
@@ -128,7 +140,8 @@ function waitForUrl {
   count=$TIMEOUT
   test -z "$count" && count=10
 
-  progress "${GRAY}WAIT${NC}: $title"
+  let next=testTotal+1
+  progress "${BLUE}Test #$next${NC} ${GRAY}WAIT${NC}: $title"
 
   while [ $count != "0" ]; do 
     resp=`curl -s $url`

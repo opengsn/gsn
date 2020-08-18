@@ -3,7 +3,7 @@
 # performs SSH into given machine and executes a relaydc command on it with args
 
 #you can also add this as alias on the host itself:
-RDC='docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=$PWD -v $PWD/.env:/.env opengsn/relaydc'
+RDC="docker run --rm \$RTTY -v /var/run/docker.sock:/var/run/docker.sock -e ROOT=\$PWD -v \$PWD/.env:/.env opengsn/relaydc${RELAYDC_TAG:=:latest}"
 
 if [ -z $2 ]; then
 cat <<EOF
@@ -20,14 +20,17 @@ host=$1
 shift
 args="$@"
 
-if [ $args == 'addalias' ]; then
-	rdc1=`echo "$RDC"|tr '$' '^'`
-	ssh $host "grep rdc= .bashrc" || \
-	  ssh $host "echo alias rdc=\'$rdc1\' |tr \'^\' \'$\' >> .bashrc " && echo added alias on $host
+if [ "$args" == 'addalias' ]; then
+	# fully expand $RTTY to "-ti". rename $PWD, so it doesn't get expanded before we write it
+	# into bashrc. we replace it back to $PWD on the remote host.
+	rdc1=`echo "$RDC"| sed -e 's/\$PWD/.PWD/g; s/.RTTY/-ti/' `
+	ssh $host cat .bashrc | grep "rdc='$rdc1'" || \
+	  ssh $host "echo alias rdc=\'$rdc1\' | sed -e 's/.PWD/\$PWD/g;' >> .bashrc " && echo added alias on $host
 	exit 0
 fi
 
 if [ $host == 'local' ]; then
+test -t 0 && export RTTY='-ti'
 sh -c "$RDC $args"
 else
 ssh $host $RDC $args 

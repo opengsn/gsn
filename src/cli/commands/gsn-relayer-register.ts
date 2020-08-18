@@ -38,6 +38,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
   const result = await logic.registerRelay(registerOptions)
   if (result.success) {
     console.log('Relay registered successfully! Transactions:\n', result.transactions)
+    process.exit(0)
   } else {
     console.error('Failed to register relay:', result.error)
     process.exit(1)
