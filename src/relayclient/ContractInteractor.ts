@@ -300,6 +300,10 @@ export default class ContractInteractor {
     return await this.web3.eth.getBlock(blockHashOrBlockNumber)
   }
 
+  validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
+    if (!this.web3.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
+  }
+
   async getCode (address: string): Promise<string> {
     return await this.web3.eth.getCode(address)
   }
