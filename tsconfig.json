@@ -30,6 +30,7 @@
       "truffle-contracts",
       "openzeppelin__test-helpers",
       "ganache-core",
+      "date-format",
       "chai-bn"
     ]
   },

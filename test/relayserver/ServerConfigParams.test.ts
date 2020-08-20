@@ -155,7 +155,7 @@ context('#ServerConfigParams', () => {
 
       it('should fail on invalid hub address in oracle', async () => {
         const config = { versionRegistryAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
-        await expectRevert(resolveServerConfig(config, provider), 'Invalid param relayHubId hub-invalidaddr@1.0: not an address: garbagevalue')
+        await expectRevert(resolveServerConfig(config, provider), 'Invalid param relayHubId hub-invalidaddr @ 1.0: not an address: garbagevalue')
       })
 
       it('should fail on no contract at hub address in oracle', async () => {

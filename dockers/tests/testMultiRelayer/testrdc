@@ -1,0 +1,4 @@
+#wrapper for rdc for this test: use tag "test2" instead of "latest"
+#(used inside the test, but can also used from console to check docker-compose instances)
+RELAYDC_TAG=:test2 ../../relaydc/rdc local "$@"
+

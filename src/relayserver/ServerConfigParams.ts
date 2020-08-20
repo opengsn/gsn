@@ -157,14 +157,14 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
     }
     const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
-    contractInteractor.validateAddress(config.versionRegistryAddress)
+    contractInteractor.validateAddress(config.versionRegistryAddress, 'Invalid param versionRegistryAddress: ')
     if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
       error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }
 
     const versionRegistry = new VersionRegistry(web3provider, config.versionRegistryAddress)
     const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
-    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId}@${version}: not an address:`)
+    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
 
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value
