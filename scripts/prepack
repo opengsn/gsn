@@ -1,8 +1,6 @@
 #!/bin/bash -e
 
 rm -rf ./dist/
-yarn truffle-compile
-yarn extract_abi
 yarn generate
 
 mkdir -p src/cli/compiled/
@@ -23,5 +21,7 @@ for c in RelayProvider RelayClient GSNConfigurator GsnTestEnvironment; do
 done
 
 tsc
+#we have in our package.json: "bin": { "gsn": "dist/src/cli/commands/gsn.js" }
+chmod a+rx dist/src/cli/commands/gsn.js
 
 cp -r types dist/

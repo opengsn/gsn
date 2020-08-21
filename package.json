@@ -28,7 +28,6 @@
   "bin": {
     "gsn": "dist/src/cli/commands/gsn.js"
   },
-  "prepublish": "npm run prepare",
   "scripts": {
     "test": "yarn run lint && yarn generate && yarn tsc && npm run test-js",
     "ganache": "ganache-cli --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
@@ -45,8 +44,8 @@
     "generate": "rm -rf ./build/contracts && npx truffle compile && typechain --target trufflehotfix './build/contracts/**/*.json' && yarn run extract_abi",
     "tsc": "tsc --noEmit",
     "postinstall": "patch-package",
-    "postpack": "./scripts/postpack",
-    "prepare": "./scripts/prepublish"
+    "prepack": "./scripts/prepack",
+    "postpack": "./scripts/postpack"
   },
   "dependencies": {
     "@openeth/truffle-typings": "0.0.6",
