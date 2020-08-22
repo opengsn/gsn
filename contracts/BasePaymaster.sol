@@ -19,7 +19,7 @@ import "./forwarder/Forwarder.sol";
 abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
-    IForwarder internal trustedForwarder;
+    IForwarder public trustedForwarder;
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
