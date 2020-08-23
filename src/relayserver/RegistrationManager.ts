@@ -17,8 +17,8 @@ import { TransactionManager } from './TransactionManager'
 import { defaultEnvironment } from '../common/Environments'
 
 import log from 'loglevel'
-import { ServerConfig } from './ServerConfig'
 import { EventData } from 'web3-eth-contract'
+import { ServerConfigParams } from './ServerConfigParams'
 
 export class StateError extends Error {}
 
@@ -69,13 +69,13 @@ export class RegistrationManager {
   contractInteractor: ContractInteractor
   ownerAddress?: Address
   transactionManager: TransactionManager
-  config: ServerConfig
+  config: ServerConfigParams
 
   constructor (
     contractInteractor: ContractInteractor,
     transactionManager: TransactionManager,
     eventEmitter: EventEmitter,
-    config: ServerConfig,
+    config: ServerConfigParams,
     // exposed from key manager?
     managerAddress: Address,
     workerAddress: Address

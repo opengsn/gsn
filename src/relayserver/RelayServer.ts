@@ -9,17 +9,25 @@ import { toBN, toHex } from 'web3-utils'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 
-import ContractInteractor from '../relayclient/ContractInteractor'
+import ContractInteractor, {
+  TransactionRejectedByPaymaster
+} from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
 import RelayTransactionRequest from '../relayclient/types/RelayTransactionRequest'
 import { IPaymasterInstance, IRelayHubInstance } from '../../types/truffle-contracts'
 import VersionsManager from '../common/VersionsManager'
-import { address2topic, calculateTransactionMaxPossibleGas, decodeRevertReason } from '../common/Utils'
+import {
+  address2topic,
+  calculateTransactionMaxPossibleGas,
+  decodeRevertReason,
+  randomInRange,
+  sleep
+} from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
 import { constants } from '../common/Constants'
 import { RegistrationManager, StateError } from './RegistrationManager'
 import { TransactionManager } from './TransactionManager'
-import { configureServer, ServerConfig, ServerDependencies } from './ServerConfig'
+import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import Timeout = NodeJS.Timeout
 
 const VERSION = '2.0.0-beta.1'
@@ -32,12 +40,14 @@ export class RelayServer extends EventEmitter {
   readonly workerAddress: PrefixedHexString
   gasPrice: number = 0
   _workerSemaphoreOn = false
+  alerted = false
+  alertedBlock: number = 0
   private initialized = false
   readonly contractInteractor: ContractInteractor
   private readonly versionManager: VersionsManager
   lastError?: string
   private workerTask?: Timeout
-  config: ServerConfig
+  config: ServerConfigParams
   transactionManager: TransactionManager
 
   registrationManager!: RegistrationManager
@@ -46,7 +56,7 @@ export class RelayServer extends EventEmitter {
   relayHubContract!: IRelayHubInstance
   paymasterContract!: IPaymasterInstance
 
-  constructor (config: Partial<ServerConfig>, dependencies: ServerDependencies) {
+  constructor (config: Partial<ServerConfigParams>, dependencies: ServerDependencies) {
     super()
     this.versionManager = new VersionsManager(VERSION)
     this.config = configureServer(config)
@@ -71,6 +81,7 @@ export class RelayServer extends EventEmitter {
       RelayManagerAddress: this.managerAddress,
       RelayHubAddress: this.relayHubContract?.address ?? '',
       MinGasPrice: this.getMinGasPrice().toString(),
+      MaxAcceptanceBudget: this.config.maxAcceptanceBudget.toString(),
       Ready: this.isReady(),
       Version: VERSION
     }
@@ -152,8 +163,7 @@ export class RelayServer extends EventEmitter {
       gasLimits = await this.paymasterContract.getGasLimits()
     } catch (e) {
       if (
-        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-        e.message.includes(
+        (e as Error).message.includes(
           'Returned values aren\'t valid, did it run Out of Gas?'
         )
       ) {
@@ -164,38 +174,32 @@ export class RelayServer extends EventEmitter {
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
-    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
       relayCallGasLimit: req.gasLimit
     })
-    const method = this.relayHubContract.contract.methods.relayCall(relayRequest, req.signature, req.approvalData, maxPossibleGas)
+    const method = this.relayHubContract.contract.methods.relayCall(this.config.maxAcceptanceBudget, relayRequest, req.signature, req.approvalData, maxPossibleGas)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
-      viewRelayCallRet = await this.relayHubContract.contract.methods.relayCall(
-        relayRequest,
-        req.signature,
-        req.approvalData,
-        maxPossibleGas)
-        .call({
+      viewRelayCallRet =
+        await method.call({
           from: this.workerAddress,
           gasPrice: relayRequest.relayData.gasPrice,
           gasLimit: maxPossibleGas
         })
     } catch (e) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`relayCall reverted in server: ${e.message}`)
+      throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
     log.debug('viewRelayCallRet', viewRelayCallRet)
     if (!viewRelayCallRet.paymasterAccepted) {
-      throw new Error(`Paymaster rejected in server: ${decodeRevertReason(viewRelayCallRet.returnValue)} req=${JSON.stringify(relayRequest, null, 2)}`)
+      throw new Error(
+        `Paymaster rejected in server: ${decodeRevertReason(viewRelayCallRet.returnValue)} req=${JSON.stringify(relayRequest, null, 2)}`)
     }
     // Send relayed transaction
     log.debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
 
     const maxCharge =
-      // @ts-ignore
       await this.relayHubContract.calculateCharge(maxPossibleGas, {
         gasPrice: req.gasPrice?.toString() ?? '0',
         pctRelayFee: req.pctRelayFee.toString(),
@@ -211,7 +215,6 @@ export class RelayServer extends EventEmitter {
       throw new Error(`paymaster balance too low: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
     }
     console.log(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     console.log(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
     const { signedTx } = await this.transactionManager.sendTransaction(
       {
@@ -223,6 +226,10 @@ export class RelayServer extends EventEmitter {
       })
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(workerIndex)
+    if (this.alerted) {
+      console.log('Alerted state: slowing down traffic')
+      await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
+    }
     return signedTx
   }
 
@@ -307,7 +314,6 @@ export class RelayServer extends EventEmitter {
     if (!this.versionManager.isMinorSameOrNewer(version)) {
       this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
     }
-    // const stakeManagerAddress = await this.relayHubContract.stakeManager()
     this.registrationManager = new RegistrationManager(
       this.contractInteractor,
       this.transactionManager,
@@ -383,12 +389,14 @@ export class RelayServer extends EventEmitter {
 
     const shouldRegisterAgain = await this.getShouldRegisterAgain()
     let { receipts, unregistered } = await this.registrationManager.handlePastEvents(this.lastScannedBlock, shouldRegisterAgain)
-    this.lastScannedBlock = blockHeader.number
     await this._resendUnconfirmedTransactions(blockHeader)
     if (unregistered) {
+      this.lastScannedBlock = blockHeader.number
       return receipts
     }
     await this.registrationManager.assertRegistered()
+    await this.handlePastHubEvents(blockHeader)
+    this.lastScannedBlock = blockHeader.number
     const workerIndex = 0
     receipts = receipts.concat(await this.replenishServer(workerIndex))
     const workerBalance = await this.getWorkerBalance(workerIndex)
@@ -401,6 +409,10 @@ export class RelayServer extends EventEmitter {
       console.log('Relay is Ready.')
     }
     this.ready = true
+    if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < blockHeader.number) {
+      console.log(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockHeader.number}`)
+      this.alerted = false
+    }
     delete this.lastError
     return receipts
   }
@@ -417,6 +429,30 @@ export class RelayServer extends EventEmitter {
     const currentBlock = await this.contractInteractor.getBlockNumber()
     const latestTxBlockNumber = await this._getLatestTxBlockNumber()
     return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+  }
+
+  async handlePastHubEvents (blockHeader: BlockHeader): Promise<void> {
+    const topics = [address2topic(this.managerAddress)]
+    const options = {
+      fromBlock: this.lastScannedBlock + 1,
+      toBlock: 'latest'
+    }
+    const eventNames = [TransactionRejectedByPaymaster]
+    const decodedEvents = await this.contractInteractor.getPastEventsForHub(eventNames, topics, options)
+    for (const dlog of decodedEvents) {
+      switch (dlog.event) {
+        case TransactionRejectedByPaymaster:
+          await this._handleTransactionRejectedByPaymasterEvent(dlog, blockHeader.number)
+          break
+      }
+    }
+  }
+
+  async _handleTransactionRejectedByPaymasterEvent (dlog: EventData, blockNumber: number): Promise<void> {
+    log.debug('handle TransactionRejectedByPaymaster event', dlog)
+    this.alerted = true
+    this.alertedBlock = blockNumber
+    console.error(`Relay entered alerted state. Block number: ${blockNumber}`)
   }
 
   async _getLatestTxBlockNumber (): Promise<number> {

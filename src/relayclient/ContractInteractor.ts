@@ -40,6 +40,7 @@ type EventName = string
 
 export const RelayServerRegistered: EventName = 'RelayServerRegistered'
 export const RelayWorkersAdded: EventName = 'RelayWorkersAdded'
+export const TransactionRejectedByPaymaster: EventName = 'TransactionRejectedByPaymaster'
 
 export const HubAuthorized: EventName = 'HubAuthorized'
 export const HubUnauthorized: EventName = 'HubUnauthorized'
@@ -196,6 +197,7 @@ export default class ContractInteractor {
   }
 
   async validateAcceptRelayCall (
+    paymasterMaxAcceptanceBudget: number,
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
@@ -204,6 +206,7 @@ export default class ContractInteractor {
       const externalGasLimit = await this._getBlockGasLimit()
 
       const res = await relayHub.contract.methods.relayCall(
+        paymasterMaxAcceptanceBudget,
         relayRequest,
         signature,
         approvalData,
@@ -232,11 +235,11 @@ export default class ContractInteractor {
     }
   }
 
-  encodeABI (relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
+  encodeABI (paymasterMaxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
     // TODO: check this works as expected
     // @ts-ignore
     const relayHub = new this.IRelayHubContract('')
-    return relayHub.contract.methods.relayCall(relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+    return relayHub.contract.methods.relayCall(paymasterMaxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
@@ -292,6 +295,10 @@ export default class ContractInteractor {
 
   async getBlock (blockHashOrBlockNumber: BlockNumber): Promise<BlockTransactionString> {
     return await this.web3.eth.getBlock(blockHashOrBlockNumber)
+  }
+
+  validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
+    if (!this.web3.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
   }
 
   async getCode (address: string): Promise<string> {

@@ -7,7 +7,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { Mutex } from 'async-mutex'
 import { KeyManager } from './KeyManager'
 import { BlockHeader } from 'web3-eth'
-import { ServerDependencies } from './ServerConfig'
+import { ServerDependencies } from './ServerConfigParams'
 import log from 'loglevel'
 
 export interface SignedTransactionDetails {

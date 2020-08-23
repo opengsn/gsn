@@ -154,6 +154,10 @@ export function ether (n: string): BN {
   return new BN(toWei(n, 'ether'))
 }
 
+export function randomInRange (min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min) + min)
+}
+
 /**
  * @param gasLimits
  * @param hubOverhead

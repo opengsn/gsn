@@ -311,7 +311,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             from: other,
             value: ether('1')
           })
-          const relayCallTx = await relayHub.relayCall(relayRequest, signature, '0x', gasLimit.add(new BN(2e6)), {
+          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gasLimit.add(new BN(2e6)), {
             from: relayWorker,
             gas: gasLimit.add(new BN(1e6)),
             gasPrice
@@ -366,7 +366,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             value: ether('1')
           })
           const externalGasLimit = gasLimit.add(new BN(1e6))
-          const relayCallTx = await relayHub.relayCall(relayRequest, signature, '0x', externalGasLimit, {
+          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', externalGasLimit, {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice
@@ -456,7 +456,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
             clientId
           }
         }
-      const encodedCall = relayHub.contract.methods.relayCall(relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
+      const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
 
       const transaction = new Transaction({
         nonce: relayCallArgs.nonce,

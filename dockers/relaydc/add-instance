@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+die "usage: add-server docker-compose.yml
+
+add a new server instance to the docker-compose file.
+NOTE: the newly added server still has the same tag and command-line, and
+these should be fix.
+" unless $ARGV[0];
+
+undef $/;
+
+#read entire input file
+$input=<>;
+
+#select the "template": everything between BEGIN-TEMPLATE and END-TEMPLATE lines
+($template) = $input=~/BEGIN-TEMPLATE.*([\s\S]*)\n.*END-TEMPLATE/;
+
+die "no template found\n" unless $template;
+
+#scan entire file, and find the highest "gsn#" number
+#find highest instance number already in file
+while ( $input=~/gsn(\d+)/g ) {
+	$max= $max>$1 ? $max:$1;
+}
+
+die "unable to parse template\n" unless $max;
+
+#increase by one, to have a unique number
+$max++;
+
+#add the new server just above the ADD-SERVER marker in the file
+$template=~s/gsn1/gsn$max/g;
+$input=~s/(.*ADD-SERVER)/      - gsn$max\n$1/;
+
+#dump modified file, with new server entry
+print $input,$template;
+
+

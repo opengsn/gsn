@@ -8,7 +8,7 @@ import { RelayServer } from '../../src/relayserver/RelayServer'
 import {
   assertTransactionRelayed,
   bringUpNewRelay,
-  getTimestampTempWorkdir,
+  getTimestampTempWorkdir, NewRelayParams,
   PrepareRelayRequestOption,
   relayTransaction,
   RelayTransactionParams,
@@ -64,7 +64,8 @@ contract('TransactionManager', function (accounts) {
       stakeManagerAddress: stakeManager.address
     }
     const workdir = '/tmp/gsn/test/relayserver/' + getTimestampTempWorkdir()
-    const newRelayParams = {
+    const newRelayParams: NewRelayParams = {
+      alertedBlockDelay: 0,
       workdir,
       ethereumNodeUrl,
       relayHubAddress,

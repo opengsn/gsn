@@ -14,7 +14,7 @@ import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
-import { ServerConfig } from '../relayserver/ServerConfig'
+import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -57,7 +57,7 @@ class GsnTestEnvironmentClass {
 
     const port = await this._resolveAvailablePort()
     const relayUrl = 'http://127.0.0.1:' + port.toString()
-    this._runServer(_host, deploymentResult, from, relayUrl, port, debug)
+    this._runServer(_host, deploymentResult, from, relayUrl, port)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -129,8 +129,7 @@ class GsnTestEnvironmentClass {
     deploymentResult: DeploymentResult,
     from: Address,
     relayUrl: string,
-    port: number,
-    debug = true
+    port: number
   ): void {
     if (this.httpServer !== undefined) {
       return
@@ -155,7 +154,7 @@ class GsnTestEnvironmentClass {
       managerKeyManager,
       workersKeyManager
     }
-    const relayServerParams: Partial<ServerConfig> = {
+    const relayServerParams: Partial<ServerConfigParams> = {
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,
       gasPriceFactor: 1,

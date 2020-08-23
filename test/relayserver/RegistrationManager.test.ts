@@ -21,7 +21,7 @@ import {
   NewRelayParams,
   ServerTestConstants
 } from './ServerTestUtils'
-import { ServerConfig, ServerDependencies } from '../../src/relayserver/ServerConfig'
+import { ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 
 const { expect } = chai.use(chaiAsPromised).use(sinonChai)
 const { oneEther, weekInSec } = constants
@@ -55,6 +55,7 @@ contract('RegistrationManager', function (accounts) {
     const penalizer = await Penalizer.new()
     rhub = await deployHub(stakeManager.address, penalizer.address)
     newRelayParams = {
+      alertedBlockDelay: 0,
       workdir,
       ethereumNodeUrl,
       relayHubAddress: rhub.address,
@@ -78,7 +79,7 @@ contract('RegistrationManager', function (accounts) {
       workersKeyManager,
       contractInteractor: interactor
     }
-    const params: Partial<ServerConfig> = {
+    const params: Partial<ServerConfigParams> = {
       relayHubAddress: rhub.address,
       url: ServerTestConstants.localhostOne,
       baseRelayFee: '0',
@@ -173,7 +174,7 @@ contract('RegistrationManager', function (accounts) {
         workersKeyManager,
         contractInteractor: interactor
       }
-      const params: Partial<ServerConfig> = {
+      const params: Partial<ServerConfigParams> = {
         relayHubAddress: rhub.address,
         url: ServerTestConstants.localhostOne,
         baseRelayFee: '0',

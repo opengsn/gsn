@@ -11,6 +11,7 @@ import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
 import { PrefixedHexString } from 'ethereumjs-tx'
+import { sleep } from '../src/common/Utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -131,10 +132,6 @@ export async function startRelay (
   // @ts-ignore
   proc.relayManagerAddress = relayManagerAddress
   return proc
-}
-
-export async function sleep (ms: number): Promise<void> {
-  return await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export function stopRelay (proc: ChildProcessWithoutNullStreams): void {

@@ -131,6 +131,7 @@ interface IRelayHub {
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
+        uint paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -172,6 +173,10 @@ interface IRelayHub {
 
     // maximum number of worker account allowed per manager
     function maxWorkerCount() external view returns (uint256);
+
+    function workerToManager(address worker) external view returns(address);
+
+    function workerCount(address manager) external view returns(uint256);
 
     /**
     * @dev the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().

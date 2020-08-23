@@ -26,7 +26,7 @@ import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
 import { removeHexPrefix } from '../../src/common/Utils'
-import { ServerConfig } from '../../src/relayserver/ServerConfig'
+import { ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
 
 const { oneEther, weekInSec } = constants
 
@@ -47,6 +47,7 @@ export interface NewRelayParams {
   relayHubAddress: Address
   relayOwner: Address
   url: string
+  alertedBlockDelay: number
   web3: Web3
   stakeManager: IStakeManagerInstance
 }
@@ -58,7 +59,7 @@ export function getTimestampTempWorkdir (): string {
 export async function bringUpNewRelay (
   newRelayParams: NewRelayParams,
   partialConfig: Partial<GSNConfig> = {},
-  overrideParams: Partial<ServerConfig> = {}
+  overrideParams: Partial<ServerConfigParams> = {}
 ): Promise<RelayServer> {
   const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
   const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
@@ -73,7 +74,7 @@ export async function bringUpNewRelay (
     workersKeyManager,
     contractInteractor
   }
-  const params: Partial<ServerConfig> = {
+  const params: Partial<ServerConfigParams> = {
     relayHubAddress: newRelayParams.relayHubAddress,
     url: newRelayParams.url,
     baseRelayFee: '0',
@@ -172,9 +173,10 @@ export interface RelayTransactionParams {
 export async function relayTransaction (
   relayTransactionParams: RelayTransactionParams,
   options: PrepareRelayRequestOption,
-  overrideArgs: Partial<RelayTransactionRequest> = {}): Promise<PrefixedHexString> {
+  overrideArgs: Partial<RelayTransactionRequest> = {},
+  assertRelayed = true): Promise<PrefixedHexString> {
   const request = await prepareRelayRequest(relayTransactionParams, options)
-  return await relayTransactionFromRequest(relayTransactionParams, request, overrideArgs)
+  return await relayTransactionFromRequest(relayTransactionParams, request, overrideArgs, assertRelayed)
 }
 
 export interface PrepareRelayRequestOption {
@@ -235,7 +237,8 @@ export interface FromRequestParam {
 export async function relayTransactionFromRequest (
   params: RelayTransactionParams,
   fromRequestParam: FromRequestParam,
-  overrideArgs: Partial<RelayTransactionRequest> = {}): Promise<PrefixedHexString> {
+  overrideArgs: Partial<RelayTransactionRequest> = {},
+  assertRelayed: boolean = true): Promise<PrefixedHexString> {
   const signedTx = await params.relayServer.createRelayTransaction(
     {
       relayWorker: fromRequestParam.httpRequest.relayWorker,
@@ -259,7 +262,9 @@ export async function relayTransactionFromRequest (
       ...overrideArgs
     })
   const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-  await assertTransactionRelayed(params.relayServer, txhash, fromRequestParam.relayRequest.request.from, params.recipientAddress, params.paymasterAddress, params.web3)
+  if (assertRelayed) {
+    await assertTransactionRelayed(params.relayServer, txhash, fromRequestParam.relayRequest.request.from, params.recipientAddress, params.paymasterAddress, params.web3)
+  }
   return signedTx
 }
 
