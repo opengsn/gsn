@@ -1,0 +1,25 @@
+test for multi-instance relayer.
+
+note that currently these instances are the same image (in production, we only bring a 2nd instance
+when we need a different image)
+- bring up ganache docker, deploy contacts
+- save hub address as "hubid" in the registry
+- configuration already has this hubid set, so no need to update relay address
+- set registry address in config file (not relayhub)
+- create 2-instances relayer docker-compose.yml config file
+- configuration is built in build/relaydc2
+- register relayer
+- verify registering one will also make the 2nd instance registered
+- verify the router works, and instances are separate
+- make sure configuration is Ok, and they share a manager.
+
+test structure
+./init.sh - bring-up script (but doesn't register)
+./done.sh - cleanup all docker images
+./test.sh - run the init.sh, and on any exit (or abort) done script.
+
+./r - wrapper to run "relaydc". accept any docker-compose params. 
+	e.g. "./r config" to show the active configuration
+	     "./r down" to shut down everything
+note that "r" runs the ":test2" tag. in production, it should run the "latest", and in the far-future, 
+a version pulled for the registry...
