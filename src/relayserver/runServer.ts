@@ -3,16 +3,17 @@ import fs from 'fs'
 import parseArgs from 'minimist'
 import Web3 from 'web3'
 import { HttpServer } from './HttpServer'
-import { RelayServer, RelayServerParams } from './RelayServer'
+import { RelayServer } from './RelayServer'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
 import { getRelayHubAddress } from '../cli/utils'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
+import { ServerConfig, ServerDependencies } from './ServerConfig'
 
 export interface ServerConfigParams {
-  baseRelayFee?: number | string
-  pctRelayFee?: number | string
+  baseRelayFee?: string
+  pctRelayFee?: number
   url?: string
   port?: number | string
   relayHubAddress?: string
@@ -21,7 +22,7 @@ export interface ServerConfigParams {
   workdir?: string
   devMode?: boolean
   debug?: boolean
-  registrationBlockRate?: number | string
+  registrationBlockRate?: number
 }
 
 function error (err: string): void {
@@ -69,7 +70,9 @@ const gasPricePercent: string = argv.gasPricePercent ?? config.gasPricePercent?.
 const ethereumNodeUrl: string = argv.ethereumNodeUrl ?? config.ethereumNodeUrl ?? error('missing --ethereumNodeUrl')
 const workdir: string = argv.workdir ?? config.workdir ?? error('missing --workdir')
 const devMode: boolean = argv.devMode ?? config.devMode ?? error('missing --devMode')
+/*
 const debug: boolean = argv.debug ?? config.debug ?? error('missing --debug')
+*/
 const registrationBlockRate: string = argv.registrationBlockRate ?? config.registrationBlockRate?.toString()
 if (devMode) {
   if (fs.existsSync(`${workdir}/${TXSTORE_FILENAME}`)) {
@@ -84,21 +87,23 @@ const web3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
 const interactor = new ContractInteractor(web3provider,
   configureGSN({ relayHubAddress }))
 const gasPriceFactor = (parseInt(gasPricePercent) + 100) / 100
-const params = {
+const dependencies: ServerDependencies = {
   txStoreManager,
   managerKeyManager,
   workersKeyManager,
-  hubAddress: relayHubAddress,
-  contractInteractor: interactor,
+  contractInteractor: interactor
+}
+const params: Partial<ServerConfig> = {
+  relayHubAddress,
   url,
-  baseRelayFee: parseInt(baseRelayFee),
+  baseRelayFee: baseRelayFee,
   pctRelayFee: parseInt(pctRelayFee),
   devMode,
-  debug: debug,
+  logLevel: 1,
   gasPriceFactor: gasPriceFactor,
   registrationBlockRate: parseInt(registrationBlockRate)
 }
-const relay = new RelayServer(params as RelayServerParams)
+const relay = new RelayServer(params, dependencies)
 console.log('Starting server.')
 console.log(
   `server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)

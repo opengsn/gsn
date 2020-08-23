@@ -31,7 +31,9 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['*.test.js', '*.test.ts'],
+      files: [
+        './test/**/*.ts'
+      ],
       rules: {
         'no-unused-expressions': 'off',
         // chai assertions trigger this rule

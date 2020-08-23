@@ -10,6 +10,7 @@ import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
 import { constants } from '../common/Constants'
+import { addresses2topics } from '../common/Utils'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -69,7 +70,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     if (relayManagers.size === 0) {
       return []
     }
-    const topics = this.contractInteractor.topicsForManagers(Array.from(relayManagers))
+    const topics = addresses2topics(Array.from(relayManagers))
     const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub([RelayServerRegistered], topics, { fromBlock: 1 })
     const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock: 1 })
 
