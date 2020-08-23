@@ -34,7 +34,7 @@ contract RelayHub is IRelayHub {
     address override public penalizer;
 
     // maps relay worker's address to its manager's address
-    mapping(address => address) public workerToManager;
+    mapping(address => address) public override workerToManager;
 
     // maps relay managers to the number of their workers
     mapping(address => uint256) public workerCount;
@@ -66,7 +66,7 @@ contract RelayHub is IRelayHub {
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
         address relayManager = msg.sender;
         require(
-            stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay),
+            isRelayManagerStaked(relayManager),
             "relay manager not staked"
         );
         require(workerCount[relayManager] > 0, "no relay workers");
@@ -79,7 +79,7 @@ contract RelayHub is IRelayHub {
         require(workerCount[relayManager] <= maxWorkerCount, "too many workers");
 
         require(
-            stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay),
+            isRelayManagerStaked(relayManager),
             "relay manager not staked"
         );
 
@@ -181,7 +181,7 @@ contract RelayHub is IRelayHub {
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
         require(
-            stakeManager.isRelayManagerStaked(workerToManager[msg.sender], minimumStake, minimumUnstakeDelay),
+            isRelayManagerStaked(workerToManager[msg.sender]),
             "relay manager not staked"
         );
         require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
@@ -379,10 +379,18 @@ contract RelayHub is IRelayHub {
         // The worker must be controlled by a manager with a locked stake
         require(relayManager != address(0), "Unknown relay worker");
         require(
-            stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay),
+            isRelayManagerStaked(relayManager),
             "relay manager not staked"
         );
         IStakeManager.StakeInfo memory stakeInfo = stakeManager.getStakeInfo(relayManager);
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
+    }
+
+    function isRelayManagerStaked(address relayManager)
+    override
+    public
+    view
+    returns (bool) {
+        return stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay);
     }
 }

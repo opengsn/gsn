@@ -150,8 +150,9 @@ interface IRelayHub {
     /* getters */
 
     /// Returns the stake manager of this RelayHub.
-    function stakeManager() external view returns(IStakeManager);
-    function penalizer() external view returns(address);
+    function stakeManager() external view returns (IStakeManager);
+
+    function penalizer() external view returns (address);
 
     /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.
     function balanceOf(address target) external view returns (uint256);
@@ -181,6 +182,9 @@ interface IRelayHub {
 
     // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
     function gasOverhead() external view returns (uint256);
+
+    function workerToManager(address worker) external view returns (address);
+    function isRelayManagerStaked(address relayManager) external view returns (bool);
 
     function versionHub() external view returns (string memory);
 }
