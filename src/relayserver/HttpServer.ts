@@ -4,12 +4,13 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import { RelayServer } from './RelayServer'
 import { Server } from 'http'
+import { Penalizer } from './penalizer/Penalizer'
 
 export class HttpServer {
   app: Express
   private serverInstance?: Server
 
-  constructor (private readonly port: number, readonly backend: RelayServer) {
+  constructor (private readonly port: number, readonly relayer: RelayServer, readonly penalizer: Penalizer) {
     this.app = express()
     this.app.use(cors())
 
@@ -22,9 +23,10 @@ export class HttpServer {
     this.app.post('/getaddr', this.pingHandler.bind(this))
     this.app.get('/getaddr', this.pingHandler.bind(this))
     this.app.post('/relay', this.relayHandler.bind(this))
-    this.backend.once('removed', this.stop.bind(this))
-    this.backend.once('unstaked', this.close.bind(this))
-    this.backend.on('error', (e) => { console.error('httpServer:', e) })
+    this.app.post('/penalize', this.penalizeHandler.bind(this))
+    this.relayer.once('removed', this.stop.bind(this))
+    this.relayer.once('unstaked', this.close.bind(this))
+    this.relayer.on('error', (e) => { console.error('httpServer:', e) })
   }
 
   start (): void {
@@ -34,7 +36,7 @@ export class HttpServer {
       })
     }
     try {
-      this.backend.start()
+      this.relayer.start()
       console.log('Relay worker started.')
     } catch (e) {
       console.log('relay task error', e)
@@ -48,7 +50,7 @@ export class HttpServer {
 
   close (): void {
     console.log('Stopping relay worker...')
-    this.backend.stop()
+    this.relayer.stop()
   }
 
   // TODO: use this when changing to jsonrpc
@@ -57,9 +59,9 @@ export class HttpServer {
     try {
       let res
       // @ts-ignore
-      const func = this.backend[req.body.method]
+      const func = this.relayer[req.body.method]
       if (func != null) {
-        res = await func.apply(this.backend, [req.body.params]) ?? { code: 200 }
+        res = await func.apply(this.relayer, [req.body.params]) ?? { code: 200 }
       } else {
         // @ts-ignore
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -76,23 +78,33 @@ export class HttpServer {
   }
 
   pingHandler (req: any, res: any): void {
-    const pingResponse = this.backend.pingHandler()
+    const pingResponse = this.relayer.pingHandler()
     res.send(pingResponse)
     console.log(`address ${pingResponse.RelayServerAddress} sent. ready: ${pingResponse.Ready}`)
   }
 
   async relayHandler (req: any, res: any): Promise<void> {
-    if (!this.backend.isReady()) {
+    if (!this.relayer.isReady()) {
       res.send('Error: relay not ready')
       return
     }
 
     try {
-      const signedTx = await this.backend.createRelayTransaction(req.body)
+      const signedTx = await this.relayer.createRelayTransaction(req.body)
       res.send({ signedTx })
     } catch (e) {
       res.send({ error: e.message })
       console.log('tx failed:', e)
+    }
+  }
+
+  async penalizeHandler (req: any, res: any): Promise<void> {
+    try {
+      const penalizeResponse = await this.penalizer.tryToPenalize(req.body)
+      res.send({ penalizeResponse })
+    } catch (e) {
+      res.send({ error: e.message })
+      console.log('penalizer failed:', e)
     }
   }
 }

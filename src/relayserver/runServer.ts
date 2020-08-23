@@ -9,6 +9,7 @@ import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
 import { getRelayHubAddress } from '../cli/utils'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
+import { Penalizer } from './penalizer/Penalizer'
 
 export interface ServerConfigParams {
   baseRelayFee?: number | string
@@ -102,8 +103,9 @@ const params = {
   alertedBlockDelay
 }
 const relay = new RelayServer(params as RelayServerParams)
+const penalizer = new Penalizer(managerKeyManager, relayHubAddress, interactor, true)
 console.log('Starting server.')
 console.log(
   `server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)
-const httpServer = new HttpServer(parseInt(port), relay)
+const httpServer = new HttpServer(parseInt(port), relay, penalizer)
 httpServer.start()

@@ -14,6 +14,7 @@ import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
+import { Penalizer } from '../relayserver/penalizer/Penalizer'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -118,7 +119,7 @@ class GsnTestEnvironmentClass {
     if (this.httpServer !== undefined) {
       this.httpServer.stop()
       this.httpServer.close()
-      await this.httpServer.backend.txStoreManager.clearAll()
+      await this.httpServer.relayer.txStoreManager.clearAll()
       this.httpServer = undefined
     }
   }
@@ -158,11 +159,12 @@ class GsnTestEnvironmentClass {
       devMode: true,
       debug
     }
-    const backend = new RelayServer(relayServerParams as RelayServerParams)
-
+    const relayer = new RelayServer(relayServerParams as RelayServerParams)
+    const penalizer = new Penalizer(managerKeyManager, deploymentResult.relayHubAddress, interactor, true)
     this.httpServer = new HttpServer(
       port,
-      backend
+      relayer,
+      penalizer
     )
     this.httpServer.start()
   }
