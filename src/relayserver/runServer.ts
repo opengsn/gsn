@@ -2,17 +2,13 @@
 import fs from 'fs'
 import Web3 from 'web3'
 import { HttpServer } from './HttpServer'
-import { RelayServer, RelayServerParams } from './RelayServer'
+import { RelayServer } from './RelayServer'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
-import { parseServerConfig, resolveServerConfig, ServerConfigParams } from './ServerConfigParams'
+import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 
-/*
-added:
-  alertedBlockDelay?: number
-*/
 function error (err: string): never {
   console.error(err)
   process.exit(1)
@@ -44,18 +40,26 @@ async function run (): Promise<void> {
   const gasPriceFactor = (config.gasPricePercent + 100) / 100
   const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  await contractInteractor.init()
 
-  const params = {
-    contractInteractor,
+  const dependencies: ServerDependencies = {
     txStoreManager,
     managerKeyManager,
     workersKeyManager,
-    hubAddress: relayHubAddress,
-    gasPriceFactor,
-    ...config
+    contractInteractor
+  }
+  const params: Partial<ServerConfigParams> = {
+    relayHubAddress,
+    url,
+    baseRelayFee: baseRelayFee.toString(),
+    pctRelayFee,
+    devMode,
+    logLevel: 1,
+    gasPriceFactor: gasPriceFactor
   }
 
-  const relay = new RelayServer(params as RelayServerParams)
+  const relay = new RelayServer(params, dependencies)
+  await relay.init()
   console.log('Starting server.')
   console.log('Using server config:', config)
   console.log(

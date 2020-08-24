@@ -1,7 +1,7 @@
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { Address, IntString } from './Aliases'
 
-export default interface TmpRelayTransactionJsonRequest {
+export default interface RelayTransactionRequest {
   relayWorker: Address
   data: PrefixedHexString
   approvalData: PrefixedHexString

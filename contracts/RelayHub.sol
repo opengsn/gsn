@@ -34,10 +34,10 @@ contract RelayHub is IRelayHub {
     address override public penalizer;
 
     // maps relay worker's address to its manager's address
-    mapping(address => address) public workerToManager;
+    mapping(address => address) public override workerToManager;
 
     // maps relay managers to the number of their workers
-    mapping(address => uint256) public workerCount;
+    mapping(address => uint256) public override workerCount;
 
     mapping(address => uint256) private balances;
 
