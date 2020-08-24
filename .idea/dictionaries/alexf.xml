@@ -15,6 +15,7 @@
       <w>ethereumjs</w>
       <w>ganache</w>
       <w>gasleft</w>
+      <w>griefing</w>
       <w>gtransaction</w>
       <w>gtxdatanonzero</w>
       <w>gwei</w>
@@ -34,6 +35,7 @@
       <w>mintxgascost</w>
       <w>mixedcase</w>
       <w>multiplicator</w>
+      <w>mutexed</w>
       <w>nonces</w>
       <w>offchain</w>
       <w>openeth</w>
@@ -44,6 +46,7 @@
       <w>penalizations</w>
       <w>penalizer</w>
       <w>privkey</w>
+      <w>rebalancing</w>
       <w>registree</w>
       <w>registrees</w>
       <w>relaydata</w>

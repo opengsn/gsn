@@ -3,7 +3,7 @@ import { bufferToHex } from 'ethereumjs-util'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import { isSameAddress } from '../common/Utils'
 import ContractInteractor from './ContractInteractor'
-import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
+import RelayTransactionRequest from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
 
 export default class RelayedTransactionValidator {
@@ -22,7 +22,7 @@ export default class RelayedTransactionValidator {
    * transaction is not valid.
    */
   validateRelayResponse (
-    transactionJsonRequest: TmpRelayTransactionJsonRequest,
+    transactionJsonRequest: RelayTransactionRequest,
     maxAcceptanceBudget: number,
     returnedTx: PrefixedHexString
   ): boolean {

@@ -3,12 +3,16 @@ import * as fs from 'fs'
 import { VersionRegistry } from '../common/VersionRegistry'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
+import { constants } from '../common/Constants'
+import { Address } from '../relayclient/types/Aliases'
+import { KeyManager } from './KeyManager'
+import { TxStoreManager } from './TxStoreManager'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
-  baseRelayFee: number
+  baseRelayFee: string
   pctRelayFee: number
   url: string
   port: number
@@ -20,25 +24,56 @@ export interface ServerConfigParams {
   ethereumNodeUrl: string
   workdir: string
   devMode: boolean
-  debug: boolean
   registrationBlockRate: number
   maxAcceptanceBudget: number
   alertedBlockDelay: number
+  minAlertedDelayMS: number
+  maxAlertedDelayMS: number
+  trustedPaymasters: Address[]
+  gasPriceFactor: number
+  logLevel: number
 
   workerMinBalance: number
   workerTargetBalance: number
   managerMinBalance: number
+  managerMinStake: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
 }
 
-const ServerDefaultParams: Partial<ServerConfigParams> = {
-  baseRelayFee: 0,
-  pctRelayFee: 0,
-  port: 8090,
-  gasPricePercent: 0,
+export interface ServerDependencies {
+  // TODO: rename as this name is terrible
+  managerKeyManager: KeyManager
+  workersKeyManager: KeyManager
+  contractInteractor: ContractInteractor
+  txStoreManager: TxStoreManager
+}
+
+const serverDefaultConfiguration: ServerConfigParams = {
+  alertedBlockDelay: 0,
+  minAlertedDelayMS: 0,
+  maxAlertedDelayMS: 0,
+  maxAcceptanceBudget: 200000,
+  relayHubAddress: constants.ZERO_ADDRESS,
+  trustedPaymasters: [],
+  gasPriceFactor: 1,
+  registrationBlockRate: 0,
+  workerMinBalance: 0.1e18,
+  workerTargetBalance: 0.3e18,
+  managerMinBalance: 0.1e18, // 0.1 eth
+  managerMinStake: '1', // 1 wei
+  managerTargetBalance: 0.3e18,
+  minHubWithdrawalBalance: 0.1e18,
   devMode: false,
-  debug: false
+  logLevel: 1,
+  baseRelayFee: '0',
+  pctRelayFee: 0,
+  url: 'http://localhost:8090',
+  ethereumNodeUrl: '',
+  gasPricePercent: 0,
+  port: 0,
+  versionRegistryAddress: constants.ZERO_ADDRESS,
+  workdir: ''
 }
 
 const ConfigParamsTypes = {
@@ -180,5 +215,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   }
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
-  return { ...ServerDefaultParams, ...config }
+  return { ...serverDefaultConfiguration, ...config }
+}
+
+export function configureServer (partialConfig: Partial<ServerConfigParams>): ServerConfigParams {
+  return Object.assign({}, serverDefaultConfiguration, partialConfig)
 }

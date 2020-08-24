@@ -1,5 +1,5 @@
 import Web3 from 'web3'
-import { BlockNumber, Log, PastLogsOptions, provider, Transaction, TransactionReceipt } from 'web3-core'
+import { BlockNumber, provider, Transaction, TransactionReceipt } from 'web3-core'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 
@@ -17,12 +17,12 @@ import replaceErrors from '../common/ErrorReplacerJSON'
 import VersionsManager from '../common/VersionsManager'
 import {
   BaseRelayRecipientInstance,
+  IForwarderInstance,
   IKnowForwarderAddressInstance,
   IPaymasterInstance,
   IRelayHubInstance,
   IRelayRecipientInstance,
-  IStakeManagerInstance,
-  IForwarderInstance
+  IStakeManagerInstance
 } from '../../types/truffle-contracts'
 
 import { Address, IntString } from './types/Aliases'
@@ -30,6 +30,7 @@ import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { BlockTransactionString } from 'web3-eth'
 import Common from 'ethereumjs-common'
+import { toBN } from 'web3-utils'
 
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
@@ -38,8 +39,13 @@ import Contract = Truffle.Contract
 type EventName = string
 
 export const RelayServerRegistered: EventName = 'RelayServerRegistered'
-export const StakeUnlocked: EventName = 'StakeUnlocked'
+export const RelayWorkersAdded: EventName = 'RelayWorkersAdded'
+export const TransactionRejectedByPaymaster: EventName = 'TransactionRejectedByPaymaster'
+
+export const HubAuthorized: EventName = 'HubAuthorized'
 export const HubUnauthorized: EventName = 'HubUnauthorized'
+export const StakeAdded: EventName = 'StakeAdded'
+export const StakeUnlocked: EventName = 'StakeUnlocked'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export default class ContractInteractor {
@@ -109,7 +115,10 @@ export default class ContractInteractor {
 
   getWeb3 (): Web3 { return this.web3 }
 
-  async _init (): Promise<void> {
+  async init (): Promise<void> {
+    if (this.rawTxOptions != null) {
+      throw new Error('_init was already called')
+    }
     await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
@@ -236,12 +245,6 @@ export default class ContractInteractor {
     return relayHub.contract.methods.relayCall(paymasterMaxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
-  topicsForManagers (relayManagers: Address[]): string[] {
-    return Array.from(relayManagers.values(),
-      (address: Address) => `0x${address.replace(/^0x/, '').padStart(64, '0').toLowerCase()}`
-    )
-  }
-
   async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const relayHub = await this._createRelayHub(this.config.relayHubAddress)
     return await this._getPastEvents(relayHub.contract, names, extraTopics, options)
@@ -263,10 +266,6 @@ export default class ContractInteractor {
     return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
   }
 
-  async getPastLogs (options: PastLogsOptions): Promise<Log[]> {
-    return await this.web3.eth.getPastLogs(options)
-  }
-
   async getBalance (address: Address): Promise<string> {
     return await this.web3.eth.getBalance(address)
   }
@@ -283,6 +282,7 @@ export default class ContractInteractor {
     return await this.web3.eth.estimateGas(gsnTransactionDetails)
   }
 
+  // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
   async getGasPrice (): Promise<string> {
     return await this.web3.eth.getGasPrice()
   }
@@ -332,6 +332,49 @@ export default class ContractInteractor {
   async isContractDeployed (address: Address): Promise<boolean> {
     const code = await this.web3.eth.getCode(address)
     return code !== '0x'
+  }
+
+  async getStakeInfo (managerAddress: Address): Promise<{
+    stake: string
+    unstakeDelay: string
+    withdrawBlock: string
+    owner: string
+  }> {
+    const stakeManager = await this._createStakeManager(this.config.stakeManagerAddress)
+    return await stakeManager.getStakeInfo(managerAddress)
+  }
+
+  async hubBalanceOf (managerAddress: Address): Promise<BN> {
+    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    return await hub.balanceOf(managerAddress)
+  }
+
+  async withdrawHubBalanceEstimateGas (amount: BN, destination: Address, managerAddress: Address, gasPrice: IntString): Promise<{
+    gasCost: BN
+    method: any
+  }> {
+    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    const method = hub.contract.methods.withdraw(amount.toString(), destination)
+    const withdrawTxGasLimit = await method.estimateGas(
+      {
+        from: managerAddress
+      })
+    const gasCost = toBN(withdrawTxGasLimit).mul(toBN(gasPrice))
+    return {
+      gasCost,
+      method
+    }
+  }
+
+  // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
+  async getRegisterRelayMethod (baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
+    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    return hub.contract.methods.registerRelayServer(baseRelayFee, pctRelayFee, url)
+  }
+
+  async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
+    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    return hub.contract.methods.addRelayWorkers(workers)
   }
 }
 
