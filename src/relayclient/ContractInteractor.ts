@@ -115,7 +115,7 @@ export default class ContractInteractor {
 
   getWeb3 (): Web3 { return this.web3 }
 
-  async _init (): Promise<void> {
+  async init (): Promise<void> {
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
     }

@@ -290,7 +290,7 @@ export class RelayServer extends EventEmitter {
     process.exit(1)
   }
 
-  async _init (): Promise<void> {
+  async init (): Promise<void> {
     if (this.initialized) {
       throw new Error('_init was already called')
     }
@@ -379,7 +379,7 @@ export class RelayServer extends EventEmitter {
 
   async _worker (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
     if (!this.initialized) {
-      await this._init()
+      await this.init()
     }
     const gasPriceString = await this.contractInteractor.getGasPrice()
     this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)

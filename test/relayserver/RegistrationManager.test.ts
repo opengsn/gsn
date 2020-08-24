@@ -68,16 +68,17 @@ contract('RegistrationManager', function (accounts) {
     const workersKeyManager = new KeyManager(1, workersWorkdir)
     const txStoreManager = new TxStoreManager({ inMemory: true })
     const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
-    const interactor = new ContractInteractor(serverWeb3provider,
+    const contractInteractor = new ContractInteractor(serverWeb3provider,
       configureGSN({
         relayHubAddress: rhub.address,
         stakeManagerAddress: stakeManager.address
       }))
+    await contractInteractor.init()
     const serverDependencies: ServerDependencies = {
       txStoreManager,
       managerKeyManager,
       workersKeyManager,
-      contractInteractor: interactor
+      contractInteractor
     }
     const params: Partial<ServerConfigParams> = {
       relayHubAddress: rhub.address,
@@ -88,29 +89,12 @@ contract('RegistrationManager', function (accounts) {
       devMode: true
     }
     relayServer = new RelayServer(params, serverDependencies)
+    await relayServer.init()
     await clearStorage(relayServer.transactionManager.txStoreManager)
   })
 
   // When running server before staking/funding it, or when balance gets too low
   describe('multi-step server initialization', function () {
-    it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
-      const expectedGasPrice = parseInt(await _web3.eth.getGasPrice()) * relayServer.config.gasPriceFactor
-      const chainId = await _web3.eth.getChainId()
-      const networkId = await _web3.eth.net.getId()
-      assert.notEqual(relayServer.gasPrice, expectedGasPrice)
-      assert.notEqual(relayServer.chainId, chainId)
-      assert.notEqual(relayServer.networkId, networkId)
-      assert.equal(relayServer.ready, false)
-      const header = await _web3.eth.getBlock('latest')
-      // TODO!!!! will fail if relay key was used in previous tests. Need to clean the workdir.
-      await expect(relayServer._worker(header))
-        .to.be.eventually.rejectedWith('Balance too low - actual:')
-      assert.equal(relayServer.ready, false, 'relay should not be ready yet')
-      assert.equal(relayServer.gasPrice, expectedGasPrice)
-      assert.equal(relayServer.chainId, chainId)
-      assert.equal(relayServer.networkId, networkId)
-    })
-
     it('should wait for balance', async function () {
       let header = await _web3.eth.getBlock('latest')
       await expect(
@@ -163,16 +147,17 @@ contract('RegistrationManager', function (accounts) {
       const workersKeyManager = new KeyManager(1, workersWorkdir)
       const txStoreManager = new TxStoreManager({ workdir })
       const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
-      const interactor = new ContractInteractor(serverWeb3provider,
+      const contractInteractor = new ContractInteractor(serverWeb3provider,
         configureGSN({
           relayHubAddress: rhub.address,
           stakeManagerAddress: stakeManager.address
         }))
+      await contractInteractor.init()
       const serverDependencies: ServerDependencies = {
         txStoreManager,
         managerKeyManager,
         workersKeyManager,
-        contractInteractor: interactor
+        contractInteractor
       }
       const params: Partial<ServerConfigParams> = {
         relayHubAddress: rhub.address,
@@ -183,6 +168,7 @@ contract('RegistrationManager', function (accounts) {
         devMode: true
       }
       const newRelayServer = new RelayServer(params, serverDependencies)
+      await newRelayServer.init()
       await newRelayServer._worker(await _web3.eth.getBlock('latest'))
       assert.equal(relayServer.ready, true, 'relay not ready?')
     })

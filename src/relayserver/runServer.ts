@@ -40,7 +40,7 @@ async function run (): Promise<void> {
   const gasPriceFactor = (config.gasPricePercent + 100) / 100
   const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
-  await contractInteractor._init()
+  await contractInteractor.init()
 
   const dependencies: ServerDependencies = {
     txStoreManager,
@@ -59,6 +59,7 @@ async function run (): Promise<void> {
   }
 
   const relay = new RelayServer(params, dependencies)
+  await relay.init()
   console.log('Starting server.')
   console.log('Using server config:', config)
   console.log(

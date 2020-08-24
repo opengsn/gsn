@@ -57,7 +57,7 @@ class GsnTestEnvironmentClass {
 
     const port = await this._resolveAvailablePort()
     const relayUrl = 'http://127.0.0.1:' + port.toString()
-    this._runServer(_host, deploymentResult, from, relayUrl, port)
+    await this._runServer(_host, deploymentResult, from, relayUrl, port)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -124,13 +124,13 @@ class GsnTestEnvironmentClass {
     }
   }
 
-  _runServer (
+  async _runServer (
     host: string,
     deploymentResult: DeploymentResult,
     from: Address,
     relayUrl: string,
     port: number
-  ): void {
+  ): Promise<void> {
     if (this.httpServer !== undefined) {
       return
     }
@@ -138,18 +138,14 @@ class GsnTestEnvironmentClass {
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true })
-    /*
-      readonly contractInteractor: ContractInteractor
-      readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
-      readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
-     */
-    const interactor = new ContractInteractor(new Web3.providers.HttpProvider(host),
+    const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host),
       configureGSN({
         relayHubAddress: deploymentResult.relayHubAddress,
         stakeManagerAddress: deploymentResult.stakeManagerAddress
       }))
+    await contractInteractor.init()
     const relayServerDependencies = {
-      contractInteractor: interactor,
+      contractInteractor,
       txStoreManager,
       managerKeyManager,
       workersKeyManager
@@ -164,6 +160,7 @@ class GsnTestEnvironmentClass {
       logLevel: 1
     }
     const backend = new RelayServer(relayServerParams, relayServerDependencies)
+    await backend.init()
 
     this.httpServer = new HttpServer(
       port,

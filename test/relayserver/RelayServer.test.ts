@@ -2,9 +2,10 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import Web3 from 'web3'
+import crypto from 'crypto'
 import { BlockHeader } from 'web3-eth'
-import { toBN, toHex } from 'web3-utils'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { toBN, toHex } from 'web3-utils'
 
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
@@ -33,11 +34,14 @@ import {
   getTotalTxCosts,
   prepareRelayRequest,
   relayTransaction,
-  relayTransactionFromRequest
+  relayTransactionFromRequest, getTimestampTempWorkdir
 } from './ServerTestUtils'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { SendTransactionDetails, SignedTransactionDetails } from '../../src/relayserver/TransactionManager'
 import { sleep } from '../../src/common/Utils'
+import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
+import ContractInteractor from '../../src/relayclient/ContractInteractor'
+import { KeyManager } from '../../src/relayserver/KeyManager'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
@@ -170,6 +174,40 @@ contract('RelayServer', function (accounts) {
 
   after(async function () {
     await clearStorage(relayServer.transactionManager.txStoreManager)
+  })
+
+  describe('#init()', function () {
+    it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
+      const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+      const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+      const txStoreManager = new TxStoreManager({ workdir: newRelayParams.workdir + getTimestampTempWorkdir() })
+      const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl)
+      const partialConfig = {
+        relayHubAddress: rhub.address,
+        stakeManagerAddress: stakeManager.address
+      }
+      const contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
+      await contractInteractor.init()
+      const serverDependencies = {
+        txStoreManager,
+        managerKeyManager,
+        workersKeyManager,
+        contractInteractor
+      }
+      const relayServerToInit = new RelayServer(relayServer.config, serverDependencies)
+      const chainId = await _web3.eth.getChainId()
+      const networkId = await _web3.eth.net.getId()
+      assert.notEqual(relayServerToInit.chainId, chainId)
+      assert.notEqual(relayServerToInit.networkId, networkId)
+      assert.equal(relayServerToInit.ready, false)
+      await relayServerToInit.init()
+      assert.equal(relayServerToInit.ready, false, 'relay should not be ready yet')
+      assert.equal(relayServerToInit.chainId, chainId)
+      assert.equal(relayServerToInit.networkId, networkId)
+    })
+  })
+
+  describe.skip('#_worker()', function () {
   })
 
   // TODO: most of this tests have literally nothing to do with Relay Server and actually double-check the client code.

@@ -68,7 +68,7 @@ export async function bringUpNewRelay (
   const txStoreManager = new TxStoreManager({ workdir: newRelayParams.workdir + getTimestampTempWorkdir() })
   const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl)
   const contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
-  await contractInteractor._init()
+  await contractInteractor.init()
   const serverDependencies = {
     txStoreManager,
     managerKeyManager,
@@ -104,7 +104,7 @@ export async function bringUpNewRelay (
     from: relayOwner
   })
   assert.equal(authorizeHubReceipt.logs[0].event, 'HubAuthorized')
-  await newServer._init()
+  await newServer.init()
   return newServer
 }
 

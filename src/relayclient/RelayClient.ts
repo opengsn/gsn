@@ -108,7 +108,7 @@ export class RelayClient {
   }
 
   async _init (): Promise<void> {
-    await this.contractInteractor._init()
+    await this.contractInteractor.init()
     this.initialized = true
   }
 
