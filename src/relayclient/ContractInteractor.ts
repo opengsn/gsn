@@ -116,6 +116,9 @@ export default class ContractInteractor {
   getWeb3 (): Web3 { return this.web3 }
 
   async _init (): Promise<void> {
+    if (this.rawTxOptions != null) {
+      throw new Error('_init was already called')
+    }
     await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()

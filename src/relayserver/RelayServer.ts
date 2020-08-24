@@ -291,9 +291,10 @@ export class RelayServer extends EventEmitter {
   }
 
   async _init (): Promise<void> {
-    // TODO: add rerun protection
+    if (this.initialized) {
+      throw new Error('_init was already called')
+    }
 
-    await this.contractInteractor._init()
     await this.transactionManager._init()
     this.relayHubContract = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
 

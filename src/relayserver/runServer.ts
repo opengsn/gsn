@@ -40,6 +40,7 @@ async function run (): Promise<void> {
   const gasPriceFactor = (config.gasPricePercent + 100) / 100
   const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  await contractInteractor._init()
 
   const dependencies: ServerDependencies = {
     txStoreManager,

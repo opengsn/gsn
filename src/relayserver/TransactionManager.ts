@@ -52,8 +52,10 @@ export class TransactionManager {
   }
 
   async _init (): Promise<void> {
-    await this.contractInteractor._init()
     this.rawTxOptions = this.contractInteractor.getRawTxOptions()
+    if (this.rawTxOptions == null) {
+      throw new Error('_init failed for TransactionManager, was ContractInteractor properly initialized?')
+    }
   }
 
   async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
@@ -89,7 +91,7 @@ export class TransactionManager {
       releaseMutex()
     }
     const receipt = await this.contractInteractor.sendSignedTransaction(signedTx)
-    log.debug('\ntxhash is', receipt.transactionHash)
+    log.info('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }
@@ -127,7 +129,7 @@ export class TransactionManager {
     log.debug('resending tx with nonce', txToSign.nonce, 'from', tx.from)
     log.debug('account nonce', await this.contractInteractor.getTransactionCount(tx.from))
     const receipt = await this.contractInteractor.sendSignedTransaction(signedTx)
-    log.debug('\ntxhash is', receipt.transactionHash)
+    log.info('\ntxhash is', receipt.transactionHash)
     if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
     }

@@ -188,7 +188,7 @@ export class RegistrationManager {
     receipts = receipts.concat(await this._sendManagerHubBalanceToOwner())
     receipts = receipts.concat(await this._sendWorkersEthBalancesToOwner())
     if (withdrawManager) {
-      receipts = receipts.concat(await this._sendMangerEthBalanceToOwner())
+      receipts = receipts.concat(await this._sendManagerEthBalanceToOwner())
     }
 
     this.eventEmitter.emit('unstaked')
@@ -261,7 +261,7 @@ export class RegistrationManager {
     return receipts
   }
 
-  async _sendMangerEthBalanceToOwner (): Promise<TransactionReceipt[]> {
+  async _sendManagerEthBalanceToOwner (): Promise<TransactionReceipt[]> {
     const gasPrice = await this.contractInteractor.getGasPrice()
     const receipts: TransactionReceipt[] = []
     const gasLimit = mintxgascost
