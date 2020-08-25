@@ -8,6 +8,7 @@ import paymasterAbi from '../common/interfaces/IPaymaster.json'
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
 import forwarderAbi from '../common/interfaces/IForwarder.json'
 import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
+import penalizerAbi from '../common/interfaces/IPenalizer.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
@@ -22,7 +23,7 @@ import {
   IRelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance,
-  IForwarderInstance
+  IForwarderInstance, IPenalizerInstance
 } from '../../types/truffle-contracts'
 
 import { Address, IntString } from './types/Aliases'
@@ -49,6 +50,7 @@ export default class ContractInteractor {
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
   private readonly IForwarderContract: Contract<IForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
+  private readonly IPenalizer: Contract<IPenalizerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
 
@@ -86,6 +88,11 @@ export default class ContractInteractor {
     this.IStakeManager = TruffleContract({
       contractName: 'IStakeManager',
       abi: stakeManagerAbi
+    })
+    // @ts-ignore
+    this.IPenalizer = TruffleContract({
+      contractName: 'IPenalizer',
+      abi: penalizerAbi
     })
     // @ts-ignore
     this.IRelayRecipient = TruffleContract({
@@ -167,6 +174,11 @@ export default class ContractInteractor {
   // eslint-disable-next-line @typescript-eslint/require-await
   async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
     return await this.IStakeManager.at(address)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async _createPenalizer (address: Address): Promise<IPenalizerInstance> {
+    return await this.IPenalizer.at(address)
   }
 
   async getForwarder (recipientAddress: Address): Promise<Address> {
