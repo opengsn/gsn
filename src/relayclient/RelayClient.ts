@@ -3,7 +3,7 @@ import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { constants } from '../common/Constants'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
-import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
+import RelayTransactionRequest from './types/RelayTransactionRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
@@ -108,7 +108,7 @@ export class RelayClient {
   }
 
   async _init (): Promise<void> {
-    await this.contractInteractor._init()
+    await this.contractInteractor.init()
     this.initialized = true
   }
 
@@ -198,9 +198,9 @@ export class RelayClient {
   async _prepareRelayHttpRequest (
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
-  ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, maxAcceptanceBudget: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: TmpRelayTransactionJsonRequest }> {
+  ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, maxAcceptanceBudget: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: RelayTransactionRequest }> {
     const forwarderAddress = await this.resolveForwarder(gsnTransactionDetails)
-    const paymaster = gsnTransactionDetails.paymaster != null ? gsnTransactionDetails.paymaster : this.config.paymasterAddress
+    const paymaster = gsnTransactionDetails.paymaster ?? this.config.paymasterAddress
 
     const senderNonce = await this.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarderAddress)
     const relayWorker = relayInfo.pingResponse.RelayServerAddress
@@ -249,7 +249,7 @@ export class RelayClient {
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
-    const httpRequest: TmpRelayTransactionJsonRequest = {
+    const httpRequest: RelayTransactionRequest = {
       relayWorker: relayInfo.pingResponse.RelayServerAddress,
       data: gsnTransactionDetails.data,
       senderNonce: relayRequest.request.nonce,

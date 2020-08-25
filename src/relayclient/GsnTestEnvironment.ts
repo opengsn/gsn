@@ -7,13 +7,14 @@ import { KeyManager } from '../relayserver/KeyManager'
 import { configureGSN } from './GSNConfigurator'
 import { getNetworkUrl, supportedNetworks } from '../cli/utils'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
-import { RelayServer, RelayServerParams } from '../relayserver/RelayServer'
+import { RelayServer } from '../relayserver/RelayServer'
 import { HttpServer } from '../relayserver/HttpServer'
 import { Address } from './types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
+import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -56,7 +57,7 @@ class GsnTestEnvironmentClass {
 
     const port = await this._resolveAvailablePort()
     const relayUrl = 'http://127.0.0.1:' + port.toString()
-    this._runServer(_host, deploymentResult, from, relayUrl, port, debug)
+    await this._runServer(_host, deploymentResult, from, relayUrl, port)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -118,19 +119,18 @@ class GsnTestEnvironmentClass {
     if (this.httpServer !== undefined) {
       this.httpServer.stop()
       this.httpServer.close()
-      await this.httpServer.backend.txStoreManager.clearAll()
+      await this.httpServer.backend.transactionManager.txStoreManager.clearAll()
       this.httpServer = undefined
     }
   }
 
-  _runServer (
+  async _runServer (
     host: string,
     deploymentResult: DeploymentResult,
     from: Address,
     relayUrl: string,
-    port: number,
-    debug = true
-  ): void {
+    port: number
+  ): Promise<void> {
     if (this.httpServer !== undefined) {
       return
     }
@@ -138,27 +138,29 @@ class GsnTestEnvironmentClass {
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true })
-    /*
-      readonly contractInteractor: ContractInteractor
-      readonly workerMinBalance: number | undefined // = defaultWorkerMinBalance,
-      readonly workerTargetBalance: number | undefined // = defaultWorkerTargetBalance,
-     */
-    const interactor = new ContractInteractor(new Web3.providers.HttpProvider(host),
-      configureGSN({ relayHubAddress: deploymentResult.relayHubAddress }))
-    const relayServerParams = {
-      contractInteractor: interactor,
+    const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host),
+      configureGSN({
+        relayHubAddress: deploymentResult.relayHubAddress,
+        stakeManagerAddress: deploymentResult.stakeManagerAddress
+      }))
+    await contractInteractor.init()
+    const relayServerDependencies = {
+      contractInteractor,
       txStoreManager,
       managerKeyManager,
-      workersKeyManager,
+      workersKeyManager
+    }
+    const relayServerParams: Partial<ServerConfigParams> = {
       url: relayUrl,
-      hubAddress: deploymentResult.relayHubAddress,
+      relayHubAddress: deploymentResult.relayHubAddress,
       gasPriceFactor: 1,
-      baseRelayFee: 0,
+      baseRelayFee: '0',
       pctRelayFee: 0,
       devMode: true,
-      debug
+      logLevel: 1
     }
-    const backend = new RelayServer(relayServerParams as RelayServerParams)
+    const backend = new RelayServer(relayServerParams, relayServerDependencies)
+    await backend.init()
 
     this.httpServer = new HttpServer(
       port,

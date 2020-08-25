@@ -2,7 +2,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 
 import PingResponse from '../common/PingResponse'
 import HttpWrapper from './HttpWrapper'
-import TmpRelayTransactionJsonRequest from './types/TmpRelayTransactionJsonRequest'
+import RelayTransactionRequest from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
 
 export default class HttpClient {
@@ -25,7 +25,7 @@ export default class HttpClient {
     return pingResponse
   }
 
-  async relayTransaction (relayUrl: string, request: TmpRelayTransactionJsonRequest): Promise<PrefixedHexString> {
+  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
     const { signedTx, error }: { signedTx: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
     if (this.config.verbose) {
       console.log('relayTransaction response:', signedTx, error)

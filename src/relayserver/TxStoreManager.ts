@@ -39,7 +39,7 @@ export class StoredTx {
   }
 }
 
-export function transactionToStoredTx (tx: Transaction, from: PrefixedHexString, chainId: number, attempts: number): StoredTx {
+export function transactionToStoredTx (tx: Transaction, from: PrefixedHexString, attempts: number): StoredTx {
   return {
     from,
     to: ethUtils.bufferToHex(tx.to),
@@ -51,6 +51,7 @@ export function transactionToStoredTx (tx: Transaction, from: PrefixedHexString,
     attempts: attempts
   }
 }
+
 export function storedTxToTransaction (stx: StoredTx): Transaction {
   return new Transaction({
     to: stx.to,
@@ -60,10 +61,12 @@ export function storedTxToTransaction (stx: StoredTx): Transaction {
     data: stx.data
   })
 }
+
 export const TXSTORE_FILENAME = 'txstore.db'
 
 export class TxStoreManager {
   private readonly txstore: AsyncNedb<any>
+
   constructor ({ workdir = '/tmp/test/', inMemory = false }) {
     this.txstore = new AsyncNedb({
       filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
@@ -76,7 +79,7 @@ export class TxStoreManager {
     console.log('txstore created in ', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
-  async putTx (tx: any, updateExisting: boolean = false): Promise<void> {
+  async putTx (tx: StoredTx, updateExisting: boolean = false): Promise<void> {
     // eslint-disable-next-line
     if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
       throw new Error('Invalid tx:' + JSON.stringify(tx))
