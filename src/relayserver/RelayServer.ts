@@ -174,15 +174,15 @@ export class RelayServer extends EventEmitter {
     }
 
     let acceptanceBudget = this.config.maxAcceptanceBudget
-    if (!this._isTrustedPaymaster(req.paymaster) && parseInt(gasLimits.acceptanceBudget) > this.config.maxAcceptanceBudget) {
-      throw new Error(
-        `paymaster acceptance budget too high. given: ${gasLimits.acceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
-    } else {
-      // for trusted paymasters we allow higher acceptance budget
-      if (parseInt(gasLimits.acceptanceBudget) > this.config.maxAcceptanceBudget) {
+    if (parseInt(gasLimits.acceptanceBudget) > acceptanceBudget) {
+      if (!this._isTrustedPaymaster(req.paymaster)) {
+        throw new Error(
+          `paymaster acceptance budget too high. given: ${gasLimits.acceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
+      } else {
+        // for trusted paymasters we allow higher acceptance budget
         log.debug(`Using trusted paymaster's higher than max acceptance budget: ${gasLimits.acceptanceBudget}`)
+        acceptanceBudget = parseInt(gasLimits.acceptanceBudget)
       }
-      acceptanceBudget = parseInt(gasLimits.acceptanceBudget)
     }
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({

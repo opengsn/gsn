@@ -27,7 +27,7 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   const transactionCost = baseFee + (gasLimit * gasPrice * (100 + pctFee)) / 100
   let score = Math.max(Number.MAX_SAFE_INTEGER - transactionCost, 0)
   score = score * Math.pow(0.9, failures.length)
-  return await Promise.resolve(score)
+  return score
 }
 
 export interface IKnownRelaysManager {
