@@ -219,7 +219,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
       it('should not accept a relay call', async function () {
         await expectRevert(
-          relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, {
+          relayHubInstance.relayCall(10e6, relayRequest, signature, approvalData, gas, {
             from: relayWorker,
             gas
           }),
@@ -240,7 +240,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
         it('should not accept a relay call', async function () {
           await expectRevert(
-            relayHubInstance.relayCall(relayRequest, signature, approvalData, gas, {
+            relayHubInstance.relayCall(10e6, relayRequest, signature, approvalData, gas, {
               from: relayWorker,
               gas
             }),
@@ -300,6 +300,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           await expectRevert(
             testRelayWorkerContract.relayCall(
               relayHubInstance.address,
+              10e6,
               relayRequest,
               signature,
               gas,
@@ -327,6 +328,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
           const relayCallView = await relayHubInstance.contract.methods.relayCall(
+            10e6,
             relayRequest,
             signatureWithPermissivePaymaster, '0x', 7e6)
             .call({
@@ -341,7 +343,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const relayCallView =
             await relayHubInstance.contract.methods
-              .relayCall(relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
+              .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
               .call({ from: relayWorker })
 
           assert.equal(relayCallView.paymasterAccepted, false)
@@ -419,7 +421,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
           const nonceBefore = await forwarderInstance.getNonce(senderAddress)
 
-          const { tx, logs } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
+          const { tx, logs } = await relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
             from: relayWorker,
             gas,
             gasPrice
@@ -445,14 +447,14 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
 
         it('relayCall should refuse to re-send transaction with same nonce', async function () {
-          const { tx } = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
+          const { tx } = await relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
             from: relayWorker,
             gas,
             gasPrice
           })
           await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted')
 
-          const ret = await relayHubInstance.relayCall(relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
+          const ret = await relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', gas, {
             from: relayWorker,
             gas,
             gasPrice
@@ -474,7 +476,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             web3,
             dataToSign
           )
-          const { tx } = await relayHubInstance.relayCall(relayRequestNoCallData, signature, '0x', gas, {
+          const { tx } = await relayHubInstance.relayCall(10e6, relayRequestNoCallData, signature, '0x', gas, {
             from: relayWorker,
             gas,
             gasPrice
@@ -500,7 +502,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             web3,
             dataToSign
           )
-          const { logs } = await relayHubInstance.relayCall(relayRequestRevert, signature, '0x', gas, {
+          const { logs } = await relayHubInstance.relayCall(10e6, relayRequestRevert, signature, '0x', gas, {
             from: relayWorker,
             gas,
             gasPrice
@@ -517,7 +519,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
 
         it('postRelayedCall receives values returned in preRelayedCall', async function () {
-          const { tx } = await relayHubInstance.relayCall(relayRequestPaymasterWithContext,
+          const { tx } = await relayHubInstance.relayCall(10e6, relayRequestPaymasterWithContext,
             signatureWithContextPaymaster, '0x', gas, {
               from: relayWorker,
               gas,
@@ -531,7 +533,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('relaying is aborted if the paymaster reverts the preRelayedCall', async function () {
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-          const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
+          const { logs } = await relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster,
             signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
               gas,
@@ -546,7 +548,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           const gasReserve = 99999
           const gas = parseInt(gasLimit) + gasReserve
           await expectRevert(
-            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
+            relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
               gasPrice,
               gas
@@ -556,7 +558,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('should not accept relay requests with gas price lower then user specified', async function () {
           await expectRevert(
-            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
+            relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
               gas,
               gasPrice: parseInt(gasPrice) - 1
@@ -566,7 +568,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('should not accept relay requests with gas limit higher then block gas limit', async function () {
           await expectRevert(
-            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', 100000001, {
+            relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', 100000001, {
               from: relayWorker,
               gasPrice,
               gas
@@ -577,7 +579,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         it('should not accept relay requests with incorrect relay worker', async function () {
           await relayHubInstance.addRelayWorkers([incorrectWorker], { from: relayManager })
           await expectRevert(
-            relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
+            relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', gas, {
               from: incorrectWorker,
               gasPrice,
               gas
@@ -606,7 +608,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequestPaymaster2.relayData.paymaster = paymaster2.address
 
             await expectRevert(
-              relayHubInstance.relayCall(relayRequestPaymaster2, signatureWithMisbehavingPaymaster, '0x', gas, {
+              relayHubInstance.relayCall(10e6, relayRequestPaymaster2, signatureWithMisbehavingPaymaster, '0x', gas, {
                 from: relayWorker,
                 gas,
                 gasPrice
@@ -619,7 +621,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           // @ts-ignore (there is a problem with web3 types annotations that must be solved)
           const startBlock = await web3.eth.getBlockNumber()
 
-          const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
+          const { logs } = await relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster,
             signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
               gas,
@@ -640,7 +642,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('should revert the \'relayedCall\' if \'postRelayedCall\' reverts', async function () {
           await misbehavingPaymaster.setRevertPostRelayCall(true)
-          const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster,
+          const { logs } = await relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster,
             signatureWithMisbehavingPaymaster, '0x', gas, {
               from: relayWorker,
               gas,
@@ -700,7 +702,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
 
           async function assertRevertWithPaymasterBalanceChanged (): Promise<void> {
-            const { logs } = await relayHubInstance.relayCall(relayRequestMisbehavingPaymaster, signature, '0x', gas, {
+            const { logs } = await relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster, signature, '0x', gas, {
               from: relayWorker,
               gas,
               gasPrice

@@ -6,7 +6,7 @@ describe('RelayServer-webpack', () => {
   let oneFileRelayer: string
   before('create webpack', function () {
     this.timeout(15000)
-    const jsrelayDir = path.join(__dirname, '..', 'jsrelay')
+    const jsrelayDir = path.join(__dirname, '../../dockers', 'jsrelay')
     fs.rmdirSync(path.join(jsrelayDir, 'dist'), { recursive: true })
     childProcess.execSync('npx webpack', { cwd: jsrelayDir, stdio: 'inherit' })
     oneFileRelayer = path.join(jsrelayDir, 'dist', 'relayserver.js')
@@ -17,7 +17,7 @@ describe('RelayServer-webpack', () => {
       childProcess.execSync('node ' + oneFileRelayer, { encoding: 'ascii', stdio: 'pipe' })
       assert.fail('should throw')
     } catch (e) {
-      assert.match(e.message.toString(), /Command failed.*[\r\n]+missing --/)
+      assert.match(e.message.toString(), /missing ethereumNodeUrl/)
     }
   })
 

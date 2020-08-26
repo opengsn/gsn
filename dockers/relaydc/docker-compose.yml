@@ -1,0 +1,57 @@
+#should be launched with:
+#docker run --rm  -e ROOT=$PWD -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/.env:/.env opengsn/relaydc "$@"
+
+#ROOT - folder that contains config, gsndata, .env . above command-line assumes its current folder.
+#the special mapping for .env is required, since it is expected in the same folder as the docker-compose.yml.
+
+version: '3'
+
+services:
+
+  https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - '443:443'
+      - '80:80'
+    restart: always
+    environment:
+      DOMAINS: '${HOST} -> http://router'
+      STAGE: ${HTTPS_STAGE}
+
+  router:
+    image: opengsn/prefixrouter
+    container_name: router
+    restart: always
+    ports: [ '8080:80' ] #bypass https-portal
+    # add line for each relay
+    command: 
+      - gsn1 
+#ADD-SERVER: add new server name above this line
+
+####-BEGIN-TEMPLATE. duplicate for more instances. update "gsn1" for unique name
+#### make sure to add instance name to the router command above
+
+  gsn1:
+    image: opengsn/jsrelay:2.0.0-beta.1
+    restart: on-failure
+
+    # $ROOT - mapped by calling script to data folder
+    #for each jsrelay instance, we map:
+    # /app/data - relay specific folder
+    # /app/config - read-only config folder
+    # /app/data/manager - shared manager folder of all relays
+    volumes:
+      - $ROOT/gsndata/gsn1:/app/data
+      - $ROOT/gsndata/manager:/app/data/manager
+      - $ROOT/config:/app/config:ro
+
+    environment:
+      url: https://${HOST}/gsn1
+      port: 80
+      workdir: /app/data
+      config: /app/config/gsn-relay-config.json
+      relayHubId: hub
+
+
+####-END-TEMPLATE
+

@@ -1,0 +1,7 @@
+docker image wrapper for the gsn command-line tool
+
+use the `gsn` wrapper script to launch.
+NOTE: only current folder is mapped into the docker, so if you reference external file,
+make sure it is under the current directory.
+
+Removed the dev-mode commands (start, run-relayer)

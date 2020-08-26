@@ -6,13 +6,14 @@ import path from 'path'
 import { DeploymentResult } from './CommandsLogic'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 
+const cliInfuraId = '41a7aa85a67641f3bd6e31cb60753698'
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
   ['xdai', 'https://dai.poa.network'],
-  ['ropsten', 'https://ropsten.infura.io/v3/c3422181d0594697a38defe7706a1e5b'],
-  ['rinkeby', 'https://rinkeby.infura.io/v3/c3422181d0594697a38defe7706a1e5b'],
-  ['kovan', 'https://kovan.infura.io/v3/c3422181d0594697a38defe7706a1e5b'],
-  ['mainnet', 'https://mainnet.infura.io/v3/c3422181d0594697a38defe7706a1e5b']
+  ['ropsten', 'https://ropsten.infura.io/v3/' + cliInfuraId],
+  ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
+  ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
+  ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId]
 ])
 
 export function supportedNetworks (): string[] {
@@ -49,6 +50,10 @@ export function getRelayHubAddress (defaultAddress?: string): string | undefined
   return getAddressFromFile('build/gsn/RelayHub.json', defaultAddress)
 }
 
+export function getRegistryAddress (defaultAddress?: string): string | undefined {
+  return getAddressFromFile('build/gsn/VersionRegistry.json', defaultAddress)
+}
+
 function getAddressFromFile (path: string, defaultAddress?: string): string | undefined {
   if (defaultAddress == null) {
     if (fs.existsSync(path)) {
@@ -70,6 +75,7 @@ export function saveDeployment (deploymentResult: DeploymentResult, workdir: str
   saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
   saveContractToFile(deploymentResult.naivePaymasterAddress, workdir, 'Paymaster.json')
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
+  saveContractToFile(deploymentResult.versionRegistryAddress, workdir, 'VersionRegistry.json')
 }
 
 export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
@@ -80,23 +86,23 @@ export function showDeployment (deploymentResult: DeploymentResult, title: strin
   RelayHub: ${deploymentResult.relayHubAddress}
   StakeManager: ${deploymentResult.stakeManagerAddress}
   Penalizer: ${deploymentResult.penalizerAddress}
+  VersionRegistry: ${deploymentResult.versionRegistryAddress}
   Forwarder: ${deploymentResult.forwarderAddress}
   Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.naivePaymasterAddress}`)
 }
 
 export function loadDeployment (workdir: string): DeploymentResult {
   function getAddress (name: string): string {
-    const address = getAddressFromFile(path.join(workdir, name + '.json'))
-    if (address != null) { return address }
-    throw new Error('no address for ' + name)
+    return getAddressFromFile(path.join(workdir, name + '.json')) as string
   }
 
   return {
     relayHubAddress: getAddress('RelayHub'),
     stakeManagerAddress: getAddress('StakeManager'),
-    penalizerAddress: getAddress('Penalizer.json'),
-    forwarderAddress: getAddress('Forwarder.json'),
-    naivePaymasterAddress: getAddress('Paymaster.json')
+    penalizerAddress: getAddress('Penalizer'),
+    forwarderAddress: getAddress('Forwarder'),
+    versionRegistryAddress: getAddress('VersionRegistry'),
+    naivePaymasterAddress: getAddress('Paymaster')
   }
 }
 
