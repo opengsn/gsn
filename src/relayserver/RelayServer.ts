@@ -1,6 +1,5 @@
 import log from 'loglevel'
 import ow from 'ow'
-import { BlockHeader } from 'web3-eth'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -9,9 +8,7 @@ import { toBN, toHex } from 'web3-utils'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 
-import ContractInteractor, {
-  TransactionRejectedByPaymaster
-} from '../relayclient/ContractInteractor'
+import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
 import RelayTransactionRequest from '../relayclient/types/RelayTransactionRequest'
 import { IPaymasterInstance, IRelayHubInstance } from '../../types/truffle-contracts'
@@ -241,7 +238,7 @@ export class RelayServer extends EventEmitter {
         .then(
           block => {
             if (block.number > this.lastScannedBlock) {
-              this._workerSemaphore.bind(this)(block)
+              this._workerSemaphore.bind(this)(block.number)
             }
           })
         .catch((e) => {
@@ -260,13 +257,13 @@ export class RelayServer extends EventEmitter {
     console.log('Successfully stopped polling!!')
   }
 
-  _workerSemaphore (blockHeader: BlockHeader): void {
+  _workerSemaphore (blockNumber: number): void {
     if (this._workerSemaphoreOn) {
       log.debug('Different worker is not finished yet')
       return
     }
     this._workerSemaphoreOn = true
-    this._worker(blockHeader)
+    this._worker(blockNumber)
       .then(() => {
         this._workerSemaphoreOn = false
       })
@@ -377,9 +374,12 @@ export class RelayServer extends EventEmitter {
     return receipts
   }
 
-  async _worker (blockHeader: BlockHeader): Promise<TransactionReceipt[]> {
+  async _worker (blockNumber: number): Promise<TransactionReceipt[]> {
     if (!this.initialized) {
       await this.init()
+    }
+    if (blockNumber <= this.lastScannedBlock) {
+      throw new Error('Attempt to scan older block, aborting')
     }
     const gasPriceString = await this.contractInteractor.getGasPrice()
     this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
@@ -390,14 +390,14 @@ export class RelayServer extends EventEmitter {
 
     const shouldRegisterAgain = await this.getShouldRegisterAgain()
     let { receipts, unregistered } = await this.registrationManager.handlePastEvents(this.lastScannedBlock, shouldRegisterAgain)
-    await this._resendUnconfirmedTransactions(blockHeader)
+    await this._resendUnconfirmedTransactions(blockNumber)
     if (unregistered) {
-      this.lastScannedBlock = blockHeader.number
+      this.lastScannedBlock = blockNumber
       return receipts
     }
     await this.registrationManager.assertRegistered()
-    await this.handlePastHubEvents(blockHeader)
-    this.lastScannedBlock = blockHeader.number
+    await this.handlePastHubEvents(blockNumber)
+    this.lastScannedBlock = blockNumber
     const workerIndex = 0
     receipts = receipts.concat(await this.replenishServer(workerIndex))
     const workerBalance = await this.getWorkerBalance(workerIndex)
@@ -410,8 +410,8 @@ export class RelayServer extends EventEmitter {
       console.log('Relay is Ready.')
     }
     this.ready = true
-    if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < blockHeader.number) {
-      console.log(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockHeader.number}`)
+    if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < blockNumber) {
+      console.log(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockNumber}`)
       this.alerted = false
     }
     delete this.lastError
@@ -432,7 +432,7 @@ export class RelayServer extends EventEmitter {
     return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
   }
 
-  async handlePastHubEvents (blockHeader: BlockHeader): Promise<void> {
+  async handlePastHubEvents (blockNumber: number): Promise<void> {
     const topics = [address2topic(this.managerAddress)]
     const options = {
       fromBlock: this.lastScannedBlock + 1,
@@ -443,7 +443,7 @@ export class RelayServer extends EventEmitter {
     for (const dlog of decodedEvents) {
       switch (dlog.event) {
         case TransactionRejectedByPaymaster:
-          await this._handleTransactionRejectedByPaymasterEvent(dlog, blockHeader.number)
+          await this._handleTransactionRejectedByPaymasterEvent(dlog, blockNumber)
           break
       }
     }
@@ -460,7 +460,7 @@ export class RelayServer extends EventEmitter {
     const events: EventData[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [address2topic(this.managerAddress)], {
       fromBlock: 1
     })
-    const latestBlock = events
+    return events
       .filter(
         (e: EventData) =>
           e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase())
@@ -469,34 +469,33 @@ export class RelayServer extends EventEmitter {
           e.blockNumber)
       .reduce(
         (b1: any, b2: any) => Math.max(b1, b2), 0)
-    return latestBlock
   }
 
   /**
    * resend Txs of all signers (manager, workers)
    * @return the receipt from the first request
    */
-  async _resendUnconfirmedTransactions (blockHeader: BlockHeader): Promise<PrefixedHexString | undefined> {
+  async _resendUnconfirmedTransactions (blockNumber: number): Promise<PrefixedHexString | undefined> {
     // repeat separately for each signer (manager, all workers)
-    let signedTx = await this._resendUnconfirmedTransactionsForManager(blockHeader)
+    let signedTx = await this._resendUnconfirmedTransactionsForManager(blockNumber)
     if (signedTx != null) {
       return signedTx
     }
     for (const workerIndex of [0]) {
-      signedTx = await this._resendUnconfirmedTransactionsForWorker(blockHeader, workerIndex)
+      signedTx = await this._resendUnconfirmedTransactionsForWorker(blockNumber, workerIndex)
       if (signedTx != null) {
         return signedTx // TODO: should we early-return ?
       }
     }
   }
 
-  async _resendUnconfirmedTransactionsForManager (blockHeader: BlockHeader): Promise<PrefixedHexString | null> {
-    return await this.transactionManager.resendUnconfirmedTransactionsForSigner(blockHeader, this.managerAddress)
+  async _resendUnconfirmedTransactionsForManager (blockNumber: number): Promise<PrefixedHexString | null> {
+    return await this.transactionManager.resendUnconfirmedTransactionsForSigner(blockNumber, this.managerAddress)
   }
 
-  async _resendUnconfirmedTransactionsForWorker (blockHeader: BlockHeader, workerIndex: number): Promise<PrefixedHexString | null> {
+  async _resendUnconfirmedTransactionsForWorker (blockNumber: number, workerIndex: number): Promise<PrefixedHexString | null> {
     const signer = this.workerAddress
-    return await this.transactionManager.resendUnconfirmedTransactionsForSigner(blockHeader, signer)
+    return await this.transactionManager.resendUnconfirmedTransactionsForSigner(blockNumber, signer)
   }
 
   timeUnit (): number {
