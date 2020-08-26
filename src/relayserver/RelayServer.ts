@@ -108,7 +108,7 @@ export class RelayServer extends EventEmitter {
     }
 
     // if trusted paymaster, we trust it to handle fees
-    if (!this.config.trustedPaymasters.map(it => it.toLowerCase()).includes(req.paymaster.toLowerCase())) {
+    if (!this._isTrustedPaymaster(req.paymaster)) {
       // Check that the fee is acceptable
       if (isNaN(parseInt(req.pctRelayFee)) || parseInt(req.pctRelayFee) < this.config.pctRelayFee) {
         throw new Error(`Unacceptable pctRelayFee: ${req.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
@@ -173,13 +173,25 @@ export class RelayServer extends EventEmitter {
       throw new Error(`unknown paymaster error: ${e.message}`)
     }
 
+    let acceptanceBudget = this.config.maxAcceptanceBudget
+    if (parseInt(gasLimits.acceptanceBudget) > acceptanceBudget) {
+      if (!this._isTrustedPaymaster(req.paymaster)) {
+        throw new Error(
+          `paymaster acceptance budget too high. given: ${gasLimits.acceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
+      } else {
+        // for trusted paymasters we allow higher acceptance budget
+        log.debug(`Using trusted paymaster's higher than max acceptance budget: ${gasLimits.acceptanceBudget}`)
+        acceptanceBudget = parseInt(gasLimits.acceptanceBudget)
+      }
+    }
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasLimits,
       hubOverhead,
       relayCallGasLimit: req.gasLimit
     })
-    const method = this.relayHubContract.contract.methods.relayCall(this.config.maxAcceptanceBudget, relayRequest, req.signature, req.approvalData, maxPossibleGas)
+    const method = this.relayHubContract.contract.methods.relayCall(acceptanceBudget, relayRequest, req.signature,
+      req.approvalData, maxPossibleGas)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet =
@@ -340,11 +352,13 @@ export class RelayServer extends EventEmitter {
     let managerEthBalance = await this.getManagerBalance()
     const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
     const workerBalance = await this.getWorkerBalance(workerIndex)
-    if (managerEthBalance.gte(toBN(this.config.managerTargetBalance.toString())) && workerBalance.gte(toBN(this.config.workerMinBalance.toString()))) {
+    if (managerEthBalance.gte(toBN(this.config.managerTargetBalance.toString())) && workerBalance.gte(
+      toBN(this.config.workerMinBalance.toString()))) {
       // all filled, nothing to do
       return receipts
     }
-    if (managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(toBN(this.config.minHubWithdrawalBalance))) {
+    if (managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(
+      toBN(this.config.minHubWithdrawalBalance))) {
       console.log(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
       const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.managerAddress)
@@ -457,9 +471,10 @@ export class RelayServer extends EventEmitter {
   }
 
   async _getLatestTxBlockNumber (): Promise<number> {
-    const events: EventData[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [address2topic(this.managerAddress)], {
-      fromBlock: 1
-    })
+    const events: EventData[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents,
+      [address2topic(this.managerAddress)], {
+        fromBlock: 1
+      })
     const latestBlock = events
       .filter(
         (e: EventData) =>
@@ -497,6 +512,10 @@ export class RelayServer extends EventEmitter {
   async _resendUnconfirmedTransactionsForWorker (blockHeader: BlockHeader, workerIndex: number): Promise<PrefixedHexString | null> {
     const signer = this.workerAddress
     return await this.transactionManager.resendUnconfirmedTransactionsForSigner(blockHeader, signer)
+  }
+
+  _isTrustedPaymaster (paymaster: string): boolean {
+    return this.config.trustedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
   timeUnit (): number {

@@ -144,7 +144,7 @@ export class RelayClient {
   }
 
   async _calculateGasPrice (): Promise<PrefixedHexString> {
-    const pct: number = this.config.gasPriceFactorPercent
+    const pct = this.config.gasPriceFactorPercent
     const networkGasPrice = await this.contractInteractor.getGasPrice()
     let gasPrice = Math.round(parseInt(networkGasPrice) * (pct + 100) / 100)
     if (this.config.minGasPrice != null && gasPrice < this.config.minGasPrice) {
