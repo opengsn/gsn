@@ -28,13 +28,12 @@ import {
   NewRelayParams,
   PrepareRelayRequestOption,
   RelayTransactionParams,
-  ServerTestConstants,
   bringUpNewRelay,
   clearStorage,
   getTotalTxCosts,
   prepareRelayRequest,
   relayTransaction,
-  relayTransactionFromRequest, getTimestampTempWorkdir
+  relayTransactionFromRequest, LocalhostOne, getTemporaryWorkdirs
 } from './ServerTestUtils'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { SendTransactionDetails, SignedTransactionDetails } from '../../src/relayserver/TransactionManager'
@@ -106,11 +105,10 @@ contract('RelayServer', function (accounts) {
 
     newRelayParams = {
       alertedBlockDelay: 0,
-      workdir: ServerTestConstants.workdir,
       ethereumNodeUrl,
       relayHubAddress: rhub.address,
       relayOwner,
-      url: ServerTestConstants.localhostOne,
+      url: LocalhostOne,
       web3,
       stakeManager
     }
@@ -118,7 +116,7 @@ contract('RelayServer', function (accounts) {
       relayHubAddress: rhub.address,
       stakeManagerAddress: stakeManager.address
     }
-    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {
+    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
       trustedPaymasters: [paymaster.address],
       baseRelayFee
     })
@@ -134,7 +132,7 @@ contract('RelayServer', function (accounts) {
 
     const encodedFunction = sr.contract.methods.emitMessage('hello world').encodeABI()
     const relayClientConfig = {
-      preferredRelays: [ServerTestConstants.localhostOne],
+      preferredRelays: [LocalhostOne],
       maxRelayNonceGap: 0,
       verbose: process.env.DEBUG != null
     }
@@ -181,8 +179,8 @@ contract('RelayServer', function (accounts) {
     it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
       const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
       const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
-      const txStoreManager = new TxStoreManager({ workdir: newRelayParams.workdir + getTimestampTempWorkdir() })
-      const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl)
+      const txStoreManager = new TxStoreManager({ workdir: getTemporaryWorkdirs().workdir })
+      const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl!)
       const contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
       await contractInteractor.init()
       const serverDependencies = {
@@ -704,7 +702,7 @@ contract('RelayServer', function (accounts) {
       await rejectingPaymaster.setRelayHub(rhub.address)
       await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
       await rejectingPaymaster.setGreedyAcceptanceBudget(true)
-      newServer = await bringUpNewRelay(newRelayParams, partialConfig, { trustedPaymasters: [rejectingPaymaster.address] })
+      newServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, { trustedPaymasters: [rejectingPaymaster.address] })
       await newServer._worker(await _web3.eth.getBlock('latest'))
       relayTransactionParams2 = {
         ...relayTransactionParams,
