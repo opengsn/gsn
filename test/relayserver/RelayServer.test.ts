@@ -71,7 +71,6 @@ contract('RelayServer', function (accounts) {
   const paymasterData = '0x'
   const clientId = '0'
 
-  let partialConfig: Partial<GSNConfig>
   let relayTransactionParams: RelayTransactionParams
   let rhub: RelayHubInstance
   let forwarder: ForwarderInstance
@@ -691,7 +690,8 @@ contract('RelayServer', function (accounts) {
       await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
       await rejectingPaymaster.setGreedyAcceptanceBudget(true)
       newServer = await bringUpNewRelay(newRelayParams, partialConfig, { trustedPaymasters: [rejectingPaymaster.address] })
-      await newServer._worker(await _web3.eth.getBlock('latest'))
+      let latestBlock = await _web3.eth.getBlock('latest')
+      await newServer._worker(latestBlock.number)
       relayTransactionParams2 = {
         ...relayTransactionParams,
         paymasterAddress: rejectingPaymaster.address,
@@ -704,7 +704,8 @@ contract('RelayServer', function (accounts) {
     it('should reject a transaction from paymaster returning above configured max exposure', async function () {
       try {
         const scepticServer = await bringUpNewRelay(newRelayParams, partialConfig)
-        await scepticServer._worker(await _web3.eth.getBlock('latest'))
+        let latestBlock = await _web3.eth.getBlock('latest')
+        await scepticServer._worker(latestBlock.number)
         await relayTransaction({ ...relayTransactionParams2, relayServer: scepticServer }, options,
           { paymaster: rejectingPaymaster.address })
         assert.fail()
