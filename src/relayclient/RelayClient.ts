@@ -130,6 +130,7 @@ export class RelayClient {
       const activeRelay = await relaySelectionManager.selectNextRelay(gsnTransactionDetails)
       if (activeRelay != null) {
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
+          .catch(error => ({ error }))
         if (relayingAttempt.transaction == null) {
           relayingErrors.set(activeRelay.relayInfo.relayUrl, relayingAttempt.error ?? new Error('No error reason was given'))
           continue
