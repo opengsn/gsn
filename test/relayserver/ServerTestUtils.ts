@@ -141,7 +141,7 @@ export async function assertTransactionRelayed (
   gasLess: Address,
   recipientAddress: Address,
   paymasterAddress: Address,
-  web3: Web3): Promise<TransactionReceipt> {
+  web3: Web3, overrideArgs?: Partial<RelayTransactionRequest>): Promise<TransactionReceipt> {
   const receipt = await web3.eth.getTransactionReceipt(txHash)
   const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(server.registrationManager._parseEvent)
   const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
@@ -153,7 +153,8 @@ export async function assertTransactionRelayed (
   assert.equal(event2.args.relayWorker.toLowerCase(), server.workerAddress.toLowerCase())
   assert.equal(event2.args.from.toLowerCase(), gasLess.toLowerCase())
   assert.equal(event2.args.to.toLowerCase(), recipientAddress.toLowerCase())
-  assert.equal(event2.args.paymaster.toLowerCase(), paymasterAddress.toLowerCase())
+  const pm = overrideArgs?.paymaster ?? paymasterAddress
+  assert.equal(event2.args.paymaster.toLowerCase(), pm.toLowerCase())
   return receipt
 }
 
@@ -264,7 +265,7 @@ export async function relayTransactionFromRequest (
     })
   const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
   if (assertRelayed) {
-    await assertTransactionRelayed(params.relayServer, txhash, fromRequestParam.relayRequest.request.from, params.recipientAddress, params.paymasterAddress, params.web3)
+    await assertTransactionRelayed(params.relayServer, txhash, fromRequestParam.relayRequest.request.from, params.recipientAddress, params.paymasterAddress, params.web3, overrideArgs)
   }
   return signedTx
 }

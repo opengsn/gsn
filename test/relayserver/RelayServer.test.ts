@@ -85,6 +85,7 @@ contract('RelayServer', function (accounts) {
   let globalId: string
   let options: PrepareRelayRequestOption
   let newRelayParams: NewRelayParams
+  let partialConfig: Partial<GSNConfig>
 
   before(async function () {
     globalId = (await snapshot()).result
@@ -189,10 +190,6 @@ contract('RelayServer', function (accounts) {
       const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
       const txStoreManager = new TxStoreManager({ workdir: newRelayParams.workdir + getTimestampTempWorkdir() })
       const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl)
-      const partialConfig = {
-        relayHubAddress: rhub.address,
-        stakeManagerAddress: stakeManager.address
-      }
       const contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
       await contractInteractor.init()
       const serverDependencies = {
@@ -368,7 +365,8 @@ contract('RelayServer', function (accounts) {
     it('should fail to relay with wrong baseRelayFee', async function () {
       const trustedPaymaster = relayServer.config.trustedPaymasters.pop()
       try {
-        await relayTransaction(relayTransactionParams, options, { baseRelayFee: (parseInt(relayServer.config.baseRelayFee) - 1).toString() })
+        await relayTransaction(relayTransactionParams, options,
+          { baseRelayFee: (parseInt(relayServer.config.baseRelayFee) - 1).toString() })
         assert.fail()
       } catch (e) {
         assert.include(e.message, 'Unacceptable baseRelayFee:')
@@ -677,6 +675,55 @@ contract('RelayServer', function (accounts) {
       latestBlock = await _web3.eth.getBlock('latest')
       await newServer._worker(latestBlock.number)
       assert.isFalse(newServer.alerted, 'server alerted')
+    })
+  })
+
+  describe('relay max exposure to paymaster rejections', function () {
+    let newServer: RelayServer
+    let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
+    let relayTransactionParams2: RelayTransactionParams
+    const paymasterExpectedAcceptanceBudget = 15e4
+    beforeEach(async function () {
+      id = (await snapshot()).result
+      rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+      await rejectingPaymaster.setTrustedForwarder(forwarder.address)
+      await rejectingPaymaster.setRelayHub(rhub.address)
+      await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
+      await rejectingPaymaster.setGreedyAcceptanceBudget(true)
+      newServer = await bringUpNewRelay(newRelayParams, partialConfig, { trustedPaymasters: [rejectingPaymaster.address] })
+      await newServer._worker(await _web3.eth.getBlock('latest'))
+      relayTransactionParams2 = {
+        ...relayTransactionParams,
+        paymasterAddress: rejectingPaymaster.address,
+        relayServer: newServer
+      }
+    })
+    afterEach(async function () {
+      await revert(id)
+    })
+    it('should reject a transaction from paymaster returning above configured max exposure', async function () {
+      try {
+        const scepticServer = await bringUpNewRelay(newRelayParams, partialConfig)
+        await scepticServer._worker(await _web3.eth.getBlock('latest'))
+        await relayTransaction({ ...relayTransactionParams2, relayServer: scepticServer }, options,
+          { paymaster: rejectingPaymaster.address })
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, 'paymaster acceptance budget too high')
+      }
+    })
+    it('should accept a transaction from paymaster returning below configured max exposure', async function () {
+      await rejectingPaymaster.setGreedyAcceptanceBudget(false)
+      const gasLimits = await rejectingPaymaster.getGasLimits()
+      assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
+      await relayTransaction(relayTransactionParams2, { ...options, paymaster: rejectingPaymaster.address },
+        { paymaster: rejectingPaymaster.address })
+    })
+    it('should accept a transaction from trusted paymaster returning above configured max exposure', async function () {
+      const gasLimits = await rejectingPaymaster.getGasLimits()
+      assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
+      await relayTransaction(relayTransactionParams2, { ...options, paymaster: rejectingPaymaster.address },
+        { paymaster: rejectingPaymaster.address })
     })
   })
 })

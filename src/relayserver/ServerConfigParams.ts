@@ -53,7 +53,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   alertedBlockDelay: 0,
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
-  maxAcceptanceBudget: 200000,
+  maxAcceptanceBudget: 2e5,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   gasPriceFactor: 1,

@@ -27,7 +27,7 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   const transactionCost = baseFee + (gasLimit * gasPrice * (100 + pctFee)) / 100
   let score = Math.max(Number.MAX_SAFE_INTEGER - transactionCost, 0)
   score = score * Math.pow(0.9, failures.length)
-  return await Promise.resolve(score)
+  return score
 }
 
 export interface IKnownRelaysManager {
@@ -153,15 +153,20 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     for (const activeRelay of activeRelays) {
       let score = 0
       if (isInfoFromEvent(activeRelay)) {
-        score = await this.scoreCalculator((activeRelay as RelayRegisteredEventInfo), gsnTransactionDetails, this.relayFailures.get(activeRelay.relayUrl) ?? [])
+        const eventInfo = activeRelay as RelayRegisteredEventInfo
+        score = await this.scoreCalculator(eventInfo, gsnTransactionDetails, this.relayFailures.get(activeRelay.relayUrl) ?? [])
+        scores.set(eventInfo.relayManager, score)
       }
-      scores.set(activeRelay.relayUrl, score)
     }
-    return Array.from(activeRelays.values()).sort((a, b) => {
-      const aScore = scores.get(a.relayUrl) ?? 0
-      const bScore = scores.get(b.relayUrl) ?? 0
-      return bScore - aScore
-    })
+    return Array
+      .from(activeRelays.values())
+      .filter(isInfoFromEvent)
+      .map(value => (value as RelayRegisteredEventInfo))
+      .sort((a, b) => {
+        const aScore = scores.get(a.relayManager) ?? 0
+        const bScore = scores.get(b.relayManager) ?? 0
+        return bScore - aScore
+      })
   }
 
   saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void {
