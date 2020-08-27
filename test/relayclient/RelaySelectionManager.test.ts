@@ -105,6 +105,7 @@ contract('RelaySelectionManager', function (accounts) {
           stakeManagerAddress: stakeManager.address
         })
         dependencyTree = getDependencies(config, web3.currentProvider as HttpProvider)
+        await dependencyTree.contractInteractor.init()
 
         relaySelectionManager =
           new RelaySelectionManager(

@@ -58,6 +58,13 @@ export default class ContractInteractor {
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
 
+  private IPaymasterInstance!: IPaymasterInstance
+  private IRelayHubInstance!: IRelayHubInstance
+  private IForwarderInstance!: IForwarderInstance
+  private IStakeManagerInstance!: IStakeManagerInstance
+  private IRelayRecipientInstance?: BaseRelayRecipientInstance
+  private IKnowForwarderAddressInstance?: IKnowForwarderAddressInstance
+
   private readonly web3: Web3
   private readonly provider: provider
   private readonly config: GSNConfig
@@ -126,6 +133,7 @@ export default class ContractInteractor {
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
+    await this._initializeContracts()
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -140,6 +148,21 @@ export default class ContractInteractor {
     }
   }
 
+  async _initializeContracts (): Promise<void> {
+    if (this.config.forwarderAddress !== constants.ZERO_ADDRESS) {
+      this.IForwarderInstance = await this._createForwarder(this.config.forwarderAddress)
+    }
+    if (this.config.stakeManagerAddress !== constants.ZERO_ADDRESS) {
+      this.IStakeManagerInstance = await this._createStakeManager(this.config.stakeManagerAddress)
+    }
+    if (this.config.relayHubAddress !== constants.ZERO_ADDRESS) {
+      this.IRelayHubInstance = await this._createRelayHub(this.config.relayHubAddress)
+    }
+    if (this.config.paymasterAddress !== constants.ZERO_ADDRESS) {
+      this.IPaymasterInstance = await this._createPaymaster(this.config.paymasterAddress)
+    }
+  }
+
   // must use these options when creating Transaction object
   getRawTxOptions (): TransactionOptions {
     if (this.rawTxOptions == null) {
@@ -148,32 +171,34 @@ export default class ContractInteractor {
     return this.rawTxOptions
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async _createKnowsForwarder (address: Address): Promise<IKnowForwarderAddressInstance> {
-    return await this.IKnowForwarderAddress.at(address)
+    if (this.IKnowForwarderAddressInstance != null && this.IKnowForwarderAddressInstance.address.toLowerCase() === address.toLowerCase()) {
+      return this.IKnowForwarderAddressInstance
+    }
+    this.IKnowForwarderAddressInstance = await this.IKnowForwarderAddress.at(address)
+    return this.IKnowForwarderAddressInstance
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
-    return await this.IRelayRecipient.at(address)
+    if (this.IRelayRecipientInstance != null && this.IRelayRecipientInstance.address.toLowerCase() === address.toLowerCase()) {
+      return this.IRelayRecipientInstance
+    }
+    this.IRelayRecipientInstance = await this.IRelayRecipient.at(address)
+    return this.IRelayRecipientInstance
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
     return await this.IPaymasterContract.at(address)
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async _createRelayHub (address: Address): Promise<IRelayHubInstance> {
     return await this.IRelayHubContract.at(address)
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async _createForwarder (address: Address): Promise<IForwarderInstance> {
     return await this.IForwarderContract.at(address)
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
     return await this.IStakeManager.at(address)
   }
@@ -246,8 +271,7 @@ export default class ContractInteractor {
   }
 
   async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    const relayHub = await this._createRelayHub(this.config.relayHubAddress)
-    return await this._getPastEvents(relayHub.contract, names, extraTopics, options)
+    return await this._getPastEvents(this.IRelayHubInstance.contract, names, extraTopics, options)
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
@@ -345,7 +369,7 @@ export default class ContractInteractor {
   }
 
   async hubBalanceOf (managerAddress: Address): Promise<BN> {
-    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    const hub = this.IRelayHubInstance
     return await hub.balanceOf(managerAddress)
   }
 
@@ -353,7 +377,7 @@ export default class ContractInteractor {
     gasCost: BN
     method: any
   }> {
-    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    const hub = this.IRelayHubInstance
     const method = hub.contract.methods.withdraw(amount.toString(), destination)
     const withdrawTxGasLimit = await method.estimateGas(
       {
@@ -368,12 +392,12 @@ export default class ContractInteractor {
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
   async getRegisterRelayMethod (baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
-    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    const hub = this.IRelayHubInstance
     return hub.contract.methods.registerRelayServer(baseRelayFee, pctRelayFee, url)
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
-    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    const hub = this.IRelayHubInstance
     return hub.contract.methods.addRelayWorkers(workers)
   }
 }

@@ -72,6 +72,7 @@ contract('KnownRelaysManager', function (
         relayLookupWindowBlocks
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
+      await contractInteractor.init()
 
       const forwarderInstance = await Forwarder.new()
       const forwarderAddress = forwarderInstance.address
@@ -143,7 +144,7 @@ contract('KnownRelaysManager', function (
 })
 
 contract('KnownRelaysManager 2', function (accounts) {
-  const contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, configureGSN({}))
+  let contractInteractor: ContractInteractor
   const transactionDetails = {
     gas: '0x10000',
     gasPrice: '0x300000',
@@ -153,6 +154,11 @@ contract('KnownRelaysManager 2', function (accounts) {
     forwarder: '',
     paymaster: ''
   }
+
+  before(async function () {
+    contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, configureGSN({}))
+    await contractInteractor.init()
+  })
 
   describe('#refresh()', function () {
     let relayProcess: ChildProcessWithoutNullStreams
@@ -177,6 +183,7 @@ contract('KnownRelaysManager 2', function (accounts) {
         ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
+      await contractInteractor.init()
       knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
       await stake(stakeManager, relayHub, accounts[1], accounts[0])
       await stake(stakeManager, relayHub, accounts[2], accounts[0])
