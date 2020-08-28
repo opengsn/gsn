@@ -6,7 +6,6 @@ import { StoredTx, transactionToStoredTx, TxStoreManager } from './TxStoreManage
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { Mutex } from 'async-mutex'
 import { KeyManager } from './KeyManager'
-import { BlockHeader } from 'web3-eth'
 import { ServerDependencies } from './ServerConfigParams'
 import log from 'loglevel'
 
@@ -148,7 +147,7 @@ export class TransactionManager {
     return nonce
   }
 
-  async resendUnconfirmedTransactionsForSigner (blockHeader: BlockHeader, signer: string): Promise<PrefixedHexString | null> {
+  async resendUnconfirmedTransactionsForSigner (blockNumber: number, signer: string): Promise<PrefixedHexString | null> {
     // Load unconfirmed transactions from store, and bail if there are none
     let sortedTxs = await this.txStoreManager.getAllBySigner(signer)
     if (sortedTxs.length === 0) {
@@ -167,7 +166,7 @@ export class TransactionManager {
         throw new Error(`invalid block number in receipt ${receipt.toString()}`)
       }
       const txBlockNumber = receipt.blockNumber
-      const confirmations = blockHeader.number - txBlockNumber
+      const confirmations = blockNumber - txBlockNumber
       if (confirmations >= confirmationsNeeded) {
         // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
         log.debug(`removing tx number ${receipt.nonce} sent by ${receipt.from} with ${confirmations} confirmations`)

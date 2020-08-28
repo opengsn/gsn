@@ -75,7 +75,8 @@ contract('TransactionManager', function (accounts) {
     relayServer = await bringUpNewRelay(newRelayParams, partialConfig)
 
     // initialize server - gas price, stake, owner, etc, whatever
-    await relayServer._worker(await _web3.eth.getBlock('latest'))
+    const latestBlock = await _web3.eth.getBlock('latest')
+    await relayServer._worker(latestBlock.number)
 
     paymaster = await TestPaymasterEverythingAccepted.new({ gas: 1e7 })
 
@@ -203,7 +204,8 @@ contract('TransactionManager', function (accounts) {
       // Should not do anything, as not enough time has passed
       let sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
-      let resentTx = await relayServer._resendUnconfirmedTransactions(await _web3.eth.getBlock('latest'))
+      let latestBlock = await _web3.eth.getBlock('latest')
+      let resentTx = await relayServer._resendUnconfirmedTransactions(latestBlock.number)
       assert.equal(null, resentTx)
       sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
@@ -218,7 +220,8 @@ contract('TransactionManager', function (accounts) {
           return Date.origNow() + pendingTransactionTimeout
         }
         // Resend tx, now should be ok
-        resentTx = await relayServer._resendUnconfirmedTransactions(await _web3.eth.getBlock('latest'))
+        latestBlock = await _web3.eth.getBlock('latest')
+        resentTx = await relayServer._resendUnconfirmedTransactions(latestBlock.number)
         parsedTxHash = ethUtils.bufferToHex((new Transaction(resentTx, relayServer.transactionManager.rawTxOptions)).hash())
 
         // Validate relayed tx with increased gasPrice
@@ -232,13 +235,15 @@ contract('TransactionManager', function (accounts) {
         Date.now = Date.origNow
       }
       // Check the tx is removed from the store only after enough blocks
-      resentTx = await relayServer._resendUnconfirmedTransactions(await _web3.eth.getBlock('latest'))
+      latestBlock = await _web3.eth.getBlock('latest')
+      resentTx = await relayServer._resendUnconfirmedTransactions(latestBlock.number)
       assert.equal(null, resentTx)
       sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
       assert.equal(sortedTxs[0].txId, parsedTxHash)
       const confirmationsNeeded = 12
       await evmMineMany(confirmationsNeeded)
-      resentTx = await relayServer._resendUnconfirmedTransactions(await _web3.eth.getBlock('latest'))
+      latestBlock = await _web3.eth.getBlock('latest')
+      resentTx = await relayServer._resendUnconfirmedTransactions(latestBlock.number)
       assert.equal(null, resentTx)
       sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
       assert.deepEqual([], sortedTxs)
@@ -290,7 +295,8 @@ contract('TransactionManager', function (accounts) {
         let sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
         // console.log('times:', sortedTxs[0].createdAt, sortedTxs[1].createdAt, sortedTxs[2].createdAt )
         assert.equal(sortedTxs[0].txId, parsedTxHash1)
-        let resentTx = await relayServer._resendUnconfirmedTransactions(await _web3.eth.getBlock('latest'))
+        let latestBlock = await _web3.eth.getBlock('latest')
+        let resentTx = await relayServer._resendUnconfirmedTransactions(latestBlock.number)
         assert.equal(null, resentTx)
         assert.equal(nonceBefore, await _web3.eth.getTransactionCount(relayServer.managerAddress))
         sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
@@ -299,7 +305,8 @@ contract('TransactionManager', function (accounts) {
         // Mine a bunch of blocks, so tx1 is confirmed and tx2 is resent
         const confirmationsNeeded = 12
         await evmMineMany(confirmationsNeeded)
-        const resentTx2 = await relayServer._resendUnconfirmedTransactions(await _web3.eth.getBlock('latest'))
+        latestBlock = await _web3.eth.getBlock('latest')
+        const resentTx2 = await relayServer._resendUnconfirmedTransactions(latestBlock.number)
         const parsedTxHash2 = ethUtils.bufferToHex((new Transaction(resentTx2, relayServer.transactionManager.rawTxOptions)).hash())
         await assertTransactionRelayed(relayServer, parsedTxHash2, gasLess, recipientAddress, paymasterAddress, _web3)
         // Re-inject tx3 into the chain as if it were mined once tx2 goes through
@@ -309,7 +316,8 @@ contract('TransactionManager', function (accounts) {
         // Check that tx3 does not get resent, even after time passes or blocks get mined, and that store is empty
         nowIncrease = 60 * 60 * 1000 // 60 minutes in milliseconds
         await evmMineMany(confirmationsNeeded)
-        resentTx = await relayServer._resendUnconfirmedTransactions(await _web3.eth.getBlock('latest'))
+        latestBlock = await _web3.eth.getBlock('latest')
+        resentTx = await relayServer._resendUnconfirmedTransactions(latestBlock.number)
         assert.equal(null, resentTx)
         assert.deepEqual([], await relayServer.transactionManager.txStoreManager.getAll())
       } finally {
