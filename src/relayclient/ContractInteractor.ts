@@ -126,6 +126,7 @@ export default class ContractInteractor {
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
     }
+    await this._initializeContracts()
     await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
@@ -133,7 +134,6 @@ export default class ContractInteractor {
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
-    await this._initializeContracts()
   }
 
   async _validateCompatibility (): Promise<void> {
