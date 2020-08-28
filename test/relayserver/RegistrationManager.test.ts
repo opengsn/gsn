@@ -41,6 +41,7 @@ contract('RegistrationManager', function (accounts) {
   let id: string
   let newRelayParams: NewRelayParams
   let serverTestConstants: ServerTestConstants
+  let partialConfig: Partial<GSNConfig>
 
   // TODO: move to the 'before'
   const ethereumNodeUrl = (web3.currentProvider as HttpProvider).host

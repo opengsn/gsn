@@ -62,9 +62,7 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
   })
 
   it('should make X requests per block callback', async function () {
-    // @ts-ignore
-    const newVar: BlockHeader = { number: 0 }
-    await relayServer._worker(newVar)
+    await relayServer._worker(0)
     provider.log()
     assert.isAtMost(provider.requestsCount, callsPerWorker)
   })

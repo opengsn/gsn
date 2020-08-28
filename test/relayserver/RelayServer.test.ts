@@ -530,7 +530,7 @@ contract('RelayServer', function (accounts) {
     let relayServer: RelayServer
 
     before(async function () {
-      relayServer = await bringUpNewRelay(newRelayParams, partialConfig, { registrationBlockRate })
+      relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, { registrationBlockRate })
       const latestBlock = await _web3.eth.getBlock('latest')
       const receipts = await relayServer._worker(latestBlock.number)
       assertRelayAdded(receipts, relayServer) // sanity check
@@ -617,7 +617,7 @@ contract('RelayServer', function (accounts) {
         ...newRelayParams,
         alertedBlockDelay: 100
       }
-      newServer = await bringUpNewRelay(newRelayParamsAlerted, partialConfig, { alertedBlockDelay: 100 })
+      newServer = await bringUpNewRelay(newRelayParamsAlerted, partialConfig, {}, { alertedBlockDelay: 100 })
       const latestBlock = await _web3.eth.getBlock('latest')
       await newServer._worker(latestBlock.number)
       rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
