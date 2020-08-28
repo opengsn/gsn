@@ -16,10 +16,10 @@ import { constants } from '../../src/common/Constants'
 import {
   assertRelayAdded,
   bringUpNewRelay,
-  clearStorage, getTimestampTempWorkdir,
+  clearStorage,
   getTotalTxCosts,
   NewRelayParams,
-  ServerTestConstants
+  getTemporaryWorkdirs, ServerTestConstants, LocalhostOne
 } from './ServerTestUtils'
 import { ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 
@@ -29,11 +29,7 @@ const { oneEther, weekInSec } = constants
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 
-// TODO: remove this
 const workerIndex = 0
-const workdir = '/tmp/gsn/test/relayserver/' + getTimestampTempWorkdir()
-const managerWorkdir = workdir + '/manager'
-const workersWorkdir = workdir + '/workers'
 
 contract('RegistrationManager', function (accounts) {
   const relayOwner = accounts[1]
@@ -44,6 +40,7 @@ contract('RegistrationManager', function (accounts) {
   let _web3: Web3
   let id: string
   let newRelayParams: NewRelayParams
+  let serverTestConstants: ServerTestConstants
   let partialConfig: Partial<GSNConfig>
 
   // TODO: move to the 'before'
@@ -55,22 +52,22 @@ contract('RegistrationManager', function (accounts) {
     stakeManager = await StakeManager.new()
     const penalizer = await Penalizer.new()
     rhub = await deployHub(stakeManager.address, penalizer.address)
+    serverTestConstants = getTemporaryWorkdirs()
     partialConfig = {
       relayHubAddress: rhub.address,
       stakeManagerAddress: stakeManager.address
     }
     newRelayParams = {
       alertedBlockDelay: 0,
-      workdir,
       ethereumNodeUrl,
       relayHubAddress: rhub.address,
       relayOwner,
-      url: ServerTestConstants.localhostOne,
+      url: LocalhostOne,
       web3,
       stakeManager
     }
-    const managerKeyManager = new KeyManager(1, managerWorkdir)
-    const workersKeyManager = new KeyManager(1, workersWorkdir)
+    const managerKeyManager = new KeyManager(1, serverTestConstants.managerWorkdir)
+    const workersKeyManager = new KeyManager(1, serverTestConstants.workersWorkdir)
     const txStoreManager = new TxStoreManager({ inMemory: true })
     const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
     const contractInteractor = new ContractInteractor(serverWeb3provider,
@@ -87,7 +84,7 @@ contract('RegistrationManager', function (accounts) {
     }
     const params: Partial<ServerConfigParams> = {
       relayHubAddress: rhub.address,
-      url: ServerTestConstants.localhostOne,
+      url: LocalhostOne,
       baseRelayFee: '0',
       pctRelayFee: 0,
       gasPriceFactor: 1,
@@ -148,9 +145,9 @@ contract('RegistrationManager', function (accounts) {
     })
 
     it('should start again after restarting process', async () => {
-      const managerKeyManager = new KeyManager(1, managerWorkdir)
-      const workersKeyManager = new KeyManager(1, workersWorkdir)
-      const txStoreManager = new TxStoreManager({ workdir })
+      const managerKeyManager = new KeyManager(1, serverTestConstants.managerWorkdir)
+      const workersKeyManager = new KeyManager(1, serverTestConstants.workersWorkdir)
+      const txStoreManager = new TxStoreManager({ workdir: serverTestConstants.workdir })
       const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
       const contractInteractor = new ContractInteractor(serverWeb3provider,
         configureGSN({
@@ -166,7 +163,7 @@ contract('RegistrationManager', function (accounts) {
       }
       const params: Partial<ServerConfigParams> = {
         relayHubAddress: rhub.address,
-        url: ServerTestConstants.localhostOne,
+        url: LocalhostOne,
         baseRelayFee: '0',
         pctRelayFee: 0,
         gasPriceFactor: 1,

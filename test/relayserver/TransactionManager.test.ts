@@ -8,11 +8,11 @@ import { RelayServer } from '../../src/relayserver/RelayServer'
 import {
   assertTransactionRelayed,
   bringUpNewRelay,
-  getTimestampTempWorkdir, NewRelayParams,
+  LocalhostOne,
+  NewRelayParams,
   PrepareRelayRequestOption,
   relayTransaction,
-  RelayTransactionParams,
-  ServerTestConstants
+  RelayTransactionParams
 } from './ServerTestUtils'
 import { Address } from '../../src/relayclient/types/Aliases'
 import Web3 from 'web3'
@@ -63,14 +63,12 @@ contract('TransactionManager', function (accounts) {
       relayHubAddress,
       stakeManagerAddress: stakeManager.address
     }
-    const workdir = '/tmp/gsn/test/relayserver/' + getTimestampTempWorkdir()
     const newRelayParams: NewRelayParams = {
       alertedBlockDelay: 0,
-      workdir,
       ethereumNodeUrl,
       relayHubAddress,
       relayOwner: accounts[0],
-      url: ServerTestConstants.localhostOne,
+      url: LocalhostOne,
       web3,
       stakeManager
     }

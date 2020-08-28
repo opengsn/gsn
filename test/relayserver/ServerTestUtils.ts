@@ -26,7 +26,7 @@ import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
 import { removeHexPrefix } from '../../src/common/Utils'
-import { ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
+import { ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 
 const { oneEther, weekInSec } = constants
 
@@ -42,8 +42,7 @@ abiDecoder.addABI(TestRecipient.abi)
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 
 export interface NewRelayParams {
-  workdir: string
-  ethereumNodeUrl: string
+  ethereumNodeUrl?: string
   relayHubAddress: Address
   relayOwner: Address
   url: string
@@ -52,23 +51,26 @@ export interface NewRelayParams {
   stakeManager: IStakeManagerInstance
 }
 
-export function getTimestampTempWorkdir (): string {
-  return '/defunct' + Date.now().toString()
-}
-
 export async function bringUpNewRelay (
   newRelayParams: NewRelayParams,
   partialConfig: Partial<GSNConfig> = {},
+  partialDependencies: Partial<ServerDependencies> = {},
   overrideParams: Partial<ServerConfigParams> = {}
 ): Promise<RelayServer> {
-  const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
-  const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+  const managerKeyManager = partialDependencies.managerKeyManager ?? new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+  const workersKeyManager = partialDependencies.workersKeyManager ?? new KeyManager(1, undefined, crypto.randomBytes(32).toString())
   assert.equal(await web3.eth.getBalance(managerKeyManager.getAddress(0)), '0')
   assert.equal(await web3.eth.getBalance(workersKeyManager.getAddress(0)), '0')
-  const txStoreManager = new TxStoreManager({ workdir: newRelayParams.workdir + getTimestampTempWorkdir() })
-  const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl)
-  const contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
-  await contractInteractor.init()
+  const txStoreManager = partialDependencies.txStoreManager ?? new TxStoreManager({ workdir: getTemporaryWorkdirs().workdir })
+  let contractInteractor = partialDependencies.contractInteractor
+  if (contractInteractor == null) {
+    if (newRelayParams.ethereumNodeUrl == null) {
+      throw new Error('Must provide either node URL or contract interactor')
+    }
+    const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl)
+    contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
+    await contractInteractor.init()
+  }
   const serverDependencies = {
     txStoreManager,
     managerKeyManager,
@@ -280,14 +282,22 @@ export async function clearStorage (txStoreManager: TxStoreManager): Promise<voi
   assert.deepEqual([], await txStoreManager.getAll())
 }
 
-const localhostOne = 'http://localhost:8090'
-const workdir = '/tmp/gsn/test/relayserver'
-const managerWorkdir = workdir + '/manager'
-const workersWorkdir = workdir + '/workers'
+export const LocalhostOne = 'http://localhost:8090'
 
-export const ServerTestConstants = {
-  localhostOne,
-  workdir,
-  managerWorkdir,
-  workersWorkdir
+export interface ServerTestConstants {
+  workdir: string
+  managerWorkdir: string
+  workersWorkdir: string
+}
+
+export function getTemporaryWorkdirs (): ServerTestConstants {
+  const workdir = '/tmp/gsn/test/relayserver/defunct' + Date.now().toString()
+  const managerWorkdir = workdir + '/manager'
+  const workersWorkdir = workdir + '/workers'
+
+  return {
+    workdir,
+    managerWorkdir,
+    workersWorkdir
+  }
 }
