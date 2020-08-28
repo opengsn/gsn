@@ -61,7 +61,8 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
   })
 
   it('should make X requests per block callback', async function () {
-    await relayServer._worker(0)
+    const latestBlock = await web3.eth.getBlock('latest')
+    await relayServer._worker(latestBlock.number)
     provider.log()
     assert.isAtMost(provider.requestsCount, callsPerWorker)
   })
