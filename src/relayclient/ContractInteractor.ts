@@ -275,7 +275,7 @@ export default class ContractInteractor {
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    const stakeManager = await this._createStakeManager(this.config.stakeManagerAddress)
+    const stakeManager = await this.IStakeManagerInstance
     return await this._getPastEvents(stakeManager.contract, names, extraTopics, options)
   }
 
@@ -364,7 +364,7 @@ export default class ContractInteractor {
     withdrawBlock: string
     owner: string
   }> {
-    const stakeManager = await this._createStakeManager(this.config.stakeManagerAddress)
+    const stakeManager = await this.IStakeManagerInstance
     return await stakeManager.getStakeInfo(managerAddress)
   }
 
