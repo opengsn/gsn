@@ -140,7 +140,7 @@ export default class ContractInteractor {
     if (this.config.relayHubAddress === constants.ZERO_ADDRESS) {
       return
     }
-    const hub = await this._createRelayHub(this.config.relayHubAddress)
+    const hub = this.IRelayHubInstance
     const version = await hub.versionHub()
     const isNewer = this.versionManager.isMinorSameOrNewer(version)
     if (!isNewer) {
@@ -229,7 +229,7 @@ export default class ContractInteractor {
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
-    const relayHub = await this._createRelayHub(this.config.relayHubAddress)
+    const relayHub = this.IRelayHubInstance
     try {
       const externalGasLimit = await this._getBlockGasLimit()
 
