@@ -10,7 +10,6 @@ import { deployHub } from '../TestUtils'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { BlockHeader } from 'web3-eth'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
 import { Address } from '../../src/relayclient/types/Aliases'
@@ -62,9 +61,8 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
   })
 
   it('should make X requests per block callback', async function () {
-    // @ts-ignore
-    const newVar: BlockHeader = { number: 0 }
-    await relayServer._worker(newVar)
+    const latestBlock = await web3.eth.getBlock('latest')
+    await relayServer._worker(latestBlock.number)
     provider.log()
     assert.isAtMost(provider.requestsCount, callsPerWorker)
   })
