@@ -26,7 +26,6 @@ const defaultGsnConfig: GSNConfig = {
   jsonStringifyRequest: false,
   chainId: defaultEnvironment.chainId,
   relayHubAddress: constants.ZERO_ADDRESS,
-  stakeManagerAddress: constants.ZERO_ADDRESS,
   paymasterAddress: constants.ZERO_ADDRESS,
   forwarderAddress: constants.ZERO_ADDRESS,
   verbose: false,
@@ -48,7 +47,7 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
  * @param partialConfig
  */
 export async function resolveConfigurationGSN (provider: provider, partialConfig: Partial<GSNConfig>): Promise<GSNConfig> {
-  if (partialConfig.stakeManagerAddress != null || partialConfig.relayHubAddress != null) {
+  if (partialConfig.relayHubAddress != null) {
     throw new Error('Resolve cannot override passed values')
   }
   if (partialConfig.paymasterAddress == null) {
@@ -57,11 +56,8 @@ export async function resolveConfigurationGSN (provider: provider, partialConfig
   const contractInteractor = new ContractInteractor(provider, defaultGsnConfig)
   const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
   const relayHubAddress = await paymasterInstance.getHubAddr()
-  const relayHubInstance = await contractInteractor._createRelayHub(relayHubAddress)
-  const stakeManagerAddress = await relayHubInstance.stakeManager()
   const resolvedConfig = {
-    relayHubAddress,
-    stakeManagerAddress
+    relayHubAddress
   }
   return Object.assign({}, defaultGsnConfig, partialConfig, resolvedConfig) as GSNConfig
 }
@@ -82,7 +78,6 @@ export interface GSNConfig {
   minGasPrice: number
   maxRelayNonceGap: number
   relayHubAddress: Address
-  stakeManagerAddress: Address
   paymasterAddress: Address
   forwarderAddress: Address
   chainId: number

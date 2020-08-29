@@ -196,7 +196,6 @@ contract('Utils', function (accounts) {
       }
       const resolvedPartialConfig = await resolveConfigurationGSN(web3.currentProvider, partialConfig)
       assert.equal(resolvedPartialConfig.paymasterAddress, deploymentResult.naivePaymasterAddress)
-      assert.equal(resolvedPartialConfig.stakeManagerAddress, deploymentResult.stakeManagerAddress)
       assert.equal(resolvedPartialConfig.relayHubAddress, deploymentResult.relayHubAddress)
       assert.equal(resolvedPartialConfig.minGasPrice, minGasPrice, 'Input value lost')
       assert.equal(resolvedPartialConfig.sliceSize, defaultConfiguration.sliceSize, 'Unexpected value appeared')

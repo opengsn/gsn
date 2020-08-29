@@ -118,8 +118,7 @@ contract('RelayServer', function (accounts) {
       stakeManager
     }
     partialConfig = {
-      relayHubAddress: rhub.address,
-      stakeManagerAddress: stakeManager.address
+      relayHubAddress: rhub.address
     }
     relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
       trustedPaymasters: [paymaster.address],

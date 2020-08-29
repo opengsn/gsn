@@ -173,8 +173,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       relayHub = await deployHub(stakeManager.address)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090'],
-        relayHubAddress: relayHub.address,
-        stakeManagerAddress: stakeManager.address
+        relayHubAddress: relayHub.address
       })
       relayProcess = await startRelay(relayHub.address, stakeManager, {
         stake: 1e18,

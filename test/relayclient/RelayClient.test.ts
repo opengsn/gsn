@@ -82,8 +82,7 @@ contract('RelayClient', function (accounts) {
     })
 
     gsnConfig = {
-      relayHubAddress: relayHub.address,
-      stakeManagerAddress: stakeManager.address
+      relayHubAddress: relayHub.address
     }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
     gasLess = await web3.eth.personal.newAccount('password')

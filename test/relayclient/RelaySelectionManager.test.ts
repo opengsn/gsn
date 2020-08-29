@@ -101,8 +101,7 @@ contract('RelaySelectionManager', function (accounts) {
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
 
         const config = configureGSN({
-          relayHubAddress: relayHub.address,
-          stakeManagerAddress: stakeManager.address
+          relayHubAddress: relayHub.address
         })
         dependencyTree = getDependencies(config, web3.currentProvider as HttpProvider)
         await dependencyTree.contractInteractor.init()

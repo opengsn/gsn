@@ -59,7 +59,7 @@ export default class ContractInteractor {
   private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
 
   private IPaymasterInstance!: IPaymasterInstance
-  private IRelayHubInstance!: IRelayHubInstance
+  IRelayHubInstance!: IRelayHubInstance
   private IForwarderInstance!: IForwarderInstance
   private IStakeManagerInstance!: IStakeManagerInstance
   private IRelayRecipientInstance?: BaseRelayRecipientInstance
@@ -152,11 +152,19 @@ export default class ContractInteractor {
     if (this.config.forwarderAddress !== constants.ZERO_ADDRESS) {
       this.IForwarderInstance = await this._createForwarder(this.config.forwarderAddress)
     }
-    if (this.config.stakeManagerAddress !== constants.ZERO_ADDRESS) {
-      this.IStakeManagerInstance = await this._createStakeManager(this.config.stakeManagerAddress)
-    }
     if (this.config.relayHubAddress !== constants.ZERO_ADDRESS) {
       this.IRelayHubInstance = await this._createRelayHub(this.config.relayHubAddress)
+      let hubStakeManagerAddress: string | undefined
+      let getStakeManagerError: Error | undefined
+      try {
+        hubStakeManagerAddress = await this.IRelayHubInstance.stakeManager()
+      } catch (e) {
+        getStakeManagerError = e
+      }
+      if (hubStakeManagerAddress == null || hubStakeManagerAddress === constants.ZERO_ADDRESS) {
+        throw new Error(`StakeManager address not set in RelayHub (or threw error: ${getStakeManagerError?.message})`)
+      }
+      this.IStakeManagerInstance = await this._createStakeManager(hubStakeManagerAddress)
     }
     if (this.config.paymasterAddress !== constants.ZERO_ADDRESS) {
       this.IPaymasterInstance = await this._createPaymaster(this.config.paymasterAddress)
