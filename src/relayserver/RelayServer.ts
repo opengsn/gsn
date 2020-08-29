@@ -8,7 +8,12 @@ import { toBN, toHex } from 'web3-utils'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 
-import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
+import ContractInteractor, {
+  RelayServerRegistered,
+  RelayWorkersAdded,
+  TransactionRejectedByPaymaster,
+  TransactionRelayed
+} from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
 import RelayTransactionRequest from '../relayclient/types/RelayTransactionRequest'
 import { IPaymasterInstance, IRelayHubInstance } from '../../types/truffle-contracts'
@@ -21,7 +26,6 @@ import {
   sleep
 } from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
-import { constants } from '../common/Constants'
 import { RegistrationManager, StateError } from './RegistrationManager'
 import { TransactionManager } from './TransactionManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
@@ -46,6 +50,7 @@ export class RelayServer extends EventEmitter {
   private workerTask?: Timeout
   config: ServerConfigParams
   transactionManager: TransactionManager
+  lastMinedActiveTransaction?: EventData
 
   registrationManager!: RegistrationManager
   chainId!: number
@@ -398,7 +403,8 @@ export class RelayServer extends EventEmitter {
     }
     await this.registrationManager.assertManagerBalance()
 
-    const shouldRegisterAgain = await this.getShouldRegisterAgain()
+    const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
+    const shouldRegisterAgain = await this.getShouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
     let { receipts, unregistered } = await this.registrationManager.handlePastEvents(this.lastScannedBlock, shouldRegisterAgain)
     await this._resendUnconfirmedTransactions(blockNumber)
     if (unregistered) {
@@ -406,7 +412,7 @@ export class RelayServer extends EventEmitter {
       return receipts
     }
     await this.registrationManager.assertRegistered()
-    await this.handlePastHubEvents(blockNumber)
+    await this.handlePastHubEvents(blockNumber, hubEventsSinceLastScan)
     this.lastScannedBlock = blockNumber
     const workerIndex = 0
     receipts = receipts.concat(await this.replenishServer(workerIndex))
@@ -436,50 +442,63 @@ export class RelayServer extends EventEmitter {
     return toBN(await this.contractInteractor.getBalance(this.workerAddress))
   }
 
-  async getShouldRegisterAgain (): Promise<boolean> {
-    const currentBlock = await this.contractInteractor.getBlockNumber()
-    const latestTxBlockNumber = await this._getLatestTxBlockNumber()
+  async getShouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+    const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
     return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
   }
 
-  async handlePastHubEvents (blockNumber: number): Promise<void> {
-    const topics = [address2topic(this.managerAddress)]
-    const options = {
-      fromBlock: this.lastScannedBlock + 1,
-      toBlock: 'latest'
-    }
-    const eventNames = [TransactionRejectedByPaymaster]
-    const decodedEvents = await this.contractInteractor.getPastEventsForHub(eventNames, topics, options)
-    for (const dlog of decodedEvents) {
-      switch (dlog.event) {
+  async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
+    for (const event of hubEventsSinceLastScan) {
+      switch (event.event) {
         case TransactionRejectedByPaymaster:
-          await this._handleTransactionRejectedByPaymasterEvent(dlog, blockNumber)
+          log.debug('handle TransactionRejectedByPaymaster event', event)
+          await this._handleTransactionRejectedByPaymasterEvent(blockNumber)
           break
       }
     }
   }
 
-  async _handleTransactionRejectedByPaymasterEvent (dlog: EventData, blockNumber: number): Promise<void> {
-    log.debug('handle TransactionRejectedByPaymaster event', dlog)
+  async getAllHubEventsSinceLastScan (): Promise<EventData[]> {
+    const topics = [address2topic(this.managerAddress)]
+    const options = {
+      fromBlock: this.lastScannedBlock + 1,
+      toBlock: 'latest'
+    }
+    return await this.contractInteractor.getPastEventsForHub(topics, options)
+  }
+
+  async _handleTransactionRejectedByPaymasterEvent (blockNumber: number): Promise<void> {
     this.alerted = true
     this.alertedBlock = blockNumber
     console.error(`Relay entered alerted state. Block number: ${blockNumber}`)
   }
 
-  async _getLatestTxBlockNumber (): Promise<number> {
-    const events: EventData[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents,
-      [address2topic(this.managerAddress)], {
+  async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {
+    const latestTransactionSinceLastScan = this._reduceLatestTx(eventsSinceLastScan)
+    if (latestTransactionSinceLastScan != null) {
+      this.lastMinedActiveTransaction = latestTransactionSinceLastScan
+    }
+    if (this.lastMinedActiveTransaction == null) {
+      const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
         fromBlock: 1
       })
+      this.lastMinedActiveTransaction = this._reduceLatestTx(events)
+    }
+    return this.lastMinedActiveTransaction?.blockNumber ?? -1
+  }
+
+  private _reduceLatestTx (events: EventData[]): EventData | undefined {
+    if (events.length === 0) {
+      return
+    }
     return events
-      .filter(
-        (e: EventData) =>
-          e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase())
-      .map(
-        (e: EventData) =>
-          e.blockNumber)
       .reduce(
-        (b1: any, b2: any) => Math.max(b1, b2), 0)
+        (b1, b2) => {
+          if (b1.blockNumber === b2.blockNumber) {
+            return b1.transactionIndex > b2.transactionIndex ? b1 : b2
+          }
+          return b1.blockNumber > b2.blockNumber ? b1 : b2
+        })
   }
 
   /**

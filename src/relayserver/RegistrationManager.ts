@@ -328,21 +328,23 @@ export class RegistrationManager {
   }
 
   async _areWorkersAdded (): Promise<boolean> {
-    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([RelayWorkersAdded], [],
+    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([],
       {
         fromBlock: 1,
         filter: { relayManager: this.managerAddress }
-      })
+      },
+      [RelayWorkersAdded])
     return (workersAddedEvents.find((e: any) => e.returnValues.newRelayWorkers
       .map((a: string) => a.toLowerCase()).includes(this.workerAddress.toLowerCase())) != null)
   }
 
   async _getRegistrationBlock (): Promise<number> {
-    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([RelayServerRegistered], [],
+    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([],
       {
         fromBlock: 1,
         filter: { relayManager: this.managerAddress }
-      })
+      },
+      [RelayServerRegistered])
     const event = relayRegisteredEvents.find(
       (e: any) =>
         e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase() &&

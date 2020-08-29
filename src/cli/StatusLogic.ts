@@ -42,7 +42,7 @@ export default class StatusLogic {
     const totalStakesByRelays = await this.contractInteractor.getBalance(stakeManager)
 
     const relayRegisteredEventsData =
-      await this.contractInteractor.getPastEventsForHub([RelayServerRegistered], [], { fromBlock })
+      await this.contractInteractor.getPastEventsForHub([], { fromBlock }, [RelayServerRegistered])
     const relayRegisteredEvents = relayRegisteredEventsData.map(e => e.returnValues as RelayRegisteredEventInfo)
 
     const relayPings = new Map<string, PingAttempt>()

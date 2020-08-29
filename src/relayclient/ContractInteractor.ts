@@ -40,7 +40,10 @@ type EventName = string
 
 export const RelayServerRegistered: EventName = 'RelayServerRegistered'
 export const RelayWorkersAdded: EventName = 'RelayWorkersAdded'
+export const TransactionRelayed: EventName = 'TransactionRelayed'
 export const TransactionRejectedByPaymaster: EventName = 'TransactionRejectedByPaymaster'
+
+const ActiveManagerEvents = [RelayServerRegistered, RelayWorkersAdded, TransactionRelayed, TransactionRejectedByPaymaster]
 
 export const HubAuthorized: EventName = 'HubAuthorized'
 export const HubUnauthorized: EventName = 'HubUnauthorized'
@@ -278,7 +281,7 @@ export default class ContractInteractor {
     return relayHub.contract.methods.relayCall(paymasterMaxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
-  async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
     return await this._getPastEvents(this.IRelayHubInstance.contract, names, extraTopics, options)
   }
 

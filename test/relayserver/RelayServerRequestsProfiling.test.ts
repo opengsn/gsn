@@ -6,7 +6,7 @@ import {
   relayTransaction,
   RelayTransactionParams
 } from './ServerTestUtils'
-import { deployHub } from '../TestUtils'
+import { deployHub, evmMine } from '../TestUtils'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
@@ -23,7 +23,7 @@ const Penalizer = artifacts.require('Penalizer')
 const Forwarder = artifacts.require('Forwarder')
 
 contract('RelayServerRequestsProfiling', function ([relayOwner]) {
-  const callsPerWorker = 63
+  const callsPerWorker = 16
   const callsPerTransaction = 25
 
   let provider: ProfilingProvider
@@ -53,15 +53,19 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
       contractInteractor
     }
     relayServer = await bringUpNewRelay(newRelayParams, partialConfig, partialDependencies)
+    const latestBlock = await web3.eth.getBlock('latest')
+    await relayServer._worker(latestBlock.number)
+    await evmMine()
   })
 
   beforeEach(function () {
     provider.reset()
   })
 
-  it('should make X requests per block callback', async function () {
+  it('should make X requests per block callback when nothing needs to be done', async function () {
     const latestBlock = await web3.eth.getBlock('latest')
-    await relayServer._worker(latestBlock.number)
+    const receipts = await relayServer._worker(latestBlock.number)
+    assert.equal(receipts.length, 0)
     provider.log()
     assert.isAtMost(provider.requestsCount, callsPerWorker)
   })
