@@ -544,7 +544,7 @@ contract('RelayServer', function (accounts) {
       await evmMineMany(registrationBlockRate)
       latestBlock = await _web3.eth.getBlock('latest')
       receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, true)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, true)
       assertRelayAdded(receipts, relayServer, false)
     })
   })
