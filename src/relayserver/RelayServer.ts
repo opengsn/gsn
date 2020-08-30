@@ -9,10 +9,7 @@ import { toBN, toHex } from 'web3-utils'
 import RelayRequest from '../common/EIP712/RelayRequest'
 
 import ContractInteractor, {
-  RelayServerRegistered,
-  RelayWorkersAdded,
   TransactionRejectedByPaymaster,
-  TransactionRelayed
 } from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
 import RelayTransactionRequest from '../relayclient/types/RelayTransactionRequest'
