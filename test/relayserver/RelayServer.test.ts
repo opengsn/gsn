@@ -539,7 +539,7 @@ contract('RelayServer', function (accounts) {
     it('should re-register server only if registrationBlockRate passed from any tx', async function () {
       let latestBlock = await _web3.eth.getBlock('latest')
       let receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, false)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, false)
       assert.equal(receipts.length, 0, 'should not re-register if already registered')
       await evmMineMany(registrationBlockRate)
       latestBlock = await _web3.eth.getBlock('latest')

@@ -8,9 +8,7 @@ import { toBN, toHex } from 'web3-utils'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 
-import ContractInteractor, {
-  TransactionRejectedByPaymaster
-} from '../relayclient/ContractInteractor'
+import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
 import RelayTransactionRequest from '../relayclient/types/RelayTransactionRequest'
 import { IPaymasterInstance, IRelayHubInstance } from '../../types/truffle-contracts'
@@ -20,6 +18,7 @@ import {
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   randomInRange,
+  reduceToLatestTx,
   sleep
 } from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
@@ -47,6 +46,7 @@ export class RelayServer extends EventEmitter {
   private workerTask?: Timeout
   config: ServerConfigParams
   transactionManager: TransactionManager
+
   lastMinedActiveTransaction?: EventData
 
   registrationManager!: RegistrationManager
@@ -402,7 +402,7 @@ export class RelayServer extends EventEmitter {
 
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     const shouldRegisterAgain = await this.getShouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
-    let { receipts, unregistered } = await this.registrationManager.handlePastEvents(this.lastScannedBlock, shouldRegisterAgain)
+    let { receipts, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, shouldRegisterAgain)
     await this._resendUnconfirmedTransactions(blockNumber)
     if (unregistered) {
       this.lastScannedBlock = blockNumber
@@ -471,31 +471,21 @@ export class RelayServer extends EventEmitter {
   }
 
   async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {
-    const latestTransactionSinceLastScan = this._reduceLatestTx(eventsSinceLastScan)
+    const latestTransactionSinceLastScan = reduceToLatestTx(eventsSinceLastScan)
     if (latestTransactionSinceLastScan != null) {
       this.lastMinedActiveTransaction = latestTransactionSinceLastScan
     }
     if (this.lastMinedActiveTransaction == null) {
-      const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
-        fromBlock: 1
-      })
-      this.lastMinedActiveTransaction = this._reduceLatestTx(events)
+      this.lastMinedActiveTransaction = await this._findOlderActiveEvent()
     }
     return this.lastMinedActiveTransaction?.blockNumber ?? -1
   }
 
-  private _reduceLatestTx (events: EventData[]): EventData | undefined {
-    if (events.length === 0) {
-      return
-    }
-    return events
-      .reduce(
-        (b1, b2) => {
-          if (b1.blockNumber === b2.blockNumber) {
-            return b1.transactionIndex > b2.transactionIndex ? b1 : b2
-          }
-          return b1.blockNumber > b2.blockNumber ? b1 : b2
-        })
+  async _findOlderActiveEvent (): Promise<EventData | undefined> {
+    const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
+      fromBlock: 1
+    })
+    return reduceToLatestTx(events)
   }
 
   /**

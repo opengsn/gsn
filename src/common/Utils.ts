@@ -7,6 +7,7 @@ import TypedRequestData from './EIP712/TypedRequestData'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { Address } from '../relayclient/types/Aliases'
 import BN from 'bn.js'
+import { EventData } from 'web3-eth-contract'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -156,6 +157,20 @@ export function ether (n: string): BN {
 
 export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
+}
+
+export function reduceToLatestTx (events: EventData[]): EventData | undefined {
+  if (events.length === 0) {
+    return
+  }
+  return events
+    .reduce(
+      (b1, b2) => {
+        if (b1.blockNumber === b2.blockNumber) {
+          return b1.transactionIndex > b2.transactionIndex ? b1 : b2
+        }
+        return b1.blockNumber > b2.blockNumber ? b1 : b2
+      })
 }
 
 /**

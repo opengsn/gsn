@@ -23,7 +23,7 @@ const Penalizer = artifacts.require('Penalizer')
 const Forwarder = artifacts.require('Forwarder')
 
 contract('RelayServerRequestsProfiling', function ([relayOwner]) {
-  const callsPerWorker = 16
+  const callsPerWorker = 14
   const callsPerTransaction = 25
 
   let provider: ProfilingProvider
