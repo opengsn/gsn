@@ -26,7 +26,7 @@ contract Penalizer is IPenalizer{
 
     }
 
-    function relayManagerOnly(IRelayHub hub) private {
+    function relayManagerOnly(IRelayHub hub) private view {
         require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
     }
 
