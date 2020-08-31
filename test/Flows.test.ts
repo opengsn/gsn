@@ -96,7 +96,6 @@ options.forEach(params => {
 
         relayClientConfig = {
           relayHubAddress: rhub.address,
-          stakeManagerAddress: sm.address,
           paymasterAddress: paymaster.address,
           verbose: false
         }

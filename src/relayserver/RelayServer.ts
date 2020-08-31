@@ -61,6 +61,7 @@ export class RelayServer extends EventEmitter {
     this.transactionManager = new TransactionManager(this.contractInteractor, dependencies)
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
+    log.setLevel(this.config.logLevel)
     log.debug('config:', JSON.stringify(this.config))
   }
 
@@ -305,12 +306,7 @@ export class RelayServer extends EventEmitter {
     }
 
     await this.transactionManager._init()
-    this.relayHubContract = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
-
-    // TODO TODO 2: anything else!
-    // @ts-ignore
-    this.contractInteractor.config.stakeManagerAddress = await this.relayHubContract.stakeManager()
-    // end TODO TODO 2: anything else!
+    this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
     console.log('Server address', this.managerAddress)

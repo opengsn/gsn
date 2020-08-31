@@ -60,8 +60,7 @@ contract('TransactionManager', function (accounts) {
     const relayHubAddress = rhub.address
     const forwarderAddress = forwarder.address
     const partialConfig: Partial<GSNConfig> = {
-      relayHubAddress,
-      stakeManagerAddress: stakeManager.address
+      relayHubAddress
     }
     const newRelayParams: NewRelayParams = {
       alertedBlockDelay: 0,

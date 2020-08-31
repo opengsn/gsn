@@ -45,8 +45,7 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
       stakeManager
     }
     const partialConfig: Partial<GSNConfig> = {
-      relayHubAddress: rhub.address,
-      stakeManagerAddress: stakeManager.address
+      relayHubAddress: rhub.address
     }
     const contractInteractor = new ContractInteractor(provider, configureGSN(partialConfig))
     await contractInteractor.init()

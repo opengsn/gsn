@@ -81,7 +81,6 @@ class GsnTestEnvironmentClass {
 
     const config = configureGSN({
       relayHubAddress: deploymentResult.relayHubAddress,
-      stakeManagerAddress: deploymentResult.stakeManagerAddress,
       paymasterAddress: deploymentResult.naivePaymasterAddress,
       preferredRelays: [relayUrl]
     })
@@ -140,8 +139,7 @@ class GsnTestEnvironmentClass {
     const txStoreManager = new TxStoreManager({ inMemory: true })
     const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host),
       configureGSN({
-        relayHubAddress: deploymentResult.relayHubAddress,
-        stakeManagerAddress: deploymentResult.stakeManagerAddress
+        relayHubAddress: deploymentResult.relayHubAddress
       }))
     await contractInteractor.init()
     const relayServerDependencies = {

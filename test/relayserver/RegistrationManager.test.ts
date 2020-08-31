@@ -54,8 +54,7 @@ contract('RegistrationManager', function (accounts) {
     rhub = await deployHub(stakeManager.address, penalizer.address)
     serverTestConstants = getTemporaryWorkdirs()
     partialConfig = {
-      relayHubAddress: rhub.address,
-      stakeManagerAddress: stakeManager.address
+      relayHubAddress: rhub.address
     }
     newRelayParams = {
       alertedBlockDelay: 0,
@@ -72,8 +71,7 @@ contract('RegistrationManager', function (accounts) {
     const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
     const contractInteractor = new ContractInteractor(serverWeb3provider,
       configureGSN({
-        relayHubAddress: rhub.address,
-        stakeManagerAddress: stakeManager.address
+        relayHubAddress: rhub.address
       }))
     await contractInteractor.init()
     const serverDependencies: ServerDependencies = {
@@ -151,8 +149,7 @@ contract('RegistrationManager', function (accounts) {
       const serverWeb3provider = new Web3.providers.HttpProvider(ethereumNodeUrl)
       const contractInteractor = new ContractInteractor(serverWeb3provider,
         configureGSN({
-          relayHubAddress: rhub.address,
-          stakeManagerAddress: stakeManager.address
+          relayHubAddress: rhub.address
         }))
       await contractInteractor.init()
       const serverDependencies: ServerDependencies = {
@@ -188,8 +185,7 @@ contract('RegistrationManager', function (accounts) {
     let newServer: RelayServer
     it('should initialize relay after staking and funding it', async function () {
       const partialConfig: Partial<GSNConfig> = {
-        relayHubAddress: rhub.address,
-        stakeManagerAddress: stakeManager.address
+        relayHubAddress: rhub.address
       }
       newServer = await bringUpNewRelay(newRelayParams, partialConfig)
       await newServer.registrationManager.refreshStake()
@@ -328,8 +324,7 @@ contract('RegistrationManager', function (accounts) {
       beforeEach(async function () {
         id = (await snapshot()).result
         const partialConfig: Partial<GSNConfig> = {
-          relayHubAddress: rhub.address,
-          stakeManagerAddress: stakeManager.address
+          relayHubAddress: rhub.address
         }
         newServer = await bringUpNewRelay(newRelayParams, partialConfig)
       })
@@ -348,8 +343,7 @@ contract('RegistrationManager', function (accounts) {
       beforeEach(async function () {
         id = (await snapshot()).result
         const partialConfig: Partial<GSNConfig> = {
-          relayHubAddress: rhub.address,
-          stakeManagerAddress: stakeManager.address
+          relayHubAddress: rhub.address
         }
         newServer = await bringUpNewRelay(newRelayParams, partialConfig)
         const latestBlck = await _web3.eth.getBlock('latest')
@@ -411,8 +405,7 @@ contract('RegistrationManager', function (accounts) {
       beforeEach(async function () {
         id = (await snapshot()).result
         const partialConfig: Partial<GSNConfig> = {
-          relayHubAddress: rhub.address,
-          stakeManagerAddress: stakeManager.address
+          relayHubAddress: rhub.address
         }
         newServer = await bringUpNewRelay(newRelayParams, partialConfig)
         // TODO: this is horrible!!!
