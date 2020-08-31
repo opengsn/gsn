@@ -228,19 +228,19 @@ contract('RegistrationManager', function (accounts) {
       const receipts = await relayServer._worker(latestBlock.number)
       assertRelayAdded(receipts, relayServer)
 
-      let pastEventsResult = await relayServer.registrationManager.handlePastEvents(latestBlock.number, false)
+      let pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, false)
       assert.equal(pastEventsResult.receipts.length, 0, 'should not re-register if already registered')
 
       relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
-      pastEventsResult = await relayServer.registrationManager.handlePastEvents(latestBlock.number, false)
+      pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, false)
       assertRelayAdded(pastEventsResult.receipts, relayServer, false)
 
       relayServer.config.pctRelayFee++
-      pastEventsResult = await relayServer.registrationManager.handlePastEvents(latestBlock.number, false)
+      pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, false)
       assertRelayAdded(pastEventsResult.receipts, relayServer, false)
 
       relayServer.config.url = 'fakeUrl'
-      pastEventsResult = await relayServer.registrationManager.handlePastEvents(latestBlock.number, false)
+      pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, false)
       assertRelayAdded(pastEventsResult.receipts, relayServer, false)
     })
   })
@@ -396,7 +396,7 @@ contract('RegistrationManager', function (accounts) {
 
     function registrationTests (): void {
       it('should register server and add workers', async function () {
-        const receipts = await newServer.registrationManager.attemptRegistration()
+        const receipts = await newServer.registrationManager.attemptRegistration([])
         assertRelayAdded(receipts, newServer)
       })
     }
