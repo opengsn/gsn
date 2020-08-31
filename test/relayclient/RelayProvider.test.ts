@@ -125,8 +125,7 @@ contract('RelayProvider', function (accounts) {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
       const gsnConfig = configureGSN({
-        relayHubAddress: relayHub.address,
-        stakeManagerAddress: stakeManager.address
+        relayHubAddress: relayHub.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
       relayProvider = new RelayProvider(websocketProvider as any, gsnConfig)
@@ -264,8 +263,7 @@ contract('RelayProvider', function (accounts) {
 
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
       const gsnConfig = configureGSN({
-        relayHubAddress: relayHub.address,
-        stakeManagerAddress: stakeManager.address
+        relayHubAddress: relayHub.address
       })
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
@@ -409,8 +407,7 @@ contract('RelayProvider', function (accounts) {
     before(function () {
       TestRecipient = artifacts.require('TestRecipient')
       const gsnConfig = configureGSN({
-        relayHubAddress: relayHub.address,
-        stakeManagerAddress: stakeManager.address
+        relayHubAddress: relayHub.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
       relayProvider = new RelayProvider(websocketProvider as any, gsnConfig)

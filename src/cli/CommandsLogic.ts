@@ -267,7 +267,6 @@ export default class CommandsLogic {
       // Overriding saved configuration with newly deployed instances
       this.config.paymasterAddress = paymasterAddress
     }
-    this.config.stakeManagerAddress = sInstance.options.address
     this.config.relayHubAddress = rInstance.options.address
 
     await fInstance.methods.registerRequestType(

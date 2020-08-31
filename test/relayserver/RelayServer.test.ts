@@ -3,9 +3,12 @@
 import abiDecoder from 'abi-decoder'
 import Web3 from 'web3'
 import crypto from 'crypto'
-import { BlockHeader } from 'web3-eth'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
+import chai from 'chai'
+import sinon from 'sinon'
+import sinonChai from 'sinon-chai'
+import chaiAsPromised from 'chai-as-promised'
 
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
@@ -28,13 +31,12 @@ import {
   NewRelayParams,
   PrepareRelayRequestOption,
   RelayTransactionParams,
-  ServerTestConstants,
   bringUpNewRelay,
   clearStorage,
   getTotalTxCosts,
   prepareRelayRequest,
   relayTransaction,
-  relayTransactionFromRequest, getTimestampTempWorkdir
+  relayTransactionFromRequest, LocalhostOne, getTemporaryWorkdirs, assertRelayAdded
 } from './ServerTestUtils'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { SendTransactionDetails, SignedTransactionDetails } from '../../src/relayserver/TransactionManager'
@@ -42,6 +44,8 @@ import { sleep } from '../../src/common/Utils'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { KeyManager } from '../../src/relayserver/KeyManager'
+
+const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
@@ -106,24 +110,23 @@ contract('RelayServer', function (accounts) {
 
     newRelayParams = {
       alertedBlockDelay: 0,
-      workdir: ServerTestConstants.workdir,
       ethereumNodeUrl,
       relayHubAddress: rhub.address,
       relayOwner,
-      url: ServerTestConstants.localhostOne,
+      url: LocalhostOne,
       web3,
       stakeManager
     }
     partialConfig = {
-      relayHubAddress: rhub.address,
-      stakeManagerAddress: stakeManager.address
+      relayHubAddress: rhub.address
     }
-    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {
+    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
       trustedPaymasters: [paymaster.address],
       baseRelayFee
     })
     // initialize server - gas price, stake, owner, etc, whatever
-    await relayServer._worker(await _web3.eth.getBlock('latest'))
+    const latestBlock = await _web3.eth.getBlock('latest')
+    await relayServer._worker(latestBlock.number)
 
     // TODO: why is this assert here?
     assert.deepEqual(relayServer.config.trustedPaymasters, [paymaster.address], 'trusted paymaster not initialized correctly')
@@ -134,7 +137,7 @@ contract('RelayServer', function (accounts) {
 
     const encodedFunction = sr.contract.methods.emitMessage('hello world').encodeABI()
     const relayClientConfig = {
-      preferredRelays: [ServerTestConstants.localhostOne],
+      preferredRelays: [LocalhostOne],
       maxRelayNonceGap: 0,
       verbose: process.env.DEBUG != null
     }
@@ -181,8 +184,8 @@ contract('RelayServer', function (accounts) {
     it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
       const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
       const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
-      const txStoreManager = new TxStoreManager({ workdir: newRelayParams.workdir + getTimestampTempWorkdir() })
-      const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl)
+      const txStoreManager = new TxStoreManager({ workdir: getTemporaryWorkdirs().workdir })
+      const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl!)
       const contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
       await contractInteractor.init()
       const serverDependencies = {
@@ -515,60 +518,35 @@ contract('RelayServer', function (accounts) {
       await relayServer.replenishServer(workerIndex)
       assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
     })
+  })
 
-    // TODO: unskip these tests. They are currently integration tests for server <-> registration manager
-    it.skip('do not register server when already registered', async function () {
-      // let receipts = await relayServer.registrationManager.attemptRegistration()
-      // assertRelayAdded(receipts, newServer)
-      // receipts = await newServer.registrationManager.attemptRegistration()
-      // assert.equal(receipts.length, 0, 'should not re-register if already registered')
-    })
-    it.skip('re-register server when params changed', async function () {
-      // let receipts = await newServer.registrationManager.attemptRegistration()
-      // assertRelayAdded(receipts, newServer)
-      // // @ts-ignore
-      // newServer.baseRelayFee++
-      // receipts = await newServer.registrationManager.attemptRegistration()
-      // assertRelayAdded(receipts, newServer, false)
-      // // @ts-ignore
-      // newServer.pctRelayFee++
-      // receipts = await newServer.registrationManager.attemptRegistration()
-      // assertRelayAdded(receipts, newServer, false)
-      // // @ts-ignore
-      // newServer.url = 'fakeUrl'
-      // receipts = await newServer.registrationManager.attemptRegistration()
-      // assertRelayAdded(receipts, newServer, false)
+  describe('server keepalive re-registration', function () {
+    const registrationBlockRate = 100
+    let relayServer: RelayServer
+
+    before(async function () {
+      relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, { registrationBlockRate })
+      const latestBlock = await _web3.eth.getBlock('latest')
+      const receipts = await relayServer._worker(latestBlock.number)
+      assertRelayAdded(receipts, relayServer) // sanity check
+      sinon.spy(relayServer.registrationManager, 'handlePastEvents')
     })
 
-    it.skip('re-register server when registrationBlockRate passed from any tx', async function () {
-      // let receipts = await newServer._registerIfNeeded()
-      // assertRelayAdded(receipts, newServer)
-      // await evmMineMany(registrationBlockRate)
-      // receipts = await newServer._registerIfNeeded()
-      // assertRelayAdded(receipts, newServer, false)
+    it('should re-register server only if registrationBlockRate passed from any tx', async function () {
+      let latestBlock = await _web3.eth.getBlock('latest')
+      let receipts = await relayServer._worker(latestBlock.number)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, false)
+      assert.equal(receipts.length, 0, 'should not re-register if already registered')
+      await evmMineMany(registrationBlockRate)
+      latestBlock = await _web3.eth.getBlock('latest')
+      receipts = await relayServer._worker(latestBlock.number)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, true)
+      assertRelayAdded(receipts, relayServer, false)
     })
-    it.skip('do not re-register server before registrationBlockRate passed from any tx', async function () {
-      // let receipts = await newServer._registerIfNeeded()
-      // assertRelayAdded(receipts, newServer)
-      // await evmMineMany(registrationBlockRate - 1)
-      // receipts = await newServer._registerIfNeeded()
-      // assert.equal(receipts.length, 0, 'should not re-register if already registered')
-    })
-    it.skip('do not re-register server when registrationBlockRate passed from registration but not from relayed tx',
-      async function () {
-        // let receipts = await newServer._registerIfNeeded()
-        // assertRelayAdded(receipts, newServer)
-        // await newServer._worker(await _web3.eth.getBlock('latest'))
-        // await evmMineMany(registrationBlockRate - 10)
-        // await relayTransaction(newServer, options)
-        // await evmMineMany(registrationBlockRate - 20)
-        // receipts = await newServer._registerIfNeeded()
-        // assert.equal(receipts.length, 0)
-      })
   })
 
   describe('listener task', function () {
-    let origWorker: (blockHeader: BlockHeader) => Promise<TransactionReceipt[]>
+    let origWorker: (blockNumber: number) => Promise<TransactionReceipt[]>
     let started: boolean
     beforeEach(function () {
       origWorker = relayServer._worker
@@ -610,7 +588,8 @@ contract('RelayServer', function (accounts) {
           }
           return []
         }
-        relayServer._workerSemaphore(await _web3.eth.getBlock('latest'))
+        const latestBlock = await _web3.eth.getBlock('latest')
+        relayServer._workerSemaphore(latestBlock.number)
         assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
         shouldRun = false
         await sleep(200)
@@ -633,8 +612,9 @@ contract('RelayServer', function (accounts) {
         ...newRelayParams,
         alertedBlockDelay: 100
       }
-      newServer = await bringUpNewRelay(newRelayParamsAlerted, partialConfig)
-      await newServer._worker(await _web3.eth.getBlock('latest'))
+      newServer = await bringUpNewRelay(newRelayParamsAlerted, partialConfig, {}, { alertedBlockDelay: 100 })
+      const latestBlock = await _web3.eth.getBlock('latest')
+      await newServer._worker(latestBlock.number)
       rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await rejectingPaymaster.setTrustedForwarder(forwarder.address)
       await rejectingPaymaster.setRelayHub(rhub.address)
@@ -664,7 +644,7 @@ contract('RelayServer', function (accounts) {
       server.transactionManager.sendTransaction = _sendTransaction
       await relayTransaction(relayTransactionParams2, options2, { paymaster: rejectingPaymaster.address }, false)
       const currentBlock = await _web3.eth.getBlock('latest')
-      await server._worker(currentBlock)
+      await server._worker(currentBlock.number)
       assert.isTrue(server.alerted, 'server not alerted')
       assert.equal(server.alertedBlock, currentBlock.number, 'server alerted block incorrect')
     }
@@ -680,10 +660,12 @@ contract('RelayServer', function (accounts) {
 
     it('should exit alerted state after the configured blocks delay', async function () {
       await evmMineMany(newServer.config.alertedBlockDelay - 1)
-      await newServer._worker(await _web3.eth.getBlock('latest'))
+      let latestBlock = await _web3.eth.getBlock('latest')
+      await newServer._worker(latestBlock.number)
       assert.isTrue(newServer.alerted, 'server not alerted')
       await evmMineMany(2)
-      await newServer._worker(await _web3.eth.getBlock('latest'))
+      latestBlock = await _web3.eth.getBlock('latest')
+      await newServer._worker(latestBlock.number)
       assert.isFalse(newServer.alerted, 'server alerted')
     })
   })
@@ -700,8 +682,9 @@ contract('RelayServer', function (accounts) {
       await rejectingPaymaster.setRelayHub(rhub.address)
       await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
       await rejectingPaymaster.setGreedyAcceptanceBudget(true)
-      newServer = await bringUpNewRelay(newRelayParams, partialConfig, { trustedPaymasters: [rejectingPaymaster.address] })
-      await newServer._worker(await _web3.eth.getBlock('latest'))
+      newServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, { trustedPaymasters: [rejectingPaymaster.address] })
+      const latestBlock = await _web3.eth.getBlock('latest')
+      await newServer._worker(latestBlock.number)
       relayTransactionParams2 = {
         ...relayTransactionParams,
         paymasterAddress: rejectingPaymaster.address,
@@ -714,7 +697,8 @@ contract('RelayServer', function (accounts) {
     it('should reject a transaction from paymaster returning above configured max exposure', async function () {
       try {
         const scepticServer = await bringUpNewRelay(newRelayParams, partialConfig)
-        await scepticServer._worker(await _web3.eth.getBlock('latest'))
+        const latestBlock = await _web3.eth.getBlock('latest')
+        await scepticServer._worker(latestBlock.number)
         await relayTransaction({ ...relayTransactionParams2, relayServer: scepticServer }, options,
           { paymaster: rejectingPaymaster.address })
         assert.fail()

@@ -7,6 +7,7 @@ import { constants } from '../common/Constants'
 import { Address } from '../relayclient/types/Aliases'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
+import { LogLevelNumbers } from 'loglevel'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -31,7 +32,7 @@ export interface ServerConfigParams {
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
   gasPriceFactor: number
-  logLevel: number
+  logLevel: LogLevelNumbers
 
   workerMinBalance: number
   workerTargetBalance: number
@@ -91,6 +92,7 @@ const ConfigParamsTypes = {
   workdir: 'string',
   devMode: 'boolean',
   debug: 'boolean',
+  logLevel: 'number',
   registrationBlockRate: 'number',
   maxAcceptanceBudget: 'number',
   alertedBlockDelay: 'number',
