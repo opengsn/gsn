@@ -9,7 +9,6 @@ import ContractInteractor, {
 import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
-import { constants } from '../common/Constants'
 import { addresses2topics } from '../common/Utils'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
@@ -71,7 +70,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       return []
     }
     const topics = addresses2topics(Array.from(relayManagers))
-    const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub([RelayServerRegistered], topics, { fromBlock: 1 })
+    const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub(topics, { fromBlock: 1 }, [RelayServerRegistered])
     const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock: 1 })
 
     if (this.config.verbose) {
@@ -105,7 +104,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents, [], {
+    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub([], {
       fromBlock,
       toBlock
     })
