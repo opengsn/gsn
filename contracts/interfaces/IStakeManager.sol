@@ -80,7 +80,7 @@ interface IStakeManager {
 
     function unauthorizeHubByManager(address relayHub) external;
 
-    function isRelayManagerStaked(address relayManager, uint256 minAmount, uint256 minUnstakeDelay)
+    function isRelayManagerStaked(address relayManager, address relayHub, uint256 minAmount, uint256 minUnstakeDelay)
     external
     view
     returns (bool);

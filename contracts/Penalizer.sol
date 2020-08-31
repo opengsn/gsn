@@ -26,6 +26,10 @@ contract Penalizer is IPenalizer{
 
     }
 
+    function relayManagerOnly(IRelayHub hub) private {
+        require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
+    }
+
     function penalizeRepeatedNonce(
         bytes memory unsignedTx1,
         bytes memory signature1,
@@ -36,7 +40,7 @@ contract Penalizer is IPenalizer{
     public
     override
     {
-        // Can be called by anyone.
+        // Can be called by a relay manager only.
         // If a relay attacked the system by signing multiple transactions with the same nonce
         // (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
         // Check whether unsignedTx1 != unsignedTx2, that both are signed by the same address,
@@ -47,6 +51,7 @@ contract Penalizer is IPenalizer{
         // If reported via a relay, the forfeited stake is split between
         // msg.sender (the relay used for reporting) and the address that reported it.
 
+        relayManagerOnly(hub);
         address addr1 = keccak256(abi.encodePacked(unsignedTx1)).recover(signature1);
         address addr2 = keccak256(abi.encodePacked(unsignedTx2)).recover(signature2);
 
@@ -80,6 +85,7 @@ contract Penalizer is IPenalizer{
     public
     override
     {
+        relayManagerOnly(hub);
         Transaction memory decodedTx = decodeTransaction(unsignedTx);
         if (decodedTx.to == address(hub)) {
             bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
