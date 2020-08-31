@@ -308,7 +308,7 @@ export class RelayServer extends EventEmitter {
     }
 
     await this.transactionManager._init()
-    this.relayHubContract = await this.contractInteractor.IRelayHubInstance
+    this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
     console.log('Server address', this.managerAddress)
