@@ -157,7 +157,8 @@ export class RegistrationManager {
   }
 
   async _findOlderRegistrationEvent (): Promise<EventData | undefined> {
-    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([],
+    const topics = address2topic(this.managerAddress)
+    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
         fromBlock: 1,
         filter: { relayManager: this.managerAddress }
