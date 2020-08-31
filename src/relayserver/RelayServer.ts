@@ -401,7 +401,7 @@ export class RelayServer extends EventEmitter {
     await this.registrationManager.assertManagerBalance()
 
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    const shouldRegisterAgain = await this.getShouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
+    const shouldRegisterAgain = await this.shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
     let { receipts, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, shouldRegisterAgain)
     await this._resendUnconfirmedTransactions(blockNumber)
     if (unregistered) {
@@ -439,7 +439,7 @@ export class RelayServer extends EventEmitter {
     return toBN(await this.contractInteractor.getBalance(this.workerAddress))
   }
 
-  async getShouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  async shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
     const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
     return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
   }
@@ -476,12 +476,12 @@ export class RelayServer extends EventEmitter {
       this.lastMinedActiveTransaction = latestTransactionSinceLastScan
     }
     if (this.lastMinedActiveTransaction == null) {
-      this.lastMinedActiveTransaction = await this._findOlderActiveEvent()
+      this.lastMinedActiveTransaction = await this._queryLatestActiveEvent()
     }
     return this.lastMinedActiveTransaction?.blockNumber ?? -1
   }
 
-  async _findOlderActiveEvent (): Promise<EventData | undefined> {
+  async _queryLatestActiveEvent (): Promise<EventData | undefined> {
     const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
       fromBlock: 1
     })

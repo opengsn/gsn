@@ -151,17 +151,16 @@ export class RegistrationManager {
       this.lastMinedRegisterTransaction = lastRegisteredTxSinceLastScan
     }
     if (this.lastMinedRegisterTransaction == null) {
-      this.lastMinedRegisterTransaction = await this._findOlderRegistrationEvent()
+      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
     return isRegistrationValid(this.lastMinedRegisterTransaction, this.config, this.managerAddress)
   }
 
-  async _findOlderRegistrationEvent (): Promise<EventData | undefined> {
+  async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
     const topics = address2topic(this.managerAddress)
     const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
-        fromBlock: 1,
-        filter: { relayManager: this.managerAddress }
+        fromBlock: 1
       },
       [RelayServerRegistered])
     const registerEvents = relayRegisteredEvents.filter(
@@ -365,14 +364,18 @@ export class RegistrationManager {
       this.lastWorkerAddedTransaction = lastWorkerAddedSinceLastScan
     }
     if (this.lastWorkerAddedTransaction == null) {
-      const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
-        {
-          fromBlock: 1
-        },
-        [RelayWorkersAdded])
-      this.lastWorkerAddedTransaction = reduceToLatestTx(workersAddedEvents)
+      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
     }
     return this._isWorkerValid()
+  }
+
+  async _queryLatestWorkerAddedEvent (): Promise<EventData | undefined> {
+    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
+      {
+        fromBlock: 1
+      },
+      [RelayWorkersAdded])
+    return reduceToLatestTx(workersAddedEvents)
   }
 
   _isWorkerValid (): boolean {
