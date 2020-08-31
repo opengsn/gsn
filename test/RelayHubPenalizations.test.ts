@@ -165,7 +165,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       return receipt
     }
 
-    describe('relay manager only can penalize', function () {
+    describe('penalization access control (relay manager only)', function () {
       before(async function () {
         const { transactionHash } = await send.ether(thirdRelayWorker, other, ether('0.5'));
         ({
