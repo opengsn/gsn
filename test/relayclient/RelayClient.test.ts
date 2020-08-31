@@ -82,8 +82,7 @@ contract('RelayClient', function (accounts) {
     })
 
     gsnConfig = {
-      relayHubAddress: relayHub.address,
-      stakeManagerAddress: stakeManager.address
+      relayHubAddress: relayHub.address
     }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
     gasLess = await web3.eth.personal.newAccount('password')
@@ -155,6 +154,44 @@ contract('RelayClient', function (accounts) {
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
       assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
+    })
+
+    it('should return errors in callback (asyncApprovalData) ', async function () {
+      const relayClient =
+        new RelayClient(underlyingProvider, gsnConfig, {
+          asyncApprovalData: async () => { throw new Error('approval-error') }
+        })
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.match(relayingErrors.values().next().value.message, /approval-error/)
+    })
+
+    it('should return errors in callback (asyncPaymasterData) ', async function () {
+      const relayClient =
+        new RelayClient(underlyingProvider, gsnConfig, {
+          asyncPaymasterData: async () => { throw new Error('paymasterData-error') }
+        })
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.match(relayingErrors.values().next().value.message, /paymasterData-error/)
+    })
+
+    it.skip('should return errors in callback (scoreCalculator) ', async function () {
+      // can't be used: scoring is completely disabled
+      const relayClient =
+        new RelayClient(underlyingProvider, gsnConfig, {
+          scoreCalculator: async () => { throw new Error('score-error') }
+        })
+      const ret = await relayClient.relayTransaction(options)
+      const { transaction, relayingErrors, pingErrors } = ret
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.match(relayingErrors.values().next().value.message, /score-error/)
     })
   })
 

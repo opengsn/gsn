@@ -72,6 +72,7 @@ contract('KnownRelaysManager', function (
         relayLookupWindowBlocks
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
+      await contractInteractor.init()
 
       const forwarderInstance = await Forwarder.new()
       const forwarderAddress = forwarderInstance.address
@@ -128,21 +129,22 @@ contract('KnownRelaysManager', function (
       })
     })
 
-    it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks', async function () {
-      const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
-      const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
-      const actual = Array.from(res.values())
-      assert.equal(actual.length, 4)
-      assert.equal(actual[0], activeRelayServerRegistered)
-      assert.equal(actual[1], activeRelayWorkersAdded)
-      assert.equal(actual[2], activeTransactionRelayed)
-      assert.equal(actual[3], activePaymasterRejected)
-    })
+    it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
+      async function () {
+        const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
+        const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
+        const actual = Array.from(res.values())
+        assert.equal(actual.length, 4)
+        assert.equal(actual[0], activeRelayServerRegistered)
+        assert.equal(actual[1], activeRelayWorkersAdded)
+        assert.equal(actual[2], activeTransactionRelayed)
+        assert.equal(actual[3], activePaymasterRejected)
+      })
   })
 })
 
 contract('KnownRelaysManager 2', function (accounts) {
-  const contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, configureGSN({}))
+  let contractInteractor: ContractInteractor
   const transactionDetails = {
     gas: '0x10000',
     gasPrice: '0x300000',
@@ -152,6 +154,11 @@ contract('KnownRelaysManager 2', function (accounts) {
     forwarder: '',
     paymaster: ''
   }
+
+  before(async function () {
+    contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, configureGSN({}))
+    await contractInteractor.init()
+  })
 
   describe('#refresh()', function () {
     let relayProcess: ChildProcessWithoutNullStreams
@@ -166,8 +173,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       relayHub = await deployHub(stakeManager.address)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090'],
-        relayHubAddress: relayHub.address,
-        stakeManagerAddress: stakeManager.address
+        relayHubAddress: relayHub.address
       })
       relayProcess = await startRelay(relayHub.address, stakeManager, {
         stake: 1e18,
@@ -176,6 +182,7 @@ contract('KnownRelaysManager 2', function (accounts) {
         ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
+      await contractInteractor.init()
       knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
       await stake(stakeManager, relayHub, accounts[1], accounts[0])
       await stake(stakeManager, relayHub, accounts[2], accounts[0])
@@ -300,14 +307,25 @@ contract('KnownRelaysManager 2', function (accounts) {
         relayUrl: 'joe',
         baseRelayFee: '100',
         pctRelayFee: '5'
+      }, {
+        relayManager: accounts[1],
+        relayUrl: 'joe',
+        baseRelayFee: '10',
+        pctRelayFee: '4'
       }]]
       sinon.stub(knownRelaysManager, 'knownRelays').value(activeRelays)
     })
 
     it('should use provided score calculation method to sort the known relays', async function () {
-      const sortedRelays = await knownRelaysManager.getRelaysSortedForTransaction(transactionDetails)
+      const sortedRelays = (await knownRelaysManager.getRelaysSortedForTransaction(transactionDetails)) as RelayRegisteredEventInfo[][]
       assert.equal(sortedRelays[1][0].relayUrl, 'alex')
+      // checking the relayers are sorted AND they cannot overshadow each other's url
       assert.equal(sortedRelays[1][1].relayUrl, 'joe')
+      assert.equal(sortedRelays[1][1].baseRelayFee, '100')
+      assert.equal(sortedRelays[1][1].pctRelayFee, '5')
+      assert.equal(sortedRelays[1][2].relayUrl, 'joe')
+      assert.equal(sortedRelays[1][2].baseRelayFee, '10')
+      assert.equal(sortedRelays[1][2].pctRelayFee, '4')
     })
   })
 })

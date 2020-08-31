@@ -14,7 +14,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
     /*
      * Forwarder singleton we accept calls from
      */
-    address internal trustedForwarder;
+    address public trustedForwarder;
 
     function isTrustedForwarder(address forwarder) public override view returns(bool) {
         return forwarder == trustedForwarder;

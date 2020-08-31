@@ -12,6 +12,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool public revertPostRelayCall;
     bool public overspendAcceptGas;
     bool public revertPreRelayCall;
+    bool public greedyAcceptanceBudget;
 
     function setWithdrawDuringPostRelayedCall(bool val) public {
         withdrawDuringPostRelayedCall = val;
@@ -30,6 +31,10 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     }
     function setOverspendAcceptGas(bool val) public {
         overspendAcceptGas = val;
+    }
+
+    function setGreedyAcceptanceBudget(bool val) public {
+        greedyAcceptanceBudget = val;
     }
 
     function preRelayedCall(
@@ -94,6 +99,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function getGasLimits()
     public override view
     returns (IPaymaster.GasLimits memory) {
+        if (greedyAcceptanceBudget) {
+            return IPaymaster.GasLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit);
+        }
         return limits;
     }
 

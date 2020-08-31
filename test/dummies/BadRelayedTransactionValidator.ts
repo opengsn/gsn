@@ -1,7 +1,7 @@
 import RelayedTransactionValidator from '../../src/relayclient/RelayedTransactionValidator'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import TmpRelayTransactionJsonRequest from '../../src/relayclient/types/TmpRelayTransactionJsonRequest'
+import RelayTransactionRequest from '../../src/relayclient/types/RelayTransactionRequest'
 
 export default class BadRelayedTransactionValidator extends RelayedTransactionValidator {
   private readonly failValidation: boolean
@@ -11,7 +11,7 @@ export default class BadRelayedTransactionValidator extends RelayedTransactionVa
     this.failValidation = failValidation
   }
 
-  validateRelayResponse (transactionJsonRequest: TmpRelayTransactionJsonRequest, maxAcceptanceBudget: number, returnedTx: string): boolean {
+  validateRelayResponse (transactionJsonRequest: RelayTransactionRequest, maxAcceptanceBudget: number, returnedTx: string): boolean {
     if (this.failValidation) {
       return false
     }
