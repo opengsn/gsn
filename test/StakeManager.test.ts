@@ -29,7 +29,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
   function testStakeNotValid (): void {
     it('should report relayManager stake as not valid', async function () {
-      const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, 0, 0, { from: anyRelayHub })
+      const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, anyRelayHub, 0, 0)
       expect(isRelayManagerStaked).to.be.false
     })
   }
@@ -236,25 +236,25 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     })
 
     it('should report relayManager stake as valid for the authorized hub', async function () {
-      const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, 0, 0, { from: anyRelayHub })
+      const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, anyRelayHub, 0, 0)
       expect(isRelayManagerStaked).to.be.true
     })
 
     describe('should report relayManager stake as not valid for', function () {
       it('not authorized hub', async function () {
-        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, 0, 0, { from: nonOwner })
+        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, nonOwner, 0, 0)
         expect(isRelayManagerStaked).to.be.false
       })
       it('not staked relayManager', async function () {
-        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(nonOwner, 0, 0, { from: anyRelayHub })
+        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(nonOwner, anyRelayHub, 0, 0)
         expect(isRelayManagerStaked).to.be.false
       })
       it('minimum stake amount above actual', async function () {
-        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, (1e20).toString(), 0, { from: anyRelayHub })
+        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, anyRelayHub, (1e20).toString(), 0)
         expect(isRelayManagerStaked).to.be.false
       })
       it('minimum unstake delay above actual', async function () {
-        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, 0, 1e10, { from: anyRelayHub })
+        const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(relayManager, anyRelayHub, 0, 1e10)
         expect(isRelayManagerStaked).to.be.false
       })
     })

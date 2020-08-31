@@ -477,10 +477,6 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
         `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
       const managerEthBalanceAfter = await relayServer.getManagerBalance()
-      console.log('wtf is balances', managerEthBalanceAfter.toString(), managerEthBalanceBefore.toString(),
-        managerHubBalanceBefore.toString(), refill.toString(), totalTxCosts.toString())
-      console.log('wtf is diff',
-        managerEthBalanceAfter.sub(managerEthBalanceBefore.add(managerHubBalanceBefore).sub(refill).sub(totalTxCosts)).toString())
       assert.isTrue(managerEthBalanceAfter.eq(managerEthBalanceBefore.add(managerHubBalanceBefore).sub(refill).sub(totalTxCosts)),
         'manager eth balance should increase by hub balance minus txs costs')
     })
