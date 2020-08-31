@@ -58,12 +58,12 @@ export default class ContractInteractor {
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
 
-  private IPaymasterInstance!: IPaymasterInstance
-  IRelayHubInstance!: IRelayHubInstance
-  private IForwarderInstance!: IForwarderInstance
-  private IStakeManagerInstance!: IStakeManagerInstance
-  private IRelayRecipientInstance?: BaseRelayRecipientInstance
-  private IKnowForwarderAddressInstance?: IKnowForwarderAddressInstance
+  private paymasterInstance!: IPaymasterInstance
+  relayHubInstance!: IRelayHubInstance
+  private forwarderInstance!: IForwarderInstance
+  private stakeManagerInstance!: IStakeManagerInstance
+  private relayRecipientInstance?: BaseRelayRecipientInstance
+  private knowForwarderAddressInstance?: IKnowForwarderAddressInstance
 
   private readonly web3: Web3
   private readonly provider: provider
@@ -140,7 +140,7 @@ export default class ContractInteractor {
     if (this.config.relayHubAddress === constants.ZERO_ADDRESS) {
       return
     }
-    const hub = this.IRelayHubInstance
+    const hub = this.relayHubInstance
     const version = await hub.versionHub()
     const isNewer = this.versionManager.isMinorSameOrNewer(version)
     if (!isNewer) {
@@ -150,24 +150,24 @@ export default class ContractInteractor {
 
   async _initializeContracts (): Promise<void> {
     if (this.config.forwarderAddress !== constants.ZERO_ADDRESS) {
-      this.IForwarderInstance = await this._createForwarder(this.config.forwarderAddress)
+      this.forwarderInstance = await this._createForwarder(this.config.forwarderAddress)
     }
     if (this.config.relayHubAddress !== constants.ZERO_ADDRESS) {
-      this.IRelayHubInstance = await this._createRelayHub(this.config.relayHubAddress)
+      this.relayHubInstance = await this._createRelayHub(this.config.relayHubAddress)
       let hubStakeManagerAddress: string | undefined
       let getStakeManagerError: Error | undefined
       try {
-        hubStakeManagerAddress = await this.IRelayHubInstance.stakeManager()
+        hubStakeManagerAddress = await this.relayHubInstance.stakeManager()
       } catch (e) {
         getStakeManagerError = e
       }
       if (hubStakeManagerAddress == null || hubStakeManagerAddress === constants.ZERO_ADDRESS) {
         throw new Error(`StakeManager address not set in RelayHub (or threw error: ${getStakeManagerError?.message})`)
       }
-      this.IStakeManagerInstance = await this._createStakeManager(hubStakeManagerAddress)
+      this.stakeManagerInstance = await this._createStakeManager(hubStakeManagerAddress)
     }
     if (this.config.paymasterAddress !== constants.ZERO_ADDRESS) {
-      this.IPaymasterInstance = await this._createPaymaster(this.config.paymasterAddress)
+      this.paymasterInstance = await this._createPaymaster(this.config.paymasterAddress)
     }
   }
 
@@ -180,19 +180,19 @@ export default class ContractInteractor {
   }
 
   async _createKnowsForwarder (address: Address): Promise<IKnowForwarderAddressInstance> {
-    if (this.IKnowForwarderAddressInstance != null && this.IKnowForwarderAddressInstance.address.toLowerCase() === address.toLowerCase()) {
-      return this.IKnowForwarderAddressInstance
+    if (this.knowForwarderAddressInstance != null && this.knowForwarderAddressInstance.address.toLowerCase() === address.toLowerCase()) {
+      return this.knowForwarderAddressInstance
     }
-    this.IKnowForwarderAddressInstance = await this.IKnowForwarderAddress.at(address)
-    return this.IKnowForwarderAddressInstance
+    this.knowForwarderAddressInstance = await this.IKnowForwarderAddress.at(address)
+    return this.knowForwarderAddressInstance
   }
 
   async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
-    if (this.IRelayRecipientInstance != null && this.IRelayRecipientInstance.address.toLowerCase() === address.toLowerCase()) {
-      return this.IRelayRecipientInstance
+    if (this.relayRecipientInstance != null && this.relayRecipientInstance.address.toLowerCase() === address.toLowerCase()) {
+      return this.relayRecipientInstance
     }
-    this.IRelayRecipientInstance = await this.IRelayRecipient.at(address)
-    return this.IRelayRecipientInstance
+    this.relayRecipientInstance = await this.IRelayRecipient.at(address)
+    return this.relayRecipientInstance
   }
 
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
@@ -237,7 +237,7 @@ export default class ContractInteractor {
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
-    const relayHub = this.IRelayHubInstance
+    const relayHub = this.relayHubInstance
     try {
       const externalGasLimit = await this._getBlockGasLimit()
 
@@ -279,11 +279,11 @@ export default class ContractInteractor {
   }
 
   async getPastEventsForHub (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    return await this._getPastEvents(this.IRelayHubInstance.contract, names, extraTopics, options)
+    return await this._getPastEvents(this.relayHubInstance.contract, names, extraTopics, options)
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    const stakeManager = await this.IStakeManagerInstance
+    const stakeManager = await this.stakeManagerInstance
     return await this._getPastEvents(stakeManager.contract, names, extraTopics, options)
   }
 
@@ -372,12 +372,12 @@ export default class ContractInteractor {
     withdrawBlock: string
     owner: string
   }> {
-    const stakeManager = await this.IStakeManagerInstance
+    const stakeManager = await this.stakeManagerInstance
     return await stakeManager.getStakeInfo(managerAddress)
   }
 
   async hubBalanceOf (managerAddress: Address): Promise<BN> {
-    const hub = this.IRelayHubInstance
+    const hub = this.relayHubInstance
     return await hub.balanceOf(managerAddress)
   }
 
@@ -385,7 +385,7 @@ export default class ContractInteractor {
     gasCost: BN
     method: any
   }> {
-    const hub = this.IRelayHubInstance
+    const hub = this.relayHubInstance
     const method = hub.contract.methods.withdraw(amount.toString(), destination)
     const withdrawTxGasLimit = await method.estimateGas(
       {
@@ -400,12 +400,12 @@ export default class ContractInteractor {
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
   async getRegisterRelayMethod (baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
-    const hub = this.IRelayHubInstance
+    const hub = this.relayHubInstance
     return hub.contract.methods.registerRelayServer(baseRelayFee, pctRelayFee, url)
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
-    const hub = this.IRelayHubInstance
+    const hub = this.relayHubInstance
     return hub.contract.methods.addRelayWorkers(workers)
   }
 }
