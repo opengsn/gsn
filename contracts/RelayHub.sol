@@ -369,6 +369,10 @@ contract RelayHub is IRelayHub {
         return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 
+    function isRelayManagerStaked(address relayManager) public override view returns (bool) {
+        return stakeManager.isRelayManagerStaked(relayManager, address(this), minimumStake, minimumUnstakeDelay);
+    }
+
     modifier penalizerOnly () {
         require(msg.sender == penalizer, "Not penalizer");
         _;

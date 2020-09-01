@@ -477,10 +477,6 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
         `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
       const managerEthBalanceAfter = await relayServer.getManagerBalance()
-      console.log('wtf is balances', managerEthBalanceAfter.toString(), managerEthBalanceBefore.toString(),
-        managerHubBalanceBefore.toString(), refill.toString(), totalTxCosts.toString())
-      console.log('wtf is diff',
-        managerEthBalanceAfter.sub(managerEthBalanceBefore.add(managerHubBalanceBefore).sub(refill).sub(totalTxCosts)).toString())
       assert.isTrue(managerEthBalanceAfter.eq(managerEthBalanceBefore.add(managerHubBalanceBefore).sub(refill).sub(totalTxCosts)),
         'manager eth balance should increase by hub balance minus txs costs')
     })
@@ -539,12 +535,12 @@ contract('RelayServer', function (accounts) {
     it('should re-register server only if registrationBlockRate passed from any tx', async function () {
       let latestBlock = await _web3.eth.getBlock('latest')
       let receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, false)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, false)
       assert.equal(receipts.length, 0, 'should not re-register if already registered')
       await evmMineMany(registrationBlockRate)
       latestBlock = await _web3.eth.getBlock('latest')
       receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, true)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, true)
       assertRelayAdded(receipts, relayServer, false)
     })
   })

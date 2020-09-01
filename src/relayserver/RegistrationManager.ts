@@ -4,7 +4,7 @@ import { toBN, toHex } from 'web3-utils'
 import { EventEmitter } from 'events'
 
 import { Address, IntString } from '../relayclient/types/Aliases'
-import { address2topic } from '../common/Utils'
+import { address2topic, isSameAddress, reduceToLatestTx } from '../common/Utils'
 import ContractInteractor, {
   HubAuthorized,
   HubUnauthorized,
@@ -53,6 +53,14 @@ export interface PastEventsHandled {
   unregistered: boolean
 }
 
+function isRegistrationValid (registerEvent: EventData | undefined, config: ServerConfigParams, managerAddress: Address): boolean {
+  return registerEvent != null &&
+    isSameAddress(registerEvent.returnValues.relayManager, managerAddress) &&
+    registerEvent.returnValues.baseRelayFee.toString() === config.baseRelayFee.toString() &&
+    registerEvent.returnValues.pctRelayFee.toString() === config.pctRelayFee.toString() &&
+    registerEvent.returnValues.relayUrl.toString() === config.url.toString()
+}
+
 export class RegistrationManager {
   balanceRequired: AmountRequired
   stakeRequired: AmountRequired
@@ -70,6 +78,9 @@ export class RegistrationManager {
   ownerAddress?: Address
   transactionManager: TransactionManager
   config: ServerConfigParams
+
+  lastMinedRegisterTransaction?: EventData
+  lastWorkerAddedTransaction?: EventData
 
   constructor (
     contractInteractor: ContractInteractor,
@@ -92,7 +103,7 @@ export class RegistrationManager {
     this.config = config
   }
 
-  async handlePastEvents (lastScannedBlock: number, forceRegistration: boolean): Promise<PastEventsHandled> {
+  async handlePastEvents (hubEventsSinceLastScan: EventData[], lastScannedBlock: number, forceRegistration: boolean): Promise<PastEventsHandled> {
     const topics = [address2topic(this.managerAddress)]
     const options = {
       fromBlock: lastScannedBlock + 1,
@@ -124,9 +135,9 @@ export class RegistrationManager {
           break
       }
     }
-    const wasRegistered = await this._wasRegistered()
-    if (!wasRegistered || forceRegistration) {
-      receipts = receipts.concat(await this.attemptRegistration())
+    const isRegistrationCorrect = await this._isRegistrationCorrect(hubEventsSinceLastScan)
+    if (!isRegistrationCorrect || forceRegistration) {
+      receipts = receipts.concat(await this.attemptRegistration(hubEventsSinceLastScan))
     }
     return {
       receipts,
@@ -134,9 +145,28 @@ export class RegistrationManager {
     }
   }
 
-  async _wasRegistered (): Promise<boolean> {
-    const registrationBlock = await this._getRegistrationBlock()
-    return registrationBlock !== 0
+  async _isRegistrationCorrect (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+    const lastRegisteredTxSinceLastScan = reduceToLatestTx(hubEventsSinceLastScan.filter((it) => it.event === RelayServerRegistered))
+    if (lastRegisteredTxSinceLastScan != null) {
+      this.lastMinedRegisterTransaction = lastRegisteredTxSinceLastScan
+    }
+    if (this.lastMinedRegisterTransaction == null) {
+      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
+    }
+    return isRegistrationValid(this.lastMinedRegisterTransaction, this.config, this.managerAddress)
+  }
+
+  async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
+    const topics = address2topic(this.managerAddress)
+    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([topics],
+      {
+        fromBlock: 1
+      },
+      [RelayServerRegistered])
+    const registerEvents = relayRegisteredEvents.filter(
+      (eventData: EventData) =>
+        isRegistrationValid(eventData, this.config, this.managerAddress))
+    return reduceToLatestTx(registerEvents)
   }
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {
@@ -235,7 +265,8 @@ export class RegistrationManager {
     })).receipt
   }
 
-  async attemptRegistration (): Promise<TransactionReceipt[]> {
+  // TODO: extract worker registration sub-flow
+  async attemptRegistration (hubEventsSinceLastScan: EventData[]): Promise<TransactionReceipt[]> {
     const allPrerequisitesOk =
       this.isHubAuthorized &&
       this.isStakeLocked &&
@@ -247,7 +278,7 @@ export class RegistrationManager {
 
     let receipts: TransactionReceipt[] = []
     // add worker only if not already added
-    const workersAdded = await this._areWorkersAdded()
+    const workersAdded = await this._areWorkersAdded(hubEventsSinceLastScan)
     if (!workersAdded) {
       receipts = receipts.concat(await this.addRelayWorker())
     }
@@ -327,29 +358,30 @@ export class RegistrationManager {
     return receipts
   }
 
-  async _areWorkersAdded (): Promise<boolean> {
-    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([RelayWorkersAdded], [],
-      {
-        fromBlock: 1,
-        filter: { relayManager: this.managerAddress }
-      })
-    return (workersAddedEvents.find((e: any) => e.returnValues.newRelayWorkers
-      .map((a: string) => a.toLowerCase()).includes(this.workerAddress.toLowerCase())) != null)
+  async _areWorkersAdded (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+    const lastWorkerAddedSinceLastScan = reduceToLatestTx(hubEventsSinceLastScan.filter((it) => it.event === RelayWorkersAdded))
+    if (lastWorkerAddedSinceLastScan != null) {
+      this.lastWorkerAddedTransaction = lastWorkerAddedSinceLastScan
+    }
+    if (this.lastWorkerAddedTransaction == null) {
+      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
+    }
+    return this._isWorkerValid()
   }
 
-  async _getRegistrationBlock (): Promise<number> {
-    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([RelayServerRegistered], [],
+  async _queryLatestWorkerAddedEvent (): Promise<EventData | undefined> {
+    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
       {
-        fromBlock: 1,
-        filter: { relayManager: this.managerAddress }
-      })
-    const event = relayRegisteredEvents.find(
-      (e: any) =>
-        e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase() &&
-        e.returnValues.baseRelayFee.toString() === this.config.baseRelayFee.toString() &&
-        e.returnValues.pctRelayFee.toString() === this.config.pctRelayFee.toString() &&
-        e.returnValues.relayUrl.toString() === this.config.url.toString())
-    return (event == null ? 0 : event.blockNumber)
+        fromBlock: 1
+      },
+      [RelayWorkersAdded])
+    return reduceToLatestTx(workersAddedEvents)
+  }
+
+  _isWorkerValid (): boolean {
+    // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+    return this.lastWorkerAddedTransaction != null && this.lastWorkerAddedTransaction.returnValues.newRelayWorkers
+      .map((a: string) => a.toLowerCase()).includes(this.workerAddress.toLowerCase())
   }
 
   async assertManagerBalance (): Promise<void> {
@@ -375,8 +407,8 @@ export class RegistrationManager {
     if (!this.isHubAuthorized) {
       throw new StateError('Hub not authorized.')
     }
-    const registeredBlock = await this._getRegistrationBlock()
-    if (registeredBlock === 0) {
+    const isRegistrationCorrect = await this._isRegistrationCorrect([])
+    if (!isRegistrationCorrect) {
       throw new StateError('Not registered yet.')
     }
   }

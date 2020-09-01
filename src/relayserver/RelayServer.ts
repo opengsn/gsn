@@ -18,10 +18,10 @@ import {
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   randomInRange,
+  reduceToLatestTx,
   sleep
 } from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
-import { constants } from '../common/Constants'
 import { RegistrationManager, StateError } from './RegistrationManager'
 import { TransactionManager } from './TransactionManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
@@ -46,6 +46,8 @@ export class RelayServer extends EventEmitter {
   private workerTask?: Timeout
   config: ServerConfigParams
   transactionManager: TransactionManager
+
+  lastMinedActiveTransaction?: EventData
 
   registrationManager!: RegistrationManager
   chainId!: number
@@ -398,15 +400,16 @@ export class RelayServer extends EventEmitter {
     }
     await this.registrationManager.assertManagerBalance()
 
-    const shouldRegisterAgain = await this.getShouldRegisterAgain()
-    let { receipts, unregistered } = await this.registrationManager.handlePastEvents(this.lastScannedBlock, shouldRegisterAgain)
+    const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
+    const shouldRegisterAgain = await this.shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
+    let { receipts, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, shouldRegisterAgain)
     await this._resendUnconfirmedTransactions(blockNumber)
     if (unregistered) {
       this.lastScannedBlock = blockNumber
       return receipts
     }
     await this.registrationManager.assertRegistered()
-    await this.handlePastHubEvents(blockNumber)
+    await this.handlePastHubEvents(blockNumber, hubEventsSinceLastScan)
     this.lastScannedBlock = blockNumber
     const workerIndex = 0
     receipts = receipts.concat(await this.replenishServer(workerIndex))
@@ -436,50 +439,53 @@ export class RelayServer extends EventEmitter {
     return toBN(await this.contractInteractor.getBalance(this.workerAddress))
   }
 
-  async getShouldRegisterAgain (): Promise<boolean> {
-    const currentBlock = await this.contractInteractor.getBlockNumber()
-    const latestTxBlockNumber = await this._getLatestTxBlockNumber()
+  async shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+    const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
     return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
   }
 
-  async handlePastHubEvents (blockNumber: number): Promise<void> {
-    const topics = [address2topic(this.managerAddress)]
-    const options = {
-      fromBlock: this.lastScannedBlock + 1,
-      toBlock: 'latest'
-    }
-    const eventNames = [TransactionRejectedByPaymaster]
-    const decodedEvents = await this.contractInteractor.getPastEventsForHub(eventNames, topics, options)
-    for (const dlog of decodedEvents) {
-      switch (dlog.event) {
+  async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
+    for (const event of hubEventsSinceLastScan) {
+      switch (event.event) {
         case TransactionRejectedByPaymaster:
-          await this._handleTransactionRejectedByPaymasterEvent(dlog, blockNumber)
+          log.debug('handle TransactionRejectedByPaymaster event', event)
+          await this._handleTransactionRejectedByPaymasterEvent(blockNumber)
           break
       }
     }
   }
 
-  async _handleTransactionRejectedByPaymasterEvent (dlog: EventData, blockNumber: number): Promise<void> {
-    log.debug('handle TransactionRejectedByPaymaster event', dlog)
+  async getAllHubEventsSinceLastScan (): Promise<EventData[]> {
+    const topics = [address2topic(this.managerAddress)]
+    const options = {
+      fromBlock: this.lastScannedBlock + 1,
+      toBlock: 'latest'
+    }
+    return await this.contractInteractor.getPastEventsForHub(topics, options)
+  }
+
+  async _handleTransactionRejectedByPaymasterEvent (blockNumber: number): Promise<void> {
     this.alerted = true
     this.alertedBlock = blockNumber
     console.error(`Relay entered alerted state. Block number: ${blockNumber}`)
   }
 
-  async _getLatestTxBlockNumber (): Promise<number> {
-    const events: EventData[] = await this.contractInteractor.getPastEventsForHub(constants.activeManagerEvents,
-      [address2topic(this.managerAddress)], {
-        fromBlock: 1
-      })
-    return events
-      .filter(
-        (e: EventData) =>
-          e.returnValues.relayManager.toLowerCase() === this.managerAddress.toLowerCase())
-      .map(
-        (e: EventData) =>
-          e.blockNumber)
-      .reduce(
-        (b1: any, b2: any) => Math.max(b1, b2), 0)
+  async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {
+    const latestTransactionSinceLastScan = reduceToLatestTx(eventsSinceLastScan)
+    if (latestTransactionSinceLastScan != null) {
+      this.lastMinedActiveTransaction = latestTransactionSinceLastScan
+    }
+    if (this.lastMinedActiveTransaction == null) {
+      this.lastMinedActiveTransaction = await this._queryLatestActiveEvent()
+    }
+    return this.lastMinedActiveTransaction?.blockNumber ?? -1
+  }
+
+  async _queryLatestActiveEvent (): Promise<EventData | undefined> {
+    const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
+      fromBlock: 1
+    })
+    return reduceToLatestTx(events)
   }
 
   /**
