@@ -9,6 +9,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { Penalizer } from './penalizer/Penalizer'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { TxByNonceService } from './penalizer/TxByNonceService'
 
 function error (err: string): never {
   console.error(err)
@@ -61,7 +62,15 @@ async function run (): Promise<void> {
 
   const relay = new RelayServer(params, dependencies)
   await relay.init()
-  const penalizer = new Penalizer(managerKeyManager, relayHubAddress, interactor, true)
+  const txByNonceService = new TxByNonceService(web3provider)
+  const penalizer = new Penalizer({
+    keyManager: managerKeyManager,
+    hubAddress: relayHubAddress,
+    txByNonceService,
+    contractInteractor,
+    devMode: true
+  })
+  await penalizer.init()
   console.log('Starting server.')
   console.log('Using server config:', config)
   console.log(

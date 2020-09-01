@@ -389,12 +389,4 @@ contract RelayHub is IRelayHub {
         IStakeManager.StakeInfo memory stakeInfo = stakeManager.getStakeInfo(relayManager);
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }
-
-    function isRelayManagerStaked(address relayManager)
-    override
-    public
-    view
-    returns (bool) {
-        return stakeManager.isRelayManagerStaked(relayManager, minimumStake, minimumUnstakeDelay);
-    }
 }

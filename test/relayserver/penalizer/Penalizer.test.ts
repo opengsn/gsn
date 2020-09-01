@@ -1,28 +1,28 @@
 /* global artifacts describe */
 import Web3 from 'web3'
 import crypto from 'crypto'
-import { RelayClient } from '../../src/relayclient/RelayClient'
+import { RelayClient } from '../../../src/relayclient/RelayClient'
 import {
   CreateTransactionDetails,
   RelayServer,
   RelayServerParams,
   SendTransactionDetails,
   SignedTransactionDetails
-} from '../../src/relayserver/RelayServer'
-import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
-import { KeyManager } from '../../src/relayserver/KeyManager'
-import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
-import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
-import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
-import { defaultEnvironment } from '../../src/common/Environments'
+} from '../../../src/relayserver/RelayServer'
+import { TxStoreManager } from '../../../src/relayserver/TxStoreManager'
+import { KeyManager } from '../../../src/relayserver/KeyManager'
+import RelayHubABI from '../../../src/common/interfaces/IRelayHub.json'
+import StakeManagerABI from '../../../src/common/interfaces/IStakeManager.json'
+import PayMasterABI from '../../../src/common/interfaces/IPaymaster.json'
+import { defaultEnvironment } from '../../../src/common/Environments'
 import * as ethUtils from 'ethereumjs-util'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { deployHub, evmMine, evmMineMany, revert, sleep, snapshot } from '../TestUtils'
-import { removeHexPrefix } from '../../src/common/Utils'
+import { deployHub, evmMine, evmMineMany, revert, sleep, snapshot } from '../../TestUtils'
+import { removeHexPrefix } from '../../../src/common/Utils'
 import {
   BasePaymasterContract,
   ForwarderInstance,
@@ -32,20 +32,20 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
-} from '../../types/truffle-contracts'
-import { Address } from '../../src/relayclient/types/Aliases'
+} from '../../../types/truffle-contracts'
+import { Address } from '../../../src/relayclient/types/Aliases'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
-import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
-import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
-import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
+import { configureGSN } from '../../../src/relayclient/GSNConfigurator'
+import { RelayInfo } from '../../../src/relayclient/types/RelayInfo'
+import { RelayRegisteredEventInfo } from '../../../src/relayclient/types/RelayRegisteredEventInfo'
+import GsnTransactionDetails from '../../../src/relayclient/types/GsnTransactionDetails'
 import { BlockHeader } from 'web3-eth'
 import { toBN, toHex } from 'web3-utils'
-import RelayRequest from '../../src/common/EIP712/RelayRequest'
+import RelayRequest from '../../../src/common/EIP712/RelayRequest'
 import TmpRelayTransactionJsonRequest from '../../src/relayclient/types/TmpRelayTransactionJsonRequest'
-import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { ServerConfigParams } from '../../src/relayserver/runServer'
+import { GsnRequestType } from '../../../src/common/EIP712/TypedRequestData'
+import ContractInteractor from '../../../src/relayclient/ContractInteractor'
+import { ServerConfigParams } from '../../../src/relayserver/runServer'
 import { ether } from '@openzeppelin/test-helpers'
 
 const TestRecipient = artifacts.require('TestRecipient')

@@ -68,6 +68,7 @@ export default class ContractInteractor {
   relayHubInstance!: IRelayHubInstance
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
+  penalizerInstance!: IPenalizerInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
   private knowForwarderAddressInstance?: IKnowForwarderAddressInstance
 
@@ -166,16 +167,23 @@ export default class ContractInteractor {
     if (this.config.relayHubAddress !== constants.ZERO_ADDRESS) {
       this.relayHubInstance = await this._createRelayHub(this.config.relayHubAddress)
       let hubStakeManagerAddress: string | undefined
-      let getStakeManagerError: Error | undefined
+      let hubPenalizerAddress: string | undefined
+      let getAddressesError: Error | undefined
       try {
         hubStakeManagerAddress = await this.relayHubInstance.stakeManager()
+        hubPenalizerAddress = await this.relayHubInstance.penalizer()
       } catch (e) {
-        getStakeManagerError = e
+        getAddressesError = e
       }
       if (hubStakeManagerAddress == null || hubStakeManagerAddress === constants.ZERO_ADDRESS) {
-        throw new Error(`StakeManager address not set in RelayHub (or threw error: ${getStakeManagerError?.message})`)
+        throw new Error(`StakeManager address not set in RelayHub (or threw error: ${getAddressesError?.message})`)
       }
+      if (hubPenalizerAddress == null || hubPenalizerAddress === constants.ZERO_ADDRESS) {
+        throw new Error(`Penalizer addresses not set in RelayHub (or threw error: ${getAddressesError?.message})`)
+      }
+
       this.stakeManagerInstance = await this._createStakeManager(hubStakeManagerAddress)
+      this.penalizerInstance = await this._createPenalizer(hubPenalizerAddress)
     }
     if (this.config.paymasterAddress !== constants.ZERO_ADDRESS) {
       this.paymasterInstance = await this._createPaymaster(this.config.paymasterAddress)
