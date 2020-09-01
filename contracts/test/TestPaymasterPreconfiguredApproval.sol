@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./TestPaymasterEverythingAccepted.sol";
@@ -19,6 +19,7 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
         uint256 maxPossibleGas
     )
     external
+    view
     override
     returns (bytes memory, bool) {
         (relayRequest, signature, approvalData, maxPossibleGas);

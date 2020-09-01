@@ -1,6 +1,6 @@
 /* solhint-disable avoid-tx-origin */
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.7.0;
 
 import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
@@ -11,7 +11,7 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
 
     string public override versionRecipient = "2.0.0-beta.1+opengsn.test.irelayrecipient";
 
-    constructor(address forwarder) public {
+    constructor(address forwarder) {
         setTrustedForwarder(forwarder);
     }
 

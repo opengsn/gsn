@@ -2,7 +2,7 @@
 // minimal bytes manipulation required by GSN
 // a minimal subset from 0x/LibBytes
 /* solhint-disable no-inline-assembly */
-pragma solidity ^0.6.2;
+pragma solidity ^0.7.0;
 
 library MinLibBytes {
 

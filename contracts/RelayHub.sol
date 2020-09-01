@@ -4,7 +4,7 @@
 /* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.9;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./utils/MinLibBytes.sol";
@@ -51,7 +51,7 @@ contract RelayHub is IRelayHub {
         uint256 _maximumRecipientDeposit,
         uint256 _minimumUnstakeDelay,
         uint256 _minimumStake
-    ) public {
+    ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
         maxWorkerCount = _maxWorkerCount;

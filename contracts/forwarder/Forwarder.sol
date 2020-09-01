@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
@@ -24,7 +24,7 @@ contract Forwarder is IForwarder {
         return nonces[from];
     }
 
-    constructor() public {
+    constructor() {
 
         string memory requestType = string(abi.encodePacked("ForwardRequest(", GENERIC_PARAMS, ")"));
         registerRequestTypeInternal(requestType);

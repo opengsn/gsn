@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.7.0;
 
 import "../../BaseRelayRecipient.sol";
 
@@ -7,7 +7,7 @@ contract TestForwarderTarget is BaseRelayRecipient {
 
     string public override versionRecipient = "2.0.0-beta.1+opengsn.test.recipient";
 
-    constructor(address forwarder) public {
+    constructor(address forwarder) {
         trustedForwarder = forwarder;
     }
 
