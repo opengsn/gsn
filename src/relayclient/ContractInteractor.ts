@@ -132,11 +132,15 @@ export default class ContractInteractor {
     await this._initializeContracts()
     await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
-    this.chainId = await this.web3.eth.getChainId()
+    this.chainId = await this.getAsyncChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
+  }
+
+  async getAsyncChainId (): Promise<number> {
+    return await this.web3.eth.getChainId()
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -145,9 +149,13 @@ export default class ContractInteractor {
     }
     const hub = this.relayHubInstance
     const version = await hub.versionHub()
+    this._validateVersion(version)
+  }
+
+  _validateVersion (version: string): void {
     const isNewer = this.versionManager.isMinorSameOrNewer(version)
     if (!isNewer) {
-      throw new Error(`Provided Hub version(${version}) is not supported by the current interactor(${this.VERSION})`)
+      throw new Error(`Provided version(${version}) is not supported by the current interactor(${this.versionManager.componentVersion})`)
     }
   }
 
@@ -269,7 +277,7 @@ export default class ContractInteractor {
       return {
         paymasterAccepted: false,
         reverted: true,
-        returnValue: `view call to 'relayCall' reverted in client (should not happen): ${message}`
+        returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
   }

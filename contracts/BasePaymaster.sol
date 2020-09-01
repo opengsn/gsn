@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.6.10;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -19,7 +19,7 @@ import "./forwarder/Forwarder.sol";
 abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
-    IForwarder public trustedForwarder;
+    IForwarder public override trustedForwarder;
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);

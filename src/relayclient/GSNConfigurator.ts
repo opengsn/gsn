@@ -1,6 +1,5 @@
 import { HttpProvider } from 'web3-core'
 import { Address, AsyncDataCallback, AsyncScoreCalculator, IntString, PingFilter, RelayFilter } from './types/Aliases'
-import { defaultEnvironment } from '../common/Environments'
 import HttpClient from './HttpClient'
 import ContractInteractor from './ContractInteractor'
 import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
@@ -13,10 +12,11 @@ import { constants } from '../common/Constants'
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
+const DEFAULT_LOOKUP_WINDOW_BLOCKS = 60000
 
 const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
-  relayLookupWindowBlocks: 6000,
+  relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   minGasPrice: 0,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
@@ -24,7 +24,7 @@ const defaultGsnConfig: GSNConfig = {
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
   methodSuffix: '',
   jsonStringifyRequest: false,
-  chainId: defaultEnvironment.chainId,
+  chainId: 0,
   relayHubAddress: constants.ZERO_ADDRESS,
   paymasterAddress: constants.ZERO_ADDRESS,
   forwarderAddress: constants.ZERO_ADDRESS,
@@ -47,19 +47,48 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
  * @param partialConfig
  */
 export async function resolveConfigurationGSN (provider: provider, partialConfig: Partial<GSNConfig>): Promise<GSNConfig> {
+  // @ts-ignore
+  if (provider.send == null && provider.sendAsync == null) {
+    throw new Error('First param is not a web3 provider')
+  }
+
   if (partialConfig.relayHubAddress != null) {
     throw new Error('Resolve cannot override passed values')
   }
   if (partialConfig.paymasterAddress == null) {
     throw new Error('Cannot resolve GSN deployment without paymaster address')
   }
+
   const contractInteractor = new ContractInteractor(provider, defaultGsnConfig)
   const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
-  const relayHubAddress = await paymasterInstance.getHubAddr()
+
+  const [
+    chainId, relayHubAddress, forwarderAddress
+  ] = await Promise.all([
+    partialConfig.chainId ?? await contractInteractor.getAsyncChainId(),
+    await paymasterInstance.getHubAddr().catch(e => { throw new Error('Not a paymaster contract') }),
+    partialConfig.forwarderAddress ?? await paymasterInstance.trustedForwarder(),
+    await paymasterInstance.versionPaymaster().catch((e: any) => { throw new Error('Not a paymaster contract') }).then((version: string) => contractInteractor._validateVersion(version))
+  ])
+
+  const isMetamask = (provider as any).isMetaMask != null
+
+  // provide defaults valid for metamask (unless explicitly specified values)
+  const methodSuffix = partialConfig.methodSuffix ?? (isMetamask ? '_v4' : defaultGsnConfig.methodSuffix)
+  const jsonStringifyRequest = partialConfig.jsonStringifyRequest ?? (isMetamask ? true : defaultGsnConfig.jsonStringifyRequest)
+
   const resolvedConfig = {
-    relayHubAddress
+    relayHubAddress,
+    forwarderAddress,
+    chainId,
+    methodSuffix,
+    jsonStringifyRequest
   }
-  return Object.assign({}, defaultGsnConfig, partialConfig, resolvedConfig) as GSNConfig
+  return {
+    ...defaultGsnConfig,
+    ...partialConfig,
+    ...resolvedConfig
+  }
 }
 
 /**

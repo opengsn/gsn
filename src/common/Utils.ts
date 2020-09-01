@@ -54,7 +54,8 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
     }
     return revertBytes
   }
-  return web3.eth.abi.decodeParameter('string', '0x' + revertBytes.slice(10)) as any
+  // @ts-ignore
+  return abi.decodeParameter('string', '0x' + revertBytes.slice(10)) as any
 }
 
 export async function getEip712Signature (
