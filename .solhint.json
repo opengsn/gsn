@@ -1,7 +1,7 @@
 {
   "extends": "solhint:recommended",
   "rules": {
-    "compiler-version": ["error","^0.6.2"],
+    "compiler-version": ["error","^0.7.0"],
     "mark-callable-contracts": ["off"]
   }
 }
