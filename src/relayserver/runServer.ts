@@ -10,6 +10,8 @@ import { configureGSN } from '../relayclient/GSNConfigurator'
 import { PenalizerService } from './penalizer/PenalizerService'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { StupidTxByNonceService } from './penalizer/TxByNonceService'
+import crypto from "crypto"
+import { getTemporaryWorkdirs } from '../../test/relayserver/ServerTestUtils'
 
 function error (err: string): never {
   console.error(err)
@@ -36,9 +38,9 @@ async function run (): Promise<void> {
     }
   }
 
-  const managerKeyManager = new KeyManager(1, workdir + '/manager')
-  const workersKeyManager = new KeyManager(1, workdir + '/workers')
-  const txStoreManager = new TxStoreManager({ workdir })
+  const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+  const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+  const txStoreManager = new TxStoreManager({ workdir: getTemporaryWorkdirs().workdir })
   const gasPriceFactor = (config.gasPricePercent + 100) / 100
   const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))

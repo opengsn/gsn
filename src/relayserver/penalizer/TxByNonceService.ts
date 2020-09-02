@@ -40,7 +40,7 @@ export class StupidTxByNonceService implements TxByNonceService {
 }
 
 // Only for testing purposes
-export class mockTxByNonceService implements TxByNonceService {
+export class MockTxByNonceService implements TxByNonceService {
   web3: Web3
   transactionsByNonces = new Map<{ account: Address, nonce: number }, Transaction>()
 

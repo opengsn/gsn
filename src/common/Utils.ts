@@ -2,6 +2,7 @@ import { JsonRpcResponse } from 'web3-core-helpers'
 import ethUtils, { stripZeros, toBuffer } from 'ethereumjs-util'
 import web3Utils, { toWei, toBN } from 'web3-utils'
 import abi from 'web3-eth-abi'
+import { Transaction as Web3Transaction } from 'web3-core'
 
 import TypedRequestData from './EIP712/TypedRequestData'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
@@ -96,33 +97,20 @@ export async function getEip712Signature (
 }
 
 export async function getDataAndSignatureFromHash (txHash: string, chainId: number): Promise<{ data: string, signature: string }> {
-  const rpcTx = await web3.eth.getTransaction(txHash)
+  const web3Tx = await web3.eth.getTransaction(txHash)
   // eslint: this is stupid how many checks for 0 there are
   // @ts-ignore
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!chainId && parseInt(rpcTx.v, 16) > 28) {
+  if (!chainId && parseInt(web3Tx.v, 16) > 28) {
     throw new Error('Missing ChainID for EIP-155 signature')
   }
   // @ts-ignore
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (chainId && parseInt(rpcTx.v, 16) <= 28) {
+  if (chainId && parseInt(web3Tx.v, 16) <= 28) {
     throw new Error('Passed ChainID for non-EIP-155 signature')
   }
   // @ts-ignore
-  const tx = new Transaction({
-    nonce: toBN(rpcTx.nonce),
-    gasPrice: toBN(rpcTx.gasPrice),
-    gasLimit: toBN(rpcTx.gas),
-    to: rpcTx.to,
-    value: toBN(rpcTx.value),
-    data: rpcTx.input,
-    // @ts-ignore
-    v: rpcTx.v,
-    // @ts-ignore
-    r: rpcTx.r,
-    // @ts-ignore
-    s: rpcTx.s
-  })
+  const tx = web3TransactionToEthUtilTransaction(web3Tx)
 
   return getDataAndSignature(tx, chainId)
 }
@@ -148,6 +136,25 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
     data,
     signature
   }
+}
+
+export function web3TransactionToEthUtilTransaction (web3Tx: Web3Transaction): Transaction {
+  // @ts-ignore
+  const tx = new Transaction({
+    nonce: toBN(web3Tx.nonce),
+    gasPrice: toBN(web3Tx.gasPrice),
+    gasLimit: toBN(web3Tx.gas),
+    to: web3Tx.to,
+    value: toBN(web3Tx.value),
+    data: web3Tx.input,
+    // @ts-ignore
+    v: web3Tx.v,
+    // @ts-ignore
+    r: web3Tx.r,
+    // @ts-ignore
+    s: web3Tx.s
+  })
+  return tx
 }
 
 /**

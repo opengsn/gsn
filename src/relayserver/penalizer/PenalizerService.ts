@@ -109,6 +109,9 @@ export class PenalizerService {
 
       // run penalize in view mode to see if penalizable
       const minedTx = await this.txByNonceService.getTransactionByNonce(relayWorker, bufferToInt(requestTx.nonce))
+      if (minedTx == null) {
+        throw Error(`TxByNonce service failed to fetch tx with nonce ${requestTx.nonce.toString()} of relayer ${relayWorker}`)
+      }
       const { data: unsignedMinedTx, signature: minedTxSig } = getDataAndSignature(minedTx, this.contractInteractor.getChainId())
       const { data: unsignedRequestTx, signature: requestTxSig } = getDataAndSignature(requestTx, this.contractInteractor.getChainId())
       const method = this.contractInteractor.penalizerInstance.contract.methods.penalizeRepeatedNonce(
@@ -132,7 +135,9 @@ export class PenalizerService {
           method,
           destination: this.contractInteractor.penalizerInstance.address
         })
+      log.debug(`penalization raw tx: ${signedTx}`)
+      return true
     }
-    return true
+    return false
   }
 }
