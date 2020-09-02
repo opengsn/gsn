@@ -4,23 +4,22 @@ import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/t
 import BN from 'bn.js'
 
 import { Transaction } from 'ethereumjs-tx'
-import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
-import { encode } from 'rlp'
+import { privateToAddress } from 'ethereumjs-util'
 import { expect } from 'chai'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import { getEip712Signature } from '../src/common/Utils'
+import { getDataAndSignature, getDataAndSignatureFromHash, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/common/Environments'
 import {
   PenalizerInstance,
-  RelayHubInstance, StakeManagerInstance,
+  RelayHubInstance,
+  StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '../types/truffle-contracts'
 
 import { deployHub } from './TestUtils'
-
 import TransactionResponse = Truffle.TransactionResponse
 
 const RelayHub = artifacts.require('RelayHub')
@@ -478,62 +477,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
       transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'))
       return transaction
-    }
-
-    async function getDataAndSignatureFromHash (txHash: string, chainId: number): Promise<{ data: string, signature: string }> {
-      // @ts-ignore
-      const rpcTx = await web3.eth.getTransaction(txHash)
-      // eslint: this is stupid how many checks for 0 there are
-      // @ts-ignore
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      if (!chainId && parseInt(rpcTx.v, 16) > 28) {
-        throw new Error('Missing ChainID for EIP-155 signature')
-      }
-      // @ts-ignore
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      if (chainId && parseInt(rpcTx.v, 16) <= 28) {
-        throw new Error('Passed ChainID for non-EIP-155 signature')
-      }
-      // @ts-ignore
-      const tx = new Transaction({
-        nonce: new BN(rpcTx.nonce),
-        gasPrice: new BN(rpcTx.gasPrice),
-        gasLimit: new BN(rpcTx.gas),
-        to: rpcTx.to,
-        value: new BN(rpcTx.value),
-        data: rpcTx.input,
-        // @ts-ignore
-        v: rpcTx.v,
-        // @ts-ignore
-        r: rpcTx.r,
-        // @ts-ignore
-        s: rpcTx.s
-      })
-
-      return getDataAndSignature(tx, chainId)
-    }
-
-    function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
-      const input = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      if (chainId) {
-        input.push(
-          toBuffer(chainId),
-          stripZeros(toBuffer(0)),
-          stripZeros(toBuffer(0))
-        )
-      }
-      let v = tx.v[0]
-      if (v > 28) {
-        v -= chainId * 2 + 8
-      }
-      const data = `0x${encode(input).toString('hex')}`
-      const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
-        32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
-      return {
-        data,
-        signature
-      }
     }
   })
 })

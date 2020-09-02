@@ -16,6 +16,7 @@ import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 import { Penalizer } from '../relayserver/penalizer/Penalizer'
+import { TxByNonceService } from '../relayserver/penalizer/TxByNonceService'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -138,7 +139,8 @@ class GsnTestEnvironmentClass {
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true })
-    const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host),
+    const provider = new Web3.providers.HttpProvider(host)
+    const contractInteractor = new ContractInteractor(provider,
       configureGSN({
         relayHubAddress: deploymentResult.relayHubAddress
       }))
@@ -160,7 +162,14 @@ class GsnTestEnvironmentClass {
     }
     const relayer = new RelayServer(relayServerParams, relayServerDependencies)
     await relayer.init()
-    const penalizer = new Penalizer(managerKeyManager, deploymentResult.relayHubAddress, interactor, true)
+    const txByNonceService = new TxByNonceService(provider)
+    const penalizer = new Penalizer({
+      transactionManager: relayer.transactionManager,
+      txByNonceService,
+      contractInteractor,
+      devMode: true
+    })
+    await penalizer.init()
     this.httpServer = new HttpServer(
       port,
       relayer,

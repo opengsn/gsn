@@ -1,13 +1,13 @@
 import { JsonRpcResponse } from 'web3-core-helpers'
-import ethUtils from 'ethereumjs-util'
-import web3Utils, { toWei } from 'web3-utils'
+import ethUtils, { stripZeros, toBuffer } from 'ethereumjs-util'
+import web3Utils, { toWei, toBN } from 'web3-utils'
 import abi from 'web3-eth-abi'
 
 import TypedRequestData from './EIP712/TypedRequestData'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { Address } from '../relayclient/types/Aliases'
-import BN from 'bn.js'
 import { EventData } from 'web3-eth-contract'
+import { encode } from 'rlp'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -95,6 +95,61 @@ export async function getEip712Signature (
   })
 }
 
+export async function getDataAndSignatureFromHash (txHash: string, chainId: number): Promise<{ data: string, signature: string }> {
+  const rpcTx = await web3.eth.getTransaction(txHash)
+  // eslint: this is stupid how many checks for 0 there are
+  // @ts-ignore
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  if (!chainId && parseInt(rpcTx.v, 16) > 28) {
+    throw new Error('Missing ChainID for EIP-155 signature')
+  }
+  // @ts-ignore
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  if (chainId && parseInt(rpcTx.v, 16) <= 28) {
+    throw new Error('Passed ChainID for non-EIP-155 signature')
+  }
+  // @ts-ignore
+  const tx = new Transaction({
+    nonce: toBN(rpcTx.nonce),
+    gasPrice: toBN(rpcTx.gasPrice),
+    gasLimit: toBN(rpcTx.gas),
+    to: rpcTx.to,
+    value: toBN(rpcTx.value),
+    data: rpcTx.input,
+    // @ts-ignore
+    v: rpcTx.v,
+    // @ts-ignore
+    r: rpcTx.r,
+    // @ts-ignore
+    s: rpcTx.s
+  })
+
+  return getDataAndSignature(tx, chainId)
+}
+
+export function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
+  const input = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  if (chainId) {
+    input.push(
+      toBuffer(chainId),
+      stripZeros(toBuffer(0)),
+      stripZeros(toBuffer(0))
+    )
+  }
+  let v = tx.v[0]
+  if (v > 28) {
+    v -= chainId * 2 + 8
+  }
+  const data = `0x${encode(input).toString('hex')}`
+  const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
+    32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
+  return {
+    data,
+    signature
+  }
+}
+
 /**
  * @returns maximum possible gas consumption by this relayed call
  */
@@ -152,7 +207,7 @@ export async function sleep (ms: number): Promise<void> {
 }
 
 export function ether (n: string): BN {
-  return new BN(toWei(n, 'ether'))
+  return toBN(toWei(n, 'ether'))
 }
 
 export function randomInRange (min: number, max: number): number {

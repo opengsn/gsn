@@ -20,7 +20,6 @@ import {
 import { Address } from '../../../src/relayclient/types/Aliases'
 import { GsnRequestType } from '../../../src/common/EIP712/TypedRequestData'
 import { ether } from '@openzeppelin/test-helpers'
-import { Penalizer } from '../../../src/relayserver/penalizer/Penalizer'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
@@ -39,10 +38,7 @@ abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 // @ts-ignore
 abiDecoder.addABI(TestPaymasterConfigurableMisbehavior.abi)
 
-contract('Penalizer service', function ([relayManager, relayWorker, penalizableRelayManager, penalizableRelayWorker, relayOwner]) {
-  let penalizerService: Penalizer
-  const pctRelayFee = 11
-  const baseRelayFee = 12
+contract('TxByNonceService', function ([relayManager, relayWorker, penalizableRelayManager, penalizableRelayWorker, relayOwner]) {
   let relayHub: RelayHubInstance
   let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
@@ -54,20 +50,8 @@ contract('Penalizer service', function ([relayManager, relayWorker, penalizableR
   let id: string, globalId: string
   let encodedFunction: PrefixedHexString
   let relayClient: RelayClient
-  let options: any, options2: any
 
-  async function bringUpNewRelay (relayManager: Address, relayWorker: Address, relayHub: RelayHubInstance, stakeManager: StakeManagerInstance, paymaster: TestPaymasterEverythingAcceptedInstance): Promise<void> {
-    await stakeManager.stakeForAddress(relayManager, 1000, {
-      from: relayOwner,
-      value: ether('1')
-    })
-    await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
-    await paymaster.setTrustedForwarder(forwarder.address)
-    await paymaster.setRelayHub(relayHub.address)
-    await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-  }
-
-  describe('tryToPenalize', function () {
+  describe('getTransactionByNonce', function () {
     before(async function () {
       stakeManager = await StakeManager.new()
       penalizer = await Penalizer.new()
@@ -81,8 +65,6 @@ contract('Penalizer service', function ([relayManager, relayWorker, penalizableR
       )
 
       paymaster = await TestPaymasterEverythingAccepted.new()
-      await bringUpNewRelay(relayManager, relayWorker, relayHub, stakeManager, paymaster)
-      await bringUpNewRelay(penalizableRelayManager, penalizableRelayWorker, relayHub, stakeManager, paymaster)
       // @ts-ignore
       Object.keys(StakeManager.events).forEach(function (topic) {
         // @ts-ignore
@@ -96,18 +78,13 @@ contract('Penalizer service', function ([relayManager, relayWorker, penalizableR
     })
 
     beforeEach(async function () {
-      penalizerService = new Penalizer()
+
     })
     afterEach(async function () {
 
     })
-    it('should penalize relay for signing two different txs with same nonce when current nonce >= tx nonce', async function () {
+    it('', async function () {
 
     })
-    it('should penalize relay for signing two different txs with same nonce when current nonce < tx nonce')
-    it('should not try to penalize unregistered relay')
-    it('should not try to penalize if given wrong signature with registered relay')
-    it('should not try to penalize if tx already mined')
-    it('should not try to penalize if tx already mined with different gas price')
   })
 })

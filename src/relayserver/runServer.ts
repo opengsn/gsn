@@ -64,8 +64,7 @@ async function run (): Promise<void> {
   await relay.init()
   const txByNonceService = new TxByNonceService(web3provider)
   const penalizer = new Penalizer({
-    keyManager: managerKeyManager,
-    hubAddress: relayHubAddress,
+    transactionManager: relay.transactionManager,
     txByNonceService,
     contractInteractor,
     devMode: true

@@ -1,28 +1,19 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
-
-import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
+import log from 'loglevel'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 
 import RelayHubABI from '../../common/interfaces/IRelayHub.json'
 import PayMasterABI from '../../common/interfaces/IPaymaster.json'
 import StakeManagerABI from '../../common/interfaces/IStakeManager.json'
 
-import { KeyManager } from '../KeyManager'
 import ContractInteractor from '../../relayclient/ContractInteractor'
-import { Address } from '../../relayclient/types/Aliases'
-import { address2topic, isSameAddress } from '../../common/Utils'
-import { IPenalizerInstance, IRelayHubInstance, IStakeManagerInstance } from '../../../types/truffle-contracts'
 import VersionsManager from '../../common/VersionsManager'
 import { bufferToHex, bufferToInt, isZeroAddress } from 'ethereumjs-util'
 import { TxByNonceService } from './TxByNonceService'
-// import { IPaymasterInstance, IRelayHubInstance, IStakeManagerInstance } from '../../../types/truffle-contracts'
-// import { BlockHeader } from 'web3-eth'
-// import { Log, TransactionReceipt } from 'web3-core'
-// import { toBN, toHex } from 'web3-utils'
-// import { defaultEnvironment } from '../common/Environments'
-// import VersionsManager from '../common/VersionsManager'
-// import { calculateTransactionMaxPossibleGas, decodeRevertReason, address2topic, randomInRange, sleep } from '../common/Utils'
-// import { constants } from '../common/Constants'
+import { getDataAndSignature } from '../../common/Utils'
+import replaceErrors from '../../common/ErrorReplacerJSON'
+import { TransactionManager } from '../TransactionManager'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -35,27 +26,30 @@ export interface PenalizeRequest {
 }
 
 export interface PenalizerParams {
-  keyManager: KeyManager
-  hubAddress: Address
+  transactionManager: TransactionManager
   contractInteractor: ContractInteractor
   txByNonceService: TxByNonceService
   devMode: boolean
 }
 
 export class Penalizer {
-  keyManager: KeyManager
+  transactionManager: TransactionManager
   contractInteractor: ContractInteractor
   txByNonceService: TxByNonceService
   versionManager: VersionsManager
   devMode: boolean
   initialized: boolean = false
 
+  managerAddress: string
+
   constructor (params: PenalizerParams) {
-    this.keyManager = params.keyManager
+    this.transactionManager = params.transactionManager
     this.contractInteractor = params.contractInteractor
     this.versionManager = new VersionsManager(VERSION)
     this.devMode = params.devMode
     this.txByNonceService = params.txByNonceService
+
+    this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
   }
 
   async init (): Promise<void> {
@@ -74,21 +68,21 @@ export class Penalizer {
     this.initialized = true
   }
 
-  // Only handles illegal nonce penalization flow
+  // Only handles illegal nonce penalization flow)
   async tryToPenalize (req: PenalizeRequest): Promise<boolean> {
     if (!this.initialized) {
       return false
     }
     // deserialize the tx
-    const tx = new Transaction(req.signedTx, this.contractInteractor.getRawTxOptions())
+    const requestTx = new Transaction(req.signedTx, this.contractInteractor.getRawTxOptions())
 
     // check signature
-    if (!tx.verifySignature()) {
+    if (!requestTx.verifySignature()) {
       // signature is invalid, cannot penalize
       return false
     }
     // check that it's a registered relay
-    const relayWorker = bufferToHex(tx.getSenderAddress())
+    const relayWorker = bufferToHex(requestTx.getSenderAddress())
     const relayManager = await this.contractInteractor.relayHubInstance.workerToManager(relayWorker)
     if (isZeroAddress(relayManager)) {
       // unknown worker address to Hub
@@ -106,17 +100,39 @@ export class Penalizer {
     // if tx nonce > current nonce, publish tx and await
     // otherwise, get mined tx with same nonce. if equals (up to different gasPrice) to received tx, return.
     // Otherwise, penalize.
-    if (bufferToInt(tx.nonce) <= currentNonce) {
-      const txFromHash = await this.contractInteractor.getTransaction(bufferToHex(tx.hash(true)))
+    if (bufferToInt(requestTx.nonce) <= currentNonce) {
+      const txFromHash = await this.contractInteractor.getTransaction(bufferToHex(requestTx.hash(true)))
       if (txFromHash != null) {
         // tx already mined
         return false
       }
-      // run penalize in view mode to see if penalizable
-      const penalizableTx = await this.txByNonceService.getTransactionByNonce(relayWorker, bufferToInt(tx.nonce))
-      await this.contractInteractor.penalizerInstance.penalizeRepeatedNonce.call(tx, sig1, penalizableTx, sig2, this.hubAddress)
-    }
 
+      // run penalize in view mode to see if penalizable
+      const minedTx = await this.txByNonceService.getTransactionByNonce(relayWorker, bufferToInt(requestTx.nonce))
+      const { data: unsignedMinedTx, signature: minedTxSig } = getDataAndSignature(minedTx, this.contractInteractor.getChainId())
+      const { data: unsignedRequestTx, signature: requestTxSig } = getDataAndSignature(requestTx, this.contractInteractor.getChainId())
+      const method = this.contractInteractor.penalizerInstance.contract.methods.penalizeRepeatedNonce(
+        unsignedRequestTx, requestTxSig, unsignedMinedTx,
+        minedTxSig, this.contractInteractor.relayHubInstance.address)
+      try {
+        const res = await method.call({
+          from: this.managerAddress
+        })
+        log.debug('res is ', res)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
+        log.debug(`view call to penalizeRepeatedNonce reverted with error message ${message}.\nTx not penalizable.`)
+        return false
+      }
+      // Tx penalizable. PokeRelay, Penalize!
+      // PokeRelay used penalize, it's not very effective../A critical hit!
+      const { signedTx } = await this.transactionManager.sendTransaction(
+        {
+          signer: this.managerAddress,
+          method,
+          destination: this.contractInteractor.penalizerInstance.address
+        })
+    }
     return true
   }
 }
