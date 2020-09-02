@@ -7,9 +7,9 @@ import { KeyManager } from './KeyManager'
 import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
-import { Penalizer } from './penalizer/Penalizer'
+import { PenalizerService } from './penalizer/PenalizerService'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { TxByNonceService } from './penalizer/TxByNonceService'
+import { StupidTxByNonceService } from './penalizer/TxByNonceService'
 
 function error (err: string): never {
   console.error(err)
@@ -62,8 +62,8 @@ async function run (): Promise<void> {
 
   const relay = new RelayServer(params, dependencies)
   await relay.init()
-  const txByNonceService = new TxByNonceService(web3provider)
-  const penalizer = new Penalizer({
+  const txByNonceService = new StupidTxByNonceService(web3provider)
+  const penalizer = new PenalizerService({
     transactionManager: relay.transactionManager,
     txByNonceService,
     contractInteractor,

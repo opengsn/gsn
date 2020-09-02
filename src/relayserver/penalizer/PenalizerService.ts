@@ -32,7 +32,7 @@ export interface PenalizerParams {
   devMode: boolean
 }
 
-export class Penalizer {
+export class PenalizerService {
   transactionManager: TransactionManager
   contractInteractor: ContractInteractor
   txByNonceService: TxByNonceService

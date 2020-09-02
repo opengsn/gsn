@@ -4,13 +4,13 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import { RelayServer } from './RelayServer'
 import { Server } from 'http'
-import { Penalizer } from './penalizer/Penalizer'
+import { PenalizerService } from './penalizer/PenalizerService'
 
 export class HttpServer {
   app: Express
   private serverInstance?: Server
 
-  constructor (private readonly port: number, readonly relayer: RelayServer, readonly penalizer: Penalizer) {
+  constructor (private readonly port: number, readonly relayer: RelayServer, readonly penalizer: PenalizerService) {
     this.app = express()
     this.app.use(cors())
 

@@ -15,8 +15,8 @@ import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
-import { Penalizer } from '../relayserver/penalizer/Penalizer'
-import { TxByNonceService } from '../relayserver/penalizer/TxByNonceService'
+import { PenalizerService } from '../relayserver/penalizer/PenalizerService'
+import { StupidTxByNonceService } from '../relayserver/penalizer/TxByNonceService'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -162,8 +162,8 @@ class GsnTestEnvironmentClass {
     }
     const relayer = new RelayServer(relayServerParams, relayServerDependencies)
     await relayer.init()
-    const txByNonceService = new TxByNonceService(provider)
-    const penalizer = new Penalizer({
+    const txByNonceService = new StupidTxByNonceService(provider)
+    const penalizer = new PenalizerService({
       transactionManager: relayer.transactionManager,
       txByNonceService,
       contractInteractor,

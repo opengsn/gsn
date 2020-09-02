@@ -20,7 +20,7 @@ import {
 import { Address } from '../../../src/relayclient/types/Aliases'
 import { GsnRequestType } from '../../../src/common/EIP712/TypedRequestData'
 import { ether } from '@openzeppelin/test-helpers'
-import { Penalizer } from '../../../src/relayserver/penalizer/Penalizer'
+import { PenalizerService } from '../../../src/relayserver/penalizer/PenalizerService'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
@@ -39,8 +39,8 @@ abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 // @ts-ignore
 abiDecoder.addABI(TestPaymasterConfigurableMisbehavior.abi)
 
-contract('Penalizer service', function ([relayManager, relayWorker, penalizableRelayManager, penalizableRelayWorker, relayOwner]) {
-  let penalizerService: Penalizer
+contract('PenalizerService service', function ([relayManager, relayWorker, penalizableRelayManager, penalizableRelayWorker, relayOwner]) {
+  let penalizerService: PenalizerService
   const pctRelayFee = 11
   const baseRelayFee = 12
   let relayHub: RelayHubInstance
@@ -96,7 +96,8 @@ contract('Penalizer service', function ([relayManager, relayWorker, penalizableR
     })
 
     beforeEach(async function () {
-      penalizerService = new Penalizer()
+
+      penalizerService = new PenalizerService(params)
     })
     afterEach(async function () {
 
