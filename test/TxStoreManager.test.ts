@@ -1,7 +1,8 @@
 /* global */
 
 import fs from 'fs'
-import { TxStoreManager, TXSTORE_FILENAME, StoredTx } from '../src/relayserver/TxStoreManager'
+import { TxStoreManager, TXSTORE_FILENAME } from '../src/relayserver/TxStoreManager'
+import { StoredTransaction } from '../src/relayserver/StoredTransaction'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
@@ -18,9 +19,9 @@ function cleanFolder (): void {
 
 contract('TxStoreManager', function (accounts) {
   let txmanager: TxStoreManager
-  let tx: StoredTx
-  let tx2: StoredTx
-  let tx3: StoredTx
+  let tx: StoredTransaction
+  let tx2: StoredTransaction
+  let tx3: StoredTransaction
 
   before('create txstore', async function () {
     cleanFolder()
@@ -29,37 +30,43 @@ contract('TxStoreManager', function (accounts) {
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
     assert.ok(txmanager, 'txstore uninitialized' + txmanager.toString())
     assert.isTrue(fs.existsSync(workdir), 'test txstore dir should exist already')
-    tx = new StoredTx({
-      from: Buffer.from([]),
-      to: Buffer.from([]),
-      gas: Buffer.from([0]),
-      gasPrice: Buffer.from([0]),
-      data: Buffer.from([]),
-      nonce: Buffer.from([111]),
+    tx = {
+      from: '',
+      to: '',
+      gas: 0,
+      gasPrice: 0,
+      data: '',
+      nonce: 111,
       txId: '123456',
+      creationBlockNumber: 0,
+      minedBlockNumber: 0,
       attempts: 1
-    })
-    tx2 = new StoredTx({
-      from: Buffer.from([]),
-      to: Buffer.from([]),
-      gas: Buffer.from([0]),
-      gasPrice: Buffer.from([0]),
-      data: Buffer.from([]),
-      nonce: Buffer.from([112]),
+    }
+    tx2 = {
+      from: '',
+      to: '',
+      gas: 0,
+      gasPrice: 0,
+      data: '',
+      nonce: 112,
       txId: '1234567',
+      creationBlockNumber: 0,
+      minedBlockNumber: 0,
       attempts: 1
-    })
-    tx3 = new StoredTx(
+    }
+    tx3 =
       {
-        from: Buffer.from([]),
-        to: Buffer.from([]),
-        gas: Buffer.from([0]),
-        gasPrice: Buffer.from([0]),
-        data: Buffer.from([]),
-        nonce: Buffer.from([113]),
+        from: '',
+        to: '',
+        gas: 0,
+        gasPrice: 0,
+        data: '',
+        nonce: 113,
         txId: '12345678',
+        creationBlockNumber: 0,
+        minedBlockNumber: 0,
         attempts: 1
-      })
+      }
   })
 
   it('should store and get tx by txId', async function () {

@@ -145,6 +145,9 @@ export async function assertTransactionRelayed (
   paymasterAddress: Address,
   web3: Web3, overrideArgs?: Partial<RelayTransactionRequest>): Promise<TransactionReceipt> {
   const receipt = await web3.eth.getTransactionReceipt(txHash)
+  if (receipt == null) {
+    throw new Error('Transaction Receipt not found')
+  }
   const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(server.registrationManager._parseEvent)
   const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
   assert.exists(event1, 'SampleRecipientEmitted not found, maybe transaction was not relayed successfully')

@@ -24,7 +24,7 @@ const Forwarder = artifacts.require('Forwarder')
 
 contract('RelayServerRequestsProfiling', function ([relayOwner]) {
   const callsPerWorker = 14
-  const callsPerTransaction = 25
+  const callsPerTransaction = 26
 
   let provider: ProfilingProvider
   let relayServer: RelayServer
@@ -119,10 +119,12 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
         baseRelayFee: '0',
         paymaster: paymaster.address
       }
+      provider.reset()
     })
 
     it('should make X requests per relay transaction request', async function () {
       await relayTransaction(relayTransactionParams, options)
+      provider.log()
       assert.isAtMost(provider.requestsCount, callsPerTransaction)
     })
   })
