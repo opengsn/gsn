@@ -56,7 +56,7 @@ contract('client-configuration', () => {
           ContractInteractor.prototype._createPaymaster = async function (addr) {
             (this as any).versionManager.componentVersion = '1.0.0-old-client'
             console.log('hooked _createPaymaster with version')
-            return saveCPM.call(this, addr)
+            return await saveCPM.call(this, addr)
           }
 
           await expect(resolveConfigurationGSN(web3.currentProvider, { paymasterAddress }))

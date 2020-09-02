@@ -8,6 +8,7 @@ import RelayedTransactionValidator from './RelayedTransactionValidator'
 import HttpWrapper from './HttpWrapper'
 import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
 import { constants } from '../common/Constants'
+import { defaultEnvironment } from '../common/Environments'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -24,7 +25,7 @@ const defaultGsnConfig: GSNConfig = {
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
   methodSuffix: '',
   jsonStringifyRequest: false,
-  chainId: 0,
+  chainId: defaultEnvironment.chainId,
   relayHubAddress: constants.ZERO_ADDRESS,
   paymasterAddress: constants.ZERO_ADDRESS,
   forwarderAddress: constants.ZERO_ADDRESS,
@@ -67,7 +68,7 @@ export async function resolveConfigurationGSN (provider: provider, partialConfig
   ] = await Promise.all([
     partialConfig.chainId ?? await contractInteractor.getAsyncChainId(),
     await paymasterInstance.getHubAddr().catch(e => { throw new Error('Not a paymaster contract') }),
-    partialConfig.forwarderAddress ?? await paymasterInstance.trustedForwarder(),
+    partialConfig.forwarderAddress ?? await paymasterInstance.trustedForwarder().catch(e => { throw new Error('paymaster has no trustedForwarder()') }),
     await paymasterInstance.versionPaymaster().catch((e: any) => { throw new Error('Not a paymaster contract') }).then((version: string) => contractInteractor._validateVersion(version))
   ])
 

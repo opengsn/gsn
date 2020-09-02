@@ -1,5 +1,5 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
-import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { HttpProvider } from 'web3-core'
 import { constants } from '../common/Constants'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
@@ -86,24 +86,40 @@ export class RelayClient {
    *
    * @param {*} transaction - actual Ethereum transaction, signed by a relay
    */
-  async _broadcastRawTx (transaction: Transaction): Promise<{ receipt?: TransactionReceipt, broadcastError?: Error, wrongNonce?: boolean }> {
+  async _broadcastRawTx (transaction: Transaction): Promise<{ hasReceipt: boolean, broadcastError?: Error, wrongNonce?: boolean }> {
     const rawTx = '0x' + transaction.serialize().toString('hex')
     const txHash = '0x' + transaction.hash(true).toString('hex')
     if (this.config.verbose) {
       console.log('txHash= ' + txHash)
     }
     try {
-      const receipt = await this.contractInteractor.sendSignedTransaction(rawTx)
-      return { receipt }
+      // first, try to see if its already mined, or in the mempool:
+      const [txMinedReceipt, pendingBlock] = await Promise.all([
+        await this.contractInteractor.getWeb3().eth.getTransactionReceipt(txHash),
+        await this.contractInteractor.getWeb3().eth.getBlock('pending')
+      ])
+
+      if (txMinedReceipt != null) {
+        return { hasReceipt: true }
+      }
+
+      if (pendingBlock.transactions.includes(txHash)) {
+        return { hasReceipt: true }
+      }
+
+      // can't find the TX in the mempool. broadcast it ourselves.
+      await this.contractInteractor.sendSignedTransaction(rawTx)
+      return { hasReceipt: true }
     } catch (broadcastError) {
       // don't display error for the known-good cases
       if (broadcastError?.message.match(/the tx doesn't have the correct nonce|known transaction/) != null) {
         return {
+          hasReceipt: false,
           wrongNonce: true,
           broadcastError
         }
       }
-      return { broadcastError }
+      return { hasReceipt: false, broadcastError }
     }
   }
 

@@ -86,9 +86,12 @@ export async function getEip712Signature (
       params: [senderAddress, dataToSign],
       from: senderAddress,
       id: Date.now()
-    }, (error: Error | null, result?: JsonRpcResponse) => {
+    }, (error: Error | string | null, result?: JsonRpcResponse) => {
+      if (result?.error != null) {
+        error = result.error
+      }
       if (error != null || result == null) {
-        reject(error)
+        reject((error as any).message ?? error)
       } else {
         resolve(result.result)
       }

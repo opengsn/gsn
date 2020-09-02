@@ -124,6 +124,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     if (this.config.verbose) {
       console.log('fetchRelaysAdded: found unique relays:', foundRelayManagers)
     }
+    if (foundRelayManagers.size === 0) { throw new Error('no registered relayers found') }
     this.latestScannedBlock = toBlock
     return foundRelayManagers
   }

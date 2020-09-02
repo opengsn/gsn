@@ -5,7 +5,7 @@ import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
 import { KeyManager } from '../relayserver/KeyManager'
 
 import { configureGSN } from './GSNConfigurator'
-import { getNetworkUrl, supportedNetworks } from '../cli/utils'
+import { getNetworkUrl, loadDeployment, supportedNetworks } from '../cli/utils'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
 import { RelayServer } from '../relayserver/RelayServer'
 import { HttpServer } from '../relayserver/HttpServer'
@@ -30,10 +30,9 @@ class GsnTestEnvironmentClass {
    *
    * @param host:
    * @param deployPaymaster - whether to deploy the naive paymaster instance for tests
-   * @param debug
    * @return
    */
-  async startGsn (host?: string, deployPaymaster: boolean = true, debug = false): Promise<TestEnvironment> {
+  async startGsn (host?: string, deployPaymaster: boolean = true): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     console.log('_host=', _host)
@@ -165,6 +164,14 @@ class GsnTestEnvironmentClass {
       backend
     )
     this.httpServer.start()
+  }
+
+  /**
+   * return deployment saved by "gsn start"
+   * @param workdir
+   */
+  loadDeployment (workdir = './build/gsn'): DeploymentResult {
+    return loadDeployment(workdir)
   }
 }
 
