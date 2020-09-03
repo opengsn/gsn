@@ -10,7 +10,11 @@ contract Forwarder is IForwarder {
 
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
 
+    string public constant EIP712_DOMAIN_PREFIX = "EIP712Domain(";
+    string public constant EIP712_DOMAIN_SUFFIX = ",uint256 chainId,address verifyingContract)";
+
     mapping(bytes32 => bool) public typeHashes;
+    mapping(bytes32 => bool) public domains;
 
     // Nonces of senders, used to prevent replay attacks
     mapping(address => uint256) private nonces;
@@ -85,13 +89,32 @@ contract Forwarder is IForwarder {
         registerRequestTypeInternal(requestType);
     }
 
+    function registerDomainSeparator(string calldata typePrefix, bytes memory dataPrefix) external override {
+        bytes memory domainType = abi.encodePacked(EIP712_DOMAIN_PREFIX, typePrefix, EIP712_DOMAIN_SUFFIX );
+        uint256 chainId;
+        /* solhint-disable-next-line no-inline-assembly */
+        assembly { chainId := chainid() }
+
+        bytes memory domainValue = abi.encodePacked(
+            keccak256(domainType),
+            dataPrefix,
+            chainId,
+            uint256(uint160(address(this))));
+
+        bytes32 domainHash = keccak256(domainValue);
+
+        domains[domainHash] = true;
+        emit DomainRegistered(domainHash, string(domainType), domainValue);
+    }
+
     function registerRequestTypeInternal(string memory requestType) internal {
 
         bytes32 requestTypehash = keccak256(bytes(requestType));
         typeHashes[requestTypehash] = true;
-        emit RequestTypeRegistered(requestTypehash, string(requestType));
+        emit RequestTypeRegistered(requestTypehash, requestType);
     }
 
+    event DomainRegistered(bytes32 indexed domainSeparator, string domainType, bytes domainValue);
 
     event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
 
@@ -105,7 +128,7 @@ contract Forwarder is IForwarder {
     internal
     view
     {
-
+        require(domains[domainSeparator], "invalid domain separator");
         require(typeHashes[requestTypeHash], "invalid request typehash");
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", domainSeparator,
