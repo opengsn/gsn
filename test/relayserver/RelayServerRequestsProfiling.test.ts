@@ -39,7 +39,6 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
     relayHubAddress = rhub.address
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
     const newRelayParams: NewRelayParams = {
-      alertedBlockDelay: 0,
       relayHubAddress,
       relayOwner,
       url: LocalhostOne,

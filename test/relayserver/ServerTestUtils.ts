@@ -46,7 +46,6 @@ export interface NewRelayParams {
   relayHubAddress: Address
   relayOwner: Address
   url: string
-  alertedBlockDelay: number
   web3: Web3
   stakeManager: IStakeManagerInstance
 }

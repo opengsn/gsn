@@ -109,7 +109,6 @@ contract('RelayServer', function (accounts) {
     const gasLess = await _web3.eth.personal.newAccount('password')
 
     newRelayParams = {
-      alertedBlockDelay: 0,
       ethereumNodeUrl,
       relayHubAddress: rhub.address,
       relayOwner,
@@ -122,6 +121,7 @@ contract('RelayServer', function (accounts) {
     }
     relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
       trustedPaymasters: [paymaster.address],
+      alertedBlockDelay: 0,
       baseRelayFee
     })
     // initialize server - gas price, stake, owner, etc, whatever
@@ -525,10 +525,14 @@ contract('RelayServer', function (accounts) {
 
   describe('server keepalive re-registration', function () {
     const registrationBlockRate = 100
+    const refreshStateTimeoutBlocks = 1
     let relayServer: RelayServer
 
     before(async function () {
-      relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, { registrationBlockRate })
+      relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
+        registrationBlockRate,
+        refreshStateTimeoutBlocks
+      })
       const latestBlock = await _web3.eth.getBlock('latest')
       const receipts = await relayServer._worker(latestBlock.number)
       assertRelayAdded(receipts, relayServer) // sanity check
@@ -604,6 +608,8 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('alerted state as griefing mitigation', function () {
+    const alertedBlockDelay = 100
+    const refreshStateTimeoutBlocks = 1
     let relayTransactionParams2: RelayTransactionParams
     let options2: PrepareRelayRequestOption
     let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
@@ -611,11 +617,10 @@ contract('RelayServer', function (accounts) {
 
     beforeEach('should enter an alerted state for a configured blocks delay after paymaster rejecting an on-chain tx', async function () {
       id = (await snapshot()).result
-      const newRelayParamsAlerted = {
-        ...newRelayParams,
-        alertedBlockDelay: 100
-      }
-      newServer = await bringUpNewRelay(newRelayParamsAlerted, partialConfig, {}, { alertedBlockDelay: 100 })
+      newServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
+        alertedBlockDelay,
+        refreshStateTimeoutBlocks
+      })
       const latestBlock = await _web3.eth.getBlock('latest')
       await newServer._worker(latestBlock.number)
       rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
