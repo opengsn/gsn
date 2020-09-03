@@ -40,7 +40,7 @@ export interface ServerConfigParams {
   managerMinStake: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
-
+  refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutBlocks: number
   confirmationsNeeded: number
   retryGasPriceFactor: number
@@ -80,7 +80,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   port: 0,
   versionRegistryAddress: constants.ZERO_ADDRESS,
   workdir: '',
-
+  refreshStateTimeoutBlocks: 5,
   pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
   confirmationsNeeded: 12,
   retryGasPriceFactor: 1.2,

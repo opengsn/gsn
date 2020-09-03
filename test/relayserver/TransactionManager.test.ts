@@ -65,7 +65,6 @@ contract('TransactionManager', function (accounts) {
       relayHubAddress
     }
     const newRelayParams: NewRelayParams = {
-      alertedBlockDelay: 0,
       ethereumNodeUrl,
       relayHubAddress,
       relayOwner: accounts[0],

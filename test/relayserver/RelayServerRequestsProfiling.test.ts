@@ -23,7 +23,9 @@ const Penalizer = artifacts.require('Penalizer')
 const Forwarder = artifacts.require('Forwarder')
 
 contract('RelayServerRequestsProfiling', function ([relayOwner]) {
-  const callsPerWorker = 14
+  const refreshStateTimeoutBlocks = 2
+  const callsPerStateRefresh = 11
+  const callsPerBlock = 0
   const callsPerTransaction = 26
 
   let provider: ProfilingProvider
@@ -37,7 +39,6 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
     relayHubAddress = rhub.address
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
     const newRelayParams: NewRelayParams = {
-      alertedBlockDelay: 0,
       relayHubAddress,
       relayOwner,
       url: LocalhostOne,
@@ -52,22 +53,34 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
     const partialDependencies: Partial<ServerDependencies> = {
       contractInteractor
     }
-    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, partialDependencies)
+    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, partialDependencies, { refreshStateTimeoutBlocks })
     const latestBlock = await web3.eth.getBlock('latest')
     await relayServer._worker(latestBlock.number)
-    await evmMine()
   })
 
-  beforeEach(function () {
+  beforeEach(async function () {
+    await evmMine()
     provider.reset()
+  })
+
+  it('should make X requests per block callback when state must be refreshed', async function () {
+    const latestBlock = await web3.eth.getBlock('latest')
+    const blockNumber = relayServer._shouldRefreshState(latestBlock.number) ? latestBlock.number : latestBlock.number + 1
+    assert.isTrue(relayServer._shouldRefreshState(blockNumber))
+    const receipts = await relayServer._worker(latestBlock.number)
+    assert.equal(receipts.length, 0)
+    provider.log()
+    assert.equal(provider.requestsCount, callsPerStateRefresh)
   })
 
   it('should make X requests per block callback when nothing needs to be done', async function () {
     const latestBlock = await web3.eth.getBlock('latest')
+    const blockNumber = relayServer._shouldRefreshState(latestBlock.number) ? latestBlock.number + 1 : latestBlock.number
+    assert.isFalse(relayServer._shouldRefreshState(blockNumber))
     const receipts = await relayServer._worker(latestBlock.number)
     assert.equal(receipts.length, 0)
     provider.log()
-    assert.isAtMost(provider.requestsCount, callsPerWorker)
+    assert.equal(provider.requestsCount, callsPerBlock)
   })
 
   describe('relay transaction', function () {
@@ -125,7 +138,7 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
     it('should make X requests per relay transaction request', async function () {
       await relayTransaction(relayTransactionParams, options)
       provider.log()
-      assert.isAtMost(provider.requestsCount, callsPerTransaction)
+      assert.equal(provider.requestsCount, callsPerTransaction)
     })
   })
 })
