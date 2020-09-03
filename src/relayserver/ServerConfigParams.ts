@@ -40,6 +40,11 @@ export interface ServerConfigParams {
   managerMinStake: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
+
+  pendingTransactionTimeoutBlocks: number
+  confirmationsNeeded: number
+  retryGasPriceFactor: number
+  maxGasPrice: string
 }
 
 export interface ServerDependencies {
@@ -74,7 +79,12 @@ const serverDefaultConfiguration: ServerConfigParams = {
   gasPricePercent: 0,
   port: 0,
   versionRegistryAddress: constants.ZERO_ADDRESS,
-  workdir: ''
+  workdir: '',
+
+  pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
+  confirmationsNeeded: 12,
+  retryGasPriceFactor: 1.2,
+  maxGasPrice: 100e9.toString()
 }
 
 const ConfigParamsTypes = {

@@ -415,6 +415,7 @@ contract('RelayServer', function (accounts) {
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),
         gasPrice: gasPrice,
+        creationBlockNumber: 0,
         value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txcost))
       })
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
@@ -445,7 +446,7 @@ contract('RelayServer', function (accounts) {
       await _web3.eth.sendTransaction(
         { from: accounts[0], to: relayServer.workerAddress, value: relayServer.config.workerTargetBalance })
       const currentBlockNumber = await _web3.eth.getBlockNumber()
-      const receipts = await relayServer.replenishServer(workerIndex)
+      const receipts = await relayServer.replenishServer(workerIndex, 0)
       assert.deepEqual(receipts, [])
       assert.equal(currentBlockNumber, await _web3.eth.getBlockNumber())
     })
@@ -454,6 +455,7 @@ contract('RelayServer', function (accounts) {
       await rhub.depositFor(relayServer.managerAddress, { value: 1e18.toString() })
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
+        creationBlockNumber: 0,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),
         gasPrice: gasPrice,
@@ -469,7 +471,7 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(managerHubBalanceBefore.gte(refill), 'manager hub balance should be sufficient to replenish worker')
       assert.isTrue(managerEthBalanceBefore.lt(toBN(relayServer.config.managerTargetBalance.toString())),
         'manager eth balance should be lower than target to withdraw hub balance')
-      const receipts = await relayServer.replenishServer(workerIndex)
+      const receipts = await relayServer.replenishServer(workerIndex, 0)
       const totalTxCosts = getTotalTxCosts(receipts, await _web3.eth.getGasPrice())
       const managerHubBalanceAfter = await rhub.balanceOf(relayServer.managerAddress)
       assert.isTrue(managerHubBalanceAfter.eqn(0), 'manager hub balance should be zero')
@@ -493,7 +495,7 @@ contract('RelayServer', function (accounts) {
       const refill = toBN(relayServer.config.workerTargetBalance).sub(workerBalanceBefore)
       assert.isTrue(managerHubBalanceBefore.lt(refill), 'manager hub balance should be insufficient to replenish worker')
       assert.isTrue(managerEthBalance.gte(refill), 'manager eth balance should be sufficient to replenish worker')
-      await relayServer.replenishServer(workerIndex)
+      await relayServer.replenishServer(workerIndex, 0)
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
         `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
@@ -502,6 +504,7 @@ contract('RelayServer', function (accounts) {
     it('should emit \'funding needed\' when both eth and hub balances are too low', async function () {
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
+        creationBlockNumber: 0,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),
         gasPrice: gasPrice.toString(),
@@ -515,7 +518,7 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(managerEthBalance.lt(refill), 'manager eth balance should be insufficient to replenish worker')
       let fundingNeededEmitted = false
       relayServer.on('fundingNeeded', () => { fundingNeededEmitted = true })
-      await relayServer.replenishServer(workerIndex)
+      await relayServer.replenishServer(workerIndex, 0)
       assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
     })
   })
@@ -535,12 +538,12 @@ contract('RelayServer', function (accounts) {
     it('should re-register server only if registrationBlockRate passed from any tx', async function () {
       let latestBlock = await _web3.eth.getBlock('latest')
       let receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, false)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, false)
       assert.equal(receipts.length, 0, 'should not re-register if already registered')
       await evmMineMany(registrationBlockRate)
       latestBlock = await _web3.eth.getBlock('latest')
       receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, true)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, true)
       assertRelayAdded(receipts, relayServer, false)
     })
   })
