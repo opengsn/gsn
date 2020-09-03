@@ -178,6 +178,8 @@ interface IRelayHub {
 
     function workerCount(address manager) external view returns(uint256);
 
+    function isRelayManagerStaked(address relayManager) external view returns(bool);
+
     /**
     * @dev the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
     * Assume that relay has non-zero balance (costs 15'000 more otherwise).
