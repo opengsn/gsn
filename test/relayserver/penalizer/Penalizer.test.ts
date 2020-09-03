@@ -3,7 +3,7 @@ import { KeyManager } from '../../../src/relayserver/KeyManager'
 import RelayHubABI from '../../../src/common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../../../src/common/interfaces/IPaymaster.json'
-import { Transaction } from 'ethereumjs-tx'
+import { Transaction, TransactionOptions } from 'ethereumjs-tx'
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import { deployHub, revert, snapshot } from '../../TestUtils'
@@ -29,6 +29,9 @@ import crypto from 'crypto'
 import { web3TransactionToEthUtilTransaction } from '../../../src/common/Utils'
 import { HttpProvider } from 'web3-core'
 import Web3 from 'web3'
+import { bufferToHex, bufferToInt } from 'ethereumjs-util'
+import { toBN } from 'web3-utils'
+import { constants } from '../../../src/common/Constants'
 
 const RelayHub = artifacts.require('RelayHub')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -51,6 +54,7 @@ abiDecoder.addABI(TestPaymasterConfigurableMisbehavior.abi)
 contract.only('PenalizerService service',
   function ([penalizableRelayManager, penalizableRelayWorker, relayOwner, other]) {
     let penalizerService: PenalizerService
+    let penalizableTransactionManager: TransactionManager
     const workdir = '/tmp/gsn/test/relayserver/penalizer'
     let relayHub: RelayHubInstance
     let forwarder: ForwarderInstance
@@ -61,14 +65,14 @@ contract.only('PenalizerService service',
     let globalId: string
     let _web3: Web3
 
-    async function registerNewRelay (relayManager: Address, relayWorker: Address, relayHub: RelayHubInstance, stakeManager: StakeManagerInstance, paymaster: TestPaymasterEverythingAcceptedInstance): Promise<void> {
+    async function registerNewRelay (relayManager: Address, relayWorker: Address, relayOwner: Address, relayHub: RelayHubInstance, stakeManager: StakeManagerInstance, paymaster: TestPaymasterEverythingAcceptedInstance): Promise<void> {
       await stakeManager.stakeForAddress(relayManager, 1000, {
         from: relayOwner,
         value: ether('1')
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
-      await paymaster.setTrustedForwarder(forwarder.address)
-      await paymaster.setRelayHub(relayHub.address)
+      await send.ether(relayOwner, relayManager, ether('1'))
+      await send.ether(relayOwner, relayWorker, ether('1'))
       await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
     }
 
@@ -91,7 +95,9 @@ contract.only('PenalizerService service',
         )
 
         paymaster = await TestPaymasterEverythingAccepted.new()
-        await registerNewRelay(penalizableRelayManager, penalizableRelayWorker, relayHub, stakeManager, paymaster)
+        await paymaster.setTrustedForwarder(forwarder.address)
+        await paymaster.setRelayHub(relayHub.address)
+        // await registerNewRelay(penalizableRelayManager, penalizableRelayWorker, relayHub, stakeManager, paymaster)
         // @ts-ignore
         Object.keys(StakeManager.events).forEach(function (topic) {
           // @ts-ignore
@@ -105,6 +111,12 @@ contract.only('PenalizerService service',
 
         const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
         const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+        const relayManager = managerKeyManager.getAddress(0)
+        const relayWorker = workersKeyManager.getAddress(0)
+        const penalizableManagerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+        const penalizableWorkerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+        const penalizableRelayManager = penalizableManagerKeyManager.getAddress(0)
+        const penalizableRelayWorker = penalizableWorkerKeyManager.getAddress(0)
         const txStoreManager = new TxStoreManager({ workdir })
         const contractInteractor = new ContractInteractor(_web3.currentProvider, configureGSN({ relayHubAddress: relayHub.address }))
         await contractInteractor.init()
@@ -114,8 +126,14 @@ contract.only('PenalizerService service',
           workersKeyManager,
           contractInteractor
         }
-        const transactionManager = new TransactionManager(contractInteractor, dependencies)
-        const txByNonceService = new MockTxByNonceService(_web3.currentProvider)
+        const transactionManager = new TransactionManager(dependencies)
+        penalizableTransactionManager = new TransactionManager({
+          txStoreManager: new TxStoreManager({ inMemory: true }),
+          contractInteractor,
+          workersKeyManager: penalizableWorkerKeyManager,
+          managerKeyManager: penalizableManagerKeyManager
+        })
+        const txByNonceService = new MockTxByNonceService(_web3.currentProvider, contractInteractor)
         penalizerService = new PenalizerService({
           transactionManager,
           txByNonceService,
@@ -123,36 +141,75 @@ contract.only('PenalizerService service',
           devMode: true
         })
         await penalizerService.init()
+        // @ts-ignore
+        await _web3.eth.personal.importRawKey(bufferToHex(transactionManager.managerKeyManager._privateKeys[relayManager]), '')
+        await _web3.eth.personal.unlockAccount(relayManager, '', 1e6)
+        await registerNewRelay(relayManager, relayWorker, relayOwner, relayHub, stakeManager, paymaster)
+        // @ts-ignore
+        await _web3.eth.personal.importRawKey(
+          bufferToHex(penalizableTransactionManager.managerKeyManager._privateKeys[penalizableRelayManager]), '')
+        await _web3.eth.personal.unlockAccount(penalizableRelayManager, '', 1e6)
+        await registerNewRelay(penalizableRelayManager, penalizableRelayWorker, relayOwner, relayHub, stakeManager, paymaster)
       })
       describe('penalizable requests', function () {
         let minedTx: Transaction
-        let requestTx: Transaction
+        let requestTx: string
 
-        async function getTransactionsWithSameNonce (account: string, to: string): Promise<{ requestTx: Transaction, minedTx: Transaction }> {
+        async function getTransactionsWithSameNonce (account: string, to: string, rawTxOptions?: TransactionOptions): Promise<{ requestTx: Transaction, minedTx: Transaction }> {
           const id = (await snapshot()).result
           let transactionHash = (await send.ether(account, to, ether('0.1'))).transactionHash
           let web3Tx = await _web3.eth.getTransaction(transactionHash)
-          const minedTx = web3TransactionToEthUtilTransaction(web3Tx)
+          const minedTx = web3TransactionToEthUtilTransaction(web3Tx, rawTxOptions)
           await revert(id)
           transactionHash = (await send.ether(account, to, ether('0.01'))).transactionHash
           web3Tx = await _web3.eth.getTransaction(transactionHash)
-          const requestTx = web3TransactionToEthUtilTransaction(web3Tx)
-          assert.equal(minedTx.nonce.toString(), requestTx.nonce.toString(), 'nonces not equal')
+          const requestTx = web3TransactionToEthUtilTransaction(web3Tx, rawTxOptions)
+          assert.equal(bufferToInt(minedTx.nonce), bufferToInt(requestTx.nonce), 'nonces not equal')
           return { minedTx, requestTx }
         }
 
+        async function getPenalizableTransactions (penalizableTransactionManager: TransactionManager, rawTxOptions: TransactionOptions): Promise<{ requestTx: string, minedTx: Transaction }> {
+          const signer = penalizableTransactionManager.workersKeyManager.getAddress(0)
+          const nonce = await web3.eth.getTransactionCount(signer)
+          const txToMine = new Transaction({
+            nonce: toBN(nonce),
+            gasPrice: toBN(1e9),
+            gasLimit: toBN(1e5),
+            to: constants.ZERO_ADDRESS,
+            value: toBN(1e17),
+            data: '0x'
+          }, rawTxOptions)
+          const penalizableTx = new Transaction({
+            nonce: toBN(nonce),
+            gasPrice: toBN(1e9),
+            gasLimit: toBN(1e5),
+            to: constants.ZERO_ADDRESS,
+            value: toBN(1e16),
+            data: '0x'
+          }, rawTxOptions)
+
+          const signedTxToMine = penalizableTransactionManager.workersKeyManager.signTransaction(signer, txToMine)
+          await penalizableTransactionManager.contractInteractor.sendSignedTransaction(signedTxToMine)
+          const signedPenalizableTx = penalizableTransactionManager.workersKeyManager.signTransaction(signer, penalizableTx)
+          return { minedTx: new Transaction(signedTxToMine, rawTxOptions), requestTx: signedPenalizableTx }
+        }
+
         beforeEach(async function () {
-          ({ minedTx, requestTx } = await getTransactionsWithSameNonce(penalizableRelayWorker, other))
-          ;(penalizerService.txByNonceService as MockTxByNonceService).setTransactionByNonce(minedTx)
+          ({ minedTx, requestTx } = await getPenalizableTransactions(penalizableTransactionManager,
+            penalizerService.contractInteractor.getRawTxOptions()))
+          console.log('wtf is minedTx in test', minedTx.v)
+          console.log('wtf is requestTx in test', new Transaction(requestTx, penalizerService.contractInteractor.getRawTxOptions()).v)
+          await (penalizerService.txByNonceService as MockTxByNonceService).setTransactionByNonce(minedTx)
         })
         afterEach(async function () {
 
         })
         it('should penalize relay for signing two different txs with same nonce when current nonce >= tx nonce', async function () {
-          await penalizerService.tryToPenalize({ signedTx: '0x' + requestTx.serialize().toString('hex') })
+          const ret = await penalizerService.tryToPenalize({ signedTx: requestTx })
+          console.log('wtf is ret', ret)
         })
-        it('should penalize relay for signing two different txs with same nonce when current nonce < tx nonce', async function () {
-          await penalizerService.tryToPenalize({ signedTx: '0x' + requestTx.serialize().toString('hex') })
+        it.skip('should penalize relay for signing two different txs with same nonce when current nonce < tx nonce', async function () {
+          await penalizerService.tryToPenalize({ signedTx: requestTx })
         })
       })
       describe('non-penalizable requests', function () {

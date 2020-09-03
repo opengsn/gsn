@@ -12,6 +12,9 @@ interface StoredParams {
   nonce: Buffer
   txId: string
   attempts: number
+  v?: Buffer
+  r?: Buffer
+  s?: Buffer
 }
 
 export class StoredTx {
@@ -23,6 +26,9 @@ export class StoredTx {
   readonly nonce: number
   readonly txId: PrefixedHexString
   readonly attempts: number
+  readonly v?: PrefixedHexString
+  readonly r?: PrefixedHexString
+  readonly s?: PrefixedHexString
 
   constructor (params: StoredParams) {
     // Object.keys(tx).forEach(key => {
@@ -36,6 +42,9 @@ export class StoredTx {
     this.nonce = ethUtils.bufferToInt(params.nonce)
     this.txId = params.txId
     this.attempts = params.attempts
+    this.v = params.v != null ? ethUtils.bufferToHex(params.v) : undefined
+    this.r = params.r != null ? ethUtils.bufferToHex(params.r) : undefined
+    this.s = params.s != null ? ethUtils.bufferToHex(params.s) : undefined
   }
 }
 
@@ -48,7 +57,10 @@ export function transactionToStoredTx (tx: Transaction, from: PrefixedHexString,
     data: ethUtils.bufferToHex(tx.data),
     nonce: ethUtils.bufferToInt(tx.nonce),
     txId: ethUtils.bufferToHex(tx.hash()),
-    attempts: attempts
+    attempts: attempts,
+    v: ethUtils.bufferToHex(tx.v),
+    r: ethUtils.bufferToHex(tx.r),
+    s: ethUtils.bufferToHex(tx.s)
   }
 }
 
@@ -58,7 +70,10 @@ export function storedTxToTransaction (stx: StoredTx): Transaction {
     gasLimit: stx.gas,
     gasPrice: stx.gasPrice,
     nonce: stx.nonce,
-    data: stx.data
+    data: stx.data,
+    v: stx.v,
+    r: stx.r,
+    s: stx.s
   })
 }
 

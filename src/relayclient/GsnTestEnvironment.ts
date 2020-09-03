@@ -162,7 +162,7 @@ class GsnTestEnvironmentClass {
     }
     const relayer = new RelayServer(relayServerParams, relayServerDependencies)
     await relayer.init()
-    const txByNonceService = new StupidTxByNonceService(provider)
+    const txByNonceService = new StupidTxByNonceService(provider, contractInteractor)
     const penalizer = new PenalizerService({
       transactionManager: relayer.transactionManager,
       txByNonceService,

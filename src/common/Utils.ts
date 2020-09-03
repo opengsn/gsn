@@ -5,7 +5,7 @@ import abi from 'web3-eth-abi'
 import { Transaction as Web3Transaction } from 'web3-core'
 
 import TypedRequestData from './EIP712/TypedRequestData'
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
 import { Address } from '../relayclient/types/Aliases'
 import { EventData } from 'web3-eth-contract'
 import { encode } from 'rlp'
@@ -129,6 +129,7 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   if (v > 28) {
     v -= chainId * 2 + 8
   }
+  console.log('wtf is v', v, v.toString(16))
   const data = `0x${encode(input).toString('hex')}`
   const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
     32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
@@ -138,7 +139,7 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   }
 }
 
-export function web3TransactionToEthUtilTransaction (web3Tx: Web3Transaction): Transaction {
+export function web3TransactionToEthUtilTransaction (web3Tx: Web3Transaction, rawTxOptions?: TransactionOptions): Transaction {
   // @ts-ignore
   const tx = new Transaction({
     nonce: toBN(web3Tx.nonce),
@@ -153,7 +154,7 @@ export function web3TransactionToEthUtilTransaction (web3Tx: Web3Transaction): T
     r: web3Tx.r,
     // @ts-ignore
     s: web3Tx.s
-  })
+  }, rawTxOptions)
   return tx
 }
 

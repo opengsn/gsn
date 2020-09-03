@@ -64,7 +64,7 @@ async function run (): Promise<void> {
 
   const relay = new RelayServer(params, dependencies)
   await relay.init()
-  const txByNonceService = new StupidTxByNonceService(web3provider)
+  const txByNonceService = new StupidTxByNonceService(web3provider, contractInteractor)
   const penalizer = new PenalizerService({
     transactionManager: relay.transactionManager,
     txByNonceService,

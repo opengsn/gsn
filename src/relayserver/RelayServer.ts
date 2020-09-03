@@ -60,7 +60,7 @@ export class RelayServer extends EventEmitter {
     this.versionManager = new VersionsManager(VERSION)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
-    this.transactionManager = new TransactionManager(this.contractInteractor, dependencies)
+    this.transactionManager = new TransactionManager(dependencies)
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     log.setLevel(this.config.logLevel)

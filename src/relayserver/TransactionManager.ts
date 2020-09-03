@@ -38,8 +38,8 @@ export class TransactionManager {
 
   rawTxOptions!: TransactionOptions
 
-  constructor (contractInteractor: ContractInteractor, dependencies: ServerDependencies) {
-    this.contractInteractor = contractInteractor
+  constructor (dependencies: ServerDependencies) {
+    this.contractInteractor = dependencies.contractInteractor
 
     this.txStoreManager = dependencies.txStoreManager
     this.workersKeyManager = dependencies.workersKeyManager

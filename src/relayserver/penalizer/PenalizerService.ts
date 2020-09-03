@@ -56,6 +56,7 @@ export class PenalizerService {
     if (this.initialized) {
       return
     }
+    log.setLevel(0)
     // const relayHubTopics = [Object.keys(this.hubContract.contract.events).filter(x => (x.includes('0x')))]
     // this.rhTopics = relayHubTopics.concat([[address2topic(this.keyManager.getAddress(0))]])
 
@@ -75,12 +76,13 @@ export class PenalizerService {
     }
     // deserialize the tx
     const requestTx = new Transaction(req.signedTx, this.contractInteractor.getRawTxOptions())
-
+    console.log('wtf 1')
     // check signature
     if (!requestTx.verifySignature()) {
       // signature is invalid, cannot penalize
       return false
     }
+    console.log('wtf 2')
     // check that it's a registered relay
     const relayWorker = bufferToHex(requestTx.getSenderAddress())
     const relayManager = await this.contractInteractor.relayHubInstance.workerToManager(relayWorker)
@@ -88,12 +90,14 @@ export class PenalizerService {
       // unknown worker address to Hub
       return false
     }
+    console.log('wtf 3')
     const staked = await this.contractInteractor.relayHubInstance.isRelayManagerStaked(relayManager)
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     if (!staked) {
       // relayManager is not staked so not penalizable
       return false
     }
+    console.log('wtf 4')
 
     // read the relay worker's nonce from blockchain
     const currentNonce = await this.contractInteractor.getTransactionCount(relayWorker, 'pending')
@@ -106,14 +110,20 @@ export class PenalizerService {
         // tx already mined
         return false
       }
+      console.log('wtf 5')
 
       // run penalize in view mode to see if penalizable
       const minedTx = await this.txByNonceService.getTransactionByNonce(relayWorker, bufferToInt(requestTx.nonce))
       if (minedTx == null) {
-        throw Error(`TxByNonce service failed to fetch tx with nonce ${requestTx.nonce.toString()} of relayer ${relayWorker}`)
+        console.log('wtf requestTx', requestTx.nonce)
+        // @ts-ignore
+        throw Error(`TxByNonce service failed to fetch tx with nonce ${bufferToInt(requestTx.nonce)} of relayer ${relayWorker}`)
       }
+      console.log('wtf is minedTx', minedTx, minedTx.r)
       const { data: unsignedMinedTx, signature: minedTxSig } = getDataAndSignature(minedTx, this.contractInteractor.getChainId())
       const { data: unsignedRequestTx, signature: requestTxSig } = getDataAndSignature(requestTx, this.contractInteractor.getChainId())
+      console.log('wtf is penalizeRepeatedNonce args', unsignedRequestTx, requestTxSig)
+      console.log('wtf is penalizeRepeatedNonce args', unsignedMinedTx, minedTxSig)
       const method = this.contractInteractor.penalizerInstance.contract.methods.penalizeRepeatedNonce(
         unsignedRequestTx, requestTxSig, unsignedMinedTx,
         minedTxSig, this.contractInteractor.relayHubInstance.address)
@@ -127,6 +137,7 @@ export class PenalizerService {
         log.debug(`view call to penalizeRepeatedNonce reverted with error message ${message}.\nTx not penalizable.`)
         return false
       }
+      console.log('wtf 6')
       // Tx penalizable. PokeRelay, Penalize!
       // PokeRelay used penalize, it's not very effective../A critical hit!
       const { signedTx } = await this.transactionManager.sendTransaction(
@@ -138,6 +149,7 @@ export class PenalizerService {
       log.debug(`penalization raw tx: ${signedTx}`)
       return true
     }
+    console.log('wtf 8')
     return false
   }
 }
