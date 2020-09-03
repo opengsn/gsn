@@ -32,6 +32,7 @@ const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
   lastScannedBlock = 0
+  lastRefreshBlock = 0
   ready = false
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
@@ -405,6 +406,7 @@ export class RelayServer extends EventEmitter {
     if (!this._shouldRefreshState(blockNumber)) {
       return []
     }
+    this.lastRefreshBlock = blockNumber
     const gasPriceString = await this.contractInteractor.getGasPrice()
     this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
     if (this.gasPrice === 0) {
@@ -458,7 +460,7 @@ export class RelayServer extends EventEmitter {
   }
 
   _shouldRefreshState (currentBlock: number): boolean {
-    return currentBlock % this.config.refreshStateTimeoutBlocks === 0 || !this.isReady()
+    return currentBlock - this.lastRefreshBlock > this.config.refreshStateTimeoutBlocks || !this.isReady()
   }
 
   async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
