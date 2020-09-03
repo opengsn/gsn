@@ -402,6 +402,9 @@ export class RelayServer extends EventEmitter {
     if (blockNumber <= this.lastScannedBlock) {
       throw new Error('Attempt to scan older block, aborting')
     }
+    if (!this._shouldRefreshState(blockNumber)) {
+      return []
+    }
     const gasPriceString = await this.contractInteractor.getGasPrice()
     this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
     if (this.gasPrice === 0) {
@@ -410,7 +413,7 @@ export class RelayServer extends EventEmitter {
     await this.registrationManager.assertManagerBalance()
 
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    const shouldRegisterAgain = await this.shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
+    const shouldRegisterAgain = await this._shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
     let { receipts, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, blockNumber, shouldRegisterAgain)
     await this.transactionManager.removeConfirmedTransactions(blockNumber)
     await this._boostStuckPendingTransactions(blockNumber)
@@ -449,9 +452,13 @@ export class RelayServer extends EventEmitter {
     return toBN(await this.contractInteractor.getBalance(this.workerAddress))
   }
 
-  async shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  async _shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
     const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
     return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+  }
+
+  _shouldRefreshState (currentBlock: number): boolean {
+    return currentBlock % this.config.refreshStateTimeoutBlocks === 0 || !this.isReady()
   }
 
   async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
