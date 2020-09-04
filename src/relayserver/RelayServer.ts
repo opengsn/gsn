@@ -23,7 +23,7 @@ import {
 } from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
 import { RegistrationManager, StateError } from './RegistrationManager'
-import { TransactionManager } from './TransactionManager'
+import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import Timeout = NodeJS.Timeout
 
@@ -32,6 +32,7 @@ const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
   lastScannedBlock = 0
+  lastRefreshBlock = 0
   ready = false
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
@@ -60,7 +61,7 @@ export class RelayServer extends EventEmitter {
     this.versionManager = new VersionsManager(VERSION)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
-    this.transactionManager = new TransactionManager(this.contractInteractor, dependencies)
+    this.transactionManager = new TransactionManager(dependencies, this.config)
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     log.setLevel(this.config.logLevel)
@@ -228,16 +229,20 @@ export class RelayServer extends EventEmitter {
     }
     console.log(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
     console.log(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
-    const { signedTx } = await this.transactionManager.sendTransaction(
+
+    const currentBlock = await this.contractInteractor.getBlockNumber()
+    const details: SendTransactionDetails =
       {
         signer: this.workerAddress,
         method,
         destination: req.relayHubAddress,
         gasLimit: maxPossibleGas.toString(),
+        creationBlockNumber: currentBlock,
         gasPrice: req.gasPrice
-      })
+      }
+    const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
-    await this.replenishServer(workerIndex)
+    await this.replenishServer(workerIndex, currentBlock)
     if (this.alerted) {
       console.log('Alerted state: slowing down traffic')
       await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
@@ -342,7 +347,7 @@ export class RelayServer extends EventEmitter {
     this.initialized = true
   }
 
-  async replenishServer (workerIndex: number): Promise<TransactionReceipt[]> {
+  async replenishServer (workerIndex: number, currentBlock: number): Promise<TransactionReceipt[]> {
     const receipts: TransactionReceipt[] = []
     let managerEthBalance = await this.getManagerBalance()
     const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
@@ -357,11 +362,13 @@ export class RelayServer extends EventEmitter {
       console.log(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
       const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.managerAddress)
-      receipts.push((await this.transactionManager.sendTransaction({
+      const details: SendTransactionDetails = {
         signer: this.managerAddress,
         destination: this.relayHubContract.address,
+        creationBlockNumber: currentBlock,
         method
-      })).receipt)
+      }
+      receipts.push((await this.transactionManager.sendTransaction(details)).receipt)
     }
     managerEthBalance = await this.getManagerBalance()
     if (workerBalance.lt(toBN(this.config.workerMinBalance.toString()))) {
@@ -371,12 +378,15 @@ export class RelayServer extends EventEmitter {
           worker balance=${workerBalance.toString()} refill=${refill.toString()}`)
       if (refill.lt(managerEthBalance.sub(toBN(this.config.managerMinBalance)))) {
         console.log('Replenishing worker balance by manager eth balance')
-        receipts.push((await this.transactionManager.sendTransaction({
+        const details: SendTransactionDetails = {
           signer: this.managerAddress,
           destination: this.workerAddress,
           value: toHex(refill),
+          creationBlockNumber: currentBlock,
           gasLimit: defaultEnvironment.mintxgascost.toString()
-        })).receipt)
+        }
+        const tx = await this.transactionManager.sendTransaction(details)
+        receipts.push(tx.receipt)
       } else {
         const message = `== replenishServer: can't replenish: mgr balance too low ${managerEthBalance.toString()} refill=${refill.toString()}`
         this.emit('fundingNeeded', message)
@@ -393,6 +403,10 @@ export class RelayServer extends EventEmitter {
     if (blockNumber <= this.lastScannedBlock) {
       throw new Error('Attempt to scan older block, aborting')
     }
+    if (!this._shouldRefreshState(blockNumber)) {
+      return []
+    }
+    this.lastRefreshBlock = blockNumber
     const gasPriceString = await this.contractInteractor.getGasPrice()
     this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
     if (this.gasPrice === 0) {
@@ -401,9 +415,10 @@ export class RelayServer extends EventEmitter {
     await this.registrationManager.assertManagerBalance()
 
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    const shouldRegisterAgain = await this.shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
-    let { receipts, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, shouldRegisterAgain)
-    await this._resendUnconfirmedTransactions(blockNumber)
+    const shouldRegisterAgain = await this._shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
+    let { receipts, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, blockNumber, shouldRegisterAgain)
+    await this.transactionManager.removeConfirmedTransactions(blockNumber)
+    await this._boostStuckPendingTransactions(blockNumber)
     if (unregistered) {
       this.lastScannedBlock = blockNumber
       return receipts
@@ -412,7 +427,7 @@ export class RelayServer extends EventEmitter {
     await this.handlePastHubEvents(blockNumber, hubEventsSinceLastScan)
     this.lastScannedBlock = blockNumber
     const workerIndex = 0
-    receipts = receipts.concat(await this.replenishServer(workerIndex))
+    receipts = receipts.concat(await this.replenishServer(workerIndex, blockNumber))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
       this.emit('error', new Error('workers not funded...'))
@@ -439,9 +454,13 @@ export class RelayServer extends EventEmitter {
     return toBN(await this.contractInteractor.getBalance(this.workerAddress))
   }
 
-  async shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  async _shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
     const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
     return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+  }
+
+  _shouldRefreshState (currentBlock: number): boolean {
+    return currentBlock - this.lastRefreshBlock > this.config.refreshStateTimeoutBlocks || !this.isReady()
   }
 
   async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
@@ -489,30 +508,32 @@ export class RelayServer extends EventEmitter {
   }
 
   /**
-   * resend Txs of all signers (manager, workers)
+   * Resend the earliest pending transactions of all signers (manager, workers)
    * @return the receipt from the first request
    */
-  async _resendUnconfirmedTransactions (blockNumber: number): Promise<PrefixedHexString | undefined> {
+  async _boostStuckPendingTransactions (blockNumber: number): Promise<PrefixedHexString[]> {
+    const transactionHashes: PrefixedHexString[] = []
     // repeat separately for each signer (manager, all workers)
-    let signedTx = await this._resendUnconfirmedTransactionsForManager(blockNumber)
+    let signedTx = await this._boostStuckTransactionsForManager(blockNumber)
     if (signedTx != null) {
-      return signedTx
+      transactionHashes.push(signedTx)
     }
     for (const workerIndex of [0]) {
-      signedTx = await this._resendUnconfirmedTransactionsForWorker(blockNumber, workerIndex)
+      signedTx = await this._boostStuckTransactionsForWorker(blockNumber, workerIndex)
       if (signedTx != null) {
-        return signedTx // TODO: should we early-return ?
+        transactionHashes.push(signedTx)
       }
     }
+    return transactionHashes
   }
 
-  async _resendUnconfirmedTransactionsForManager (blockNumber: number): Promise<PrefixedHexString | null> {
-    return await this.transactionManager.resendUnconfirmedTransactionsForSigner(blockNumber, this.managerAddress)
+  async _boostStuckTransactionsForManager (blockNumber: number): Promise<PrefixedHexString | null> {
+    return await this.transactionManager.boostOldestPendingTransactionForSigner(this.managerAddress, blockNumber)
   }
 
-  async _resendUnconfirmedTransactionsForWorker (blockNumber: number, workerIndex: number): Promise<PrefixedHexString | null> {
+  async _boostStuckTransactionsForWorker (blockNumber: number, workerIndex: number): Promise<PrefixedHexString | null> {
     const signer = this.workerAddress
-    return await this.transactionManager.resendUnconfirmedTransactionsForSigner(blockNumber, signer)
+    return await this.transactionManager.boostOldestPendingTransactionForSigner(signer, blockNumber)
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {

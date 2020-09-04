@@ -13,7 +13,7 @@ import ContractInteractor, {
   StakeAdded,
   StakeUnlocked
 } from '../relayclient/ContractInteractor'
-import { TransactionManager } from './TransactionManager'
+import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { defaultEnvironment } from '../common/Environments'
 
 import log from 'loglevel'
@@ -103,7 +103,7 @@ export class RegistrationManager {
     this.config = config
   }
 
-  async handlePastEvents (hubEventsSinceLastScan: EventData[], lastScannedBlock: number, forceRegistration: boolean): Promise<PastEventsHandled> {
+  async handlePastEvents (hubEventsSinceLastScan: EventData[], lastScannedBlock: number, currentBlock: number, forceRegistration: boolean): Promise<PastEventsHandled> {
     const topics = [address2topic(this.managerAddress)]
     const options = {
       fromBlock: lastScannedBlock + 1,
@@ -127,17 +127,17 @@ export class RegistrationManager {
           break
         case 'HubUnauthorized':
           unregistered = true
-          receipts = receipts.concat(await this._handleHubUnauthorizedEvent(eventData))
+          receipts = receipts.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
           break
         case 'StakeUnlocked':
           unregistered = true
-          receipts = receipts.concat(await this._handleUnstakedEvent(eventData))
+          receipts = receipts.concat(await this._handleUnstakedEvent(eventData, currentBlock))
           break
       }
     }
     const isRegistrationCorrect = await this._isRegistrationCorrect(hubEventsSinceLastScan)
     if (!isRegistrationCorrect || forceRegistration) {
-      receipts = receipts.concat(await this.attemptRegistration(hubEventsSinceLastScan))
+      receipts = receipts.concat(await this.attemptRegistration(hubEventsSinceLastScan, currentBlock))
     }
     return {
       receipts,
@@ -192,33 +192,34 @@ export class RegistrationManager {
     }
   }
 
-  async _handleHubUnauthorizedEvent (dlog: EventData): Promise<TransactionReceipt[]> {
+  async _handleHubUnauthorizedEvent (dlog: EventData, currentBlock: number): Promise<TransactionReceipt[]> {
     if (dlog.returnValues.relayHub.toLowerCase() === this.hubAddress.toLowerCase()) {
       this.isHubAuthorized = false
     }
-    return await this.withdrawAllFunds(false)
+    return await this.withdrawAllFunds(false, currentBlock)
   }
 
   async _handleStakedEvent (): Promise<void> {
     await this.refreshStake()
   }
 
-  async _handleUnstakedEvent (dlog: EventData): Promise<TransactionReceipt[]> {
+  async _handleUnstakedEvent (dlog: EventData, currentBlock: number): Promise<TransactionReceipt[]> {
     console.log('handle Unstaked event', dlog)
     await this.refreshStake()
-    return await this.withdrawAllFunds(true)
+    return await this.withdrawAllFunds(true, currentBlock)
   }
 
   /**
    * @param withdrawManager - whether to send the relay manager's balance to the owner.
    *        Note that more then one relay process could be using the same manager account.
+   * @param currentBlock
    */
-  async withdrawAllFunds (withdrawManager: boolean): Promise<TransactionReceipt[]> {
+  async withdrawAllFunds (withdrawManager: boolean, currentBlock: number): Promise<TransactionReceipt[]> {
     let receipts: TransactionReceipt[] = []
-    receipts = receipts.concat(await this._sendManagerHubBalanceToOwner())
-    receipts = receipts.concat(await this._sendWorkersEthBalancesToOwner())
+    receipts = receipts.concat(await this._sendManagerHubBalanceToOwner(currentBlock))
+    receipts = receipts.concat(await this._sendWorkersEthBalancesToOwner(currentBlock))
     if (withdrawManager) {
-      receipts = receipts.concat(await this._sendManagerEthBalanceToOwner())
+      receipts = receipts.concat(await this._sendManagerEthBalanceToOwner(currentBlock))
     }
 
     this.eventEmitter.emit('unstaked')
@@ -255,18 +256,21 @@ export class RegistrationManager {
     return true
   }
 
-  async addRelayWorker (): Promise<TransactionReceipt> {
+  async addRelayWorker (currentBlock: number): Promise<TransactionReceipt> {
     // register on chain
     const addRelayWorkerMethod = await this.contractInteractor.getAddRelayWorkersMethod([this.workerAddress])
-    return (await this.transactionManager.sendTransaction({
+    const details: SendTransactionDetails = {
       signer: this.managerAddress,
       method: addRelayWorkerMethod,
-      destination: this.hubAddress
-    })).receipt
+      destination: this.hubAddress,
+      creationBlockNumber: currentBlock
+    }
+    const tx = await this.transactionManager.sendTransaction(details)
+    return tx.receipt
   }
 
   // TODO: extract worker registration sub-flow
-  async attemptRegistration (hubEventsSinceLastScan: EventData[]): Promise<TransactionReceipt[]> {
+  async attemptRegistration (hubEventsSinceLastScan: EventData[], currentBlock: number): Promise<TransactionReceipt[]> {
     const allPrerequisitesOk =
       this.isHubAuthorized &&
       this.isStakeLocked &&
@@ -280,19 +284,22 @@ export class RegistrationManager {
     // add worker only if not already added
     const workersAdded = await this._areWorkersAdded(hubEventsSinceLastScan)
     if (!workersAdded) {
-      receipts = receipts.concat(await this.addRelayWorker())
+      receipts = receipts.concat(await this.addRelayWorker(currentBlock))
     }
     const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.config.baseRelayFee, this.config.pctRelayFee, this.config.url)
-    receipts = receipts.concat((await this.transactionManager.sendTransaction({
+    const details: SendTransactionDetails = {
       signer: this.managerAddress,
       method: registerMethod,
-      destination: this.hubAddress
-    })).receipt)
+      destination: this.hubAddress,
+      creationBlockNumber: currentBlock
+    }
+    const tx = await this.transactionManager.sendTransaction(details)
+    receipts = receipts.concat(tx.receipt)
     log.debug(`Relay ${this.managerAddress} registered on hub ${this.hubAddress}. `)
     return receipts
   }
 
-  async _sendManagerEthBalanceToOwner (): Promise<TransactionReceipt[]> {
+  async _sendManagerEthBalanceToOwner (currentBlock: number): Promise<TransactionReceipt[]> {
     const gasPrice = await this.contractInteractor.getGasPrice()
     const receipts: TransactionReceipt[] = []
     const gasLimit = mintxgascost
@@ -302,20 +309,23 @@ export class RegistrationManager {
     // sending manager eth balance to owner
     if (managerBalance.gte(txCost)) {
       console.log(`Sending manager eth balance ${managerBalance.toString()} to owner`)
-      receipts.push((await this.transactionManager.sendTransaction({
+      const details: SendTransactionDetails = {
         signer: this.managerAddress,
         destination: this.ownerAddress as string,
         gasLimit: gasLimit.toString(),
         gasPrice,
-        value: toHex(managerBalance.sub(txCost))
-      })).receipt)
+        value: toHex(managerBalance.sub(txCost)),
+        creationBlockNumber: currentBlock
+      }
+      const tx = await this.transactionManager.sendTransaction(details)
+      receipts.push(tx.receipt)
     } else {
       console.log(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     return receipts
   }
 
-  async _sendWorkersEthBalancesToOwner (): Promise<TransactionReceipt[]> {
+  async _sendWorkersEthBalancesToOwner (currentBlock: number): Promise<TransactionReceipt[]> {
     // sending workers' balance to owner (currently one worker, todo: extend to multiple)
     const receipts: TransactionReceipt[] = []
     const gasPrice = await this.contractInteractor.getGasPrice()
@@ -324,20 +334,23 @@ export class RegistrationManager {
     const workerBalance = toBN(await this.contractInteractor.getBalance(this.workerAddress))
     if (workerBalance.gte(txCost)) {
       console.log(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
-      receipts.push((await this.transactionManager.sendTransaction({
+      const details = {
         signer: this.workerAddress,
         destination: this.ownerAddress as string,
         gasLimit: gasLimit.toString(),
         gasPrice,
-        value: toHex(workerBalance.sub(txCost))
-      })).receipt)
+        value: toHex(workerBalance.sub(txCost)),
+        creationBlockNumber: currentBlock
+      }
+      const tx = await this.transactionManager.sendTransaction(details)
+      receipts.push(tx.receipt)
     } else {
       console.log(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     return receipts
   }
 
-  async _sendManagerHubBalanceToOwner (): Promise<TransactionReceipt[]> {
+  async _sendManagerHubBalanceToOwner (currentBlock: number): Promise<TransactionReceipt[]> {
     if (this.ownerAddress == null) {
       throw new Error('Owner address not initialized')
     }
@@ -347,11 +360,14 @@ export class RegistrationManager {
     const { gasCost, method } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
     if (managerHubBalance.gte(gasCost)) {
       console.log(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
-      receipts.push((await this.transactionManager.sendTransaction({
+      const details: SendTransactionDetails = {
         signer: this.managerAddress,
         destination: this.hubAddress,
+        creationBlockNumber: currentBlock,
         method
-      })).receipt)
+      }
+      const tx = await this.transactionManager.sendTransaction(details)
+      receipts.push(tx.receipt)
     } else {
       console.log(`manager hub balance too low: ${managerHubBalance.toString()}, tx cost: ${gasCost.toString()}`)
     }
