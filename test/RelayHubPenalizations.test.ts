@@ -10,7 +10,7 @@ import { expect } from 'chai'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
-import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/common/Environments'
 import {
   PenalizerInstance,
@@ -20,6 +20,7 @@ import {
 } from '../types/truffle-contracts'
 
 import { deployHub } from './TestUtils'
+import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
 
 import TransactionResponse = Truffle.TransactionResponse
 
@@ -52,10 +53,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
-    await forwarderInstance.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(forwarderInstance)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     await stakeManager.stakeForAddress(relayManager, 1000, {

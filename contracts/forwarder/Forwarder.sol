@@ -128,8 +128,8 @@ contract Forwarder is IForwarder {
     internal
     view
     {
-        require(domains[domainSeparator], "invalid domain separator");
-        require(typeHashes[requestTypeHash], "invalid request typehash");
+        require(domains[domainSeparator], "unregistered domain separator");
+        require(typeHashes[requestTypeHash], "unregistered request typehash");
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", domainSeparator,
                 keccak256(_getEncoded(req, requestTypeHash, suffixData))

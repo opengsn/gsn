@@ -19,8 +19,8 @@ import Web3 from 'web3'
 import { HttpProvider } from 'web3-core'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { TestPaymasterEverythingAcceptedInstance } from '../../types/truffle-contracts'
-import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -53,10 +53,7 @@ contract('TransactionManager', function (accounts) {
     const penalizer = await Penalizer.new()
     const forwarder = await Forwarder.new()
     // register hub's RelayRequest with forwarder, if not already done.
-    await forwarder.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(forwarder)
 
     const rhub = await deployHub(stakeManager.address, penalizer.address)
     const relayHubAddress = rhub.address

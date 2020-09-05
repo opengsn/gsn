@@ -14,7 +14,7 @@ import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { RelayClient } from '../../src/relayclient/RelayClient'
-import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
+import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -93,10 +93,7 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
       gasLess = await web3.eth.personal.newAccount('password')
       const forwarder = await Forwarder.new()
       // register hub's RelayRequest with forwarder, if not already done.
-      await forwarder.registerRequestType(
-        GsnRequestType.typeName,
-        GsnRequestType.typeSuffix
-      )
+      await registerForwarderForGsn(forwarder)
 
       const forwarderAddress = forwarder.address
 

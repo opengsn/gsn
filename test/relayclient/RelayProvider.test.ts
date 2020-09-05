@@ -23,7 +23,8 @@ import BadRelayClient from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '../../src/common/Utils'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import TypedRequestData, { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
+import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
+import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -96,10 +97,7 @@ contract('RelayProvider', function (accounts) {
     relayHub = await deployHub(stakeManager.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
-    await forwarderInstance.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(forwarderInstance)
 
     paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address

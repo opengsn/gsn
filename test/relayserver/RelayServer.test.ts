@@ -24,7 +24,6 @@ import {
   TestPaymasterEverythingAcceptedInstance
 } from '../../types/truffle-contracts'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 
 import { deployHub, evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
 import {
@@ -44,6 +43,7 @@ import { sleep } from '../../src/common/Utils'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { KeyManager } from '../../src/relayserver/KeyManager'
+import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -98,10 +98,7 @@ contract('RelayServer', function (accounts) {
     const sr = await TestRecipient.new(forwarderAddress)
     paymaster = await TestPaymasterEverythingAccepted.new()
     // register hub's RelayRequest with forwarder, if not already done.
-    await forwarder.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(forwarder)
 
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(rhub.address)

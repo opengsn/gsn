@@ -57,6 +57,7 @@ contract('Forwarder', ([from]) => {
   const senderPrivateKey = toBuffer(bytes32(1))
   const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
+
   before(async () => {
     fwd = await Forwarder.new()
     tf = await TestForwarder.new()
@@ -89,10 +90,11 @@ contract('Forwarder', ([from]) => {
   })
 
   describe('#registerDomainSeparator', () => {
+
     it('registered domain should match local definition', async () => {
       const data = {
         domain: {
-          extra:1234,
+          extra: 1234,
           chainId,
           verifyingContract: fwd.address
         },
@@ -108,14 +110,14 @@ contract('Forwarder', ([from]) => {
 
       const localDomainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
       const typehash = TypedDataUtils.hashType('EIP712Domain', data.types)
-      const ret = await fwd.registerDomainSeparator('uint256 extra', web3.eth.abi.encodeParameter('uint256', 1234) )
+      const ret = await fwd.registerDomainSeparator('uint256 extra', web3.eth.abi.encodeParameter('uint256', 1234))
 
       const { domainSeparator, domainType, domainValue } = ret.logs[0].args
       assert.equal(domainType, 'EIP712Domain(uint256 extra,uint256 chainId,address verifyingContract)')
-      assert.equal(domainValue, web3.eth.abi.encodeParameters(['bytes32','uint256','uint256','address'],[typehash, data.domain.extra, data.domain.chainId, fwd.address]))
+      assert.equal(domainValue, web3.eth.abi.encodeParameters(['bytes32', 'uint256', 'uint256', 'address'], [typehash, data.domain.extra, data.domain.chainId, fwd.address]))
       assert.equal(domainSeparator, localDomainSeparator)
 
-      assert.equal( await fwd.domains(localDomainSeparator), true )
+      assert.equal(await fwd.domains(localDomainSeparator), true)
     })
   })
 
@@ -136,21 +138,21 @@ contract('Forwarder', ([from]) => {
   describe('#verify', () => {
     const typeName = `ForwardRequest(${GENERIC_PARAMS})`
     const typeHash = keccak256(typeName)
-    let domainInfo :any
+    let domainInfo: any
     const dummyDomainType = [
       { name: 'extra', type: 'uint256' },
       { name: 'chainId', type: 'uint256' },
       { name: 'verifyingContract', type: 'address' }
-    ];
+    ]
 
     let domainSeparator: string
 
-    before( 'register domain separator', async()=>{
+    before('register domain separator', async () => {
       domainInfo = {
-        extra:1234,
+        extra: 1234,
         chainId,
         verifyingContract: fwd.address
-      };
+      }
 
       const data = {
         domain: domainInfo,
@@ -161,10 +163,11 @@ contract('Forwarder', ([from]) => {
       }
 
       domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
-      await fwd.registerDomainSeparator('uint256 extra', web3.eth.abi.encodeParameter('uint256', 1234) )
+      await fwd.registerDomainSeparator('uint256 extra', web3.eth.abi.encodeParameter('uint256', 1234))
     })
 
     describe('#verify failures', () => {
+
       const req = {
         to: addr(1),
         data: '0x',
@@ -174,10 +177,10 @@ contract('Forwarder', ([from]) => {
         gas: 123
       }
 
-      it('should fail on invalid domain separator', async () => {
+      it('should fail on unregistered domain separator', async () => {
         const dummyDomainSeparator = bytes32(1)
 
-        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'.padEnd(65*2+2, '1b')), 'invalid domain separator')
+        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'.padEnd(65 * 2 + 2, '1b')), 'unregistered domain separator')
       })
 
       it('should fail on wrong nonce', async () => {
@@ -317,8 +320,8 @@ contract('Forwarder', ([from]) => {
       recipient = await TestForwarderTarget.new(fwd.address)
       testfwd = await TestForwarder.new()
 
-      const namehash = keccak256(bufferToHex(Buffer.from(data.domain.name!,'ascii')))
-      const versionhash = keccak256(bufferToHex(Buffer.from(data.domain.version!,'ascii')))
+      const namehash = keccak256(bufferToHex(Buffer.from(data.domain.name!, 'ascii')))
+      const versionhash = keccak256(bufferToHex(Buffer.from(data.domain.version!, 'ascii')))
       const ret = await fwd.registerDomainSeparator('string name,string version', web3.eth.abi.encodeParameters(['bytes32', 'bytes32'], [namehash, versionhash]))
 
       domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
