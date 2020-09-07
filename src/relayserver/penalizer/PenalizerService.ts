@@ -119,7 +119,7 @@ export class PenalizerService {
         // @ts-ignore
         throw Error(`TxByNonce service failed to fetch tx with nonce ${bufferToInt(requestTx.nonce)} of relayer ${relayWorker}`)
       }
-      console.log('wtf is minedTx', minedTx, minedTx.r)
+      console.log('wtf is froms', bufferToHex(minedTx.getSenderAddress()), bufferToHex(requestTx.getSenderAddress()))
       const { data: unsignedMinedTx, signature: minedTxSig } = getDataAndSignature(minedTx, this.contractInteractor.getChainId())
       const { data: unsignedRequestTx, signature: requestTxSig } = getDataAndSignature(requestTx, this.contractInteractor.getChainId())
       console.log('wtf is penalizeRepeatedNonce args', unsignedRequestTx, requestTxSig)

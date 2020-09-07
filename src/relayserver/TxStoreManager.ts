@@ -10,6 +10,7 @@ interface StoredParams {
   gasPrice: Buffer
   data: Buffer
   nonce: Buffer
+  value?: Buffer
   txId: string
   attempts: number
   v?: Buffer
@@ -24,6 +25,7 @@ export class StoredTx {
   readonly gasPrice: number
   readonly data: PrefixedHexString
   readonly nonce: number
+  readonly value: PrefixedHexString
   readonly txId: PrefixedHexString
   readonly attempts: number
   readonly v?: PrefixedHexString
@@ -40,6 +42,7 @@ export class StoredTx {
     this.gasPrice = ethUtils.bufferToInt(params.gasPrice)
     this.data = ethUtils.bufferToHex(params.data)
     this.nonce = ethUtils.bufferToInt(params.nonce)
+    this.value = params.value != null ? ethUtils.bufferToHex(params.value) : '0x'
     this.txId = params.txId
     this.attempts = params.attempts
     this.v = params.v != null ? ethUtils.bufferToHex(params.v) : undefined
@@ -57,6 +60,7 @@ export function transactionToStoredTx (tx: Transaction, from: PrefixedHexString,
     data: ethUtils.bufferToHex(tx.data),
     nonce: ethUtils.bufferToInt(tx.nonce),
     txId: ethUtils.bufferToHex(tx.hash()),
+    value: ethUtils.bufferToHex(tx.value),
     attempts: attempts,
     v: ethUtils.bufferToHex(tx.v),
     r: ethUtils.bufferToHex(tx.r),
@@ -71,6 +75,7 @@ export function storedTxToTransaction (stx: StoredTx): Transaction {
     gasPrice: stx.gasPrice,
     nonce: stx.nonce,
     data: stx.data,
+    value: stx.value,
     v: stx.v,
     r: stx.r,
     s: stx.s

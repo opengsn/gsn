@@ -170,6 +170,7 @@ contract.only('PenalizerService service',
 
         async function getPenalizableTransactions (penalizableTransactionManager: TransactionManager, rawTxOptions: TransactionOptions): Promise<{ requestTx: string, minedTx: Transaction }> {
           const signer = penalizableTransactionManager.workersKeyManager.getAddress(0)
+          console.log('wtf is signer', signer)
           const nonce = await web3.eth.getTransactionCount(signer)
           const txToMine = new Transaction({
             nonce: toBN(nonce),
@@ -191,15 +192,20 @@ contract.only('PenalizerService service',
           const signedTxToMine = penalizableTransactionManager.workersKeyManager.signTransaction(signer, txToMine)
           await penalizableTransactionManager.contractInteractor.sendSignedTransaction(signedTxToMine)
           const signedPenalizableTx = penalizableTransactionManager.workersKeyManager.signTransaction(signer, penalizableTx)
-          return { minedTx: new Transaction(signedTxToMine, rawTxOptions), requestTx: signedPenalizableTx }
+          const minedTx = new Transaction(signedTxToMine, rawTxOptions)
+          console.log('wtf is froms test', bufferToHex(txToMine.getSenderAddress()), bufferToHex(penalizableTx.getSenderAddress()), minedTx.getSenderAddress())
+          return { minedTx: minedTx, requestTx: signedPenalizableTx }
         }
 
         beforeEach(async function () {
           ({ minedTx, requestTx } = await getPenalizableTransactions(penalizableTransactionManager,
             penalizerService.contractInteractor.getRawTxOptions()))
-          console.log('wtf is minedTx in test', minedTx.v)
-          console.log('wtf is requestTx in test', new Transaction(requestTx, penalizerService.contractInteractor.getRawTxOptions()).v)
           await (penalizerService.txByNonceService as MockTxByNonceService).setTransactionByNonce(minedTx)
+          const tx = await penalizerService.txByNonceService.getTransactionByNonce(bufferToHex(minedTx.getSenderAddress()), bufferToInt(minedTx.nonce))
+          console.log('wtf is minedTx?', minedTx)
+          console.log('wtf is setTx?', tx)
+          // todo move to txStoreManager tests
+          assert.equal(bufferToHex(tx!.getSenderAddress()), bufferToHex(minedTx.getSenderAddress()))
         })
         afterEach(async function () {
 
@@ -207,6 +213,7 @@ contract.only('PenalizerService service',
         it('should penalize relay for signing two different txs with same nonce when current nonce >= tx nonce', async function () {
           const ret = await penalizerService.tryToPenalize({ signedTx: requestTx })
           console.log('wtf is ret', ret)
+          assert.isTrue(ret, 'penalization failed')
         })
         it.skip('should penalize relay for signing two different txs with same nonce when current nonce < tx nonce', async function () {
           await penalizerService.tryToPenalize({ signedTx: requestTx })

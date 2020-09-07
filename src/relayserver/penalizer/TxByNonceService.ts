@@ -58,7 +58,7 @@ export class MockTxByNonceService implements TxByNonceService {
 
   async getTransactionByNonce (account: Address, nonce: number): Promise<Transaction | undefined> {
     const tx = await this.txStoreManager.getTxByNonce(account, nonce)
-    // console.log('wtf is tx in getTransactionByNonce', new Transaction(tx, this.contractInteractor.getRawTxOptions()))
+    console.log('wtf is tx in getTransactionByNonce', new Transaction(tx, this.contractInteractor.getRawTxOptions()))
     return new Transaction(tx, this.contractInteractor.getRawTxOptions())
     // return this.transactionsByNonces.get({ account, nonce })
   }

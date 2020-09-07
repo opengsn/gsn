@@ -1,5 +1,5 @@
 import { JsonRpcResponse } from 'web3-core-helpers'
-import ethUtils, { stripZeros, toBuffer } from 'ethereumjs-util'
+import ethUtils, { bufferToInt, stripZeros, toBuffer } from 'ethereumjs-util'
 import web3Utils, { toWei, toBN } from 'web3-utils'
 import abi from 'web3-eth-abi'
 import { Transaction as Web3Transaction } from 'web3-core'
@@ -125,11 +125,12 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
       stripZeros(toBuffer(0))
     )
   }
-  let v = tx.v[0]
+  let v = bufferToInt(tx.v)
   if (v > 28) {
+    console.log('wtf is v', v, chainId, tx.v.toString('hex'))
     v -= chainId * 2 + 8
+    console.log('wtf is v after fix', v)
   }
-  console.log('wtf is v', v, v.toString(16))
   const data = `0x${encode(input).toString('hex')}`
   const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
     32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
