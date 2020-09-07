@@ -3,6 +3,7 @@ import {
   TestForwarderInstance,
   TestForwarderTargetInstance
 } from '../types/truffle-contracts'
+
 // @ts-ignore
 import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
@@ -57,7 +58,6 @@ contract('Forwarder', ([from]) => {
   const senderPrivateKey = toBuffer(bytes32(1))
   const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
-
   before(async () => {
     fwd = await Forwarder.new()
     tf = await TestForwarder.new()
@@ -90,7 +90,6 @@ contract('Forwarder', ([from]) => {
   })
 
   describe('#registerDomainSeparator', () => {
-
     it('registered domain should match local definition', async () => {
       const data = {
         domain: {
@@ -167,7 +166,6 @@ contract('Forwarder', ([from]) => {
     })
 
     describe('#verify failures', () => {
-
       const req = {
         to: addr(1),
         data: '0x',
