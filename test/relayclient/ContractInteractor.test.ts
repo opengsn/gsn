@@ -16,7 +16,7 @@ contract('ContractInteractor', function () {
   })
 
   context('#_validateCompatibility()', function () {
-    it('should throw if the hub version is incompatible', async function () {
+    it.skip('should throw if the hub version is incompatible', async function () {
       const relayClient = new RelayClient(web3.currentProvider as HttpProvider, {
         relayHubAddress: testVersions.address
       })
