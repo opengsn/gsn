@@ -1,4 +1,4 @@
-import { getRegisterDomainSeparatorData, GsnRequestType } from './TypedRequestData'
+import { GsnDomainSeparatorType, GsnRequestType } from './TypedRequestData'
 import { IForwarderInstance } from '../../../types/truffle-contracts'
 import { Contract } from 'web3-eth-contract'
 
@@ -19,6 +19,5 @@ export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarde
     GsnRequestType.typeSuffix
   ).send(sendOptions)
 
-  const { prefix, dataPrefix } = getRegisterDomainSeparatorData()
-  await forwarder.methods.registerDomainSeparator(prefix, dataPrefix).send(sendOptions)
+  await forwarder.methods.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version).send(sendOptions)
 }

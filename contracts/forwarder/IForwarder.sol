@@ -62,12 +62,12 @@ interface IForwarder {
     function registerRequestType(string calldata typeName, string calldata typeSuffix) external;
 
     /**
-     * register a new domain separator.
-     * A valid domain separator must have chainId set to current network's chain-id, and
-     * verifyingContract set to this forwarder. It may contain other fields as prefix
-     * a domain Type always start with "EIP712Domain(" and ends with ",uint256 chainId,address verifyingContract)"
-     * @param typePrefix more domain parameters to add before the trailing chainId and verifyingContract
-     * @param dataPrefix value for the above added fields.
+     * Register a new domain separator.
+     * The domain separator must have the following fields: name,version,chainId, verifyingContract.
+     * the chainId is the current network's chainId, and the verifyingContract is this forwarder.
+     * This method is given the domain name and version to create and register the domain separator value.
+     * @param name the domain's display name
+     * @param version the domain/protocol version
      */
-    function registerDomainSeparator(string calldata typePrefix, bytes memory dataPrefix) external;
+    function registerDomainSeparator(string calldata name, string calldata version) external;
 }

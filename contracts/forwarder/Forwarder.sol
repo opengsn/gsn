@@ -10,8 +10,7 @@ contract Forwarder is IForwarder {
 
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
 
-    string public constant EIP712_DOMAIN_PREFIX = "EIP712Domain(";
-    string public constant EIP712_DOMAIN_SUFFIX = ",uint256 chainId,address verifyingContract)";
+    string public constant EIP712_DOMAIN_TYPE = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
 
     mapping(bytes32 => bool) public typeHashes;
     mapping(bytes32 => bool) public domains;
@@ -89,22 +88,22 @@ contract Forwarder is IForwarder {
         registerRequestTypeInternal(requestType);
     }
 
-    function registerDomainSeparator(string calldata typePrefix, bytes memory dataPrefix) external override {
-        bytes memory domainType = abi.encodePacked(EIP712_DOMAIN_PREFIX, typePrefix, EIP712_DOMAIN_SUFFIX );
+    function registerDomainSeparator(string calldata name, string calldata version) external override {
         uint256 chainId;
         /* solhint-disable-next-line no-inline-assembly */
         assembly { chainId := chainid() }
 
-        bytes memory domainValue = abi.encodePacked(
-            keccak256(domainType),
-            dataPrefix,
+        bytes memory domainValue = abi.encode(
+            keccak256(bytes(EIP712_DOMAIN_TYPE)),
+            keccak256(bytes(name)),
+            keccak256(bytes(version)),
             chainId,
-            uint256(uint160(address(this))));
+            address(this));
 
         bytes32 domainHash = keccak256(domainValue);
 
         domains[domainHash] = true;
-        emit DomainRegistered(domainHash, string(domainType), domainValue);
+        emit DomainRegistered(domainHash, domainValue);
     }
 
     function registerRequestTypeInternal(string memory requestType) internal {
@@ -114,7 +113,7 @@ contract Forwarder is IForwarder {
         emit RequestTypeRegistered(requestTypehash, requestType);
     }
 
-    event DomainRegistered(bytes32 indexed domainSeparator, string domainType, bytes domainValue);
+    event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);
 
     event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
 

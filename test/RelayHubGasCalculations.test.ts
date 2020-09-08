@@ -332,7 +332,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           }
           const gasUsed = res.receipt.gasUsed
           const diff = await diffBalances(await beforeBalances)
-          assert.equal(diff.paymasters, gasUsed)
+          assert.equal(diff.paymasters.toNumber(), gasUsed)
         })
       })
   })

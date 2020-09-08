@@ -8,8 +8,8 @@ import { HttpProvider } from 'web3-core'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData, {
-  getDomainSeparatorHash, getRegisterDomainSeparatorData,
-  GsnRequestType
+  getDomainSeparatorHash,
+  GsnDomainSeparatorType, GsnRequestType
 } from '../src/common/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
@@ -58,8 +58,7 @@ contract('Utils', function (accounts) {
       const paymasterData = '0x'
       const clientId = '0'
 
-      const { prefix, dataPrefix } = getRegisterDomainSeparatorData()
-      const res1 = await forwarderInstance.registerDomainSeparator(prefix, dataPrefix)
+      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
       const { domainSeparator } = res1.logs[0].args
 
@@ -118,8 +117,7 @@ contract('Utils', function (accounts) {
       assert.equal(GsnRequestType.typeName, await testUtil.libRelayRequestName())
       assert.equal(GsnRequestType.typeSuffix, await testUtil.libRelayRequestSuffix())
 
-      const { prefix, dataPrefix } = getRegisterDomainSeparatorData()
-      const res1 = await forwarderInstance.registerDomainSeparator(prefix, dataPrefix)
+      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
       const { domainSeparator } = res1.logs[0].args
       assert.equal(domainSeparator, await testUtil.libDomainSeparator(forwarder))
