@@ -10,7 +10,7 @@ interface StoredParams {
   gasPrice: Buffer
   data: Buffer
   nonce: Buffer
-  value?: Buffer
+  value: Buffer
   txId: string
   attempts: number
   v?: Buffer

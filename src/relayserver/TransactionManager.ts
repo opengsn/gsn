@@ -115,7 +115,8 @@ export class TransactionManager {
         gasLimit: tx.gas,
         gasPrice: newGasPrice,
         data: tx.data,
-        nonce: tx.nonce
+        nonce: tx.nonce,
+        value: tx.value
       },
       this.rawTxOptions)
 

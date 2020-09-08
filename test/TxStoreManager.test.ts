@@ -1,7 +1,7 @@
 /* global */
 
 import fs from 'fs'
-import { TxStoreManager, TXSTORE_FILENAME, StoredTx } from '../src/relayserver/TxStoreManager'
+import { StoredTx, TXSTORE_FILENAME, TxStoreManager } from '../src/relayserver/TxStoreManager'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
@@ -22,6 +22,17 @@ contract('TxStoreManager', function (accounts) {
   let tx2: StoredTx
   let tx3: StoredTx
 
+  function compareStoredTxs (tx1: StoredTx, tx2: StoredTx): void {
+    assert.equal(tx1.data, tx2.data)
+    assert.equal(tx1.gas, tx2.gas)
+    assert.equal(tx1.gasPrice, tx2.gasPrice)
+    assert.equal(tx1.to, tx2.to)
+    assert.equal(tx1.value, tx2.value)
+    assert.equal(tx1.nonce, tx2.nonce)
+    assert.equal(tx1.txId, tx2.txId)
+    assert.equal(tx1.attempts, tx2.attempts)
+  }
+
   before('create txstore', async function () {
     cleanFolder()
     txmanager = new TxStoreManager({ workdir })
@@ -36,6 +47,7 @@ contract('TxStoreManager', function (accounts) {
       gasPrice: Buffer.from([0]),
       data: Buffer.from([]),
       nonce: Buffer.from([111]),
+      value: Buffer.from([222]),
       txId: '123456',
       attempts: 1
     })
@@ -46,6 +58,7 @@ contract('TxStoreManager', function (accounts) {
       gasPrice: Buffer.from([0]),
       data: Buffer.from([]),
       nonce: Buffer.from([112]),
+      value: Buffer.from([222]),
       txId: '1234567',
       attempts: 1
     })
@@ -57,6 +70,7 @@ contract('TxStoreManager', function (accounts) {
         gasPrice: Buffer.from([0]),
         data: Buffer.from([]),
         nonce: Buffer.from([113]),
+        value: Buffer.from([333]),
         txId: '12345678',
         attempts: 1
       })
@@ -65,15 +79,14 @@ contract('TxStoreManager', function (accounts) {
   it('should store and get tx by txId', async function () {
     assert.equal(null, await txmanager.getTxById(tx.txId))
     await txmanager.putTx(tx)
-    const txById = await txmanager.getTxById(tx.txId)
-    assert.equal(tx.txId, txById.txId)
-    assert.equal(tx.attempts, txById.attempts)
+    const txById: StoredTx = await txmanager.getTxById(tx.txId)
+    compareStoredTxs(tx, txById)
   })
 
   it('should get tx by nonce', async function () {
     assert.equal(null, await txmanager.getTxByNonce(tx.from, tx.nonce + 1234))
-    const txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
-    assert.equal(tx.txId, txByNonce.txId)
+    const txByNonce: StoredTx = await txmanager.getTxByNonce(tx.from, tx.nonce)
+    compareStoredTxs(tx, txByNonce)
   })
 
   it('should remove tx by nonce', async function () {
@@ -91,11 +104,11 @@ contract('TxStoreManager', function (accounts) {
     await txmanager.putTx(tx2)
     await txmanager.putTx(tx3)
     let txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
-    assert.equal(tx.txId, txByNonce.txId)
+    compareStoredTxs(tx, txByNonce)
     let tx2ByNonce = await txmanager.getTxByNonce(tx.from, tx2.nonce)
-    assert.equal(tx2.txId, tx2ByNonce.txId)
+    compareStoredTxs(tx2, tx2ByNonce)
     let tx3ByNonce = await txmanager.getTxByNonce(tx.from, tx3.nonce)
-    assert.equal(tx3.txId, tx3ByNonce.txId)
+    compareStoredTxs(tx3, tx3ByNonce)
     assert.deepEqual(3, (await txmanager.getAll()).length)
     await txmanager.removeTxsUntilNonce(tx.from, tx2.nonce)
     txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
@@ -103,7 +116,7 @@ contract('TxStoreManager', function (accounts) {
     tx2ByNonce = await txmanager.getTxByNonce(tx.from, tx2.nonce)
     assert.equal(null, tx2ByNonce)
     tx3ByNonce = await txmanager.getTxByNonce(tx.from, tx3.nonce)
-    assert.equal(tx3.txId, tx3ByNonce.txId)
+    compareStoredTxs(tx3, tx3ByNonce)
     assert.deepEqual(1, (await txmanager.getAll()).length)
   })
 
