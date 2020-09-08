@@ -3,7 +3,7 @@ import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { constants } from '../common/Constants'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
-import RelayTransactionRequest from './types/RelayTransactionRequest'
+import { RelayMetadata, RelayTransactionRequest } from './types/RelayTransactionRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
@@ -20,7 +20,7 @@ import { decodeRevertReason } from '../common/Utils'
 // both are bytes arrays. paymasterData is part of the client request.
 // approvalData is created after request is filled and signed.
 export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHexString> => {
-  return await Promise.resolve('0x')
+  return '0x'
 }
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
@@ -239,10 +239,8 @@ export class RelayClient {
         relayWorker
       }
     }
-    const paymasterData = await this.asyncPaymasterData(relayRequest)
-
     // put paymasterData into struct before signing
-    relayRequest.relayData.paymasterData = paymasterData
+    relayRequest.relayData.paymasterData = await this.asyncPaymasterData(relayRequest)
     const signature = await this.accountManager.sign(relayRequest)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
@@ -250,25 +248,15 @@ export class RelayClient {
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
-    const httpRequest: RelayTransactionRequest = {
-      relayWorker: relayInfo.pingResponse.RelayServerAddress,
-      data: gsnTransactionDetails.data,
-      senderNonce: relayRequest.request.nonce,
-      from: gsnTransactionDetails.from,
-      to: gsnTransactionDetails.to,
-      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
-      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
-      value,
-      gasPrice,
-      gasLimit,
-      paymaster: paymaster,
-      paymasterData,
-      clientId: this.config.clientId,
-      forwarder: forwarderAddress,
+    const metadata: RelayMetadata = {
+      relayHubAddress: this.config.relayHubAddress,
       signature,
       approvalData,
-      relayHubAddress: this.config.relayHubAddress,
       relayMaxNonce
+    }
+    const httpRequest: RelayTransactionRequest = {
+      relayRequest,
+      metadata
     }
     if (this.config.verbose) {
       console.log(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)

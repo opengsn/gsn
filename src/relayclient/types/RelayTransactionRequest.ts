@@ -1,23 +1,16 @@
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { Address, IntString } from './Aliases'
 
-export default interface RelayTransactionRequest {
-  relayWorker: Address
-  data: PrefixedHexString
+import { Address } from './Aliases'
+import RelayRequest from '../../common/EIP712/RelayRequest'
+
+export interface RelayMetadata {
   approvalData: PrefixedHexString
-  signature: PrefixedHexString
-  from: Address
-  to: Address
-  value: IntString
-  paymaster: Address
-  paymasterData: PrefixedHexString
-  clientId: IntString
-  forwarder: Address
-  gasPrice: IntString
-  gasLimit: IntString
-  senderNonce: IntString
-  relayMaxNonce: number
-  baseRelayFee: IntString
-  pctRelayFee: IntString
   relayHubAddress: Address
+  relayMaxNonce: number
+  signature: PrefixedHexString
+}
+
+export interface RelayTransactionRequest {
+  relayRequest: RelayRequest
+  metadata: RelayMetadata
 }

@@ -13,7 +13,7 @@ import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import PingResponse from '../../src/common/PingResponse'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import RelayTransactionRequest from '../../src/relayclient/types/RelayTransactionRequest'
+import { RelayMetadata, RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { IStakeManagerInstance } from '../../types/truffle-contracts'
@@ -142,7 +142,7 @@ export async function assertTransactionRelayed (
   gasLess: Address,
   recipientAddress: Address,
   paymasterAddress: Address,
-  web3: Web3, overrideArgs?: Partial<RelayTransactionRequest>): Promise<TransactionReceipt> {
+  web3: Web3): Promise<TransactionReceipt> {
   const receipt = await web3.eth.getTransactionReceipt(txHash)
   if (receipt == null) {
     throw new Error('Transaction Receipt not found')
@@ -157,8 +157,7 @@ export async function assertTransactionRelayed (
   assert.equal(event2.args.relayWorker.toLowerCase(), server.workerAddress.toLowerCase())
   assert.equal(event2.args.from.toLowerCase(), gasLess.toLowerCase())
   assert.equal(event2.args.to.toLowerCase(), recipientAddress.toLowerCase())
-  const pm = overrideArgs?.paymaster ?? paymasterAddress
-  assert.equal(event2.args.paymaster.toLowerCase(), pm.toLowerCase())
+  assert.equal(event2.args.paymaster.toLowerCase(), paymasterAddress.toLowerCase())
   return receipt
 }
 
@@ -179,10 +178,9 @@ export interface RelayTransactionParams {
 export async function relayTransaction (
   relayTransactionParams: RelayTransactionParams,
   options: PrepareRelayRequestOption,
-  overrideArgs: Partial<RelayTransactionRequest> = {},
   assertRelayed = true): Promise<PrefixedHexString> {
   const request = await prepareRelayRequest(relayTransactionParams, options)
-  return await relayTransactionFromRequest(relayTransactionParams, request, overrideArgs, assertRelayed)
+  return await relayTransactionFromRequest(relayTransactionParams, request, assertRelayed)
 }
 
 export interface PrepareRelayRequestOption {
@@ -243,33 +241,21 @@ export interface FromRequestParam {
 export async function relayTransactionFromRequest (
   params: RelayTransactionParams,
   fromRequestParam: FromRequestParam,
-  overrideArgs: Partial<RelayTransactionRequest> = {},
   assertRelayed: boolean = true): Promise<PrefixedHexString> {
+  const metadata: RelayMetadata = {
+    approvalData: fromRequestParam.approvalData,
+    relayMaxNonce: fromRequestParam.relayMaxNonce,
+    relayHubAddress: params.relayHubAddress,
+    signature: fromRequestParam.signature
+  }
   const signedTx = await params.relayServer.createRelayTransaction(
     {
-      relayWorker: fromRequestParam.httpRequest.relayWorker,
-      senderNonce: fromRequestParam.relayRequest.request.nonce,
-      gasPrice: fromRequestParam.relayRequest.relayData.gasPrice,
-      data: fromRequestParam.relayRequest.request.data,
-      approvalData: fromRequestParam.approvalData,
-      signature: fromRequestParam.signature,
-      from: fromRequestParam.relayRequest.request.from,
-      to: fromRequestParam.relayRequest.request.to,
-      value: '0',
-      paymaster: fromRequestParam.relayRequest.relayData.paymaster,
-      paymasterData: fromRequestParam.relayRequest.relayData.paymasterData,
-      clientId: fromRequestParam.relayRequest.relayData.clientId,
-      gasLimit: fromRequestParam.relayRequest.request.gas,
-      relayMaxNonce: fromRequestParam.relayMaxNonce,
-      baseRelayFee: fromRequestParam.relayRequest.relayData.baseRelayFee,
-      pctRelayFee: fromRequestParam.relayRequest.relayData.pctRelayFee,
-      relayHubAddress: params.relayHubAddress,
-      forwarder: fromRequestParam.relayRequest.relayData.forwarder,
-      ...overrideArgs
+      relayRequest: fromRequestParam.relayRequest,
+      metadata
     })
   const txhash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
   if (assertRelayed) {
-    await assertTransactionRelayed(params.relayServer, txhash, fromRequestParam.relayRequest.request.from, params.recipientAddress, params.paymasterAddress, params.web3, overrideArgs)
+    await assertTransactionRelayed(params.relayServer, txhash, fromRequestParam.relayRequest.request.from, params.recipientAddress, params.paymasterAddress, params.web3)
   }
   return signedTx
 }

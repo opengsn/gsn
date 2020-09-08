@@ -2,7 +2,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 
 import PingResponse from '../common/PingResponse'
 import HttpWrapper from './HttpWrapper'
-import RelayTransactionRequest from './types/RelayTransactionRequest'
+import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
 
 export default class HttpClient {
