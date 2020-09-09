@@ -1,7 +1,10 @@
+// @ts-ignore
+import abiDecoder from 'abi-decoder'
 import Web3 from 'web3'
 import crypto from 'crypto'
 import { HttpProvider } from 'web3-core'
 import { toHex } from 'web3-utils'
+import * as ethUtils from 'ethereumjs-util'
 import { Address } from '../../src/relayclient/types/Aliases'
 import {
   IForwarderInstance,
@@ -9,7 +12,7 @@ import {
   IStakeManagerInstance, TestPaymasterEverythingAcceptedInstance
 } from '../../types/truffle-contracts'
 import {
-  assertRelayAdded,
+  assertRelayAdded, assertTransactionRelayed,
   getTemporaryWorkdirs,
   PrepareRelayRequestOption, ServerWorkdirs
 } from './ServerTestUtils'
@@ -18,7 +21,7 @@ import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDet
 import PingResponse from '../../src/common/PingResponse'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 import { KeyManager } from '../../src/relayserver/KeyManager'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
@@ -28,14 +31,24 @@ import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
 import { deployHub } from '../TestUtils'
-import { ether } from '../../src/common/Utils'
+import { ether, removeHexPrefix } from '../../src/common/Utils'
 import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
+import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
+import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
+import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
+abiDecoder.addABI(RelayHubABI)
+abiDecoder.addABI(StakeManagerABI)
+abiDecoder.addABI(PayMasterABI)
+// @ts-ignore
+abiDecoder.addABI(TestRecipient.abi)
+// @ts-ignore
+abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 export const LocalhostOne = 'http://localhost:8090'
 
 export class ServerTestEnvironment {
@@ -45,7 +58,6 @@ export class ServerTestEnvironment {
   paymaster!: TestPaymasterEverythingAcceptedInstance
   recipient!: IRelayRecipientInstance
 
-  recipientAddress!: Address
   relayOwner!: Address
   gasLess!: Address
 
@@ -181,12 +193,40 @@ export class ServerTestEnvironment {
     return await this.relayClient._prepareRelayHttpRequest(relayInfo, Object.assign({}, gsnTransactionDetails, overrideDetails))
   }
 
+  async relayTransaction (assertRelayed = true, overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<PrefixedHexString> {
+    const req = await this.createRelayHttpRequest(overrideDetails)
+    const signedTx = await this.relayServer.createRelayTransaction(req)
+    const txHash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
+
+    const transaction = new Transaction(signedTx, this.contractInteractor.getRawTxOptions())
+    console.log('AAAA', req, txHash, transaction)
+
+    if (assertRelayed) {
+      await assertTransactionRelayed(this.relayServer, txHash, req.relayRequest.request.from, req.relayRequest.request.to, req.relayRequest.relayData.paymaster, this.web3)
+    }
+    return signedTx
+  }
+
   async clearServerStorage (): Promise<void> {
     await this.relayServer.transactionManager.txStoreManager.clearAll()
     assert.deepEqual([], await this.relayServer.transactionManager.txStoreManager.getAll())
   }
 
-  async assertTransactionRelayed (): Promise<void> {
-    console.log()
+  async assertTransactionRelayed (txHash: string): Promise<void> {
+    const receipt = await web3.eth.getTransactionReceipt(txHash)
+    if (receipt == null) {
+      throw new Error('Transaction Receipt not found')
+    }
+    const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(this.relayServer.registrationManager._parseEvent)
+    const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
+    assert.exists(event1, 'SampleRecipientEmitted not found, maybe transaction was not relayed successfully')
+    assert.equal(event1.args.message, 'hello world')
+    const event2 = decodedLogs.find((e: { name: string }) => e.name === 'TransactionRelayed')
+    assert.exists(event2, 'TransactionRelayed not found, maybe transaction was not relayed successfully')
+    assert.equal(event2.name, 'TransactionRelayed')
+    assert.equal(event2.args.relayWorker.toLowerCase(), this.relayServer.workerAddress.toLowerCase())
+    assert.equal(event2.args.from.toLowerCase(), this.gasLess.toLowerCase())
+    assert.equal(event2.args.to.toLowerCase(), this.recipient.address.toLowerCase())
+    assert.equal(event2.args.paymaster.toLowerCase(), this.paymaster.address.toLowerCase())
   }
 }
