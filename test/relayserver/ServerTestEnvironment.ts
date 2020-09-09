@@ -21,7 +21,7 @@ import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDet
 import PingResponse from '../../src/common/PingResponse'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 import { KeyManager } from '../../src/relayserver/KeyManager'
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-tx'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
@@ -81,7 +81,7 @@ export class ServerTestEnvironment {
     this.relayOwner = accounts[4]
   }
 
-  async init (clientConfig: Partial<GSNConfig> = {}): Promise<void> {
+  async init (clientConfig: Partial<GSNConfig> = {}, contractFactory?: (clientConfig: Partial<GSNConfig>) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new()
     this.relayHub = await deployHub(this.stakeManager.address)
     this.forwarder = await Forwarder.new()
@@ -99,12 +99,14 @@ export class ServerTestEnvironment {
 
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
     this.gasLess = await this.web3.eth.personal.newAccount('password')
-    this.contractInteractor = new ContractInteractor(this.provider, configureGSN({
-      relayHubAddress: this.relayHub.address
-    }))
-    await this.contractInteractor.init()
     const shared: Partial<GSNConfig> = {
       relayHubAddress: this.relayHub.address
+    }
+    if (contractFactory == null) {
+      this.contractInteractor = new ContractInteractor(this.provider, configureGSN(shared))
+      await this.contractInteractor.init()
+    } else {
+      this.contractInteractor = await contractFactory(shared)
     }
     const mergedConfig = Object.assign({}, shared, clientConfig)
     this.relayClient = new RelayClient(this.provider, configureGSN(mergedConfig))
@@ -197,9 +199,6 @@ export class ServerTestEnvironment {
     const req = await this.createRelayHttpRequest(overrideDetails)
     const signedTx = await this.relayServer.createRelayTransaction(req)
     const txHash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
-
-    const transaction = new Transaction(signedTx, this.contractInteractor.getRawTxOptions())
-    console.log('AAAA', req, txHash, transaction)
 
     if (assertRelayed) {
       await assertTransactionRelayed(this.relayServer, txHash, req.relayRequest.request.from, req.relayRequest.request.to, req.relayRequest.relayData.paymaster, this.web3)
