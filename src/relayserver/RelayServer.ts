@@ -1,5 +1,5 @@
 import log from 'loglevel'
-import ow, { Shape } from 'ow'
+import ow from 'ow'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -8,7 +8,7 @@ import { toBN, toHex } from 'web3-utils'
 
 import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
-import { RelayTransactionRequest } from '../relayclient/types/RelayTransactionRequest'
+import { RelayTransactionRequest, RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
 import { IRelayHubInstance } from '../../types/truffle-contracts'
 import VersionsManager from '../common/VersionsManager'
 import {
@@ -53,8 +53,6 @@ export class RelayServer extends EventEmitter {
   networkId!: number
   relayHubContract!: IRelayHubInstance
 
-  // paymasterContract!: IPaymasterInstance
-
   constructor (config: Partial<ServerConfigParams>, dependencies: ServerDependencies) {
     super()
     this.versionManager = new VersionsManager(VERSION)
@@ -84,9 +82,7 @@ export class RelayServer extends EventEmitter {
   }
 
   validateInputTypes (req: RelayTransactionRequest): void {
-    // TODO: implement. This will never pass.
-    const shape: Shape = {}
-    ow(req, ow.object.exactShape(shape))
+    ow(req, ow.object.exactShape(RelayTransactionRequestShape))
   }
 
   validateInput (req: RelayTransactionRequest): void {
@@ -142,18 +138,23 @@ export class RelayServer extends EventEmitter {
       gasLimits = await paymasterContract.getGasLimits()
     } catch (e) {
       const error = e as Error
+      let message = `unknown paymaster error: ${error.message}`
       if (error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')) {
-        throw new Error(`non-existent or incompatible paymaster contract: ${req.relayRequest.relayData.paymaster}`)
+        message = `incompatible paymaster contract: ${req.relayRequest.relayData.paymaster}`
+      } else if (error.message.includes('no code at address')) {
+        message = `'non-existent paymaster contract: ${req.relayRequest.relayData.paymaster}`
       }
-      throw new Error(`unknown paymaster error: ${error.message}`)
+      throw new Error(message)
     }
-
-    if (parseInt(gasLimits.acceptanceBudget) > this.config.maxAcceptanceBudget) {
+    let acceptanceBudget = this.config.maxAcceptanceBudget
+    const paymasterAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
+    if (paymasterAcceptanceBudget > acceptanceBudget) {
       if (!this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
         throw new Error(
-          `paymaster acceptance budget too high. given: ${gasLimits.acceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
+          `paymaster acceptance budget too high. given: ${paymasterAcceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
       }
-      log.debug(`Using trusted paymaster's higher than max acceptance budget: ${gasLimits.acceptanceBudget}`)
+      log.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
+      acceptanceBudget = paymasterAcceptanceBudget
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
@@ -173,7 +174,7 @@ export class RelayServer extends EventEmitter {
     console.log(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
 
     return {
-      acceptanceBudget: parseInt(gasLimits.acceptanceBudget),
+      acceptanceBudget,
       maxPossibleGas
     }
   }

@@ -12,7 +12,6 @@ import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDet
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import PingResponse from '../../src/common/PingResponse'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
-import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { RelayMetadata, RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import { Address } from '../../src/relayclient/types/Aliases'
@@ -194,7 +193,7 @@ export interface PrepareRelayRequestOption {
 export async function prepareRelayRequest (
   params: RelayTransactionParams,
   options: PrepareRelayRequestOption
-): Promise<FromRequestParam> {
+): Promise<RelayTransactionRequest> {
   const pingResponse = {
     // Ready,
     // MinGasPrice: await _web3.eth.getGasPrice(),
@@ -224,29 +223,20 @@ export async function prepareRelayRequest (
     gasPrice: toHex(await web3.eth.getGasPrice()),
     to: options.to
   }
-  const { relayRequest, relayMaxNonce, approvalData, signature, httpRequest } = await params.relayClient._prepareRelayHttpRequest(relayInfo,
+  return await params.relayClient._prepareRelayHttpRequest(relayInfo,
     gsnTransactionDetails)
-  return { relayRequest, relayMaxNonce, approvalData, signature, httpRequest }
-}
-
-export interface FromRequestParam {
-  relayRequest: RelayRequest
-  relayMaxNonce: number
-  approvalData: PrefixedHexString
-  signature: PrefixedHexString
-  httpRequest: RelayTransactionRequest
 }
 
 // TODO: this is the worst piece of code in the history of code
 export async function relayTransactionFromRequest (
   params: RelayTransactionParams,
-  fromRequestParam: FromRequestParam,
+  fromRequestParam: RelayTransactionRequest,
   assertRelayed: boolean = true): Promise<PrefixedHexString> {
   const metadata: RelayMetadata = {
-    approvalData: fromRequestParam.approvalData,
-    relayMaxNonce: fromRequestParam.relayMaxNonce,
+    approvalData: fromRequestParam.metadata.approvalData,
+    relayMaxNonce: fromRequestParam.metadata.relayMaxNonce,
     relayHubAddress: params.relayHubAddress,
-    signature: fromRequestParam.signature
+    signature: fromRequestParam.metadata.signature
   }
   const signedTx = await params.relayServer.createRelayTransaction(
     {

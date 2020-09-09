@@ -161,9 +161,9 @@ export class RelayClient {
     if (this.config.verbose) {
       console.log(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
     }
-    const { relayRequest, approvalData, signature, httpRequest, maxAcceptanceBudget } =
-      await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
-    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(maxAcceptanceBudget, relayRequest, signature, approvalData)
+    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.MaxAcceptanceBudget)
+    const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
+    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(maxAcceptanceBudget, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {
@@ -199,7 +199,7 @@ export class RelayClient {
   async _prepareRelayHttpRequest (
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
-  ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, maxAcceptanceBudget: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: RelayTransactionRequest }> {
+  ): Promise<RelayTransactionRequest> {
     const forwarderAddress = await this.resolveForwarder(gsnTransactionDetails)
     const paymaster = gsnTransactionDetails.paymaster ?? this.config.paymasterAddress
 
@@ -261,16 +261,8 @@ export class RelayClient {
     if (this.config.verbose) {
       console.log(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
     }
-    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.MaxAcceptanceBudget)
 
-    return {
-      relayRequest,
-      relayMaxNonce,
-      maxAcceptanceBudget,
-      approvalData,
-      signature,
-      httpRequest
-    }
+    return httpRequest
   }
 
   async resolveForwarder (gsnTransactionDetails: GsnTransactionDetails): Promise<Address> {

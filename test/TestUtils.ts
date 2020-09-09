@@ -232,3 +232,8 @@ export async function deployHub (
     defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
     defaultEnvironment.relayHubConfiguration.minimumStake)
 }
+
+/**
+ * Not all "signatures" are valid, so using a hard-coded one for predictable error message.
+ */
+export const INCORRECT_ECDSA_SIGNATURE = '0xdeadface00000a58b757da7dea5678548be5ff9b16e9d1d87c6157aff6889c0f6a406289908add9ea6c3ef06d033a058de67d057e2c0ae5a02b36854be13b0731c'
