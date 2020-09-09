@@ -12,9 +12,9 @@ import {
   IStakeManagerInstance, TestPaymasterEverythingAcceptedInstance
 } from '../../types/truffle-contracts'
 import {
-  assertRelayAdded, assertTransactionRelayed,
+  assertRelayAdded,
   getTemporaryWorkdirs,
-  PrepareRelayRequestOption, ServerWorkdirs
+  ServerWorkdirs
 } from './ServerTestUtils'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
@@ -51,6 +51,14 @@ abiDecoder.addABI(TestRecipient.abi)
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 export const LocalhostOne = 'http://localhost:8090'
 
+export interface PrepareRelayRequestOption {
+  to: string
+  from: string
+  paymaster: string
+  pctRelayFee: number
+  baseRelayFee: string
+}
+
 export class ServerTestEnvironment {
   stakeManager!: IStakeManagerInstance
   relayHub!: IRelayHubInstance
@@ -68,6 +76,9 @@ export class ServerTestEnvironment {
 
   options?: PrepareRelayRequestOption
 
+  /**
+   * Note: do not call methods of contract interactor inside Test Environment. It may affect Profiling Test.
+   */
   contractInteractor!: ContractInteractor
 
   relayClient!: RelayClient
@@ -81,6 +92,11 @@ export class ServerTestEnvironment {
     this.relayOwner = accounts[4]
   }
 
+  /**
+   * @param clientConfig
+   * @param contractFactory - added for Profiling test, as it requires Test Environment to be using
+   * different provider from the contract interactor itself.
+   */
   async init (clientConfig: Partial<GSNConfig> = {}, contractFactory?: (clientConfig: Partial<GSNConfig>) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new()
     this.relayHub = await deployHub(this.stakeManager.address)
@@ -201,7 +217,7 @@ export class ServerTestEnvironment {
     const txHash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
 
     if (assertRelayed) {
-      await assertTransactionRelayed(this.relayServer, txHash, req.relayRequest.request.from, req.relayRequest.request.to, req.relayRequest.relayData.paymaster, this.web3)
+      await this.assertTransactionRelayed(txHash)
     }
     return signedTx
   }
