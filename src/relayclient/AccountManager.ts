@@ -62,14 +62,15 @@ export default class AccountManager {
       cloneRequest
     )
     const keypair = this.accounts.find(account => isSameAddress(account.address, relayRequest.request.from))
-    if (keypair != null) {
-      signature = this._signWithControlledKey(keypair, signedData)
-    } else {
-      signature = await this._signWithProvider(signedData)
-    }
-    // Sanity check only
     let rec: Address
+
     try {
+      if (keypair != null) {
+        signature = this._signWithControlledKey(keypair, signedData)
+      } else {
+        signature = await this._signWithProvider(signedData)
+      }
+      // Sanity check only
       // @ts-ignore
       rec = sigUtil.recoverTypedSignature_v4({
         data: signedData,

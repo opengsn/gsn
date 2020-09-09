@@ -60,7 +60,7 @@ contract('client-configuration', () => {
           }
 
           await expect(resolveConfigurationGSN(web3.currentProvider, { paymasterAddress }))
-            .to.eventually.rejectedWith(/Provided version.*is not supported/)
+            .to.eventually.rejectedWith(/Provided.*version.*is not supported/)
         } finally {
           ContractInteractor.prototype._createPaymaster = saveCPM
         }

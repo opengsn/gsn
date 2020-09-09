@@ -1,7 +1,7 @@
 import semver from 'semver'
 
 export default class VersionsManager {
-  private readonly componentVersion: string
+  readonly componentVersion: string
 
   /**
    * @param componentVersion - a semver of a component that uses the VersionsManager

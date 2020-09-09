@@ -155,7 +155,7 @@ export default class ContractInteractor {
   _validateVersion (version: string): void {
     const isNewer = this.versionManager.isMinorSameOrNewer(version)
     if (!isNewer) {
-      throw new Error(`Provided version(${version}) is not supported by the current interactor(${this.versionManager.componentVersion})`)
+      throw new Error(`Provided Hub version(${version}) is not supported by the current interactor(${this.versionManager.componentVersion})`)
     }
   }
 
