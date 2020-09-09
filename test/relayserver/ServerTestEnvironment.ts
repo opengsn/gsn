@@ -11,7 +11,7 @@ import {
 import {
   assertRelayAdded,
   getTemporaryWorkdirs,
-  PrepareRelayRequestOption
+  PrepareRelayRequestOption, ServerWorkdirs
 } from './ServerTestUtils'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
@@ -35,6 +35,8 @@ const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+
+export const LocalhostOne = 'http://localhost:8090'
 
 export class ServerTestEnvironment {
   stakeManager!: IStakeManagerInstance
@@ -67,7 +69,7 @@ export class ServerTestEnvironment {
     this.relayOwner = accounts[4]
   }
 
-  async init (clientConfig: Partial<GSNConfig>): Promise<void> {
+  async init (clientConfig: Partial<GSNConfig> = {}): Promise<void> {
     this.stakeManager = await StakeManager.new()
     this.relayHub = await deployHub(this.stakeManager.address)
     this.forwarder = await Forwarder.new()
@@ -96,8 +98,8 @@ export class ServerTestEnvironment {
     this.relayClient = new RelayClient(this.provider, configureGSN(mergedConfig))
   }
 
-  async newServerInstance (config: Partial<ServerConfigParams> = {}): Promise<void> {
-    await this.newServerInstanceNoInit(config)
+  async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): Promise<void> {
+    await this.newServerInstanceNoInit(config, serverWorkdirs)
     await this.relayServer.init()
     // initialize server - gas price, stake, owner, etc, whatever
     const latestBlock = await this.web3.eth.getBlock('latest')
@@ -105,10 +107,35 @@ export class ServerTestEnvironment {
     assertRelayAdded(receipts, this.relayServer) // sanity check
   }
 
-  async newServerInstanceNoInit (config: Partial<ServerConfigParams> = {}): Promise<void> {
-    const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
-    const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
-    const txStoreManager = new TxStoreManager({ workdir: getTemporaryWorkdirs().workdir })
+  _createKeyManager (workdir?: string): KeyManager {
+    if (workdir != null) {
+      return new KeyManager(1, workdir)
+    } else {
+      return new KeyManager(1, undefined, crypto.randomBytes(32).toString())
+    }
+  }
+
+  async newServerInstanceNoInit (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): Promise<void> {
+    this.newServerInstanceNoFunding(config, serverWorkdirs)
+    await web3.eth.sendTransaction({
+      to: this.relayServer.managerAddress,
+      from: this.relayOwner,
+      value: web3.utils.toWei('2', 'ether')
+    })
+
+    await this.stakeManager.stakeForAddress(this.relayServer.managerAddress, constants.weekInSec, {
+      from: this.relayOwner,
+      value: ether('1')
+    })
+    await this.stakeManager.authorizeHubByOwner(this.relayServer.managerAddress, this.relayHub.address, {
+      from: this.relayOwner
+    })
+  }
+
+  newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
+    const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
+    const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
+    const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir })
     const serverDependencies = {
       contractInteractor: this.contractInteractor,
       txStoreManager,
@@ -123,19 +150,6 @@ export class ServerTestEnvironment {
     this.relayServer = new RelayServer(mergedConfig, serverDependencies)
     this.relayServer.on('error', (e) => {
       console.log('newServer event', e.message)
-    })
-    await web3.eth.sendTransaction({
-      to: this.relayServer.managerAddress,
-      from: this.relayOwner,
-      value: web3.utils.toWei('2', 'ether')
-    })
-
-    await this.stakeManager.stakeForAddress(this.relayServer.managerAddress, constants.weekInSec, {
-      from: this.relayOwner,
-      value: ether('1')
-    })
-    await this.stakeManager.authorizeHubByOwner(this.relayServer.managerAddress, this.relayHub.address, {
-      from: this.relayOwner
     })
   }
 

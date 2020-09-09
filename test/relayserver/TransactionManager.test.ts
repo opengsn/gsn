@@ -8,7 +8,6 @@ import { RelayServer } from '../../src/relayserver/RelayServer'
 import {
   assertTransactionRelayed,
   bringUpNewRelay,
-  LocalhostOne,
   NewRelayParams,
   PrepareRelayRequestOption,
   relayTransaction,
@@ -21,6 +20,7 @@ import { RelayClient } from '../../src/relayclient/RelayClient'
 import { TestPaymasterEverythingAcceptedInstance } from '../../types/truffle-contracts'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { LocalhostOne } from './ServerTestEnvironment'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')

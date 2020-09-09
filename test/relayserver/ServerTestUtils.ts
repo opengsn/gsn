@@ -260,15 +260,13 @@ export async function clearStorage (txStoreManager: TxStoreManager): Promise<voi
   assert.deepEqual([], await txStoreManager.getAll())
 }
 
-export const LocalhostOne = 'http://localhost:8090'
-
-export interface ServerTestConstants {
+export interface ServerWorkdirs {
   workdir: string
   managerWorkdir: string
   workersWorkdir: string
 }
 
-export function getTemporaryWorkdirs (): ServerTestConstants {
+export function getTemporaryWorkdirs (): ServerWorkdirs {
   const workdir = '/tmp/gsn/test/relayserver/defunct' + Date.now().toString()
   const managerWorkdir = workdir + '/manager'
   const workersWorkdir = workdir + '/workers'

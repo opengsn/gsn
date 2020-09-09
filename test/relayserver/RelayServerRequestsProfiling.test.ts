@@ -1,7 +1,7 @@
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import {
   bringUpNewRelay,
-  LocalhostOne, NewRelayParams,
+  NewRelayParams,
   PrepareRelayRequestOption,
   relayTransaction,
   RelayTransactionParams
@@ -15,6 +15,7 @@ import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
+import { LocalhostOne } from './ServerTestEnvironment'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')

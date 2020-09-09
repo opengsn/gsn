@@ -18,8 +18,8 @@ import { sleep } from '../../src/common/Utils'
 
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from '../TestUtils'
 
-import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { assertRelayAdded, getTotalTxCosts, LocalhostOne } from './ServerTestUtils'
+import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
+import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
