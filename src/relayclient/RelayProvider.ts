@@ -9,7 +9,7 @@ import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Transaction } from 'ethereumjs-tx'
 import { AccountKeypair } from './AccountManager'
-import { GsnEvent } from './RelayClientEvent'
+import { GsnEvent } from './GsnEvents'
 
 abiDecoder.addABI(relayHubAbi)
 

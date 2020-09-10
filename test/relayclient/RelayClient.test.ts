@@ -28,6 +28,7 @@ import { deployHub, startRelay, stopRelay } from '../TestUtils'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
 import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
+import { GsnEvent } from '../../src/relayclient/GsnEvents'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -56,6 +57,7 @@ contract('RelayClient', function (accounts) {
   let to: Address
   let from: Address
   let data: PrefixedHexString
+  let gsnEvents: GsnEvent[] = []
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
@@ -192,6 +194,35 @@ contract('RelayClient', function (accounts) {
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
       assert.match(relayingErrors.values().next().value.message, /score-error/)
+    })
+
+    describe('with events listener', () => {
+      function eventsHandler (e: GsnEvent): void {
+        gsnEvents.push(e)
+      }
+
+      before('registerEventsListener', () => {
+        relayClient = new RelayClient(underlyingProvider, gsnConfig)
+        relayClient.registerEventListener(eventsHandler)
+      })
+      it('should call events handler', async function () {
+        await relayClient.relayTransaction(options)
+        console.log(gsnEvents)
+        assert.equal(gsnEvents.length, 8)
+        assert.equal(gsnEvents[0].step, 1)
+        assert.equal(gsnEvents[0].total, 8)
+        assert.equal(gsnEvents[7].step, 8)
+      })
+      describe('removing events listener', () => {
+        before('registerEventsListener', () => {
+          gsnEvents = []
+          relayClient.unregisterEventListener(eventsHandler)
+        })
+        it('should call events handler', async function () {
+          await relayClient.relayTransaction(options)
+          assert.equal(gsnEvents.length, 0)
+        })
+      })
     })
   })
 

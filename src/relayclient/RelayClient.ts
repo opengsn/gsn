@@ -16,13 +16,14 @@ import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSN
 import { RelayInfo } from './types/RelayInfo'
 import { decodeRevertReason } from '../common/Utils'
 import { EventEmitter } from 'events'
+
 import {
   GsnEvent,
   GsnInitEvent,
   GsnNextRelayEvent,
   GsnRefreshedRelaysEvent,
   GsnRefreshRelaysEvent, GsnRelayerResponseEvent, GsnSendToRelayerEvent, GsnSignRequestEvent, GsnValidateRequestEvent
-} from './RelayClientEvent'
+} from './GsnEvents'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -283,12 +284,10 @@ export class RelayClient {
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = paymasterData
     this.emit(new GsnSignRequestEvent())
-    const transactionCountPromise = this.contractInteractor.getTransactionCount(relayWorker)
-    const approvalDataPromise = this.asyncApprovalData(relayRequest)
     const signature = await this.accountManager.sign(relayRequest)
-    const approvalData = await approvalDataPromise
+    const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
-    const transactionCount = await transactionCountPromise
+    const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
