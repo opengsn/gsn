@@ -15,6 +15,14 @@ import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
 import { decodeRevertReason } from '../common/Utils'
+import { EventEmitter } from 'events'
+import {
+  GsnEvent,
+  GsnInitEvent,
+  GsnNextRelayEvent,
+  GsnRefreshedRelaysEvent,
+  GsnRefreshRelaysEvent, GsnRelayerResponseEvent, GsnSendToRelayerEvent, GsnSignRequestEvent, GsnValidateRequestEvent
+} from './RelayClientEvent'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -44,6 +52,7 @@ export interface RelayingResult {
 }
 
 export class RelayClient {
+  readonly emitter = new EventEmitter()
   readonly config: GSNConfig
   private readonly httpClient: HttpClient
   protected contractInteractor: ContractInteractor
@@ -79,6 +88,27 @@ export class RelayClient {
   }
 
   /**
+   * register a listener for GSN events
+   * @see GsnEvent and its subclasses for emitted events
+   * @param handler callback function to handle events
+   */
+  registerEventListener (handler: (event: GsnEvent) => void): void {
+    this.emitter.on('gsn', handler)
+  }
+
+  /**
+   * unregister previously registered event listener
+   * @param handler callback function to unregister
+   */
+  unregisterEventListener (handler: (event: GsnEvent) => void): void {
+    this.emitter.off('gsn', handler)
+  }
+
+  private emit (event: GsnEvent): void {
+    this.emitter.emit('gsn', event)
+  }
+
+  /**
    * In case Relay Server does not broadcast the signed transaction to the network,
    * client also broadcasts the same transaction. If the transaction fails with nonce
    * error, it indicates Relay may have signed multiple transactions with same nonce,
@@ -108,16 +138,18 @@ export class RelayClient {
   }
 
   async _init (): Promise<void> {
+    if (this.initialized) { return }
+    this.emit(new GsnInitEvent())
     await this.contractInteractor.init()
     this.initialized = true
   }
 
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
-    if (!this.initialized) {
-      await this._init()
-    }
+    await this._init()
     // TODO: should have a better strategy to decide how often to refresh known relays
+    this.emit(new GsnRefreshRelaysEvent())
     await this.knownRelaysManager.refresh()
+    this.emit(new GsnRefreshedRelaysEvent((await this.knownRelaysManager.getRelaysSortedForTransaction({} as any)).length))
     gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
     if (gsnTransactionDetails.gas == null) {
       const estimated = await this.contractInteractor.estimateGas(gsnTransactionDetails)
@@ -129,6 +161,7 @@ export class RelayClient {
       let relayingAttempt: RelayingAttempt | undefined
       const activeRelay = await relaySelectionManager.selectNextRelay(gsnTransactionDetails)
       if (activeRelay != null) {
+        this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
           .catch(error => ({ error }))
         if (relayingAttempt.transaction == null) {
@@ -163,6 +196,8 @@ export class RelayClient {
     }
     const { relayRequest, approvalData, signature, httpRequest, maxAcceptanceBudget } =
       await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
+
+    this.emit(new GsnValidateRequestEvent())
     const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(maxAcceptanceBudget, relayRequest, signature, approvalData)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
@@ -174,6 +209,7 @@ export class RelayClient {
       return { error: new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`) }
     }
     let hexTransaction: PrefixedHexString
+    this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
       hexTransaction = await this.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
     } catch (error) {
@@ -187,9 +223,12 @@ export class RelayClient {
     }
     const transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())
     if (!this.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
+      this.emit(new GsnRelayerResponseEvent(false))
       this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return { error: new Error('Returned transaction did not pass validation') }
     }
+    this.emit(new GsnRelayerResponseEvent(true))
+
     await this._broadcastRawTx(transaction)
     return {
       transaction
@@ -243,10 +282,13 @@ export class RelayClient {
 
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = paymasterData
+    this.emit(new GsnSignRequestEvent())
+    const transactionCountPromise = this.contractInteractor.getTransactionCount(relayWorker)
+    const approvalDataPromise = this.asyncApprovalData(relayRequest)
     const signature = await this.accountManager.sign(relayRequest)
-    const approvalData = await this.asyncApprovalData(relayRequest)
+    const approvalData = await approvalDataPromise
     // max nonce is not signed, as contracts cannot access addresses' nonces.
-    const transactionCount = await this.contractInteractor.getTransactionCount(relayWorker)
+    const transactionCount = await transactionCountPromise
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
