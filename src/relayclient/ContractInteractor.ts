@@ -36,6 +36,8 @@ import { toBN } from 'web3-utils'
 import TruffleContract = require('@truffle/contract')
 import Contract = Truffle.Contract
 
+require('source-map-support').install({ errorFormatterForce: true })
+
 type EventName = string
 
 export const RelayServerRegistered: EventName = 'RelayServerRegistered'
@@ -52,7 +54,7 @@ export const StakeUnlocked: EventName = 'StakeUnlocked'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export default class ContractInteractor {
-  private readonly VERSION = '2.0.0-beta.1'
+  private readonly VERSION = '2.0.0-beta.2'
 
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
@@ -130,7 +132,7 @@ export default class ContractInteractor {
       throw new Error('_init was already called')
     }
     await this._initializeContracts()
-    await this._validateCompatibility()
+    await this._validateCompatibility().catch(err => console.log('WARNING: beta ignore version compatibility', err))
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.getAsyncChainId()
     this.networkId = await this.web3.eth.net.getId()
