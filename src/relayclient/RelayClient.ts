@@ -3,7 +3,7 @@ import { HttpProvider } from 'web3-core'
 import { constants } from '../common/Constants'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
-import RelayTransactionRequest from './types/RelayTransactionRequest'
+import { RelayMetadata, RelayTransactionRequest } from './types/RelayTransactionRequest'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
@@ -20,7 +20,7 @@ import { decodeRevertReason } from '../common/Utils'
 // both are bytes arrays. paymasterData is part of the client request.
 // approvalData is created after request is filled and signed.
 export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHexString> => {
-  return await Promise.resolve('0x')
+  return '0x'
 }
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
@@ -177,9 +177,9 @@ export class RelayClient {
     if (this.config.verbose) {
       console.log(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
     }
-    const { relayRequest, approvalData, signature, httpRequest, maxAcceptanceBudget } =
-      await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
-    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(maxAcceptanceBudget, relayRequest, signature, approvalData)
+    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.MaxAcceptanceBudget)
+    const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
+    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(maxAcceptanceBudget, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {
@@ -215,7 +215,7 @@ export class RelayClient {
   async _prepareRelayHttpRequest (
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
-  ): Promise<{ relayRequest: RelayRequest, relayMaxNonce: number, maxAcceptanceBudget: number, approvalData: PrefixedHexString, signature: PrefixedHexString, httpRequest: RelayTransactionRequest }> {
+  ): Promise<RelayTransactionRequest> {
     const forwarderAddress = await this.resolveForwarder(gsnTransactionDetails)
     const paymaster = gsnTransactionDetails.paymaster ?? this.config.paymasterAddress
 
@@ -255,10 +255,8 @@ export class RelayClient {
         relayWorker
       }
     }
-    const paymasterData = await this.asyncPaymasterData(relayRequest)
-
     // put paymasterData into struct before signing
-    relayRequest.relayData.paymasterData = paymasterData
+    relayRequest.relayData.paymasterData = await this.asyncPaymasterData(relayRequest)
     const signature = await this.accountManager.sign(relayRequest)
     const approvalData = await this.asyncApprovalData(relayRequest)
     // max nonce is not signed, as contracts cannot access addresses' nonces.
@@ -266,39 +264,21 @@ export class RelayClient {
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
-    const httpRequest: RelayTransactionRequest = {
-      relayWorker: relayInfo.pingResponse.RelayServerAddress,
-      data: gsnTransactionDetails.data,
-      senderNonce: relayRequest.request.nonce,
-      from: gsnTransactionDetails.from,
-      to: gsnTransactionDetails.to,
-      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
-      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
-      value,
-      gasPrice,
-      gasLimit,
-      paymaster: paymaster,
-      paymasterData,
-      clientId: this.config.clientId,
-      forwarder: forwarderAddress,
+    const metadata: RelayMetadata = {
+      relayHubAddress: this.config.relayHubAddress,
       signature,
       approvalData,
-      relayHubAddress: this.config.relayHubAddress,
       relayMaxNonce
+    }
+    const httpRequest: RelayTransactionRequest = {
+      relayRequest,
+      metadata
     }
     if (this.config.verbose) {
       console.log(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
     }
-    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.MaxAcceptanceBudget)
 
-    return {
-      relayRequest,
-      relayMaxNonce,
-      maxAcceptanceBudget,
-      approvalData,
-      signature,
-      httpRequest
-    }
+    return httpRequest
   }
 
   async resolveForwarder (gsnTransactionDetails: GsnTransactionDetails): Promise<Address> {

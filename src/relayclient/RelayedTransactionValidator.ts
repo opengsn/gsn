@@ -1,9 +1,8 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
-import RelayRequest from '../common/EIP712/RelayRequest'
 import { isSameAddress } from '../common/Utils'
 import ContractInteractor from './ContractInteractor'
-import RelayTransactionRequest from './types/RelayTransactionRequest'
+import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
 
 export default class RelayedTransactionValidator {
@@ -22,7 +21,7 @@ export default class RelayedTransactionValidator {
    * transaction is not valid.
    */
   validateRelayResponse (
-    transactionJsonRequest: RelayTransactionRequest,
+    request: RelayTransactionRequest,
     maxAcceptanceBudget: number,
     returnedTx: PrefixedHexString
   ): boolean {
@@ -34,33 +33,13 @@ export default class RelayedTransactionValidator {
 
     const signer = bufferToHex(transaction.getSenderAddress())
 
-    const relayRequestOrig: RelayRequest = {
-      request: {
-        to: transactionJsonRequest.to,
-        data: transactionJsonRequest.data,
-        gas: transactionJsonRequest.gasLimit,
-        from: transactionJsonRequest.from,
-        nonce: transactionJsonRequest.senderNonce,
-        value: transactionJsonRequest.value
-      },
-      relayData: {
-        gasPrice: transactionJsonRequest.gasPrice,
-        baseRelayFee: transactionJsonRequest.baseRelayFee,
-        pctRelayFee: transactionJsonRequest.pctRelayFee,
-        relayWorker: transactionJsonRequest.relayWorker,
-        forwarder: transactionJsonRequest.forwarder,
-        paymaster: transactionJsonRequest.paymaster,
-        paymasterData: transactionJsonRequest.paymasterData,
-        clientId: transactionJsonRequest.clientId
-      }
-    }
     const externalGasLimit = bufferToHex(transaction.gasLimit)
-    const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, relayRequestOrig, transactionJsonRequest.signature, transactionJsonRequest.approvalData, externalGasLimit)
+    const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
 
     if (
       isSameAddress(bufferToHex(transaction.to), this.config.relayHubAddress) &&
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
-      isSameAddress(transactionJsonRequest.relayWorker, signer)
+      isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
       if (this.config.verbose) {
         console.log('validateRelayResponse - valid transaction response')
@@ -68,17 +47,17 @@ export default class RelayedTransactionValidator {
 
       // TODO: the relayServer encoder returns zero-length buffer for nonce=0.`
       const receivedNonce = transaction.nonce.length === 0 ? 0 : transaction.nonce.readUIntBE(0, transaction.nonce.byteLength)
-      if (receivedNonce > transactionJsonRequest.relayMaxNonce) {
+      if (receivedNonce > request.metadata.relayMaxNonce) {
         // TODO: need to validate that client retries the same request and doesn't double-spend.
         // Note that this transaction is totally valid from the EVM's point of view
 
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        throw new Error(`Relay used a tx nonce higher than requested. Requested ${transactionJsonRequest.relayMaxNonce} got ${receivedNonce}`)
+        throw new Error(`Relay used a tx nonce higher than requested. Requested ${request.metadata.relayMaxNonce} got ${receivedNonce}`)
       }
 
       return true
     } else {
-      console.error('validateRelayResponse: req', relayRequestAbiEncode, this.config.relayHubAddress, transactionJsonRequest.relayWorker)
+      console.error('validateRelayResponse: req', relayRequestAbiEncode, this.config.relayHubAddress, request.relayRequest.relayData.relayWorker)
       console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to), signer)
       return false
     }
