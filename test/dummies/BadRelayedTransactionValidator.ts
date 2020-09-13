@@ -1,7 +1,7 @@
 import RelayedTransactionValidator from '../../src/relayclient/RelayedTransactionValidator'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import RelayTransactionRequest from '../../src/relayclient/types/RelayTransactionRequest'
+import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 
 export default class BadRelayedTransactionValidator extends RelayedTransactionValidator {
   private readonly failValidation: boolean

@@ -207,7 +207,6 @@ contract('RelayClient', function (accounts) {
       })
       it('should call events handler', async function () {
         await relayClient.relayTransaction(options)
-        console.log(gsnEvents)
         assert.equal(gsnEvents.length, 8)
         assert.equal(gsnEvents[0].step, 1)
         assert.equal(gsnEvents[0].total, 8)
@@ -351,9 +350,9 @@ contract('RelayClient', function (accounts) {
             asyncApprovalData,
             asyncPaymasterData
           })
-        const { httpRequest } = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
-        assert.equal(httpRequest.approvalData, '0x1234567890')
-        assert.equal(httpRequest.paymasterData, '0xabcd')
+        const httpRequest = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
+        assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
+        assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
       })
     })
   })

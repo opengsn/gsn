@@ -1,8 +1,5 @@
 /* global artifacts describe */
 // @ts-ignore
-import abiDecoder from 'abi-decoder'
-import Web3 from 'web3'
-import crypto from 'crypto'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import chai from 'chai'
@@ -10,193 +7,62 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 
+import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { RelayServer } from '../../src/relayserver/RelayServer'
-import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
-import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
-import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
-import { defaultEnvironment } from '../../src/common/Environments'
-import {
-  ForwarderInstance,
-  PenalizerInstance,
-  RelayHubInstance,
-  StakeManagerInstance,
-  TestPaymasterConfigurableMisbehaviorInstance,
-  TestPaymasterEverythingAcceptedInstance
-} from '../../types/truffle-contracts'
-import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
-
-import { deployHub, evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
-import {
-  NewRelayParams,
-  PrepareRelayRequestOption,
-  RelayTransactionParams,
-  bringUpNewRelay,
-  clearStorage,
-  getTotalTxCosts,
-  prepareRelayRequest,
-  relayTransaction,
-  relayTransactionFromRequest, LocalhostOne, getTemporaryWorkdirs, assertRelayAdded
-} from './ServerTestUtils'
-import { RelayClient } from '../../src/relayclient/RelayClient'
+import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import { SendTransactionDetails, SignedTransactionDetails } from '../../src/relayserver/TransactionManager'
+import { ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
+import { TestPaymasterConfigurableMisbehaviorInstance } from '../../types/truffle-contracts'
+import { defaultEnvironment } from '../../src/common/Environments'
 import { sleep } from '../../src/common/Utils'
-import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { KeyManager } from '../../src/relayserver/KeyManager'
+
+import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from '../TestUtils'
+
+import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
+import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
-const TestRecipient = artifacts.require('TestRecipient')
-const Forwarder = artifacts.require('Forwarder')
-const StakeManager = artifacts.require('StakeManager')
-const Penalizer = artifacts.require('Penalizer')
-const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-abiDecoder.addABI(RelayHubABI)
-abiDecoder.addABI(StakeManagerABI)
-abiDecoder.addABI(PayMasterABI)
-// @ts-ignore
-abiDecoder.addABI(TestRecipient.abi)
-// @ts-ignore
-abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
-
 contract('RelayServer', function (accounts) {
-  const relayOwner = accounts[4]
-  const pctRelayFee = 11
+  const alertedBlockDelay = 0
   const baseRelayFee = '12'
-  const workerIndex = 0
-  const paymasterData = '0x'
-  const clientId = '0'
 
-  let relayTransactionParams: RelayTransactionParams
-  let rhub: RelayHubInstance
-  let forwarder: ForwarderInstance
-  let stakeManager: StakeManagerInstance
-  let penalizer: PenalizerInstance
-  let paymaster: TestPaymasterEverythingAcceptedInstance
-  let relayServer: RelayServer
-  let ethereumNodeUrl: string
-  let _web3: Web3
   let id: string
   let globalId: string
-  let options: PrepareRelayRequestOption
-  let newRelayParams: NewRelayParams
-  let partialConfig: Partial<GSNConfig>
+  let env: ServerTestEnvironment
 
   before(async function () {
     globalId = (await snapshot()).result
-    ethereumNodeUrl = (web3.currentProvider as HttpProvider).host
-    _web3 = new Web3(new Web3.providers.HttpProvider(ethereumNodeUrl))
-
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
-    rhub = await deployHub(stakeManager.address, penalizer.address)
-    forwarder = await Forwarder.new()
-    const forwarderAddress = forwarder.address
-    const sr = await TestRecipient.new(forwarderAddress)
-    paymaster = await TestPaymasterEverythingAccepted.new()
-    // register hub's RelayRequest with forwarder, if not already done.
-    await forwarder.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
-
-    await paymaster.setTrustedForwarder(forwarderAddress)
-    await paymaster.setRelayHub(rhub.address)
-    await paymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
-    const gasLess = await _web3.eth.personal.newAccount('password')
-
-    newRelayParams = {
-      ethereumNodeUrl,
-      relayHubAddress: rhub.address,
-      relayOwner,
-      url: LocalhostOne,
-      web3,
-      stakeManager
-    }
-    partialConfig = {
-      relayHubAddress: rhub.address
-    }
-    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
-      trustedPaymasters: [paymaster.address],
-      alertedBlockDelay: 0,
-      baseRelayFee
-    })
-    // initialize server - gas price, stake, owner, etc, whatever
-    const latestBlock = await _web3.eth.getBlock('latest')
-    await relayServer._worker(latestBlock.number)
-
-    // TODO: why is this assert here?
-    assert.deepEqual(relayServer.config.trustedPaymasters, [paymaster.address], 'trusted paymaster not initialized correctly')
-    relayServer.on('error', (e) => {
-      console.log('error event', e.message)
-    })
-    console.log('Relay Manager=', relayServer.managerAddress, 'Worker=', relayServer.workerAddress)
-
-    const encodedFunction = sr.contract.methods.emitMessage('hello world').encodeABI()
-    const relayClientConfig = {
+    const relayClientConfig: Partial<GSNConfig> = {
       preferredRelays: [LocalhostOne],
       maxRelayNonceGap: 0,
       verbose: process.env.DEBUG != null
     }
-
-    const config = configureGSN(relayClientConfig)
-    const relayClient = new RelayClient(new Web3.providers.HttpProvider(ethereumNodeUrl), config)
-
-    options = {
-      from: gasLess,
-      to: sr.address,
-      pctRelayFee,
-      baseRelayFee,
-      paymaster: paymaster.address
+    env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
+    await env.init(relayClientConfig)
+    const overrideParams: Partial<ServerConfigParams> = {
+      alertedBlockDelay,
+      baseRelayFee
     }
-    relayTransactionParams = {
-      gasLess,
-      relayHubAddress: rhub.address,
-      recipientAddress: sr.address,
-      encodedFunction,
-      paymasterData,
-      clientId,
-      forwarderAddress,
-      paymasterAddress: paymaster.address,
-      web3: _web3,
-      relayServer,
-      relayClient
-    }
-    await clearStorage(relayServer.transactionManager.txStoreManager)
+    await env.newServerInstance(overrideParams)
+    await env.clearServerStorage()
   })
 
   after(async function () {
     await revert(globalId)
-  })
-
-  before(async function () {
-    await clearStorage(relayServer.transactionManager.txStoreManager)
-  })
-
-  after(async function () {
-    await clearStorage(relayServer.transactionManager.txStoreManager)
+    await env.clearServerStorage()
   })
 
   describe('#init()', function () {
     it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
-      const managerKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
-      const workersKeyManager = new KeyManager(1, undefined, crypto.randomBytes(32).toString())
-      const txStoreManager = new TxStoreManager({ workdir: getTemporaryWorkdirs().workdir })
-      const serverWeb3provider = new Web3.providers.HttpProvider(newRelayParams.ethereumNodeUrl!)
-      const contractInteractor = new ContractInteractor(serverWeb3provider, configureGSN(partialConfig))
-      await contractInteractor.init()
-      const serverDependencies = {
-        txStoreManager,
-        managerKeyManager,
-        workersKeyManager,
-        contractInteractor
-      }
-      const relayServerToInit = new RelayServer(relayServer.config, serverDependencies)
-      const chainId = await _web3.eth.getChainId()
-      const networkId = await _web3.eth.net.getId()
+      const env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
+      await env.init({})
+      await env.newServerInstanceNoInit()
+      const relayServerToInit = env.relayServer
+      const chainId = await env.web3.eth.getChainId()
+      const networkId = await env.web3.eth.net.getId()
       assert.notEqual(relayServerToInit.chainId, chainId)
       assert.notEqual(relayServerToInit.networkId, networkId)
       assert.equal(relayServerToInit.ready, false)
@@ -210,205 +76,230 @@ contract('RelayServer', function (accounts) {
   describe.skip('#_worker()', function () {
   })
 
-  // TODO: most of this tests have literally nothing to do with Relay Server and actually double-check the client code.
-  describe('relay transaction flows', function () {
-    it('should relay transaction', async function () {
-      await relayTransaction(relayTransactionParams, options)
-    })
-
-    // skipped because error message changed here for no apparent reason
-    it.skip('should fail to relay with undefined data', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { data: undefined })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
-      }
-    })
-
-    // skipped because error message changed here for no apparent reason
-    it.skip('should fail to relay with undefined approvalData', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { approvalData: undefined })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
-      }
-    })
-
-    // skipped because error message changed here for no apparent reason
-    it.skip('should fail to relay with undefined signature', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { signature: undefined })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
-      }
-    })
-
-    it('should fail to relay with wrong signature', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options,
-          { signature: '0xdeadface00000a58b757da7dea5678548be5ff9b16e9d1d87c6157aff6889c0f6a406289908add9ea6c3ef06d033a058de67d057e2c0ae5a02b36854be13b0731c' })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Paymaster rejected in server: signature mismatch')
-      }
-    })
-
-    // this test does not check what it declares to. nonce mismatch is accidental.
-    it.skip('should fail to relay with wrong from', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { from: accounts[1] })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
-      }
-    })
-
-    it('should fail to relay with wrong relay worker', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { relayWorker: accounts[1] })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, `Wrong worker address: ${accounts[1]}`)
-      }
-    })
-
-    it('should fail to relay with wrong recipient', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { to: accounts[1] })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Paymaster rejected in server: isTrustedForwarder returned invalid response')
-      }
-    })
-
-    it('should fail to relay with invalid paymaster', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { paymaster: accounts[1] })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, `non-existent or incompatible paymaster contract: ${accounts[1]}`)
-      }
-    })
-
-    it('should fail to relay when paymaster\'s balance too low', async function () {
-      id = (await snapshot()).result
-      try {
-        await paymaster.withdrawAll(accounts[0])
-        await relayTransaction(relayTransactionParams, options)
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Paymaster balance too low')
-      } finally {
-        await revert(id)
-      }
-    })
-
-    it('should fail to relay with uninitialized gasPrice', async function () {
-      const gasPrice = relayServer.gasPrice
-      delete relayServer.gasPrice
-      try {
-        await relayTransaction(relayTransactionParams, options)
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'gasPrice not initialized')
-      } finally {
-        relayServer.gasPrice = gasPrice
-      }
-    })
-
-    it('should fail to relay with unacceptable gasPrice', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { gasPrice: 1e2.toString() })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message,
-          `Unacceptable gasPrice: relayServer's gasPrice:${relayServer.gasPrice} request's gasPrice: 100`)
-      }
-    })
-
-    it('should fail to relay with wrong senderNonce', async function () {
-      // @ts-ignore
-      const contractInteractor = relayServer.contractInteractor
-      const saveGetSenderNonce = contractInteractor.getSenderNonce
-      try {
-        contractInteractor.getSenderNonce = async () => await Promise.resolve('1234')
-        const fromRequestParam = await prepareRelayRequest(relayTransactionParams, options)
-        await relayTransactionFromRequest(relayTransactionParams, fromRequestParam)
+  describe('validation', function () {
+    describe('#validateInputTypes()', function () {
+      // skipped because error message changed here for no apparent reason
+      it.skip('should throw on undefined data', async function () {
+        const req = await env.createRelayHttpRequest()
+        // @ts-ignore
+        req.relayRequest.request.data = undefined
         try {
-          await relayTransactionFromRequest(relayTransactionParams,
-            Object.assign({}, fromRequestParam, { relayMaxNonce: fromRequestParam.relayMaxNonce + 1 }))
+          env.relayServer.validateInputTypes(req)
           assert.fail()
         } catch (e) {
-          assert.include(e.message, 'Paymaster rejected in server: nonce mismatch')
+          assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
         }
-      } finally {
-        contractInteractor.getSenderNonce = saveGetSenderNonce
-      }
+      })
     })
 
-    it('should fail to relay with wrong relayMaxNonce', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { relayMaxNonce: 0 })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Unacceptable relayMaxNonce:')
-      }
+    describe('#validateInput()', function () {
+      it('should fail to relay with wrong relay worker', async function () {
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.relayWorker = accounts[1]
+        try {
+          env.relayServer.validateInput(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, `Wrong worker address: ${accounts[1]}`)
+        }
+      })
+
+      it('should fail to relay with unacceptable gasPrice', async function () {
+        const wrongGasPrice = '100'
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.gasPrice = wrongGasPrice
+        try {
+          env.relayServer.validateInput(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            `Unacceptable gasPrice: relayServer's gasPrice:${env.relayServer.gasPrice} request's gasPrice: ${wrongGasPrice}`)
+        }
+      })
+
+      it('should fail to relay with wrong hub address', async function () {
+        const wrongHubAddress = '0xdeadface'
+        const req = await env.createRelayHttpRequest()
+        req.metadata.relayHubAddress = wrongHubAddress
+        try {
+          env.relayServer.validateInput(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            `Wrong hub address.\nRelay server's hub address: ${env.relayServer.config.relayHubAddress}, request's hub address: ${wrongHubAddress}\n`)
+        }
+      })
     })
 
-    it('should fail to relay with wrong baseRelayFee', async function () {
-      const trustedPaymaster = relayServer.config.trustedPaymasters.pop()
-      try {
-        await relayTransaction(relayTransactionParams, options,
-          { baseRelayFee: (parseInt(relayServer.config.baseRelayFee) - 1).toString() })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Unacceptable baseRelayFee:')
-      } finally {
-        relayServer.config.trustedPaymasters.push(trustedPaymaster!)
-      }
+    describe('#validateFees()', function () {
+      describe('with trusted forwarder', function () {
+        before(function () {
+          env.relayServer.config.trustedPaymasters.push(env.paymaster.address)
+        })
+
+        after(function () {
+          env.relayServer.config.trustedPaymasters.pop()
+        })
+
+        it('should bypass fee checks and not throw if given trusted paymasters', async function () {
+          const req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
+          env.relayServer.validateFees(req)
+        })
+      })
+
+      describe('without trusted forwarder', function () {
+        it('should fail to relay with wrong baseRelayFee', async function () {
+          const req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
+          try {
+            env.relayServer.validateFees(req)
+            assert.fail()
+          } catch (e) {
+            assert.include(e.message, 'Unacceptable baseRelayFee:')
+          }
+        })
+
+        it('should fail to relay with wrong pctRelayFee', async function () {
+          const wrongPctRelayFee = (env.relayServer.config.pctRelayFee - 1).toString()
+          const req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.pctRelayFee = wrongPctRelayFee
+          try {
+            env.relayServer.validateFees(req)
+            assert.fail()
+          } catch (e) {
+            assert.include(e.message, 'Unacceptable pctRelayFee:')
+          }
+        })
+      })
+
+      describe('#validateMaxNonce()', function () {
+        before(async function () {
+          // this is a new worker account - create transaction
+          const signer = env.relayServer.workerAddress
+          await env.relayServer.transactionManager.sendTransaction({
+            signer,
+            gasLimit: '21000',
+            destination: accounts[0],
+            creationBlockNumber: 0
+          })
+        })
+
+        it('should not throw with relayMaxNonce above current nonce', async function () {
+          await env.relayServer.validateMaxNonce(1000)
+        })
+
+        it('should throw exception with relayMaxNonce below current nonce', async function () {
+          try {
+            await env.relayServer.validateMaxNonce(0)
+            assert.fail()
+          } catch (e) {
+            assert.include(e.message, 'Unacceptable relayMaxNonce:')
+          }
+        })
+      })
     })
 
-    it('should fail to relay with wrong pctRelayFee', async function () {
-      const trustedPaymaster = relayServer.config.trustedPaymasters.pop()
-      try {
-        await relayTransaction(relayTransactionParams, options, { pctRelayFee: (relayServer.config.pctRelayFee - 1).toString() })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'Unacceptable pctRelayFee:')
-      } finally {
-        relayServer.config.trustedPaymasters.push(trustedPaymaster!)
-      }
+    describe('#validatePaymasterGasLimits()', function () {
+      it('should fail to relay with invalid paymaster', async function () {
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.paymaster = accounts[1]
+        try {
+          await env.relayServer.validatePaymasterGasLimits(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, `non-existent paymaster contract: ${accounts[1]}`)
+        }
+      })
+
+      it('should fail to relay when paymaster\'s balance too low', async function () {
+        id = (await snapshot()).result
+        const req = await env.createRelayHttpRequest()
+        try {
+          await env.paymaster.withdrawAll(accounts[0])
+          await env.relayServer.validatePaymasterGasLimits(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, 'paymaster balance too low')
+        } finally {
+          await revert(id)
+        }
+      })
+
+      describe('relay max exposure to paymaster rejections', function () {
+        const paymasterExpectedAcceptanceBudget = 150000
+        let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
+        let req: RelayTransactionRequest
+
+        before(async function () {
+          rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+          await rejectingPaymaster.setTrustedForwarder(env.forwarder.address)
+          await rejectingPaymaster.setRelayHub(env.relayHub.address)
+          await rejectingPaymaster.deposit({ value: env.web3.utils.toWei('1', 'ether') })
+          req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.paymaster = rejectingPaymaster.address
+        })
+
+        it('should reject a transaction from paymaster returning above configured max exposure', async function () {
+          await rejectingPaymaster.setGreedyAcceptanceBudget(true)
+          try {
+            await env.relayServer.validatePaymasterGasLimits(req)
+            assert.fail()
+          } catch (e) {
+            assert.include(e.message, 'paymaster acceptance budget too high')
+          }
+        })
+
+        it('should accept a transaction from paymaster returning below configured max exposure', async function () {
+          await rejectingPaymaster.setGreedyAcceptanceBudget(false)
+          const gasLimits = await rejectingPaymaster.getGasLimits()
+          assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
+          await env.relayServer.validatePaymasterGasLimits(req)
+        })
+
+        it('should accept a transaction from trusted paymaster returning above configured max exposure', async function () {
+          await rejectingPaymaster.setGreedyAcceptanceBudget(true)
+          const req = await env.createRelayHttpRequest()
+          env.relayServer.config.trustedPaymasters.push(rejectingPaymaster.address)
+          const gasLimits = await rejectingPaymaster.getGasLimits()
+          assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
+          await env.relayServer.validatePaymasterGasLimits(req)
+        })
+      })
     })
 
-    it('should  bypass fee checks if given trusted paymasters', async function () {
-      const overriddenOptions = {
-        baseRelayFee: (parseInt(relayServer.config.baseRelayFee) - 1).toString(),
-        ...options
-      }
-      await relayTransaction(relayTransactionParams, overriddenOptions)
+    describe('#validateViewCallSucceeds()', function () {
+      it('should fail to relay rejected transaction', async function () {
+        const req = await env.createRelayHttpRequest()
+        req.metadata.signature = INCORRECT_ECDSA_SIGNATURE
+        try {
+          await env.relayServer.validateViewCallSucceeds(req, 150000, 2000000)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, 'Paymaster rejected in server: signature mismatch')
+        }
+      })
     })
+  })
 
-    it('should fail to relay with wrong hub address', async function () {
-      try {
-        await relayTransaction(relayTransactionParams, options, { relayHubAddress: '0xdeadface' })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message,
-          `Wrong hub address.\nRelay server's hub address: ${relayServer.config.relayHubAddress}, request's hub address: 0xdeadface\n`)
-      }
+  describe('#createRelayTransaction()', function () {
+    it('should relay transaction', async function () {
+      const req = await env.createRelayHttpRequest()
+      await env.relayServer.createRelayTransaction(req)
+      // TODO: add asserts here!!!
     })
   })
 
   describe('relay workers/manager rebalancing', function () {
+    let relayServer: RelayServer
+    const workerIndex = 0
     const gasPrice = 1e9.toString()
     let beforeDescribeId: string
-    const txcost = toBN(defaultEnvironment.mintxgascost * parseInt(gasPrice))
+    const txCost = toBN(defaultEnvironment.mintxgascost * parseInt(gasPrice))
 
     // TODO: not needed, worker is not funded at this point!
     before('deplete worker balance', async function () {
+      relayServer = env.relayServer
       beforeDescribeId = (await snapshot()).result
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.workerAddress,
@@ -416,7 +307,7 @@ contract('RelayServer', function (accounts) {
         gasLimit: defaultEnvironment.mintxgascost.toString(),
         gasPrice: gasPrice,
         creationBlockNumber: 0,
-        value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txcost))
+        value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txCost))
       })
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.lt(toBN(relayServer.config.workerMinBalance)),
@@ -438,33 +329,33 @@ contract('RelayServer', function (accounts) {
     })
 
     it('should not replenish when all balances are sufficient', async function () {
-      await _web3.eth.sendTransaction({
+      await env.web3.eth.sendTransaction({
         from: accounts[0],
         to: relayServer.managerAddress,
         value: relayServer.config.managerTargetBalance
       })
-      await _web3.eth.sendTransaction(
+      await env.web3.eth.sendTransaction(
         { from: accounts[0], to: relayServer.workerAddress, value: relayServer.config.workerTargetBalance })
-      const currentBlockNumber = await _web3.eth.getBlockNumber()
+      const currentBlockNumber = await env.web3.eth.getBlockNumber()
       const receipts = await relayServer.replenishServer(workerIndex, 0)
       assert.deepEqual(receipts, [])
-      assert.equal(currentBlockNumber, await _web3.eth.getBlockNumber())
+      assert.equal(currentBlockNumber, await env.web3.eth.getBlockNumber())
     })
 
     it('should withdraw hub balance to manager first, then use eth balance to fund workers', async function () {
-      await rhub.depositFor(relayServer.managerAddress, { value: 1e18.toString() })
+      await env.relayHub.depositFor(relayServer.managerAddress, { value: 1e18.toString() })
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
         creationBlockNumber: 0,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),
         gasPrice: gasPrice,
-        value: toHex((await relayServer.getManagerBalance()).sub(txcost))
+        value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
       assert.equal((await relayServer.getManagerBalance()).toString(), '0')
-      await _web3.eth.sendTransaction(
+      await env.web3.eth.sendTransaction(
         { from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e7 })
-      const managerHubBalanceBefore = await rhub.balanceOf(relayServer.managerAddress)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalanceBefore = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
       const refill = toBN(relayServer.config.workerTargetBalance.toString()).sub(workerBalanceBefore)
@@ -472,8 +363,8 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(managerEthBalanceBefore.lt(toBN(relayServer.config.managerTargetBalance.toString())),
         'manager eth balance should be lower than target to withdraw hub balance')
       const receipts = await relayServer.replenishServer(workerIndex, 0)
-      const totalTxCosts = getTotalTxCosts(receipts, await _web3.eth.getGasPrice())
-      const managerHubBalanceAfter = await rhub.balanceOf(relayServer.managerAddress)
+      const totalTxCosts = getTotalTxCosts(receipts, await env.web3.eth.getGasPrice())
+      const managerHubBalanceAfter = await env.relayHub.balanceOf(relayServer.managerAddress)
       assert.isTrue(managerHubBalanceAfter.eqn(0), 'manager hub balance should be zero')
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
@@ -484,12 +375,12 @@ contract('RelayServer', function (accounts) {
     })
 
     it('should fund from manager eth balance when sufficient without withdrawing from hub when balance too low', async function () {
-      await _web3.eth.sendTransaction({
+      await env.web3.eth.sendTransaction({
         from: accounts[0],
         to: relayServer.managerAddress,
         value: 1e18
       })
-      const managerHubBalanceBefore = await rhub.balanceOf(relayServer.managerAddress)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalance = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
       const refill = toBN(relayServer.config.workerTargetBalance).sub(workerBalanceBefore)
@@ -508,9 +399,9 @@ contract('RelayServer', function (accounts) {
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),
         gasPrice: gasPrice.toString(),
-        value: toHex((await relayServer.getManagerBalance()).sub(txcost))
+        value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
-      const managerHubBalanceBefore = await rhub.balanceOf(relayServer.managerAddress)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalance = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
       const refill = toBN(relayServer.config.workerTargetBalance).sub(workerBalanceBefore)
@@ -529,23 +420,21 @@ contract('RelayServer', function (accounts) {
     let relayServer: RelayServer
 
     before(async function () {
-      relayServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
+      await env.newServerInstance({
         registrationBlockRate,
         refreshStateTimeoutBlocks
       })
-      const latestBlock = await _web3.eth.getBlock('latest')
-      const receipts = await relayServer._worker(latestBlock.number)
-      assertRelayAdded(receipts, relayServer) // sanity check
+      relayServer = env.relayServer
       sinon.spy(relayServer.registrationManager, 'handlePastEvents')
     })
 
     it('should re-register server only if registrationBlockRate passed from any tx', async function () {
-      let latestBlock = await _web3.eth.getBlock('latest')
+      let latestBlock = await env.web3.eth.getBlock('latest')
       let receipts = await relayServer._worker(latestBlock.number)
       expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, false)
       assert.equal(receipts.length, 0, 'should not re-register if already registered')
       await evmMineMany(registrationBlockRate)
-      latestBlock = await _web3.eth.getBlock('latest')
+      latestBlock = await env.web3.eth.getBlock('latest')
       receipts = await relayServer._worker(latestBlock.number)
       expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, true)
       assertRelayAdded(receipts, relayServer, false)
@@ -553,9 +442,11 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('listener task', function () {
+    let relayServer: RelayServer
     let origWorker: (blockNumber: number) => Promise<TransactionReceipt[]>
     let started: boolean
     beforeEach(function () {
+      relayServer = env.relayServer
       origWorker = relayServer._worker
       started = false
       relayServer._worker = async function () {
@@ -583,6 +474,12 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('Function testing', function () {
+    let relayServer: RelayServer
+
+    before(function () {
+      relayServer = env.relayServer
+    })
+
     it('_workerSemaphore', async function () {
       assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false first')
       const workerOrig = relayServer._worker
@@ -595,7 +492,7 @@ contract('RelayServer', function (accounts) {
           }
           return []
         }
-        const latestBlock = await _web3.eth.getBlock('latest')
+        const latestBlock = await env.web3.eth.getBlock('latest')
         relayServer._workerSemaphore(latestBlock.number)
         assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
         shouldRun = false
@@ -610,32 +507,20 @@ contract('RelayServer', function (accounts) {
   describe('alerted state as griefing mitigation', function () {
     const alertedBlockDelay = 100
     const refreshStateTimeoutBlocks = 1
-    let relayTransactionParams2: RelayTransactionParams
-    let options2: PrepareRelayRequestOption
     let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
     let newServer: RelayServer
 
     beforeEach('should enter an alerted state for a configured blocks delay after paymaster rejecting an on-chain tx', async function () {
       id = (await snapshot()).result
-      newServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, {
+      await env.newServerInstance({
         alertedBlockDelay,
         refreshStateTimeoutBlocks
       })
-      const latestBlock = await _web3.eth.getBlock('latest')
-      await newServer._worker(latestBlock.number)
+      newServer = env.relayServer
       rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
-      await rejectingPaymaster.setTrustedForwarder(forwarder.address)
-      await rejectingPaymaster.setRelayHub(rhub.address)
-      await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
-      relayTransactionParams2 = {
-        ...relayTransactionParams,
-        paymasterAddress: rejectingPaymaster.address,
-        relayServer: newServer
-      }
-      options2 = {
-        ...options,
-        paymaster: rejectingPaymaster.address
-      }
+      await rejectingPaymaster.setTrustedForwarder(env.forwarder.address)
+      await rejectingPaymaster.setRelayHub(env.relayHub.address)
+      await rejectingPaymaster.deposit({ value: env.web3.utils.toWei('1', 'ether') })
       await attackTheServer(newServer)
     })
     afterEach(async function () {
@@ -644,14 +529,15 @@ contract('RelayServer', function (accounts) {
 
     async function attackTheServer (server: RelayServer): Promise<void> {
       const _sendTransactionOrig = server.transactionManager.sendTransaction
-      const _sendTransaction = async function ({ signer, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
+      server.transactionManager.sendTransaction = async function ({ signer, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore
         return (await _sendTransactionOrig.call(server.transactionManager, ...arguments))
       }
-      server.transactionManager.sendTransaction = _sendTransaction
-      await relayTransaction(relayTransactionParams2, options2, { paymaster: rejectingPaymaster.address }, false)
-      const currentBlock = await _web3.eth.getBlock('latest')
+      const req = await env.createRelayHttpRequest({ paymaster: rejectingPaymaster.address })
+      await env.relayServer.createRelayTransaction(req)
+      // await relayTransaction(relayTransactionParams2, options2, { paymaster: rejectingPaymaster.address }, false)
+      const currentBlock = await env.web3.eth.getBlock('latest')
       await server._worker(currentBlock.number)
       assert.isTrue(server.alerted, 'server not alerted')
       assert.equal(server.alertedBlock, currentBlock.number, 'server alerted block incorrect')
@@ -661,71 +547,22 @@ contract('RelayServer', function (accounts) {
       newServer.config.minAlertedDelayMS = 300
       newServer.config.maxAlertedDelayMS = 350
       const timeBefore = Date.now()
-      await relayTransaction(relayTransactionParams, options)
+      const req = await env.createRelayHttpRequest()
+      await env.relayServer.createRelayTransaction(req)
+      // await relayTransaction(relayTransactionParams, options)
       const timeAfter = Date.now()
       assert.isTrue((timeAfter - timeBefore) > 300, 'checking that enough time passed')
     })
 
     it('should exit alerted state after the configured blocks delay', async function () {
       await evmMineMany(newServer.config.alertedBlockDelay - 1)
-      let latestBlock = await _web3.eth.getBlock('latest')
+      let latestBlock = await env.web3.eth.getBlock('latest')
       await newServer._worker(latestBlock.number)
       assert.isTrue(newServer.alerted, 'server not alerted')
       await evmMineMany(2)
-      latestBlock = await _web3.eth.getBlock('latest')
+      latestBlock = await env.web3.eth.getBlock('latest')
       await newServer._worker(latestBlock.number)
       assert.isFalse(newServer.alerted, 'server alerted')
-    })
-  })
-
-  describe('relay max exposure to paymaster rejections', function () {
-    let newServer: RelayServer
-    let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
-    let relayTransactionParams2: RelayTransactionParams
-    const paymasterExpectedAcceptanceBudget = 15e4
-    beforeEach(async function () {
-      id = (await snapshot()).result
-      rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
-      await rejectingPaymaster.setTrustedForwarder(forwarder.address)
-      await rejectingPaymaster.setRelayHub(rhub.address)
-      await rejectingPaymaster.deposit({ value: _web3.utils.toWei('1', 'ether') })
-      await rejectingPaymaster.setGreedyAcceptanceBudget(true)
-      newServer = await bringUpNewRelay(newRelayParams, partialConfig, {}, { trustedPaymasters: [rejectingPaymaster.address] })
-      const latestBlock = await _web3.eth.getBlock('latest')
-      await newServer._worker(latestBlock.number)
-      relayTransactionParams2 = {
-        ...relayTransactionParams,
-        paymasterAddress: rejectingPaymaster.address,
-        relayServer: newServer
-      }
-    })
-    afterEach(async function () {
-      await revert(id)
-    })
-    it('should reject a transaction from paymaster returning above configured max exposure', async function () {
-      try {
-        const scepticServer = await bringUpNewRelay(newRelayParams, partialConfig)
-        const latestBlock = await _web3.eth.getBlock('latest')
-        await scepticServer._worker(latestBlock.number)
-        await relayTransaction({ ...relayTransactionParams2, relayServer: scepticServer }, options,
-          { paymaster: rejectingPaymaster.address })
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'paymaster acceptance budget too high')
-      }
-    })
-    it('should accept a transaction from paymaster returning below configured max exposure', async function () {
-      await rejectingPaymaster.setGreedyAcceptanceBudget(false)
-      const gasLimits = await rejectingPaymaster.getGasLimits()
-      assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
-      await relayTransaction(relayTransactionParams2, { ...options, paymaster: rejectingPaymaster.address },
-        { paymaster: rejectingPaymaster.address })
-    })
-    it('should accept a transaction from trusted paymaster returning above configured max exposure', async function () {
-      const gasLimits = await rejectingPaymaster.getGasLimits()
-      assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
-      await relayTransaction(relayTransactionParams2, { ...options, paymaster: rejectingPaymaster.address },
-        { paymaster: rejectingPaymaster.address })
     })
   })
 })

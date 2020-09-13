@@ -1,4 +1,3 @@
-// TODO: use this class in sever code
 import { Address, IntString } from '../relayclient/types/Aliases'
 
 export default interface PingResponse {
