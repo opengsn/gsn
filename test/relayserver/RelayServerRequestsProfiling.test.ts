@@ -1,28 +1,12 @@
 import { RelayServer } from '../../src/relayserver/RelayServer'
-import {
-  bringUpNewRelay,
-  LocalhostOne, NewRelayParams,
-  PrepareRelayRequestOption,
-  relayTransaction,
-  RelayTransactionParams
-} from './ServerTestUtils'
-import { deployHub, evmMine } from '../TestUtils'
+import { evmMine, evmMineMany } from '../TestUtils'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
-import { Address } from '../../src/relayclient/types/Aliases'
-import { RelayClient } from '../../src/relayclient/RelayClient'
-import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
+import { ServerTestEnvironment } from './ServerTestEnvironment'
 
-const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
-const TestRecipient = artifacts.require('TestRecipient')
-const StakeManager = artifacts.require('StakeManager')
-const Penalizer = artifacts.require('Penalizer')
-const Forwarder = artifacts.require('Forwarder')
-
-contract('RelayServerRequestsProfiling', function ([relayOwner]) {
+contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
   const callsPerStateRefresh = 11
   const callsPerBlock = 0
@@ -30,43 +14,31 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
 
   let provider: ProfilingProvider
   let relayServer: RelayServer
-  let relayHubAddress: Address
+  let env: ServerTestEnvironment
 
   before(async function () {
-    const stakeManager = await StakeManager.new()
-    const penalizer = await Penalizer.new()
-    const rhub = await deployHub(stakeManager.address, penalizer.address)
-    relayHubAddress = rhub.address
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
-    const newRelayParams: NewRelayParams = {
-      relayHubAddress,
-      relayOwner,
-      url: LocalhostOne,
-      web3,
-      stakeManager
+    const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
+      const contractInteractor = new ContractInteractor(provider, configureGSN(partialConfig))
+      await contractInteractor.init()
+      return contractInteractor
     }
-    const partialConfig: Partial<GSNConfig> = {
-      relayHubAddress: rhub.address
-    }
-    const contractInteractor = new ContractInteractor(provider, configureGSN(partialConfig))
-    await contractInteractor.init()
-    const partialDependencies: Partial<ServerDependencies> = {
-      contractInteractor
-    }
-    relayServer = await bringUpNewRelay(newRelayParams, partialConfig, partialDependencies, { refreshStateTimeoutBlocks })
+    env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
+    await env.init({}, contractFactory)
+    await env.newServerInstance({ refreshStateTimeoutBlocks })
+    relayServer = env.relayServer
     const latestBlock = await web3.eth.getBlock('latest')
     await relayServer._worker(latestBlock.number)
   })
 
   beforeEach(async function () {
-    await evmMine()
     provider.reset()
   })
 
   it('should make X requests per block callback when state must be refreshed', async function () {
+    await evmMineMany(5)
     const latestBlock = await web3.eth.getBlock('latest')
-    const blockNumber = relayServer._shouldRefreshState(latestBlock.number) ? latestBlock.number : latestBlock.number + 1
-    assert.isTrue(relayServer._shouldRefreshState(blockNumber))
+    assert.isTrue(relayServer._shouldRefreshState(latestBlock.number))
     const receipts = await relayServer._worker(latestBlock.number)
     assert.equal(receipts.length, 0)
     provider.log()
@@ -74,9 +46,9 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
   })
 
   it('should make X requests per block callback when nothing needs to be done', async function () {
+    await evmMine()
     const latestBlock = await web3.eth.getBlock('latest')
-    const blockNumber = relayServer._shouldRefreshState(latestBlock.number) ? latestBlock.number + 1 : latestBlock.number
-    assert.isFalse(relayServer._shouldRefreshState(blockNumber))
+    assert.isFalse(relayServer._shouldRefreshState(latestBlock.number))
     const receipts = await relayServer._worker(latestBlock.number)
     assert.equal(receipts.length, 0)
     provider.log()
@@ -84,56 +56,12 @@ contract('RelayServerRequestsProfiling', function ([relayOwner]) {
   })
 
   describe('relay transaction', function () {
-    let gasLess: Address
-    let relayTransactionParams: RelayTransactionParams
-    let options: PrepareRelayRequestOption
-
-    // TODO: this is a pure copy-paste from Transaction manager test. Create helper code for this!
     before(async function () {
-      gasLess = await web3.eth.personal.newAccount('password')
-      const forwarder = await Forwarder.new()
-      // register hub's RelayRequest with forwarder, if not already done.
-      await registerForwarderForGsn(forwarder)
-
-      const forwarderAddress = forwarder.address
-
-      const paymaster = await TestPaymasterEverythingAccepted.new({ gas: 1e7 })
-
-      const paymasterAddress = paymaster.address
-
-      await paymaster.setRelayHub(relayHubAddress)
-      await paymaster.setTrustedForwarder(forwarderAddress)
-      await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
-
-      const sr = await TestRecipient.new(forwarderAddress)
-      const encodedFunction = sr.contract.methods.emitMessage('hello world').encodeABI()
-      const recipientAddress = sr.address
-      const relayClient = new RelayClient((web3.currentProvider as HttpProvider), configureGSN({}))
-      relayTransactionParams = {
-        gasLess,
-        recipientAddress,
-        relayHubAddress,
-        encodedFunction,
-        paymasterData: '',
-        clientId: '',
-        forwarderAddress,
-        paymasterAddress,
-        relayServer,
-        web3,
-        relayClient
-      }
-      options = {
-        from: gasLess,
-        to: sr.address,
-        pctRelayFee: 0,
-        baseRelayFee: '0',
-        paymaster: paymaster.address
-      }
       provider.reset()
     })
 
     it('should make X requests per relay transaction request', async function () {
-      await relayTransaction(relayTransactionParams, options)
+      await env.relayTransaction()
       provider.log()
       assert.equal(provider.requestsCount, callsPerTransaction)
     })

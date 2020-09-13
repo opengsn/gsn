@@ -186,7 +186,7 @@ interface TransactionGasComponents {
   relayCallGasLimit: string
 }
 
-interface PaymasterGasLimits {
+export interface PaymasterGasLimits {
   acceptanceBudget: string
   preRelayedCallGasLimit: string
   postRelayedCallGasLimit: string

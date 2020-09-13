@@ -31,9 +31,11 @@
       <w>keccak</w>
       <w>kovan</w>
       <w>mainnet</w>
+      <w>mempool</w>
       <w>metamask</w>
       <w>mintxgascost</w>
       <w>mixedcase</w>
+      <w>muln</w>
       <w>multiplicator</w>
       <w>mutexed</w>
       <w>nonces</w>
@@ -67,6 +69,7 @@
       <w>unstake</w>
       <w>unstaked</w>
       <w>workdir</w>
+      <w>workdirs</w>
       <w>xdai</w>
     </words>
   </dictionary>
