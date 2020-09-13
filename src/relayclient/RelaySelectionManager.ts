@@ -20,6 +20,7 @@ export default class RelaySelectionManager {
   private readonly gsnTransactionDetails: GsnTransactionDetails
 
   private remainingRelays: RelayInfoUrl[][] = []
+  private isInitialized = false
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
@@ -82,6 +83,7 @@ export default class RelaySelectionManager {
 
   async init (): Promise<this> {
     this.remainingRelays = await this.knownRelaysManager.getRelaysSortedForTransaction(this.gsnTransactionDetails)
+    this.isInitialized = true
     return this
   }
 
@@ -92,7 +94,7 @@ export default class RelaySelectionManager {
   }
 
   async _getNextSlice (): Promise<RelayInfoUrl[]> {
-    if (this.remainingRelays == null) { throw new Error('not initialized') }
+    if (!this.isInitialized) { throw new Error('init() not called') }
     for (const relays of this.remainingRelays) {
       const bulkSize = Math.min(this.config.sliceSize, relays.length)
       const slice = relays.slice(0, bulkSize)
@@ -155,6 +157,7 @@ export default class RelaySelectionManager {
   }
 
   _handleRaceResults (raceResult: RaceResult): void {
+    if (!this.isInitialized) { throw new Error('init() not called') }
     this.errors = new Map([...this.errors, ...raceResult.errors])
     this.remainingRelays = this.remainingRelays.map(relays =>
       relays

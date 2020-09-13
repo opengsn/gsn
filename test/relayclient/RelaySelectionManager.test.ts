@@ -57,6 +57,7 @@ contract('RelaySelectionManager', function (accounts) {
     let stubGetNextSlice: SinonStub
 
     before(async function () {
+      stubGetRelaysSorted.returns(Promise.resolve([[eventInfo]]))
       relaySelectionManager = await new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, config).init()
       stubRaceToSuccess = sinon.stub(relaySelectionManager, '_raceToSuccess')
       stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
@@ -160,10 +161,10 @@ contract('RelaySelectionManager', function (accounts) {
     it('should return \'relaySliceSize\' relays if available on the highest priority level', async function () {
       stubGetRelaysSorted.returns(Promise.resolve([[winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo]]))
       for (let i = 1; i < 5; i++) {
-        const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
+        const rsm = await new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
           sliceSize: i,
           verbose
-        }))
+        })).init()
         const returned = await rsm._getNextSlice()
         assert.equal(returned.length, i)
       }
