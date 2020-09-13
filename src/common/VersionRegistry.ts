@@ -55,8 +55,8 @@ export class VersionRegistry {
    */
   async getVersion (id: string, delayPeriod: number, optInVersion = ''): Promise<VersionInfo> {
     const [versions, now] = await Promise.all([
-      await this.getAllVersions(id),
-      await this.web3.eth.getBlock('latest').then(b => b.timestamp as number)
+      this.getAllVersions(id),
+      this.web3.eth.getBlock('latest').then(b => b.timestamp as number)
     ])
     const ver = versions
       .find(v => !v.canceled && (v.time + delayPeriod <= now || v.version === optInVersion))

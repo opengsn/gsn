@@ -93,17 +93,7 @@ export class RelayClient {
       console.log('txHash= ' + txHash)
     }
     try {
-      // first, try to see if its already mined, or in the mempool:
-      const [txMinedReceipt, pendingBlock] = await Promise.all([
-        await this.contractInteractor.getWeb3().eth.getTransactionReceipt(txHash),
-        await this.contractInteractor.getWeb3().eth.getBlock('pending')
-      ])
-
-      if (txMinedReceipt != null) {
-        return { hasReceipt: true }
-      }
-
-      if (pendingBlock.transactions.includes(txHash)) {
+      if (await this._isAlreadySubmitted(txHash)) {
         return { hasReceipt: true }
       }
 
@@ -121,6 +111,23 @@ export class RelayClient {
       }
       return { hasReceipt: false, broadcastError }
     }
+  }
+
+  async _isAlreadySubmitted (txHash: string): Promise<boolean> {
+    const [txMinedReceipt, pendingBlock] = await Promise.all([
+      this.contractInteractor.getWeb3().eth.getTransactionReceipt(txHash),
+      // mempool transactions
+      this.contractInteractor.getWeb3().eth.getBlock('pending')
+    ])
+
+    if (txMinedReceipt != null) {
+      return true
+    }
+
+    if (pendingBlock.transactions.includes(txHash)) {
+      return true
+    }
+    return false
   }
 
   async _init (): Promise<void> {
