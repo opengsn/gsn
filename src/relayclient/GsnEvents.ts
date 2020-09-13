@@ -18,7 +18,7 @@ export class GsnRefreshRelaysEvent extends GsnEvent {
   constructor () { super('refresh-relays', 2) }
 }
 
-export class GsnRefreshedRelaysEvent extends GsnEvent {
+export class GsnDoneRefreshRelaysEvent extends GsnEvent {
   constructor (readonly relaysCount: number) { super('refreshed-relays', 3) }
 }
 

@@ -21,7 +21,7 @@ import {
   GsnEvent,
   GsnInitEvent,
   GsnNextRelayEvent,
-  GsnRefreshedRelaysEvent,
+  GsnDoneRefreshRelaysEvent,
   GsnRefreshRelaysEvent, GsnRelayerResponseEvent, GsnSendToRelayerEvent, GsnSignRequestEvent, GsnValidateRequestEvent
 } from './GsnEvents'
 
@@ -150,17 +150,17 @@ export class RelayClient {
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
     await this.knownRelaysManager.refresh()
-    this.emit(new GsnRefreshedRelaysEvent((await this.knownRelaysManager.getRelaysSortedForTransaction({} as any)).length))
     gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
     if (gsnTransactionDetails.gas == null) {
       const estimated = await this.contractInteractor.estimateGas(gsnTransactionDetails)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
-    const relaySelectionManager = new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config)
+    const relaySelectionManager = await new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config).init()
+    this.emit(new GsnDoneRefreshRelaysEvent((relaySelectionManager.relaysLeft().length)))
     const relayingErrors = new Map<string, Error>()
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
-      const activeRelay = await relaySelectionManager.selectNextRelay(gsnTransactionDetails)
+      const activeRelay = await relaySelectionManager.selectNextRelay()
       if (activeRelay != null) {
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
