@@ -46,7 +46,7 @@ contract('client-configuration', () => {
           .to.eventually.rejectedWith('Not a paymaster contract')
       })
 
-      it('wrong contract paymaster version', async () => {
+      it.skip('wrong contract paymaster version', async () => {
         // instead of deploying a new paymaster with a different version, we make our client version older
         // since resolveConfigurationGSN creates its own ContractInteractor, we have to hook the class to modify the version
         // after it is created...

@@ -70,6 +70,7 @@ export async function resolveConfigurationGSN (provider: provider, partialConfig
     await paymasterInstance.getHubAddr().catch(e => { throw new Error('Not a paymaster contract') }),
     partialConfig.forwarderAddress ?? await paymasterInstance.trustedForwarder().catch(e => { throw new Error('paymaster has no trustedForwarder()') }),
     await paymasterInstance.versionPaymaster().catch((e: any) => { throw new Error('Not a paymaster contract') }).then((version: string) => contractInteractor._validateVersion(version))
+      .catch(err => console.log('WARNING: beta ignore version compatibility', err))
   ])
 
   const isMetamask = (provider as any).isMetaMask != null
