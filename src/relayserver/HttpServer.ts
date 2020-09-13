@@ -82,11 +82,6 @@ export class HttpServer {
   }
 
   async relayHandler (req: any, res: any): Promise<void> {
-    if (!this.backend.isReady()) {
-      res.send('Error: relay not ready')
-      return
-    }
-
     try {
       const signedTx = await this.backend.createRelayTransaction(req.body)
       res.send({ signedTx })
