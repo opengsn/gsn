@@ -25,7 +25,7 @@ import { SendTransactionDetails, TransactionManager } from './TransactionManager
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import Timeout = NodeJS.Timeout
 
-const VERSION = '2.0.0-beta.1'
+const VERSION = '2.0.0-beta.2'
 const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
@@ -311,10 +311,7 @@ export class RelayServer extends EventEmitter {
     } else {
       log.debug('code length', code.length)
     }
-    const version = await this.relayHubContract.versionHub().catch(_ => 'no getVersion() method')
-    if (!this.versionManager.isMinorSameOrNewer(version)) {
-      this.fatal(`Not a valid RelayHub at ${relayHubAddress}: version: ${version}`)
-    }
+
     this.registrationManager = new RegistrationManager(
       this.contractInteractor,
       this.transactionManager,
