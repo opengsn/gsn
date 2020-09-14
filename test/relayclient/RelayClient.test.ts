@@ -364,8 +364,8 @@ contract('RelayClient', function (accounts) {
       const transaction = new Transaction('0x')
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
-      const { receipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
-      assert.isUndefined(receipt)
+      const { hasReceipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
+      assert.isFalse(hasReceipt)
       assert.isTrue(wrongNonce)
       assert.equal(broadcastError?.message, BadContractInteractor.wrongNonceMessage)
     })
