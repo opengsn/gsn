@@ -312,7 +312,7 @@ contract('RegistrationManager', function (accounts) {
         await revert(id)
       })
 
-      it('send only manager hub balance and workers\' balances to owner (not manager eth balance)', async function () {
+      it('send only workers\' balances to owner (not manager hub,eth balance)', async function () {
         await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
 
         const managerHubBalanceBefore = await env.relayHub.balanceOf(newServer.managerAddress)
@@ -328,21 +328,20 @@ contract('RegistrationManager', function (accounts) {
         assert.isFalse(newServer.registrationManager.isHubAuthorized, 'Hub should not be authorized in server')
         const gasPrice = await env.web3.eth.getGasPrice()
         // TODO: these two hard-coded indexes are dependent on the order of operations in 'withdrawAllFunds'
-        const workerEthTxCost = getTotalTxCosts([receipts[1]], gasPrice)
-        const managerHubSendTxCost = getTotalTxCosts([receipts[0]], gasPrice)
+        const workerEthTxCost = getTotalTxCosts([receipts[0]], gasPrice)
         const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(relayOwner))
         const managerHubBalanceAfter = await env.relayHub.balanceOf(newServer.managerAddress)
         const managerBalanceAfter = await newServer.getManagerBalance()
         const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
-        assert.isTrue(managerHubBalanceAfter.eqn(0))
+        assert.equal(managerHubBalanceAfter.toString(), managerHubBalanceBefore.toString())
         assert.isTrue(workerBalanceAfter.eqn(0))
-        assert.equal(managerBalanceAfter.toString(), managerBalanceBefore.sub(managerHubSendTxCost).toString())
+        assert.equal(managerBalanceAfter.toString(), managerBalanceBefore.toString())
         assert.equal(
           ownerBalanceAfter.sub(
             ownerBalanceBefore).toString(),
-          managerHubBalanceBefore.add(workerBalanceBefore).sub(workerEthTxCost).toString(),
+          workerBalanceBefore.sub(workerEthTxCost).toString(),
           `ownerBalanceAfter(${ownerBalanceAfter.toString()}) - ownerBalanceBefore(${ownerBalanceBefore.toString()}) != 
-         managerHubBalanceBefore(${managerHubBalanceBefore.toString()}) + workerBalanceBefore(${workerBalanceBefore.toString()})
+         workerBalanceBefore(${workerBalanceBefore.toString()})
          - workerEthTxCost(${workerEthTxCost.toString()})`)
       })
     })

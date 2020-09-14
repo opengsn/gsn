@@ -211,14 +211,14 @@ export class RegistrationManager {
 
   /**
    * @param withdrawManager - whether to send the relay manager's balance to the owner.
-   *        Note that more then one relay process could be using the same manager account.
+   *        Note that more than one relay process could be using the same manager account.
    * @param currentBlock
    */
   async withdrawAllFunds (withdrawManager: boolean, currentBlock: number): Promise<TransactionReceipt[]> {
     let receipts: TransactionReceipt[] = []
-    receipts = receipts.concat(await this._sendManagerHubBalanceToOwner(currentBlock))
     receipts = receipts.concat(await this._sendWorkersEthBalancesToOwner(currentBlock))
     if (withdrawManager) {
+      receipts = receipts.concat(await this._sendManagerHubBalanceToOwner(currentBlock))
       receipts = receipts.concat(await this._sendManagerEthBalanceToOwner(currentBlock))
     }
 
