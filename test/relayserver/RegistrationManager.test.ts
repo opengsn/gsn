@@ -27,6 +27,7 @@ const workerIndex = 0
 
 contract('RegistrationManager', function (accounts) {
   const relayOwner = accounts[4]
+  const anotherRelayer = accounts[5]
 
   let env: ServerTestEnvironment
   let relayServer: RelayServer
@@ -311,6 +312,20 @@ contract('RegistrationManager', function (accounts) {
       afterEach(async function () {
         await revert(id)
       })
+
+      it('should ignore unauthorizeHub of another hub', async function () {
+        await env.stakeManager.stakeForAddress(anotherRelayer, 1000)
+        await env.stakeManager.authorizeHubByManager(env.relayHub.address, {from:anotherRelayer})
+        await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, {from:anotherRelayer})
+        const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
+
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        const receipts = await newServer._worker(latestBlock.number)
+
+        const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
+        assert.equal(receipts.length,0)
+        assert.equal(workerBalanceBefore.toString(), workerBalanceAfter.toString())
+      });
 
       it('send only manager hub balance and workers\' balances to owner (not manager eth balance)', async function () {
         await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })

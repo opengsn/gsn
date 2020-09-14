@@ -193,9 +193,10 @@ export class RegistrationManager {
   }
 
   async _handleHubUnauthorizedEvent (dlog: EventData, currentBlock: number): Promise<TransactionReceipt[]> {
-    if (dlog.returnValues.relayHub.toLowerCase() === this.hubAddress.toLowerCase()) {
-      this.isHubAuthorized = false
+    if (dlog.returnValues.relayHub.toLowerCase() !== this.hubAddress.toLowerCase()) {
+      return []
     }
+    this.isHubAuthorized = false
     return await this.withdrawAllFunds(false, currentBlock)
   }
 
@@ -211,7 +212,7 @@ export class RegistrationManager {
 
   /**
    * @param withdrawManager - whether to send the relay manager's balance to the owner.
-   *        Note that more then one relay process could be using the same manager account.
+   *        Note that more than one relay process could be using the same manager account.
    * @param currentBlock
    */
   async withdrawAllFunds (withdrawManager: boolean, currentBlock: number): Promise<TransactionReceipt[]> {
