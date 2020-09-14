@@ -199,7 +199,7 @@ options.forEach(params => {
               from: gasless,
               paymaster: approvalPaymaster.address
             })
-          }, 'Error: approval-exception')
+          }, 'approval-exception')
         })
 
         it(params.title + 'fail on no approval data', async () => {

@@ -28,6 +28,7 @@ import { deployHub, startRelay, stopRelay } from '../TestUtils'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
+import { GsnEvent } from '../../src/relayclient/GsnEvents'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -56,6 +57,7 @@ contract('RelayClient', function (accounts) {
   let to: Address
   let from: Address
   let data: PrefixedHexString
+  let gsnEvents: GsnEvent[] = []
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
@@ -66,7 +68,6 @@ contract('RelayClient', function (accounts) {
     testRecipient = await TestRecipient.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
     await registerForwarderForGsn(forwarderInstance)
-
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(relayHub.address)
@@ -190,6 +191,33 @@ contract('RelayClient', function (accounts) {
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
       assert.match(relayingErrors.values().next().value.message, /score-error/)
+    })
+    describe('with events listener', () => {
+      function eventsHandler (e: GsnEvent): void {
+        gsnEvents.push(e)
+      }
+
+      before('registerEventsListener', () => {
+        relayClient = new RelayClient(underlyingProvider, gsnConfig)
+        relayClient.registerEventListener(eventsHandler)
+      })
+      it('should call events handler', async function () {
+        await relayClient.relayTransaction(options)
+        assert.equal(gsnEvents.length, 8)
+        assert.equal(gsnEvents[0].step, 1)
+        assert.equal(gsnEvents[0].total, 8)
+        assert.equal(gsnEvents[7].step, 8)
+      })
+      describe('removing events listener', () => {
+        before('registerEventsListener', () => {
+          gsnEvents = []
+          relayClient.unregisterEventListener(eventsHandler)
+        })
+        it('should call events handler', async function () {
+          await relayClient.relayTransaction(options)
+          assert.equal(gsnEvents.length, 0)
+        })
+      })
     })
   })
 
@@ -332,8 +360,8 @@ contract('RelayClient', function (accounts) {
       const transaction = new Transaction('0x')
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
-      const { receipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
-      assert.isUndefined(receipt)
+      const { hasReceipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
+      assert.isFalse(hasReceipt)
       assert.isTrue(wrongNonce)
       assert.equal(broadcastError?.message, BadContractInteractor.wrongNonceMessage)
     })

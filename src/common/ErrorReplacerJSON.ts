@@ -7,7 +7,8 @@ export default function replaceErrors (key: string, value: { [key: string]: any 
   } else if (value instanceof Error) {
     const error: { [key: string]: any } = {}
 
-    Object.getOwnPropertyNames(value).forEach(function (key) {
+    // remove "circular referenced" objects we don't really want to log...
+    Object.getOwnPropertyNames(value).filter(e => !['request', 'response'].includes(e)).forEach(function (key) {
       error[key] =
         // @ts-ignore
         value[key]

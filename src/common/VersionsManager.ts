@@ -1,7 +1,7 @@
 import semver from 'semver'
 
 export default class VersionsManager {
-  private readonly componentVersion: string
+  readonly componentVersion: string
 
   /**
    * @param componentVersion - a semver of a component that uses the VersionsManager
@@ -18,6 +18,9 @@ export default class VersionsManager {
    * @return true if {@param version} is same or newer then {@link componentVersion}
    */
   isMinorSameOrNewer (version: string): boolean {
+    // prevent crash with some early paymasters (which are otherwise perfectly valid)
+    version = version.replace('_', '-')
+
     const range = '^' + this.componentVersion
     return semver.satisfies(version, range)
   }

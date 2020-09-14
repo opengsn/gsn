@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.6.10;
 pragma experimental ABIEncoderV2;
 
 import "./GsnTypes.sol";
@@ -46,9 +46,11 @@ interface IPaymaster {
         GasLimits memory limits
     );
 
-    /**
-     * return the relayHub of this contract.
-     */
+    function trustedForwarder() external view returns (IForwarder);
+
+/**
+ * return the relayHub of this contract.
+ */
     function getHubAddr() external view returns (address);
 
     /**
