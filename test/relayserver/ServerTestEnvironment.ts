@@ -36,6 +36,7 @@ import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
+import { RelayHubConfiguration } from '../../src/relayclient/types/RelayHubConfiguration'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -97,9 +98,9 @@ export class ServerTestEnvironment {
    * @param contractFactory - added for Profiling test, as it requires Test Environment to be using
    * different provider from the contract interactor itself.
    */
-  async init (clientConfig: Partial<GSNConfig> = {}, contractFactory?: (clientConfig: Partial<GSNConfig>) => Promise<ContractInteractor>): Promise<void> {
+  async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (clientConfig: Partial<GSNConfig>) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new()
-    this.relayHub = await deployHub(this.stakeManager.address)
+    this.relayHub = await deployHub(this.stakeManager.address, undefined, relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()
@@ -141,7 +142,7 @@ export class ServerTestEnvironment {
     }
   }
 
-  async newServerInstanceNoInit (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): Promise<void> {
+  async newServerInstanceNoInit (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
     this.newServerInstanceNoFunding(config, serverWorkdirs)
     await web3.eth.sendTransaction({
       to: this.relayServer.managerAddress,
@@ -149,7 +150,7 @@ export class ServerTestEnvironment {
       value: web3.utils.toWei('2', 'ether')
     })
 
-    await this.stakeManager.stakeForAddress(this.relayServer.managerAddress, constants.weekInSec, {
+    await this.stakeManager.stakeForAddress(this.relayServer.managerAddress, unstakeDelay, {
       from: this.relayOwner,
       value: ether('1')
     })

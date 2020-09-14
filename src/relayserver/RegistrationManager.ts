@@ -81,6 +81,7 @@ export class RegistrationManager {
 
   lastMinedRegisterTransaction?: EventData
   lastWorkerAddedTransaction?: EventData
+  private delayedEvents: Array<{ block: number, eventData: EventData }> = []
 
   constructor (
     contractInteractor: ContractInteractor,
@@ -126,15 +127,29 @@ export class RegistrationManager {
           await this._handleStakedEvent()
           break
         case 'HubUnauthorized':
+          this.delayedEvents.push({ block: eventData.returnValues.removalBlock.toString(), eventData })
           unregistered = true
-          receipts = receipts.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
           break
         case 'StakeUnlocked':
+          this.delayedEvents.push({ block: eventData.returnValues.withdrawBlock.toString(), eventData })
           unregistered = true
-          receipts = receipts.concat(await this._handleUnstakedEvent(eventData, currentBlock))
           break
       }
     }
+
+    // handle HubUnauthorized, StakeUnlocked only after their due time
+
+    for (const eventData of this._extractDuePendingEvents(currentBlock)) {
+      switch (eventData.event) {
+        case 'HubUnauthorized':
+          receipts = receipts.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
+          break
+        case 'StakeUnlocked':
+          receipts = receipts.concat(await this._handleStakeUnlockedEvent(eventData, currentBlock))
+          break
+      }
+    }
+
     const isRegistrationCorrect = await this._isRegistrationCorrect(hubEventsSinceLastScan)
     if (!isRegistrationCorrect || forceRegistration) {
       receipts = receipts.concat(await this.attemptRegistration(hubEventsSinceLastScan, currentBlock))
@@ -143,6 +158,12 @@ export class RegistrationManager {
       receipts,
       unregistered
     }
+  }
+
+  _extractDuePendingEvents (currentBlock: number): EventData[] {
+    const ret = this.delayedEvents.filter(event => event.block <= currentBlock).map(e => e.eventData)
+    this.delayedEvents = [...this.delayedEvents.filter(event => event.block > currentBlock)]
+    return ret
   }
 
   async _isRegistrationCorrect (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
@@ -204,7 +225,7 @@ export class RegistrationManager {
     await this.refreshStake()
   }
 
-  async _handleUnstakedEvent (dlog: EventData, currentBlock: number): Promise<TransactionReceipt[]> {
+  async _handleStakeUnlockedEvent (dlog: EventData, currentBlock: number): Promise<TransactionReceipt[]> {
     console.log('handle Unstaked event', dlog)
     await this.refreshStake()
     return await this.withdrawAllFunds(true, currentBlock)
