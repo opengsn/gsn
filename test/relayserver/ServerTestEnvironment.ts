@@ -19,7 +19,6 @@ import {
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
 import PingResponse from '../../src/common/PingResponse'
-import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
 import { KeyManager } from '../../src/relayserver/KeyManager'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { RelayClient } from '../../src/relayclient/RelayClient'
@@ -36,6 +35,7 @@ import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransa
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
+import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -103,11 +103,7 @@ export class ServerTestEnvironment {
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()
-    // register hub's RelayRequest with forwarder, if not already done.
-    await this.forwarder.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(this.forwarder)
 
     await this.paymaster.setTrustedForwarder(this.forwarder.address)
     await this.paymaster.setRelayHub(this.relayHub.address)

@@ -3,7 +3,7 @@ import BN from 'bn.js'
 
 import { getEip712Signature } from '../src/common/Utils'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
-import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 
 import {
   RelayHubInstance,
@@ -17,6 +17,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import ForwardRequest from '../src/common/EIP712/ForwardRequest'
 import RelayData from '../src/common/EIP712/RelayData'
 import { deployHub, encodeRevertReason } from './TestUtils'
+import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -102,11 +103,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     const testUtil = await TestUtil.new()
     chainId = (await testUtil.libGetChainID()).toNumber()
 
-    // register hub's RelayRequest with forwarder, if not already done.
-    await forwarderInstance.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(forwarderInstance)
 
     target = recipientContract.address
     relayHub = relayHubInstance.address

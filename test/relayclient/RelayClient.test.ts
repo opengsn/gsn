@@ -27,7 +27,7 @@ import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionVali
 import { deployHub, startRelay, stopRelay } from '../TestUtils'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
-import { GsnRequestType } from '../../src/common/EIP712/TypedRequestData'
+import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { GsnEvent } from '../../src/relayclient/GsnEvents'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -67,10 +67,7 @@ contract('RelayClient', function (accounts) {
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    await forwarderInstance.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(forwarderInstance)
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(relayHub.address)
@@ -195,7 +192,6 @@ contract('RelayClient', function (accounts) {
       assert.equal(relayingErrors.size, 1)
       assert.match(relayingErrors.values().next().value.message, /score-error/)
     })
-
     describe('with events listener', () => {
       function eventsHandler (e: GsnEvent): void {
         gsnEvents.push(e)

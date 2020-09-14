@@ -22,4 +22,9 @@ contract TestForwarder {
         //unknown buffer. return as-is
         return string(ret);
     }
+
+    function getChainId() public pure returns (uint256 id){
+        /* solhint-disable-next-line no-inline-assembly */
+        assembly { id := chainid() }
+    }
 }

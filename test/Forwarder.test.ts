@@ -3,11 +3,13 @@ import {
   TestForwarderInstance,
   TestForwarderTargetInstance
 } from '../types/truffle-contracts'
+
 // @ts-ignore
 import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
+require('source-map-support').install({ errorFormatterForce: true })
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
@@ -49,11 +51,17 @@ contract('Forwarder', ([from]) => {
 
   let fwd: ForwarderInstance
 
+  let tf: TestForwarderInstance
+
+  let chainId: number
+
   const senderPrivateKey = toBuffer(bytes32(1))
   const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
   before(async () => {
     fwd = await Forwarder.new()
+    tf = await TestForwarder.new()
+    chainId = (await tf.getChainId()).toNumber()
     assert.equal(await fwd.GENERIC_PARAMS(), GENERIC_PARAMS)
   })
 
@@ -81,6 +89,34 @@ contract('Forwarder', ([from]) => {
     })
   })
 
+  describe('#registerDomainSeparator', () => {
+    it('registered domain should match local definition', async () => {
+      const data = {
+        domain: {
+          name: 'domainName',
+          version: 'domainVer',
+          chainId,
+          verifyingContract: fwd.address
+        },
+        primaryType: 'ForwardRequest',
+        types: {
+          EIP712Domain: EIP712DomainType
+        }
+      }
+
+      const localDomainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
+      const typehash = TypedDataUtils.hashType('EIP712Domain', data.types)
+      const ret = await fwd.registerDomainSeparator('domainName', 'domainVer')
+
+      const { domainSeparator, domainValue } = ret.logs[0].args
+      assert.equal(domainValue, web3.eth.abi.encodeParameters(['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
+        [typehash, keccak256('domainName'), keccak256('domainVer'), data.domain.chainId, fwd.address]))
+      assert.equal(domainSeparator, localDomainSeparator)
+
+      assert.equal(await fwd.domains(localDomainSeparator), true)
+    })
+  })
+
   describe('registered typehash', () => {
     const fullType = `test4(${GENERIC_PARAMS},bool extra)`
     const hash = keccak256(fullType)
@@ -98,10 +134,31 @@ contract('Forwarder', ([from]) => {
   describe('#verify', () => {
     const typeName = `ForwardRequest(${GENERIC_PARAMS})`
     const typeHash = keccak256(typeName)
+    let domainInfo: any
+
+    let domainSeparator: string
+
+    before('register domain separator', async () => {
+      domainInfo = {
+        name: 'domainName',
+        version: 'domainVer',
+        chainId,
+        verifyingContract: fwd.address
+      }
+
+      const data = {
+        domain: domainInfo,
+        primaryType: 'ForwardRequest',
+        types: {
+          EIP712Domain: EIP712DomainType
+        }
+      }
+
+      domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
+      await fwd.registerDomainSeparator('domainName', 'domainVer')
+    })
 
     describe('#verify failures', () => {
-      const dummyDomainSeparator = bytes32(1)
-
       const req = {
         to: addr(1),
         data: '0x',
@@ -111,16 +168,22 @@ contract('Forwarder', ([from]) => {
         gas: 123
       }
 
+      it('should fail on unregistered domain separator', async () => {
+        const dummyDomainSeparator = bytes32(1)
+
+        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'.padEnd(65 * 2 + 2, '1b')), 'unregistered domain separator')
+      })
+
       it('should fail on wrong nonce', async () => {
         await expectRevert(fwd.verify({
           ...req,
           nonce: 123
-        }, dummyDomainSeparator, typeHash, '0x', '0x'), 'revert nonce mismatch')
+        }, domainSeparator, typeHash, '0x', '0x'), 'revert nonce mismatch')
       })
       it('should fail on invalid signature', async () => {
-        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'), 'invalid signature length')
-        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x123456'), 'invalid signature length')
-        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x' + '1b'.repeat(65)), 'signature mismatch')
+        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x'), 'invalid signature length')
+        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x123456'), 'invalid signature length')
+        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x' + '1b'.repeat(65)), 'signature mismatch')
       })
     })
     describe('#verify success', () => {
@@ -137,12 +200,7 @@ contract('Forwarder', ([from]) => {
 
       before(() => {
         data = {
-          domain: {
-            name: 'Test Domain',
-            version: '1',
-            chainId: 1234,
-            verifyingContract: fwd.address
-          },
+          domain: domainInfo,
           primaryType: 'ForwardRequest',
           types: {
             EIP712Domain: EIP712DomainType,
@@ -229,11 +287,12 @@ contract('Forwarder', ([from]) => {
       typeName = `ForwardRequest(${GENERIC_PARAMS})`
       typeHash = web3.utils.keccak256(typeName)
       await fwd.registerRequestType('TestCall', '')
+
       data = {
         domain: {
           name: 'Test Domain',
           version: '1',
-          chainId: 1234,
+          chainId,
           verifyingContract: fwd.address
         },
         primaryType: 'ForwardRequest',
@@ -248,10 +307,16 @@ contract('Forwarder', ([from]) => {
       assert.equal(calcType, typeName)
       const calcTypeHash = bufferToHex(TypedDataUtils.hashType('ForwardRequest', data.types))
       assert.equal(calcTypeHash, typeHash)
+
       recipient = await TestForwarderTarget.new(fwd.address)
       testfwd = await TestForwarder.new()
 
+      const ret = await fwd.registerDomainSeparator(data.domain.name!, data.domain.version!)
+
       domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
+
+      // validate registration matches local definition
+      assert.equal(domainSeparator, ret.logs[0].args.domainSeparator)
     })
 
     it('should call function', async () => {

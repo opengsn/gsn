@@ -21,10 +21,10 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
 import HttpWrapper from '../relayclient/HttpWrapper'
-import { GsnRequestType } from '../common/EIP712/TypedRequestData'
 import { constants } from '../common/Constants'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 import { string32 } from '../common/VersionRegistry'
+import { registerForwarderForGsn } from '../common/EIP712/ForwarderUtil'
 
 interface RegisterOptions {
   from: Address
@@ -269,10 +269,7 @@ export default class CommandsLogic {
     }
     this.config.relayHubAddress = rInstance.options.address
 
-    await fInstance.methods.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    ).send(options)
+    await registerForwarderForGsn(fInstance, options)
 
     return {
       relayHubAddress: rInstance.options.address,

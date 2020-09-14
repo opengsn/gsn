@@ -5,6 +5,8 @@ import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types, TypedDa
 import { bufferToHex } from 'ethereumjs-util'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
+require('source-map-support').install({ errorFormatterForce: true })
+
 const EIP712DomainType = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
@@ -43,10 +45,17 @@ interface Types extends EIP712Types {
   RelayData: EIP712TypeProperty[]
 }
 
+// use these values in registerDomainSeparator
+export const GsnDomainSeparatorType = {
+  prefix: 'string name,string version',
+  name: 'GSN Relayed Transaction',
+  version: '2'
+}
+
 export function getDomainSeparator (verifier: Address, chainId: number): EIP712Domain {
   return {
-    name: 'GSN Relayed Transaction',
-    version: '2',
+    name: GsnDomainSeparatorType.name,
+    version: GsnDomainSeparatorType.version,
     chainId: chainId,
     verifyingContract: verifier
   }

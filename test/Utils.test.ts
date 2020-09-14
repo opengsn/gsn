@@ -7,7 +7,10 @@ import { HttpProvider } from 'web3-core'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
-import TypedRequestData, { getDomainSeparatorHash, GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData, {
+  getDomainSeparatorHash,
+  GsnDomainSeparatorType, GsnRequestType
+} from '../src/common/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -16,6 +19,7 @@ import { encodeRevertReason } from './TestUtils'
 import CommandsLogic from '../src/cli/CommandsLogic'
 import { configureGSN, GSNConfig, resolveConfigurationGSN } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
+require('source-map-support').install({ errorFormatterForce: true })
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -53,6 +57,13 @@ contract('Utils', function (accounts) {
       const relayWorker = accounts[9]
       const paymasterData = '0x'
       const clientId = '0'
+
+      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+      console.log(res1.logs[0])
+      const { domainSeparator } = res1.logs[0].args
+
+      // sanity check: our locally-calculated domain-separator is the same as on-chain registered domain-separator
+      assert.equal(domainSeparator, getDomainSeparatorHash(forwarder, chainId))
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
@@ -105,6 +116,11 @@ contract('Utils', function (accounts) {
     it('library constants should match RelayHub eip712 constants', async function () {
       assert.equal(GsnRequestType.typeName, await testUtil.libRelayRequestName())
       assert.equal(GsnRequestType.typeSuffix, await testUtil.libRelayRequestSuffix())
+
+      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+      console.log(res1.logs[0])
+      const { domainSeparator } = res1.logs[0].args
+      assert.equal(domainSeparator, await testUtil.libDomainSeparator(forwarder))
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,

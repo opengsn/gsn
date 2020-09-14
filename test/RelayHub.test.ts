@@ -5,7 +5,7 @@ import { expect } from 'chai'
 import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '../src/common/Utils'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 import { defaultEnvironment } from '../src/common/Environments'
-import TypedRequestData, { GsnRequestType } from '../src/common/EIP712/TypedRequestData'
+import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 
 import {
   RelayHubInstance,
@@ -17,6 +17,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance
 } from '../types/truffle-contracts'
 import { deployHub, encodeRevertReason } from './TestUtils'
+import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -60,10 +61,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     recipientContract = await TestRecipient.new(forwarder)
 
     // register hub's RelayRequest with forwarder, if not already done.
-    await forwarderInstance.registerRequestType(
-      GsnRequestType.typeName,
-      GsnRequestType.typeSuffix
-    )
+    await registerForwarderForGsn(forwarderInstance)
 
     target = recipientContract.address
     paymaster = paymasterContract.address

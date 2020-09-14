@@ -9,7 +9,6 @@ import chaiAsPromised from 'chai-as-promised'
 
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { RelayServer } from '../../src/relayserver/RelayServer'
-import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import { SendTransactionDetails, SignedTransactionDetails } from '../../src/relayserver/TransactionManager'
 import { ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
 import { TestPaymasterConfigurableMisbehaviorInstance } from '../../types/truffle-contracts'
@@ -17,8 +16,8 @@ import { defaultEnvironment } from '../../src/common/Environments'
 import { sleep } from '../../src/common/Utils'
 
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from '../TestUtils'
-
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
+import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
@@ -40,6 +39,7 @@ contract('RelayServer', function (accounts) {
       maxRelayNonceGap: 0,
       verbose: process.env.DEBUG != null
     }
+
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init(relayClientConfig)
     const overrideParams: Partial<ServerConfigParams> = {
@@ -479,7 +479,6 @@ contract('RelayServer', function (accounts) {
     before(function () {
       relayServer = env.relayServer
     })
-
     it('_workerSemaphore', async function () {
       assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false first')
       const workerOrig = relayServer._worker
