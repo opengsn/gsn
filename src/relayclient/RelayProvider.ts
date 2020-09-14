@@ -129,7 +129,10 @@ export class RelayProvider implements HttpProvider {
         }
       }, (reason: any) => {
         const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
-        callback(new Error(`Rejected relayTransaction call - should not happen. Reason: ${reasonStr}`))
+        if (this.config.verbose) {
+          console.log('Rejected relayTransaction call', reason)
+        }
+        callback(new Error(`Rejected relayTransaction call - Reason: ${reasonStr}`))
       })
   }
 
@@ -192,16 +195,23 @@ export class RelayProvider implements HttpProvider {
   }
 
   private _dumpRelayingResult (relayingResult: RelayingResult): string {
-    let str = `Ping errors (${relayingResult.pingErrors.size}):`
-    Array.from(relayingResult.pingErrors.keys()).forEach(e => {
-      const error = relayingResult.pingErrors.get(e)?.toString() ?? ''
-      str += `\n${e} => ${error}\n`
-    })
-    str += `Relaying errors (${relayingResult.relayingErrors.size}):\n`
-    Array.from(relayingResult.relayingErrors.keys()).forEach(e => {
-      const error = relayingResult.relayingErrors.get(e)?.toString() ?? ''
-      str += `${e} => ${error}`
-    })
+    let str = ''
+    if (relayingResult.pingErrors.size > 0) {
+      str += `Ping errors (${relayingResult.pingErrors.size}):`
+      Array.from(relayingResult.pingErrors.keys()).forEach(e => {
+        const err = relayingResult.pingErrors.get(e)
+        const error = err?.message ?? err?.toString() ?? ''
+        str += `\n${e} => ${error}\n`
+      })
+    }
+    if (relayingResult.relayingErrors.size > 0) {
+      str += `Relaying errors (${relayingResult.relayingErrors.size}):\n`
+      Array.from(relayingResult.relayingErrors.keys()).forEach(e => {
+        const err = relayingResult.relayingErrors.get(e)
+        const error = err?.message ?? err?.toString() ?? ''
+        str += `${e} => ${error}`
+      })
+    }
     return str
   }
 
