@@ -66,14 +66,15 @@ export async function resolveConfigurationGSN (provider: provider, partialConfig
   const [
     chainId, relayHubAddress, forwarderAddress
   ] = await Promise.all([
-    partialConfig.chainId ?? await contractInteractor.getAsyncChainId(),
-    await paymasterInstance.getHubAddr().catch(e => { throw new Error('Not a paymaster contract') }),
-    partialConfig.forwarderAddress ?? await paymasterInstance.trustedForwarder().catch(e => { throw new Error('paymaster has no trustedForwarder()') }),
-    await paymasterInstance.versionPaymaster().catch((e: any) => { throw new Error('Not a paymaster contract') }).then((version: string) => contractInteractor._validateVersion(version))
+
+    partialConfig.chainId ?? contractInteractor.getAsyncChainId(),
+    paymasterInstance.getHubAddr().catch(e => { throw new Error('Not a paymaster contract') }),
+    partialConfig.forwarderAddress ?? paymasterInstance.trustedForwarder().catch(e => { throw new Error('paymaster has no trustedForwarder()') }),
+    paymasterInstance.versionPaymaster().catch((e: any) => { throw new Error('Not a paymaster contract') }).then((version: string) => contractInteractor._validateVersion(version))
       .catch(err => console.log('WARNING: beta ignore version compatibility', err))
   ])
 
-  const isMetamask = (provider as any).isMetaMask != null
+  const isMetamask: boolean = (provider as any).isMetaMask
 
   // provide defaults valid for metamask (unless explicitly specified values)
   const methodSuffix = partialConfig.methodSuffix ?? (isMetamask ? '_v4' : defaultGsnConfig.methodSuffix)

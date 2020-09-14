@@ -28,25 +28,25 @@ contract('client-configuration', () => {
         await expect(resolveConfigurationGSN()).to.eventually.rejectedWith(/Cannot read property/)
       })
 
-      it('first arg not provider', async () => {
+      it('should throw if the first arg not provider', async () => {
         // @ts-ignore
         await expect(resolveConfigurationGSN({})).to.eventually.rejectedWith(/First param is not a web3 provider/)
       })
-      it('no paymaster in config', async () => {
+      it('should throw if no paymaster in config', async () => {
         await expect(resolveConfigurationGSN(web3.currentProvider, {}))
           .to.eventually.rejectedWith('Cannot resolve GSN deployment without paymaster address')
       })
-      it('no contract paymaster address ', async () => {
+      it('should throw if no contract at paymaster address ', async () => {
         await expect(resolveConfigurationGSN(web3.currentProvider, { paymasterAddress: constants.ZERO_ADDRESS }))
           .to.eventually.rejectedWith('no code at address ')
       })
 
-      it('wrong contract paymaster address', async () => {
+      it('should throw if not a paymaster contract', async () => {
         await expect(resolveConfigurationGSN(web3.currentProvider, { paymasterAddress: deploymentResult.stakeManagerAddress }))
           .to.eventually.rejectedWith('Not a paymaster contract')
       })
 
-      it.skip('wrong contract paymaster version', async () => {
+      it.skip('should throw if wrong contract paymaster version', async () => {
         // instead of deploying a new paymaster with a different version, we make our client version older
         // since resolveConfigurationGSN creates its own ContractInteractor, we have to hook the class to modify the version
         // after it is created...
