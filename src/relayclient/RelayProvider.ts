@@ -9,6 +9,7 @@ import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Transaction } from 'ethereumjs-tx'
 import { AccountKeypair } from './AccountManager'
+import { GsnEvent } from './GsnEvents'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -52,6 +53,14 @@ export class RelayProvider implements HttpProvider {
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
 
     this._delegateEventsApi(origProvider)
+  }
+
+  registerEventListener (handler: (event: GsnEvent) => void): void {
+    this.relayClient.registerEventListener(handler)
+  }
+
+  unregisterEventListener (handler: (event: GsnEvent) => void): void {
+    this.relayClient.unregisterEventListener(handler)
   }
 
   _delegateEventsApi (origProvider: HttpProvider): void {

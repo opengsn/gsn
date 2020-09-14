@@ -132,7 +132,7 @@ export default class ContractInteractor {
       throw new Error('_init was already called')
     }
     await this._initializeContracts()
-    await this._validateCompatibility().catch(err => console.log('WARNING: beta ignore version compatibility', err))
+    await this._validateCompatibility().catch(err => console.log('WARNING: beta ignore version compatibility', err.message))
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.getAsyncChainId()
     this.networkId = await this.web3.eth.net.getId()

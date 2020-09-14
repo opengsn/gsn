@@ -36,9 +36,9 @@ export default class RelaySelectionManager {
    * Ping those relays that were not pinged yet, and remove both the returned relay or relays re from {@link remainingRelays}
    * @returns the first relay to respond to a ping message. Note: will never return the same relay twice.
    */
-  async selectNextRelay (txDetails: GsnTransactionDetails): Promise<RelayInfo | undefined> {
+  async selectNextRelay (): Promise<RelayInfo | undefined> {
     while (true) {
-      const slice = await this._getNextSlice(txDetails)
+      const slice = await this._getNextSlice()
       let relayInfo: RelayInfo | undefined
       if (slice.length > 0) {
         relayInfo = await this._nextRelayInternal(slice)
@@ -74,18 +74,27 @@ export default class RelaySelectionManager {
             relayInfo: events[0]
           }
         } else {
-          // TODO: do not throw! The preffered relay may be removed since.
+          // TODO: do not throw! The preferred relay may be removed since.
           throw new Error('Could not find register event for the winning preferred relay')
         }
       }
     }
   }
 
-  async _getNextSlice (txDetails: GsnTransactionDetails): Promise<RelayInfoUrl[]> {
-    if (!this.isInitialized) {
-      this.remainingRelays = await this.knownRelaysManager.getRelaysSortedForTransaction(txDetails)
-      this.isInitialized = true
-    }
+  async init (): Promise<this> {
+    this.remainingRelays = await this.knownRelaysManager.getRelaysSortedForTransaction(this.gsnTransactionDetails)
+    this.isInitialized = true
+    return this
+  }
+
+  // relays left to try
+  // (note that some edge-cases (like duplicate urls) are not filtered out)
+  relaysLeft (): RelayInfoUrl[] {
+    return this.remainingRelays.flatMap(list => list)
+  }
+
+  async _getNextSlice (): Promise<RelayInfoUrl[]> {
+    if (!this.isInitialized) { throw new Error('init() not called') }
     for (const relays of this.remainingRelays) {
       const bulkSize = Math.min(this.config.sliceSize, relays.length)
       const slice = relays.slice(0, bulkSize)
@@ -148,6 +157,7 @@ export default class RelaySelectionManager {
   }
 
   _handleRaceResults (raceResult: RaceResult): void {
+    if (!this.isInitialized) { throw new Error('init() not called') }
     this.errors = new Map([...this.errors, ...raceResult.errors])
     this.remainingRelays = this.remainingRelays.map(relays =>
       relays

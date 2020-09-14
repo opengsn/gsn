@@ -17,7 +17,7 @@ done
 
 
 #these files are created for packing only (removed by "postpack")
-for c in RelayProvider RelayClient GSNConfigurator GsnTestEnvironment; do
+for c in RelayProvider RelayClient GsnEvents GSNConfigurator GsnTestEnvironment; do
   echo gen ./$c.ts:
   (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
 done
