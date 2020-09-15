@@ -3,7 +3,6 @@ import ow from 'ow'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { TransactionReceipt } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 
 import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'

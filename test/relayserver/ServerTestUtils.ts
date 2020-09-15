@@ -2,7 +2,6 @@
 import abiDecoder from 'abi-decoder'
 import { TransactionReceipt } from 'web3-core'
 import { toBN } from 'web3-utils'
-import * as ethUtils from 'ethereumjs-util'
 
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
