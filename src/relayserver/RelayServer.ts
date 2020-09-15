@@ -332,15 +332,15 @@ export class RelayServer extends EventEmitter {
     this.initialized = true
   }
 
-  async replenishServer (workerIndex: number, currentBlock: number): Promise<TransactionReceipt[]> {
-    const receipts: TransactionReceipt[] = []
+  async replenishServer (workerIndex: number, currentBlock: number): Promise<PrefixedHexString[]> {
+    const transactionHashes: PrefixedHexString[] = []
     let managerEthBalance = await this.getManagerBalance()
     const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (managerEthBalance.gte(toBN(this.config.managerTargetBalance.toString())) && workerBalance.gte(
       toBN(this.config.workerMinBalance.toString()))) {
       // all filled, nothing to do
-      return receipts
+      return transactionHashes
     }
     if (managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(
       toBN(this.config.minHubWithdrawalBalance))) {
@@ -353,7 +353,8 @@ export class RelayServer extends EventEmitter {
         creationBlockNumber: currentBlock,
         method
       }
-      receipts.push((await this.transactionManager.sendTransaction(details)).receipt)
+      const { transactionHash } = await this.transactionManager.sendTransaction(details)
+      transactionHashes.push(transactionHash)
     }
     managerEthBalance = await this.getManagerBalance()
     if (workerBalance.lt(toBN(this.config.workerMinBalance.toString()))) {
@@ -370,18 +371,18 @@ export class RelayServer extends EventEmitter {
           creationBlockNumber: currentBlock,
           gasLimit: defaultEnvironment.mintxgascost.toString()
         }
-        const tx = await this.transactionManager.sendTransaction(details)
-        receipts.push(tx.receipt)
+        const { transactionHash } = await this.transactionManager.sendTransaction(details)
+        transactionHashes.push(transactionHash)
       } else {
         const message = `== replenishServer: can't replenish: mgr balance too low ${managerEthBalance.toString()} refill=${refill.toString()}`
         this.emit('fundingNeeded', message)
         console.log(message)
       }
     }
-    return receipts
+    return transactionHashes
   }
 
-  async _worker (blockNumber: number): Promise<TransactionReceipt[]> {
+  async _worker (blockNumber: number): Promise<PrefixedHexString[]> {
     if (!this.initialized) {
       await this.init()
     }
@@ -401,23 +402,23 @@ export class RelayServer extends EventEmitter {
 
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     const shouldRegisterAgain = await this._shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
-    let { receipts, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, blockNumber, shouldRegisterAgain)
+    let { transactionHashes, unregistered } = await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, blockNumber, shouldRegisterAgain)
     await this.transactionManager.removeConfirmedTransactions(blockNumber)
     await this._boostStuckPendingTransactions(blockNumber)
     if (unregistered) {
       this.lastScannedBlock = blockNumber
-      return receipts
+      return transactionHashes
     }
     await this.registrationManager.assertRegistered()
     await this.handlePastHubEvents(blockNumber, hubEventsSinceLastScan)
     this.lastScannedBlock = blockNumber
     const workerIndex = 0
-    receipts = receipts.concat(await this.replenishServer(workerIndex, blockNumber))
+    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, blockNumber))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
       this.emit('error', new Error('workers not funded...'))
       this.ready = false
-      return receipts
+      return transactionHashes
     }
     if (!this.ready) {
       console.log('Relay is Ready.')
@@ -428,7 +429,7 @@ export class RelayServer extends EventEmitter {
       this.alerted = false
     }
     delete this.lastError
-    return receipts
+    return transactionHashes
   }
 
   async getManagerBalance (): Promise<BN> {

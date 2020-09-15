@@ -1,4 +1,3 @@
-import { TransactionReceipt } from 'web3-core'
 import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
 
 import { Address, IntString } from '../relayclient/types/Aliases'
@@ -11,7 +10,7 @@ import log from 'loglevel'
 import { createStoredTransaction, StoredTransaction, StoredTransactionMetadata } from './StoredTransaction'
 
 export interface SignedTransactionDetails {
-  receipt: TransactionReceipt
+  transactionHash: PrefixedHexString
   signedTx: PrefixedHexString
 }
 
@@ -42,7 +41,10 @@ export class TransactionManager {
     this.workersKeyManager = dependencies.workersKeyManager
     this.managerKeyManager = dependencies.managerKeyManager
     this.config = config
+    this._initNonces()
+  }
 
+  _initNonces (): void {
     // todo: initialize nonces for all signers (currently one manager, one worker)
     this.nonces[this.managerKeyManager.getAddress(0)] = 0
     this.nonces[this.workersKeyManager.getAddress(0)] = 0
@@ -92,14 +94,13 @@ export class TransactionManager {
     } finally {
       releaseMutex()
     }
-    const receipt = await this.contractInteractor.sendSignedTransaction(signedTx)
-    log.info('\ntxhash is', receipt.transactionHash)
-    if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
-      throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
+    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+    log.info('\ntxhash is', transactionHash)
+    if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
+      throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
-    await this.updateTransactionWithMinedBlock(storedTx, receipt.blockNumber)
     return {
-      receipt,
+      transactionHash,
       signedTx
     }
   }
@@ -148,13 +149,13 @@ export class TransactionManager {
 
     log.debug('resending tx with nonce', txToSign.nonce, 'from', tx.from)
     log.debug('account nonce', await this.contractInteractor.getTransactionCount(tx.from))
-    const receipt = await this.contractInteractor.sendSignedTransaction(signedTx)
-    log.info('\ntxhash is', receipt.transactionHash)
-    if (receipt.transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
-      throw new Error(`txhash mismatch: from receipt: ${receipt.transactionHash} from txstore:${storedTx.txId}`)
+    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+    log.info('\ntxhash is', transactionHash)
+    if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
+      throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
     return {
-      receipt,
+      transactionHash,
       signedTx
     }
   }
@@ -165,7 +166,7 @@ export class TransactionManager {
       log.warn('NONCE FIX for signer=', signer, ': nonce=', nonce, this.nonces[signer])
       this.nonces[signer] = nonce
     }
-    return nonce
+    return this.nonces[signer]
   }
 
   async removeConfirmedTransactions (blockNumber: number): Promise<void> {
@@ -190,9 +191,13 @@ export class TransactionManager {
           throw new Error(`invalid block number in receipt ${JSON.stringify(receipt)}`)
         }
         if (receipt.blockNumber !== transaction.minedBlockNumber) {
-          log.warn(`transaction ${transaction.txId} was moved between blocks`)
-          await this.updateTransactionWithMinedBlock(transaction, receipt.blockNumber)
-          continue
+          if (transaction.minedBlockNumber != null) {
+            log.warn(`transaction ${transaction.txId} was moved between blocks`)
+          }
+          if (blockNumber - receipt.blockNumber < this.config.confirmationsNeeded) {
+            await this.updateTransactionWithMinedBlock(transaction, receipt.blockNumber)
+            continue
+          }
         }
         // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
         log.debug(`removing tx number ${receipt.nonce} sent by ${receipt.from} with ${blockNumber - receipt.blockNumber} confirmations`)
@@ -224,9 +229,9 @@ export class TransactionManager {
       log.debug(`${signer} : awaiting transaction with ID: ${sortedTxs[0].txId} to be mined. creationBlockNumber: ${sortedTxs[0].creationBlockNumber} nonce: ${nonce}`)
       return null
     }
-    const { receipt, signedTx } = await this.resendTransaction(sortedTxs[0])
+    const { transactionHash, signedTx } = await this.resendTransaction(sortedTxs[0])
     log.debug('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
-      receipt.transactionHash)
+      transactionHash)
     if (sortedTxs[0].attempts > 2) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       log.debug(`resend ${signer}: Sent tx ${sortedTxs[0].attempts} times already`)

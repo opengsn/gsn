@@ -29,6 +29,7 @@ import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { GsnEvent } from '../../src/relayclient/GsnEvents'
+import { Web3Provider } from '../../src/relayclient/ContractInteractor'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -277,7 +278,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return error if view call to \'relayCall()\' fails', async function () {
-      const badContractInteractor = new BadContractInteractor(web3.currentProvider, configureGSN(gsnConfig), true)
+      const badContractInteractor = new BadContractInteractor(web3.currentProvider as Web3Provider, configureGSN(gsnConfig), true)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
       await relayClient._init()

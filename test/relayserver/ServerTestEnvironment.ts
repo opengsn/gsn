@@ -130,7 +130,7 @@ export class ServerTestEnvironment {
     // initialize server - gas price, stake, owner, etc, whatever
     const latestBlock = await this.web3.eth.getBlock('latest')
     const receipts = await this.relayServer._worker(latestBlock.number)
-    assertRelayAdded(receipts, this.relayServer) // sanity check
+    await assertRelayAdded(receipts, this.relayServer) // sanity check
   }
 
   _createKeyManager (workdir?: string): KeyManager {
@@ -207,7 +207,10 @@ export class ServerTestEnvironment {
     return await this.relayClient._prepareRelayHttpRequest(relayInfo, Object.assign({}, gsnTransactionDetails, overrideDetails))
   }
 
-  async relayTransaction (assertRelayed = true, overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<PrefixedHexString> {
+  async relayTransaction (assertRelayed = true, overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<{
+    signedTx: PrefixedHexString
+    txHash: PrefixedHexString
+  }> {
     const req = await this.createRelayHttpRequest(overrideDetails)
     const signedTx = await this.relayServer.createRelayTransaction(req)
     const txHash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
@@ -215,7 +218,10 @@ export class ServerTestEnvironment {
     if (assertRelayed) {
       await this.assertTransactionRelayed(txHash)
     }
-    return signedTx
+    return {
+      txHash,
+      signedTx
+    }
   }
 
   async clearServerStorage (): Promise<void> {
@@ -223,11 +229,12 @@ export class ServerTestEnvironment {
     assert.deepEqual([], await this.relayServer.transactionManager.txStoreManager.getAll())
   }
 
-  async assertTransactionRelayed (txHash: string): Promise<void> {
+  async assertTransactionRelayed (txHash: string, overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<void> {
     const receipt = await web3.eth.getTransactionReceipt(txHash)
     if (receipt == null) {
       throw new Error('Transaction Receipt not found')
     }
+    const sender = overrideDetails.from ?? this.gasLess
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(this.relayServer.registrationManager._parseEvent)
     const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
     assert.exists(event1, 'SampleRecipientEmitted not found, maybe transaction was not relayed successfully')
@@ -236,7 +243,7 @@ export class ServerTestEnvironment {
     assert.exists(event2, 'TransactionRelayed not found, maybe transaction was not relayed successfully')
     assert.equal(event2.name, 'TransactionRelayed')
     assert.equal(event2.args.relayWorker.toLowerCase(), this.relayServer.workerAddress.toLowerCase())
-    assert.equal(event2.args.from.toLowerCase(), this.gasLess.toLowerCase())
+    assert.equal(event2.args.from.toLowerCase(), sender.toLowerCase())
     assert.equal(event2.args.to.toLowerCase(), this.recipient.address.toLowerCase())
     assert.equal(event2.args.paymaster.toLowerCase(), this.paymaster.address.toLowerCase())
   }

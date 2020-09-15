@@ -146,9 +146,9 @@ export class RelayClient {
 
   async _isAlreadySubmitted (txHash: string): Promise<boolean> {
     const [txMinedReceipt, pendingBlock] = await Promise.all([
-      this.contractInteractor.getWeb3().eth.getTransactionReceipt(txHash),
+      this.contractInteractor.web3.eth.getTransactionReceipt(txHash),
       // mempool transactions
-      this.contractInteractor.getWeb3().eth.getBlock('pending')
+      this.contractInteractor.web3.eth.getBlock('pending')
     ])
 
     if (txMinedReceipt != null) {
