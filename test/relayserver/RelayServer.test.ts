@@ -21,7 +21,6 @@ import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransa
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { ServerAction } from '../../src/relayserver/StoredTransaction'
-import { en } from 'ethers/wordlists'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
