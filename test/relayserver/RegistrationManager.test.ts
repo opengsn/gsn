@@ -202,7 +202,7 @@ contract('RegistrationManager', function (accounts) {
   })
 
   describe('event handlers', function () {
-    describe('Unstaked event', function () {
+    describe('Withdrawn event', function () {
       async function assertSendBalancesToOwner (
         server: RelayServer,
         managerHubBalanceBefore: BN,
@@ -246,6 +246,7 @@ contract('RegistrationManager', function (accounts) {
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
         await env.stakeManager.unlockStake(newServer.managerAddress, { from: relayOwner })
         await evmMineMany(unstakeDelay)
+        await env.stakeManager.withdrawStake(newServer.managerAddress, { from: relayOwner })
       })
 
       afterEach(async function () {
@@ -315,19 +316,6 @@ contract('RegistrationManager', function (accounts) {
       afterEach(async function () {
         await revert(id)
       })
-      it('should ignore unauthorizeHub of another hub', async function () {
-        await env.stakeManager.stakeForAddress(anotherRelayer, 1000)
-        await env.stakeManager.authorizeHubByManager(env.relayHub.address, {from:anotherRelayer})
-        await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, {from:anotherRelayer})
-        const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
-
-        const latestBlock = await env.web3.eth.getBlock('latest')
-        const receipts = await newServer._worker(latestBlock.number)
-
-        const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
-        assert.equal(receipts.length,0)
-        assert.equal(workerBalanceBefore.toString(), workerBalanceAfter.toString())
-      });
 
       it('should not send balance immediately after unauthorize (before unstake delay)', async function () {
         await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
@@ -340,6 +328,21 @@ contract('RegistrationManager', function (accounts) {
 
         assert.equal(receipt.length, 0)
         assert.equal(workerBalanceBefore.toString(), await newServer.getWorkerBalance(workerIndex).then(b => b.toString()))
+      })
+
+      it('should ignore unauthorizeHub of another hub', async function () {
+        await env.stakeManager.stakeForAddress(anotherRelayer, 1000)
+        await env.stakeManager.authorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
+        await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
+        const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
+
+        await evmMineMany(unstakeDelay)
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        const receipts = await newServer._worker(latestBlock.number)
+
+        const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
+        assert.equal(receipts.length, 0)
+        assert.equal(workerBalanceBefore.toString(), workerBalanceAfter.toString())
       })
 
       it('send only workers\' balances to owner (not manager hub,eth balance) - after unstake delay', async function () {
@@ -401,7 +404,8 @@ contract('RegistrationManager', function (accounts) {
     it('should extract events which are due (lower or equal block number)', function () {
       assert.deepEqual(extracted, ['event1', 'event2'])
     })
-    it('should should future events in the delayedEvents list', function () {
+
+    it('should leave future events in the delayedEvents list', function () {
       assert.deepEqual((rm as any).delayedEvents, [{ block: 3, eventData: 'event3' }])
     })
   })

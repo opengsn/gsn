@@ -11,7 +11,7 @@ import ContractInteractor, {
   RelayServerRegistered,
   RelayWorkersAdded,
   StakeAdded,
-  StakeUnlocked
+  StakeUnlocked, StakeWithdrawn
 } from '../relayclient/ContractInteractor'
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { defaultEnvironment } from '../common/Environments'
@@ -110,7 +110,7 @@ export class RegistrationManager {
       fromBlock: lastScannedBlock + 1,
       toBlock: 'latest'
     }
-    const eventNames = [HubAuthorized, StakeAdded, HubUnauthorized, StakeUnlocked]
+    const eventNames = [HubAuthorized, StakeAdded, HubUnauthorized, StakeUnlocked, StakeWithdrawn]
     const decodedEvents = await this.contractInteractor.getPastEventsForStakeManager(eventNames, topics, options)
     log.trace('logs?', decodedEvents)
     log.trace('options? ', options)
@@ -131,21 +131,21 @@ export class RegistrationManager {
           unregistered = true
           break
         case 'StakeUnlocked':
-          this.delayedEvents.push({ block: eventData.returnValues.withdrawBlock.toString(), eventData })
+          unregistered = true
+          break
+        case 'StakeWithdrawn':
+          receipts = receipts.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock))
           unregistered = true
           break
       }
     }
 
-    // handle HubUnauthorized, StakeUnlocked only after their due time
+    // handle HubUnauthorized only after the due time
 
     for (const eventData of this._extractDuePendingEvents(currentBlock)) {
       switch (eventData.event) {
         case 'HubUnauthorized':
           receipts = receipts.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
-          break
-        case 'StakeUnlocked':
-          receipts = receipts.concat(await this._handleStakeUnlockedEvent(eventData, currentBlock))
           break
       }
     }
@@ -225,8 +225,8 @@ export class RegistrationManager {
     await this.refreshStake()
   }
 
-  async _handleStakeUnlockedEvent (dlog: EventData, currentBlock: number): Promise<TransactionReceipt[]> {
-    console.log('handle Unstaked event', dlog)
+  async _handleStakeWithdrawnEvent (dlog: EventData, currentBlock: number): Promise<TransactionReceipt[]> {
+    console.log('handle StakeWithdrawn event', dlog)
     await this.refreshStake()
     return await this.withdrawAllFunds(true, currentBlock)
   }
