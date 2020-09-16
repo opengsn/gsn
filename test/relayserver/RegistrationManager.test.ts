@@ -5,20 +5,19 @@ import sinonChai from 'sinon-chai'
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 
-import { KeyManager } from '../../src/relayserver/KeyManager'
-import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import { KeyManager } from '../../src/relayserver/KeyManager'
 import { RelayServer } from '../../src/relayserver/RelayServer'
-import { revert, snapshot } from '../TestUtils'
-import { constants } from '../../src/common/Constants'
-import {
-  assertRelayAdded,
-  getTemporaryWorkdirs,
-  getTotalTxCosts, ServerWorkdirs
-} from './ServerTestUtils'
+import { ServerAction } from '../../src/relayserver/StoredTransaction'
 import { ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
+import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
+import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import { constants } from '../../src/common/Constants'
+
+import { revert, snapshot } from '../TestUtils'
+
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
+import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
 
 const { expect } = chai.use(chaiAsPromised).use(sinonChai)
 const { oneEther, weekInSec } = constants
@@ -172,12 +171,13 @@ contract('RegistrationManager', function (accounts) {
     let relayServer: RelayServer
 
     before(async function () {
-      await env.newServerInstanceNoInit()
+      await env.newServerInstanceNoInit({ refreshStateTimeoutBlocks: 1 })
       relayServer = env.relayServer
     })
 
+    // TODO: separate this into 4 unit tests for 'isRegistrationValid' and 1 test for 'handlePastEvents'
     it('should re-register server with new configuration', async function () {
-      const latestBlock = await env.web3.eth.getBlock('latest')
+      let latestBlock = await env.web3.eth.getBlock('latest')
       const receipts = await relayServer._worker(latestBlock.number)
       await assertRelayAdded(receipts, relayServer)
 
@@ -188,9 +188,15 @@ contract('RegistrationManager', function (accounts) {
       pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
       await assertRelayAdded(pastEventsResult.transactionHashes, relayServer, false)
 
+      latestBlock = await env.web3.eth.getBlock('latest')
+      await relayServer._worker(latestBlock.number)
+
       relayServer.config.pctRelayFee++
       pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
       await assertRelayAdded(pastEventsResult.transactionHashes, relayServer, false)
+
+      latestBlock = await env.web3.eth.getBlock('latest')
+      await relayServer._worker(latestBlock.number)
 
       relayServer.config.url = 'fakeUrl'
       pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
@@ -264,6 +270,7 @@ contract('RegistrationManager', function (accounts) {
         const method = env.relayHub.contract.methods.withdraw(toHex(managerHubBalance), workerAddress)
         await newServer.transactionManager.sendTransaction({
           signer: newServer.managerAddress,
+          serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
           destination: env.relayHub.address,
           creationBlockNumber: 0,
           method
@@ -375,8 +382,13 @@ contract('RegistrationManager', function (accounts) {
       })
 
       it('should register server and add workers', async function () {
+        assert.equal((await newServer.txStoreManager.getAll()).length, 0)
         const receipts = await newServer.registrationManager.attemptRegistration([], 0)
         await assertRelayAdded(receipts, newServer)
+        const pendingTransactions = await newServer.txStoreManager.getAll()
+        assert.equal(pendingTransactions.length, 2)
+        assert.equal(pendingTransactions[0].serverAction, ServerAction.ADD_WORKER)
+        assert.equal(pendingTransactions[1].serverAction, ServerAction.REGISTER_SERVER)
       })
     })
   })

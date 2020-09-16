@@ -1,13 +1,15 @@
-import { JsonRpcResponse } from 'web3-core-helpers'
+import BN from 'bn.js'
+import abi from 'web3-eth-abi'
 import ethUtils from 'ethereumjs-util'
 import web3Utils, { toWei } from 'web3-utils'
-import abi from 'web3-eth-abi'
+import { EventData } from 'web3-eth-contract'
+import { JsonRpcResponse } from 'web3-core-helpers'
+import { PrefixedHexString } from 'ethereumjs-tx'
+
+import { Address } from '../relayclient/types/Aliases'
+import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 import TypedRequestData from './EIP712/TypedRequestData'
-import { PrefixedHexString } from 'ethereumjs-tx'
-import { Address } from '../relayclient/types/Aliases'
-import BN from 'bn.js'
-import { EventData } from 'web3-eth-contract'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -137,7 +139,7 @@ export function getEcRecoverMeta (message: PrefixedHexString, signature: string 
 }
 
 export function parseHexString (str: string): number[] {
-  var result = []
+  const result = []
   while (str.length >= 2) {
     result.push(parseInt(str.substring(0, 2), 16))
 
@@ -163,18 +165,26 @@ export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
 
-export function reduceToLatestTx (events: EventData[]): EventData | undefined {
+export function getLatestEventData (events: EventData[]): EventData | undefined {
   if (events.length === 0) {
     return
   }
-  return events
-    .reduce(
-      (b1, b2) => {
-        if (b1.blockNumber === b2.blockNumber) {
-          return b1.transactionIndex > b2.transactionIndex ? b1 : b2
-        }
-        return b1.blockNumber > b2.blockNumber ? b1 : b2
-      })
+  const eventDataSorted = events.sort(
+    (a: EventData, b: EventData) => {
+      if (a.blockNumber === b.blockNumber) {
+        return b.transactionIndex - a.transactionIndex
+      }
+      return b.blockNumber - a.blockNumber
+    })
+  return eventDataSorted[0]
+}
+
+export function isRegistrationValid (registerEvent: EventData | undefined, config: ServerConfigParams, managerAddress: Address): boolean {
+  return registerEvent != null &&
+    isSameAddress(registerEvent.returnValues.relayManager, managerAddress) &&
+    registerEvent.returnValues.baseRelayFee.toString() === config.baseRelayFee.toString() &&
+    registerEvent.returnValues.pctRelayFee.toString() === config.pctRelayFee.toString() &&
+    registerEvent.returnValues.relayUrl.toString() === config.url.toString()
 }
 
 /**

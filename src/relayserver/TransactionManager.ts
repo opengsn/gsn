@@ -7,7 +7,12 @@ import { Mutex } from 'async-mutex'
 import { KeyManager } from './KeyManager'
 import { ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import log from 'loglevel'
-import { createStoredTransaction, StoredTransaction, StoredTransactionMetadata } from './StoredTransaction'
+import {
+  createStoredTransaction,
+  ServerAction,
+  StoredTransaction,
+  StoredTransactionMetadata
+} from './StoredTransaction'
 
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString
@@ -16,6 +21,7 @@ export interface SignedTransactionDetails {
 
 export interface SendTransactionDetails {
   signer: Address
+  serverAction: ServerAction
   method?: any
   destination: Address
   value?: IntString
@@ -57,7 +63,7 @@ export class TransactionManager {
     }
   }
 
-  async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice, creationBlockNumber }: SendTransactionDetails): Promise<SignedTransactionDetails> {
+  async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice, creationBlockNumber, serverAction }: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = method?.encodeABI() ?? '0x'
     const _gasPrice = parseInt(gasPrice ?? await this.contractInteractor.getGasPrice())
     log.debug('gasPrice', _gasPrice)
@@ -86,6 +92,7 @@ export class TransactionManager {
       const metadata: StoredTransactionMetadata = {
         from: signer,
         attempts: 1,
+        serverAction,
         creationBlockNumber
       }
       storedTx = createStoredTransaction(txToSign, metadata)
@@ -114,6 +121,7 @@ export class TransactionManager {
     const metadata: StoredTransactionMetadata = {
       attempts: tx.attempts + 1,
       from: tx.from,
+      serverAction: tx.serverAction,
       creationBlockNumber: tx.creationBlockNumber,
       minedBlockNumber: tx.minedBlockNumber
     }
@@ -178,9 +186,7 @@ export class TransactionManager {
     log.debug('resending unconfirmed transactions')
     // Get nonce at confirmationsNeeded blocks ago
     for (const transaction of sortedTxs) {
-      const shouldBeConfirmed = transaction.minedBlockNumber != null && blockNumber - transaction.minedBlockNumber >= this.config.confirmationsNeeded
-      const mightBeConfirmed = transaction.minedBlockNumber == null && blockNumber - transaction.creationBlockNumber >= this.config.confirmationsNeeded
-      const shouldRecheck = shouldBeConfirmed || mightBeConfirmed
+      const shouldRecheck = transaction.minedBlockNumber == null || blockNumber - transaction.minedBlockNumber >= this.config.confirmationsNeeded
       if (shouldRecheck) {
         const receipt = await this.contractInteractor.getTransaction(transaction.txId)
         if (receipt == null) {

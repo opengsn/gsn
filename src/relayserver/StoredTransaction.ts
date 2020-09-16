@@ -2,9 +2,18 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import * as ethUtils from 'ethereumjs-util'
 import { Address } from '../relayclient/types/Aliases'
 
+export enum ServerAction {
+  REGISTER_SERVER,
+  ADD_WORKER,
+  RELAY_CALL,
+  VALUE_TRANSFER,
+  DEPOSIT_WITHDRAWAL
+}
+
 export interface StoredTransactionMetadata {
   readonly from: Address
   readonly attempts: number
+  readonly serverAction: ServerAction
   readonly creationBlockNumber: number
   readonly boostBlockNumber?: number
   readonly minedBlockNumber?: number

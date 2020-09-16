@@ -38,6 +38,7 @@ contract('TxStoreManager', function (accounts) {
       data: '',
       nonce: 111,
       txId: '123456',
+      serverAction: 0,
       creationBlockNumber: 0,
       minedBlockNumber: 0,
       attempts: 1
@@ -50,6 +51,7 @@ contract('TxStoreManager', function (accounts) {
       data: '',
       nonce: 112,
       txId: '1234567',
+      serverAction: 0,
       creationBlockNumber: 0,
       minedBlockNumber: 0,
       attempts: 1
@@ -63,6 +65,7 @@ contract('TxStoreManager', function (accounts) {
         data: '',
         nonce: 113,
         txId: '12345678',
+        serverAction: 0,
         creationBlockNumber: 0,
         minedBlockNumber: 0,
         attempts: 1
