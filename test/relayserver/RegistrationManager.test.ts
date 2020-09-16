@@ -179,22 +179,22 @@ contract('RegistrationManager', function (accounts) {
     it('should re-register server with new configuration', async function () {
       const latestBlock = await env.web3.eth.getBlock('latest')
       const receipts = await relayServer._worker(latestBlock.number)
-      assertRelayAdded(receipts, relayServer)
+      await assertRelayAdded(receipts, relayServer)
 
       let pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
-      assert.equal(pastEventsResult.receipts.length, 0, 'should not re-register if already registered')
+      assert.equal(pastEventsResult.transactionHashes.length, 0, 'should not re-register if already registered')
 
       relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
       pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
-      assertRelayAdded(pastEventsResult.receipts, relayServer, false)
+      await assertRelayAdded(pastEventsResult.transactionHashes, relayServer, false)
 
       relayServer.config.pctRelayFee++
       pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
-      assertRelayAdded(pastEventsResult.receipts, relayServer, false)
+      await assertRelayAdded(pastEventsResult.transactionHashes, relayServer, false)
 
       relayServer.config.url = 'fakeUrl'
       pastEventsResult = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
-      assertRelayAdded(pastEventsResult.receipts, relayServer, false)
+      await assertRelayAdded(pastEventsResult.transactionHashes, relayServer, false)
     })
   })
 
@@ -212,7 +212,7 @@ contract('RegistrationManager', function (accounts) {
         // assert.equal(newServer.config.withdrawBlock?.toString(), '0')
         const latestBlock = await env.web3.eth.getBlock('latest')
         const receipts = await newServer._worker(latestBlock.number)
-        const totalTxCosts = getTotalTxCosts(receipts, gasPrice)
+        const totalTxCosts = await getTotalTxCosts(receipts, gasPrice)
         const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(newServer.registrationManager.ownerAddress!))
         assert.equal(
           ownerBalanceAfter.sub(
@@ -328,8 +328,8 @@ contract('RegistrationManager', function (accounts) {
         assert.isFalse(newServer.registrationManager.isHubAuthorized, 'Hub should not be authorized in server')
         const gasPrice = await env.web3.eth.getGasPrice()
         // TODO: these two hard-coded indexes are dependent on the order of operations in 'withdrawAllFunds'
-        const workerEthTxCost = getTotalTxCosts([receipts[1]], gasPrice)
-        const managerHubSendTxCost = getTotalTxCosts([receipts[0]], gasPrice)
+        const workerEthTxCost = await getTotalTxCosts([receipts[1]], gasPrice)
+        const managerHubSendTxCost = await getTotalTxCosts([receipts[0]], gasPrice)
         const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(relayOwner))
         const managerHubBalanceAfter = await env.relayHub.balanceOf(newServer.managerAddress)
         const managerBalanceAfter = await newServer.getManagerBalance()
@@ -376,7 +376,7 @@ contract('RegistrationManager', function (accounts) {
 
       it('should register server and add workers', async function () {
         const receipts = await newServer.registrationManager.attemptRegistration([], 0)
-        assertRelayAdded(receipts, newServer)
+        await assertRelayAdded(receipts, newServer)
       })
     })
   })

@@ -7,7 +7,8 @@ import { resolveConfigurationGSN } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
 import { DeploymentResult } from '../../src/cli/CommandsLogic'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
+import ContractInteractor, { Web3Provider } from '../../src/relayclient/ContractInteractor'
+import { HttpProvider } from 'web3-core'
 
 const { assert, expect } = chai.use(chaiAsPromised)
 
@@ -16,7 +17,8 @@ contract('client-configuration', () => {
   let deploymentResult: DeploymentResult
   let paymasterAddress: PrefixedHexString
   before(async () => {
-    env = await GsnTestEnvironment.startGsn('http://localhost:8544')
+    const host = (web3.currentProvider as HttpProvider).host
+    env = await GsnTestEnvironment.startGsn(host)
     deploymentResult = env.deploymentResult
     // deploymentResult = loadDeployment('./build/gsn')
     paymasterAddress = deploymentResult.naivePaymasterAddress
@@ -33,16 +35,16 @@ contract('client-configuration', () => {
         await expect(resolveConfigurationGSN({})).to.eventually.rejectedWith(/First param is not a web3 provider/)
       })
       it('should throw if no paymaster in config', async () => {
-        await expect(resolveConfigurationGSN(web3.currentProvider, {}))
+        await expect(resolveConfigurationGSN(web3.currentProvider as Web3Provider, {}))
           .to.eventually.rejectedWith('Cannot resolve GSN deployment without paymaster address')
       })
       it('should throw if no contract at paymaster address ', async () => {
-        await expect(resolveConfigurationGSN(web3.currentProvider, { paymasterAddress: constants.ZERO_ADDRESS }))
+        await expect(resolveConfigurationGSN(web3.currentProvider as Web3Provider, { paymasterAddress: constants.ZERO_ADDRESS }))
           .to.eventually.rejectedWith('no code at address ')
       })
 
       it('should throw if not a paymaster contract', async () => {
-        await expect(resolveConfigurationGSN(web3.currentProvider, { paymasterAddress: deploymentResult.stakeManagerAddress }))
+        await expect(resolveConfigurationGSN(web3.currentProvider as Web3Provider, { paymasterAddress: deploymentResult.stakeManagerAddress }))
           .to.eventually.rejectedWith('Not a paymaster contract')
       })
 
@@ -59,7 +61,7 @@ contract('client-configuration', () => {
             return await saveCPM.call(this, addr)
           }
 
-          await expect(resolveConfigurationGSN(web3.currentProvider, { paymasterAddress }))
+          await expect(resolveConfigurationGSN(web3.currentProvider as Web3Provider, { paymasterAddress }))
             .to.eventually.rejectedWith(/Provided.*version.*is not supported/)
         } finally {
           ContractInteractor.prototype._createPaymaster = saveCPM
@@ -69,7 +71,7 @@ contract('client-configuration', () => {
 
     describe('with successful resolveConfigurationGSN', () => {
       it('should fill relayHub, stakeManager, Forwarder from valid paymaster paymaster address ', async () => {
-        const gsnConfig = await resolveConfigurationGSN(web3.currentProvider, { paymasterAddress })
+        const gsnConfig = await resolveConfigurationGSN(web3.currentProvider as Web3Provider, { paymasterAddress })
         assert.equal(gsnConfig.relayHubAddress, deploymentResult.relayHubAddress)
         assert.equal(gsnConfig.paymasterAddress, deploymentResult.naivePaymasterAddress)
         assert.equal(gsnConfig.forwarderAddress, deploymentResult.forwarderAddress)

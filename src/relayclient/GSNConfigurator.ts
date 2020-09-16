@@ -1,7 +1,7 @@
 import { HttpProvider } from 'web3-core'
 import { Address, AsyncDataCallback, AsyncScoreCalculator, IntString, PingFilter, RelayFilter } from './types/Aliases'
 import HttpClient from './HttpClient'
-import ContractInteractor from './ContractInteractor'
+import ContractInteractor, { Web3Provider } from './ContractInteractor'
 import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
@@ -47,7 +47,7 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
  * @param provider - web3 provider needed to query blockchain
  * @param partialConfig
  */
-export async function resolveConfigurationGSN (provider: provider, partialConfig: Partial<GSNConfig>): Promise<GSNConfig> {
+export async function resolveConfigurationGSN (provider: Web3Provider, partialConfig: Partial<GSNConfig>): Promise<GSNConfig> {
   // @ts-ignore
   if (provider.send == null && provider.sendAsync == null) {
     throw new Error('First param is not a web3 provider')
