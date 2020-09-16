@@ -1,29 +1,16 @@
 import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import { SendCallback } from './SendCallback'
+import { WrapperProviderBase } from './WrapperProviderBase'
 
-type SendCallback = (error: (Error | null), result?: JsonRpcResponse) => void
+export class ProfilingProvider extends WrapperProviderBase {
+  methodsCount = new Map<string, number>()
+  requestsCount = 0
 
-export class ProfilingProvider implements HttpProvider {
-  private readonly methodsCount = new Map<string, number>()
-  private _requestsCount = 0
-
-  provider: HttpProvider
   logTraffic: boolean
 
-  get requestsCount (): number {
-    return this._requestsCount
-  }
-
-  get connected (): boolean {
-    return this.provider.connected
-  }
-
-  get host (): string {
-    return this.provider.host
-  }
-
   constructor (provider: HttpProvider, logTraffic: boolean = false) {
-    this.provider = provider
+    super(provider)
     this.logTraffic = logTraffic
   }
 
@@ -36,7 +23,7 @@ export class ProfilingProvider implements HttpProvider {
   }
 
   send (payload: JsonRpcPayload, callback: SendCallback): void {
-    this._requestsCount++
+    this.requestsCount++
     const currentCount = this.methodsCount.get(payload.method) ?? 0
     this.methodsCount.set(payload.method, currentCount + 1)
     let wrappedCallback: SendCallback = callback
@@ -54,7 +41,7 @@ export class ProfilingProvider implements HttpProvider {
   }
 
   reset (): void {
-    this._requestsCount = 0
+    this.requestsCount = 0
     this.methodsCount.clear()
   }
 
@@ -62,7 +49,7 @@ export class ProfilingProvider implements HttpProvider {
     console.log('Profiling Provider Stats:')
     new Map([...this.methodsCount.entries()].sort(function ([, count1], [, count2]) {
       return count2 - count1
-    })).forEach(function (value, key, map) {
+    })).forEach(function (value, key) {
       console.log(`Method: ${key.padEnd(30)} was called: ${value.toString().padEnd(3)} times`)
     })
     console.log(`Total RPC calls: ${this.requestsCount}`)

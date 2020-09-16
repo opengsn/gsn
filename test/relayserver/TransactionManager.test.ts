@@ -93,21 +93,23 @@ contract('TransactionManager', function (accounts) {
 
   describe('local storage maintenance', function () {
     let parsedTxHash: PrefixedHexString
+    let latestBlock: number
 
     before(async function () {
       await relayServer.transactionManager.txStoreManager.clearAll()
-      const signedTx = await env.relayTransaction()
+      relayServer.transactionManager._initNonces()
+      const { signedTx } = await env.relayTransaction()
       parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx, relayServer.transactionManager.rawTxOptions)).hash())
+      latestBlock = (await env.web3.eth.getBlock('latest')).number
     })
 
     it('should remove confirmed transactions from the recent transactions storage', async function () {
-      let latestBlock = await env.web3.eth.getBlock('latest')
-      await relayServer.transactionManager.removeConfirmedTransactions(latestBlock.number)
+      await relayServer.transactionManager.removeConfirmedTransactions(latestBlock)
       let storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions[0].txId, parsedTxHash)
       await evmMineMany(confirmationsNeeded)
-      latestBlock = await env.web3.eth.getBlock('latest')
-      await relayServer.transactionManager.removeConfirmedTransactions(latestBlock.number)
+      const newLatestBlock = await env.web3.eth.getBlock('latest')
+      await relayServer.transactionManager.removeConfirmedTransactions(newLatestBlock.number)
       storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
       assert.deepEqual([], storedTransactions)
     })
@@ -116,18 +118,21 @@ contract('TransactionManager', function (accounts) {
   describe('resend unconfirmed transactions task', function () {
     before(async function () {
       await relayServer.transactionManager.txStoreManager.clearAll()
+      relayServer.transactionManager._initNonces()
       assert.deepEqual([], await relayServer.transactionManager.txStoreManager.getAll())
     })
 
     it('should resend unconfirmed transaction', async function () {
       // Send a transaction via the relay, but then revert to a previous snapshot
       id = (await snapshot()).result
-      const signedTx = await env.relayTransaction()
+      const { signedTx } = await env.relayTransaction()
       let parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx, relayServer.transactionManager.rawTxOptions)).hash())
       const receiptBefore = await env.web3.eth.getTransactionReceipt(parsedTxHash)
       const minedTxBefore = await env.web3.eth.getTransaction(parsedTxHash)
       assert.equal(parsedTxHash, receiptBefore.transactionHash)
       await revert(id)
+      // note that 'revert(id)' resets account nonces but transaction manager remembers the old values
+      relayServer.transactionManager._initNonces()
       // Ensure tx is removed by the revert
       const receiptAfter = await env.web3.eth.getTransactionReceipt(parsedTxHash)
       assert.equal(null, receiptAfter)

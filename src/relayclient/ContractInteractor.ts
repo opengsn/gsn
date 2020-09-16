@@ -1,5 +1,13 @@
 import Web3 from 'web3'
-import { BlockNumber, provider, Transaction, TransactionReceipt } from 'web3-core'
+import {
+  BlockNumber,
+  HttpProvider,
+  IpcProvider,
+  provider,
+  Transaction,
+  TransactionReceipt,
+  WebsocketProvider
+} from 'web3-core'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 
@@ -54,6 +62,11 @@ export const StakeUnlocked: EventName = 'StakeUnlocked'
 export const StakeWithdrawn: EventName = 'StakeWithdrawn'
 export const StakePenalized: EventName = 'StakePenalized'
 
+export type Web3Provider =
+  | HttpProvider
+  | IpcProvider
+  | WebsocketProvider
+
 export default class ContractInteractor {
   private readonly VERSION = '2.0.0-beta.2'
 
@@ -71,8 +84,8 @@ export default class ContractInteractor {
   private relayRecipientInstance?: BaseRelayRecipientInstance
   private knowForwarderAddressInstance?: IKnowForwarderAddressInstance
 
-  private readonly web3: Web3
-  private readonly provider: provider
+  readonly web3: Web3
+  private readonly provider: Web3Provider
   private readonly config: GSNConfig
   private readonly versionManager: VersionsManager
 
@@ -81,7 +94,7 @@ export default class ContractInteractor {
   private networkId?: number
   private networkType?: string
 
-  constructor (provider: provider, config: GSNConfig) {
+  constructor (provider: Web3Provider, config: GSNConfig) {
     this.versionManager = new VersionsManager(this.VERSION)
     this.web3 = new Web3(provider)
     this.config = config
@@ -125,8 +138,6 @@ export default class ContractInteractor {
   }
 
   getProvider (): provider { return this.provider }
-
-  getWeb3 (): Web3 { return this.web3 }
 
   async init (): Promise<void> {
     if (this.rawTxOptions != null) {
@@ -421,6 +432,36 @@ export default class ContractInteractor {
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
     const hub = this.relayHubInstance
     return hub.contract.methods.addRelayWorkers(workers)
+  }
+
+  /**
+   * Web3.js as of 1.2.6 (see web3-core-method::_confirmTransaction) does not allow
+   * broadcasting of a transaction without waiting for it to be mined.
+   * This method sends the RPC call directly
+   * @param signedTransaction - the raw signed transaction to broadcast
+   */
+  async broadcastTransaction (signedTransaction: PrefixedHexString): Promise<PrefixedHexString> {
+    return await new Promise((resolve, reject) => {
+      if (this.provider == null) {
+        throw new Error('provider is not set')
+      }
+      this.provider.send({
+        jsonrpc: '2.0',
+        method: 'eth_sendRawTransaction',
+        params: [
+          signedTransaction
+        ],
+        id: Date.now()
+      }, (e: Error | null, r: any) => {
+        if (e != null) {
+          reject(e)
+        } else if (r.error != null) {
+          reject(r.error)
+        } else {
+          resolve(r.result)
+        }
+      })
+    })
   }
 }
 

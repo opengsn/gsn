@@ -1,6 +1,6 @@
 /* global artifacts describe */
 // @ts-ignore
-import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import chai from 'chai'
 import sinon from 'sinon'
@@ -19,6 +19,7 @@ import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } fro
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
+import { PrefixedHexString } from 'ethereumjs-tx'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -325,6 +326,7 @@ contract('RelayServer', function (accounts) {
 
     afterEach(async function () {
       await revert(id)
+      relayServer.transactionManager._initNonces()
       await relayServer.transactionManager.txStoreManager.clearAll()
     })
 
@@ -363,7 +365,7 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(managerEthBalanceBefore.lt(toBN(relayServer.config.managerTargetBalance.toString())),
         'manager eth balance should be lower than target to withdraw hub balance')
       const receipts = await relayServer.replenishServer(workerIndex, 0)
-      const totalTxCosts = getTotalTxCosts(receipts, await env.web3.eth.getGasPrice())
+      const totalTxCosts = await getTotalTxCosts(receipts, await env.web3.eth.getGasPrice())
       const managerHubBalanceAfter = await env.relayHub.balanceOf(relayServer.managerAddress)
       assert.isTrue(managerHubBalanceAfter.eqn(0), 'manager hub balance should be zero')
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
@@ -437,13 +439,13 @@ contract('RelayServer', function (accounts) {
       latestBlock = await env.web3.eth.getBlock('latest')
       receipts = await relayServer._worker(latestBlock.number)
       expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, true)
-      assertRelayAdded(receipts, relayServer, false)
+      await assertRelayAdded(receipts, relayServer, false)
     })
   })
 
   describe('listener task', function () {
     let relayServer: RelayServer
-    let origWorker: (blockNumber: number) => Promise<TransactionReceipt[]>
+    let origWorker: (blockNumber: number) => Promise<PrefixedHexString[]>
     let started: boolean
     beforeEach(function () {
       relayServer = env.relayServer
@@ -484,7 +486,7 @@ contract('RelayServer', function (accounts) {
       const workerOrig = relayServer._worker
       let shouldRun = true
       try {
-        relayServer._worker = async function (): Promise<TransactionReceipt[]> {
+        relayServer._worker = async function (): Promise<PrefixedHexString[]> {
           // eslint-disable-next-line no-unmodified-loop-condition
           while (shouldRun) {
             await sleep(200)
@@ -524,6 +526,7 @@ contract('RelayServer', function (accounts) {
     })
     afterEach(async function () {
       await revert(id)
+      newServer.transactionManager._initNonces()
     })
 
     async function attackTheServer (server: RelayServer): Promise<void> {

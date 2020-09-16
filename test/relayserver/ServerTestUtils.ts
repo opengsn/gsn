@@ -2,12 +2,12 @@
 import abiDecoder from 'abi-decoder'
 import { TransactionReceipt } from 'web3-core'
 import { toBN } from 'web3-utils'
-import * as ethUtils from 'ethereumjs-util'
 
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import { RelayServer } from '../../src/relayserver/RelayServer'
+import { PrefixedHexString } from 'ethereumjs-tx'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -20,7 +20,14 @@ abiDecoder.addABI(TestRecipient.abi)
 // @ts-ignore
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 
-export function assertRelayAdded (receipts: TransactionReceipt[], server: RelayServer, checkWorkers = true): void {
+async function resolveAllReceipts (transactionHashes: PrefixedHexString[]): Promise<TransactionReceipt[]> {
+  // actually returns promise for '.all'
+  // eslint-disable-next-line @typescript-eslint/promise-function-async
+  return await Promise.all(transactionHashes.map((transactionHash) => web3.eth.getTransactionReceipt(transactionHash)))
+}
+
+export async function assertRelayAdded (transactionHashes: PrefixedHexString[], server: RelayServer, checkWorkers = true): Promise<void> {
+  const receipts = await resolveAllReceipts(transactionHashes)
   const registeredReceipt = receipts.find(r => {
     const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server.registrationManager._parseEvent)
     return decodedLogs[0].name === 'RelayServerRegistered'
@@ -47,7 +54,8 @@ export function assertRelayAdded (receipts: TransactionReceipt[], server: RelayS
   }
 }
 
-export function getTotalTxCosts (receipts: TransactionReceipt[], gasPrice: string): ethUtils.BN {
+export async function getTotalTxCosts (transactionHashes: PrefixedHexString[], gasPrice: string): Promise<BN> {
+  const receipts = await resolveAllReceipts(transactionHashes)
   return receipts.map(r => toBN(r.gasUsed).mul(toBN(gasPrice))).reduce(
     (previous, current) => previous.add(current), toBN(0))
 }
