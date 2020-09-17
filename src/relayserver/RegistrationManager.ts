@@ -13,7 +13,7 @@ import ContractInteractor, {
   RelayServerRegistered,
   RelayWorkersAdded,
   StakeAdded,
-  StakeUnlocked
+  StakeUnlocked, StakeWithdrawn
 } from '../relayclient/ContractInteractor'
 
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
@@ -74,6 +74,7 @@ export class RegistrationManager {
 
   lastMinedRegisterTransaction?: EventData
   lastWorkerAddedTransaction?: EventData
+  private delayedEvents: Array<{ block: number, eventData: EventData }> = []
 
   constructor (
     contractInteractor: ContractInteractor,
@@ -104,7 +105,7 @@ export class RegistrationManager {
       fromBlock: lastScannedBlock + 1,
       toBlock: 'latest'
     }
-    const eventNames = [HubAuthorized, StakeAdded, HubUnauthorized, StakeUnlocked]
+    const eventNames = [HubAuthorized, StakeAdded, HubUnauthorized, StakeUnlocked, StakeWithdrawn]
     const decodedEvents = await this.contractInteractor.getPastEventsForStakeManager(eventNames, topics, options)
     log.trace('logs?', decodedEvents)
     log.trace('options? ', options)
@@ -121,12 +122,25 @@ export class RegistrationManager {
           await this._handleStakedEvent()
           break
         case 'HubUnauthorized':
+          this.delayedEvents.push({ block: eventData.returnValues.removalBlock.toString(), eventData })
           unregistered = true
-          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
           break
         case 'StakeUnlocked':
           unregistered = true
-          transactionHashes = transactionHashes.concat(await this._handleUnstakedEvent(eventData, currentBlock))
+          break
+        case 'StakeWithdrawn':
+          transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock))
+          unregistered = true
+          break
+      }
+    }
+
+    // handle HubUnauthorized only after the due time
+
+    for (const eventData of this._extractDuePendingEvents(currentBlock)) {
+      switch (eventData.event) {
+        case 'HubUnauthorized':
+          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
           break
       }
     }
@@ -139,6 +153,12 @@ export class RegistrationManager {
       transactionHashes: transactionHashes,
       unregistered
     }
+  }
+
+  _extractDuePendingEvents (currentBlock: number): EventData[] {
+    const ret = this.delayedEvents.filter(event => event.block <= currentBlock).map(e => e.eventData)
+    this.delayedEvents = [...this.delayedEvents.filter(event => event.block > currentBlock)]
+    return ret
   }
 
   async _isRegistrationCorrect (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
@@ -186,9 +206,10 @@ export class RegistrationManager {
   }
 
   async _handleHubUnauthorizedEvent (dlog: EventData, currentBlock: number): Promise<PrefixedHexString[]> {
-    if (dlog.returnValues.relayHub.toLowerCase() === this.hubAddress.toLowerCase()) {
-      this.isHubAuthorized = false
+    if (dlog.returnValues.relayHub.toLowerCase() !== this.hubAddress.toLowerCase()) {
+      return []
     }
+    this.isHubAuthorized = false
     return await this.withdrawAllFunds(false, currentBlock)
   }
 
@@ -196,15 +217,15 @@ export class RegistrationManager {
     await this.refreshStake()
   }
 
-  async _handleUnstakedEvent (dlog: EventData, currentBlock: number): Promise<PrefixedHexString[]> {
-    console.log('handle Unstaked event', dlog)
+  async _handleStakeWithdrawnEvent (dlog: EventData, currentBlock: number): Promise<PrefixedHexString[]> {
+    console.log('handle StakeWithdrawn event', dlog)
     await this.refreshStake()
     return await this.withdrawAllFunds(true, currentBlock)
   }
 
   /**
    * @param withdrawManager - whether to send the relay manager's balance to the owner.
-   *        Note that more then one relay process could be using the same manager account.
+   *        Note that more than one relay process could be using the same manager account.
    * @param currentBlock
    */
   async withdrawAllFunds (withdrawManager: boolean, currentBlock: number): Promise<PrefixedHexString[]> {

@@ -59,6 +59,7 @@ export const HubAuthorized: EventName = 'HubAuthorized'
 export const HubUnauthorized: EventName = 'HubUnauthorized'
 export const StakeAdded: EventName = 'StakeAdded'
 export const StakeUnlocked: EventName = 'StakeUnlocked'
+export const StakeWithdrawn: EventName = 'StakeWithdrawn'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export type Web3Provider =
