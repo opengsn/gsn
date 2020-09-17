@@ -7,14 +7,15 @@ import { toBN, toHex } from 'web3-utils'
 
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { KeyManager } from '../../src/relayserver/KeyManager'
+import { RegistrationManager } from '../../src/relayserver/RegistrationManager'
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import { ServerAction } from '../../src/relayserver/StoredTransaction'
 import { ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
-import { RelayServer } from '../../src/relayserver/RelayServer'
-import { evmMineMany, revert, snapshot } from '../TestUtils'
 import { constants } from '../../src/common/Constants'
+
+import { evmMineMany, revert, snapshot } from '../TestUtils'
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
@@ -173,7 +174,7 @@ contract('RegistrationManager', function (accounts) {
     let relayServer: RelayServer
 
     before(async function () {
-      await env.newServerInstanceNoInit({}, { refreshStateTimeoutBlocks: 1 }, unstakeDelay)
+      await env.newServerInstanceNoInit({ refreshStateTimeoutBlocks: 1 }, undefined, unstakeDelay)
       relayServer = env.relayServer
     })
 
