@@ -154,14 +154,11 @@ export class RegistrationManager {
 
   async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
     const topics = address2topic(this.managerAddress)
-    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([topics],
+    const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
         fromBlock: 1
       },
       [RelayServerRegistered])
-    const registerEvents = relayRegisteredEvents.filter(
-      (eventData: EventData) =>
-        isRegistrationValid(eventData, this.config, this.managerAddress))
     return getLatestEventData(registerEvents)
   }
 
