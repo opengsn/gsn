@@ -323,8 +323,8 @@ export default class ContractInteractor {
     return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
   }
 
-  async getBalance (address: Address): Promise<string> {
-    return await this.web3.eth.getBalance(address)
+  async getBalance (address: Address, defaultBlock: BlockNumber = 'latest'): Promise<string> {
+    return await this.web3.eth.getBalance(address, defaultBlock)
   }
 
   async getBlockNumber (): Promise<number> {

@@ -7,21 +7,24 @@ import { toBN, toHex } from 'web3-utils'
 
 import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
 import PingResponse from '../common/PingResponse'
-import { RelayTransactionRequest, RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
-import { IRelayHubInstance } from '../../types/truffle-contracts'
 import VersionsManager from '../common/VersionsManager'
+import { IRelayHubInstance } from '../../types/truffle-contracts'
+import { RelayTransactionRequest, RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
+import { defaultEnvironment } from '../common/Environments'
 import {
   address2topic,
   calculateTransactionMaxPossibleGas,
-  decodeRevertReason, PaymasterGasLimits,
+  decodeRevertReason,
+  getLatestEventData,
+  PaymasterGasLimits,
   randomInRange,
-  reduceToLatestTx,
   sleep
 } from '../common/Utils'
-import { defaultEnvironment } from '../common/Environments'
 import { RegistrationManager, StateError } from './RegistrationManager'
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { TxStoreManager } from './TxStoreManager'
+import { ServerAction } from './StoredTransaction'
 import Timeout = NodeJS.Timeout
 
 const VERSION = '2.0.0-beta.2'
@@ -44,6 +47,7 @@ export class RelayServer extends EventEmitter {
   private workerTask?: Timeout
   config: ServerConfigParams
   transactionManager: TransactionManager
+  txStoreManager: TxStoreManager
 
   lastMinedActiveTransaction?: EventData
 
@@ -57,6 +61,7 @@ export class RelayServer extends EventEmitter {
     this.versionManager = new VersionsManager(VERSION)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
+    this.txStoreManager = dependencies.txStoreManager
     this.transactionManager = new TransactionManager(dependencies, this.config)
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
@@ -86,10 +91,9 @@ export class RelayServer extends EventEmitter {
 
   validateInput (req: RelayTransactionRequest): void {
     // Check that the relayHub is the correct one
-    if (req.metadata.relayHubAddress !== this.relayHubContract?.address) {
+    if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
       throw new Error(
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract?.address}, request's hub address: ${req.metadata.relayHubAddress}\n`)
+        `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract.address}, request's hub address: ${req.metadata.relayHubAddress}\n`)
     }
 
     // Check the relayWorker (todo: once migrated to multiple relays, check if exists)
@@ -111,10 +115,10 @@ export class RelayServer extends EventEmitter {
       return
     }
     // Check that the fee is acceptable
-    if (isNaN(parseInt(req.relayRequest.relayData.pctRelayFee)) || parseInt(req.relayRequest.relayData.pctRelayFee) < this.config.pctRelayFee) {
+    if (parseInt(req.relayRequest.relayData.pctRelayFee) < this.config.pctRelayFee) {
       throw new Error(`Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
     }
-    if (isNaN(parseInt(req.relayRequest.relayData.baseRelayFee)) || toBN(req.relayRequest.relayData.baseRelayFee).lt(toBN(this.config.baseRelayFee))) {
+    if (toBN(req.relayRequest.relayData.baseRelayFee).lt(toBN(this.config.baseRelayFee))) {
       throw new Error(`Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
     }
   }
@@ -221,6 +225,7 @@ export class RelayServer extends EventEmitter {
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,
+        serverAction: ServerAction.RELAY_CALL,
         method,
         destination: req.metadata.relayHubAddress,
         gasLimit: maxPossibleGas.toString(),
@@ -314,6 +319,7 @@ export class RelayServer extends EventEmitter {
     this.registrationManager = new RegistrationManager(
       this.contractInteractor,
       this.transactionManager,
+      this.txStoreManager,
       this,
       this.config,
       this.managerAddress,
@@ -341,13 +347,16 @@ export class RelayServer extends EventEmitter {
       // all filled, nothing to do
       return transactionHashes
     }
-    if (managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(
-      toBN(this.config.minHubWithdrawalBalance))) {
+    const mustWithdrawHubDeposit = managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(
+      toBN(this.config.minHubWithdrawalBalance))
+    const isWithdrawalPending = await this.txStoreManager.isActionPending(ServerAction.DEPOSIT_WITHDRAWAL)
+    if (mustWithdrawHubDeposit && !isWithdrawalPending) {
       console.log(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
       const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.managerAddress)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
+        serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
         destination: this.relayHubContract.address,
         creationBlockNumber: currentBlock,
         method
@@ -356,7 +365,9 @@ export class RelayServer extends EventEmitter {
       transactionHashes.push(transactionHash)
     }
     managerEthBalance = await this.getManagerBalance()
-    if (workerBalance.lt(toBN(this.config.workerMinBalance.toString()))) {
+    const mustReplenishWorker = workerBalance.lt(toBN(this.config.workerMinBalance.toString()))
+    const isReplenishPendingForWorker = await this.txStoreManager.isActionPending(ServerAction.VALUE_TRANSFER, this.workerAddress)
+    if (mustReplenishWorker && !isReplenishPendingForWorker) {
       const refill = toBN(this.config.workerTargetBalance.toString()).sub(workerBalance)
       console.log(
         `== replenishServer: mgr balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()} 
@@ -365,6 +376,7 @@ export class RelayServer extends EventEmitter {
         console.log('Replenishing worker balance by manager eth balance')
         const details: SendTransactionDetails = {
           signer: this.managerAddress,
+          serverAction: ServerAction.VALUE_TRANSFER,
           destination: this.workerAddress,
           value: toHex(refill),
           creationBlockNumber: currentBlock,
@@ -432,20 +444,26 @@ export class RelayServer extends EventEmitter {
   }
 
   async getManagerBalance (): Promise<BN> {
-    return toBN(await this.contractInteractor.getBalance(this.managerAddress))
+    return toBN(await this.contractInteractor.getBalance(this.managerAddress, 'pending'))
   }
 
   async getWorkerBalance (workerIndex: number): Promise<BN> {
-    return toBN(await this.contractInteractor.getBalance(this.workerAddress))
+    return toBN(await this.contractInteractor.getBalance(this.workerAddress, 'pending'))
   }
 
   async _shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+    const isPendingActivityTransaction =
+      (await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)) ||
+      (await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER))
+    if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
+      return false
+    }
     const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
-    return this.config.registrationBlockRate === 0 ? false : currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+    return currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
   }
 
   _shouldRefreshState (currentBlock: number): boolean {
-    return currentBlock - this.lastRefreshBlock > this.config.refreshStateTimeoutBlocks || !this.ready
+    return currentBlock - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || !this.ready
   }
 
   async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
@@ -475,7 +493,7 @@ export class RelayServer extends EventEmitter {
   }
 
   async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {
-    const latestTransactionSinceLastScan = reduceToLatestTx(eventsSinceLastScan)
+    const latestTransactionSinceLastScan = getLatestEventData(eventsSinceLastScan)
     if (latestTransactionSinceLastScan != null) {
       this.lastMinedActiveTransaction = latestTransactionSinceLastScan
     }
@@ -489,7 +507,7 @@ export class RelayServer extends EventEmitter {
     const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
       fromBlock: 1
     })
-    return reduceToLatestTx(events)
+    return getLatestEventData(events)
   }
 
   /**

@@ -1,7 +1,9 @@
 import ow from 'ow'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import AsyncNedb from 'nedb-async'
-import { StoredTransaction } from './StoredTransaction'
+import { ServerAction, StoredTransaction } from './StoredTransaction'
+import { Address } from '../relayclient/types/Aliases'
+import { isSameAddress } from '../common/Utils'
 
 export const TXSTORE_FILENAME = 'txstore.db'
 
@@ -96,5 +98,10 @@ export class TxStoreManager {
     return (await this.txstore.asyncFind({})).sort(function (tx1, tx2) {
       return tx1.nonce - tx2.nonce
     })
+  }
+
+  async isActionPending (serverAction: ServerAction, destination: Address | undefined = undefined): Promise<boolean> {
+    const allTransactions = await this.getAll()
+    return allTransactions.find(it => it.minedBlockNumber == null && it.serverAction === serverAction && (destination == null || isSameAddress(it.to, destination))) != null
   }
 }

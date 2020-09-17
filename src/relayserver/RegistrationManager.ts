@@ -1,9 +1,12 @@
-// @ts-ignore
-import { toBN, toHex } from 'web3-utils'
+import log from 'loglevel'
+import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
+import { PrefixedHexString } from 'ethereumjs-tx'
+import { toBN, toHex } from 'web3-utils'
 
 import { Address, IntString } from '../relayclient/types/Aliases'
-import { address2topic, isSameAddress, reduceToLatestTx } from '../common/Utils'
+import { address2topic, getLatestEventData, isRegistrationValid } from '../common/Utils'
+import { defaultEnvironment } from '../common/Environments'
 import ContractInteractor, {
   HubAuthorized,
   HubUnauthorized,
@@ -12,13 +15,11 @@ import ContractInteractor, {
   StakeAdded,
   StakeUnlocked, StakeWithdrawn
 } from '../relayclient/ContractInteractor'
-import { SendTransactionDetails, TransactionManager } from './TransactionManager'
-import { defaultEnvironment } from '../common/Environments'
 
-import log from 'loglevel'
-import { EventData } from 'web3-eth-contract'
+import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerConfigParams } from './ServerConfigParams'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { TxStoreManager } from './TxStoreManager'
+import { ServerAction } from './StoredTransaction'
 
 export class StateError extends Error {}
 
@@ -47,18 +48,9 @@ class AmountRequired {
 
 const mintxgascost = defaultEnvironment.mintxgascost
 
-// TODO: I am not a fan of this approach, yet server has to behave differently
 export interface PastEventsHandled {
   transactionHashes: PrefixedHexString[]
   unregistered: boolean
-}
-
-function isRegistrationValid (registerEvent: EventData | undefined, config: ServerConfigParams, managerAddress: Address): boolean {
-  return registerEvent != null &&
-    isSameAddress(registerEvent.returnValues.relayManager, managerAddress) &&
-    registerEvent.returnValues.baseRelayFee.toString() === config.baseRelayFee.toString() &&
-    registerEvent.returnValues.pctRelayFee.toString() === config.pctRelayFee.toString() &&
-    registerEvent.returnValues.relayUrl.toString() === config.url.toString()
 }
 
 export class RegistrationManager {
@@ -78,6 +70,7 @@ export class RegistrationManager {
   ownerAddress?: Address
   transactionManager: TransactionManager
   config: ServerConfigParams
+  txStoreManager: TxStoreManager
 
   lastMinedRegisterTransaction?: EventData
   lastWorkerAddedTransaction?: EventData
@@ -86,6 +79,7 @@ export class RegistrationManager {
   constructor (
     contractInteractor: ContractInteractor,
     transactionManager: TransactionManager,
+    txStoreManager: TxStoreManager,
     eventEmitter: EventEmitter,
     config: ServerConfigParams,
     // exposed from key manager?
@@ -101,6 +95,7 @@ export class RegistrationManager {
     this.workerAddress = workerAddress
     this.eventEmitter = eventEmitter
     this.transactionManager = transactionManager
+    this.txStoreManager = txStoreManager
     this.config = config
   }
 
@@ -150,7 +145,8 @@ export class RegistrationManager {
       }
     }
     const isRegistrationCorrect = await this._isRegistrationCorrect(hubEventsSinceLastScan)
-    if (!isRegistrationCorrect || forceRegistration) {
+    const isRegistrationPending = await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER)
+    if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
       transactionHashes = transactionHashes.concat(await this.attemptRegistration(hubEventsSinceLastScan, currentBlock))
     }
     return {
@@ -166,7 +162,7 @@ export class RegistrationManager {
   }
 
   async _isRegistrationCorrect (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
-    const lastRegisteredTxSinceLastScan = reduceToLatestTx(hubEventsSinceLastScan.filter((it) => it.event === RelayServerRegistered))
+    const lastRegisteredTxSinceLastScan = getLatestEventData(hubEventsSinceLastScan.filter((it) => it.event === RelayServerRegistered))
     if (lastRegisteredTxSinceLastScan != null) {
       this.lastMinedRegisterTransaction = lastRegisteredTxSinceLastScan
     }
@@ -178,15 +174,12 @@ export class RegistrationManager {
 
   async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
     const topics = address2topic(this.managerAddress)
-    const relayRegisteredEvents = await this.contractInteractor.getPastEventsForHub([topics],
+    const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
         fromBlock: 1
       },
       [RelayServerRegistered])
-    const registerEvents = relayRegisteredEvents.filter(
-      (eventData: EventData) =>
-        isRegistrationValid(eventData, this.config, this.managerAddress))
-    return reduceToLatestTx(registerEvents)
+    return getLatestEventData(registerEvents)
   }
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {
@@ -282,6 +275,7 @@ export class RegistrationManager {
     const addRelayWorkerMethod = await this.contractInteractor.getAddRelayWorkersMethod([this.workerAddress])
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
+      serverAction: ServerAction.ADD_WORKER,
       method: addRelayWorkerMethod,
       destination: this.hubAddress,
       creationBlockNumber: currentBlock
@@ -304,11 +298,14 @@ export class RegistrationManager {
     let transactions: PrefixedHexString[] = []
     // add worker only if not already added
     const workersAdded = await this._areWorkersAdded(hubEventsSinceLastScan)
-    if (!workersAdded) {
-      transactions = transactions.concat(await this.addRelayWorker(currentBlock))
+    const addWorkersPending = await this.txStoreManager.isActionPending(ServerAction.ADD_WORKER)
+    if (!(workersAdded || addWorkersPending)) {
+      const txHash = await this.addRelayWorker(currentBlock)
+      transactions = transactions.concat(txHash)
     }
     const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.config.baseRelayFee, this.config.pctRelayFee, this.config.url)
     const details: SendTransactionDetails = {
+      serverAction: ServerAction.REGISTER_SERVER,
       signer: this.managerAddress,
       method: registerMethod,
       destination: this.hubAddress,
@@ -332,6 +329,7 @@ export class RegistrationManager {
       console.log(`Sending manager eth balance ${managerBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
+        serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit: gasLimit.toString(),
         gasPrice,
@@ -357,6 +355,7 @@ export class RegistrationManager {
       console.log(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
       const details = {
         signer: this.workerAddress,
+        serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit: gasLimit.toString(),
         gasPrice,
@@ -383,6 +382,7 @@ export class RegistrationManager {
       console.log(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
+        serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
         destination: this.hubAddress,
         creationBlockNumber: currentBlock,
         method
@@ -396,7 +396,7 @@ export class RegistrationManager {
   }
 
   async _areWorkersAdded (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
-    const lastWorkerAddedSinceLastScan = reduceToLatestTx(hubEventsSinceLastScan.filter((it) => it.event === RelayWorkersAdded))
+    const lastWorkerAddedSinceLastScan = getLatestEventData(hubEventsSinceLastScan.filter((it) => it.event === RelayWorkersAdded))
     if (lastWorkerAddedSinceLastScan != null) {
       this.lastWorkerAddedTransaction = lastWorkerAddedSinceLastScan
     }
@@ -412,7 +412,7 @@ export class RegistrationManager {
         fromBlock: 1
       },
       [RelayWorkersAdded])
-    return reduceToLatestTx(workersAddedEvents)
+    return getLatestEventData(workersAddedEvents)
   }
 
   _isWorkerValid (): boolean {

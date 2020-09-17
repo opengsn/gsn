@@ -20,6 +20,7 @@ import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-tx'
+import { ServerAction } from '../../src/relayserver/StoredTransaction'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -180,6 +181,7 @@ contract('RelayServer', function (accounts) {
           const signer = env.relayServer.workerAddress
           await env.relayServer.transactionManager.sendTransaction({
             signer,
+            serverAction: ServerAction.VALUE_TRANSFER,
             gasLimit: '21000',
             destination: accounts[0],
             creationBlockNumber: 0
@@ -284,9 +286,17 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('#createRelayTransaction()', function () {
+    before(async function () {
+      await env.relayServer.txStoreManager.clearAll()
+    })
+
     it('should relay transaction', async function () {
       const req = await env.createRelayHttpRequest()
+      assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
       await env.relayServer.createRelayTransaction(req)
+      const pendingTransactions = await env.relayServer.txStoreManager.getAll()
+      assert.equal(pendingTransactions.length, 1)
+      assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
       // TODO: add asserts here!!!
     })
   })
@@ -304,6 +314,7 @@ contract('RelayServer', function (accounts) {
       beforeDescribeId = (await snapshot()).result
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.workerAddress,
+        serverAction: ServerAction.VALUE_TRANSFER,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),
         gasPrice: gasPrice,
@@ -348,6 +359,7 @@ contract('RelayServer', function (accounts) {
       await env.relayHub.depositFor(relayServer.managerAddress, { value: 1e18.toString() })
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
+        serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),
@@ -397,6 +409,7 @@ contract('RelayServer', function (accounts) {
     it('should emit \'funding needed\' when both eth and hub balances are too low', async function () {
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
+        serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost.toString(),

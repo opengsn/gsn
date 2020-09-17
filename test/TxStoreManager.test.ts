@@ -1,8 +1,7 @@
-/* global */
-
 import fs from 'fs'
-import { TxStoreManager, TXSTORE_FILENAME } from '../src/relayserver/TxStoreManager'
-import { StoredTransaction } from '../src/relayserver/StoredTransaction'
+
+import { ServerAction, StoredTransaction } from '../src/relayserver/StoredTransaction'
+import { TXSTORE_FILENAME, TxStoreManager } from '../src/relayserver/TxStoreManager'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
@@ -38,6 +37,7 @@ contract('TxStoreManager', function (accounts) {
       data: '',
       nonce: 111,
       txId: '123456',
+      serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
       minedBlockNumber: 0,
       attempts: 1
@@ -50,6 +50,7 @@ contract('TxStoreManager', function (accounts) {
       data: '',
       nonce: 112,
       txId: '1234567',
+      serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
       minedBlockNumber: 0,
       attempts: 1
@@ -63,6 +64,7 @@ contract('TxStoreManager', function (accounts) {
         data: '',
         nonce: 113,
         txId: '12345678',
+        serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         minedBlockNumber: 0,
         attempts: 1
