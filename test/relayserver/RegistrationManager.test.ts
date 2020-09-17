@@ -10,7 +10,7 @@ import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import { RelayServer } from '../../src/relayserver/RelayServer'
-import { revert, snapshot } from '../TestUtils'
+import { evmMineMany, revert, snapshot } from '../TestUtils'
 import { constants } from '../../src/common/Constants'
 import {
   assertRelayAdded,
@@ -19,14 +19,17 @@ import {
 } from './ServerTestUtils'
 import { ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
+import { RegistrationManager } from '../../src/relayserver/RegistrationManager'
 
 const { expect } = chai.use(chaiAsPromised).use(sinonChai)
-const { oneEther, weekInSec } = constants
+const { oneEther } = constants
 
 const workerIndex = 0
 
+const unstakeDelay = 50
 contract('RegistrationManager', function (accounts) {
   const relayOwner = accounts[4]
+  const anotherRelayer = accounts[5]
 
   let env: ServerTestEnvironment
   let relayServer: RelayServer
@@ -36,7 +39,7 @@ contract('RegistrationManager', function (accounts) {
   before(async function () {
     serverWorkdirs = getTemporaryWorkdirs()
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init()
+    await env.init({}, { minimumUnstakeDelay: unstakeDelay })
     env.newServerInstanceNoFunding({}, serverWorkdirs)
     await env.clearServerStorage()
     relayServer = env.relayServer
@@ -70,7 +73,7 @@ contract('RegistrationManager', function (accounts) {
         relayServer._worker(latestBlock.number)
       ).to.be.eventually.rejectedWith('Stake too low - actual:')
       assert.equal(relayServer.ready, false, 'relay should not be ready yet')
-      const res = await env.stakeManager.stakeForAddress(relayServer.managerAddress, weekInSec, {
+      const res = await env.stakeManager.stakeForAddress(relayServer.managerAddress, unstakeDelay, {
         from: relayOwner,
         value: oneEther
       })
@@ -135,7 +138,7 @@ contract('RegistrationManager', function (accounts) {
 
     let newServer: RelayServer
     it('should initialize relay after staking and funding it', async function () {
-      await env.newServerInstanceNoInit()
+      await env.newServerInstanceNoInit({}, undefined, unstakeDelay)
       newServer = env.relayServer
       await newServer.init()
       assert.equal(newServer.registrationManager.ownerAddress, undefined)
@@ -172,7 +175,7 @@ contract('RegistrationManager', function (accounts) {
     let relayServer: RelayServer
 
     before(async function () {
-      await env.newServerInstanceNoInit()
+      await env.newServerInstanceNoInit({}, undefined, unstakeDelay)
       relayServer = env.relayServer
     })
 
@@ -199,7 +202,7 @@ contract('RegistrationManager', function (accounts) {
   })
 
   describe('event handlers', function () {
-    describe('Unstaked event', function () {
+    describe('Withdrawn event', function () {
       async function assertSendBalancesToOwner (
         server: RelayServer,
         managerHubBalanceBefore: BN,
@@ -235,13 +238,15 @@ contract('RegistrationManager', function (accounts) {
       let newServer: RelayServer
       beforeEach(async function () {
         id = (await snapshot()).result
-        await env.newServerInstanceNoInit({ refreshStateTimeoutBlocks: 1 })
+        await env.newServerInstanceNoInit({ refreshStateTimeoutBlocks: 1 }, undefined, unstakeDelay)
         newServer = env.relayServer
         const latestBlock = await env.web3.eth.getBlock('latest')
         await newServer._worker(latestBlock.number)
 
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
         await env.stakeManager.unlockStake(newServer.managerAddress, { from: relayOwner })
+        await evmMineMany(unstakeDelay)
+        await env.stakeManager.withdrawStake(newServer.managerAddress, { from: relayOwner })
       })
 
       afterEach(async function () {
@@ -282,7 +287,7 @@ contract('RegistrationManager', function (accounts) {
       let newServer: RelayServer
       beforeEach(async function () {
         id = (await snapshot()).result
-        await env.newServerInstanceNoInit()
+        await env.newServerInstanceNoInit({}, undefined, unstakeDelay)
         newServer = env.relayServer
       })
 
@@ -301,7 +306,7 @@ contract('RegistrationManager', function (accounts) {
       let newServer: RelayServer
       beforeEach(async function () {
         id = (await snapshot()).result
-        await env.newServerInstanceNoInit({ refreshStateTimeoutBlocks: 1 })
+        await env.newServerInstanceNoInit({ refreshStateTimeoutBlocks: 1 }, undefined, unstakeDelay)
         newServer = env.relayServer
         const latestBlock = await env.web3.eth.getBlock('latest')
         await newServer._worker(latestBlock.number)
@@ -312,7 +317,35 @@ contract('RegistrationManager', function (accounts) {
         await revert(id)
       })
 
-      it('send only manager hub balance and workers\' balances to owner (not manager eth balance)', async function () {
+      it('should not send balance immediately after unauthorize (before unstake delay)', async function () {
+        await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
+        const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
+
+        await evmMineMany(unstakeDelay - 3)
+        const latestBlock = await env.web3.eth.getBlock('latest')
+
+        const receipt = await newServer._worker(latestBlock.number)
+
+        assert.equal(receipt.length, 0)
+        assert.equal(workerBalanceBefore.toString(), await newServer.getWorkerBalance(workerIndex).then(b => b.toString()))
+      })
+
+      it('should ignore unauthorizeHub of another hub', async function () {
+        await env.stakeManager.stakeForAddress(anotherRelayer, 1000)
+        await env.stakeManager.authorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
+        await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
+        const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
+
+        await evmMineMany(unstakeDelay)
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        const receipts = await newServer._worker(latestBlock.number)
+
+        const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
+        assert.equal(receipts.length, 0)
+        assert.equal(workerBalanceBefore.toString(), workerBalanceAfter.toString())
+      })
+
+      it('send only workers\' balances to owner (not manager hub,eth balance) - after unstake delay', async function () {
         await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
 
         const managerHubBalanceBefore = await env.relayHub.balanceOf(newServer.managerAddress)
@@ -323,6 +356,7 @@ contract('RegistrationManager', function (accounts) {
         assert.isTrue(workerBalanceBefore.gtn(0))
         const ownerBalanceBefore = toBN(await env.web3.eth.getBalance(relayOwner))
         assert.isTrue(newServer.registrationManager.isHubAuthorized, 'Hub should be authorized in server')
+        await evmMineMany(unstakeDelay)
         const latestBlock = await env.web3.eth.getBlock('latest')
         const receipts = await newServer._worker(latestBlock.number)
         assert.isFalse(newServer.registrationManager.isHubAuthorized, 'Hub should not be authorized in server')
@@ -350,13 +384,38 @@ contract('RegistrationManager', function (accounts) {
     it('_handleStakedEvent')
   })
 
+  describe('#_extractDuePendingEvents', () => {
+    let rm: RegistrationManager
+    let extracted: any[]
+
+    before(async () => {
+      // @ts-ignore
+      if (!relayServer.initialized) await relayServer.init()
+
+      rm = relayServer.registrationManager;
+
+      (rm as any).delayedEvents = [
+        { block: 1, eventData: 'event1' },
+        { block: 2, eventData: 'event2' },
+        { block: 3, eventData: 'event3' }
+      ]
+      extracted = rm._extractDuePendingEvents(2) as any
+    })
+    it('should extract events which are due (lower or equal block number)', function () {
+      assert.deepEqual(extracted, ['event1', 'event2'])
+    })
+
+    it('should leave future events in the delayedEvents list', function () {
+      assert.deepEqual((rm as any).delayedEvents, [{ block: 3, eventData: 'event3' }])
+    })
+  })
   describe('#attemptRegistration()', function () {
     let newServer: RelayServer
 
     describe('without re-registration', function () {
       beforeEach(async function () {
         id = (await snapshot()).result
-        await env.newServerInstanceNoInit()
+        await env.newServerInstanceNoInit({}, undefined, unstakeDelay)
         await env.relayServer.init()
         newServer = env.relayServer
         // TODO: this is horrible!!!

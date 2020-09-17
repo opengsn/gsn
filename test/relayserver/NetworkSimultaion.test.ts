@@ -16,7 +16,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
       return contractInteractor
     }
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init({}, contractFactory)
+    await env.init({}, {}, contractFactory)
     await env.newServerInstance()
     provider.setDelayTransactions(true)
   })

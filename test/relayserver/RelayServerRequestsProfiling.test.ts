@@ -24,7 +24,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
       return contractInteractor
     }
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init({}, contractFactory)
+    await env.init({}, {}, contractFactory)
     await env.newServerInstance({ refreshStateTimeoutBlocks })
     relayServer = env.relayServer
     const latestBlock = await web3.eth.getBlock('latest')
