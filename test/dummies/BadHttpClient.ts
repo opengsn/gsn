@@ -23,14 +23,14 @@ export default class BadHttpClient extends HttpClient {
     this.stubPing = stubPing
   }
 
-  async getPingResponse (relayUrl: string): Promise<PingResponse> {
+  async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
     if (this.failPing) {
       throw new Error(BadHttpClient.message)
     }
     if (this.stubPing != null) {
       return this.stubPing
     }
-    return await super.getPingResponse(relayUrl)
+    return await super.getPingResponse(relayUrl, paymaster)
   }
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {

@@ -118,7 +118,7 @@ export default class RelaySelectionManager {
     if (this.config.verbose) {
       console.log(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
     }
-    const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl)
+    const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, this.gsnTransactionDetails.paymaster)
 
     if (!pingResponse.Ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)

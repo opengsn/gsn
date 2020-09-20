@@ -135,12 +135,17 @@ contract('RelayServer', function (accounts) {
 
     describe('#validateFees()', function () {
       describe('with trusted forwarder', function () {
-        before(function () {
-          env.relayServer.config.trustedPaymasters.push(env.paymaster.address)
+        before(async function () {
+          await env.relayServer._initTrustedPaymasters([env.paymaster.address])
         })
 
-        after(function () {
-          env.relayServer.config.trustedPaymasters.pop()
+        after(async function () {
+          await env.relayServer._initTrustedPaymasters([])
+        })
+
+        it('#_itTrustedForwarder', function () {
+          assert.isFalse(env.relayServer._isTrustedPaymaster(accounts[1]), 'identify untrusted paymaster')
+          assert.isTrue(env.relayServer._isTrustedPaymaster(env.paymaster.address), 'identify trusted paymaster')
         })
 
         it('should bypass fee checks and not throw if given trusted paymasters', async function () {
@@ -263,10 +268,14 @@ contract('RelayServer', function (accounts) {
         it('should accept a transaction from trusted paymaster returning above configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(true)
           const req = await env.createRelayHttpRequest()
-          env.relayServer.config.trustedPaymasters.push(rejectingPaymaster.address)
-          const gasLimits = await rejectingPaymaster.getGasLimits()
-          assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
-          await env.relayServer.validatePaymasterGasLimits(req)
+          try {
+            await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
+            const gasLimits = await rejectingPaymaster.getGasLimits()
+            assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
+            await env.relayServer.validatePaymasterGasLimits(req)
+          } finally {
+            await env.relayServer._initTrustedPaymasters([])
+          }
         })
       })
     })
