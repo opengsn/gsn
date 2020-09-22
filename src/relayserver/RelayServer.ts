@@ -57,6 +57,8 @@ export class RelayServer extends EventEmitter {
   networkId!: number
   relayHubContract!: IRelayHubInstance
 
+  trustedPaymastersGasLimits: Map<String|undefined, PaymasterGasLimits> = new Map<String|undefined, PaymasterGasLimits>()
+
   constructor (config: Partial<ServerConfigParams>, dependencies: ServerDependencies) {
     super()
     this.versionManager = new VersionsManager(VERSION)
@@ -137,7 +139,7 @@ export class RelayServer extends EventEmitter {
     acceptanceBudget: number
   }> {
     const paymaster = req.relayRequest.relayData.paymaster
-    let gasLimits = this.trustedPaymastersGasLimits[paymaster]
+    let gasLimits = this.trustedPaymastersGasLimits.get(paymaster)
     let acceptanceBudget: number
     if (gasLimits == null) {
       try {
@@ -307,8 +309,6 @@ export class RelayServer extends EventEmitter {
     process.exit(1)
   }
 
-  trustedPaymastersGasLimits: {[key: string]: PaymasterGasLimits} = {}
-
   /***
    * initialize data from trusted paymasters.
    * "Trusted" paymasters means that:
@@ -321,19 +321,18 @@ export class RelayServer extends EventEmitter {
    * @param paymasters list of trusted paymaster addresses
    */
   async _initTrustedPaymasters (paymasters: string[] = []): Promise<void> {
-    this.trustedPaymastersGasLimits = {}
+    this.trustedPaymastersGasLimits.clear()
     for (const paymasterAddress of paymasters) {
       const paymaster = await this.contractInteractor._createPaymaster(paymasterAddress)
-      const gasLimits = await paymaster.getGasLimits().catch(e => {
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      const gasLimits = await paymaster.getGasLimits().catch((e: Error) => {
         throw new Error(`not a valid paymaster address in trustedPaymasters list: ${paymasterAddress}: ${e.message}`)
       })
-      this.trustedPaymastersGasLimits[paymasterAddress.toLowerCase()] = gasLimits
+      this.trustedPaymastersGasLimits.set(paymasterAddress.toLowerCase(), gasLimits)
     }
   }
 
   _getPaymasterMaxAcceptanceBudget (paymaster?: string): IntString {
-    const limits = this.trustedPaymastersGasLimits[paymaster?.toLocaleLowerCase() ?? '']
+    const limits = this.trustedPaymastersGasLimits.get(paymaster?.toLocaleLowerCase())
     if (limits != null) {
       return limits.acceptanceBudget
     } else {
@@ -583,7 +582,7 @@ export class RelayServer extends EventEmitter {
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {
-    return this.trustedPaymastersGasLimits[paymaster.toLocaleLowerCase()] != null
+    return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
   }
 
   timeUnit (): number {
