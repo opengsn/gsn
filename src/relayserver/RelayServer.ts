@@ -83,6 +83,8 @@ export class RelayServer extends EventEmitter {
       relayHubAddress: this.relayHubContract?.address ?? '',
       minGasPrice: this.getMinGasPrice().toString(),
       maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
+      chainId: this.chainId.toString(),
+      networkId: this.networkId.toString(),
       ready: this.ready,
       version: VERSION
     }
