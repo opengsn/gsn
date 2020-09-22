@@ -76,13 +76,13 @@ export class RelayServer extends EventEmitter {
 
   pingHandler (paymaster?: string): PingResponse {
     return {
-      RelayServerAddress: this.workerAddress,
-      RelayManagerAddress: this.managerAddress,
-      RelayHubAddress: this.relayHubContract?.address ?? '',
-      MinGasPrice: this.getMinGasPrice().toString(),
-      MaxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
-      Ready: this.ready,
-      Version: VERSION
+      relayWorkerAddress: this.workerAddress,
+      relayManagerAddress: this.managerAddress,
+      relayHubAddress: this.relayHubContract?.address ?? '',
+      minGasPrice: this.getMinGasPrice().toString(),
+      maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
+      ready: this.ready,
+      version: VERSION
     }
   }
 

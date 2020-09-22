@@ -63,7 +63,7 @@ export default class RelaySelectionManager {
       if (isInfoFromEvent(raceResult.winner.relayInfo)) {
         return (raceResult.winner as RelayInfo)
       } else {
-        const managerAddress = raceResult.winner.pingResponse.RelayManagerAddress
+        const managerAddress = raceResult.winner.pingResponse.relayManagerAddress
         if (this.config.verbose) {
           console.log(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
         }
@@ -120,7 +120,7 @@ export default class RelaySelectionManager {
     }
     const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, this.gsnTransactionDetails.paymaster)
 
-    if (!pingResponse.Ready) {
+    if (!pingResponse.ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
     }
     this.pingFilter(pingResponse, this.gsnTransactionDetails)

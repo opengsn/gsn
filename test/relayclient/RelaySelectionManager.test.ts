@@ -30,13 +30,13 @@ contract('RelaySelectionManager', function (accounts) {
     pctRelayFee: '1'
   }
   const pingResponse = {
-    RelayServerAddress: '',
-    RelayManagerAddress: '',
-    RelayHubAddress: '',
-    MinGasPrice: '1',
-    MaxAcceptanceBudget: 1e10.toString(),
-    Ready: true,
-    Version: '1'
+    relayWorkerAddress: '',
+    relayManagerAddress: '',
+    relayHubAddress: '',
+    minGasPrice: '1',
+    maxAcceptanceBudget: 1e10.toString(),
+    ready: true,
+    version: '1'
   }
   const winner = {
     pingResponse,
@@ -117,13 +117,13 @@ contract('RelaySelectionManager', function (accounts) {
       it('should fill in the details if the relay was known only by URL', async function () {
         const urlInfo: RelayInfoUrl = { relayUrl: preferredRelayUrl }
         const pingResponse: PingResponse = {
-          RelayServerAddress: relayManager,
-          RelayManagerAddress: relayManager,
-          RelayHubAddress: relayManager,
-          MinGasPrice: '1',
-          MaxAcceptanceBudget: 1e10.toString(),
-          Ready: true,
-          Version: ''
+          relayWorkerAddress: relayManager,
+          relayManagerAddress: relayManager,
+          relayHubAddress: relayManager,
+          minGasPrice: '1',
+          maxAcceptanceBudget: 1e10.toString(),
+          ready: true,
+          version: ''
         }
         const winner: PartialRelayInfo = {
           pingResponse,
@@ -220,7 +220,7 @@ contract('RelaySelectionManager', function (accounts) {
     })
 
     it('should throw if the relay is not ready', async function () {
-      stubPingResponse.returns(Promise.resolve(Object.assign({}, pingResponse, { Ready: false })))
+      stubPingResponse.returns(Promise.resolve(Object.assign({}, pingResponse, { ready: false })))
       const rsm = new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, emptyFilter, config)
       const promise = rsm._getRelayAddressPing(eventInfo)
       await expect(promise).to.be.eventually.rejectedWith('Relay not ready')

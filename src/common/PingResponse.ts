@@ -2,11 +2,11 @@ import { Address, IntString } from '../relayclient/types/Aliases'
 
 export default interface PingResponse {
   // TODO: this should be 'worker'
-  RelayServerAddress: Address
-  RelayManagerAddress: Address
-  RelayHubAddress: Address
-  MinGasPrice: IntString
-  MaxAcceptanceBudget: IntString
-  Ready: boolean
-  Version: string
+  relayWorkerAddress: Address
+  relayManagerAddress: Address
+  relayHubAddress: Address
+  minGasPrice: IntString
+  maxAcceptanceBudget: IntString
+  ready: boolean
+  version: string
 }

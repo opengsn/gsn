@@ -78,7 +78,7 @@ export class HttpServer {
   pingHandler (req: any, res: any): void {
     const pingResponse = this.backend.pingHandler(req.query.paymaster)
     res.send(pingResponse)
-    console.log(`address ${pingResponse.RelayServerAddress} sent. ready: ${pingResponse.Ready}`)
+    console.log(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
   }
 
   async relayHandler (req: any, res: any): Promise<void> {

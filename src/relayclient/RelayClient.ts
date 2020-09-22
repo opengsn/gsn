@@ -35,9 +35,9 @@ export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHe
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
   if (
     gsnTransactionDetails.gasPrice != null &&
-    parseInt(pingResponse.MinGasPrice) > parseInt(gsnTransactionDetails.gasPrice)
+    parseInt(pingResponse.minGasPrice) > parseInt(gsnTransactionDetails.gasPrice)
   ) {
-    throw new Error(`Proposed gas price: ${gsnTransactionDetails.gasPrice}; relay's MinGasPrice: ${pingResponse.MinGasPrice}`)
+    throw new Error(`Proposed gas price: ${gsnTransactionDetails.gasPrice}; relay's MinGasPrice: ${pingResponse.minGasPrice}`)
   }
 }
 
@@ -218,7 +218,7 @@ export class RelayClient {
     if (this.config.verbose) {
       console.log(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
     }
-    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.MaxAcceptanceBudget)
+    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.maxAcceptanceBudget)
     const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
 
     this.emit(new GsnValidateRequestEvent())
@@ -267,7 +267,7 @@ export class RelayClient {
     const paymaster = gsnTransactionDetails.paymaster ?? this.config.paymasterAddress
 
     const senderNonce = await this.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarderAddress)
-    const relayWorker = relayInfo.pingResponse.RelayServerAddress
+    const relayWorker = relayInfo.pingResponse.relayWorkerAddress
     const gasPriceHex = gsnTransactionDetails.gasPrice
     const gasLimitHex = gsnTransactionDetails.gas
     if (gasPriceHex == null || gasLimitHex == null) {

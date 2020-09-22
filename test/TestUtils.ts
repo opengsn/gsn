@@ -100,8 +100,8 @@ export async function startRelay (
   }
   assert.ok(res, 'can\'t ping server')
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  assert.ok(res.RelayServerAddress, `server returned unknown response ${res.toString()}`)
-  const relayManagerAddress = res.RelayManagerAddress
+  assert.ok(res.relayWorkerAddress, `server returned unknown response ${res.toString()}`)
+  const relayManagerAddress = res.relayManagerAddress
   console.log('Relay Server Address', relayManagerAddress)
   // @ts-ignore
   await web3.eth.sendTransaction({
@@ -124,10 +124,10 @@ export async function startRelay (
   let count = 25
   while (count-- > 0) {
     res = await http.getPingResponse(localhostOne)
-    if (res?.Ready) break
+    if (res?.ready) break
     await sleep(500)
   }
-  assert.ok(res.Ready, 'Timed out waiting for relay to get staked and registered')
+  assert.ok(res.ready, 'Timed out waiting for relay to get staked and registered')
 
   // TODO: this is temporary hack to make helper test work!!!
   // @ts-ignore

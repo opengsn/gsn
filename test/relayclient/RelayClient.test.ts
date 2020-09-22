@@ -237,7 +237,7 @@ contract('RelayClient', function (accounts) {
 
   describe('#_attemptRelay()', function () {
     const relayUrl = localhostOne
-    const RelayServerAddress = accounts[1]
+    const relayWorkerAddress = accounts[1]
     const relayManager = accounts[2]
     const relayOwner = accounts[3]
     let pingResponse: PingResponse
@@ -250,17 +250,17 @@ contract('RelayClient', function (accounts) {
         value: (2e18).toString()
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
-      await relayHub.addRelayWorkers([RelayServerAddress], { from: relayManager })
+      await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
       await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
-        RelayServerAddress,
-        RelayManagerAddress: relayManager,
-        RelayHubAddress: relayManager,
-        MinGasPrice: '',
-        MaxAcceptanceBudget: 1e10.toString(),
-        Ready: true,
-        Version: ''
+        relayWorkerAddress: relayWorkerAddress,
+        relayManagerAddress: relayManager,
+        relayHubAddress: relayManager,
+        minGasPrice: '',
+        maxAcceptanceBudget: 1e10.toString(),
+        ready: true,
+        version: ''
       }
       relayInfo = {
         relayInfo: {
