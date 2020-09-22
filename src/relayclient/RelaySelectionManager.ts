@@ -38,7 +38,7 @@ export default class RelaySelectionManager {
    */
   async selectNextRelay (): Promise<RelayInfo | undefined> {
     while (true) {
-      const slice = await this._getNextSlice()
+      const slice = this._getNextSlice()
       let relayInfo: RelayInfo | undefined
       if (slice.length > 0) {
         relayInfo = await this._nextRelayInternal(slice)
@@ -93,7 +93,7 @@ export default class RelaySelectionManager {
     return this.remainingRelays.flatMap(list => list)
   }
 
-  async _getNextSlice (): Promise<RelayInfoUrl[]> {
+  _getNextSlice (): RelayInfoUrl[] {
     if (!this.isInitialized) { throw new Error('init() not called') }
     for (const relays of this.remainingRelays) {
       const bulkSize = Math.min(this.config.sliceSize, relays.length)
@@ -101,11 +101,6 @@ export default class RelaySelectionManager {
       if (slice.length === 0) {
         continue
       }
-      // we must verify uniqueness of URLs as they are used as keys in maps
-      // https://stackoverflow.com/a/45125209
-      slice.filter((e1, i) =>
-        slice.findIndex((e2) => e1.relayUrl === e2.relayUrl) === i
-      )
       return slice
     }
     return []

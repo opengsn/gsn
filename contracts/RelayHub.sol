@@ -122,8 +122,11 @@ contract RelayHub is IRelayHub {
     private
     view
     returns (IPaymaster.GasLimits memory gasLimits, uint256 maxPossibleGas) {
-        gasLimits =
-            IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
+
+        (bool success, bytes memory ret) = relayRequest.relayData.paymaster.staticcall{gas:50000}(abi.encodeWithSelector(IPaymaster.getGasLimits.selector));
+        require(success, "paymaster.getGasLimits reverted (or OOG)");
+
+        gasLimits = abi.decode(ret, (IPaymaster.GasLimits));
 
         require(paymasterMaxAcceptanceBudget >= gasLimits.acceptanceBudget, "unexpected high acceptanceBudget");
 

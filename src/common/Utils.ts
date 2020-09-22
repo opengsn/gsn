@@ -49,7 +49,8 @@ export function address2topic (address: string): string {
 }
 
 // extract revert reason from a revert bytes array.
-export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string {
+export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string | null {
+  if (revertBytes == null) { return null }
   if (!revertBytes.startsWith('0x08c379a0')) {
     if (throwOnError) {
       throw new Error('invalid revert bytes: ' + revertBytes)

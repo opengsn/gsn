@@ -1,6 +1,6 @@
 import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
-import { expect } from 'chai'
+import chai from 'chai'
 
 import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '../src/common/Utils'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
@@ -18,6 +18,9 @@ import {
 } from '../types/truffle-contracts'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
+
+import chaiAsPromised from 'chai-as-promised'
+const { expect, assert } = chai.use(chaiAsPromised)
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -636,6 +639,17 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           expectEvent.inLogs(logs, 'TransactionRejectedByPaymaster', {
             reason: encodeRevertReason('You asked me to revert, remember?')
           })
+        })
+
+        it('should fail a transaction if paymaster.getGasLimits is too expensive', async function () {
+          await misbehavingPaymaster.setExpensiveGasLimits(true)
+
+          await expectRevert(relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster,
+            signatureWithMisbehavingPaymaster, '0x', gas, {
+              from: relayWorker,
+              gas,
+              gasPrice: gasPrice
+            }), 'getGasLimits reverted')
         })
 
         it('should revert the \'relayedCall\' if \'postRelayedCall\' reverts', async function () {
