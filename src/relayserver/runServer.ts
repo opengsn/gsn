@@ -17,6 +17,7 @@ function error (err: string): never {
 async function run (): Promise<void> {
   let config: ServerConfigParams
   let web3provider
+  console.log('Starting GSN Relay Server process...\n')
   try {
     const conf = await parseServerConfig(process.argv.slice(2), process.env)
     if (conf.ethereumNodeUrl == null) {
@@ -54,16 +55,12 @@ async function run (): Promise<void> {
     baseRelayFee: baseRelayFee.toString(),
     pctRelayFee,
     devMode,
-    logLevel: 1,
+    logLevel: 0,
     gasPriceFactor: gasPriceFactor
   }
 
   const relay = new RelayServer(params, dependencies)
   await relay.init()
-  console.log('Starting server.')
-  console.log('Using server config:', config)
-  console.log(
-    `server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)
   const httpServer = new HttpServer(port, relay)
   httpServer.start()
 }

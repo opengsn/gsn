@@ -4,6 +4,7 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import { RelayServer } from './RelayServer'
 import { Server } from 'http'
+import log from 'loglevel'
 
 export class HttpServer {
   app: Express
@@ -16,7 +17,6 @@ export class HttpServer {
     this.app.use(bodyParser.urlencoded({ extended: false }))
     this.app.use(bodyParser.json())
 
-    console.log('setting handlers')
     this.app.post('/', this.rootHandler.bind(this))
     // TODO change all to jsonrpc
     this.app.post('/getaddr', this.pingHandler.bind(this))
@@ -31,13 +31,16 @@ export class HttpServer {
     if (this.serverInstance === undefined) {
       this.serverInstance = this.app.listen(this.port, () => {
         console.log('Listening on port', this.port)
+        this.startBackend()
       })
     }
+  }
+
+  startBackend (): void {
     try {
       this.backend.start()
-      console.log('Relay worker started.')
     } catch (e) {
-      console.log('relay task error', e)
+      log.error('relay task error', e)
     }
   }
 

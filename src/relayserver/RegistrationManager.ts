@@ -1,11 +1,12 @@
 import log from 'loglevel'
-import { EventData } from 'web3-eth-contract'
+import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
 import { Address, IntString } from '../relayclient/types/Aliases'
-import { address2topic, getLatestEventData, isRegistrationValid } from '../common/Utils'
+import { AmountRequired } from '../common/AmountRequired'
+import { address2topic, getLatestEventData, isRegistrationValid, satisfiedString } from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
 import ContractInteractor, {
   HubAuthorized,
@@ -13,15 +14,15 @@ import ContractInteractor, {
   RelayServerRegistered,
   RelayWorkersAdded,
   StakeAdded,
-  StakeUnlocked, StakeWithdrawn
+  StakeUnlocked,
+  StakeWithdrawn
 } from '../relayclient/ContractInteractor'
 
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerConfigParams } from './ServerConfigParams'
 import { TxStoreManager } from './TxStoreManager'
 import { ServerAction } from './StoredTransaction'
-
-export class StateError extends Error {}
+import chalk from 'chalk'
 
 export interface RelayServerRegistryInfo {
   baseRelayFee: IntString
@@ -29,36 +30,15 @@ export interface RelayServerRegistryInfo {
   url: string
 }
 
-class AmountRequired {
-  currentValue = toBN(0)
-  requiredValue = toBN(0)
-
-  constructor (requiredValue: BN) {
-    this.requiredValue = requiredValue
-  }
-
-  get isSatisfied (): boolean {
-    return this.currentValue.gte(this.requiredValue)
-  }
-
-  get description (): string {
-    return `actual: ${this.currentValue.toString()} required: ${this.requiredValue.toString()}`
-  }
-}
-
 const mintxgascost = defaultEnvironment.mintxgascost
-
-export interface PastEventsHandled {
-  transactionHashes: PrefixedHexString[]
-  unregistered: boolean
-}
 
 export class RegistrationManager {
   balanceRequired: AmountRequired
   stakeRequired: AmountRequired
-  isHubAuthorized = false
-  isStakeLocked = false
+  _isHubAuthorized = false
+  _isStakeLocked = false
 
+  isInitialized = false
   hubAddress: Address
 
   managerAddress: Address
@@ -76,6 +56,32 @@ export class RegistrationManager {
   lastWorkerAddedTransaction?: EventData
   private delayedEvents: Array<{ block: number, eventData: EventData }> = []
 
+  get isHubAuthorized (): boolean {
+    return this._isHubAuthorized
+  }
+
+  set isHubAuthorized (newValue: boolean) {
+    const oldValue = this._isHubAuthorized
+    this._isHubAuthorized = newValue
+    if (newValue !== oldValue) {
+      console.log(`Current RelayHub is ${newValue ? 'now' : 'no longer'} authorized`)
+      this.printNotRegisteredMessage()
+    }
+  }
+
+  get isStakeLocked (): boolean {
+    return this._isStakeLocked
+  }
+
+  set isStakeLocked (newValue: boolean) {
+    const oldValue = this._isStakeLocked
+    this._isStakeLocked = newValue
+    if (newValue !== oldValue) {
+      console.log(`Manager stake is ${newValue ? 'now' : 'no longer'} locked`)
+      this.printNotRegisteredMessage()
+    }
+  }
+
   constructor (
     contractInteractor: ContractInteractor,
     transactionManager: TransactionManager,
@@ -86,8 +92,11 @@ export class RegistrationManager {
     managerAddress: Address,
     workerAddress: Address
   ) {
-    this.balanceRequired = new AmountRequired(toBN(config.managerMinBalance))
-    this.stakeRequired = new AmountRequired(toBN(config.managerMinStake))
+    const listener = (): void => {
+      this.printNotRegisteredMessage()
+    }
+    this.balanceRequired = new AmountRequired('Balance', toBN(config.managerMinBalance), listener)
+    this.stakeRequired = new AmountRequired('Stake', toBN(config.managerMinStake), listener)
 
     this.contractInteractor = contractInteractor
     this.hubAddress = config.relayHubAddress
@@ -99,17 +108,29 @@ export class RegistrationManager {
     this.config = config
   }
 
-  async handlePastEvents (hubEventsSinceLastScan: EventData[], lastScannedBlock: number, currentBlock: number, forceRegistration: boolean): Promise<PastEventsHandled> {
+  async init (): Promise<void> {
+    if (this.lastWorkerAddedTransaction == null) {
+      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
+    }
+
+    if (this.lastMinedRegisterTransaction == null) {
+      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
+    }
+    this.isInitialized = true
+  }
+
+  async handlePastEvents (hubEventsSinceLastScan: EventData[], lastScannedBlock: number, currentBlock: number, forceRegistration: boolean): Promise<PrefixedHexString[]> {
+    if (!this.isInitialized) {
+      throw new Error('RegistrationManager not initialized')
+    }
     const topics = [address2topic(this.managerAddress)]
-    const options = {
+    const options: PastEventOptions = {
       fromBlock: lastScannedBlock + 1,
       toBlock: 'latest'
     }
     const eventNames = [HubAuthorized, StakeAdded, HubUnauthorized, StakeUnlocked, StakeWithdrawn]
     const decodedEvents = await this.contractInteractor.getPastEventsForStakeManager(eventNames, topics, options)
-    log.trace('logs?', decodedEvents)
-    log.trace('options? ', options)
-    let unregistered = false
+    this.printEvents(decodedEvents, options)
     let transactionHashes: PrefixedHexString[] = []
     // TODO: what about 'penalize' events? should send balance to owner, I assume
     // TODO TODO TODO 'StakeAdded' is not the event you want to cat upon if there was no 'HubAuthorized' event
@@ -119,24 +140,22 @@ export class RegistrationManager {
           await this._handleHubAuthorizedEvent(eventData)
           break
         case 'StakeAdded':
-          await this._handleStakedEvent()
+          await this.refreshStake()
           break
         case 'HubUnauthorized':
           this.delayedEvents.push({ block: eventData.returnValues.removalBlock.toString(), eventData })
-          unregistered = true
           break
         case 'StakeUnlocked':
-          unregistered = true
+          await this.refreshStake()
           break
         case 'StakeWithdrawn':
+          await this.refreshStake()
           transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock))
-          unregistered = true
           break
       }
     }
 
     // handle HubUnauthorized only after the due time
-
     for (const eventData of this._extractDuePendingEvents(currentBlock)) {
       switch (eventData.event) {
         case 'HubUnauthorized':
@@ -149,10 +168,7 @@ export class RegistrationManager {
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
       transactionHashes = transactionHashes.concat(await this.attemptRegistration(hubEventsSinceLastScan, currentBlock))
     }
-    return {
-      transactionHashes: transactionHashes,
-      unregistered
-    }
+    return transactionHashes
   }
 
   _extractDuePendingEvents (currentBlock: number): EventData[] {
@@ -161,13 +177,10 @@ export class RegistrationManager {
     return ret
   }
 
-  async _isRegistrationCorrect (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  _isRegistrationCorrect (hubEventsSinceLastScan: EventData[] = []): boolean {
     const lastRegisteredTxSinceLastScan = getLatestEventData(hubEventsSinceLastScan.filter((it) => it.event === RelayServerRegistered))
     if (lastRegisteredTxSinceLastScan != null) {
       this.lastMinedRegisterTransaction = lastRegisteredTxSinceLastScan
-    }
-    if (this.lastMinedRegisterTransaction == null) {
-      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
     return isRegistrationValid(this.lastMinedRegisterTransaction, this.config, this.managerAddress)
   }
@@ -213,13 +226,8 @@ export class RegistrationManager {
     return await this.withdrawAllFunds(false, currentBlock)
   }
 
-  async _handleStakedEvent (): Promise<void> {
-    await this.refreshStake()
-  }
-
   async _handleStakeWithdrawnEvent (dlog: EventData, currentBlock: number): Promise<PrefixedHexString[]> {
-    console.log('handle StakeWithdrawn event', dlog)
-    await this.refreshStake()
+    log.warn('Handling StakeWithdrawn event:', dlog)
     return await this.withdrawAllFunds(true, currentBlock)
   }
 
@@ -241,7 +249,8 @@ export class RegistrationManager {
   }
 
   async refreshBalance (): Promise<void> {
-    this.balanceRequired.currentValue = toBN(await this.contractInteractor.getBalance(this.managerAddress))
+    const currentBalance = await this.contractInteractor.getBalance(this.managerAddress)
+    this.balanceRequired.currentValue = toBN(currentBalance)
   }
 
   async refreshStake (): Promise<void> {
@@ -258,16 +267,9 @@ export class RegistrationManager {
     // first time getting stake, setting owner
     if (this.ownerAddress == null) {
       this.ownerAddress = stakeInfo.owner
-      console.log(`Got staked for the first time. Owner: ${this.ownerAddress}. Stake: ${this.stakeRequired.currentValue.toString()}`)
+      console.log('Got staked for the first time')
+      this.printNotRegisteredMessage()
     }
-  }
-
-  isRegistrationAllowed (): boolean {
-    if (!this.isHubAuthorized || this.stakeRequired.isSatisfied) {
-      log.debug(`can't register yet: auth=${this.isHubAuthorized} stake=${this.stakeRequired.currentValue.toString()}`)
-      return false
-    }
-    return true
   }
 
   async addRelayWorker (currentBlock: number): Promise<PrefixedHexString> {
@@ -395,13 +397,10 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  async _areWorkersAdded (hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  _areWorkersAdded (hubEventsSinceLastScan: EventData[]): boolean {
     const lastWorkerAddedSinceLastScan = getLatestEventData(hubEventsSinceLastScan.filter((it) => it.event === RelayWorkersAdded))
     if (lastWorkerAddedSinceLastScan != null) {
       this.lastWorkerAddedTransaction = lastWorkerAddedSinceLastScan
-    }
-    if (this.lastWorkerAddedTransaction == null) {
-      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
     }
     return this._isWorkerValid()
   }
@@ -421,32 +420,42 @@ export class RegistrationManager {
       .map((a: string) => a.toLowerCase()).includes(this.workerAddress.toLowerCase())
   }
 
-  async assertManagerBalance (): Promise<void> {
-    await this.refreshBalance()
-
-    if (!this.balanceRequired.isSatisfied) {
-      throw new StateError(
-        `Balance too low - ${this.balanceRequired.description}`)
-    }
+  async isRegistered (): Promise<boolean> {
+    const isRegistrationCorrect = await this._isRegistrationCorrect([])
+    return this.stakeRequired.isSatisfied &&
+      this.isStakeLocked &&
+      this.isHubAuthorized &&
+      isRegistrationCorrect
   }
 
-  // TODO: !!! !!! this is the original reason for this refactoring. It is not reasonable to throw exceptions to expose not registered state.
-  async assertRegistered (): Promise<void> {
-    if (!this.stakeRequired.isSatisfied) {
-      throw new StateError(`Stake too low - ${this.stakeRequired.description}`)
+  printNotRegisteredMessage (): void {
+    if (this._isRegistrationCorrect()) {
+      return
     }
+    const message = `\nNot registered yet. Prerequisites:
+${this.balanceRequired.description}
+${this.stakeRequired.description}
+Hub authorized | ${satisfiedString(this.isHubAuthorized)}
+Stake locked   | ${satisfiedString(this.isStakeLocked)}
+Manager        | ${this.managerAddress}
+Worker         | ${this.workerAddress}
+Owner          | ${this.ownerAddress ?? chalk.red('unknown')}
+`
+    console.log(message)
+  }
 
-    // TODO: this check is new and is not covered by tests
-    if (!this.isStakeLocked) {
-      throw new StateError('Stake not locked')
+  printEvents (decodedEvents: EventData[], options: PastEventOptions): void {
+    if (decodedEvents.length === 0) {
+      log.debug(`No new events emitted since block: ${options.fromBlock?.toString()}`)
+      return
     }
-
-    if (!this.isHubAuthorized) {
-      throw new StateError('Hub not authorized.')
-    }
-    const isRegistrationCorrect = await this._isRegistrationCorrect([])
-    if (!isRegistrationCorrect) {
-      throw new StateError('Not registered yet.')
+    log.info(`Handling ${decodedEvents.length} events emitted since block: ${options.fromBlock?.toString()}`)
+    for (const decodedEvent of decodedEvents) {
+      log.info(`
+Name      | ${decodedEvent.event.padEnd(25)}
+Block     | ${decodedEvent.blockNumber}
+TxHash    | ${decodedEvent.transactionHash}
+`)
     }
   }
 }

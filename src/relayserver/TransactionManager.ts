@@ -1,3 +1,5 @@
+// @ts-ignore
+import EthVal from 'ethval'
 import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
 
 import { Address, IntString } from '../relayclient/types/Aliases'
@@ -63,20 +65,35 @@ export class TransactionManager {
     }
   }
 
+  printSendTransactionLog (transaction: Transaction, from: Address): void {
+    const valueString = transaction.value.length === 0 ? '0' : parseInt('0x' + transaction.value.toString('hex')).toString()
+    const nonceString = transaction.nonce.length === 0 ? '0' : parseInt('0x' + transaction.nonce.toString('hex'))
+    const gasPriceString = parseInt('0x' + transaction.gasPrice.toString('hex'))
+
+    const valueHumanReadable: string = new EthVal(valueString).toEth().toFixed(4)
+    const gasPriceHumanReadable: string = new EthVal(gasPriceString).toGwei().toFixed(4)
+    log.info(`Broadcasting transaction:
+
+hash         | 0x${transaction.hash().toString('hex')}
+from         | ${from}
+to           | 0x${transaction.to.toString('hex')}
+value        | ${valueString} (${valueHumanReadable} eth)
+nonce        | ${nonceString}
+gasPrice     | ${gasPriceString} (${gasPriceHumanReadable} gwei)
+gasLimit     | ${parseInt('0x' + transaction.gasLimit.toString('hex'))}
+data         | 0x${transaction.data.toString('hex')}
+`)
+  }
+
   async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice, creationBlockNumber, serverAction }: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = method?.encodeABI() ?? '0x'
     const _gasPrice = parseInt(gasPrice ?? await this.contractInteractor.getGasPrice())
-    log.debug('gasPrice', _gasPrice)
-    log.debug('encodedCall', encodedCall)
     const gas = parseInt(gasLimit ?? await method?.estimateGas({ from: signer }))
-    log.debug('gasLimit', gas)
-    log.debug('nonceMutex locked?', this.nonceMutex.isLocked())
     const releaseMutex = await this.nonceMutex.acquire()
     let signedTx
     let storedTx: StoredTransaction
     try {
       const nonce = await this.pollNonce(signer)
-      log.debug('nonce', nonce)
       const txToSign = new Transaction({
         to: destination,
         value: value,
@@ -85,7 +102,6 @@ export class TransactionManager {
         data: Buffer.from(encodedCall.slice(2), 'hex'),
         nonce
       }, this.rawTxOptions)
-      log.trace('txToSign', txToSign)
       // TODO omg! do not do this!
       const keyManager = this.managerKeyManager.isSigner(signer) ? this.managerKeyManager : this.workersKeyManager
       signedTx = keyManager.signTransaction(signer, txToSign)
@@ -98,11 +114,11 @@ export class TransactionManager {
       storedTx = createStoredTransaction(txToSign, metadata)
       this.nonces[signer]++
       await this.txStoreManager.putTx(storedTx, false)
+      this.printSendTransactionLog(txToSign, signer)
     } finally {
       releaseMutex()
     }
     const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
-    log.info('\ntxhash is', transactionHash)
     if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
@@ -224,8 +240,7 @@ export class TransactionManager {
     // Check if the tx was mined by comparing its nonce against the latest one
     const nonce = await this.contractInteractor.getTransactionCount(signer)
     if (sortedTxs[0].nonce < nonce) {
-      log.debug('resend', signer, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce,
-        sortedTxs[0].txId)
+      log.debug(`${signer} : transaction is mined, awaiting confirmations. Account nonce:${nonce}, oldest transaction nonce: ${sortedTxs[0].nonce}, txId: ${sortedTxs[0].txId}`)
       return null
     }
 

@@ -10,6 +10,7 @@ import { Address } from '../relayclient/types/Aliases'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 import TypedRequestData from './EIP712/TypedRequestData'
+import chalk from 'chalk'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -210,4 +211,8 @@ interface Signature {
   v: number[]
   r: number[]
   s: number[]
+}
+
+export function satisfiedString (bool: boolean): string {
+  return bool ? chalk.green('satisfied'.padEnd(14)) : chalk.red('not satisfied'.padEnd(14))
 }
