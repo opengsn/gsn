@@ -23,5 +23,15 @@ abstract contract IRelayRecipient {
      */
     function _msgSender() internal virtual view returns (address payable);
 
+    /**
+     * return the msg.data of this call.
+     * if the call came through our trusted forwarder, then the real sender was appended as the last 20 bytes
+     * of the msg.data - so this method will strip those 20 bytes off.
+     * otherwise, return `msg.data`
+     * should be used in the contract instead of msg.data, where the difference matters (e.g. when explicitly
+     * signing or hashing the
+     */
+    function _msgData() internal virtual view returns (bytes memory);
+
     function versionRecipient() external virtual view returns (string memory);
 }
