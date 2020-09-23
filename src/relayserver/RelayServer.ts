@@ -17,11 +17,11 @@ import VersionsManager from '../common/VersionsManager'
 import { AmountRequired } from '../common/AmountRequired'
 import { defaultEnvironment } from '../common/Environments'
 import {
-  PaymasterGasLimits,
   address2topic,
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
+  PaymasterGasLimits,
   randomInRange,
   sleep
 } from '../common/Utils'
@@ -40,7 +40,7 @@ const GAS_RESERVE = 100000
 export class RelayServer extends EventEmitter {
   lastScannedBlock = 0
   lastRefreshBlock = 0
-  ready?: boolean
+  ready = false
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   gasPrice: number = 0
@@ -199,8 +199,8 @@ export class RelayServer extends EventEmitter {
     if (paymasterBalance.lt(maxCharge)) {
       throw new Error(`paymaster balance too low: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
     }
-    console.log(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
-    console.log(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
+    log.info(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
+    log.info(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
 
     return {
       acceptanceBudget,
@@ -231,7 +231,7 @@ export class RelayServer extends EventEmitter {
 
   async createRelayTransaction (req: RelayTransactionRequest): Promise<PrefixedHexString> {
     log.debug('dump request params', arguments[0])
-    if (this.ready !== true) {
+    if (!this.ready) {
       throw new Error('relay not ready')
     }
     this.validateInputTypes(req)
@@ -262,7 +262,7 @@ export class RelayServer extends EventEmitter {
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(0, currentBlock)
     if (this.alerted) {
-      console.log('Alerted state: slowing down traffic')
+      log.error('Alerted state: slowing down traffic')
       await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
     }
     return signedTx
@@ -282,7 +282,7 @@ export class RelayServer extends EventEmitter {
           })
         .catch((e) => {
           this.emit('error', e)
-          console.error('error in start:', e)
+          log.error('error in start:', e)
         })
     }
     this.workerTask = setInterval(handler, msInterval)
@@ -293,7 +293,7 @@ export class RelayServer extends EventEmitter {
       throw new Error('Server not started')
     }
     clearInterval(this.workerTask)
-    console.log('Successfully stopped polling!!')
+    log.info('Successfully stopped polling!!')
   }
 
   _workerSemaphore (blockNumber: number): void {
@@ -310,14 +310,14 @@ export class RelayServer extends EventEmitter {
       })
       .catch((e) => {
         this.emit('error', e)
-        console.error('error in worker:', e)
+        log.error('error in worker:', e)
         this.setReadyState(false)
         this._workerSemaphoreOn = false
       })
   }
 
   fatal (message: string): void {
-    console.error('FATAL: ' + message)
+    log.error('FATAL: ' + message)
     process.exit(1)
   }
 
@@ -381,12 +381,12 @@ export class RelayServer extends EventEmitter {
     this.chainId = await this.contractInteractor.getChainId()
     this.networkId = await this.contractInteractor.getNetworkId()
     if (this.config.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
-      console.log('Don\'t use real network\'s chainId & networkId while in devMode.')
+      log.error('Don\'t use real network\'s chainId & networkId while in devMode.')
       process.exit(-1)
     }
 
     const latestBlock = await this.contractInteractor.getBlock('latest')
-    console.log(`Current network info:
+    log.info(`Current network info:
 chainId                 | ${this.chainId}
 networkId               | ${this.networkId}
 latestBlock             | ${latestBlock.number}
@@ -411,7 +411,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       toBN(this.config.minHubWithdrawalBalance))
     const isWithdrawalPending = await this.txStoreManager.isActionPending(ServerAction.DEPOSIT_WITHDRAWAL)
     if (mustWithdrawHubDeposit && !isWithdrawalPending) {
-      console.log(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
+      log.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
       const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.managerAddress)
       const details: SendTransactionDetails = {
@@ -429,11 +429,11 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const isReplenishPendingForWorker = await this.txStoreManager.isActionPending(ServerAction.VALUE_TRANSFER, this.workerAddress)
     if (mustReplenishWorker && !isReplenishPendingForWorker) {
       const refill = toBN(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
-      console.log(
+      log.info(
         `== replenishServer: mgr balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()} 
           \n${this.workerBalanceRequired.description}\n refill=${refill.toString()}`)
       if (refill.lt(managerEthBalance.sub(toBN(this.config.managerMinBalance)))) {
-        console.log('Replenishing worker balance by manager eth balance')
+        log.info('Replenishing worker balance by manager eth balance')
         const details: SendTransactionDetails = {
           signer: this.managerAddress,
           serverAction: ServerAction.VALUE_TRANSFER,
@@ -447,7 +447,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       } else {
         const message = `== replenishServer: can't replenish: mgr balance too low ${managerEthBalance.toString()} refill=${refill.toString()}`
         this.emit('fundingNeeded', message)
-        console.log(message)
+        log.error(message)
       }
     }
     return transactionHashes
@@ -504,7 +504,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     this.setReadyState(true)
     if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < blockNumber) {
-      console.log(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockNumber}`)
+      log.warn(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockNumber}`)
       this.alerted = false
     }
     return transactionHashes
@@ -530,7 +530,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   _shouldRefreshState (currentBlock: number): boolean {
-    return currentBlock - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || this.ready !== true
+    return currentBlock - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || !this.ready
   }
 
   async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
@@ -556,7 +556,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async _handleTransactionRejectedByPaymasterEvent (blockNumber: number): Promise<void> {
     this.alerted = true
     this.alertedBlock = blockNumber
-    console.error(`Relay entered alerted state. Block number: ${blockNumber}`)
+    log.error(`Relay entered alerted state. Block number: ${blockNumber}`)
   }
 
   async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {
@@ -611,8 +611,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   setReadyState (isReady: boolean): void {
-    if (isReady && this.ready !== true) {
-      console.log(chalk.greenBright('RELAY IS NOW READY'))
+    if (isReady && !this.ready) {
+      log.warn(chalk.greenBright('RELAY IS NOW READY'))
     }
     this.ready = isReady
   }

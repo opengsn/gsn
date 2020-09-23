@@ -166,6 +166,13 @@ export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
 
+export function isSecondEventLater (a: EventData, b: EventData): boolean {
+  if (a.blockNumber === b.blockNumber) {
+    return b.transactionIndex > a.transactionIndex
+  }
+  return b.blockNumber > a.blockNumber
+}
+
 export function getLatestEventData (events: EventData[]): EventData | undefined {
   if (events.length === 0) {
     return

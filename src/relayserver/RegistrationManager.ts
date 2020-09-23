@@ -6,7 +6,14 @@ import { toBN, toHex } from 'web3-utils'
 
 import { Address, IntString } from '../relayclient/types/Aliases'
 import { AmountRequired } from '../common/AmountRequired'
-import { address2topic, getLatestEventData, isRegistrationValid, satisfiedString } from '../common/Utils'
+import {
+  address2topic,
+  getLatestEventData,
+  isRegistrationValid,
+  isSameAddress,
+  isSecondEventLater,
+  satisfiedString
+} from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
 import ContractInteractor, {
   HubAuthorized,
@@ -64,7 +71,7 @@ export class RegistrationManager {
     const oldValue = this._isHubAuthorized
     this._isHubAuthorized = newValue
     if (newValue !== oldValue) {
-      console.log(`Current RelayHub is ${newValue ? 'now' : 'no longer'} authorized`)
+      log.info(`Current RelayHub is ${newValue ? 'now' : 'no longer'} authorized`)
       this.printNotRegisteredMessage()
     }
   }
@@ -77,7 +84,7 @@ export class RegistrationManager {
     const oldValue = this._isStakeLocked
     this._isStakeLocked = newValue
     if (newValue !== oldValue) {
-      console.log(`Manager stake is ${newValue ? 'now' : 'no longer'} locked`)
+      log.info(`Manager stake is ${newValue ? 'now' : 'no longer'} locked`)
       this.printNotRegisteredMessage()
     }
   }
@@ -136,21 +143,39 @@ export class RegistrationManager {
     // TODO TODO TODO 'StakeAdded' is not the event you want to cat upon if there was no 'HubAuthorized' event
     for (const eventData of decodedEvents) {
       switch (eventData.event) {
-        case 'HubAuthorized':
+        case HubAuthorized:
           await this._handleHubAuthorizedEvent(eventData)
           break
-        case 'StakeAdded':
+        case StakeAdded:
           await this.refreshStake()
           break
-        case 'HubUnauthorized':
-          this.delayedEvents.push({ block: eventData.returnValues.removalBlock.toString(), eventData })
+        case HubUnauthorized:
+          if (isSameAddress(eventData.returnValues.relayHub, this.hubAddress)) {
+            this.isHubAuthorized = false
+            this.delayedEvents.push({ block: eventData.returnValues.removalBlock.toString(), eventData })
+          }
           break
-        case 'StakeUnlocked':
+        case StakeUnlocked:
           await this.refreshStake()
           break
-        case 'StakeWithdrawn':
+        case StakeWithdrawn:
           await this.refreshStake()
           transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock))
+          break
+      }
+    }
+
+    for (const eventData of hubEventsSinceLastScan) {
+      switch (eventData.event) {
+        case RelayServerRegistered:
+          if (this.lastMinedRegisterTransaction == null || isSecondEventLater(this.lastMinedRegisterTransaction, eventData)) {
+            this.lastMinedRegisterTransaction = eventData
+          }
+          break
+        case RelayWorkersAdded:
+          if (this.lastWorkerAddedTransaction == null || isSecondEventLater(this.lastWorkerAddedTransaction, eventData)) {
+            this.lastWorkerAddedTransaction = eventData
+          }
           break
       }
     }
@@ -158,15 +183,15 @@ export class RegistrationManager {
     // handle HubUnauthorized only after the due time
     for (const eventData of this._extractDuePendingEvents(currentBlock)) {
       switch (eventData.event) {
-        case 'HubUnauthorized':
+        case HubUnauthorized:
           transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
           break
       }
     }
-    const isRegistrationCorrect = await this._isRegistrationCorrect(hubEventsSinceLastScan)
+    const isRegistrationCorrect = await this._isRegistrationCorrect()
     const isRegistrationPending = await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER)
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
-      transactionHashes = transactionHashes.concat(await this.attemptRegistration(hubEventsSinceLastScan, currentBlock))
+      transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock))
     }
     return transactionHashes
   }
@@ -177,11 +202,7 @@ export class RegistrationManager {
     return ret
   }
 
-  _isRegistrationCorrect (hubEventsSinceLastScan: EventData[] = []): boolean {
-    const lastRegisteredTxSinceLastScan = getLatestEventData(hubEventsSinceLastScan.filter((it) => it.event === RelayServerRegistered))
-    if (lastRegisteredTxSinceLastScan != null) {
-      this.lastMinedRegisterTransaction = lastRegisteredTxSinceLastScan
-    }
+  _isRegistrationCorrect (): boolean {
     return isRegistrationValid(this.lastMinedRegisterTransaction, this.config, this.managerAddress)
   }
 
@@ -219,10 +240,6 @@ export class RegistrationManager {
   }
 
   async _handleHubUnauthorizedEvent (dlog: EventData, currentBlock: number): Promise<PrefixedHexString[]> {
-    if (dlog.returnValues.relayHub.toLowerCase() !== this.hubAddress.toLowerCase()) {
-      return []
-    }
-    this.isHubAuthorized = false
     return await this.withdrawAllFunds(false, currentBlock)
   }
 
@@ -267,7 +284,7 @@ export class RegistrationManager {
     // first time getting stake, setting owner
     if (this.ownerAddress == null) {
       this.ownerAddress = stakeInfo.owner
-      console.log('Got staked for the first time')
+      log.info('Got staked for the first time')
       this.printNotRegisteredMessage()
     }
   }
@@ -287,7 +304,7 @@ export class RegistrationManager {
   }
 
   // TODO: extract worker registration sub-flow
-  async attemptRegistration (hubEventsSinceLastScan: EventData[], currentBlock: number): Promise<PrefixedHexString[]> {
+  async attemptRegistration (currentBlock: number): Promise<PrefixedHexString[]> {
     const allPrerequisitesOk =
       this.isHubAuthorized &&
       this.isStakeLocked &&
@@ -299,7 +316,7 @@ export class RegistrationManager {
 
     let transactions: PrefixedHexString[] = []
     // add worker only if not already added
-    const workersAdded = await this._areWorkersAdded(hubEventsSinceLastScan)
+    const workersAdded = await this._isWorkerValid()
     const addWorkersPending = await this.txStoreManager.isActionPending(ServerAction.ADD_WORKER)
     if (!(workersAdded || addWorkersPending)) {
       const txHash = await this.addRelayWorker(currentBlock)
@@ -328,7 +345,7 @@ export class RegistrationManager {
     const managerBalance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
     // sending manager eth balance to owner
     if (managerBalance.gte(txCost)) {
-      console.log(`Sending manager eth balance ${managerBalance.toString()} to owner`)
+      log.info(`Sending manager eth balance ${managerBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -341,7 +358,7 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      console.log(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+      log.error(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     return transactionHashes
   }
@@ -354,7 +371,7 @@ export class RegistrationManager {
     const txCost = toBN(gasLimit * parseInt(gasPrice))
     const workerBalance = toBN(await this.contractInteractor.getBalance(this.workerAddress))
     if (workerBalance.gte(txCost)) {
-      console.log(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
+      log.info(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
       const details = {
         signer: this.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -367,7 +384,7 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      console.log(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+      log.info(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     return transactionHashes
   }
@@ -381,7 +398,7 @@ export class RegistrationManager {
     const managerHubBalance = await this.contractInteractor.hubBalanceOf(this.managerAddress)
     const { gasCost, method } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
     if (managerHubBalance.gte(gasCost)) {
-      console.log(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
+      log.info(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
         serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
@@ -392,17 +409,9 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      console.log(`manager hub balance too low: ${managerHubBalance.toString()}, tx cost: ${gasCost.toString()}`)
+      log.error(`manager hub balance too low: ${managerHubBalance.toString()}, tx cost: ${gasCost.toString()}`)
     }
     return transactionHashes
-  }
-
-  _areWorkersAdded (hubEventsSinceLastScan: EventData[]): boolean {
-    const lastWorkerAddedSinceLastScan = getLatestEventData(hubEventsSinceLastScan.filter((it) => it.event === RelayWorkersAdded))
-    if (lastWorkerAddedSinceLastScan != null) {
-      this.lastWorkerAddedTransaction = lastWorkerAddedSinceLastScan
-    }
-    return this._isWorkerValid()
   }
 
   async _queryLatestWorkerAddedEvent (): Promise<EventData | undefined> {
@@ -421,7 +430,7 @@ export class RegistrationManager {
   }
 
   async isRegistered (): Promise<boolean> {
-    const isRegistrationCorrect = await this._isRegistrationCorrect([])
+    const isRegistrationCorrect = await this._isRegistrationCorrect()
     return this.stakeRequired.isSatisfied &&
       this.isStakeLocked &&
       this.isHubAuthorized &&
@@ -441,7 +450,7 @@ Manager        | ${this.managerAddress}
 Worker         | ${this.workerAddress}
 Owner          | ${this.ownerAddress ?? chalk.red('unknown')}
 `
-    console.log(message)
+    log.info(message)
   }
 
   printEvents (decodedEvents: EventData[], options: PastEventOptions): void {

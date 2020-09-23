@@ -171,7 +171,8 @@ export class ServerTestEnvironment {
     }
     const shared: Partial<ServerConfigParams> = {
       relayHubAddress: this.relayHub.address,
-      devMode: true
+      devMode: true,
+      logLevel: 5
     }
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
     this.relayServer = new RelayServer(mergedConfig, serverDependencies)
