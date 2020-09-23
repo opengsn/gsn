@@ -14,8 +14,9 @@ export default class HttpClient {
     this.config = config
   }
 
-  async getPingResponse (relayUrl: string): Promise<PingResponse> {
-    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr', {})
+  async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
+    const paymasterSuffix = paymaster == null ? '' : '?paymaster=' + paymaster
+    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix, {})
     if (this.config.verbose) {
       console.log('error, body', pingResponse)
     }

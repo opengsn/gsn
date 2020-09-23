@@ -101,7 +101,7 @@ export default class CommandsLogic {
 
   async isRelayReady (relayUrl: string): Promise<boolean> {
     const response = await this.httpClient.getPingResponse(relayUrl)
-    return response.Ready
+    return response.ready
   }
 
   async waitForRelay (relayUrl: string): Promise<void> {
@@ -176,8 +176,8 @@ export default class CommandsLogic {
       console.error(`Funding GSN relay at ${options.relayUrl}`)
 
       const response = await this.httpClient.getPingResponse(options.relayUrl)
-      const relayAddress = response.RelayManagerAddress
-      const relayHubAddress = this.config.relayHubAddress ?? response.RelayHubAddress
+      const relayAddress = response.relayManagerAddress
+      const relayHubAddress = this.config.relayHubAddress ?? response.relayHubAddress
 
       const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
