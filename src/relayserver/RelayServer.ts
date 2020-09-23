@@ -25,9 +25,10 @@ import { SendTransactionDetails, TransactionManager } from './TransactionManager
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TxStoreManager } from './TxStoreManager'
 import { ServerAction } from './StoredTransaction'
+import { IntString } from '../relayclient/types/Aliases'
 import Timeout = NodeJS.Timeout
 
-const VERSION = '2.0.0-beta.2'
+const VERSION = '2.0.0-beta.3'
 const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
@@ -56,6 +57,8 @@ export class RelayServer extends EventEmitter {
   networkId!: number
   relayHubContract!: IRelayHubInstance
 
+  trustedPaymastersGasLimits: Map<String|undefined, PaymasterGasLimits> = new Map<String|undefined, PaymasterGasLimits>()
+
   constructor (config: Partial<ServerConfigParams>, dependencies: ServerDependencies) {
     super()
     this.versionManager = new VersionsManager(VERSION)
@@ -66,22 +69,24 @@ export class RelayServer extends EventEmitter {
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     log.setLevel(this.config.logLevel)
-    log.debug('config:', JSON.stringify(this.config))
+    log.debug('server config:', JSON.stringify(this.config, null, 2))
   }
 
   getMinGasPrice (): number {
     return this.gasPrice
   }
 
-  pingHandler (): PingResponse {
+  pingHandler (paymaster?: string): PingResponse {
     return {
-      RelayServerAddress: this.workerAddress,
-      RelayManagerAddress: this.managerAddress,
-      RelayHubAddress: this.relayHubContract?.address ?? '',
-      MinGasPrice: this.getMinGasPrice().toString(),
-      MaxAcceptanceBudget: this.config.maxAcceptanceBudget.toString(),
-      Ready: this.ready,
-      Version: VERSION
+      relayWorkerAddress: this.workerAddress,
+      relayManagerAddress: this.managerAddress,
+      relayHubAddress: this.relayHubContract?.address ?? '',
+      minGasPrice: this.getMinGasPrice().toString(),
+      maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
+      chainId: this.chainId.toString(),
+      networkId: this.networkId.toString(),
+      ready: this.ready,
+      version: VERSION
     }
   }
 
@@ -135,29 +140,36 @@ export class RelayServer extends EventEmitter {
     maxPossibleGas: number
     acceptanceBudget: number
   }> {
-    let gasLimits: PaymasterGasLimits
-    try {
-      const paymasterContract = await this.contractInteractor._createPaymaster(req.relayRequest.relayData.paymaster)
-      gasLimits = await paymasterContract.getGasLimits()
-    } catch (e) {
-      const error = e as Error
-      let message = `unknown paymaster error: ${error.message}`
-      if (error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')) {
-        message = `incompatible paymaster contract: ${req.relayRequest.relayData.paymaster}`
-      } else if (error.message.includes('no code at address')) {
-        message = `'non-existent paymaster contract: ${req.relayRequest.relayData.paymaster}`
+    const paymaster = req.relayRequest.relayData.paymaster
+    let gasLimits = this.trustedPaymastersGasLimits.get(paymaster)
+    let acceptanceBudget: number
+    if (gasLimits == null) {
+      try {
+        const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
+        gasLimits = await paymasterContract.getGasLimits()
+      } catch (e) {
+        const error = e as Error
+        let message = `unknown paymaster error: ${error.message}`
+        if (error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')) {
+          message = `incompatible paymaster contract: ${paymaster}`
+        } else if (error.message.includes('no code at address')) {
+          message = `'non-existent paymaster contract: ${paymaster}`
+        }
+        throw new Error(message)
       }
-      throw new Error(message)
-    }
-    let acceptanceBudget = this.config.maxAcceptanceBudget
-    const paymasterAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
-    if (paymasterAcceptanceBudget > acceptanceBudget) {
-      if (!this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
-        throw new Error(
-          `paymaster acceptance budget too high. given: ${paymasterAcceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
+      acceptanceBudget = this.config.maxAcceptanceBudget
+      const paymasterAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
+      if (paymasterAcceptanceBudget > acceptanceBudget) {
+        if (!this._isTrustedPaymaster(paymaster)) {
+          throw new Error(
+              `paymaster acceptance budget too high. given: ${paymasterAcceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
+        }
+        log.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
+        acceptanceBudget = paymasterAcceptanceBudget
       }
-      log.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
-      acceptanceBudget = paymasterAcceptanceBudget
+    } else {
+      // its a trusted paymaster. just use its acceptance budget as-is
+      acceptanceBudget = parseInt(gasLimits.acceptanceBudget)
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
@@ -168,7 +180,7 @@ export class RelayServer extends EventEmitter {
     })
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
-    const paymasterBalance = await this.relayHubContract.balanceOf(req.relayRequest.relayData.paymaster)
+    const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)
 
     if (paymasterBalance.lt(maxCharge)) {
       throw new Error(`paymaster balance too low: ${paymasterBalance.toString()}, maxCharge: ${maxCharge.toString()}`)
@@ -299,12 +311,44 @@ export class RelayServer extends EventEmitter {
     process.exit(1)
   }
 
+  /***
+   * initialize data from trusted paymasters.
+   * "Trusted" paymasters means that:
+   * - we trust their code not to alter the gas limits (getGasLimits returns constants)
+   * - we trust preRelayedCall to be consistent: off-chain call and on-chain calls should either both succeed
+   *    or both revert.
+   * - given that, we agree to give the requested acceptanceBudget (since breaking one of the above two "invariants"
+   *    is the only cases where the relayer will have to pay for this budget)
+   *
+   * @param paymasters list of trusted paymaster addresses
+   */
+  async _initTrustedPaymasters (paymasters: string[] = []): Promise<void> {
+    this.trustedPaymastersGasLimits.clear()
+    for (const paymasterAddress of paymasters) {
+      const paymaster = await this.contractInteractor._createPaymaster(paymasterAddress)
+      const gasLimits = await paymaster.getGasLimits().catch((e: Error) => {
+        throw new Error(`not a valid paymaster address in trustedPaymasters list: ${paymasterAddress}: ${e.message}`)
+      })
+      this.trustedPaymastersGasLimits.set(paymasterAddress.toLowerCase(), gasLimits)
+    }
+  }
+
+  _getPaymasterMaxAcceptanceBudget (paymaster?: string): IntString {
+    const limits = this.trustedPaymastersGasLimits.get(paymaster?.toLocaleLowerCase())
+    if (limits != null) {
+      return limits.acceptanceBudget
+    } else {
+      return this.config.maxAcceptanceBudget.toString()
+    }
+  }
+
   async init (): Promise<void> {
     if (this.initialized) {
       throw new Error('_init was already called')
     }
 
     await this.transactionManager._init()
+    await this._initTrustedPaymasters(this.config.trustedPaymasters)
     this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
@@ -540,7 +584,7 @@ export class RelayServer extends EventEmitter {
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {
-    return this.config.trustedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
+    return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
   }
 
   timeUnit (): number {

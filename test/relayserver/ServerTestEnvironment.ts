@@ -182,8 +182,8 @@ export class ServerTestEnvironment {
 
   async createRelayHttpRequest (overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<RelayTransactionRequest> {
     const pingResponse = {
-      RelayHubAddress: this.relayHub.address,
-      RelayServerAddress: this.relayServer.workerAddress
+      relayHubAddress: this.relayHub.address,
+      relayWorkerAddress: this.relayServer.workerAddress
     }
     const eventInfo: RelayRegisteredEventInfo = {
       baseRelayFee: this.relayServer.config.baseRelayFee,

@@ -50,7 +50,7 @@ const commander = gsnCommander(['n', 'h'])
       res.push(`\tbalance: ${Web3.utils.fromWei(managerBalance)} ETH`)
     }
     const pingResult = statistics.relayPings.get(registeredEvent.relayUrl)
-    const status = pingResult?.pingResponse != null ? pingResult.pingResponse.Ready.toString() : pingResult?.error?.toString() ?? 'unknown'
+    const status = pingResult?.pingResponse != null ? pingResult.pingResponse.ready.toString() : pingResult?.error?.toString() ?? 'unknown'
     res.push(`\tstatus: ${status}`)
     console.log('- ' + res.join(' '))
   })
