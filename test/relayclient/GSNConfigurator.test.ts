@@ -38,9 +38,9 @@ contract('client-configuration', () => {
         await expect(resolveConfigurationGSN(web3.currentProvider as Web3Provider, {}))
           .to.eventually.rejectedWith('Cannot resolve GSN deployment without paymaster address')
       })
-      it('should throw if no contract at paymaster address ', async () => {
+      it('should throw if no contract at paymaster address', async () => {
         await expect(resolveConfigurationGSN(web3.currentProvider as Web3Provider, { paymasterAddress: constants.ZERO_ADDRESS }))
-          .to.eventually.rejectedWith('no code at address ')
+          .to.eventually.rejectedWith('Not a paymaster contract')
       })
 
       it('should throw if not a paymaster contract', async () => {
