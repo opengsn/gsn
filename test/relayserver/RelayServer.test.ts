@@ -183,6 +183,8 @@ contract('RelayServer', function (accounts) {
       describe('#validateMaxNonce()', function () {
         before(async function () {
           // this is a new worker account - create transaction
+          const latestBlock = (await env.web3.eth.getBlock('latest')).number
+          await env.relayServer._worker(latestBlock)
           const signer = env.relayServer.workerAddress
           await env.relayServer.transactionManager.sendTransaction({
             signer,
@@ -455,8 +457,10 @@ contract('RelayServer', function (accounts) {
     it('should re-register server only if registrationBlockRate passed from any tx', async function () {
       let latestBlock = await env.web3.eth.getBlock('latest')
       let receipts = await relayServer._worker(latestBlock.number)
+      const receipts2 = await relayServer._worker(latestBlock.number + 1)
       expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, false)
       assert.equal(receipts.length, 0, 'should not re-register if already registered')
+      assert.equal(receipts2.length, 0, 'should not re-register if already registered')
       await evmMineMany(registrationBlockRate)
       latestBlock = await env.web3.eth.getBlock('latest')
       receipts = await relayServer._worker(latestBlock.number)

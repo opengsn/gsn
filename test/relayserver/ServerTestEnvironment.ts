@@ -132,6 +132,7 @@ export class ServerTestEnvironment {
     const latestBlock = await this.web3.eth.getBlock('latest')
     const receipts = await this.relayServer._worker(latestBlock.number)
     await assertRelayAdded(receipts, this.relayServer) // sanity check
+    await this.relayServer._worker(latestBlock.number + 1)
   }
 
   _createKeyManager (workdir?: string): KeyManager {
