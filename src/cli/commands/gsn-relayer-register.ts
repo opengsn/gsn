@@ -5,16 +5,17 @@ import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getNetworkUrl, getRelayHubAddress, gsnCommander, getMnemonic } from '../utils'
 
 const commander = gsnCommander(['n', 'f', 'h', 'm'])
-  .option('--relayUrl <url>', 'url to advertise the relayer (defaults to localhost:8090)')
-  .option('--stake <stake>', 'amount to stake for the relayer, in wei (defaults to 1 Ether)')
+  .option('--relayUrl <url>', 'url to advertise the relayer', 'http://localhost:8090')
+  .option('--stake <stake>', 'amount to stake for the relayer, in ETH', '1')
   .option(
     '--unstakeDelay <delay>',
-    'blocks to wait between unregistering and withdrawing the stake (defaults to one 1000)'
+    'blocks to wait between unregistering and withdrawing the stake', '1000'
   )
   .option(
     '--funds <funds>',
-    'amount to transfer to the relayer to pay for relayed transactions, in wei (defaults to 2 Ether)'
+    'amount to transfer to the relayer to pay for relayed transactions, in ETH', '2'
   )
+  .option('-g, --gasPrice <number>', 'gas price to give to the transaction, in Gwei. Defaults to relay\'s minGasPrice')
   .parse(process.argv);
 
 (async () => {
@@ -25,10 +26,11 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
   const registerOptions = {
     hub,
     from: commander.from ?? await logic.findWealthyAccount(),
-    stake: commander.stake ?? ether('1'),
-    funds: commander.funds ?? ether('2'),
-    relayUrl: commander.relayUrl ?? 'http://localhost:8090',
-    unstakeDelay: commander.unstakeDelay ?? 1000
+    stake: ether(commander.stake),
+    funds: ether(commander.funds),
+    gasPrice: commander.gasPrice != null ? (commander.gasPrice * 1e9).toString() : null,
+    relayUrl: commander.relayUrl,
+    unstakeDelay: commander.unstakeDelay
   }
   if (registerOptions.from == null) {
     console.error('Failed to find a wealthy "from" address')
