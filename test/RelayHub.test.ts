@@ -649,7 +649,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               from: relayWorker,
               gas,
               gasPrice: gasPrice
-            }))
+            }), expectRevert.unspecified)
         })
 
         it('should revert the \'relayedCall\' if \'postRelayedCall\' reverts', async function () {
