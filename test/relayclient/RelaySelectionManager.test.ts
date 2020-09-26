@@ -15,7 +15,6 @@ const { expect, assert } = require('chai').use(chaiAsPromised)
 
 contract('RelaySelectionManager', function (accounts) {
   const sliceSize = 3
-  const verbose = false
   const dependencyTree = getDependencies(configureGSN({}), web3.currentProvider as HttpProvider)
   const stubGetRelaysSorted = sinon.stub(dependencyTree.knownRelaysManager, 'getRelaysSortedForTransaction')
   const errors = new Map<string, Error>()
