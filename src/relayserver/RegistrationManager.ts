@@ -12,7 +12,7 @@ import {
   isRegistrationValid,
   isSameAddress,
   isSecondEventLater,
-  satisfiedString
+  boolString
 } from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
 import ContractInteractor, {
@@ -444,8 +444,8 @@ export class RegistrationManager {
     const message = `\nNot registered yet. Prerequisites:
 ${this.balanceRequired.description}
 ${this.stakeRequired.description}
-Hub authorized | ${satisfiedString(this.isHubAuthorized)}
-Stake locked   | ${satisfiedString(this.isStakeLocked)}
+Hub authorized | ${boolString(this.isHubAuthorized)}
+Stake locked   | ${boolString(this.isStakeLocked)}
 Manager        | ${this.managerAddress}
 Worker         | ${this.workerAddress}
 Owner          | ${this.ownerAddress ?? chalk.red('unknown')}

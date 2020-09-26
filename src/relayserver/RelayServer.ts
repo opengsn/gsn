@@ -222,7 +222,10 @@ export class RelayServer extends EventEmitter {
     } catch (e) {
       throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
-    log.debug('viewRelayCallRet', viewRelayCallRet)
+    log.debug(`Result for view-only relay call:
+paymasterAccepted  | ${viewRelayCallRet.paymasterAccepted ? chalk.green('true') : chalk.red('false')}
+returnValue        | ${viewRelayCallRet.returnValue}
+`)
     if (!viewRelayCallRet.paymasterAccepted) {
       throw new Error(
         `Paymaster rejected in server: ${decodeRevertReason(viewRelayCallRet.returnValue)} req=${JSON.stringify(req, null, 2)}`)
@@ -243,7 +246,7 @@ export class RelayServer extends EventEmitter {
     const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasLimits(req)
     await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
     // Send relayed transaction
-    log.debug('maxPossibleGas is', typeof maxPossibleGas, maxPossibleGas)
+    log.debug('maxPossibleGas is', maxPossibleGas)
 
     const method = this.relayHubContract.contract.methods.relayCall(
       acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
@@ -269,8 +272,7 @@ export class RelayServer extends EventEmitter {
   }
 
   start (): void {
-    const msInterval = 10 * this.timeUnit()
-    log.debug(`Started polling for new blocks every ${msInterval}ms`)
+    log.debug(`Started polling for new blocks every ${this.config.checkInterval}ms`)
 
     const handler = (): void => {
       this.contractInteractor.getBlock('latest')
@@ -285,7 +287,7 @@ export class RelayServer extends EventEmitter {
           log.error('error in start:', e)
         })
     }
-    this.workerTask = setInterval(handler, msInterval)
+    this.workerTask = setInterval(handler, this.config.checkInterval)
   }
 
   stop (): void {
@@ -297,7 +299,7 @@ export class RelayServer extends EventEmitter {
   }
 
   _workerSemaphore (blockNumber: number): void {
-    log.info(`Latest block polled #${blockNumber}`)
+    log.debug(`Latest block polled #${blockNumber}`)
     if (this._workerSemaphoreOn) {
       log.warn('Different worker is not finished yet, skipping this block')
       return
@@ -305,7 +307,7 @@ export class RelayServer extends EventEmitter {
     this._workerSemaphoreOn = true
     this._worker(blockNumber)
       .then(() => {
-        log.info(`Done handling block #${blockNumber}`)
+        log.debug(`Done handling block #${blockNumber}`)
         this._workerSemaphoreOn = false
       })
       .catch((e) => {
@@ -430,7 +432,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (mustReplenishWorker && !isReplenishPendingForWorker) {
       const refill = toBN(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
       log.info(
-        `== replenishServer: mgr balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()} 
+        `== replenishServer: mgr balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()}
           \n${this.workerBalanceRequired.description}\n refill=${refill.toString()}`)
       if (refill.lt(managerEthBalance.sub(toBN(this.config.managerMinBalance)))) {
         log.info('Replenishing worker balance by manager eth balance')
@@ -615,12 +617,5 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       log.warn(chalk.greenBright('RELAY IS NOW READY'))
     }
     this.ready = isReady
-  }
-
-  timeUnit (): number {
-    if (this.config.devMode) {
-      return 10
-    }
-    return 1000
   }
 }

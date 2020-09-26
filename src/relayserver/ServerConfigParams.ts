@@ -24,6 +24,7 @@ export interface ServerConfigParams {
   gasPricePercent: number
   ethereumNodeUrl: string
   workdir: string
+  checkInterval: number
   devMode: boolean
   registrationBlockRate: number
   maxAcceptanceBudget: number
@@ -70,6 +71,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   managerMinStake: '1', // 1 wei
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
+  checkInterval: 10000,
   devMode: false,
   logLevel: 1,
   baseRelayFee: '0',
@@ -100,8 +102,8 @@ const ConfigParamsTypes = {
   gasPricePercent: 'number',
   ethereumNodeUrl: 'string',
   workdir: 'string',
+  checkInterval: 'number',
   devMode: 'boolean',
-  debug: 'boolean',
   logLevel: 'number',
   registrationBlockRate: 'number',
   maxAcceptanceBudget: 'number',

@@ -220,6 +220,6 @@ interface Signature {
   s: number[]
 }
 
-export function satisfiedString (bool: boolean): string {
-  return bool ? chalk.green('satisfied'.padEnd(14)) : chalk.red('not satisfied'.padEnd(14))
+export function boolString (bool: boolean): string {
+  return bool ? chalk.green('good'.padEnd(14)) : chalk.red('wrong'.padEnd(14))
 }
