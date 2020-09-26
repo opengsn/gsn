@@ -169,11 +169,9 @@ export default class CommandsLogic {
           error: 'Nothing to do. Relayer already registered'
         }
       }
-      await this.contractInteractor.init()
-      const netChain = `network: ${response.networkId} chain: ${response.chainId}`
-      const providerNetChain = `network: ${this.contractInteractor.getNetworkId()} chain: ${this.contractInteractor.getChainId()}`
-      if (netChain !== providerNetChain) {
-        throw new Error(`wrong network: Relayer on (${netChain}) but our provider is on (${providerNetChain})`)
+      const chain = await this.contractInteractor.getAsyncChainId().then(x=>x.toString())
+      if (response.chainId !== chain) {
+        throw new Error(`wrong chain-id: Relayer on (${response.chainId}) but our provider is on (${chain})`)
       }
       const relayAddress = response.relayManagerAddress
       const relayHubAddress = this.config.relayHubAddress ?? response.relayHubAddress
