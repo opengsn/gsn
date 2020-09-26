@@ -21,7 +21,6 @@ export interface ServerConfigParams {
   versionRegistryDelayPeriod?: number
   relayHubId?: string
   relayHubAddress: string
-  gasPricePercent: number
   ethereumNodeUrl: string
   workdir: string
   checkInterval: number
@@ -78,7 +77,6 @@ const serverDefaultConfiguration: ServerConfigParams = {
   pctRelayFee: 0,
   url: 'http://localhost:8090',
   ethereumNodeUrl: '',
-  gasPricePercent: 0,
   port: 0,
   versionRegistryAddress: constants.ZERO_ADDRESS,
   workdir: '',
@@ -99,7 +97,7 @@ const ConfigParamsTypes = {
   versionRegistryDelayPeriod: 'number',
   relayHubId: 'string',
   relayHubAddress: 'string',
-  gasPricePercent: 'number',
+  gasPriceFactor: 'number',
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',

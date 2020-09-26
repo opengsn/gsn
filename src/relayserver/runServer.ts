@@ -38,8 +38,6 @@ async function run (): Promise<void> {
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir })
-  const gasPriceFactor = (config.gasPricePercent + 100) / 100
-  const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
   await contractInteractor.init()
 
@@ -49,19 +47,10 @@ async function run (): Promise<void> {
     workersKeyManager,
     contractInteractor
   }
-  const params: Partial<ServerConfigParams> = {
-    relayHubAddress,
-    url,
-    baseRelayFee: baseRelayFee.toString(),
-    pctRelayFee,
-    devMode,
-    logLevel: 0,
-    gasPriceFactor: gasPriceFactor
-  }
 
-  const relay = new RelayServer(params, dependencies)
+  const relay = new RelayServer(config, dependencies)
   await relay.init()
-  const httpServer = new HttpServer(port, relay)
+  const httpServer = new HttpServer(config.port, relay)
   httpServer.start()
 }
 

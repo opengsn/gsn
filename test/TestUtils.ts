@@ -36,14 +36,16 @@ export async function startRelay (
   fs.rmdirSync(serverWorkDir, { recursive: true })
   args.push('--workdir', serverWorkDir)
   args.push('--devMode')
+  args.push('--checkInterval', 10)
+  args.push('--logLevel', 5)
   args.push('--relayHubAddress', relayHubAddress)
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
   }
-  if (options.gasPricePercent) {
-    args.push('--gasPricePercent', options.gasPricePercent)
+  if (options.gasPriceFactor) {
+    args.push('--gasPriceFactor', options.gasPriceFactor)
   }
   if (options.pctRelayFee) {
     args.push('--pctRelayFee', options.pctRelayFee)
