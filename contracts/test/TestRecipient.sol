@@ -9,7 +9,7 @@ import "../interfaces/IKnowForwarderAddress.sol";
 
 contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
 
-    string public override versionRecipient = "2.0.0-beta.1+opengsn.test.irelayrecipient";
+    string public override versionRecipient = "2.0.0-beta.3+opengsn.test.irelayrecipient";
 
     constructor(address forwarder) public {
         setTrustedForwarder(forwarder);
