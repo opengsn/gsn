@@ -6,13 +6,14 @@ import path from 'path'
 import { DeploymentResult } from './CommandsLogic'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 
-const cliInfuraId = '41a7aa85a67641f3bd6e31cb60753698'
+const cliInfuraId = '$INFURA_ID'
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
   ['xdai', 'https://dai.poa.network'],
   ['ropsten', 'https://ropsten.infura.io/v3/' + cliInfuraId],
   ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
   ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
+  ['goerli', 'https://goerli.infura.io/v3/' + cliInfuraId],
   ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId]
 ])
 
@@ -20,9 +21,21 @@ export function supportedNetworks (): string[] {
   return Array.from(networks.keys())
 }
 
-export function getNetworkUrl (network = ''): string {
-  const match = network.match(/^(https?:\/\/.*)/) ?? []
-  return networks.get(network) ?? match[0]
+export function getNetworkUrl (network: string, env: {[key: string]: string|undefined} = process.env): string {
+  const net = networks.get(network)
+  if (net == null) {
+    const match = network.match(/^(https?:\/\/.*)/) ?? []
+    return match[0]
+  }
+
+  function getEnvParam (substring: string, ...args: string[]): string {
+    const param = args[0]
+    const str = env[param] ?? ''
+    if (str === '') { throw new Error(`network ${network}: ${param} not set`) }
+    return str
+  }
+
+  return net.replace(/\$(\w+)/g, getEnvParam)
 }
 
 export function getMnemonic (mnemonicFile: string): string | undefined {

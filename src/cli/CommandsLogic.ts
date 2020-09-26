@@ -169,7 +169,7 @@ export default class CommandsLogic {
           error: 'Nothing to do. Relayer already registered'
         }
       }
-      const chain = await this.contractInteractor.getAsyncChainId().then(x=>x.toString())
+      const chain = await this.contractInteractor.getAsyncChainId().then(x => x.toString())
       if (response.chainId !== chain) {
         throw new Error(`wrong chain-id: Relayer on (${response.chainId}) but our provider is on (${chain})`)
       }
