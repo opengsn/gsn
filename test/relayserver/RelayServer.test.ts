@@ -38,8 +38,7 @@ contract('RelayServer', function (accounts) {
     globalId = (await snapshot()).result
     const relayClientConfig: Partial<GSNConfig> = {
       preferredRelays: [LocalhostOne],
-      maxRelayNonceGap: 0,
-      verbose: process.env.DEBUG != null
+      maxRelayNonceGap: 0
     }
 
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)

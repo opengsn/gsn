@@ -1,6 +1,9 @@
+import log from 'loglevel'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
+
 import { isSameAddress } from '../common/Utils'
+
 import ContractInteractor from './ContractInteractor'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
@@ -27,9 +30,7 @@ export default class RelayedTransactionValidator {
   ): boolean {
     const transaction = new Transaction(returnedTx, this.contractInteractor.getRawTxOptions())
 
-    if (this.config.verbose) {
-      console.log('returnedTx is', transaction.v, transaction.r, transaction.s, transaction.to, transaction.data, transaction.gasLimit, transaction.gasPrice, transaction.value)
-    }
+    log.info('returnedTx is', transaction.v, transaction.r, transaction.s, transaction.to, transaction.data, transaction.gasLimit, transaction.gasPrice, transaction.value)
 
     const signer = bufferToHex(transaction.getSenderAddress())
 
@@ -41,9 +42,7 @@ export default class RelayedTransactionValidator {
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      if (this.config.verbose) {
-        console.log('validateRelayResponse - valid transaction response')
-      }
+      log.info('validateRelayResponse - valid transaction response')
 
       // TODO: the relayServer encoder returns zero-length buffer for nonce=0.`
       const receivedNonce = transaction.nonce.length === 0 ? 0 : transaction.nonce.readUIntBE(0, transaction.nonce.byteLength)

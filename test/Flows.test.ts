@@ -93,8 +93,7 @@ options.forEach(params => {
 
         relayClientConfig = {
           relayHubAddress: rhub.address,
-          paymasterAddress: paymaster.address,
-          verbose: false
+          paymasterAddress: paymaster.address
         }
 
         // @ts-ignore

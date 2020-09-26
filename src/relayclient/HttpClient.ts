@@ -1,3 +1,4 @@
+import log from 'loglevel'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
 import PingResponse from '../common/PingResponse'
@@ -17,9 +18,7 @@ export default class HttpClient {
   async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
     const paymasterSuffix = paymaster == null ? '' : '?paymaster=' + paymaster
     const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix, {})
-    if (this.config.verbose) {
-      console.log('error, body', pingResponse)
-    }
+    log.info('error, body', pingResponse)
     if (pingResponse == null) {
       throw new Error('Relay responded without a body')
     }
@@ -28,9 +27,7 @@ export default class HttpClient {
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
     const { signedTx, error }: { signedTx: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
-    if (this.config.verbose) {
-      console.log('relayTransaction response:', signedTx, error)
-    }
+    log.info('relayTransaction response:', signedTx, error)
     if (error != null) {
       throw new Error(`Got error response from relay: ${error}`)
     }

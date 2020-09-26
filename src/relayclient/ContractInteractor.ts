@@ -1,4 +1,10 @@
+import Common from 'ethereumjs-common'
 import Web3 from 'web3'
+import log from 'loglevel'
+import { BlockTransactionString } from 'web3-eth'
+import { EventData, PastEventOptions } from 'web3-eth-contract'
+import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
+import { toBN } from 'web3-utils'
 import {
   BlockNumber,
   HttpProvider,
@@ -8,8 +14,6 @@ import {
   TransactionReceipt,
   WebsocketProvider
 } from 'web3-core'
-import { EventData, PastEventOptions } from 'web3-eth-contract'
-import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import paymasterAbi from '../common/interfaces/IPaymaster.json'
@@ -36,9 +40,6 @@ import {
 import { Address, IntString } from './types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { BlockTransactionString } from 'web3-eth'
-import Common from 'ethereumjs-common'
-import { toBN } from 'web3-utils'
 
 // Truffle Contract typings seem to be completely out of their minds
 import TruffleContract = require('@truffle/contract')
@@ -278,9 +279,7 @@ export default class ContractInteractor {
           gasPrice: relayRequest.relayData.gasPrice,
           gas: externalGasLimit
         })
-      if (this.config.verbose) {
-        console.log(res)
-      }
+      log.info(res)
       return {
         returnValue: res.returnValue,
         paymasterAccepted: res.paymasterAccepted,

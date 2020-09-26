@@ -23,7 +23,6 @@ contract('AccountManager', function (accounts) {
     address
   }
   const config = configureGSN({
-    verbose: false,
     methodSuffix: '',
     jsonStringifyRequest: false
   })
