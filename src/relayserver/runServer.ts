@@ -17,6 +17,7 @@ function error (err: string): never {
 async function run (): Promise<void> {
   let config: ServerConfigParams
   let web3provider
+  console.log('Starting GSN Relay Server process...\n')
   try {
     const conf = await parseServerConfig(process.argv.slice(2), process.env)
     if (conf.ethereumNodeUrl == null) {
@@ -37,8 +38,6 @@ async function run (): Promise<void> {
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir })
-  const gasPriceFactor = (config.gasPricePercent + 100) / 100
-  const { relayHubAddress, baseRelayFee, pctRelayFee, port, url } = config
   const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
   await contractInteractor.init()
 
@@ -48,23 +47,10 @@ async function run (): Promise<void> {
     workersKeyManager,
     contractInteractor
   }
-  const params: Partial<ServerConfigParams> = {
-    relayHubAddress,
-    url,
-    baseRelayFee: baseRelayFee.toString(),
-    pctRelayFee,
-    devMode,
-    logLevel: 1,
-    gasPriceFactor: gasPriceFactor
-  }
 
-  const relay = new RelayServer(params, dependencies)
+  const relay = new RelayServer(config, dependencies)
   await relay.init()
-  console.log('Starting server.')
-  console.log('Using server config:', config)
-  console.log(
-    `server params:\nhub address: ${relayHubAddress} url: ${url} baseRelayFee: ${baseRelayFee} pctRelayFee: ${pctRelayFee} `)
-  const httpServer = new HttpServer(port, relay)
+  const httpServer = new HttpServer(config.port, relay)
   httpServer.start()
 }
 

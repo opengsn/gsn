@@ -153,8 +153,8 @@ class GsnTestEnvironmentClass {
       gasPriceFactor: 1,
       baseRelayFee: '0',
       pctRelayFee: 0,
-      devMode: true,
-      logLevel: 1
+      checkInterval: 10,
+      logLevel: 5
     }
     const backend = new RelayServer(relayServerParams, relayServerDependencies)
     await backend.init()

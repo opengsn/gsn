@@ -10,6 +10,7 @@ import { Address } from '../relayclient/types/Aliases'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 import TypedRequestData from './EIP712/TypedRequestData'
+import chalk from 'chalk'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -166,6 +167,13 @@ export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
 
+export function isSecondEventLater (a: EventData, b: EventData): boolean {
+  if (a.blockNumber === b.blockNumber) {
+    return b.transactionIndex > a.transactionIndex
+  }
+  return b.blockNumber > a.blockNumber
+}
+
 export function getLatestEventData (events: EventData[]): EventData | undefined {
   if (events.length === 0) {
     return
@@ -211,4 +219,8 @@ interface Signature {
   v: number[]
   r: number[]
   s: number[]
+}
+
+export function boolString (bool: boolean): string {
+  return bool ? chalk.green('good'.padEnd(14)) : chalk.red('wrong'.padEnd(14))
 }

@@ -1,12 +1,16 @@
+// @ts-ignore
+import EthVal from 'ethval'
+import chalk from 'chalk'
+import log from 'loglevel'
+import { Mutex } from 'async-mutex'
 import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
 
 import { Address, IntString } from '../relayclient/types/Aliases'
-import { TxStoreManager } from './TxStoreManager'
 import ContractInteractor from '../relayclient/ContractInteractor'
-import { Mutex } from 'async-mutex'
+
+import { TxStoreManager } from './TxStoreManager'
 import { KeyManager } from './KeyManager'
 import { ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import log from 'loglevel'
 import {
   createStoredTransaction,
   ServerAction,
@@ -63,20 +67,43 @@ export class TransactionManager {
     }
   }
 
+  printBoostedTransactionLog (txHash: string, creationBlockNumber: number, gasPrice: number, isMaxGasPriceReached: boolean): void {
+    const gasPriceHumanReadableOld: string = new EthVal(gasPrice).toGwei().toFixed(4)
+    log.info(`Boosting stale transaction:
+hash         | ${txHash}
+gasPrice     | ${gasPrice} (${gasPriceHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
+created at   | block #${creationBlockNumber}
+`)
+  }
+
+  printSendTransactionLog (transaction: Transaction, from: Address): void {
+    const valueString = transaction.value.length === 0 ? '0' : parseInt('0x' + transaction.value.toString('hex')).toString()
+    const nonceString = transaction.nonce.length === 0 ? '0' : parseInt('0x' + transaction.nonce.toString('hex'))
+    const gasPriceString = parseInt('0x' + transaction.gasPrice.toString('hex'))
+
+    const valueHumanReadable: string = new EthVal(valueString).toEth().toFixed(4)
+    const gasPriceHumanReadable: string = new EthVal(gasPriceString).toGwei().toFixed(4)
+    log.info(`Broadcasting transaction:
+hash         | 0x${transaction.hash().toString('hex')}
+from         | ${from}
+to           | 0x${transaction.to.toString('hex')}
+value        | ${valueString} (${valueHumanReadable} eth)
+nonce        | ${nonceString}
+gasPrice     | ${gasPriceString} (${gasPriceHumanReadable} gwei)
+gasLimit     | ${parseInt('0x' + transaction.gasLimit.toString('hex'))}
+data         | 0x${transaction.data.toString('hex')}
+`)
+  }
+
   async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice, creationBlockNumber, serverAction }: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = method?.encodeABI() ?? '0x'
     const _gasPrice = parseInt(gasPrice ?? await this.contractInteractor.getGasPrice())
-    log.debug('gasPrice', _gasPrice)
-    log.debug('encodedCall', encodedCall)
     const gas = parseInt(gasLimit ?? await method?.estimateGas({ from: signer }))
-    log.debug('gasLimit', gas)
-    log.debug('nonceMutex locked?', this.nonceMutex.isLocked())
     const releaseMutex = await this.nonceMutex.acquire()
     let signedTx
     let storedTx: StoredTransaction
     try {
       const nonce = await this.pollNonce(signer)
-      log.debug('nonce', nonce)
       const txToSign = new Transaction({
         to: destination,
         value: value,
@@ -85,7 +112,6 @@ export class TransactionManager {
         data: Buffer.from(encodedCall.slice(2), 'hex'),
         nonce
       }, this.rawTxOptions)
-      log.trace('txToSign', txToSign)
       // TODO omg! do not do this!
       const keyManager = this.managerKeyManager.isSigner(signer) ? this.managerKeyManager : this.workersKeyManager
       signedTx = keyManager.signTransaction(signer, txToSign)
@@ -98,11 +124,11 @@ export class TransactionManager {
       storedTx = createStoredTransaction(txToSign, metadata)
       this.nonces[signer]++
       await this.txStoreManager.putTx(storedTx, false)
+      this.printSendTransactionLog(txToSign, signer)
     } finally {
       releaseMutex()
     }
     const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
-    log.info('\ntxhash is', transactionHash)
     if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
@@ -132,11 +158,12 @@ export class TransactionManager {
 
   async resendTransaction (tx: StoredTransaction): Promise<SignedTransactionDetails> {
     // Calculate new gas price as a % increase over the previous one
+    let isMaxGasPriceReached = false
     let newGasPrice = tx.gasPrice * this.config.retryGasPriceFactor
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newGasPrice > parseInt(this.config.maxGasPrice)) {
-      log.debug('Capping gas price to max value of', this.config.maxGasPrice)
+      isMaxGasPriceReached = true
       newGasPrice = parseInt(this.config.maxGasPrice)
     }
     // Resend transaction with exactly the same values except for gas price
@@ -150,15 +177,15 @@ export class TransactionManager {
       },
       this.rawTxOptions)
 
-    log.debug('txToSign', txToSign)
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
     const signedTx = keyManager.signTransaction(tx.from, txToSign)
     const storedTx = await this.updateTransactionWithAttempt(txToSign, tx)
 
-    log.debug('resending tx with nonce', txToSign.nonce, 'from', tx.from)
-    log.debug('account nonce', await this.contractInteractor.getTransactionCount(tx.from))
+    this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.gasPrice, isMaxGasPriceReached)
+    this.printSendTransactionLog(txToSign, tx.from)
+    const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
+    log.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
     const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
-    log.info('\ntxhash is', transactionHash)
     if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
@@ -183,7 +210,7 @@ export class TransactionManager {
     if (sortedTxs.length === 0) {
       return
     }
-    log.debug('resending unconfirmed transactions')
+    log.debug(`Total of ${sortedTxs.length} transactions are not confirmed yet, checking...`)
     // Get nonce at confirmationsNeeded blocks ago
     for (const transaction of sortedTxs) {
       const shouldRecheck = transaction.minedBlockNumber == null || blockNumber - transaction.minedBlockNumber >= this.config.confirmationsNeeded
@@ -196,17 +223,19 @@ export class TransactionManager {
         if (receipt.blockNumber == null) {
           throw new Error(`invalid block number in receipt ${JSON.stringify(receipt)}`)
         }
+        const confirmations = blockNumber - receipt.blockNumber
         if (receipt.blockNumber !== transaction.minedBlockNumber) {
           if (transaction.minedBlockNumber != null) {
             log.warn(`transaction ${transaction.txId} was moved between blocks`)
           }
-          if (blockNumber - receipt.blockNumber < this.config.confirmationsNeeded) {
+          if (confirmations < this.config.confirmationsNeeded) {
+            log.debug(`Tx ${transaction.txId} was mined but only has ${confirmations} confirmations`)
             await this.updateTransactionWithMinedBlock(transaction, receipt.blockNumber)
             continue
           }
         }
         // Clear out all confirmed transactions (ie txs with nonce less than the account nonce at confirmationsNeeded blocks ago)
-        log.debug(`removing tx number ${receipt.nonce} sent by ${receipt.from} with ${blockNumber - receipt.blockNumber} confirmations`)
+        log.debug(`removing tx number ${receipt.nonce} sent by ${receipt.from} with ${confirmations} confirmations`)
         await this.txStoreManager.removeTxsUntilNonce(
           receipt.from,
           receipt.nonce
@@ -224,20 +253,17 @@ export class TransactionManager {
     // Check if the tx was mined by comparing its nonce against the latest one
     const nonce = await this.contractInteractor.getTransactionCount(signer)
     if (sortedTxs[0].nonce < nonce) {
-      log.debug('resend', signer, ': awaiting confirmations for next mined transaction', nonce, sortedTxs[0].nonce,
-        sortedTxs[0].txId)
+      log.debug(`${signer} : transaction is mined, awaiting confirmations. Account nonce: ${nonce}, oldest transaction: nonce: ${sortedTxs[0].nonce} txId: ${sortedTxs[0].txId}`)
       return null
     }
 
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
     if (currentBlockHeight - sortedTxs[0].creationBlockNumber < this.config.pendingTransactionTimeoutBlocks) {
-      log.trace(Date.now(), (new Date()), (new Date()).getTime())
       log.debug(`${signer} : awaiting transaction with ID: ${sortedTxs[0].txId} to be mined. creationBlockNumber: ${sortedTxs[0].creationBlockNumber} nonce: ${nonce}`)
       return null
     }
     const { transactionHash, signedTx } = await this.resendTransaction(sortedTxs[0])
-    log.debug('resent transaction', sortedTxs[0].nonce, sortedTxs[0].txId, 'as',
-      transactionHash)
+    log.debug(`Replaced transaction: nonce: ${sortedTxs[0].nonce} sender: ${signer} | ${sortedTxs[0].txId} => ${transactionHash}`)
     if (sortedTxs[0].attempts > 2) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       log.debug(`resend ${signer}: Sent tx ${sortedTxs[0].attempts} times already`)

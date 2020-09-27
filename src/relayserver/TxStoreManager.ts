@@ -1,9 +1,12 @@
+import AsyncNedb from 'nedb-async'
+import log from 'loglevel'
 import ow from 'ow'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import AsyncNedb from 'nedb-async'
-import { ServerAction, StoredTransaction } from './StoredTransaction'
+
 import { Address } from '../relayclient/types/Aliases'
 import { isSameAddress } from '../common/Utils'
+
+import { ServerAction, StoredTransaction } from './StoredTransaction'
 
 export const TXSTORE_FILENAME = 'txstore.db'
 
@@ -19,7 +22,7 @@ export class TxStoreManager {
     this.txstore.ensureIndex({ fieldName: 'txId', unique: true })
     this.txstore.ensureIndex({ fieldName: 'nonceSigner', unique: true })
 
-    console.log('txstore created in ', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
+    log.info('Server database location:', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
   async putTx (tx: StoredTransaction, updateExisting: boolean = false): Promise<void> {
