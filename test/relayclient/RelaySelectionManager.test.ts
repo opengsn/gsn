@@ -15,13 +15,11 @@ const { expect, assert } = require('chai').use(chaiAsPromised)
 
 contract('RelaySelectionManager', function (accounts) {
   const sliceSize = 3
-  const verbose = false
   const dependencyTree = getDependencies(configureGSN({}), web3.currentProvider as HttpProvider)
   const stubGetRelaysSorted = sinon.stub(dependencyTree.knownRelaysManager, 'getRelaysSortedForTransaction')
   const errors = new Map<string, Error>()
   const config = configureGSN({
-    sliceSize,
-    verbose
+    sliceSize
   })
   const eventInfo = {
     relayManager: '',
@@ -162,8 +160,7 @@ contract('RelaySelectionManager', function (accounts) {
       stubGetRelaysSorted.returns(Promise.resolve([[winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo]]))
       for (let i = 1; i < 5; i++) {
         const rsm = await new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
-          sliceSize: i,
-          verbose
+          sliceSize: i
         })).init()
         const returned = await rsm._getNextSlice()
         assert.equal(returned.length, i)
@@ -174,8 +171,7 @@ contract('RelaySelectionManager', function (accounts) {
       const relaysLeft = [[winner.relayInfo, winner.relayInfo]]
       stubGetRelaysSorted.returns(Promise.resolve(relaysLeft))
       const rsm = await new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
-        sliceSize: 7,
-        verbose
+        sliceSize: 7
       })).init()
       const returned = await rsm._getNextSlice()
       assert.deepEqual(returned, relaysLeft[0])
@@ -193,8 +189,7 @@ contract('RelaySelectionManager', function (accounts) {
       const relaysLeft = [Array(2).fill(winner).map(relayInfoGenerator), Array(3).fill(winner).map(relayInfoGenerator)]
       stubGetRelaysSorted.returns(Promise.resolve(relaysLeft))
       const rsm = await new RelaySelectionManager(transactionDetails, dependencyTree.knownRelaysManager, dependencyTree.httpClient, GasPricePingFilter, configureGSN({
-        sliceSize: 7,
-        verbose
+        sliceSize: 7
       })).init()
       // Initial request only returns the top preference relays
       const returned1 = await rsm._getNextSlice()

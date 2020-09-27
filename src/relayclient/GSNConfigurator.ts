@@ -1,14 +1,17 @@
 import { HttpProvider } from 'web3-core'
-import { Address, AsyncDataCallback, AsyncScoreCalculator, IntString, PingFilter, RelayFilter } from './types/Aliases'
-import HttpClient from './HttpClient'
-import ContractInteractor, { Web3Provider } from './ContractInteractor'
-import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
-import AccountManager from './AccountManager'
-import RelayedTransactionValidator from './RelayedTransactionValidator'
-import HttpWrapper from './HttpWrapper'
-import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
+import { LogLevelNumbers } from 'loglevel'
+
 import { constants } from '../common/Constants'
 import { defaultEnvironment } from '../common/Environments'
+
+import AccountManager from './AccountManager'
+import ContractInteractor, { Web3Provider } from './ContractInteractor'
+import HttpClient from './HttpClient'
+import HttpWrapper from './HttpWrapper'
+import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
+import RelayedTransactionValidator from './RelayedTransactionValidator'
+import { Address, AsyncDataCallback, AsyncScoreCalculator, IntString, PingFilter, RelayFilter } from './types/Aliases'
+import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -29,7 +32,7 @@ const defaultGsnConfig: GSNConfig = {
   relayHubAddress: constants.ZERO_ADDRESS,
   paymasterAddress: constants.ZERO_ADDRESS,
   forwarderAddress: constants.ZERO_ADDRESS,
-  verbose: false,
+  logLevel: 0,
   clientId: '1'
 }
 
@@ -105,7 +108,7 @@ export interface GSNConfig {
   jsonStringifyRequest: boolean
   relayTimeoutGrace: number
   sliceSize: number
-  verbose: boolean
+  logLevel: LogLevelNumbers
   gasPriceFactorPercent: number
   minGasPrice: number
   maxRelayNonceGap: number

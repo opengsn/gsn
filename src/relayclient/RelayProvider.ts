@@ -1,5 +1,6 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
+import log from 'loglevel'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpProvider } from 'web3-core'
 
@@ -99,9 +100,7 @@ export class RelayProvider implements HttpProvider {
   }
 
   _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
-    if (this.config.verbose) {
-      console.log('calling sendAsync' + JSON.stringify(payload))
-    }
+    log.info('calling sendAsync' + JSON.stringify(payload))
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
       // Sometimes, ganache seems to return 'false' for 'no error' (breaking TypeScript declarations)
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
@@ -120,9 +119,7 @@ export class RelayProvider implements HttpProvider {
   }
 
   _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
-    if (this.config.verbose) {
-      console.log('calling sendAsync' + JSON.stringify(payload))
-    }
+    log.info('calling sendAsync' + JSON.stringify(payload))
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     this.relayClient.relayTransaction(gsnTransactionDetails)
       .then((relayingResult) => {
@@ -131,16 +128,12 @@ export class RelayProvider implements HttpProvider {
           callback(null, jsonRpcSendResult)
         } else {
           const message = `Failed to relay call. Results:\n${_dumpRelayingResult(relayingResult)}`
-          if (this.config.verbose) {
-            console.error(message)
-          }
+          log.error(message)
           callback(new Error(message))
         }
       }, (reason: any) => {
         const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
-        if (this.config.verbose) {
-          console.log('Rejected relayTransaction call', reason)
-        }
+        log.info('Rejected relayTransaction call', reason)
         callback(new Error(`Rejected relayTransaction call - Reason: ${reasonStr}`))
       })
   }
@@ -167,9 +160,7 @@ export class RelayProvider implements HttpProvider {
     if (paymasterRejectedEvents !== null && paymasterRejectedEvents !== undefined) {
       const paymasterRejectionReason: { value: string } = paymasterRejectedEvents.events.find((e: any) => e.name === 'reason')
       if (paymasterRejectionReason !== undefined) {
-        if (this.config.verbose) {
-          console.log(`Paymaster rejected on-chain: ${paymasterRejectionReason.value}. changing status to zero`)
-        }
+        log.info(`Paymaster rejected on-chain: ${paymasterRejectionReason.value}. changing status to zero`)
         fixedTransactionReceipt.status = '0'
       }
       return fixedTransactionReceipt
@@ -182,9 +173,7 @@ export class RelayProvider implements HttpProvider {
         const status: string = transactionRelayedStatus.value.toString()
         // 0 signifies success
         if (status !== '0') {
-          if (this.config.verbose) {
-            console.log(`reverted relayed transaction, status code ${status}. changing status to zero`)
-          }
+          log.info(`reverted relayed transaction, status code ${status}. changing status to zero`)
           fixedTransactionReceipt.status = '0'
         }
       }

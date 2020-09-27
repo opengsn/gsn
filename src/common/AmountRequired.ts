@@ -2,6 +2,7 @@
 import EthVal from 'ethval'
 import log from 'loglevel'
 import { toBN } from 'web3-utils'
+
 import { boolString } from './Utils'
 
 export class AmountRequired {

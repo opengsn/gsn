@@ -79,6 +79,7 @@ class GsnTestEnvironmentClass {
     await commandsLogic.waitForRelay(relayUrl)
 
     const config = configureGSN({
+      logLevel: 5,
       relayHubAddress: deploymentResult.relayHubAddress,
       paymasterAddress: deploymentResult.naivePaymasterAddress,
       preferredRelays: [relayUrl]
@@ -138,6 +139,7 @@ class GsnTestEnvironmentClass {
     const txStoreManager = new TxStoreManager({ inMemory: true })
     const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host),
       configureGSN({
+        logLevel: 5,
         relayHubAddress: deploymentResult.relayHubAddress
       }))
     await contractInteractor.init()

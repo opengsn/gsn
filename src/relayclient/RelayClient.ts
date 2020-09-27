@@ -1,5 +1,7 @@
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import log from 'loglevel'
 import { HttpProvider } from 'web3-core'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+
 import { constants } from '../common/Constants'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
@@ -86,6 +88,7 @@ export class RelayClient {
     this.pingFilter = dependencies.pingFilter
     this.asyncApprovalData = dependencies.asyncApprovalData
     this.asyncPaymasterData = dependencies.asyncPaymasterData
+    log.setLevel(this.config.logLevel)
   }
 
   /**
@@ -120,9 +123,7 @@ export class RelayClient {
   async _broadcastRawTx (transaction: Transaction): Promise<{ hasReceipt: boolean, broadcastError?: Error, wrongNonce?: boolean }> {
     const rawTx = '0x' + transaction.serialize().toString('hex')
     const txHash = '0x' + transaction.hash(true).toString('hex')
-    if (this.config.verbose) {
-      console.log('txHash= ' + txHash)
-    }
+    log.info(`Broadcasting raw transaction signed by relay. TxHash: ${txHash}`)
     try {
       if (await this._isAlreadySubmitted(txHash)) {
         return { hasReceipt: true }
@@ -215,9 +216,7 @@ export class RelayClient {
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayingAttempt> {
-    if (this.config.verbose) {
-      console.log(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
-    }
+    log.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
     const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.maxAcceptanceBudget)
     const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
 
@@ -241,9 +240,7 @@ export class RelayClient {
       if (error?.message == null || error.message.indexOf('timeout') !== -1) {
         this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       }
-      if (this.config.verbose) {
-        console.log('relayTransaction: ', JSON.stringify(httpRequest))
-      }
+      log.info('relayTransaction: ', JSON.stringify(httpRequest))
       return { error }
     }
     const transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())
@@ -323,9 +320,7 @@ export class RelayClient {
       relayRequest,
       metadata
     }
-    if (this.config.verbose) {
-      console.log(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
-    }
+    log.info(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
 
     return httpRequest
   }
@@ -345,13 +340,9 @@ export class RelayClient {
       }
     } else {
       try {
-        if (this.config.verbose) {
-          console.log(`will attempt to get trusted forwarder from: ${gsnTransactionDetails.to}`)
-        }
+        log.info(`will attempt to get trusted forwarder from: ${gsnTransactionDetails.to}`)
         forwarderAddress = await this.contractInteractor.getForwarder(gsnTransactionDetails.to)
-        if (this.config.verbose) {
-          console.log(`on-chain forwarder for: ${gsnTransactionDetails.to} is ${forwarderAddress}`)
-        }
+        log.info(`on-chain forwarder for: ${gsnTransactionDetails.to} is ${forwarderAddress}`)
       } catch (e) {
         throw new Error('No forwarder address configured and no getTrustedForwarder in target contract (fetching from Recipient failed)')
       }

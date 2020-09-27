@@ -1,3 +1,4 @@
+import log from 'loglevel'
 import { IKnownRelaysManager } from './KnownRelaysManager'
 import HttpClient from './HttpClient'
 import { isInfoFromEvent, RelayInfoUrl } from './types/RelayRegisteredEventInfo'
@@ -51,22 +52,16 @@ export default class RelaySelectionManager {
   }
 
   async _nextRelayInternal (relays: RelayInfoUrl[]): Promise<RelayInfo | undefined> {
-    if (this.config.verbose) {
-      console.log('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
-    }
+    log.info('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
     const raceResult = await this._raceToSuccess(relays)
-    if (this.config.verbose) {
-      console.log(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
-    }
+    log.info(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
     this._handleRaceResults(raceResult)
     if (raceResult.winner != null) {
       if (isInfoFromEvent(raceResult.winner.relayInfo)) {
         return (raceResult.winner as RelayInfo)
       } else {
         const managerAddress = raceResult.winner.pingResponse.relayManagerAddress
-        if (this.config.verbose) {
-          console.log(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
-        }
+        log.info(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
         const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([managerAddress]))
         if (events.length === 1) {
           return {
@@ -110,9 +105,7 @@ export default class RelaySelectionManager {
    * @returns JSON response from the relay server, but adds the requested URL to it :'-(
    */
   async _getRelayAddressPing (relayInfo: RelayInfoUrl): Promise<PartialRelayInfo> {
-    if (this.config.verbose) {
-      console.log(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
-    }
+    log.info(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
     const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, this.gsnTransactionDetails.paymaster)
 
     if (!pingResponse.ready) {
