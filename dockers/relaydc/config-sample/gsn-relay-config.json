@@ -4,6 +4,5 @@
   "pctRelayFee": 70,
   "versionRegistryAddress": "<deployed version registry>",
   "gasPriceFactor": 1,
-  "ethereumNodeUrl": "https://kovan.infura.io/v3/<INFURA-ID>",
-  "debug": false
+  "ethereumNodeUrl": "https://kovan.infura.io/v3/<INFURA-ID>"
 }

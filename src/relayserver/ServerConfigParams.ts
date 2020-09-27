@@ -102,7 +102,6 @@ const ConfigParamsTypes = {
   workdir: 'string',
   checkInterval: 'number',
   devMode: 'boolean',
-  debug: 'boolean',
   logLevel: 'number',
   registrationBlockRate: 'number',
   maxAcceptanceBudget: 'number',

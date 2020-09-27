@@ -7,6 +7,6 @@
   "gasPriceFactor": 1.1,
   "ethereumNodeUrl": "http://localhost:8545",
   "workdir": "",
-  "devMode": "true",
-  "debug": "false"
+  "devMode": "true"
 }
+
