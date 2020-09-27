@@ -7,17 +7,17 @@ import { GSNConfig } from './GSNConfigurator'
 
 export default class HttpClient {
   private readonly httpWrapper: HttpWrapper
-  private readonly config: GSNConfig
+  private readonly config: Partial<GSNConfig>
 
-  constructor (httpWrapper: HttpWrapper, config: GSNConfig) {
+  constructor (httpWrapper: HttpWrapper, config: Partial<GSNConfig>) {
     this.httpWrapper = httpWrapper
     this.config = config
   }
 
   async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
     const paymasterSuffix = paymaster == null ? '' : '?paymaster=' + paymaster
-    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix, {})
-    if (this.config.verbose) {
+    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix)
+    if (this.config.verbose ?? false) {
       console.log('error, body', pingResponse)
     }
     if (pingResponse == null) {
@@ -28,7 +28,7 @@ export default class HttpClient {
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
     const { signedTx, error }: { signedTx: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
-    if (this.config.verbose) {
+    if (this.config.verbose ?? false) {
       console.log('relayTransaction response:', signedTx, error)
     }
     if (error != null) {
