@@ -5,6 +5,8 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
+import express from 'express'
+import axios from 'axios'
 
 import {
   RelayHubInstance,
@@ -14,7 +16,7 @@ import {
 } from '../../types/truffle-contracts'
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import { RelayClient } from '../../src/relayclient/RelayClient'
+import { _dumpRelayingResult, RelayClient } from '../../src/relayclient/RelayClient'
 import { Address } from '../../src/relayclient/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { configureGSN, getDependencies, GSNConfig } from '../../src/relayclient/GSNConfigurator'
@@ -30,6 +32,11 @@ import PingResponse from '../../src/common/PingResponse'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { GsnEvent } from '../../src/relayclient/GsnEvents'
 import { Web3Provider } from '../../src/relayclient/ContractInteractor'
+import bodyParser from 'body-parser'
+import { Server } from 'http'
+import HttpClient from '../../src/relayclient/HttpClient'
+import HttpWrapper from '../../src/relayclient/HttpWrapper'
+import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -41,6 +48,21 @@ chai.use(sinonChai)
 
 const localhostOne = 'http://localhost:8090'
 const underlyingProvider = web3.currentProvider as HttpProvider
+
+class MockHttpClient extends HttpClient {
+  constructor (readonly mockPort: number,
+    httpWrapper: HttpWrapper, config: Partial<GSNConfig>) {
+    super(httpWrapper, config)
+  }
+
+  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
+    return await super.relayTransaction(this.mapUrl(relayUrl), request)
+  }
+
+  private mapUrl (relayUrl: string): string {
+    return relayUrl.replace(':8090', `:${this.mockPort}`)
+  }
+}
 
 contract('RelayClient', function (accounts) {
   let web3: Web3
@@ -76,7 +98,6 @@ contract('RelayClient', function (accounts) {
 
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       stake: 1e18,
-      url: 'asd',
       relayOwner: accounts[1],
       ethereumNodeUrl: underlyingProvider.host
     })
@@ -123,6 +144,42 @@ contract('RelayClient', function (accounts) {
 
       const destination: string = validTransaction.to.toString('hex')
       assert.equal(`0x${destination}`, relayHub.address.toString().toLowerCase())
+    })
+
+    it('should skip timed-out server', async function () {
+      let server: Server | undefined
+      try {
+        const pingResponse = await axios.get('http://localhost:8090/getaddr').then(res => res.data)
+        const mockServer = express()
+        mockServer.use(bodyParser.urlencoded({ extended: false }))
+        mockServer.use(bodyParser.json())
+
+        mockServer.get('/getaddr', async (req, res) => {
+          console.log('=== got GET ping', req.query)
+          res.send(pingResponse)
+        })
+        mockServer.post('/relay', () => {
+          console.log('== got relay.. ignoring')
+          // don't answer... keeping client in limbo
+        })
+
+        await new Promise((resolve) => {
+          server = mockServer.listen(0, resolve)
+        })
+        const mockServerPort = (server as any).address().port
+
+        // MockHttpClient alter the server port, so the client "thinks" it works with relayUrl, but actually
+        // it uses the mockServer's port
+        const relayClient = new RelayClient(underlyingProvider, gsnConfig, {
+          httpClient: new MockHttpClient(mockServerPort, new HttpWrapper({ timeout: 100 }), gsnConfig)
+        })
+
+        // async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
+        const relayingResult = await relayClient.relayTransaction(options)
+        assert.match(_dumpRelayingResult(relayingResult), /timeout.*exceeded/)
+      } finally {
+        server?.close()
+      }
     })
 
     it('should use forceGasPrice if provided', async function () {
