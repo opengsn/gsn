@@ -108,6 +108,7 @@ contract('RegistrationManager', function (accounts) {
       const params: Partial<ServerConfigParams> = {
         relayHubAddress: env.relayHub.address,
         url: LocalhostOne,
+        logLevel: 5,
         baseRelayFee: '0',
         pctRelayFee: 0,
         gasPriceFactor: 1,
