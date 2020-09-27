@@ -21,7 +21,7 @@ import "./interfaces/IStakeManager.sol";
 contract RelayHub is IRelayHub {
     using SafeMath for uint256;
 
-    string public override versionHub = "2.0.0-beta.1+opengsn.hub.irelayhub";
+    string public override versionHub = "2.0.0-beta.3+opengsn.hub.irelayhub";
 
     uint256 public override minimumStake;
     uint256 public override minimumUnstakeDelay;
@@ -123,7 +123,7 @@ contract RelayHub is IRelayHub {
     view
     returns (IPaymaster.GasLimits memory gasLimits, uint256 maxPossibleGas) {
         gasLimits =
-            IPaymaster(relayRequest.relayData.paymaster).getGasLimits();
+            IPaymaster(relayRequest.relayData.paymaster).getGasLimits{gas:50000}();
 
         require(paymasterMaxAcceptanceBudget >= gasLimits.acceptanceBudget, "unexpected high acceptanceBudget");
 

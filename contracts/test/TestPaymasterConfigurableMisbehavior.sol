@@ -13,6 +13,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool public overspendAcceptGas;
     bool public revertPreRelayCall;
     bool public greedyAcceptanceBudget;
+    bool public expensiveGasLimits;
 
     function setWithdrawDuringPostRelayedCall(bool val) public {
         withdrawDuringPostRelayedCall = val;
@@ -35,6 +36,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
     function setGreedyAcceptanceBudget(bool val) public {
         greedyAcceptanceBudget = val;
+    }
+    function setExpensiveGasLimits(bool val) public {
+        expensiveGasLimits = val;
     }
 
     function preRelayedCall(
@@ -99,6 +103,14 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function getGasLimits()
     public override view
     returns (IPaymaster.GasLimits memory) {
+
+        if (expensiveGasLimits) {
+            uint sum;
+            //memory access is 700gas, so we waste ~50000
+            for ( int i=0; i<60000; i+=700 ) {
+                sum  = sum + limits.acceptanceBudget;
+            }
+        }
         if (greedyAcceptanceBudget) {
             return IPaymaster.GasLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit);
         }

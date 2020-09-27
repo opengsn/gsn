@@ -5,7 +5,7 @@ import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpProvider } from 'web3-core'
 
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
-import { RelayClient, RelayingResult } from './RelayClient'
+import { _dumpRelayingResult, RelayClient } from './RelayClient'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 import { Transaction } from 'ethereumjs-tx'
@@ -127,7 +127,7 @@ export class RelayProvider implements HttpProvider {
           const jsonRpcSendResult = this._convertTransactionToRpcSendResponse(relayingResult.transaction, payload)
           callback(null, jsonRpcSendResult)
         } else {
-          const message = `Failed to relay call. Results:\n${this._dumpRelayingResult(relayingResult)}`
+          const message = `Failed to relay call. Results:\n${_dumpRelayingResult(relayingResult)}`
           log.error(message)
           callback(new Error(message))
         }
@@ -190,27 +190,6 @@ export class RelayProvider implements HttpProvider {
     }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     return gsnTransactionDetails?.useGSN ?? true
-  }
-
-  private _dumpRelayingResult (relayingResult: RelayingResult): string {
-    let str = ''
-    if (relayingResult.pingErrors.size > 0) {
-      str += `Ping errors (${relayingResult.pingErrors.size}):`
-      Array.from(relayingResult.pingErrors.keys()).forEach(e => {
-        const err = relayingResult.pingErrors.get(e)
-        const error = err?.message ?? err?.toString() ?? ''
-        str += `\n${e} => ${error}\n`
-      })
-    }
-    if (relayingResult.relayingErrors.size > 0) {
-      str += `Relaying errors (${relayingResult.relayingErrors.size}):\n`
-      Array.from(relayingResult.relayingErrors.keys()).forEach(e => {
-        const err = relayingResult.relayingErrors.get(e)
-        const error = err?.message ?? err?.toString() ?? ''
-        str += `${e} => ${error}`
-      })
-    }
-    return str
   }
 
   /* wrapping HttpProvider interface */

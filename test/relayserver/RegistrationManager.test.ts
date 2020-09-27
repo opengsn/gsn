@@ -111,7 +111,7 @@ contract('RegistrationManager', function (accounts) {
         baseRelayFee: '0',
         pctRelayFee: 0,
         gasPriceFactor: 1,
-        devMode: true
+        checkInterval: 10
       }
       const newRelayServer = new RelayServer(params, serverDependencies)
       await newRelayServer.init()

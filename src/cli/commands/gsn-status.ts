@@ -28,7 +28,7 @@ const commander = gsnCommander(['n', 'h'])
 
   const config = configureGSN({ relayHubAddress })
   const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host), config)
-  const httpClient = new HttpClient(new HttpWrapper(), config)
+  const httpClient = new HttpClient(new HttpWrapper({ timeout: statusConfig.getAddressTimeout }), config)
 
   const statusLogic = new StatusLogic(contractInteractor, httpClient, statusConfig)
 

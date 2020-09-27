@@ -50,7 +50,8 @@ export function address2topic (address: string): string {
 }
 
 // extract revert reason from a revert bytes array.
-export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string {
+export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string | null {
+  if (revertBytes == null) { return null }
   if (!revertBytes.startsWith('0x08c379a0')) {
     if (throwOnError) {
       throw new Error('invalid revert bytes: ' + revertBytes)
@@ -220,6 +221,6 @@ interface Signature {
   s: number[]
 }
 
-export function satisfiedString (bool: boolean): string {
-  return bool ? chalk.green('satisfied'.padEnd(14)) : chalk.red('not satisfied'.padEnd(14))
+export function boolString (bool: boolean): string {
+  return bool ? chalk.green('good'.padEnd(14)) : chalk.red('wrong'.padEnd(14))
 }

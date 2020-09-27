@@ -2,7 +2,8 @@
 import EthVal from 'ethval'
 import log from 'loglevel'
 import { toBN } from 'web3-utils'
-import { satisfiedString } from './Utils'
+
+import { boolString } from './Utils'
 
 export class AmountRequired {
   _name: string
@@ -63,7 +64,7 @@ export class AmountRequired {
   }
 
   get description (): string {
-    const status = satisfiedString(this.isSatisfied)
+    const status = boolString(this.isSatisfied)
     const actual: string = new EthVal(this._currentValue).toEth().toFixed(4)
     const required: string = new EthVal(this._requiredValue).toEth().toFixed(4)
     return `${this._name.padEnd(14)} | ${status.padEnd(14)} | actual: ${actual.padStart(12)} ETH | required: ${required.padStart(12)} ETH`

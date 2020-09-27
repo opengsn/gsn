@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 
 const LOGMAXLEN = 120
+const DEFAULT_TIMEOUT = 15000
 
 export default class HttpWrapper {
   private readonly provider: AxiosInstance
@@ -8,6 +9,7 @@ export default class HttpWrapper {
 
   constructor (opts: AxiosRequestConfig = {}, logreq: boolean = false) {
     this.provider = axios.create(Object.assign({
+      timeout: DEFAULT_TIMEOUT,
       headers: { 'Content-Type': 'application/json' }
     }, opts))
     this.logreq = logreq
@@ -26,12 +28,16 @@ export default class HttpWrapper {
     }
   }
 
-  async sendPromise (url: string, jsonRequestData: any): Promise<any> {
+  async sendPromise (url: string, jsonRequestData?: any): Promise<any> {
     if (this.logreq) {
       console.log('sending request:', url, JSON.stringify(jsonRequestData ?? {}).slice(0, LOGMAXLEN))
     }
 
-    const response = await this.provider.post(url, jsonRequestData)
+    const response = await this.provider.request({
+      url,
+      method: jsonRequestData != null ? 'POST' : 'GET',
+      data: jsonRequestData
+    })
     return response.data
   }
 }

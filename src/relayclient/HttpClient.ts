@@ -8,16 +8,16 @@ import { GSNConfig } from './GSNConfigurator'
 
 export default class HttpClient {
   private readonly httpWrapper: HttpWrapper
-  private readonly config: GSNConfig
+  private readonly config: Partial<GSNConfig>
 
-  constructor (httpWrapper: HttpWrapper, config: GSNConfig) {
+  constructor (httpWrapper: HttpWrapper, config: Partial<GSNConfig>) {
     this.httpWrapper = httpWrapper
     this.config = config
   }
 
   async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
     const paymasterSuffix = paymaster == null ? '' : '?paymaster=' + paymaster
-    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix, {})
+    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix)
     log.info('error, body', pingResponse)
     if (pingResponse == null) {
       throw new Error('Relay responded without a body')

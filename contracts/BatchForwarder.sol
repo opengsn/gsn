@@ -12,7 +12,7 @@ import "./utils/GsnUtils.sol";
  */
 contract BatchForwarder is Forwarder, BaseRelayRecipient {
 
-    string public override versionRecipient = "2.0.0-beta.1+opengsn.batched.irelayrecipient";
+    string public override versionRecipient = "2.0.0-beta.3+opengsn.batched.irelayrecipient";
 
     constructor() public {
         //needed for sendBatch

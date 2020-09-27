@@ -47,7 +47,7 @@ options.forEach(params => {
     let relayClientConfig: Partial<GSNConfig>
 
     before(async () => {
-      const gasPricePercent = 20
+      const gasPriceFactor = 1.2
 
       gasless = await web3.eth.personal.newAccount('password')
       await web3.eth.personal.unlockAccount(gasless, 'password', 0)
@@ -64,7 +64,7 @@ options.forEach(params => {
           relayOwner: accounts[0],
           // @ts-ignore
           ethereumNodeUrl: web3.currentProvider.host,
-          gasPricePercent: gasPricePercent,
+          gasPriceFactor,
           relaylog: process.env.relaylog
         })
         console.log('relay started')
