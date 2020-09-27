@@ -103,6 +103,7 @@ contract('RelayClient', function (accounts) {
     })
 
     gsnConfig = {
+      logLevel: 5,
       relayHubAddress: relayHub.address
     }
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
@@ -282,7 +283,8 @@ contract('RelayClient', function (accounts) {
   describe('#_calculateDefaultGasPrice()', function () {
     it('should use minimum gas price if calculated is to low', async function () {
       const minGasPrice = 1e18
-      const gsnConfig = {
+      const gsnConfig: Partial<GSNConfig> = {
+        logLevel: 5,
         relayHubAddress: relayHub.address,
         minGasPrice
       }

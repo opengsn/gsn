@@ -123,6 +123,7 @@ contract('RelayProvider', function (accounts) {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
       const gsnConfig = configureGSN({
+        logLevel: 5,
         relayHubAddress: relayHub.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
@@ -220,7 +221,7 @@ contract('RelayProvider', function (accounts) {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
 
-      gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
+      gsnConfig = configureGSN({ relayHubAddress: relayHub.address, logLevel: 5 })
       // call to emitMessage('hello world')
       jsonRpcPayload = {
         jsonrpc: '2.0',
@@ -261,6 +262,7 @@ contract('RelayProvider', function (accounts) {
 
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
       const gsnConfig = configureGSN({
+        logLevel: 5,
         relayHubAddress: relayHub.address
       })
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
@@ -292,7 +294,7 @@ contract('RelayProvider', function (accounts) {
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
-      const gsnConfig = configureGSN({ relayHubAddress: relayHub.address })
+      const gsnConfig = configureGSN({ relayHubAddress: relayHub.address, logLevel: 5 })
       // @ts-ignore
       Object.keys(TestRecipient.events).forEach(function (topic) {
         // @ts-ignore
@@ -383,7 +385,7 @@ contract('RelayProvider', function (accounts) {
 
   describe('_getAccounts', function () {
     it('should append ephemeral accounts to the ones from the underlying provider', async function () {
-      const relayProvider = new RelayProvider(underlyingProvider, {})
+      const relayProvider = new RelayProvider(underlyingProvider, { logLevel: 5 })
       const web3 = new Web3(relayProvider)
       const accountsBefore = await web3.eth.getAccounts()
       const newAccount = relayProvider.newAccount()
@@ -405,6 +407,7 @@ contract('RelayProvider', function (accounts) {
     before(function () {
       TestRecipient = artifacts.require('TestRecipient')
       const gsnConfig = configureGSN({
+        logLevel: 5,
         relayHubAddress: relayHub.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)

@@ -31,7 +31,7 @@ contract('ContractInteractor', function () {
     })
 
     it('should not throw if the hub address is not configured', async function () {
-      const relayClient = new RelayClient(web3.currentProvider as HttpProvider, {})
+      const relayClient = new RelayClient(web3.currentProvider as HttpProvider, { logLevel: 5 })
       await relayClient._init()
     })
   })
