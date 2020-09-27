@@ -487,13 +487,13 @@ contract('RelayServer', function (accounts) {
     afterEach(function () {
       relayServer._worker = origWorker
     })
-    it('should start block listener', async function () {
+    it.skip('should start block listener', async function () {
       relayServer.start()
       await evmMine()
       await sleep(200)
       assert.isTrue(started, 'could not start task correctly')
     })
-    it('should stop block listener', async function () {
+    it.skip('should stop block listener', async function () {
       relayServer.stop()
       await evmMine()
       await sleep(200)
