@@ -10,6 +10,7 @@ import {
   showDeployment
 } from '../utils'
 import { defaultEnvironment } from '../../common/Environments'
+import { toWei } from 'web3-utils'
 
 gsnCommander(['n', 'f', 'm', 'g'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
@@ -38,11 +39,11 @@ gsnCommander(['n', 'f', 'm', 'g'])
     return gasPrice
   }
 
-  const gasPrice = commander.gasPrice ?? await getGasPrice()
+  const gasPrice = toWei(commander.gasPrice, 'gwei') ?? await getGasPrice()
 
   const deploymentResult = await logic.deployGsnContracts({
     from,
-    gasPrice,
+    gasPrice: gasPrice.toString(),
     relayHubConfiguration,
     deployPaymaster: true,
     verbose: true,

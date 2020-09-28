@@ -28,14 +28,13 @@ export function getNetworkUrl (network: string, env: {[key: string]: string|unde
     return match[0]
   }
 
-  function getEnvParam (substring: string, ...args: string[]): string {
-    const param = args[0]
-    const str = env[param] ?? ''
-    if (str === '') { throw new Error(`network ${network}: ${param} not set`) }
-    return str
+  if (net.includes('$INFURA_ID')) {
+    const str = env.INFURA_ID ?? ''
+    if (str === '') { throw new Error(`network ${network}: INFURA_ID not set`) }
+    return net.replace(/\$INFURA_ID/, str)
   }
 
-  return net.replace(/\$(\w+)/g, getEnvParam)
+  return net
 }
 
 export function getMnemonic (mnemonicFile: string): string | undefined {
@@ -137,7 +136,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\' (default: empty)')
         break
       case 'g':
-        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction. Defaults to 1 gwei.', '1000000000')
+        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')
         break
     }
   })

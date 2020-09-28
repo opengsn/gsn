@@ -8,6 +8,7 @@ import {
   gsnCommander
 } from '../utils'
 import { VersionInfo, VersionRegistry } from '../../common/VersionRegistry'
+import { toWei } from 'web3-utils'
 
 function error (s: string): never {
   console.error(s)
@@ -97,7 +98,7 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
     if ((add == null) === (cancel == null)) error('must specify --add or --cancel, but not both')
     const from = commander.from ?? await logic.findWealthyAccount()
     const sendOptions = {
-      gasPrice: commander.gasPrice,
+      gasPrice: toWei(commander.gasPrice, 'gwei'),
       gas: 1e6,
       from
     }

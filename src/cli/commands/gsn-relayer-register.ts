@@ -3,8 +3,9 @@ import { ether } from '../../common/Utils'
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getNetworkUrl, getRelayHubAddress, gsnCommander, getMnemonic } from '../utils'
+import { toWei } from 'web3-utils'
 
-const commander = gsnCommander(['n', 'f', 'h', 'm'])
+const commander = gsnCommander(['n', 'f', 'h', 'm', 'g'])
   .option('--relayUrl <url>', 'url to advertise the relayer', 'http://localhost:8090')
   .option('--stake <stake>', 'amount to stake for the relayer, in ETH', '1')
   .option(
@@ -15,7 +16,6 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
     '--funds <funds>',
     'amount to transfer to the relayer to pay for relayed transactions, in ETH', '2'
   )
-  .option('-g, --gasPrice <number>', 'gas price to give to the transaction, in Gwei. Defaults to relay\'s minGasPrice')
   .parse(process.argv);
 
 (async () => {
@@ -28,7 +28,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
     from: commander.from ?? await logic.findWealthyAccount(),
     stake: ether(commander.stake),
     funds: ether(commander.funds),
-    gasPrice: commander.gasPrice != null ? (commander.gasPrice * 1e9).toString() : null,
+    gasPrice: toWei(commander.gasPrice, 'gwei'),
     relayUrl: commander.relayUrl,
     unstakeDelay: commander.unstakeDelay
   }
