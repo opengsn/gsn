@@ -29,7 +29,7 @@ export interface SendTransactionDetails {
   method?: any
   destination: Address
   value?: IntString
-  gasLimit: IntString
+  gasLimit: number
   gasPrice?: IntString
   creationBlockNumber: number
 }
@@ -95,9 +95,10 @@ data         | 0x${transaction.data.toString('hex')}
 `)
   }
 
-  async attemptEstimateGas (methodName: string, method: any, from: Address): Promise<string> {
+  async attemptEstimateGas (methodName: string, method: any, from: Address): Promise<number> {
     try {
-      return method.estimateGas({ from })
+      const estimateGas = await method.estimateGas({ from })
+      return parseInt(estimateGas)
     } catch (e) {
       log.error(`Failed to estimate gas for method ${methodName}\n. Using default ${this.config.defaultGasLimit}`, e)
     }

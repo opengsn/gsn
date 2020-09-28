@@ -354,7 +354,7 @@ export class RegistrationManager {
         signer: this.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
-        gasLimit: gasLimit.toString(),
+        gasLimit,
         gasPrice,
         value: toHex(managerBalance.sub(txCost)),
         creationBlockNumber: currentBlock
@@ -380,7 +380,7 @@ export class RegistrationManager {
         signer: this.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
-        gasLimit: gasLimit.toString(),
+        gasLimit,
         gasPrice,
         value: toHex(workerBalance.sub(txCost)),
         creationBlockNumber: currentBlock

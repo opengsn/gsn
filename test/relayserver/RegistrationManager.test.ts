@@ -271,7 +271,7 @@ contract('RegistrationManager', function (accounts) {
         const workerAddress = newServer.workerAddress
         const managerHubBalance = await env.relayHub.balanceOf(newServer.managerAddress)
         const method = env.relayHub.contract.methods.withdraw(toHex(managerHubBalance), workerAddress)
-        const gasLimit = await this.transactionManager.attemptEstimateGas('Withdraw', method, newServer.managerAddress)
+        const gasLimit = await newServer.transactionManager.attemptEstimateGas('Withdraw', method, newServer.managerAddress)
         await newServer.transactionManager.sendTransaction({
           signer: newServer.managerAddress,
           serverAction: ServerAction.DEPOSIT_WITHDRAWAL,

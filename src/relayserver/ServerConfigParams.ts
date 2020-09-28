@@ -45,7 +45,7 @@ export interface ServerConfigParams {
   confirmationsNeeded: number
   retryGasPriceFactor: number
   maxGasPrice: string
-  defaultGasLimit: string
+  defaultGasLimit: number
 }
 
 export interface ServerDependencies {
@@ -85,7 +85,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
   confirmationsNeeded: 12,
   retryGasPriceFactor: 1.2,
-  defaultGasLimit: '500000',
+  defaultGasLimit: 500000,
   maxGasPrice: 100e9.toString()
 }
 
@@ -114,7 +114,7 @@ const ConfigParamsTypes = {
   managerMinBalance: 'number',
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
-  defaultGasLimit: 'string',
+  defaultGasLimit: 'number',
 
   trustedPaymasters: 'list'
 

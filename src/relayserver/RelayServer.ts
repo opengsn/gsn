@@ -257,7 +257,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
         serverAction: ServerAction.RELAY_CALL,
         method,
         destination: req.metadata.relayHubAddress,
-        gasLimit: maxPossibleGas.toString(),
+        gasLimit: maxPossibleGas,
         creationBlockNumber: currentBlock,
         gasPrice: req.relayRequest.relayData.gasPrice
       }
@@ -299,15 +299,16 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   _workerSemaphore (blockNumber: number): void {
-    log.debug(`Latest block polled #${blockNumber}`)
     if (this._workerSemaphoreOn) {
       log.warn('Different worker is not finished yet, skipping this block')
       return
     }
     this._workerSemaphoreOn = true
     this._worker(blockNumber)
-      .then(() => {
-        log.debug(`Done handling block #${blockNumber}`)
+      .then((transactions) => {
+        if (transactions.length !== 0) {
+          log.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
+        }
         this._workerSemaphoreOn = false
       })
       .catch((e) => {
@@ -444,7 +445,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
           destination: this.workerAddress,
           value: toHex(refill),
           creationBlockNumber: currentBlock,
-          gasLimit: defaultEnvironment.mintxgascost.toString()
+          gasLimit: defaultEnvironment.mintxgascost
         }
         const { transactionHash } = await this.transactionManager.sendTransaction(details)
         transactionHashes.push(transactionHash)
