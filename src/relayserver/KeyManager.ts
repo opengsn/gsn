@@ -38,7 +38,7 @@ export class KeyManager {
           genseed = JSON.parse(fs.readFileSync(keyStorePath).toString()).seed
         } else {
           genseed = Wallet.generate().getPrivateKey().toString('hex')
-          fs.writeFileSync(keyStorePath, JSON.stringify({ seed: genseed.toString('hex') }), { flag: 'w' })
+          fs.writeFileSync(keyStorePath, JSON.stringify({ seed: genseed }), { flag: 'w' })
         }
         this.hdkey = HDKey.fromMasterSeed(genseed)
       } catch (e) {
