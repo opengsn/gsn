@@ -292,8 +292,10 @@ export class RegistrationManager {
   async addRelayWorker (currentBlock: number): Promise<PrefixedHexString> {
     // register on chain
     const addRelayWorkerMethod = await this.contractInteractor.getAddRelayWorkersMethod([this.workerAddress])
+    const gasLimit = await this.transactionManager.attemptEstimateGas('AddRelayWorkers', addRelayWorkerMethod, this.managerAddress)
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
+      gasLimit,
       serverAction: ServerAction.ADD_WORKER,
       method: addRelayWorkerMethod,
       destination: this.hubAddress,
@@ -323,8 +325,10 @@ export class RegistrationManager {
       transactions = transactions.concat(txHash)
     }
     const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.config.baseRelayFee, this.config.pctRelayFee, this.config.url)
+    const gasLimit = await this.transactionManager.attemptEstimateGas('RegisterRelay', registerMethod, this.managerAddress)
     const details: SendTransactionDetails = {
       serverAction: ServerAction.REGISTER_SERVER,
+      gasLimit,
       signer: this.managerAddress,
       method: registerMethod,
       destination: this.hubAddress,
@@ -350,7 +354,7 @@ export class RegistrationManager {
         signer: this.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
-        gasLimit: gasLimit.toString(),
+        gasLimit,
         gasPrice,
         value: toHex(managerBalance.sub(txCost)),
         creationBlockNumber: currentBlock
@@ -376,7 +380,7 @@ export class RegistrationManager {
         signer: this.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
-        gasLimit: gasLimit.toString(),
+        gasLimit,
         gasPrice,
         value: toHex(workerBalance.sub(txCost)),
         creationBlockNumber: currentBlock
@@ -396,10 +400,11 @@ export class RegistrationManager {
     const transactionHashes: PrefixedHexString[] = []
     const gasPrice = await this.contractInteractor.getGasPrice()
     const managerHubBalance = await this.contractInteractor.hubBalanceOf(this.managerAddress)
-    const { gasCost, method } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
+    const { gasLimit, gasCost, method } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
     if (managerHubBalance.gte(gasCost)) {
       log.info(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
+        gasLimit,
         signer: this.managerAddress,
         serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
         destination: this.hubAddress,

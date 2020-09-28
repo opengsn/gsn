@@ -188,7 +188,7 @@ contract('RelayServer', function (accounts) {
           await env.relayServer.transactionManager.sendTransaction({
             signer,
             serverAction: ServerAction.VALUE_TRANSFER,
-            gasLimit: '21000',
+            gasLimit: defaultEnvironment.mintxgascost,
             destination: accounts[0],
             creationBlockNumber: 0
           })
@@ -326,7 +326,7 @@ contract('RelayServer', function (accounts) {
         signer: relayServer.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost.toString(),
+        gasLimit: defaultEnvironment.mintxgascost,
         gasPrice: gasPrice,
         creationBlockNumber: 0,
         value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txCost))
@@ -372,7 +372,7 @@ contract('RelayServer', function (accounts) {
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost.toString(),
+        gasLimit: defaultEnvironment.mintxgascost,
         gasPrice: gasPrice,
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
@@ -422,7 +422,7 @@ contract('RelayServer', function (accounts) {
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost.toString(),
+        gasLimit: defaultEnvironment.mintxgascost,
         gasPrice: gasPrice.toString(),
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
