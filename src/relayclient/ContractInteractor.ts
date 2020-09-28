@@ -407,6 +407,7 @@ export default class ContractInteractor {
 
   async withdrawHubBalanceEstimateGas (amount: BN, destination: Address, managerAddress: Address, gasPrice: IntString): Promise<{
     gasCost: BN
+    gasLimit: string
     method: any
   }> {
     const hub = this.relayHubInstance
@@ -417,6 +418,7 @@ export default class ContractInteractor {
       })
     const gasCost = toBN(withdrawTxGasLimit).mul(toBN(gasPrice))
     return {
+      gasLimit: withdrawTxGasLimit,
       gasCost,
       method
     }

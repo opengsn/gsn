@@ -29,7 +29,7 @@ export interface SendTransactionDetails {
   method?: any
   destination: Address
   value?: IntString
-  gasLimit?: IntString
+  gasLimit: IntString
   gasPrice?: IntString
   creationBlockNumber: number
 }
@@ -95,10 +95,18 @@ data         | 0x${transaction.data.toString('hex')}
 `)
   }
 
+  async attemptEstimateGas (methodName: string, method: any, from: Address): Promise<string> {
+    try {
+      return method.estimateGas({ from })
+    } catch (e) {
+      log.error(`Failed to estimate gas for method ${methodName}\n. Using default ${this.config.defaultGasLimit}`, e)
+    }
+    return this.config.defaultGasLimit
+  }
+
   async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice, creationBlockNumber, serverAction }: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = method?.encodeABI() ?? '0x'
     const _gasPrice = parseInt(gasPrice ?? await this.contractInteractor.getGasPrice())
-    const gas = parseInt(gasLimit ?? await method?.estimateGas({ from: signer }))
     const releaseMutex = await this.nonceMutex.acquire()
     let signedTx
     let storedTx: StoredTransaction
@@ -107,7 +115,7 @@ data         | 0x${transaction.data.toString('hex')}
       const txToSign = new Transaction({
         to: destination,
         value: value,
-        gasLimit: gas,
+        gasLimit,
         gasPrice: _gasPrice,
         data: Buffer.from(encodedCall.slice(2), 'hex'),
         nonce
