@@ -14,10 +14,19 @@ export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarde
     forwarder = forwarderTruffleOrWeb3 as any
   }
 
-  await forwarder.methods.registerRequestType(
+  function logTx (p: any): any {
+    p.on('transactionHash', function (hash: string) {
+      console.log(`Transaction broadcast: ${hash}`)
+    })
+    p.on('error', function (err: Error) {
+      console.log(`tx error: ${err.message}`)
+    })
+    return p
+  }
+  await logTx(forwarder.methods.registerRequestType(
     GsnRequestType.typeName,
     GsnRequestType.typeSuffix
-  ).send(sendOptions)
+  ).send(sendOptions))
 
-  await forwarder.methods.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version).send(sendOptions)
+  await logTx(forwarder.methods.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version).send(sendOptions))
 }

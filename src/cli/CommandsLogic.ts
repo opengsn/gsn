@@ -27,6 +27,8 @@ import { string32 } from '../common/VersionRegistry'
 import { registerForwarderForGsn } from '../common/EIP712/ForwarderUtil'
 import { fromWei, toBN } from 'web3-utils'
 
+require('source-map-support').install({ errorFormatterForce: true })
+
 interface RegisterOptions {
   from: Address
   gasPrice: string | null
@@ -185,7 +187,7 @@ export default class CommandsLogic {
       console.log('current stake=', stake / 1e18)
       if (options.gasPrice === null) {
         // @ts-ignore
-        console.log('Using relayer suggested gas price:', response.minGasPrice / 1e9, 'gwei')
+        console.log('Using relayer suggested gas price:', fromWei(response.minGasPrice, 'gwei'), 'gwei')
         options.gasPrice = response.minGasPrice
       }
 
@@ -199,7 +201,7 @@ export default class CommandsLogic {
         console.log('Relayer already staked')
       } else {
         const stakeValue = toBN(options.stake.toString()).sub(toBN(stake))
-        console.log('Staking relayer ', fromWei(stakeValue, 'ether'))
+        console.log('Staking relayer ', fromWei(stakeValue, 'ether'), 'eth')
         // TODO: we don't fill missing stake, but add stake..
         const stakeTx = await stakeManager
           .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
@@ -277,6 +279,8 @@ export default class CommandsLogic {
     const sInstance = await this.getContractInstance(StakeManager, {}, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {}, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    await registerForwarderForGsn(fInstance, options)
+
     const rInstance = await this.getContractInstance(RelayHub, {
       arguments: [
         sInstance.options.address,
@@ -306,8 +310,6 @@ export default class CommandsLogic {
     }
     this.config.relayHubAddress = rInstance.options.address
 
-    await registerForwarderForGsn(fInstance, options)
-
     return {
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
@@ -332,7 +334,8 @@ export default class CommandsLogic {
       if (!skipConfirmation) {
         await this.confirm()
       }
-      const deployPromise = sendMethod.send(merge(options, { gas: 5e6 }))
+
+      const deployPromise = sendMethod.send(merge(options, { gas: 3.7e6 }))
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       deployPromise.on('transactionHash', function (hash) {
         console.log(`Transaction broadcast: ${hash}`)

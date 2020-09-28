@@ -180,7 +180,11 @@ export class RelayClient {
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
     const relaySelectionManager = await new RelaySelectionManager(gsnTransactionDetails, this.knownRelaysManager, this.httpClient, this.pingFilter, this.config).init()
-    this.emit(new GsnDoneRefreshRelaysEvent((relaySelectionManager.relaysLeft().length)))
+    const count = relaySelectionManager.relaysLeft().length
+    this.emit(new GsnDoneRefreshRelaysEvent(count))
+    if (count === 0) {
+      throw new Error('no registered relayers')
+    }
     const relayingErrors = new Map<string, Error>()
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
