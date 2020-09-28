@@ -277,6 +277,7 @@ export default class CommandsLogic {
 
     const sInstance = await this.getContractInstance(StakeManager, {}, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {}, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     await registerForwarderForGsn(fInstance, options)
 
@@ -327,9 +328,8 @@ export default class CommandsLogic {
         .contract(json)
         .deploy(constructorArgs)
       options.gas = await sendMethod.estimateGas()
-      const maxCost = new BN(options.gasPrice).muln(options.gas)
-      const oneEther = ether('1')
-      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} and maximum cost of ~ ${maxCost.toNumber() / parseFloat(oneEther.toString())} ETH`)
+      const maxCost = toBN(options.gasPrice).mul(toBN(options.gas))
+      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} and maximum cost of ~ ${fromWei(maxCost, 'ether')} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
       }
