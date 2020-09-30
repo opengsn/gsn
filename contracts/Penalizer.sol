@@ -11,7 +11,7 @@ import "./interfaces/IPenalizer.sol";
 
 contract Penalizer is IPenalizer{
 
-    string public override versionPenalizer = "2.0.0-beta.3+opengsn.penalizer.ipenalizer";
+    string public override versionPenalizer = "2.0.0+opengsn.penalizer.ipenalizer";
 
     using ECDSA for bytes32;
 
