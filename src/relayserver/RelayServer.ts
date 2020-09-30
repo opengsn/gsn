@@ -623,7 +623,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   isReady (): boolean {
     if (!this.ready) { return false }
 
-    if ((Date.now() - this.lastWorkerFinished) > this.config.readyTimeout) {
+    const timedOut = (Date.now() - this.lastWorkerFinished) > this.config.readyTimeout
+    if (!this.config.devMode && timedOut) {
       log.warn(chalk.bgRedBright('Relay state: Timed-out'))
       this.ready = false
     }
