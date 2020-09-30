@@ -37,15 +37,11 @@ import Timeout = NodeJS.Timeout
 const VERSION = '2.0.0-beta.3'
 const GAS_RESERVE = 100000
 
-// must receive some response for request from node
-const READY_TIMEOUT = 30000
-
 export class RelayServer extends EventEmitter {
   lastScannedBlock = 0
   lastRefreshBlock = 0
   ready = false
   lastWorkerFinished = Date.now()
-  lastError = null
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   gasPrice: number = 0
@@ -315,19 +311,13 @@ returnValue        | ${viewRelayCallRet.returnValue}
         if (transactions.length !== 0) {
           log.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
         }
-        this.lastError = null
-        this.lastWorkerFinished = Date.now()
-        this._workerSemaphoreOn = false
       })
       .catch((e) => {
-        // don't spam log with repeated error: report only the first time, until any change (either in error string,
-        // or successful _worker with no error)
-        if (e !== this.lastError) {
-          this.emit('error', e)
-          log.error('error in worker:', e)
-          this.lastError = e
-        }
+        this.emit('error', e)
+        log.error('error in worker:', e)
         this.setReadyState(false)
+      })
+      .finally(() => {
         this.lastWorkerFinished = Date.now()
         this._workerSemaphoreOn = false
       })
@@ -633,7 +623,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   isReady (): boolean {
     if (!this.ready) { return false }
 
-    if ((Date.now() - this.lastWorkerFinished) > READY_TIMEOUT) {
+    if ((Date.now() - this.lastWorkerFinished) > this.config.readyTimeout) {
       log.warn(chalk.bgRedBright('Relay state: Timed-out'))
       this.ready = false
     }
