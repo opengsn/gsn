@@ -24,6 +24,7 @@ export interface ServerConfigParams {
   ethereumNodeUrl: string
   workdir: string
   checkInterval: number
+  readyTimeout: number
   devMode: boolean
   registrationBlockRate: number
   maxAcceptanceBudget: number
@@ -72,6 +73,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
   checkInterval: 10000,
+  readyTimeout: 30000,
   devMode: false,
   logLevel: 1,
   baseRelayFee: '0',
@@ -103,6 +105,7 @@ const ConfigParamsTypes = {
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',
+  readyTimeout: 'number',
   devMode: 'boolean',
   logLevel: 'number',
   registrationBlockRate: 'number',

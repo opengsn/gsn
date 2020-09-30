@@ -104,11 +104,11 @@ export default class CommandsLogic {
     return response.ready
   }
 
-  async waitForRelay (relayUrl: string): Promise<void> {
-    const timeout = 30
+  async waitForRelay (relayUrl: string, timeout = 60): Promise<void> {
     console.error(`Will wait up to ${timeout}s for the relay to be ready`)
 
-    for (let i = 0; i < timeout; ++i) {
+    const endTime = Date.now() + timeout * 1000
+    while (Date.now() < endTime) {
       let isReady = false
       try {
         isReady = await this.isRelayReady(relayUrl)
@@ -118,7 +118,7 @@ export default class CommandsLogic {
       if (isReady) {
         return
       }
-      await sleep(1000)
+      await sleep(3000)
     }
     throw Error(`Relay not ready after ${timeout}s`)
   }

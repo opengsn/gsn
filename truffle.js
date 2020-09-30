@@ -45,6 +45,12 @@ module.exports = {
       },
       network_id: 42
     },
+    rinkeby: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://rinkeby.infura.io/v3/f40be2b1a3914db682491dc62a19ad43')
+      },
+      network_id: 4
+    },
     ropsten: {
       provider: function () {
         return new HDWalletProvider(mnemonic, 'https://ropsten.infura.io/v3/f40be2b1a3914db682491dc62a19ad43')
