@@ -277,10 +277,7 @@ export default class CommandsLogic {
 
     const sInstance = await this.getContractInstance(StakeManager, {}, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {}, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
-
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
-    await registerForwarderForGsn(fInstance, options)
-
     const rInstance = await this.getContractInstance(RelayHub, {
       arguments: [
         sInstance.options.address,
@@ -310,6 +307,8 @@ export default class CommandsLogic {
     }
     this.config.relayHubAddress = rInstance.options.address
 
+    await registerForwarderForGsn(fInstance, options)
+
     return {
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
@@ -328,13 +327,13 @@ export default class CommandsLogic {
         .contract(json)
         .deploy(constructorArgs)
       options.gas = await sendMethod.estimateGas()
-      const maxCost = toBN(options.gasPrice).mul(toBN(options.gas))
-      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} and maximum cost of ~ ${fromWei(maxCost, 'ether')} ETH`)
+      const maxCost = new BN(options.gasPrice).muln(options.gas)
+      const oneEther = ether('1')
+      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} and maximum cost of ~ ${maxCost.toNumber() / parseFloat(oneEther.toString())} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
       }
-
-      const deployPromise = sendMethod.send(merge(options, { gas: 3.7e6 }))
+      const deployPromise = sendMethod.send(merge(options, { gas: 5e6 }))
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       deployPromise.on('transactionHash', function (hash) {
         console.log(`Transaction broadcast: ${hash}`)

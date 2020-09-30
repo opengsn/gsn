@@ -39,11 +39,11 @@ gsnCommander(['n', 'f', 'm', 'g'])
     return gasPrice
   }
 
-  const gasPrice = toWei(commander.gasPrice, 'gwei') ?? await getGasPrice()
+  const gasPrice = toWei(commander.gasPrice, 'gwei').toString() ?? await getGasPrice()
 
   const deploymentResult = await logic.deployGsnContracts({
     from,
-    gasPrice: gasPrice.toString(),
+    gasPrice,
     relayHubConfiguration,
     deployPaymaster: true,
     verbose: true,
