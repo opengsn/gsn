@@ -620,6 +620,16 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
   }
 
+  isReady (): boolean {
+    if (!this.ready) { return false }
+
+    if ((Date.now() - this.lastWorkerFinished) > this.config.readyTimeout) {
+      log.warn(chalk.bgRedBright('Relay state: Timed-out'))
+      this.ready = false
+    }
+    return this.ready
+  }
+
   setReadyState (isReady: boolean): void {
     if (isReady !== this.ready) {
       if (isReady) {
