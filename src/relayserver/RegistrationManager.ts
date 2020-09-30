@@ -460,7 +460,6 @@ Owner          | ${this.ownerAddress ?? chalk.red('unknown')}
 
   printEvents (decodedEvents: EventData[], options: PastEventOptions): void {
     if (decodedEvents.length === 0) {
-      log.debug(`No new events emitted since block: ${options.fromBlock?.toString()}`)
       return
     }
     log.info(`Handling ${decodedEvents.length} events emitted since block: ${options.fromBlock?.toString()}`)
