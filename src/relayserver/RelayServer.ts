@@ -40,8 +40,16 @@ const GAS_RESERVE = 100000
 export class RelayServer extends EventEmitter {
   lastScannedBlock = 0
   lastRefreshBlock = 0
-  ready = false
-  lastWorkerFinished = Date.now()
+
+  // setReadyState set the time when the relayer becomes ready. negative= not ready
+  // Nan = not ready.
+  // Zero is already ready Since date.now is bigger)
+  // now+timeout - will be ready after timeout.
+  futureReadyTime = NaN
+
+  // if deferReadiness is true, then setReadyState(true) takes effect only after relayTimeout.
+  // it is set only after worker exception (=probably some provider error)
+  deferReadiness = false
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   gasPrice: number = 0
@@ -79,6 +87,7 @@ export class RelayServer extends EventEmitter {
     this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance))
     this.printServerAddresses()
     log.setLevel(this.config.logLevel)
+    log.setLevel(0)
     log.warn('RelayServer version', VERSION)
     log.info('Using server configuration:\n', this.config)
   }
@@ -306,6 +315,16 @@ returnValue        | ${viewRelayCallRet.returnValue}
       return
     }
     this._workerSemaphoreOn = true
+
+    const now = Date.now()
+    let workerTimeout: Timeout
+    if (!this.config.devMode) {
+      workerTimeout = setTimeout(() => {
+        log.warn(chalk.bgRedBright('Relay state: Timed-out after %d'), Date.now() - now)
+        this.setReadyState(false)
+      }, this.config.readyTimeout)
+    }
+
     this._worker(blockNumber)
       .then((transactions) => {
         if (transactions.length !== 0) {
@@ -315,10 +334,11 @@ returnValue        | ${viewRelayCallRet.returnValue}
       .catch((e) => {
         this.emit('error', e)
         log.error('error in worker:', e)
+        this.deferReadiness = true
         this.setReadyState(false)
       })
       .finally(() => {
-        this.lastWorkerFinished = Date.now()
+        clearTimeout(workerTimeout)
         this._workerSemaphoreOn = false
       })
   }
@@ -620,25 +640,40 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
   }
 
-  isReady (): boolean {
-    if (!this.ready) { return false }
+  timeToReady (): number {
+    return this.futureReadyTime - Date.now()
+  }
 
-    const timedOut = (Date.now() - this.lastWorkerFinished) > this.config.readyTimeout
-    if (!this.config.devMode && timedOut) {
-      log.warn(chalk.bgRedBright('Relay state: Timed-out'))
-      this.ready = false
+  isReady (): boolean {
+
+    const timeToReady = this.timeToReady()
+    if (timeToReady <= 0) {
+      // already in ready state
+      return true
     }
-    return this.ready
+
+    if (this.futureReadyTime > 0) {
+      log.warn(chalk.yellow('Relayer state: NOT-READY (READY in %d seconds)'), timeToReady / 1000)
+    }
+    return false
   }
 
   setReadyState (isReady: boolean): void {
-    if (isReady !== this.ready) {
+    if (this.isReady() !== isReady) {
       if (isReady) {
-        log.warn(chalk.greenBright('Relayer state: READY'))
+        if (this.deferReadiness) {
+          if (Number.isNaN(this.futureReadyTime)) {
+            this.futureReadyTime = Date.now() + this.config.readyTimeout
+          }
+          log.warn(chalk.yellow('Relayer state: NOT-READY (in %d seconds)'), this.timeToReady() / 1000)
+        } else {
+          this.futureReadyTime = Date.now()
+          log.warn(chalk.greenBright('Relayer state: READY'))
+        }
       } else {
+        this.futureReadyTime = NaN
         log.warn(chalk.redBright('Relayer state: NOT-READY'))
       }
     }
-    this.ready = isReady
   }
 }
