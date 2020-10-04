@@ -184,10 +184,6 @@ export default class CommandsLogic {
       const { stake, unstakeDelay, owner } = await stakeManager.getStakeInfo(relayAddress)
 
       console.log('current stake=', fromWei(stake, 'ether'))
-      if (options.gasPrice === null) {
-        console.log('Using relayer suggested gas price:', fromWei(response.minGasPrice, 'gwei'), 'gwei')
-        options.gasPrice = response.minGasPrice
-      }
 
       if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
         throw new Error(`Already owned by ${owner}, our account=${options.from}`)
