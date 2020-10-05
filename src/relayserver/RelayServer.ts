@@ -286,6 +286,15 @@ returnValue        | ${viewRelayCallRet.returnValue}
     log.debug(`Started polling for new blocks every ${this.config.checkInterval}ms`)
 
     const handler = (): void => {
+      const now = Date.now()
+      let workerTimeout: Timeout
+      if (!this.config.devMode) {
+        workerTimeout = setTimeout(() => {
+          log.warn(chalk.bgRedBright('Relay state: Timed-out after %d'), Date.now() - now)
+          this.setReadyState(false)
+        }, this.config.readyTimeout)
+      }
+
       this.contractInteractor.getBlock('latest')
         .then(
           block => {
@@ -295,7 +304,12 @@ returnValue        | ${viewRelayCallRet.returnValue}
           })
         .catch((e) => {
           this.emit('error', e)
-          log.error('error in start:', e)
+          log.error('error in worker:', e)
+          this.deferReadiness = true
+          this.setReadyState(false)
+        })
+        .finally(() => {
+          clearTimeout(workerTimeout)
         })
     }
     this.workerTask = setInterval(handler, this.config.checkInterval)
@@ -316,29 +330,13 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     this._workerSemaphoreOn = true
 
-    const now = Date.now()
-    let workerTimeout: Timeout
-    if (!this.config.devMode) {
-      workerTimeout = setTimeout(() => {
-        log.warn(chalk.bgRedBright('Relay state: Timed-out after %d'), Date.now() - now)
-        this.setReadyState(false)
-      }, this.config.readyTimeout)
-    }
-
     this._worker(blockNumber)
       .then((transactions) => {
         if (transactions.length !== 0) {
           log.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
         }
       })
-      .catch((e) => {
-        this.emit('error', e)
-        log.error('error in worker:', e)
-        this.deferReadiness = true
-        this.setReadyState(false)
-      })
       .finally(() => {
-        clearTimeout(workerTimeout)
         this._workerSemaphoreOn = false
       })
   }
@@ -645,7 +643,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   isReady (): boolean {
-
     const timeToReady = this.timeToReady()
     if (timeToReady <= 0) {
       // already in ready state

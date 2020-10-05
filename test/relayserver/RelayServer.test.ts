@@ -22,7 +22,7 @@ import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { ServerAction } from '../../src/relayserver/StoredTransaction'
 
-const {expect, assert} = chai.use(chaiAsPromised).use(sinonChai)
+const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
@@ -94,7 +94,7 @@ contract('RelayServer', function (accounts) {
       assert.equal(relayServer.isReady(), false)
     })
 
-    it('after setReadyState(true), should stay non ready', ()=> {
+    it('after setReadyState(true), should stay non ready', () => {
       relayServer.config.readyTimeout = 100
       relayServer.setReadyState(true)
       assert.equal(relayServer.isReady(), false)
@@ -273,7 +273,7 @@ contract('RelayServer', function (accounts) {
           rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
           await rejectingPaymaster.setTrustedForwarder(env.forwarder.address)
           await rejectingPaymaster.setRelayHub(env.relayHub.address)
-          await rejectingPaymaster.deposit({value: env.web3.utils.toWei('1', 'ether')})
+          await rejectingPaymaster.deposit({ value: env.web3.utils.toWei('1', 'ether') })
           req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.paymaster = rejectingPaymaster.address
         })
@@ -387,7 +387,7 @@ contract('RelayServer', function (accounts) {
         value: relayServer.config.managerTargetBalance
       })
       await env.web3.eth.sendTransaction(
-        {from: accounts[0], to: relayServer.workerAddress, value: relayServer.config.workerTargetBalance})
+        { from: accounts[0], to: relayServer.workerAddress, value: relayServer.config.workerTargetBalance })
       const currentBlockNumber = await env.web3.eth.getBlockNumber()
       const receipts = await relayServer.replenishServer(workerIndex, 0)
       assert.deepEqual(receipts, [])
@@ -395,7 +395,7 @@ contract('RelayServer', function (accounts) {
     })
 
     it('should withdraw hub balance to manager first, then use eth balance to fund workers', async function () {
-      await env.relayHub.depositFor(relayServer.managerAddress, {value: 1e18.toString()})
+      await env.relayHub.depositFor(relayServer.managerAddress, { value: 1e18.toString() })
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -407,7 +407,7 @@ contract('RelayServer', function (accounts) {
       })
       assert.equal((await relayServer.getManagerBalance()).toString(), '0')
       await env.web3.eth.sendTransaction(
-        {from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e7})
+        { from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e7 })
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalanceBefore = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
@@ -577,7 +577,7 @@ contract('RelayServer', function (accounts) {
       rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
       await rejectingPaymaster.setTrustedForwarder(env.forwarder.address)
       await rejectingPaymaster.setRelayHub(env.relayHub.address)
-      await rejectingPaymaster.deposit({value: env.web3.utils.toWei('1', 'ether')})
+      await rejectingPaymaster.deposit({ value: env.web3.utils.toWei('1', 'ether') })
       await attackTheServer(newServer)
     })
     afterEach(async function () {
@@ -587,12 +587,12 @@ contract('RelayServer', function (accounts) {
 
     async function attackTheServer (server: RelayServer): Promise<void> {
       const _sendTransactionOrig = server.transactionManager.sendTransaction
-      server.transactionManager.sendTransaction = async function ({signer, method, destination, value = '0x', gasLimit, gasPrice}: SendTransactionDetails): Promise<SignedTransactionDetails> {
+      server.transactionManager.sendTransaction = async function ({ signer, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore
         return (await _sendTransactionOrig.call(server.transactionManager, ...arguments))
       }
-      const req = await env.createRelayHttpRequest({paymaster: rejectingPaymaster.address})
+      const req = await env.createRelayHttpRequest({ paymaster: rejectingPaymaster.address })
       await env.relayServer.createRelayTransaction(req)
       // await relayTransaction(relayTransactionParams2, options2, { paymaster: rejectingPaymaster.address }, false)
       const currentBlock = await env.web3.eth.getBlock('latest')
