@@ -87,7 +87,6 @@ export class RelayServer extends EventEmitter {
     this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance))
     this.printServerAddresses()
     log.setLevel(this.config.logLevel)
-    log.setLevel(0)
     log.warn('RelayServer version', VERSION)
     log.info('Using server configuration:\n', this.config)
   }
