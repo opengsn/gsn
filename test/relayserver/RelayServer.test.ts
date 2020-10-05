@@ -85,11 +85,16 @@ contract('RelayServer', function (accounts) {
       relayServer.deferReadiness = false
       relayServer.futureReadyTime = 0
       assert.equal(relayServer.isReady(), true)
-      // process a previous block (its not provider crash, but the effect is the same
-      await relayServer._workerSemaphore(1)
+      const stub = sinon.stub(relayServer.contractInteractor, 'getBlock').rejects(Error('simulate getBlock failed'))
+      try {
+        await relayServer.intervalHandler()
+      } finally {
+        // remove stub
+        stub.restore()
+      }
     })
 
-    it('should set "deferReadiness" after crash', async () => {
+    it('should set "deferReadiness" after exception', async () => {
       assert.equal(relayServer.deferReadiness, true)
       assert.equal(relayServer.isReady(), false)
     })
@@ -100,7 +105,7 @@ contract('RelayServer', function (accounts) {
       assert.equal(relayServer.isReady(), false)
     })
 
-    it('should become ready after timeout', async () => {
+    it('should become ready after only timeout', async () => {
       await sleep(300)
       assert.equal(relayServer.isReady(), true)
     })
@@ -550,6 +555,7 @@ contract('RelayServer', function (accounts) {
           return []
         }
         const latestBlock = await env.web3.eth.getBlock('latest')
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         relayServer._workerSemaphore(latestBlock.number)
         assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
         shouldRun = false

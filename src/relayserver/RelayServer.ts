@@ -282,37 +282,38 @@ returnValue        | ${viewRelayCallRet.returnValue}
     return signedTx
   }
 
+  async intervalHandler (): Promise<void> {
+    const now = Date.now()
+    let workerTimeout: Timeout
+    if (!this.config.devMode) {
+      workerTimeout = setTimeout(() => {
+        log.warn(chalk.bgRedBright('Relay state: Timed-out after %d'), Date.now() - now)
+        this.setReadyState(false)
+      }, this.config.readyTimeout)
+    }
+
+    return this.contractInteractor.getBlock('latest')
+      .then(
+        block => {
+          if (block.number > this.lastScannedBlock) {
+            return this._workerSemaphore.bind(this)(block.number)
+          }
+        })
+      .catch((e) => {
+        this.emit('error', e)
+        log.error('error in worker:', e)
+        this.deferReadiness = true
+        this.setReadyState(false)
+      })
+      .finally(() => {
+        clearTimeout(workerTimeout)
+      })
+  }
+
   start (): void {
     log.debug(`Started polling for new blocks every ${this.config.checkInterval}ms`)
-
-    const handler = (): void => {
-      const now = Date.now()
-      let workerTimeout: Timeout
-      if (!this.config.devMode) {
-        workerTimeout = setTimeout(() => {
-          log.warn(chalk.bgRedBright('Relay state: Timed-out after %d'), Date.now() - now)
-          this.setReadyState(false)
-        }, this.config.readyTimeout)
-      }
-
-      this.contractInteractor.getBlock('latest')
-        .then(
-          block => {
-            if (block.number > this.lastScannedBlock) {
-              this._workerSemaphore.bind(this)(block.number)
-            }
-          })
-        .catch((e) => {
-          this.emit('error', e)
-          log.error('error in worker:', e)
-          this.deferReadiness = true
-          this.setReadyState(false)
-        })
-        .finally(() => {
-          clearTimeout(workerTimeout)
-        })
-    }
-    this.workerTask = setInterval(handler, this.config.checkInterval)
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    this.workerTask = setInterval(this.intervalHandler.bind(this), this.config.checkInterval)
   }
 
   stop (): void {
@@ -323,14 +324,14 @@ returnValue        | ${viewRelayCallRet.returnValue}
     log.info('Successfully stopped polling!!')
   }
 
-  _workerSemaphore (blockNumber: number): void {
+  async _workerSemaphore (blockNumber: number): Promise<void> {
     if (this._workerSemaphoreOn) {
       log.warn('Different worker is not finished yet, skipping this block')
       return
     }
     this._workerSemaphoreOn = true
 
-    this._worker(blockNumber)
+    await this._worker(blockNumber)
       .then((transactions) => {
         if (transactions.length !== 0) {
           log.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
