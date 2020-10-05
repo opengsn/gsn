@@ -2,33 +2,33 @@ import { ether } from '../../common/Utils'
 
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, getRelayHubAddress, gsnCommander, getMnemonic } from '../utils'
+import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
+import { toWei } from 'web3-utils'
 
-const commander = gsnCommander(['n', 'f', 'h', 'm'])
-  .option('--relayUrl <url>', 'url to advertise the relayer (defaults to localhost:8090)')
-  .option('--stake <stake>', 'amount to stake for the relayer, in wei (defaults to 1 Ether)')
+const commander = gsnCommander(['n', 'f', 'm', 'g'])
+  .option('--relayUrl <url>', 'url to advertise the relayer', 'http://localhost:8090')
+  .option('--stake <stake>', 'amount to stake for the relayer, in ETH', '1')
   .option(
     '--unstakeDelay <delay>',
-    'blocks to wait between unregistering and withdrawing the stake (defaults to one 1000)'
+    'blocks to wait between unregistering and withdrawing the stake', '1000'
   )
   .option(
     '--funds <funds>',
-    'amount to transfer to the relayer to pay for relayed transactions, in wei (defaults to 2 Ether)'
+    'amount to transfer to the relayer to pay for relayed transactions, in ETH', '2'
   )
   .parse(process.argv);
 
 (async () => {
   const host = getNetworkUrl(commander.network)
-  const hub = getRelayHubAddress(commander.hub)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const logic = new CommandsLogic(host, configureGSN({ relayHubAddress: hub }), mnemonic)
+  const logic = new CommandsLogic(host, configureGSN({}), mnemonic)
   const registerOptions = {
-    hub,
     from: commander.from ?? await logic.findWealthyAccount(),
-    stake: commander.stake ?? ether('1'),
-    funds: commander.funds ?? ether('2'),
-    relayUrl: commander.relayUrl ?? 'http://localhost:8090',
-    unstakeDelay: commander.unstakeDelay ?? 1000
+    stake: ether(commander.stake),
+    funds: ether(commander.funds),
+    gasPrice: toWei(commander.gasPrice, 'gwei'),
+    relayUrl: commander.relayUrl,
+    unstakeDelay: commander.unstakeDelay
   }
   if (registerOptions.from == null) {
     console.error('Failed to find a wealthy "from" address')

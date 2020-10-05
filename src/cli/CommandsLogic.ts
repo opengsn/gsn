@@ -7,7 +7,7 @@ import { merge } from 'lodash'
 // @ts-ignore
 import io from 'console-read-write'
 
-import { ether, sleep } from '../common/Utils'
+import { ether, isSameAddress, sleep } from '../common/Utils'
 
 // compiled folder populated by "prepublish"
 import StakeManager from './compiled/StakeManager.json'
@@ -16,7 +16,7 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import VersionRegistryAbi from './compiled/VersionRegistry.json'
-import { Address, notNull } from '../relayclient/types/Aliases'
+import { Address } from '../relayclient/types/Aliases'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { GSNConfig } from '../relayclient/GSNConfigurator'
 import HttpClient from '../relayclient/HttpClient'
@@ -25,9 +25,13 @@ import { constants } from '../common/Constants'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 import { string32 } from '../common/VersionRegistry'
 import { registerForwarderForGsn } from '../common/EIP712/ForwarderUtil'
+import { fromWei, toBN } from 'web3-utils'
 
-interface RegisterOptions {
+require('source-map-support').install({ errorFormatterForce: true })
+
+export interface RegisterOptions {
   from: Address
+  gasPrice: string | BN
   stake: string | BN
   funds: string | BN
   relayUrl: string
@@ -155,72 +159,102 @@ export default class CommandsLogic {
   }
 
   async registerRelay (options: RegisterOptions): Promise<RegistrationResult> {
+    const transactions: string[] = []
     try {
-      if (await this.isRelayReady(options.relayUrl)) {
-        return {
-          success: false,
-          error: 'Already registered'
-        }
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: `Could not reach the relay at ${options.relayUrl}, is it running?`
-      }
-    }
-
-    let stakeTx: Truffle.TransactionResponse | undefined
-    let authorizeTx: Truffle.TransactionResponse | undefined
-    let fundTx: TransactionReceipt | undefined
-    try {
-      console.error(`Funding GSN relay at ${options.relayUrl}`)
+      console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
       const response = await this.httpClient.getPingResponse(options.relayUrl)
+        .catch(() => { throw new Error('could contact not relayer, is it running?') })
+      if (response.ready) {
+        return {
+          success: false,
+          error: 'Nothing to do. Relayer already registered'
+        }
+      }
+      const chainId = await this.contractInteractor.getAsyncChainId().then(x => x.toString())
+      if (response.chainId !== chainId) {
+        throw new Error(`wrong chain-id: Relayer on (${response.chainId}) but our provider is on (${chainId})`)
+      }
       const relayAddress = response.relayManagerAddress
-      const relayHubAddress = this.config.relayHubAddress ?? response.relayHubAddress
+      const relayHubAddress = response.relayHubAddress
 
       const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
-      stakeTx = await stakeManager
-        .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
-          value: options.stake,
-          from: options.from,
-          gas: 1e6,
-          gasPrice: 1e9
-        })
-      authorizeTx = await stakeManager
-        .authorizeHubByOwner(relayAddress, relayHubAddress, {
-          from: options.from,
-          gas: 1e6,
-          gasPrice: 1e9
-        })
-      const _fundTx = await this.web3.eth.sendTransaction({
-        from: options.from,
-        to: relayAddress,
-        value: options.funds,
-        gas: 1e6,
-        gasPrice: 1e9
-      })
+      const { stake, unstakeDelay, owner } = await stakeManager.getStakeInfo(relayAddress)
 
-      fundTx = _fundTx as TransactionReceipt
-      if (fundTx.transactionHash == null) {
-        return {
-          success: false,
-          error: `Fund transaction reverted: ${JSON.stringify(_fundTx)}`
-        }
+      console.log('current stake=', fromWei(stake, 'ether'))
+
+      if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
+        throw new Error(`Already owned by ${owner}, our account=${options.from}`)
       }
+
+      if (toBN(unstakeDelay).gte(toBN(options.unstakeDelay)) &&
+        toBN(stake).gte(toBN(options.stake.toString()))
+      ) {
+        console.log('Relayer already staked')
+      } else {
+        const stakeValue = toBN(options.stake.toString()).sub(toBN(stake))
+        console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} eth`,
+          stake === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
+
+        const stakeTx = await stakeManager
+          .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
+            value: stakeValue,
+            from: options.from,
+            gas: 1e6,
+            gasPrice: options.gasPrice
+          })
+        transactions.push(stakeTx.tx)
+      }
+
+      if (isSameAddress(owner, options.from)) {
+        console.log('Relayer already authorized')
+      } else {
+        console.log('Authorizing relayer for hub')
+        const authorizeTx = await stakeManager
+          .authorizeHubByOwner(relayAddress, relayHubAddress, {
+            from: options.from,
+            gas: 1e6,
+            gasPrice: options.gasPrice
+          })
+        transactions.push(authorizeTx.tx)
+      }
+
+      const bal = await this.contractInteractor.getBalance(relayAddress)
+      if (toBN(bal).gt(toBN(options.funds.toString()))) {
+        console.log('Relayer already funded')
+      } else {
+        console.log('Funding relayer')
+
+        const _fundTx = await this.web3.eth.sendTransaction({
+          from: options.from,
+          to: relayAddress,
+          value: options.funds,
+          gas: 1e6,
+          gasPrice: options.gasPrice
+        })
+        const fundTx = _fundTx as TransactionReceipt
+        if (fundTx.transactionHash == null) {
+          return {
+            success: false,
+            error: `Fund transaction reverted: ${JSON.stringify(_fundTx)}`
+          }
+        }
+        transactions.push(fundTx.transactionHash)
+      }
+
       await this.waitForRelay(options.relayUrl)
       return {
         success: true,
-        transactions: [stakeTx.tx, authorizeTx.tx, fundTx.transactionHash]
+        transactions
       }
     } catch (error) {
       return {
         success: false,
-        transactions: [stakeTx?.tx, authorizeTx?.tx, fundTx?.transactionHash].filter(notNull),
+        transactions,
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        error: `Failed to fund relay: '${error}'`
+        error: error.message
       }
     }
   }
