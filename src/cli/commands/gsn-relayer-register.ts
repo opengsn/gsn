@@ -2,10 +2,10 @@ import { ether } from '../../common/Utils'
 
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
-import { getNetworkUrl, getRelayHubAddress, gsnCommander, getMnemonic } from '../utils'
+import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
 import { toWei } from 'web3-utils'
 
-const commander = gsnCommander(['n', 'f', 'h', 'm', 'g'])
+const commander = gsnCommander(['n', 'f', 'h', 'm'])
   .option('--relayUrl <url>', 'url to advertise the relayer', 'http://localhost:8090')
   .option('--stake <stake>', 'amount to stake for the relayer, in ETH', '1')
   .option(
@@ -20,11 +20,9 @@ const commander = gsnCommander(['n', 'f', 'h', 'm', 'g'])
 
 (async () => {
   const host = getNetworkUrl(commander.network)
-  const hub = getRelayHubAddress(commander.hub)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(host, configureGSN({ relayHubAddress: hub }), mnemonic)
   const registerOptions = {
-    hub,
     from: commander.from ?? await logic.findWealthyAccount(),
     stake: ether(commander.stake),
     funds: ether(commander.funds),
