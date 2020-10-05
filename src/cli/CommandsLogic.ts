@@ -176,7 +176,7 @@ export default class CommandsLogic {
         throw new Error(`wrong chain-id: Relayer on (${response.chainId}) but our provider is on (${chainId})`)
       }
       const relayAddress = response.relayManagerAddress
-      const relayHubAddress = this.config.relayHubAddress ?? response.relayHubAddress
+      const relayHubAddress = response.relayHubAddress
 
       const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
