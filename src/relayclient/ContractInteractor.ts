@@ -41,9 +41,7 @@ import { Address, IntString } from './types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
-// Truffle Contract typings seem to be completely out of their minds
-import TruffleContract = require('@truffle/contract')
-import Contract = Truffle.Contract
+import { Contract, TruffleContract } from './LightTruffleContract'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -84,6 +82,7 @@ export default class ContractInteractor {
   private stakeManagerInstance!: IStakeManagerInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
   private knowForwarderAddressInstance?: IKnowForwarderAddressInstance
+  private readonly relayCallMethod: any
 
   readonly web3: Web3
   private readonly provider: Web3Provider
@@ -136,6 +135,8 @@ export default class ContractInteractor {
     this.IForwarderContract.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
     this.IKnowForwarderAddress.setProvider(this.provider, undefined)
+
+    this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
 
   getProvider (): provider { return this.provider }
@@ -296,10 +297,7 @@ export default class ContractInteractor {
   }
 
   encodeABI (paymasterMaxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
-    // TODO: check this works as expected
-    // @ts-ignore
-    const relayHub = new this.IRelayHubContract('')
-    return relayHub.contract.methods.relayCall(paymasterMaxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+    return this.relayCallMethod(paymasterMaxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
