@@ -82,8 +82,6 @@ contract('RelayServer', function (accounts) {
     before(async () => {
       relayServer = env.relayServer
       // force "ready
-      relayServer.deferReadiness = false
-      relayServer.futureReadyTime = 0
       assert.equal(relayServer.isReady(), true)
       const stub = sinon.stub(relayServer.contractInteractor, 'getBlock').rejects(Error('simulate getBlock failed'))
       try {
@@ -95,18 +93,22 @@ contract('RelayServer', function (accounts) {
     })
 
     it('should set "deferReadiness" after exception', async () => {
-      assert.equal(relayServer.deferReadiness, true)
       assert.equal(relayServer.isReady(), false)
     })
 
     it('after setReadyState(true), should stay non ready', () => {
-      relayServer.config.readyTimeout = 100
       relayServer.setReadyState(true)
       assert.equal(relayServer.isReady(), false)
     })
 
-    it('should become ready after only timeout', async () => {
-      await sleep(300)
+    it('should become ready after processing few blocks', async () => {
+      await evmMineMany(1)
+      await relayServer.intervalHandler()
+      assert.equal(relayServer.isReady(), false)
+      await evmMineMany(1)
+      await relayServer.intervalHandler()
+      await evmMineMany(1)
+      await relayServer.intervalHandler()
       assert.equal(relayServer.isReady(), true)
     })
   })
@@ -216,6 +218,7 @@ contract('RelayServer', function (accounts) {
       describe('#validateMaxNonce()', function () {
         before(async function () {
           // this is a new worker account - create transaction
+          await evmMineMany(1)
           const latestBlock = (await env.web3.eth.getBlock('latest')).number
           await env.relayServer._worker(latestBlock)
           const signer = env.relayServer.workerAddress
