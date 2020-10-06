@@ -32,10 +32,9 @@ class GsnTestEnvironmentClass {
    * @param deployPaymaster - whether to deploy the naive paymaster instance for tests
    * @return
    */
-  async startGsn (host?: string, deployPaymaster: boolean = true): Promise<TestEnvironment> {
+  async startGsn (host: string, deployPaymaster: boolean = true): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
-    console.log('_host=', _host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
@@ -66,6 +65,7 @@ class GsnTestEnvironmentClass {
       stake: ether('1'),
       funds: ether('1'),
       relayUrl: relayUrl,
+      gasPrice: '1e9',
       unstakeDelay: '2000'
     }
     const registrationResult = await commandsLogic.registerRelay(registerOptions)

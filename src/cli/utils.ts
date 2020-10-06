@@ -6,13 +6,14 @@ import path from 'path'
 import { DeploymentResult } from './CommandsLogic'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 
-const cliInfuraId = '41a7aa85a67641f3bd6e31cb60753698'
+const cliInfuraId = '$INFURA_ID'
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
   ['xdai', 'https://dai.poa.network'],
   ['ropsten', 'https://ropsten.infura.io/v3/' + cliInfuraId],
   ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
   ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
+  ['goerli', 'https://goerli.infura.io/v3/' + cliInfuraId],
   ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId]
 ])
 
@@ -20,9 +21,20 @@ export function supportedNetworks (): string[] {
   return Array.from(networks.keys())
 }
 
-export function getNetworkUrl (network = ''): string {
-  const match = network.match(/^(https?:\/\/.*)/) ?? []
-  return networks.get(network) ?? match[0]
+export function getNetworkUrl (network: string, env: {[key: string]: string|undefined} = process.env): string {
+  const net = networks.get(network)
+  if (net == null) {
+    const match = network.match(/^(https?:\/\/.*)/) ?? []
+    return match[0]
+  }
+
+  if (net.includes('$INFURA_ID')) {
+    const str = env.INFURA_ID ?? ''
+    if (str === '') { throw new Error(`network ${network}: INFURA_ID not set`) }
+    return net.replace(/\$INFURA_ID/, str)
+  }
+
+  return net
 }
 
 export function getMnemonic (mnemonicFile: string): string | undefined {
@@ -124,7 +136,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\' (default: empty)')
         break
       case 'g':
-        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction. Defaults to 1 gwei.', '1000000000')
+        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')
         break
     }
   })

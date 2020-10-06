@@ -22,6 +22,6 @@ export default class VersionsManager {
     version = version.replace('_', '-')
 
     const range = '^' + this.componentVersion
-    return semver.satisfies(version, range)
+    return semver.satisfies(version, range, { includePrerelease: true })
   }
 }
