@@ -66,15 +66,51 @@ contract('RelayServer', function (accounts) {
       const networkId = await env.web3.eth.net.getId()
       assert.notEqual(relayServerToInit.chainId, chainId)
       assert.notEqual(relayServerToInit.networkId, networkId)
-      assert.equal(relayServerToInit.ready, false)
+      assert.equal(relayServerToInit.isReady(), false)
       await relayServerToInit.init()
-      assert.equal(relayServerToInit.ready, false, 'relay should not be ready yet')
+      assert.equal(relayServerToInit.isReady(), false, 'relay should not be ready yet')
       assert.equal(relayServerToInit.chainId, chainId)
       assert.equal(relayServerToInit.networkId, networkId)
     })
   })
 
   describe.skip('#_worker()', function () {
+  })
+
+  describe('#isReady after exception', () => {
+    let relayServer: RelayServer
+    before(async () => {
+      relayServer = env.relayServer
+      // force "ready
+      assert.equal(relayServer.isReady(), true)
+      const stub = sinon.stub(relayServer.contractInteractor, 'getBlock').rejects(Error('simulate getBlock failed'))
+      try {
+        await relayServer.intervalHandler()
+      } finally {
+        // remove stub
+        stub.restore()
+      }
+    })
+
+    it('should set "deferReadiness" after exception', async () => {
+      assert.equal(relayServer.isReady(), false)
+    })
+
+    it('after setReadyState(true), should stay non ready', () => {
+      relayServer.setReadyState(true)
+      assert.equal(relayServer.isReady(), false)
+    })
+
+    it('should become ready after processing few blocks', async () => {
+      await evmMineMany(1)
+      await relayServer.intervalHandler()
+      assert.equal(relayServer.isReady(), false)
+      await evmMineMany(1)
+      await relayServer.intervalHandler()
+      await evmMineMany(1)
+      await relayServer.intervalHandler()
+      assert.equal(relayServer.isReady(), true)
+    })
   })
 
   describe('validation', function () {
@@ -182,6 +218,7 @@ contract('RelayServer', function (accounts) {
       describe('#validateMaxNonce()', function () {
         before(async function () {
           // this is a new worker account - create transaction
+          await evmMineMany(1)
           const latestBlock = (await env.web3.eth.getBlock('latest')).number
           await env.relayServer._worker(latestBlock)
           const signer = env.relayServer.workerAddress
@@ -433,7 +470,9 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(managerHubBalanceBefore.lt(refill), 'manager hub balance should be insufficient to replenish worker')
       assert.isTrue(managerEthBalance.lt(refill), 'manager eth balance should be insufficient to replenish worker')
       let fundingNeededEmitted = false
-      relayServer.on('fundingNeeded', () => { fundingNeededEmitted = true })
+      relayServer.on('fundingNeeded', () => {
+        fundingNeededEmitted = true
+      })
       await relayServer.replenishServer(workerIndex, 0)
       assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
     })
@@ -519,6 +558,7 @@ contract('RelayServer', function (accounts) {
           return []
         }
         const latestBlock = await env.web3.eth.getBlock('latest')
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         relayServer._workerSemaphore(latestBlock.number)
         assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
         shouldRun = false
