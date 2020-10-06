@@ -217,7 +217,7 @@ contract('RelayServer', function (accounts) {
           await env.relayServer.validatePaymasterGasLimits(req)
           assert.fail()
         } catch (e) {
-          assert.include(e.message, `non-existent paymaster contract: ${accounts[1]}`)
+          assert.include(e.message, `not a valid paymaster contract: ${accounts[1]}`)
         }
       })
 

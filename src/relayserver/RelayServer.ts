@@ -167,7 +167,7 @@ export class RelayServer extends EventEmitter {
         const error = e as Error
         let message = `unknown paymaster error: ${error.message}`
         if (error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')) {
-          message = `incompatible paymaster contract: ${paymaster}`
+          message = `not a valid paymaster contract: ${paymaster}`
         } else if (error.message.includes('no code at address')) {
           message = `'non-existent paymaster contract: ${paymaster}`
         }
