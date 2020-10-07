@@ -352,7 +352,7 @@ export class RelayClient {
       if (!isRecipientDeployed) {
         console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
         Unless you are using some counterfactual contract deployment technique the transaction will fail!`)
-      } else {
+      } else if (this.config.tmpCheckRecipientForwarder) {
         const isTrusted = await this.contractInteractor.isTrustedForwarder(gsnTransactionDetails.to, forwarderAddress)
         if (!isTrusted) {
           throw new Error('The Forwarder address configured but is not trusted by the Recipient contract')
