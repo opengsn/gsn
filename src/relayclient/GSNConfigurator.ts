@@ -71,10 +71,16 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
   ] = await Promise.all([
 
     partialConfig.chainId ?? contractInteractor.getAsyncChainId(),
-    paymasterInstance.getHubAddr().catch(e => { throw new Error('Not a paymaster contract') }),
+    paymasterInstance.getHubAddr().catch((e: any) => { 
+      console.error('Error calling getHubAddr() on Paymaster contract')
+      throw e
+    }),
     partialConfig.forwarderAddress ?? paymasterInstance.trustedForwarder().catch(e => { throw new Error('paymaster has no trustedForwarder()') }),
-    paymasterInstance.versionPaymaster().catch((e: any) => { throw new Error('Not a paymaster contract') }).then((version: string) => contractInteractor._validateVersion(version))
-      .catch(err => console.log('WARNING: beta ignore version compatibility', err))
+    paymasterInstance.versionPaymaster().catch((e: any) => {
+      console.error('Error calling versionPaymaster() on Paymaster contract')
+      throw e
+    }).then((version: string) => contractInteractor._validateVersion(version))
+      .catch((err: any) => console.log('WARNING: beta ignore version compatibility', err))
   ])
 
   const isMetamask: boolean = (provider as any).isMetaMask
