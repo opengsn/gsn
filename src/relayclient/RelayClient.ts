@@ -179,7 +179,7 @@ export class RelayClient {
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
     if (!this.initialized) {
       if (!this.initMutex.isLocked()) {
-        log.warn('better call RelayClient.init() in advance (to make first request faster)')
+        this._warn('better call RelayClient.init() in advance (to make first request faster)')
       }
       await this.init()
     }
@@ -216,6 +216,10 @@ export class RelayClient {
         pingErrors: relaySelectionManager.errors
       }
     }
+  }
+
+  _warn (msg: string): void {
+    log.warn(msg)
   }
 
   async _calculateGasPrice (): Promise<PrefixedHexString> {
