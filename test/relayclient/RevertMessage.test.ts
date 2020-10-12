@@ -82,9 +82,6 @@ describe('RevertMessage.test', function () {
       })
 
       relayProvider = new RelayProvider(underlyingProvider as any, gsnConfig)
-      // NOTE: in real application its enough to set the provider in web3.
-      // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
-      // so changing the global one is not enough.
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
 
@@ -92,7 +89,7 @@ describe('RevertMessage.test', function () {
     })
 
     it('should show relayCall revert messages', async function () {
-      this.timeout(30000)
+      this.timeout(20000)
 
       // explicitly request impossible gas limit, to cause a revert in relayCall()
       // (alternately, we could deploy a new paymaster with no balance and wait for "Paymaster balance too low"

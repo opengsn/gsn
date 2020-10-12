@@ -281,7 +281,7 @@ export default class ContractInteractor {
         approvalData,
         externalGasLimit
       ).encodeABI()
-      const res = await new Promise((resolve, reject) => {
+      const res: string = await new Promise((resolve, reject) => {
         // @ts-ignore
         this.web3.currentProvider.send({
           jsonrpc: '2.0',
@@ -311,7 +311,7 @@ export default class ContractInteractor {
       })
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'string'], res as string)
+      const decoded = abi.decodeParameters(['bool', 'string'], res)
       const paymasterAccepted = decoded[0]
       const returnValue = decoded[1]
       return {
