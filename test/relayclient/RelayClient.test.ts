@@ -279,16 +279,16 @@ contract('RelayClient', function (accounts) {
         gsnEvents.push(e)
       }
 
-      before('registerEventsListener', () => {
-        relayClient = new RelayClient(underlyingProvider, gsnConfig)
+      before('registerEventsListener', async () => {
+        relayClient = await new RelayClient(underlyingProvider, gsnConfig).init()
         relayClient.registerEventListener(eventsHandler)
       })
-      it('should call events handler', async function () {
+      it('should call all events handler', async function () {
         await relayClient.relayTransaction(options)
-        assert.equal(gsnEvents.length, 8)
+        assert.equal(gsnEvents.length, 7)
         assert.equal(gsnEvents[0].step, 1)
-        assert.equal(gsnEvents[0].total, 8)
-        assert.equal(gsnEvents[7].step, 8)
+        assert.equal(gsnEvents[0].total, 7)
+        assert.equal(gsnEvents[6].step, 7)
       })
       describe('removing events listener', () => {
         before('registerEventsListener', () => {

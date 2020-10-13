@@ -67,7 +67,7 @@ export type Web3Provider =
   | WebsocketProvider
 
 export default class ContractInteractor {
-  private readonly VERSION = '2.0.1'
+  private readonly VERSION = '2.0.2'
 
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>

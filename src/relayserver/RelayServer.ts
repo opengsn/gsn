@@ -34,7 +34,7 @@ import { configureServer, ServerConfigParams, ServerDependencies } from './Serve
 
 import Timeout = NodeJS.Timeout
 
-const VERSION = '2.0.1'
+const VERSION = '2.0.2'
 const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {

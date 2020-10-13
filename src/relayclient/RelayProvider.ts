@@ -56,6 +56,11 @@ export class RelayProvider implements HttpProvider {
     this._delegateEventsApi(origProvider)
   }
 
+  async init (): Promise<this> {
+    await this.relayClient.init()
+    return this
+  }
+
   registerEventListener (handler: (event: GsnEvent) => void): void {
     this.relayClient.registerEventListener(handler)
   }
