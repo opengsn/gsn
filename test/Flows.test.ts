@@ -92,7 +92,7 @@ options.forEach(params => {
         await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
 
         relayClientConfig = {
-          logLevel: 5,
+          logLevel: 'error',
           relayHubAddress: rhub.address,
           paymasterAddress: paymaster.address
         }

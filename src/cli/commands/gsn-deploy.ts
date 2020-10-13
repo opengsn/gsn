@@ -11,6 +11,7 @@ import {
 } from '../utils'
 import { defaultEnvironment } from '../../common/Environments'
 import { toWei } from 'web3-utils'
+import { createLogger } from '../CommandsWinstonLogger'
 
 gsnCommander(['n', 'f', 'm', 'g'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
@@ -28,9 +29,10 @@ gsnCommander(['n', 'f', 'm', 'g'])
   const network: string = commander.network
   const nodeURL = getNetworkUrl(network)
 
+  const logger = createLogger('debug')
   const mnemonic = getMnemonic(commander.mnemonic)
   const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? defaultEnvironment.relayHubConfiguration
-  const logic = new CommandsLogic(nodeURL, configureGSN({}), mnemonic)
+  const logic = new CommandsLogic(nodeURL, logger, configureGSN({}), mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
 
   async function getGasPrice (): Promise<string> {

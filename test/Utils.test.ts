@@ -20,6 +20,8 @@ import CommandsLogic from '../src/cli/CommandsLogic'
 import { configureGSN, GSNConfig, resolveConfigurationGSN } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
 import { Web3Provider } from '../src/relayclient/ContractInteractor'
+import { createLogger } from '../src/cli/CommandsWinstonLogger'
+
 require('source-map-support').install({ errorFormatterForce: true })
 
 const { expect, assert } = chai.use(chaiAsPromised)
@@ -196,9 +198,10 @@ contract('Utils', function (accounts) {
 
   describe('#resolveGSNDeploymentFromPaymaster()', function () {
     it('should resolve the deployment from paymaster', async function () {
+      const logger = createLogger('error')
       const host = (web3.currentProvider as HttpProvider).host
       const defaultConfiguration = configureGSN({})
-      const commandsLogic = new CommandsLogic(host, defaultConfiguration)
+      const commandsLogic = new CommandsLogic(host, logger, defaultConfiguration)
       const deploymentResult = await commandsLogic.deployGsnContracts({
         from: accounts[0],
         gasPrice: '1',

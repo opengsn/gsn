@@ -2,12 +2,13 @@ import RelayedTransactionValidator from '../../src/relayclient/RelayedTransactio
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
+import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 export default class BadRelayedTransactionValidator extends RelayedTransactionValidator {
   private readonly failValidation: boolean
 
-  constructor (failValidation: boolean, contractInteractor: ContractInteractor, config: GSNConfig) {
-    super(contractInteractor, config)
+  constructor (logger: LoggerInterface, failValidation: boolean, contractInteractor: ContractInteractor, config: GSNConfig) {
+    super(contractInteractor, logger, config)
     this.failValidation = failValidation
   }
 

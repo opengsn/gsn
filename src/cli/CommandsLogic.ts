@@ -1,11 +1,12 @@
-import Web3 from 'web3'
-import { Contract, SendOptions } from 'web3-eth-contract'
-import HDWalletProvider from '@truffle/hdwallet-provider'
-import BN from 'bn.js'
-import { HttpProvider, TransactionReceipt } from 'web3-core'
-import { merge } from 'lodash'
 // @ts-ignore
 import io from 'console-read-write'
+import BN from 'bn.js'
+import HDWalletProvider from '@truffle/hdwallet-provider'
+import Web3 from 'web3'
+import { Contract, SendOptions } from 'web3-eth-contract'
+import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { fromWei, toBN } from 'web3-utils'
+import { merge } from 'lodash'
 
 import { ether, isSameAddress, sleep } from '../common/Utils'
 
@@ -25,7 +26,7 @@ import { constants } from '../common/Constants'
 import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
 import { string32 } from '../common/VersionRegistry'
 import { registerForwarderForGsn } from '../common/EIP712/ForwarderUtil'
-import { fromWei, toBN } from 'web3-utils'
+import { LoggerInterface } from '../common/LoggerInterface'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -74,14 +75,14 @@ export default class CommandsLogic {
   private readonly config: GSNConfig
   private readonly web3: Web3
 
-  constructor (host: string, config: GSNConfig, mnemonic?: string) {
+  constructor (host: string, logger: LoggerInterface, config: GSNConfig, mnemonic?: string) {
     let provider: HttpProvider | HDWalletProvider = new Web3.providers.HttpProvider(host)
     if (mnemonic != null) {
       // web3 defines provider type quite narrowly
       provider = new HDWalletProvider(mnemonic, provider) as unknown as HttpProvider
     }
-    this.contractInteractor = new ContractInteractor(provider, config)
-    this.httpClient = new HttpClient(new HttpWrapper(), config)
+    this.contractInteractor = new ContractInteractor(provider, logger, config)
+    this.httpClient = new HttpClient(new HttpWrapper(), logger, config)
     this.config = config
     this.web3 = new Web3(provider)
   }

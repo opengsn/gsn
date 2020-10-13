@@ -2,6 +2,7 @@ import fs from 'fs'
 
 import { ServerAction, StoredTransaction } from '../src/relayserver/StoredTransaction'
 import { TXSTORE_FILENAME, TxStoreManager } from '../src/relayserver/TxStoreManager'
+import { createLogger } from '../src/relayserver/ServerWinstonLogger'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
@@ -23,8 +24,9 @@ contract('TxStoreManager', function (accounts) {
   let tx3: StoredTransaction
 
   before('create txstore', async function () {
+    const logger = createLogger('error', '', '', '')
     cleanFolder()
-    txmanager = new TxStoreManager({ workdir })
+    txmanager = new TxStoreManager({ workdir }, logger)
     await txmanager.clearAll()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
     assert.ok(txmanager, 'txstore uninitialized' + txmanager.toString())

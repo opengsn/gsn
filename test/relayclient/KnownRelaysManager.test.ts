@@ -1,5 +1,7 @@
-import { ether } from '@openzeppelin/test-helpers'
+import sinon from 'sinon'
+import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
+import { ether } from '@openzeppelin/test-helpers'
 
 import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
@@ -12,9 +14,10 @@ import {
 } from '../../types/truffle-contracts'
 import { deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
-import sinon from 'sinon'
-import { ChildProcessWithoutNullStreams } from 'child_process'
+
+import { LoggerInterface } from '../../src/common/LoggerInterface'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import { createLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -51,6 +54,7 @@ contract('KnownRelaysManager', function (
 
   describe('#_fetchRecentlyActiveRelayManagers()', function () {
     let config: GSNConfig
+    let logger: LoggerInterface
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
     let relayHub: RelayHubInstance
@@ -68,10 +72,12 @@ contract('KnownRelaysManager', function (
       stakeManager = await StakeManager.new()
       relayHub = await deployHub(stakeManager.address)
       config = configureGSN({
+        logLevel: 'error',
         relayHubAddress: relayHub.address,
         relayLookupWindowBlocks
       })
-      contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
+      logger = createLogger(config.logLevel, config.hostOverride, config.customerToken, config.userIdOverride)
+      contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, config)
       await contractInteractor.init()
 
       const forwarderInstance = await Forwarder.new()
@@ -128,7 +134,7 @@ contract('KnownRelaysManager', function (
 
     it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
       async function () {
-        const knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
+        const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
         const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
         const actual = Array.from(res.values())
         assert.equal(actual.length, 4)
@@ -142,6 +148,8 @@ contract('KnownRelaysManager', function (
 
 contract('KnownRelaysManager 2', function (accounts) {
   let contractInteractor: ContractInteractor
+  let logger: LoggerInterface
+
   const transactionDetails = {
     gas: '0x10000',
     gasPrice: '0x300000',
@@ -153,7 +161,8 @@ contract('KnownRelaysManager 2', function (accounts) {
   }
 
   before(async function () {
-    contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, configureGSN({}))
+    logger = createLogger('error', '', '', '')
+    contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, configureGSN({}))
     await contractInteractor.init()
   })
 
@@ -178,9 +187,9 @@ contract('KnownRelaysManager 2', function (accounts) {
         relayOwner: accounts[1],
         ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
-      contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, config)
+      contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, config)
       await contractInteractor.init()
-      knownRelaysManager = new KnownRelaysManager(contractInteractor, config)
+      knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
       await stake(stakeManager, relayHub, accounts[1], accounts[0])
       await stake(stakeManager, relayHub, accounts[2], accounts[0])
       await stake(stakeManager, relayHub, accounts[3], accounts[0])
@@ -214,7 +223,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       const relayFilter = (registeredEventInfo: RelayRegisteredEventInfo): boolean => {
         return registeredEventInfo.relayUrl.includes('2')
       }
-      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, config, relayFilter)
+      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, config, relayFilter)
       await knownRelaysManagerWithFilter.refresh()
       const relays = knownRelaysManagerWithFilter.knownRelays[1]
       assert.equal(relays.length, 1)
@@ -236,7 +245,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       pctRelayFee: '50'
     }
 
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}))
+    const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}))
 
     describe('#_refreshFailures()', function () {
       let lastErrorTime: number
@@ -292,7 +301,7 @@ contract('KnownRelaysManager 2', function (accounts) {
         return await Promise.resolve(100)
       }
     }
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, configureGSN({}), undefined, biasedRelayScore)
+    const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), undefined, biasedRelayScore)
     before(function () {
       const activeRelays: RelayRegisteredEventInfo[][] = [[], [{
         relayManager: accounts[0],

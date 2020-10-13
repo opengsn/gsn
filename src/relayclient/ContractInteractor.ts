@@ -1,6 +1,5 @@
 import Common from 'ethereumjs-common'
 import Web3 from 'web3'
-import log from 'loglevel'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
@@ -23,10 +22,12 @@ import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
-import { event2topic } from '../common/Utils'
-import { constants } from '../common/Constants'
-import replaceErrors from '../common/ErrorReplacerJSON'
 import VersionsManager from '../common/VersionsManager'
+import replaceErrors from '../common/ErrorReplacerJSON'
+import { LoggerInterface } from '../common/LoggerInterface'
+import { constants } from '../common/Constants'
+import { event2topic } from '../common/Utils'
+import { gsnRuntimeVersion } from '../common/Version'
 import {
   BaseRelayRecipientInstance,
   IForwarderInstance,
@@ -67,8 +68,6 @@ export type Web3Provider =
   | WebsocketProvider
 
 export default class ContractInteractor {
-  private readonly VERSION = '2.0.1'
-
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
   private readonly IForwarderContract: Contract<IForwarderInstance>
@@ -88,14 +87,16 @@ export default class ContractInteractor {
   private readonly provider: Web3Provider
   private readonly config: GSNConfig
   private readonly versionManager: VersionsManager
+  private readonly logger: LoggerInterface
 
   private rawTxOptions?: TransactionOptions
   private chainId?: number
   private networkId?: number
   private networkType?: string
 
-  constructor (provider: Web3Provider, config: GSNConfig) {
-    this.versionManager = new VersionsManager(this.VERSION)
+  constructor (provider: Web3Provider, logger: LoggerInterface, config: GSNConfig) {
+    this.logger = logger
+    this.versionManager = new VersionsManager(gsnRuntimeVersion)
     this.web3 = new Web3(provider)
     this.config = config
     this.provider = provider
@@ -280,7 +281,7 @@ export default class ContractInteractor {
           gasPrice: relayRequest.relayData.gasPrice,
           gas: externalGasLimit
         })
-      log.info(res)
+      this.logger.info(res)
       return {
         returnValue: res.returnValue,
         paymasterAccepted: res.paymasterAccepted,

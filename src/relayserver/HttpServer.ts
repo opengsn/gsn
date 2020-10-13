@@ -4,13 +4,15 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import { RelayServer } from './RelayServer'
 import { Server } from 'http'
-import log from 'loglevel'
+import { LoggerInterface } from '../common/LoggerInterface'
 
 export class HttpServer {
   app: Express
   private serverInstance?: Server
+  readonly logger: LoggerInterface
 
-  constructor (private readonly port: number, readonly backend: RelayServer) {
+  constructor (private readonly port: number, readonly backend: RelayServer, logger: LoggerInterface) {
+    this.logger = logger
     this.app = express()
     this.app.use(cors())
 
@@ -40,7 +42,7 @@ export class HttpServer {
     try {
       this.backend.start()
     } catch (e) {
-      log.error('relay task error', e)
+      this.logger.error('relay task error', e)
     }
   }
 

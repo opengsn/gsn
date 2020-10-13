@@ -1,5 +1,3 @@
-import log from 'loglevel'
-
 import { addresses2topics } from '../common/Utils'
 
 import GsnTransactionDetails from './types/GsnTransactionDetails'
@@ -14,6 +12,7 @@ import ContractInteractor, {
   StakePenalized,
   StakeUnlocked
 } from './ContractInteractor'
+import { LoggerInterface } from '../common/LoggerInterface'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -45,6 +44,7 @@ export interface IKnownRelaysManager {
 
 export default class KnownRelaysManager implements IKnownRelaysManager {
   private readonly contractInteractor: ContractInteractor
+  private readonly logger: LoggerInterface
   private readonly config: GSNConfig
   private readonly relayFilter: RelayFilter
   private readonly scoreCalculator: AsyncScoreCalculator
@@ -54,8 +54,9 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
 
   public readonly knownRelays: RelayInfoUrl[][] = []
 
-  constructor (contractInteractor: ContractInteractor, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
+  constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
     this.config = config
+    this.logger = logger
     this.relayFilter = relayFilter ?? EmptyFilter
     this.scoreCalculator = scoreCalculator ?? DefaultRelayScore
     this.contractInteractor = contractInteractor
@@ -77,7 +78,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub(topics, { fromBlock: 1 }, [RelayServerRegistered])
     const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock: 1 })
 
-    log.info(`== fetchRelaysAdded: found ${relayServerRegisteredEvents.length} unique RelayAdded events`)
+    this.logger.info(`== fetchRelaysAdded: found ${relayServerRegisteredEvents.length} unique RelayAdded events`)
 
     const mergedEvents = [...relayManagerExitEvents, ...relayServerRegisteredEvents].sort((a, b) => {
       const blockNumberA = a.blockNumber
@@ -111,7 +112,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       toBlock
     })
 
-    log.info('fetchRelaysAdded: found ', `${relayEvents.length} events`)
+    this.logger.info('fetchRelaysAdded: found ', `${relayEvents.length} events`)
     const foundRelayManagers: Set<Address> = new Set()
     relayEvents.forEach((event: any) => {
       // TODO: remove relay managers who are not staked
@@ -121,7 +122,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       foundRelayManagers.add(event.returnValues.relayManager)
     })
 
-    log.info('fetchRelaysAdded: found unique relays:', foundRelayManagers)
+    this.logger.info('fetchRelaysAdded: found unique relays:', foundRelayManagers)
     this.latestScannedBlock = toBlock
     return foundRelayManagers
   }

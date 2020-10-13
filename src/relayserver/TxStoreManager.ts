@@ -1,5 +1,4 @@
 import AsyncNedb from 'nedb-async'
-import log from 'loglevel'
 import ow from 'ow'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
@@ -7,13 +6,16 @@ import { Address } from '../relayclient/types/Aliases'
 import { isSameAddress } from '../common/Utils'
 
 import { ServerAction, StoredTransaction } from './StoredTransaction'
+import { LoggerInterface } from '../common/LoggerInterface'
 
 export const TXSTORE_FILENAME = 'txstore.db'
 
 export class TxStoreManager {
   private readonly txstore: AsyncNedb<any>
+  private readonly logger: LoggerInterface
 
-  constructor ({ workdir = '/tmp/test/', inMemory = false }) {
+  constructor ({ workdir = '/tmp/test/', inMemory = false }, logger: LoggerInterface) {
+    this.logger = logger
     this.txstore = new AsyncNedb({
       filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
       autoload: true,
@@ -22,7 +24,7 @@ export class TxStoreManager {
     this.txstore.ensureIndex({ fieldName: 'txId', unique: true })
     this.txstore.ensureIndex({ fieldName: 'nonceSigner', unique: true })
 
-    log.info('Server database location:', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
+    this.logger.info('Server database location:', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
   }
 
   async putTx (tx: StoredTransaction, updateExisting: boolean = false): Promise<void> {
