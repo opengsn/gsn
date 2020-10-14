@@ -24,7 +24,8 @@ export class TxStoreManager {
     this.txstore.ensureIndex({ fieldName: 'txId', unique: true })
     this.txstore.ensureIndex({ fieldName: 'nonceSigner', unique: true })
 
-    this.logger.info('Server database location:', inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`)
+    const dbLocationStr = inMemory ? 'memory' : `${workdir}/${TXSTORE_FILENAME}`
+    this.logger.info(`Server database location: ${dbLocationStr}`)
   }
 
   async putTx (tx: StoredTransaction, updateExisting: boolean = false): Promise<void> {

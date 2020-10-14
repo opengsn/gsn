@@ -22,7 +22,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
     throw new Error(`Contracts not found: hub: ${hub} paymaster: ${paymaster} `)
   }
 
-  const logger = createLogger('debug')
+  const logger = createLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(nodeURL, logger, configureGSN({ relayHubAddress: hub }), mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()

@@ -32,7 +32,16 @@ export default class RelayedTransactionValidator {
   ): boolean {
     const transaction = new Transaction(returnedTx, this.contractInteractor.getRawTxOptions())
 
-    this.logger.info('returnedTx is', transaction.v, transaction.r, transaction.s, transaction.to, transaction.data, transaction.gasLimit, transaction.gasPrice, transaction.value)
+    this.logger.info(`returnedTx:
+    v:        ${bufferToHex(transaction.v)}
+    r:        ${bufferToHex(transaction.r)}
+    s:        ${bufferToHex(transaction.s)}
+    to:       ${bufferToHex(transaction.to)}
+    data:     ${bufferToHex(transaction.data)}
+    gasLimit: ${bufferToHex(transaction.gasLimit)}
+    gasPrice: ${bufferToHex(transaction.gasPrice)}
+    value:    ${bufferToHex(transaction.value)}
+    `)
 
     const signer = bufferToHex(transaction.getSenderAddress())
 

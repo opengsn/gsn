@@ -99,7 +99,7 @@ contract('RegistrationManager', function (accounts) {
         gasPriceFactor: 1,
         checkInterval: 10
       }
-      const logger = createLogger('error', '', '', '')
+      const logger = createLogger('error', '', '')
       const managerKeyManager = new KeyManager(1, serverWorkdirs.managerWorkdir)
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
       const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)

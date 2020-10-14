@@ -88,7 +88,7 @@ export async function startRelay (
     proc.on('exit', doaListener.bind(proc))
   })
 
-  const logger = createLogger('debug', '', '', '')
+  const logger = createLogger('error', '', '')
   let res: any
   const http = new HttpClient(new HttpWrapper(), logger, configureGSN({}))
   let count1 = 3

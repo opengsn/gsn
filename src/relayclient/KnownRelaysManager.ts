@@ -112,7 +112,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       toBlock
     })
 
-    this.logger.info('fetchRelaysAdded: found ', `${relayEvents.length} events`)
+    this.logger.info(`fetchRelaysAdded: found ${relayEvents.length} events`)
     const foundRelayManagers: Set<Address> = new Set()
     relayEvents.forEach((event: any) => {
       // TODO: remove relay managers who are not staked
@@ -122,7 +122,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       foundRelayManagers.add(event.returnValues.relayManager)
     })
 
-    this.logger.info('fetchRelaysAdded: found unique relays:', foundRelayManagers)
+    this.logger.info(`fetchRelaysAdded: found unique relays: ${JSON.stringify(Array.from(foundRelayManagers.values()))}`)
     this.latestScannedBlock = toBlock
     return foundRelayManagers
   }

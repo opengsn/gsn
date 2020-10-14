@@ -12,7 +12,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
   let provider: NetworkSimulatingProvider
 
   before(async function () {
-    logger = createLogger('error', '', '', '')
+    logger = createLogger('error', '', '')
     provider = new NetworkSimulatingProvider(web3.currentProvider as HttpProvider)
     const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
       const contractInteractor = new ContractInteractor(provider, logger, configureGSN(partialConfig))

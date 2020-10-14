@@ -1,7 +1,7 @@
-import Cookies from 'js-cookie'
 import log from 'loglevel'
 import winston, { transport } from 'winston'
 import { HttpTransportOptions } from 'winston/lib/winston/transports'
+import { URL } from 'url'
 
 import { NpmLogLevel } from './types/Aliases'
 import { gsnRuntimeVersion } from '../common/Version'
@@ -20,22 +20,24 @@ const isBrowser = typeof window !== 'undefined'
 
 function createUserId (): string {
   const userId = `${userIdKey}${Date.now()}`
-  Cookies.set(userIdKey, userId)
+  window.localStorage.set(userIdKey, userId)
   return userId
 }
 
-export function createLogger (level: NpmLogLevel, customerToken: string, hostOverride: string, userIdOverride: string): LoggerInterface {
-  if (customerToken.length === 0) {
+export function createLogger (level: NpmLogLevel, loggerUrl: string, userIdOverride: string): LoggerInterface {
+  if (loggerUrl.length === 0 || window == null || window.localStorage == null) {
     log.setLevel(level)
     return log
   }
-  const host = hostOverride.length === 0 ? 'logs-01.loggly.com' : hostOverride
+  const url = new URL(loggerUrl)
+  const host = url.host
+  const path = url.pathname
+  const headers = { 'content-type': 'text/plain' }
   const httpTransportOptions: HttpTransportOptions = {
     format,
     host,
-    path: `/inputs/${customerToken}/tag/http/`,
-    headers:
-      { 'content-type': 'text/plain' }
+    path,
+    headers
   }
 
   const transports: transport[] = [
@@ -46,7 +48,7 @@ export function createLogger (level: NpmLogLevel, customerToken: string, hostOve
   if (userIdOverride.length !== 0) {
     userId = userIdOverride
   } else {
-    userId = Cookies.get(userIdKey) ?? createUserId()
+    userId = window.localStorage.get(userIdKey) ?? createUserId()
   }
   const logger = winston.createLogger({
     level,

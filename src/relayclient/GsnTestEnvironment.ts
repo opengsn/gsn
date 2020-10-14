@@ -40,7 +40,7 @@ class GsnTestEnvironmentClass {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
-    const logger = createLogger('error', '', '', '')
+    const logger = createLogger('error', '', '')
     const commandsLogic = new CommandsLogic(_host, logger, configureGSN({}))
     const from = await commandsLogic.findWealthyAccount()
     const deploymentResult = await commandsLogic.deployGsnContracts({
@@ -136,7 +136,7 @@ class GsnTestEnvironmentClass {
       return
     }
 
-    const logger = createLogger('error', '', '', '')
+    const logger = createLogger('error', '', '')
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)

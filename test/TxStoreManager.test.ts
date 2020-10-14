@@ -24,7 +24,7 @@ contract('TxStoreManager', function (accounts) {
   let tx3: StoredTransaction
 
   before('create txstore', async function () {
-    const logger = createLogger('error', '', '', '')
+    const logger = createLogger('error', '', '')
     cleanFolder()
     txmanager = new TxStoreManager({ workdir }, logger)
     await txmanager.clearAll()

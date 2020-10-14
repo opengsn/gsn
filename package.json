@@ -83,7 +83,6 @@
     "ethereumjs-wallet": "0.6.3",
     "ethval": "^2.1.1",
     "express": "^4.17.1",
-    "js-cookie": "^2.2.1",
     "jsonrpc-lite": "^2.2.0",
     "lodash": "^4.17.20",
     "loglevel": "^1.7.0",

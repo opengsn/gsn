@@ -47,7 +47,7 @@ contract('ContractInteractor', function () {
 
     before(async function () {
       provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
-      const logger = createLogger('error', '', '', '')
+      const logger = createLogger('error', '', '')
       contractInteractor = new ContractInteractor(provider, logger, configureGSN({}))
       const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
       const transaction = new Transaction({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })

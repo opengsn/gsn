@@ -244,7 +244,7 @@ export class RelayClient {
       if (error?.message == null || error.message.indexOf('timeout') !== -1) {
         this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       }
-      this.logger.info('relayTransaction: ', JSON.stringify(httpRequest))
+      this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error }
     }
     const transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())

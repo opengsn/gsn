@@ -247,7 +247,7 @@ export class RegistrationManager {
   }
 
   async _handleStakeWithdrawnEvent (dlog: EventData, currentBlock: number): Promise<PrefixedHexString[]> {
-    this.logger.warn('Handling StakeWithdrawn event:', dlog)
+    this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(dlog)}`)
     return await this.withdrawAllFunds(true, currentBlock)
   }
 

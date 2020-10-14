@@ -29,7 +29,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
   const network: string = commander.network
   const nodeURL = getNetworkUrl(network)
 
-  const logger = createLogger('debug')
+  const logger = createLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? defaultEnvironment.relayHubConfiguration
   const logic = new CommandsLogic(nodeURL, logger, configureGSN({}), mnemonic)

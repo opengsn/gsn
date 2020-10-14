@@ -134,8 +134,9 @@ export class RelayProvider implements HttpProvider {
         }
       }, (reason: any) => {
         const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
-        this.logger.info('Rejected relayTransaction call', reason)
-        callback(new Error(`Rejected relayTransaction call - Reason: ${reasonStr}`))
+        const msg = `Rejected relayTransaction call with reason: ${reasonStr}`
+        this.logger.info(msg)
+        callback(new Error(msg))
       })
   }
 

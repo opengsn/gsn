@@ -42,9 +42,8 @@ const defaultGsnConfig: GSNConfig = {
   paymasterAddress: constants.ZERO_ADDRESS,
   forwarderAddress: constants.ZERO_ADDRESS,
   logLevel: 'debug',
-  customerToken: '',
-  hostOverride: '',
-  userIdOverride: '',
+  loggerUrl: '',
+  loggerUserIdOverride: '',
   clientId: '1'
 }
 
@@ -76,7 +75,7 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
   }
 
   const tmpConfig = Object.assign({}, partialConfig, defaultGsnConfig)
-  const logger = createLogger(tmpConfig.logLevel, tmpConfig.customerToken, tmpConfig.hostOverride, tmpConfig.userIdOverride)
+  const logger = createLogger(tmpConfig.logLevel, tmpConfig.loggerUrl, tmpConfig.loggerUserIdOverride)
   const contractInteractor = new ContractInteractor(provider, logger, defaultGsnConfig)
   const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
 
@@ -123,9 +122,8 @@ export interface GSNConfig {
   relayTimeoutGrace: number
   sliceSize: number
   logLevel: NpmLogLevel
-  customerToken: string
-  hostOverride: string
-  userIdOverride: string
+  loggerUrl: string
+  loggerUserIdOverride: string
   gasPriceFactorPercent: number
   minGasPrice: number
   maxRelayNonceGap: number
@@ -151,10 +149,11 @@ export interface GSNDependencies {
 }
 
 export function getDependencies (config: GSNConfig, provider?: HttpProvider, overrideDependencies?: Partial<GSNDependencies>): GSNDependencies {
+  const logger = overrideDependencies?.logger ?? createLogger(config.logLevel, config.loggerUrl, config.loggerUserIdOverride)
   let contractInteractor = overrideDependencies?.contractInteractor
+
   if (contractInteractor == null) {
     if (provider != null) {
-      const logger = overrideDependencies?.logger ?? createLogger(config.logLevel, config.customerToken, config.hostOverride, config.userIdOverride)
       contractInteractor = new ContractInteractor(provider, logger, config)
     } else {
       throw new Error('either contract interactor or web3 provider must be non-null')
@@ -170,7 +169,6 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
     }
   }
 
-  const logger = overrideDependencies?.logger ?? createLogger(config.logLevel, config.customerToken, config.hostOverride, config.userIdOverride)
   const httpClient = overrideDependencies?.httpClient ?? new HttpClient(new HttpWrapper(), logger, config)
   const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
   const relayFilter = overrideDependencies?.relayFilter ?? EmptyFilter

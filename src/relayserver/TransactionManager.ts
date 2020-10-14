@@ -102,7 +102,8 @@ data         | 0x${transaction.data.toString('hex')}
       const estimateGas = await method.estimateGas({ from })
       return parseInt(estimateGas)
     } catch (e) {
-      this.logger.error(`Failed to estimate gas for method ${methodName}\n. Using default ${this.config.defaultGasLimit}`, e.message)
+      const error = e as Error
+      this.logger.error(`Failed to estimate gas for method ${methodName}\n. Using default ${this.config.defaultGasLimit}. Error: ${error.message} ${error.stack}`)
     }
     return this.config.defaultGasLimit
   }
@@ -209,7 +210,7 @@ data         | 0x${transaction.data.toString('hex')}
   async pollNonce (signer: Address): Promise<number> {
     const nonce = await this.contractInteractor.getTransactionCount(signer, 'pending')
     if (nonce > this.nonces[signer]) {
-      this.logger.warn('NONCE FIX for signer=', signer, ': nonce=', nonce, this.nonces[signer])
+      this.logger.warn(`NONCE FIX for signer: ${signer} | new nonce: ${nonce} | wrong nonce: ${this.nonces[signer]}`)
       this.nonces[signer] = nonce
     }
     return this.nonces[signer]

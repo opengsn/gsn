@@ -80,8 +80,8 @@ export class RelayServer extends EventEmitter {
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), this.logger)
     this.printServerAddresses()
-    this.logger.warn('RelayServer version', gsnRuntimeVersion)
-    this.logger.info('Using server configuration:\n', this.config)
+    this.logger.warn(`RelayServer version', ${gsnRuntimeVersion}`)
+    this.logger.info(`Using server configuration:\n ${JSON.stringify(this.config)}`)
   }
 
   printServerAddresses (): void {
@@ -236,7 +236,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   async createRelayTransaction (req: RelayTransactionRequest): Promise<PrefixedHexString> {
-    this.logger.debug('dump request params', arguments[0])
+    this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
     if (!this.isReady()) {
       throw new Error('relay not ready')
     }
@@ -249,7 +249,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasLimits(req)
     await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
     // Send relayed transaction
-    this.logger.debug('maxPossibleGas is', maxPossibleGas)
+    this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
     const method = this.relayHubContract.contract.methods.relayCall(
       acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
@@ -279,7 +279,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
     let workerTimeout: Timeout
     if (!this.config.devMode) {
       workerTimeout = setTimeout(() => {
-        this.logger.warn(chalk.bgRedBright('Relay state: Timed-out after %d'), Date.now() - now)
+        const timedOut = Date.now() - now
+        this.logger.warn(chalk.bgRedBright(`Relay state: Timed-out after ${timedOut}`))
 
         this.lastSuccessfulRounds = 0
       }, this.config.readyTimeout)
@@ -294,7 +295,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
         })
       .catch((e) => {
         this.emit('error', e)
-        this.logger.error('error in worker:', e)
+        const error = e as Error
+        this.logger.error(`error in worker: ${error.message} ${error.stack}`)
         this.lastSuccessfulRounds = 0
       })
       .finally(() => {
@@ -559,7 +561,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     for (const event of hubEventsSinceLastScan) {
       switch (event.event) {
         case TransactionRejectedByPaymaster:
-          this.logger.debug('handle TransactionRejectedByPaymaster event', event)
+          this.logger.debug(`handle TransactionRejectedByPaymaster event: ${JSON.stringify(event)}`)
           await this._handleTransactionRejectedByPaymasterEvent(blockNumber)
           break
       }
@@ -644,7 +646,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.isReady() !== isReady) {
       if (isReady) {
         if (this.lastSuccessfulRounds < this.config.successfulRoundsForReady) {
-          this.logger.warn(chalk.yellow('Relayer state: almost READY (in %d rounds)'), this.config.successfulRoundsForReady - this.lastSuccessfulRounds)
+          const roundsUntilReady = this.config.successfulRoundsForReady - this.lastSuccessfulRounds
+          this.logger.warn(chalk.yellow(`Relayer state: almost READY (in ${roundsUntilReady} rounds)`))
         } else {
           this.logger.warn(chalk.greenBright('Relayer state: READY'))
         }

@@ -20,7 +20,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
   let logger: LoggerInterface
 
   before(async function () {
-    logger = createLogger('error', '', '', '')
+    logger = createLogger('error', '', '')
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
     const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
       const contractInteractor = new ContractInteractor(provider, logger, configureGSN(partialConfig))

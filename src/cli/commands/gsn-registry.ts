@@ -55,7 +55,7 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
 (async () => {
   const nodeURL = getNetworkUrl(commander.network)
 
-  const logger = createLogger('debug')
+  const logger = createLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(nodeURL, logger, configureGSN({}), mnemonic)
   const provider = (logic as any).web3.currentProvider

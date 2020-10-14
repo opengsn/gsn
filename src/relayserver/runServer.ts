@@ -36,7 +36,7 @@ async function run (): Promise<void> {
     }
   }
 
-  const logger = createLogger(config.logLevel, config.hostOverride, config.customerToken, config.userId)
+  const logger = createLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir }, logger)

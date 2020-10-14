@@ -109,7 +109,7 @@ contract('RelayClient', function (accounts) {
     gsnConfig = {
       relayHubAddress: relayHub.address
     }
-    logger = createLogger('error', '', '', '')
+    logger = createLogger('error', '', '')
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
     gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess

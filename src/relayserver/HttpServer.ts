@@ -42,7 +42,8 @@ export class HttpServer {
     try {
       this.backend.start()
     } catch (e) {
-      this.logger.error('relay task error', e)
+      const error = e as Error
+      this.logger.error(`relay task error: ${error.message}\n${error.stack}`)
     }
   }
 

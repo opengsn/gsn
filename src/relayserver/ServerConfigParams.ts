@@ -36,9 +36,8 @@ export interface ServerConfigParams {
   trustedPaymasters: Address[]
   gasPriceFactor: number
   logLevel: NpmLogLevel
-  customerToken: string
-  hostOverride: string
-  userId: string
+  loggerUrl: string
+  loggerUserId: string
 
   workerMinBalance: number
   workerTargetBalance: number
@@ -83,9 +82,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   readyTimeout: 30000,
   devMode: false,
   logLevel: 'debug',
-  customerToken: '',
-  hostOverride: '',
-  userId: '',
+  loggerUrl: '',
+  loggerUserId: '',
   baseRelayFee: '0',
   pctRelayFee: 0,
   url: 'http://localhost:8090',
@@ -219,7 +217,7 @@ export function parseServerConfig (args: string[], env: any): any {
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
-  const logger = createLogger(config.logLevel ?? 'debug', config.customerToken ?? '', config.hostOverride ?? '', config.userId ?? '')
+  const logger = createLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
   const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {

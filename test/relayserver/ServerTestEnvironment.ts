@@ -118,7 +118,7 @@ export class ServerTestEnvironment {
       relayHubAddress: this.relayHub.address
     }
     if (contractFactory == null) {
-      const logger = createLogger('error', '', '', '')
+      const logger = createLogger('error', '', '')
       this.contractInteractor = new ContractInteractor(this.provider, logger, configureGSN(shared))
       await this.contractInteractor.init()
     } else {
@@ -168,7 +168,7 @@ export class ServerTestEnvironment {
       relayHubAddress: this.relayHub.address,
       checkInterval: 10
     }
-    const logger = createLogger('error', '', '', '')
+    const logger = createLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
     const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir }, logger)

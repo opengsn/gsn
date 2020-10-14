@@ -21,7 +21,7 @@ export default class HttpClient {
   async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
     const paymasterSuffix = paymaster == null ? '' : '?paymaster=' + paymaster
     const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix)
-    this.logger.info('pingResponse', pingResponse)
+    this.logger.info(`pingResponse: ${JSON.stringify(pingResponse)}`)
     if (pingResponse == null) {
       throw new Error('Relay responded without a body')
     }
@@ -30,7 +30,7 @@ export default class HttpClient {
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
     const { signedTx, error }: { signedTx: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
-    this.logger.info('relayTransaction response:', signedTx, error)
+    this.logger.info(`relayTransaction response: ${signedTx}, error: ${error}`)
     if (error != null) {
       throw new Error(`Got error response from relay: ${error}`)
     }
