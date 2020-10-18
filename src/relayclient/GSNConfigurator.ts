@@ -20,7 +20,7 @@ import {
   RelayFilter
 } from './types/Aliases'
 import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
-import { createLogger } from './ClientWinstonLogger'
+import { createClientLogger } from './ClientWinstonLogger'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -75,7 +75,7 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
   }
 
   const tmpConfig = Object.assign({}, partialConfig, defaultGsnConfig)
-  const logger = createLogger(tmpConfig.logLevel, tmpConfig.loggerUrl, tmpConfig.loggerUserIdOverride)
+  const logger = createClientLogger(tmpConfig.logLevel, tmpConfig.loggerUrl, tmpConfig.loggerUserIdOverride)
   const contractInteractor = new ContractInteractor(provider, logger, defaultGsnConfig)
   const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
 
@@ -149,7 +149,7 @@ export interface GSNDependencies {
 }
 
 export function getDependencies (config: GSNConfig, provider?: HttpProvider, overrideDependencies?: Partial<GSNDependencies>): GSNDependencies {
-  const logger = overrideDependencies?.logger ?? createLogger(config.logLevel, config.loggerUrl, config.loggerUserIdOverride)
+  const logger = overrideDependencies?.logger ?? createClientLogger(config.logLevel, config.loggerUrl, config.loggerUserIdOverride)
   let contractInteractor = overrideDependencies?.contractInteractor
 
   if (contractInteractor == null) {

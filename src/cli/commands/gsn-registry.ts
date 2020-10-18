@@ -9,7 +9,7 @@ import {
 } from '../utils'
 import { VersionInfo, VersionRegistry } from '../../common/VersionRegistry'
 import { toWei } from 'web3-utils'
-import { createLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '../CommandsWinstonLogger'
 
 function error (s: string): never {
   console.error(s)
@@ -55,7 +55,7 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
 (async () => {
   const nodeURL = getNetworkUrl(commander.network)
 
-  const logger = createLogger(commander.loglevel)
+  const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(nodeURL, logger, configureGSN({}), mnemonic)
   const provider = (logic as any).web3.currentProvider

@@ -8,7 +8,7 @@ import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { createLogger } from './ServerWinstonLogger'
+import { createServerLogger } from './ServerWinstonLogger'
 
 function error (err: string): never {
   console.error(err)
@@ -36,7 +36,7 @@ async function run (): Promise<void> {
     }
   }
 
-  const logger = createLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
+  const logger = createServerLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir }, logger)

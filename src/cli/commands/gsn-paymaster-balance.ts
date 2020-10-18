@@ -2,7 +2,7 @@ import Web3 from 'web3'
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
-import { createLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '../CommandsWinstonLogger'
 
 const commander = gsnCommander(['h', 'n', 'm'])
   .option('--paymaster <address>', 'address of the paymaster contract')
@@ -19,7 +19,7 @@ const commander = gsnCommander(['h', 'n', 'm'])
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     throw new Error(`Contracts not found: hub: ${hub} paymaster: ${paymaster} `)
   }
-  const logger = createLogger(commander.loglevel)
+  const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(nodeURL, logger, configureGSN({ relayHubAddress: hub }), mnemonic)
   const balance = await logic.getPaymasterBalance(paymaster)

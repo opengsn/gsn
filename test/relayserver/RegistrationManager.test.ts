@@ -16,7 +16,7 @@ import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
-import { createLogger } from '../../src/relayserver/ServerWinstonLogger'
+import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 
 const { oneEther } = constants
 
@@ -99,7 +99,7 @@ contract('RegistrationManager', function (accounts) {
         gasPriceFactor: 1,
         checkInterval: 10
       }
-      const logger = createLogger('error', '', '')
+      const logger = createServerLogger('error', '', '')
       const managerKeyManager = new KeyManager(1, serverWorkdirs.managerWorkdir)
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
       const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)

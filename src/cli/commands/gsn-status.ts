@@ -7,7 +7,7 @@ import HttpWrapper from '../../relayclient/HttpWrapper'
 
 import { getNetworkUrl, getRelayHubAddress, gsnCommander } from '../utils'
 import StatusLogic from '../StatusLogic'
-import { createLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '../CommandsWinstonLogger'
 
 const commander = gsnCommander(['n', 'h'])
   .parse(process.argv);
@@ -28,7 +28,7 @@ const commander = gsnCommander(['n', 'h'])
   }
 
   const config = configureGSN({ relayHubAddress })
-  const logger = createLogger(commander.loglevel)
+  const logger = createCommandsLogger(commander.loglevel)
   const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host), logger, config)
   await contractInteractor.init()
   const httpClient = new HttpClient(new HttpWrapper({ timeout: statusConfig.getAddressTimeout }), logger, config)

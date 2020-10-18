@@ -37,7 +37,7 @@ import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { RelayHubConfiguration } from '../../src/relayclient/types/RelayHubConfiguration'
-import { createLogger } from '../../src/relayserver/ServerWinstonLogger'
+import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -118,7 +118,7 @@ export class ServerTestEnvironment {
       relayHubAddress: this.relayHub.address
     }
     if (contractFactory == null) {
-      const logger = createLogger('error', '', '')
+      const logger = createServerLogger('error', '', '')
       this.contractInteractor = new ContractInteractor(this.provider, logger, configureGSN(shared))
       await this.contractInteractor.init()
     } else {
@@ -168,7 +168,7 @@ export class ServerTestEnvironment {
       relayHubAddress: this.relayHub.address,
       checkInterval: 10
     }
-    const logger = createLogger('error', '', '')
+    const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
     const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir }, logger)

@@ -13,7 +13,7 @@ import { defaultEnvironment } from '../src/common/Environments'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { sleep } from '../src/common/Utils'
 import { RelayHubConfiguration } from '../src/relayclient/types/RelayHubConfiguration'
-import { createLogger } from '../src/relayserver/ServerWinstonLogger'
+import { createServerLogger } from '../src/relayserver/ServerWinstonLogger'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -88,7 +88,7 @@ export async function startRelay (
     proc.on('exit', doaListener.bind(proc))
   })
 
-  const logger = createLogger('error', '', '')
+  const logger = createServerLogger('error', '', '')
   let res: any
   const http = new HttpClient(new HttpWrapper(), logger, configureGSN({}))
   let count1 = 3

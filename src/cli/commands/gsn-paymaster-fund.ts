@@ -2,7 +2,7 @@ import { ether } from '../../common/Utils'
 import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
-import { createLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '../CommandsWinstonLogger'
 
 const commander = gsnCommander(['n', 'f', 'h', 'm'])
   .option('--paymaster <address>',
@@ -22,7 +22,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
     throw new Error(`Contracts not found: hub: ${hub} paymaster: ${paymaster} `)
   }
 
-  const logger = createLogger(commander.loglevel)
+  const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(nodeURL, logger, configureGSN({ relayHubAddress: hub }), mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()

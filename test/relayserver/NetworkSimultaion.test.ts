@@ -3,7 +3,7 @@ import { NetworkSimulatingProvider } from '../../src/common/dev/NetworkSimulatin
 import { HttpProvider } from 'web3-core'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { createLogger } from '../../src/relayclient/ClientWinstonLogger'
+import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 contract('Network Simulation for Relay Server', function (accounts) {
@@ -12,7 +12,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
   let provider: NetworkSimulatingProvider
 
   before(async function () {
-    logger = createLogger('error', '', '')
+    logger = createClientLogger('error', '', '')
     provider = new NetworkSimulatingProvider(web3.currentProvider as HttpProvider)
     const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
       const contractInteractor = new ContractInteractor(provider, logger, configureGSN(partialConfig))

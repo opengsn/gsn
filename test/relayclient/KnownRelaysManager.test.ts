@@ -17,7 +17,7 @@ import { prepareTransaction } from './RelayProvider.test'
 
 import { LoggerInterface } from '../../src/common/LoggerInterface'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
-import { createLogger } from '../../src/relayclient/ClientWinstonLogger'
+import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -76,7 +76,7 @@ contract('KnownRelaysManager', function (
         relayHubAddress: relayHub.address,
         relayLookupWindowBlocks
       })
-      logger = createLogger(config.logLevel, config.loggerUrl, config.loggerUserIdOverride)
+      logger = createClientLogger(config.logLevel, config.loggerUrl, config.loggerUserIdOverride)
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, config)
       await contractInteractor.init()
 
@@ -161,7 +161,7 @@ contract('KnownRelaysManager 2', function (accounts) {
   }
 
   before(async function () {
-    logger = createLogger('error', '', '')
+    logger = createClientLogger('error', '', '')
     contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, configureGSN({}))
     await contractInteractor.init()
   })

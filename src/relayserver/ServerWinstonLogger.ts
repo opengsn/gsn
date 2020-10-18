@@ -7,7 +7,6 @@ import { gsnRuntimeVersion } from '../common/Version'
 import { NpmLogLevel } from '../relayclient/types/Aliases'
 
 const service = 'gsn-server'
-const filename = 'combined.log'
 
 const format = winston.format.combine(
   winston.format.uncolorize(),
@@ -21,19 +20,21 @@ const consoleOptions: ConsoleTransportOptions = {
   )
 }
 
-export function createLogger (level: NpmLogLevel, loggerUrl: string, userId: string): Logger {
+export function createServerLogger (level: NpmLogLevel, loggerUrl: string, userId: string): Logger {
   const transports: transport[] = [
-    new winston.transports.Console(consoleOptions),
-    new winston.transports.File({ format, filename })
+    new winston.transports.Console(consoleOptions)
+    // new winston.transports.File({ format, filename })
   ]
   let isCollectingLogs = false
   if (loggerUrl.length !== 0 && userId.length !== 0) {
     const url = new URL(loggerUrl)
     const host = url.host
     const path = url.pathname
+    const ssl = url.protocol === 'https:'
     const headers = { 'content-type': 'text/plain' }
     isCollectingLogs = true
     const httpTransportOptions: HttpTransportOptions = {
+      ssl,
       format,
       host,
       path,
@@ -46,7 +47,7 @@ export function createLogger (level: NpmLogLevel, loggerUrl: string, userId: str
     defaultMeta: {
       version: gsnRuntimeVersion,
       service,
-      userId: userId ?? ''
+      userId: userId
     },
     transports
   })

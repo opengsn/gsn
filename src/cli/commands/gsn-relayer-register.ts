@@ -4,7 +4,7 @@ import CommandsLogic from '../CommandsLogic'
 import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
 import { toWei } from 'web3-utils'
-import { createLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '../CommandsWinstonLogger'
 
 const commander = gsnCommander(['n', 'f', 'm', 'g'])
   .option('--relayUrl <url>', 'url to advertise the relayer', 'http://localhost:8090')
@@ -22,7 +22,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
 (async () => {
   const host = getNetworkUrl(commander.network)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const logger = createLogger(commander.loglevel)
+  const logger = createCommandsLogger(commander.loglevel)
   const logic = new CommandsLogic(host, logger, configureGSN({}), mnemonic)
   const registerOptions = {
     from: commander.from ?? await logic.findWealthyAccount(),

@@ -37,7 +37,7 @@ import { Server } from 'http'
 import HttpClient from '../../src/relayclient/HttpClient'
 import HttpWrapper from '../../src/relayclient/HttpWrapper'
 import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
-import { createLogger } from '../../src/relayclient/ClientWinstonLogger'
+import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -109,7 +109,7 @@ contract('RelayClient', function (accounts) {
     gsnConfig = {
       relayHubAddress: relayHub.address
     }
-    logger = createLogger('error', '', '')
+    logger = createClientLogger('error', '', '')
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
     gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess

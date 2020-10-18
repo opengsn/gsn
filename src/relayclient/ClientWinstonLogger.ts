@@ -14,26 +14,31 @@ const format = winston.format.combine(
 )
 
 const service = 'gsn-client'
-const userIdKey = 'gsn-client-user-id'
+const userIdKey = 'gsnuser'
 
 const isBrowser = typeof window !== 'undefined'
 
-function createUserId (): string {
-  const userId = `${userIdKey}${Date.now()}`
-  window.localStorage.set(userIdKey, userId)
+function getOrCreateUserId (): string {
+  let userId = window.localStorage.get(userIdKey)
+  if (userId == null) {
+    userId = `${userIdKey}${Date.now()}`
+    window.localStorage.set(userIdKey, userId)
+  }
   return userId
 }
 
-export function createLogger (level: NpmLogLevel, loggerUrl: string, userIdOverride: string): LoggerInterface {
-  if (loggerUrl.length === 0 || window == null || window.localStorage == null) {
+export function createClientLogger (level: NpmLogLevel, loggerUrl: string, userIdOverride: string): LoggerInterface {
+  if (loggerUrl.length === 0 || typeof window === 'undefined' || window.localStorage == null) {
     log.setLevel(level)
     return log
   }
   const url = new URL(loggerUrl)
   const host = url.host
   const path = url.pathname
+  const ssl = url.protocol === 'https:'
   const headers = { 'content-type': 'text/plain' }
   const httpTransportOptions: HttpTransportOptions = {
+    ssl,
     format,
     host,
     path,
@@ -48,7 +53,7 @@ export function createLogger (level: NpmLogLevel, loggerUrl: string, userIdOverr
   if (userIdOverride.length !== 0) {
     userId = userIdOverride
   } else {
-    userId = window.localStorage.get(userIdKey) ?? createUserId()
+    userId = getOrCreateUserId()
   }
   const logger = winston.createLogger({
     level,

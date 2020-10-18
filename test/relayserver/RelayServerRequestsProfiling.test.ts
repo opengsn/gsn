@@ -5,7 +5,7 @@ import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { createLogger } from '../../src/relayserver/ServerWinstonLogger'
+import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
@@ -20,7 +20,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
   let logger: LoggerInterface
 
   before(async function () {
-    logger = createLogger('error', '', '')
+    logger = createServerLogger('error', '', '')
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
     const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
       const contractInteractor = new ContractInteractor(provider, logger, configureGSN(partialConfig))

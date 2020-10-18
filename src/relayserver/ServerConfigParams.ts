@@ -8,7 +8,7 @@ import { constants } from '../common/Constants'
 import { Address, NpmLogLevel } from '../relayclient/types/Aliases'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
-import { createLogger } from './ServerWinstonLogger'
+import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '../common/LoggerInterface'
 
 require('source-map-support').install({ errorFormatterForce: true })
@@ -217,7 +217,7 @@ export function parseServerConfig (args: string[], env: any): any {
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
-  const logger = createLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
+  const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
   const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {

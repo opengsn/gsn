@@ -15,7 +15,7 @@ import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
-import { createLogger } from '../relayserver/ServerWinstonLogger'
+import { createServerLogger } from '../relayserver/ServerWinstonLogger'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -40,7 +40,7 @@ class GsnTestEnvironmentClass {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
-    const logger = createLogger('error', '', '')
+    const logger = createServerLogger('error', '', '')
     const commandsLogic = new CommandsLogic(_host, logger, configureGSN({}))
     const from = await commandsLogic.findWealthyAccount()
     const deploymentResult = await commandsLogic.deployGsnContracts({
@@ -136,7 +136,7 @@ class GsnTestEnvironmentClass {
       return
     }
 
-    const logger = createLogger('error', '', '')
+    const logger = createServerLogger('error', '', '')
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
