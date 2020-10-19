@@ -1,7 +1,7 @@
 import log from 'loglevel'
 import winston, { transport } from 'winston'
 import { HttpTransportOptions } from 'winston/lib/winston/transports'
-import { URL } from 'url'
+import { parse} from 'native-url'
 
 import { NpmLogLevel } from './types/Aliases'
 import { gsnRuntimeVersion } from '../common/Version'
@@ -19,10 +19,10 @@ const userIdKey = 'gsnuser'
 const isBrowser = typeof window !== 'undefined'
 
 function getOrCreateUserId (): string {
-  let userId = window.localStorage.get(userIdKey)
+  let userId = window.localStorage[userIdKey]
   if (userId == null) {
     userId = `${userIdKey}${Date.now()}`
-    window.localStorage.set(userIdKey, userId)
+    window.localStorage[userIdKey]= userId
   }
   return userId
 }
@@ -32,7 +32,8 @@ export function createClientLogger (level: NpmLogLevel, loggerUrl: string, userI
     log.setLevel(level)
     return log
   }
-  const url = new URL(loggerUrl)
+
+  const url = parse(loggerUrl)
   const host = url.host
   const path = url.pathname
   const ssl = url.protocol === 'https:'
