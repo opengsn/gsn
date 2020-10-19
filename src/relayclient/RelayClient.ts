@@ -27,6 +27,7 @@ import {
   GsnDoneRefreshRelaysEvent,
   GsnRefreshRelaysEvent, GsnRelayerResponseEvent, GsnSendToRelayerEvent, GsnSignRequestEvent, GsnValidateRequestEvent
 } from './GsnEvents'
+import { Mutex } from 'async-mutex'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -69,6 +70,7 @@ export class RelayClient {
   public readonly accountManager: AccountManager
   private initialized = false
   readonly logger: LoggerInterface
+  private readonly initMutex = new Mutex()
 
   /**
    * create a RelayClient library object, to force contracts to go through a relay.
@@ -162,15 +164,25 @@ export class RelayClient {
     return false
   }
 
-  async _init (): Promise<void> {
-    if (this.initialized) { return }
-    this.emit(new GsnInitEvent())
-    await this.contractInteractor.init()
-    this.initialized = true
+  async init (): Promise<this> {
+    await this.initMutex.runExclusive(async () => {
+      if (this.initialized) {
+        return this
+      }
+      this.emit(new GsnInitEvent())
+      await this.contractInteractor.init()
+      this.initialized = true
+    })
+    return this
   }
 
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
-    await this._init()
+    if (!this.initialized) {
+      if (!this.initMutex.isLocked()) {
+        this._warn('better call RelayClient.init() in advance (to make first request faster)')
+      }
+      await this.init()
+    }
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
     await this.knownRelaysManager.refresh()
@@ -206,6 +218,10 @@ export class RelayClient {
     }
   }
 
+  _warn (msg: string): void {
+    this.logger.warn(msg)
+  }
+
   async _calculateGasPrice (): Promise<PrefixedHexString> {
     const pct = this.config.gasPriceFactorPercent
     const networkGasPrice = await this.contractInteractor.getGasPrice()
@@ -226,7 +242,7 @@ export class RelayClient {
 
     this.emit(new GsnValidateRequestEvent())
 
-    const acceptRelayCallResult = await this.contractInteractor.validateAcceptRelayCall(maxAcceptanceBudget, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData)
+    const acceptRelayCallResult = await this.contractInteractor.validateRelayCall(maxAcceptanceBudget, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {

@@ -3,7 +3,7 @@ import Web3 from 'web3'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
-import { toBN } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 import {
   BlockNumber,
   HttpProvider,
@@ -14,6 +14,7 @@ import {
   WebsocketProvider
 } from 'web3-core'
 
+import abi from 'web3-eth-abi'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import paymasterAbi from '../common/interfaces/IPaymaster.json'
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
@@ -26,7 +27,7 @@ import VersionsManager from '../common/VersionsManager'
 import replaceErrors from '../common/ErrorReplacerJSON'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { constants } from '../common/Constants'
-import { event2topic } from '../common/Utils'
+import { decodeRevertReason, event2topic } from '../common/Utils'
 import { gsnRuntimeVersion } from '../common/Version'
 import {
   BaseRelayRecipientInstance,
@@ -260,7 +261,14 @@ export default class ContractInteractor {
     return latestBlock.gasLimit
   }
 
-  async validateAcceptRelayCall (
+  /**
+   * make a view call to relayCall(), just like the way it will be called by the relayer.
+   * returns:
+   * - paymasterAccepted - true if accepted
+   * - reverted - true if relayCall was reverted.
+   * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
+   */
+  async validateRelayCall (
     paymasterMaxAcceptanceBudget: number,
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
@@ -268,23 +276,50 @@ export default class ContractInteractor {
     const relayHub = this.relayHubInstance
     try {
       const externalGasLimit = await this._getBlockGasLimit()
-
-      const res = await relayHub.contract.methods.relayCall(
+      const encodedRelayCall = relayHub.contract.methods.relayCall(
         paymasterMaxAcceptanceBudget,
         relayRequest,
         signature,
         approvalData,
         externalGasLimit
-      )
-        .call({
-          from: relayRequest.relayData.relayWorker,
-          gasPrice: relayRequest.relayData.gasPrice,
-          gas: externalGasLimit
+      ).encodeABI()
+      const res: string = await new Promise((resolve, reject) => {
+        // @ts-ignore
+        this.web3.currentProvider.send({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_call',
+          params: [
+            {
+              from: relayRequest.relayData.relayWorker,
+              to: relayHub.address,
+              gasPrice: toHex(relayRequest.relayData.gasPrice),
+              gas: toHex(externalGasLimit),
+              data: encodedRelayCall
+            },
+            'latest'
+          ]
+        }, (err: any, res: { result: string }) => {
+          const revertMsg = this._decodeRevertFromResponse(err, res)
+          if (revertMsg != null) {
+            reject(new Error(revertMsg))
+          }
+          if (err !== null) {
+            reject(err)
+          } else {
+            resolve(res.result)
+          }
         })
+      })
       this.logger.info(res)
+
+      // @ts-ignore
+      const decoded = abi.decodeParameters(['bool', 'string'], res)
+      const paymasterAccepted = decoded[0]
+      const returnValue = decoded[1]
       return {
-        returnValue: res.returnValue,
-        paymasterAccepted: res.paymasterAccepted,
+        returnValue: returnValue,
+        paymasterAccepted: paymasterAccepted,
         reverted: false
       }
     } catch (e) {
@@ -295,6 +330,33 @@ export default class ContractInteractor {
         returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
+  }
+
+  /**
+   * decode revert from rpc response.
+   * called from the callback of the provider "eth_call" call.
+   * check if response is revert, and extract revert reason from it.
+   * support kovan, geth, ganache error formats..
+   * @param err - provider err value
+   * @param res - provider res value
+   */
+  // decode revert from rpc response.
+  //
+  _decodeRevertFromResponse (err?: { message?: string, data?: any }, res?: { error?: any, result?: string }): string | null {
+    const matchGanache = res?.error?.message?.match(/: revert (.*)/)
+    if (matchGanache != null) {
+      return matchGanache[1]
+    }
+    const m = err?.data?.match(/(0x08c379a0\S*)/)
+    if (m != null) {
+      return decodeRevertReason(m[1])
+    }
+
+    const result = res?.result ?? ''
+    if (result.startsWith('0x08c379a0')) {
+      return decodeRevertReason(result)
+    }
+    return null
   }
 
   encodeABI (paymasterMaxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {

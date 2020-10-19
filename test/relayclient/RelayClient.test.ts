@@ -131,6 +131,29 @@ contract('RelayClient', function (accounts) {
   })
 
   describe('#relayTransaction()', function () {
+    it('should warn if called relayTransaction without calling init first', async function () {
+      relayClient = new RelayClient(underlyingProvider, gsnConfig)
+      sinon.spy(relayClient, '_warn')
+      try {
+        await relayClient.relayTransaction(options)
+        expect(relayClient._warn).to.have.been.calledWithMatch(/.*call RelayClient.init*/)
+      } finally {
+        // @ts-ignore
+        relayClient._warn.restore()
+      }
+    })
+    it('should not warn if called "new RelayClient().init()"', async function () {
+      relayClient = await new RelayClient(underlyingProvider, gsnConfig).init()
+      sinon.spy(relayClient, '_warn')
+      try {
+        await relayClient.relayTransaction(options)
+        expect(relayClient._warn).to.have.not.been.called
+      } finally {
+        // @ts-ignore
+        relayClient._warn.restore()
+      }
+    })
+
     it('should send transaction to a relay and receive a signed transaction in response', async function () {
       const relayingResult = await relayClient.relayTransaction(options)
       const validTransaction = relayingResult.transaction
@@ -260,16 +283,16 @@ contract('RelayClient', function (accounts) {
         gsnEvents.push(e)
       }
 
-      before('registerEventsListener', () => {
-        relayClient = new RelayClient(underlyingProvider, gsnConfig)
+      before('registerEventsListener', async () => {
+        relayClient = await new RelayClient(underlyingProvider, gsnConfig).init()
         relayClient.registerEventListener(eventsHandler)
       })
-      it('should call events handler', async function () {
+      it('should call all events handler', async function () {
         await relayClient.relayTransaction(options)
-        assert.equal(gsnEvents.length, 8)
+        assert.equal(gsnEvents.length, 7)
         assert.equal(gsnEvents[0].step, 1)
-        assert.equal(gsnEvents[0].total, 8)
-        assert.equal(gsnEvents[7].step, 8)
+        assert.equal(gsnEvents[0].total, 7)
+        assert.equal(gsnEvents[6].step, 7)
       })
       describe('removing events listener', () => {
         before('registerEventsListener', () => {
@@ -344,7 +367,7 @@ contract('RelayClient', function (accounts) {
       const badContractInteractor = new BadContractInteractor(web3.currentProvider as Web3Provider, logger, configureGSN(gsnConfig), true)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
-      await relayClient._init()
+      await relayClient.init()
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
       assert.equal(error!.message, `local view call to 'relayCall()' reverted: ${BadContractInteractor.message}`)
@@ -355,7 +378,7 @@ contract('RelayClient', function (accounts) {
       const dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, { httpClient: badHttpClient })
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
-      await relayClient._init()
+      await relayClient.init()
 
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
@@ -387,7 +410,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
 
-      await relayClient._init()
+      await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)

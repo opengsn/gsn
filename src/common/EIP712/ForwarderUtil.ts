@@ -1,6 +1,7 @@
 import { GsnDomainSeparatorType, GsnRequestType } from './TypedRequestData'
 import { IForwarderInstance } from '../../../types/truffle-contracts'
 import { Contract } from 'web3-eth-contract'
+import log from 'loglevel'
 
 // register a forwarder for use with GSN: the request-type and domain separator we're using.
 export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarderInstance|Contract, sendOptions: any = undefined): Promise<void> {
@@ -18,10 +19,10 @@ export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarde
 
   function logTx (p: any): any {
     p.on('transactionHash', function (hash: string) {
-      console.log(`Transaction broadcast: ${hash}`)
+      log.debug(`Transaction broadcast: ${hash}`)
     })
     p.on('error', function (err: Error) {
-      console.log(`tx error: ${err.message}`)
+      log.debug(`tx error: ${err.message}`)
     })
     return p
   }
