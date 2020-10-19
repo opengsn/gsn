@@ -26,13 +26,16 @@
       "./types"
     ],
     "types": [
-      "node",
       "truffle-contracts",
       "openzeppelin__test-helpers",
       "ganache-core",
       "date-format",
       "chai-bn"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "native-url": ["types/native-url"]
+    }
   },
   "include": [
     "**/*.ts",

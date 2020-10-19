@@ -1,7 +1,7 @@
 import log from 'loglevel'
 import winston, { transport } from 'winston'
 import { HttpTransportOptions } from 'winston/lib/winston/transports'
-import { parse} from 'native-url'
+import { parse } from 'native-url'
 
 import { NpmLogLevel } from './types/Aliases'
 import { gsnRuntimeVersion } from '../common/Version'
@@ -22,7 +22,7 @@ function getOrCreateUserId (): string {
   let userId = window.localStorage[userIdKey]
   if (userId == null) {
     userId = `${userIdKey}${Date.now()}`
-    window.localStorage[userIdKey]= userId
+    window.localStorage[userIdKey] = userId
   }
   return userId
 }
