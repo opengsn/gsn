@@ -1,6 +1,5 @@
 import winston, { Logger, transport } from 'winston'
 import { ConsoleTransportOptions, HttpTransportOptions } from 'winston/lib/winston/transports'
-import { URL } from 'url'
 
 import { gsnRuntimeVersion } from '../common/Version'
 

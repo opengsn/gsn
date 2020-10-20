@@ -31,16 +31,12 @@
       "ganache-core",
       "date-format",
       "chai-bn"
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "native-url": ["types/native-url"]
-    }
+    ]
   },
   "include": [
     "**/*.ts",
     "src/**/*"
- ],
+  ],
   "exclude": [
     "dist",
     "jsrelay/dist",
