@@ -26,7 +26,7 @@ function getOrCreateUserId (): string {
   return userId
 }
 
-export function createClientLogger (level: NpmLogLevel, loggerUrl: string, userIdOverride: string): LoggerInterface {
+export function createClientLogger (level: NpmLogLevel, loggerUrl: string, applicationId: string, userIdOverride: string): LoggerInterface {
   if (loggerUrl.length === 0 || typeof window === 'undefined' || window.localStorage == null) {
     log.setLevel(level)
     return log
@@ -60,16 +60,25 @@ export function createClientLogger (level: NpmLogLevel, loggerUrl: string, userI
   } else {
     userId = getOrCreateUserId()
   }
+
+  const localhostRegExp: RegExp = /http:\/\/(localhost)|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/
+  if (applicationId.length === 0 && typeof window !== 'undefined' && window.location != null && window.location.href != null && window.location.href.match(localhostRegExp) == null) {
+    applicationId = window.location.href
+  }
   const logger = winston.createLogger({
     level,
     defaultMeta: {
       version: gsnRuntimeVersion,
       service,
       isBrowser,
+      applicationId,
       userId
     },
     transports
   })
-  logger.debug(`Created remote logs collecting logger for ${userId}`)
+  logger.debug(`Created remote logs collecting logger for userId: ${userId} and applicationId: ${applicationId}`)
+  if (applicationId.length === 0) {
+    logger.warn('application ID is not set!')
+  }
   return logger
 }

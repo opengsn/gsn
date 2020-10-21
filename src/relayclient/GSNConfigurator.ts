@@ -43,6 +43,7 @@ const defaultGsnConfig: GSNConfig = {
   forwarderAddress: constants.ZERO_ADDRESS,
   logLevel: 'debug',
   loggerUrl: '',
+  loggerApplicationId: '',
   loggerUserIdOverride: '',
   clientId: '1'
 }
@@ -75,7 +76,7 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
   }
 
   const tmpConfig = Object.assign({}, partialConfig, defaultGsnConfig)
-  const logger = createClientLogger(tmpConfig.logLevel, tmpConfig.loggerUrl, tmpConfig.loggerUserIdOverride)
+  const logger = createClientLogger(tmpConfig.logLevel, tmpConfig.loggerUrl, tmpConfig.loggerApplicationId, tmpConfig.loggerUserIdOverride)
   const contractInteractor = new ContractInteractor(provider, logger, defaultGsnConfig)
   const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
 
@@ -123,6 +124,7 @@ export interface GSNConfig {
   sliceSize: number
   logLevel: NpmLogLevel
   loggerUrl: string
+  loggerApplicationId: string
   loggerUserIdOverride: string
   gasPriceFactorPercent: number
   minGasPrice: number
@@ -149,7 +151,7 @@ export interface GSNDependencies {
 }
 
 export function getDependencies (config: GSNConfig, provider?: HttpProvider, overrideDependencies?: Partial<GSNDependencies>): GSNDependencies {
-  const logger = overrideDependencies?.logger ?? createClientLogger(config.logLevel, config.loggerUrl, config.loggerUserIdOverride)
+  const logger = overrideDependencies?.logger ?? createClientLogger(config.logLevel, config.loggerUrl, config.loggerApplicationId, config.loggerUserIdOverride)
   let contractInteractor = overrideDependencies?.contractInteractor
 
   if (contractInteractor == null) {

@@ -76,7 +76,7 @@ contract('KnownRelaysManager', function (
         relayHubAddress: relayHub.address,
         relayLookupWindowBlocks
       })
-      logger = createClientLogger(config.logLevel, config.loggerUrl, config.loggerUserIdOverride)
+      logger = createClientLogger(config.logLevel, config.loggerUrl, config.loggerApplicationId, config.loggerUserIdOverride)
       contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, config)
       await contractInteractor.init()
 
@@ -161,7 +161,7 @@ contract('KnownRelaysManager 2', function (accounts) {
   }
 
   before(async function () {
-    logger = createClientLogger('error', '', '')
+    logger = createClientLogger('error', '', '', '')
     contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, configureGSN({}))
     await contractInteractor.init()
   })
