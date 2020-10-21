@@ -21,3 +21,8 @@ export type AsyncScoreCalculator = (relay: RelayRegisteredEventInfo, txDetails: 
 export function notNull<TValue> (value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined
 }
+
+/**
+ * This is an intersection of NPM log levels and 'loglevel' library methods.
+ */
+export type NpmLogLevel = 'error' | 'warn' | 'info' | 'debug'

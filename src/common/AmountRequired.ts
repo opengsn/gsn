@@ -1,17 +1,19 @@
 // @ts-ignore
 import EthVal from 'ethval'
-import log from 'loglevel'
 import { toBN } from 'web3-utils'
 
 import { boolString } from './Utils'
+import { LoggerInterface } from './LoggerInterface'
 
 export class AmountRequired {
+  logger: LoggerInterface
   _name: string
   _currentValue = toBN(0)
   _requiredValue = toBN(0)
   _listener?: () => void
 
-  constructor (name: string, requiredValue: BN, listener?: () => void) {
+  constructor (name: string, requiredValue: BN, logger: LoggerInterface, listener?: () => void) {
+    this.logger = logger
     this._name = name
     this._requiredValue = requiredValue
     this._listener = listener
@@ -53,7 +55,7 @@ export class AmountRequired {
       changeString = 'no longer'
     }
     const message = `${this._name} requirement is ${changeString} satisfied\n${this.description}`
-    log.warn(message)
+    this.logger.warn(message)
     if (this._listener != null) {
       this._listener()
     }

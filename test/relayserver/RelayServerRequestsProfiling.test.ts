@@ -5,6 +5,8 @@ import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
+import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
+import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
@@ -15,11 +17,13 @@ contract('RelayServerRequestsProfiling', function (accounts) {
   let provider: ProfilingProvider
   let relayServer: RelayServer
   let env: ServerTestEnvironment
+  let logger: LoggerInterface
 
   before(async function () {
+    logger = createServerLogger('error', '', '')
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
     const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
-      const contractInteractor = new ContractInteractor(provider, configureGSN(partialConfig))
+      const contractInteractor = new ContractInteractor(provider, logger, configureGSN(partialConfig))
       await contractInteractor.init()
       return contractInteractor
     }

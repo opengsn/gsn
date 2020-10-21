@@ -1,12 +1,14 @@
-import log from 'loglevel'
-import { IKnownRelaysManager } from './KnownRelaysManager'
-import HttpClient from './HttpClient'
-import { isInfoFromEvent, RelayInfoUrl } from './types/RelayRegisteredEventInfo'
-import { PingFilter } from './types/Aliases'
-import GsnTransactionDetails from './types/GsnTransactionDetails'
 import replaceErrors from '../common/ErrorReplacerJSON'
-import { GSNConfig } from './GSNConfigurator'
+import { LoggerInterface } from '../common/LoggerInterface'
+
+import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { PartialRelayInfo, RelayInfo } from './types/RelayInfo'
+import { PingFilter } from './types/Aliases'
+import { isInfoFromEvent, RelayInfoUrl } from './types/RelayRegisteredEventInfo'
+
+import HttpClient from './HttpClient'
+import { GSNConfig } from './GSNConfigurator'
+import { IKnownRelaysManager } from './KnownRelaysManager'
 
 interface RaceResult {
   winner?: PartialRelayInfo
@@ -17,6 +19,7 @@ export default class RelaySelectionManager {
   private readonly knownRelaysManager: IKnownRelaysManager
   private readonly httpClient: HttpClient
   private readonly config: GSNConfig
+  private readonly logger: LoggerInterface
   private readonly pingFilter: PingFilter
   private readonly gsnTransactionDetails: GsnTransactionDetails
 
@@ -25,12 +28,13 @@ export default class RelaySelectionManager {
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
-  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: IKnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, config: GSNConfig) {
+  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: IKnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, logger: LoggerInterface, config: GSNConfig) {
     this.gsnTransactionDetails = gsnTransactionDetails
     this.knownRelaysManager = knownRelaysManager
     this.httpClient = httpClient
     this.pingFilter = pingFilter
     this.config = config
+    this.logger = logger
   }
 
   /**
@@ -52,16 +56,16 @@ export default class RelaySelectionManager {
   }
 
   async _nextRelayInternal (relays: RelayInfoUrl[]): Promise<RelayInfo | undefined> {
-    log.info('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
+    this.logger.info('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
     const raceResult = await this._raceToSuccess(relays)
-    log.info(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
+    this.logger.info(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
     this._handleRaceResults(raceResult)
     if (raceResult.winner != null) {
       if (isInfoFromEvent(raceResult.winner.relayInfo)) {
         return (raceResult.winner as RelayInfo)
       } else {
         const managerAddress = raceResult.winner.pingResponse.relayManagerAddress
-        log.info(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
+        this.logger.info(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
         const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([managerAddress]))
         if (events.length === 1) {
           return {
@@ -105,7 +109,7 @@ export default class RelaySelectionManager {
    * @returns JSON response from the relay server, but adds the requested URL to it :'-(
    */
   async _getRelayAddressPing (relayInfo: RelayInfoUrl): Promise<PartialRelayInfo> {
-    log.info(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
+    this.logger.info(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
     const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, this.gsnTransactionDetails.paymaster)
 
     if (!pingResponse.ready) {

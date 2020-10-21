@@ -10,6 +10,7 @@ import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import Transaction from 'ethereumjs-tx/dist/transaction'
 import { constants } from '../../src/common/Constants'
+import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -31,7 +32,9 @@ contract('ContractInteractor', function () {
     })
 
     it('should not throw if the hub address is not configured', async function () {
-      const relayClient = await new RelayClient(web3.currentProvider as HttpProvider, { logLevel: 5 }).init()
+      const relayClient = new RelayClient(web3.currentProvider as HttpProvider, {
+        logLevel: 'error'
+      })
       await relayClient.init()
     })
   })
@@ -44,7 +47,8 @@ contract('ContractInteractor', function () {
 
     before(async function () {
       provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
-      contractInteractor = new ContractInteractor(provider, configureGSN({}))
+      const logger = createClientLogger('error', '', '', '')
+      contractInteractor = new ContractInteractor(provider, logger, configureGSN({}))
       const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
       const transaction = new Transaction({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
       transaction.sign(Buffer.from('46e6ef4a356fa3fa3929bf4b59e6b3eb9d0521ea660fd2879c67bd501002ac2b', 'hex'))

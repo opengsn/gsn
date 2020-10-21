@@ -1,4 +1,4 @@
-import log from 'loglevel'
+import chalk from 'chalk'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -29,7 +29,7 @@ import { SendTransactionDetails, TransactionManager } from './TransactionManager
 import { ServerConfigParams } from './ServerConfigParams'
 import { TxStoreManager } from './TxStoreManager'
 import { ServerAction } from './StoredTransaction'
-import chalk from 'chalk'
+import { LoggerInterface } from '../common/LoggerInterface'
 
 export interface RelayServerRegistryInfo {
   baseRelayFee: IntString
@@ -58,6 +58,7 @@ export class RegistrationManager {
   transactionManager: TransactionManager
   config: ServerConfigParams
   txStoreManager: TxStoreManager
+  logger: LoggerInterface
 
   lastMinedRegisterTransaction?: EventData
   lastWorkerAddedTransaction?: EventData
@@ -71,7 +72,7 @@ export class RegistrationManager {
     const oldValue = this._isHubAuthorized
     this._isHubAuthorized = newValue
     if (newValue !== oldValue) {
-      log.info(`Current RelayHub is ${newValue ? 'now' : 'no longer'} authorized`)
+      this.logger.info(`Current RelayHub is ${newValue ? 'now' : 'no longer'} authorized`)
       this.printNotRegisteredMessage()
     }
   }
@@ -84,7 +85,7 @@ export class RegistrationManager {
     const oldValue = this._isStakeLocked
     this._isStakeLocked = newValue
     if (newValue !== oldValue) {
-      log.info(`Manager stake is ${newValue ? 'now' : 'no longer'} locked`)
+      this.logger.info(`Manager stake is ${newValue ? 'now' : 'no longer'} locked`)
       this.printNotRegisteredMessage()
     }
   }
@@ -94,6 +95,7 @@ export class RegistrationManager {
     transactionManager: TransactionManager,
     txStoreManager: TxStoreManager,
     eventEmitter: EventEmitter,
+    logger: LoggerInterface,
     config: ServerConfigParams,
     // exposed from key manager?
     managerAddress: Address,
@@ -102,8 +104,9 @@ export class RegistrationManager {
     const listener = (): void => {
       this.printNotRegisteredMessage()
     }
-    this.balanceRequired = new AmountRequired('Balance', toBN(config.managerMinBalance), listener)
-    this.stakeRequired = new AmountRequired('Stake', toBN(config.managerMinStake), listener)
+    this.logger = logger
+    this.balanceRequired = new AmountRequired('Balance', toBN(config.managerMinBalance), logger, listener)
+    this.stakeRequired = new AmountRequired('Stake', toBN(config.managerMinStake), logger, listener)
 
     this.contractInteractor = contractInteractor
     this.hubAddress = config.relayHubAddress
@@ -244,7 +247,7 @@ export class RegistrationManager {
   }
 
   async _handleStakeWithdrawnEvent (dlog: EventData, currentBlock: number): Promise<PrefixedHexString[]> {
-    log.warn('Handling StakeWithdrawn event:', dlog)
+    this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(dlog)}`)
     return await this.withdrawAllFunds(true, currentBlock)
   }
 
@@ -284,7 +287,7 @@ export class RegistrationManager {
     // first time getting stake, setting owner
     if (this.ownerAddress == null) {
       this.ownerAddress = stakeInfo.owner
-      log.info('Got staked for the first time')
+      this.logger.info('Got staked for the first time')
       this.printNotRegisteredMessage()
     }
   }
@@ -336,7 +339,7 @@ export class RegistrationManager {
     }
     const { transactionHash } = await this.transactionManager.sendTransaction(details)
     transactions = transactions.concat(transactionHash)
-    log.debug(`Relay ${this.managerAddress} registered on hub ${this.hubAddress}. `)
+    this.logger.debug(`Relay ${this.managerAddress} registered on hub ${this.hubAddress}. `)
     return transactions
   }
 
@@ -349,7 +352,7 @@ export class RegistrationManager {
     const managerBalance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
     // sending manager eth balance to owner
     if (managerBalance.gte(txCost)) {
-      log.info(`Sending manager eth balance ${managerBalance.toString()} to owner`)
+      this.logger.info(`Sending manager eth balance ${managerBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -362,7 +365,7 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      log.error(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+      this.logger.error(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     return transactionHashes
   }
@@ -375,7 +378,7 @@ export class RegistrationManager {
     const txCost = toBN(gasLimit * parseInt(gasPrice))
     const workerBalance = toBN(await this.contractInteractor.getBalance(this.workerAddress))
     if (workerBalance.gte(txCost)) {
-      log.info(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
+      this.logger.info(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
       const details = {
         signer: this.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -388,7 +391,7 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      log.info(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+      this.logger.info(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
     }
     return transactionHashes
   }
@@ -402,7 +405,7 @@ export class RegistrationManager {
     const managerHubBalance = await this.contractInteractor.hubBalanceOf(this.managerAddress)
     const { gasLimit, gasCost, method } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
     if (managerHubBalance.gte(gasCost)) {
-      log.info(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
+      this.logger.info(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
         gasLimit,
         signer: this.managerAddress,
@@ -414,7 +417,7 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      log.error(`manager hub balance too low: ${managerHubBalance.toString()}, tx cost: ${gasCost.toString()}`)
+      this.logger.error(`manager hub balance too low: ${managerHubBalance.toString()}, tx cost: ${gasCost.toString()}`)
     }
     return transactionHashes
   }
@@ -455,16 +458,16 @@ Manager        | ${this.managerAddress}
 Worker         | ${this.workerAddress}
 Owner          | ${this.ownerAddress ?? chalk.red('unknown')}
 `
-    log.info(message)
+    this.logger.info(message)
   }
 
   printEvents (decodedEvents: EventData[], options: PastEventOptions): void {
     if (decodedEvents.length === 0) {
       return
     }
-    log.info(`Handling ${decodedEvents.length} events emitted since block: ${options.fromBlock?.toString()}`)
+    this.logger.info(`Handling ${decodedEvents.length} events emitted since block: ${options.fromBlock?.toString()}`)
     for (const decodedEvent of decodedEvents) {
-      log.info(`
+      this.logger.info(`
 Name      | ${decodedEvent.event.padEnd(25)}
 Block     | ${decodedEvent.blockNumber}
 TxHash    | ${decodedEvent.transactionHash}

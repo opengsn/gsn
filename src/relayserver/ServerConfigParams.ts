@@ -1,13 +1,15 @@
-import parseArgs from 'minimist'
 import * as fs from 'fs'
+import parseArgs from 'minimist'
+
 import { VersionRegistry } from '../common/VersionRegistry'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { constants } from '../common/Constants'
-import { Address } from '../relayclient/types/Aliases'
+import { Address, NpmLogLevel } from '../relayclient/types/Aliases'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
-import { LogLevelNumbers } from 'loglevel'
+import { createServerLogger } from './ServerWinstonLogger'
+import { LoggerInterface } from '../common/LoggerInterface'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -33,7 +35,9 @@ export interface ServerConfigParams {
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
   gasPriceFactor: number
-  logLevel: LogLevelNumbers
+  logLevel: NpmLogLevel
+  loggerUrl: string
+  loggerUserId: string
 
   workerMinBalance: number
   workerTargetBalance: number
@@ -56,6 +60,7 @@ export interface ServerDependencies {
   workersKeyManager: KeyManager
   contractInteractor: ContractInteractor
   txStoreManager: TxStoreManager
+  logger: LoggerInterface
 }
 
 const serverDefaultConfiguration: ServerConfigParams = {
@@ -76,7 +81,9 @@ const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
-  logLevel: 1,
+  logLevel: 'debug',
+  loggerUrl: '',
+  loggerUserId: '',
   baseRelayFee: '0',
   pctRelayFee: 0,
   url: 'http://localhost:8090',
@@ -109,7 +116,10 @@ const ConfigParamsTypes = {
   checkInterval: 'number',
   readyTimeout: 'number',
   devMode: 'boolean',
-  logLevel: 'number',
+  logLevel: 'string',
+  customerToken: 'string',
+  hostOverride: 'string',
+  userId: 'string',
   registrationBlockRate: 'number',
   maxAcceptanceBudget: 'number',
   alertedBlockDelay: 'number',
@@ -206,7 +216,9 @@ export function parseServerConfig (args: string[], env: any): any {
 
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
-  const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
+  const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
+  const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')

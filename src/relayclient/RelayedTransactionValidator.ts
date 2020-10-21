@@ -1,4 +1,3 @@
-import log from 'loglevel'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 
@@ -7,14 +6,17 @@ import { isSameAddress } from '../common/Utils'
 import ContractInteractor from './ContractInteractor'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
+import { LoggerInterface } from '../common/LoggerInterface'
 
 export default class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
   private readonly config: GSNConfig
+  private readonly logger: LoggerInterface
 
-  constructor (contractInteractor: ContractInteractor, config: GSNConfig) {
+  constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig) {
     this.contractInteractor = contractInteractor
     this.config = config
+    this.logger = logger
   }
 
   /**
@@ -30,7 +32,16 @@ export default class RelayedTransactionValidator {
   ): boolean {
     const transaction = new Transaction(returnedTx, this.contractInteractor.getRawTxOptions())
 
-    log.info('returnedTx is', transaction.v, transaction.r, transaction.s, transaction.to, transaction.data, transaction.gasLimit, transaction.gasPrice, transaction.value)
+    this.logger.info(`returnedTx:
+    v:        ${bufferToHex(transaction.v)}
+    r:        ${bufferToHex(transaction.r)}
+    s:        ${bufferToHex(transaction.s)}
+    to:       ${bufferToHex(transaction.to)}
+    data:     ${bufferToHex(transaction.data)}
+    gasLimit: ${bufferToHex(transaction.gasLimit)}
+    gasPrice: ${bufferToHex(transaction.gasPrice)}
+    value:    ${bufferToHex(transaction.value)}
+    `)
 
     const signer = bufferToHex(transaction.getSenderAddress())
 
@@ -42,7 +53,7 @@ export default class RelayedTransactionValidator {
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      log.info('validateRelayResponse - valid transaction response')
+      this.logger.info('validateRelayResponse - valid transaction response')
 
       // TODO: the relayServer encoder returns zero-length buffer for nonce=0.`
       const receivedNonce = transaction.nonce.length === 0 ? 0 : transaction.nonce.readUIntBE(0, transaction.nonce.byteLength)

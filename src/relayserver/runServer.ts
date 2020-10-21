@@ -8,6 +8,7 @@ import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
 import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { createServerLogger } from './ServerWinstonLogger'
 
 function error (err: string): never {
   console.error(err)
@@ -35,13 +36,15 @@ async function run (): Promise<void> {
     }
   }
 
+  const logger = createServerLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
-  const txStoreManager = new TxStoreManager({ workdir })
-  const contractInteractor = new ContractInteractor(web3provider, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  const txStoreManager = new TxStoreManager({ workdir }, logger)
+  const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
   await contractInteractor.init()
 
   const dependencies: ServerDependencies = {
+    logger,
     txStoreManager,
     managerKeyManager,
     workersKeyManager,
@@ -50,7 +53,7 @@ async function run (): Promise<void> {
 
   const relay = new RelayServer(config, dependencies)
   await relay.init()
-  const httpServer = new HttpServer(config.port, relay)
+  const httpServer = new HttpServer(config.port, relay, logger)
   httpServer.start()
 }
 

@@ -37,6 +37,8 @@ import { Server } from 'http'
 import HttpClient from '../../src/relayclient/HttpClient'
 import HttpWrapper from '../../src/relayclient/HttpWrapper'
 import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
+import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
+import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -51,8 +53,9 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 
 class MockHttpClient extends HttpClient {
   constructor (readonly mockPort: number,
+    logger: LoggerInterface,
     httpWrapper: HttpWrapper, config: Partial<GSNConfig>) {
-    super(httpWrapper, config)
+    super(httpWrapper, logger, config)
   }
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
@@ -73,6 +76,7 @@ contract('RelayClient', function (accounts) {
   let gasLess: Address
   let relayProcess: ChildProcessWithoutNullStreams
   let forwarderAddress: Address
+  let logger: LoggerInterface
 
   let relayClient: RelayClient
   let gsnConfig: Partial<GSNConfig>
@@ -103,9 +107,9 @@ contract('RelayClient', function (accounts) {
     })
 
     gsnConfig = {
-      logLevel: 5,
       relayHubAddress: relayHub.address
     }
+    logger = createClientLogger('error', '', '', '')
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
     gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess
@@ -195,7 +199,7 @@ contract('RelayClient', function (accounts) {
         // MockHttpClient alter the server port, so the client "thinks" it works with relayUrl, but actually
         // it uses the mockServer's port
         const relayClient = new RelayClient(underlyingProvider, gsnConfig, {
-          httpClient: new MockHttpClient(mockServerPort, new HttpWrapper({ timeout: 100 }), gsnConfig)
+          httpClient: new MockHttpClient(mockServerPort, logger, new HttpWrapper({ timeout: 100 }), gsnConfig)
         })
 
         // async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
@@ -216,7 +220,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return errors encountered in ping', async function () {
-      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), true, false, false)
+      const badHttpClient = new BadHttpClient(logger, configureGSN(gsnConfig), true, false, false)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { httpClient: badHttpClient })
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
@@ -227,7 +231,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return errors encountered in relaying', async function () {
-      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, true, false)
+      const badHttpClient = new BadHttpClient(logger, configureGSN(gsnConfig), false, true, false)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { httpClient: badHttpClient })
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
@@ -307,7 +311,7 @@ contract('RelayClient', function (accounts) {
     it('should use minimum gas price if calculated is to low', async function () {
       const minGasPrice = 1e18
       const gsnConfig: Partial<GSNConfig> = {
-        logLevel: 5,
+        logLevel: 'error',
         relayHubAddress: relayHub.address,
         minGasPrice
       }
@@ -360,7 +364,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return error if view call to \'relayCall()\' fails', async function () {
-      const badContractInteractor = new BadContractInteractor(web3.currentProvider as Web3Provider, configureGSN(gsnConfig), true)
+      const badContractInteractor = new BadContractInteractor(web3.currentProvider as Web3Provider, logger, configureGSN(gsnConfig), true)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
       await relayClient.init()
@@ -370,7 +374,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should report relays that timeout to the Known Relays Manager', async function () {
-      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, false, true)
+      const badHttpClient = new BadHttpClient(logger, configureGSN(gsnConfig), false, false, true)
       const dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, { httpClient: badHttpClient })
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
@@ -384,7 +388,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should not report relays if error is not timeout', async function () {
-      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, true, false)
+      const badHttpClient = new BadHttpClient(logger, configureGSN(gsnConfig), false, true, false)
       const dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, { httpClient: badHttpClient })
       dependencyTree.httpClient = badHttpClient
       const relayClient =
@@ -396,9 +400,9 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return error if transaction returned by a relay does not pass validation', async function () {
-      const badHttpClient = new BadHttpClient(configureGSN(gsnConfig), false, false, false, pingResponse, '0x123')
+      const badHttpClient = new BadHttpClient(logger, configureGSN(gsnConfig), false, false, false, pingResponse, '0x123')
       let dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider)
-      const badTransactionValidator = new BadRelayedTransactionValidator(true, dependencyTree.contractInteractor, configureGSN(gsnConfig))
+      const badTransactionValidator = new BadRelayedTransactionValidator(logger, true, dependencyTree.contractInteractor, configureGSN(gsnConfig))
       dependencyTree = getDependencies(configureGSN(gsnConfig), underlyingProvider, {
         httpClient: badHttpClient,
         transactionValidator: badTransactionValidator
@@ -439,7 +443,7 @@ contract('RelayClient', function (accounts) {
   describe('#_broadcastRawTx()', function () {
     // TODO: TBD: there has to be other behavior then that. Maybe query the transaction with the nonce somehow?
     it('should return \'wrongNonce\' if broadcast fails with nonce error', async function () {
-      const badContractInteractor = new BadContractInteractor(underlyingProvider, configureGSN(gsnConfig), true)
+      const badContractInteractor = new BadContractInteractor(underlyingProvider, logger, configureGSN(gsnConfig), true)
       const transaction = new Transaction('0x')
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })

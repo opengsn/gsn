@@ -26,7 +26,6 @@
       "./types"
     ],
     "types": [
-      "node",
       "truffle-contracts",
       "openzeppelin__test-helpers",
       "ganache-core",
@@ -37,7 +36,7 @@
   "include": [
     "**/*.ts",
     "src/**/*"
- ],
+  ],
   "exclude": [
     "dist",
     "jsrelay/dist",

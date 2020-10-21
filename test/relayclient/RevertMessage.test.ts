@@ -76,7 +76,7 @@ describe('RevertMessage.test', function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
       const gsnConfig = configureGSN({
-        logLevel: 5,
+        logLevel: 'error',
         relayHubAddress,
         paymasterAddress
       })

@@ -15,6 +15,7 @@ import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
+import { createServerLogger } from '../relayserver/ServerWinstonLogger'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -39,7 +40,8 @@ class GsnTestEnvironmentClass {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
-    const commandsLogic = new CommandsLogic(_host, configureGSN({}))
+    const logger = createServerLogger('error', '', '')
+    const commandsLogic = new CommandsLogic(_host, logger, configureGSN({}))
     const from = await commandsLogic.findWealthyAccount()
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
@@ -79,7 +81,7 @@ class GsnTestEnvironmentClass {
     await commandsLogic.waitForRelay(relayUrl)
 
     const config = configureGSN({
-      logLevel: 5,
+      logLevel: 'error',
       relayHubAddress: deploymentResult.relayHubAddress,
       paymasterAddress: deploymentResult.naivePaymasterAddress,
       preferredRelays: [relayUrl]
@@ -134,16 +136,19 @@ class GsnTestEnvironmentClass {
       return
     }
 
+    const logger = createServerLogger('error', '', '')
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
-    const txStoreManager = new TxStoreManager({ inMemory: true })
+    const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
     const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host),
+      logger,
       configureGSN({
-        logLevel: 5,
+        logLevel: 'error',
         relayHubAddress: deploymentResult.relayHubAddress
       }))
     await contractInteractor.init()
     const relayServerDependencies = {
+      logger,
       contractInteractor,
       txStoreManager,
       managerKeyManager,
@@ -157,14 +162,15 @@ class GsnTestEnvironmentClass {
       baseRelayFee: '0',
       pctRelayFee: 0,
       checkInterval: 10,
-      logLevel: 5
+      logLevel: 'error'
     }
     const backend = new RelayServer(relayServerParams, relayServerDependencies)
     await backend.init()
 
     this.httpServer = new HttpServer(
       port,
-      backend
+      backend,
+      logger
     )
     this.httpServer.start()
   }

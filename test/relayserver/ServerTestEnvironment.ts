@@ -37,6 +37,7 @@ import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { RelayHubConfiguration } from '../../src/relayclient/types/RelayHubConfiguration'
+import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -95,6 +96,7 @@ export class ServerTestEnvironment {
 
   /**
    * @param clientConfig
+   * @param relayHubConfig
    * @param contractFactory - added for Profiling test, as it requires Test Environment to be using
    * different provider from the contract interactor itself.
    */
@@ -113,11 +115,11 @@ export class ServerTestEnvironment {
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
     this.gasLess = await this.web3.eth.personal.newAccount('password')
     const shared: Partial<GSNConfig> = {
-      logLevel: 5,
       relayHubAddress: this.relayHub.address
     }
     if (contractFactory == null) {
-      this.contractInteractor = new ContractInteractor(this.provider, configureGSN(shared))
+      const logger = createServerLogger('error', '', '')
+      this.contractInteractor = new ContractInteractor(this.provider, logger, configureGSN(shared))
       await this.contractInteractor.init()
     } else {
       this.contractInteractor = await contractFactory(shared)
@@ -162,19 +164,20 @@ export class ServerTestEnvironment {
   }
 
   newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
+    const shared: Partial<ServerConfigParams> = {
+      relayHubAddress: this.relayHub.address,
+      checkInterval: 10
+    }
+    const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
-    const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir })
+    const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir }, logger)
     const serverDependencies = {
       contractInteractor: this.contractInteractor,
+      logger,
       txStoreManager,
       managerKeyManager,
       workersKeyManager
-    }
-    const shared: Partial<ServerConfigParams> = {
-      relayHubAddress: this.relayHub.address,
-      checkInterval: 10,
-      logLevel: 5
     }
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
     this.relayServer = new RelayServer(mergedConfig, serverDependencies)

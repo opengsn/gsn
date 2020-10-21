@@ -1,6 +1,6 @@
 import { HttpProvider } from 'web3-core'
-import { LogLevelNumbers } from 'loglevel'
 
+import { LoggerInterface } from '../common/LoggerInterface'
 import { constants } from '../common/Constants'
 import { defaultEnvironment } from '../common/Environments'
 
@@ -10,8 +10,17 @@ import HttpClient from './HttpClient'
 import HttpWrapper from './HttpWrapper'
 import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
-import { Address, AsyncDataCallback, AsyncScoreCalculator, IntString, PingFilter, RelayFilter } from './types/Aliases'
+import {
+  Address,
+  AsyncDataCallback,
+  AsyncScoreCalculator,
+  IntString,
+  NpmLogLevel,
+  PingFilter,
+  RelayFilter
+} from './types/Aliases'
 import { EmptyDataCallback, GasPricePingFilter } from './RelayClient'
+import { createClientLogger } from './ClientWinstonLogger'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -32,7 +41,10 @@ const defaultGsnConfig: GSNConfig = {
   relayHubAddress: constants.ZERO_ADDRESS,
   paymasterAddress: constants.ZERO_ADDRESS,
   forwarderAddress: constants.ZERO_ADDRESS,
-  logLevel: 0,
+  logLevel: 'debug',
+  loggerUrl: '',
+  loggerApplicationId: '',
+  loggerUserIdOverride: '',
   clientId: '1'
 }
 
@@ -63,7 +75,9 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
     throw new Error('Cannot resolve GSN deployment without paymaster address')
   }
 
-  const contractInteractor = new ContractInteractor(provider, defaultGsnConfig)
+  const tmpConfig = Object.assign({}, partialConfig, defaultGsnConfig)
+  const logger = createClientLogger(tmpConfig.logLevel, tmpConfig.loggerUrl, tmpConfig.loggerApplicationId, tmpConfig.loggerUserIdOverride)
+  const contractInteractor = new ContractInteractor(provider, logger, defaultGsnConfig)
   const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
 
   const [
@@ -108,7 +122,10 @@ export interface GSNConfig {
   jsonStringifyRequest: boolean
   relayTimeoutGrace: number
   sliceSize: number
-  logLevel: LogLevelNumbers
+  logLevel: NpmLogLevel
+  loggerUrl: string
+  loggerApplicationId: string
+  loggerUserIdOverride: string
   gasPriceFactorPercent: number
   minGasPrice: number
   maxRelayNonceGap: number
@@ -121,6 +138,7 @@ export interface GSNConfig {
 
 export interface GSNDependencies {
   httpClient: HttpClient
+  logger: LoggerInterface
   contractInteractor: ContractInteractor
   knownRelaysManager: IKnownRelaysManager
   accountManager: AccountManager
@@ -130,14 +148,15 @@ export interface GSNDependencies {
   asyncApprovalData: AsyncDataCallback
   asyncPaymasterData: AsyncDataCallback
   scoreCalculator: AsyncScoreCalculator
-  config: GSNConfig
 }
 
 export function getDependencies (config: GSNConfig, provider?: HttpProvider, overrideDependencies?: Partial<GSNDependencies>): GSNDependencies {
+  const logger = overrideDependencies?.logger ?? createClientLogger(config.logLevel, config.loggerUrl, config.loggerApplicationId, config.loggerUserIdOverride)
   let contractInteractor = overrideDependencies?.contractInteractor
+
   if (contractInteractor == null) {
     if (provider != null) {
-      contractInteractor = new ContractInteractor(provider, config)
+      contractInteractor = new ContractInteractor(provider, logger, config)
     } else {
       throw new Error('either contract interactor or web3 provider must be non-null')
     }
@@ -152,16 +171,16 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
     }
   }
 
-  const httpClient = overrideDependencies?.httpClient ?? new HttpClient(new HttpWrapper(), config)
+  const httpClient = overrideDependencies?.httpClient ?? new HttpClient(new HttpWrapper(), logger, config)
   const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
   const relayFilter = overrideDependencies?.relayFilter ?? EmptyFilter
   const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyDataCallback
   const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
   const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
-  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, config, relayFilter)
-  const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, config)
+  const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, logger, config, relayFilter)
+  const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, logger, config)
 
-  const ret = {
+  const ret: GSNDependencies = {
     httpClient,
     contractInteractor,
     knownRelaysManager,
@@ -172,7 +191,7 @@ export function getDependencies (config: GSNConfig, provider?: HttpProvider, ove
     asyncApprovalData,
     asyncPaymasterData,
     scoreCalculator,
-    config
+    logger
   }
 
   // sanity check: overrides must not contain unknown fields.

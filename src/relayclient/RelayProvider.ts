@@ -1,16 +1,17 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
-import log from 'loglevel'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpProvider } from 'web3-core'
-
-import relayHubAbi from '../common/interfaces/IRelayHub.json'
-import { _dumpRelayingResult, RelayClient } from './RelayClient'
-import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { Transaction } from 'ethereumjs-tx'
+
+import { LoggerInterface } from '../common/LoggerInterface'
+import relayHubAbi from '../common/interfaces/IRelayHub.json'
+
+import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
+import { _dumpRelayingResult, RelayClient } from './RelayClient'
+import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -31,6 +32,7 @@ export class RelayProvider implements HttpProvider {
   protected readonly config: GSNConfig
 
   readonly relayClient: RelayClient
+  readonly logger: LoggerInterface
 
   /**
    * create a proxy provider, to relay transaction
@@ -52,7 +54,7 @@ export class RelayProvider implements HttpProvider {
       this.origProviderSend = this.origProvider.send.bind(this.origProvider)
     }
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
-
+    this.logger = this.relayClient.logger
     this._delegateEventsApi(origProvider)
   }
 
@@ -105,7 +107,7 @@ export class RelayProvider implements HttpProvider {
   }
 
   _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
-    log.info('calling sendAsync' + JSON.stringify(payload))
+    this.logger.info('calling sendAsync' + JSON.stringify(payload))
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
       // Sometimes, ganache seems to return 'false' for 'no error' (breaking TypeScript declarations)
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
@@ -123,7 +125,7 @@ export class RelayProvider implements HttpProvider {
   }
 
   _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
-    log.info('calling sendAsync' + JSON.stringify(payload))
+    this.logger.info('calling sendAsync' + JSON.stringify(payload))
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     this.relayClient.relayTransaction(gsnTransactionDetails)
       .then((relayingResult) => {
@@ -132,13 +134,14 @@ export class RelayProvider implements HttpProvider {
           callback(null, jsonRpcSendResult)
         } else {
           const message = `Failed to relay call. Results:\n${_dumpRelayingResult(relayingResult)}`
-          log.error(message)
+          this.logger.error(message)
           callback(new Error(message))
         }
       }, (reason: any) => {
         const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
-        log.info('Rejected relayTransaction call', reason)
-        callback(new Error(`Rejected relayTransaction call - Reason: ${reasonStr}`))
+        const msg = `Rejected relayTransaction call with reason: ${reasonStr}`
+        this.logger.info(msg)
+        callback(new Error(msg))
       })
   }
 
@@ -164,7 +167,7 @@ export class RelayProvider implements HttpProvider {
     if (paymasterRejectedEvents !== null && paymasterRejectedEvents !== undefined) {
       const paymasterRejectionReason: { value: string } = paymasterRejectedEvents.events.find((e: any) => e.name === 'reason')
       if (paymasterRejectionReason !== undefined) {
-        log.info(`Paymaster rejected on-chain: ${paymasterRejectionReason.value}. changing status to zero`)
+        this.logger.info(`Paymaster rejected on-chain: ${paymasterRejectionReason.value}. changing status to zero`)
         fixedTransactionReceipt.status = '0'
       }
       return fixedTransactionReceipt
@@ -177,7 +180,7 @@ export class RelayProvider implements HttpProvider {
         const status: string = transactionRelayedStatus.value.toString()
         // 0 signifies success
         if (status !== '0') {
-          log.info(`reverted relayed transaction, status code ${status}. changing status to zero`)
+          this.logger.info(`reverted relayed transaction, status code ${status}. changing status to zero`)
           fixedTransactionReceipt.status = '0'
         }
       }

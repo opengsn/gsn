@@ -16,6 +16,7 @@ import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
+import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 
 const { oneEther } = constants
 
@@ -90,29 +91,30 @@ contract('RegistrationManager', function (accounts) {
     })
 
     it('should start again after restarting process', async () => {
+      const params: Partial<ServerConfigParams> = {
+        relayHubAddress: env.relayHub.address,
+        url: LocalhostOne,
+        baseRelayFee: '0',
+        pctRelayFee: 0,
+        gasPriceFactor: 1,
+        checkInterval: 10
+      }
+      const logger = createServerLogger('error', '', '')
       const managerKeyManager = new KeyManager(1, serverWorkdirs.managerWorkdir)
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
-      const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir })
+      const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
       const serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
-      const contractInteractor = new ContractInteractor(serverWeb3provider,
+      const contractInteractor = new ContractInteractor(serverWeb3provider, logger,
         configureGSN({
           relayHubAddress: env.relayHub.address
         }))
       await contractInteractor.init()
       const serverDependencies: ServerDependencies = {
+        logger,
         txStoreManager,
         managerKeyManager,
         workersKeyManager,
         contractInteractor
-      }
-      const params: Partial<ServerConfigParams> = {
-        relayHubAddress: env.relayHub.address,
-        url: LocalhostOne,
-        logLevel: 5,
-        baseRelayFee: '0',
-        pctRelayFee: 0,
-        gasPriceFactor: 1,
-        checkInterval: 10
       }
       const newRelayServer = new RelayServer(params, serverDependencies)
       await newRelayServer.init()
