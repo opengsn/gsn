@@ -8,8 +8,11 @@ import * as ethUtils from 'ethereumjs-util'
 import { Address } from '../../src/relayclient/types/Aliases'
 import {
   IForwarderInstance,
-  IRelayHubInstance, IRelayRecipientInstance,
-  IStakeManagerInstance, TestPaymasterEverythingAcceptedInstance
+  IPenalizerInstance,
+  IRelayHubInstance,
+  IRelayRecipientInstance,
+  IStakeManagerInstance,
+  TestPaymasterEverythingAcceptedInstance
 } from '../../types/truffle-contracts'
 import {
   assertRelayAdded,
@@ -40,6 +43,7 @@ import { RelayHubConfiguration } from '../../src/relayclient/types/RelayHubConfi
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 
 const Forwarder = artifacts.require('Forwarder')
+const Penalizer = artifacts.require('Penalizer')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -63,6 +67,7 @@ export interface PrepareRelayRequestOption {
 
 export class ServerTestEnvironment {
   stakeManager!: IStakeManagerInstance
+  penalizer!: IPenalizerInstance
   relayHub!: IRelayHubInstance
   forwarder!: IForwarderInstance
   paymaster!: TestPaymasterEverythingAcceptedInstance
@@ -102,7 +107,8 @@ export class ServerTestEnvironment {
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (clientConfig: Partial<GSNConfig>) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new()
-    this.relayHub = await deployHub(this.stakeManager.address, undefined, relayHubConfig)
+    this.penalizer = await Penalizer.new()
+    this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()

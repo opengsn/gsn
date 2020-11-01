@@ -1,16 +1,17 @@
 import BN from 'bn.js'
 import abi from 'web3-eth-abi'
-import ethUtils from 'ethereumjs-util'
+import ethUtils, { bufferToInt, stripZeros, toBuffer } from 'ethereumjs-util'
 import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 
 import { Address } from '../relayclient/types/Aliases'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 import TypedRequestData from './EIP712/TypedRequestData'
 import chalk from 'chalk'
+import { encode } from 'rlp'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -223,4 +224,26 @@ interface Signature {
 
 export function boolString (bool: boolean): string {
   return bool ? chalk.green('good'.padEnd(14)) : chalk.red('wrong'.padEnd(14))
+}
+
+export function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
+  const input = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]
+  input.push(
+    toBuffer(chainId),
+    stripZeros(toBuffer(0)),
+    stripZeros(toBuffer(0))
+  )
+  let v = bufferToInt(tx.v)
+  if (v > 28) {
+    console.log('wtf is v', v, chainId, tx.v.toString('hex'))
+    v -= chainId * 2 + 8
+    console.log('wtf is v after fix', v)
+  }
+  const data = `0x${encode(input).toString('hex')}`
+  const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
+    32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
+  return {
+    data,
+    signature
+  }
 }

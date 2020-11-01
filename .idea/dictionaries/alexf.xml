@@ -11,8 +11,10 @@
       <w>deauthorization</w>
       <w>duckdns</w>
       <w>ecrecover</w>
+      <w>endblock</w>
       <w>ethereum</w>
       <w>ethereumjs</w>
+      <w>etherscan</w>
       <w>ganache</w>
       <w>gasleft</w>
       <w>griefing</w>
@@ -48,6 +50,8 @@
       <w>penalizable</w>
       <w>penalizations</w>
       <w>penalizer</w>
+      <w>penalizetxcache</w>
+      <w>penalizetxpages</w>
       <w>privkey</w>
       <w>rebalancing</w>
       <w>registree</w>
@@ -61,8 +65,12 @@
       <w>solhint</w>
       <w>spdx</w>
       <w>stakemanager</w>
+      <w>startblock</w>
       <w>subprovider</w>
       <w>testproxy</w>
+      <w>txlist</w>
+      <w>txreceipt</w>
+      <w>txstore</w>
       <w>typechain</w>
       <w>typehash</w>
       <w>unauthorize</w>
