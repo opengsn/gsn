@@ -3,6 +3,9 @@
   "description": "Open Gas Stations Network",
   "name": "@opengsn/gsn",
   "license": "MIT",
+  "engines": {
+    "node": ">=11.0.0"
+  },
   "repository": {
     "url": "https://github.com/opengsn/gsn",
     "type": "git"

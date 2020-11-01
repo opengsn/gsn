@@ -1,12 +1,13 @@
 import Transaction from 'ethereumjs-tx/dist/transaction'
 import Web3 from 'web3'
+import axios from 'axios'
 import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import express from 'express'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import express from 'express'
-import axios from 'axios'
 
 import {
   RelayHubInstance,
@@ -42,10 +43,11 @@ import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestVersions = artifacts.require('TestVersions')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
 
-const expect = chai.expect
+const { expect, assert } = chai.use(chaiAsPromised)
 chai.use(sinonChai)
 
 const localhostOne = 'http://localhost:8090'
@@ -128,6 +130,34 @@ contract('RelayClient', function (accounts) {
 
   after(async function () {
     await stopRelay(relayProcess)
+  })
+
+  describe('#resolveForwarder()', function () {
+    it('should try to get forwarder address from recipient if none given as transaction details', async function () {
+      const noForwarderDetails = Object.assign({}, options, { forwarder: undefined })
+      const forwarder = await relayClient.resolveForwarder(noForwarderDetails)
+      assert.equal(forwarder, forwarderAddress)
+    })
+
+    it('should throw an exception if recipient does not return address for getTrustedForwarder', async function () {
+      const badRecipient = await TestVersions.new()
+      const noForwarderDetails = Object.assign({}, options, { forwarder: undefined, to: badRecipient.address })
+      await expect(relayClient.resolveForwarder(noForwarderDetails))
+        .to.eventually.be.rejectedWith('No forwarder address configured and no getTrustedForwarder in target contract')
+    })
+
+    it('should throw an exception if passed forwarder is not trusted', async function () {
+      const badForwarderDetails = Object.assign({}, options, { forwarder: accounts[0] })
+      await expect(relayClient.resolveForwarder(badForwarderDetails))
+        .to.eventually.be.rejectedWith('The Forwarder address configured but is not trusted by the Recipient contract')
+    })
+
+    it('should not throw an exception if check is disabled in configuration', async function () {
+      relayClient.config.skipRecipientForwarderValidation = true
+      const badForwarderDetails = Object.assign({}, options, { forwarder: accounts[0] })
+      const forwarder = await relayClient.resolveForwarder(badForwarderDetails)
+      assert.equal(forwarder, accounts[0])
+    })
   })
 
   describe('#relayTransaction()', function () {
