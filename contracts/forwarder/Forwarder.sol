@@ -55,7 +55,6 @@ contract Forwarder is IForwarder {
     external payable
     override
     returns (bool success, bytes memory ret) {
-        _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
@@ -74,7 +73,7 @@ contract Forwarder is IForwarder {
     }
 
     function _updateNonce(ForwardRequest memory req) internal {
-        nonces[req.from]++;
+        require(nonces[req.from]++ == req.nonce, "nonce mismatch");
     }
 
     function registerRequestType(string calldata typeName, string calldata typeSuffix) external override {
