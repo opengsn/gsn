@@ -13,6 +13,7 @@ import ContractInteractor, {
   StakeUnlocked
 } from './ContractInteractor'
 import { LoggerInterface } from '../common/LoggerInterface'
+import { EventData } from 'web3-eth-contract'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -103,14 +104,51 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     return origRelays.filter(this.relayFilter)
   }
 
+  splitRange (fromBlock: number, toBlock: number, splits: number): Array<{fromBlock: number, toBlock: number}> {
+    const totalBlocks = toBlock - fromBlock + 1
+    const splitSize = Math.ceil(totalBlocks / splits)
+
+    const ret: Array<{ fromBlock: number, toBlock: number }> = []
+    let b
+    for (b = fromBlock; b < toBlock; b += splitSize) {
+      ret.push({ fromBlock: b, toBlock: Math.min(toBlock, b + splitSize - 1) })
+    }
+    return ret
+  }
+
+  // return events from hub. split requested range into "window parts", to avoid
+  // fetching too many events at once.
+  async getPastEventsForHub (fromBlock: number, toBlock: number): Promise<EventData[]> {
+    let relayEventParts: any[]
+    while (true) {
+      const rangeParts = this.splitRange(fromBlock, toBlock, this.config.relayLookupWindowParts)
+      try {
+        // eslint-disable-next-line @typescript-eslint/promise-function-async
+        relayEventParts = await Promise.all(rangeParts.map(({ fromBlock, toBlock }) =>
+          this.contractInteractor.getPastEventsForHub([], {
+            fromBlock,
+            toBlock
+          })))
+        break
+      } catch (e) {
+        if (e.toString().match(/query returned more than/) != null &&
+          this.config.relayLookupWindowBlocks > this.config.relayLookupWindowParts
+        ) {
+          this.config.relayLookupWindowParts *= 2
+          continue
+        } else {
+          throw e
+        }
+      }
+    }
+    return relayEventParts.flat()
+  }
+
   async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub([], {
-      fromBlock,
-      toBlock
-    })
+    const relayEvents: any[] = await this.getPastEventsForHub(fromBlock, toBlock)
 
     this.logger.info(`fetchRelaysAdded: found ${relayEvents.length} events`)
     const foundRelayManagers: Set<Address> = new Set()

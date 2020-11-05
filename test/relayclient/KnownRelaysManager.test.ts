@@ -275,6 +275,62 @@ contract('KnownRelaysManager 2', function (accounts) {
       })
     })
 
+    describe('#splitRange', () => {
+      it('split 1', () => {
+        assert.deepEqual(knownRelaysManager.splitRange(1, 6, 1),
+          [{ fromBlock: 1, toBlock: 6 }])
+      })
+      it('split 2', () => {
+        assert.deepEqual(knownRelaysManager.splitRange(1, 6, 2),
+          [{ fromBlock: 1, toBlock: 3 }, { fromBlock: 4, toBlock: 6 }])
+      })
+      it('split 2 odd', () => {
+        assert.deepEqual(knownRelaysManager.splitRange(1, 7, 2),
+          [{ fromBlock: 1, toBlock: 4 }, { fromBlock: 5, toBlock: 7 }])
+      })
+      it('split 3', () => {
+        assert.deepEqual(knownRelaysManager.splitRange(1, 9, 3),
+          [{ fromBlock: 1, toBlock: 3 }, { fromBlock: 4, toBlock: 6 }, { fromBlock: 7, toBlock: 9 }])
+      })
+
+      it('split 3 odd', () => {
+        assert.deepEqual(knownRelaysManager.splitRange(1, 10, 3),
+          [{ fromBlock: 1, toBlock: 4 }, { fromBlock: 5, toBlock: 8 }, { fromBlock: 9, toBlock: 10 }])
+      })
+    })
+
+    describe('#getPastEventsForHub', () => {
+      let saveContractInteractor: any
+      before(() => {
+        saveContractInteractor = (knownRelaysManager as any).contractInteractor;
+        (knownRelaysManager as any).contractInteractor = {
+          async getPastEventsForHub (extra: any, options: { fromBlock: number, toBlock: number }) {
+            if (options.toBlock - options.fromBlock > 100) {
+              throw new Error('query returned more than 100 events')
+            }
+            const ret: any[] = []
+            for (let b = options.fromBlock; b <= options.toBlock; b++) {
+              ret.push({ event: `event${b}-${options.fromBlock}-${options.toBlock}` })
+            }
+            return ret
+          }
+        }
+      })
+      after(() => {
+        (knownRelaysManager as any).contractInteractor = saveContractInteractor
+      })
+
+      it('should break large request into multiple chunks', async () => {
+        (knownRelaysManager as any).config.relayLookupWindowParts = 1
+        const ret = await knownRelaysManager.getPastEventsForHub(1, 300)
+
+        assert.equal((knownRelaysManager as any).config.relayLookupWindowParts, 4)
+        assert.equal(ret.length, 300)
+        assert.equal(ret[0].event, 'event1-1-75')
+        assert.equal(ret[299].event, 'event300-226-300')
+      })
+    })
+
     describe('DefaultRelayScore', function () {
       const failure = {
         lastErrorTime: 100,
