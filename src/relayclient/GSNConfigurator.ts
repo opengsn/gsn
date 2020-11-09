@@ -122,6 +122,7 @@ export interface GSNConfig {
   relayLookupWindowBlocks: number
   methodSuffix: string
   jsonStringifyRequest: boolean
+  requiredVersionRange?: string
   relayTimeoutGrace: number
   sliceSize: number
   logLevel: NpmLogLevel
