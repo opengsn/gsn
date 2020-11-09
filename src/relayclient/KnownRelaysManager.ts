@@ -124,17 +124,21 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
       const rangeParts = this.splitRange(fromBlock, toBlock, this.config.relayLookupWindowParts)
       try {
         // eslint-disable-next-line @typescript-eslint/promise-function-async
-        relayEventParts = await Promise.all(rangeParts.map(({ fromBlock, toBlock }) =>
+        const getPastEventsPromises = rangeParts.map(({ fromBlock, toBlock }): Promise<any> =>
           this.contractInteractor.getPastEventsForHub([], {
             fromBlock,
             toBlock
-          })))
+          }))
+        relayEventParts = await Promise.all(getPastEventsPromises)
         break
       } catch (e) {
         if (e.toString().match(/query returned more than/) != null &&
           this.config.relayLookupWindowBlocks > this.config.relayLookupWindowParts
         ) {
-          this.config.relayLookupWindowParts *= 2
+          if (this.config.relayLookupWindowParts >= 16) {
+            throw new Error(`Too many events after splitting by ${this.config.relayLookupWindowParts}`)
+          }
+          this.config.relayLookupWindowParts *= 4
           continue
         } else {
           throw e
