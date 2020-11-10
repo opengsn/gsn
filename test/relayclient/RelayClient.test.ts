@@ -10,6 +10,7 @@ import axios from 'axios'
 
 import {
   RelayHubInstance,
+  PenalizerInstance,
   StakeManagerInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance
