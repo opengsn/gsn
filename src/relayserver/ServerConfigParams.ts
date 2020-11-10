@@ -35,6 +35,8 @@ export interface ServerConfigParams {
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
   gasPriceFactor: number
+  gasPriceOracleUrl: string
+  gasPriceOraclePath: string
   logLevel: NpmLogLevel
   loggerUrl: string
   loggerUserId: string
@@ -71,6 +73,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   gasPriceFactor: 1,
+  gasPriceOracleUrl: '',
+  gasPriceOraclePath: '',
   registrationBlockRate: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
@@ -111,6 +115,8 @@ const ConfigParamsTypes = {
   relayHubId: 'string',
   relayHubAddress: 'string',
   gasPriceFactor: 'number',
+  gasPriceOracleUrl: 'string',
+  gasPriceOraclePath: 'string',
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',

@@ -44,6 +44,7 @@ import { GSNConfig } from './GSNConfigurator'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from './LightTruffleContract'
+import axios from 'axios'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -399,8 +400,39 @@ export default class ContractInteractor {
     return await this.web3.eth.estimateGas(gsnTransactionDetails)
   }
 
+  // equivalent to `eval("blob"+path)` - but without evil eval
+  // path is sequence of `.word` , `[number]`, `["string"]`
+  getJsonElement (blob: any, path: string, origPath = path): string|null {
+    const m = path.match(/^\.(\w+)|\["([^"]+)"\]|\[(\d+)\]/)
+    if (m == null) throw new Error(`invalid path: ${origPath}: head of ${path}`)
+    const rest = path.slice(m[0].length)
+    const subitem = m[1] ?? m[2] ?? m[3]
+    const sub = blob[subitem]
+    if (sub == null) {
+      return null
+    }
+    if (rest === '') {
+      return sub
+    }
+    return this.getJsonElement(sub, rest, origPath)
+  }
+
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
   async getGasPrice (): Promise<string> {
+    if (this.config.gasPriceOracleUrl !== '') {
+      try {
+        const res = await axios.get(this.config.gasPriceOracleUrl, { timeout: 2000 })
+        const ret = parseFloat(this.getJsonElement(res.data, this.config.gasPriceOraclePath) ?? '')
+        if (typeof ret !== 'number' || isNaN(ret)) {
+          throw new Error(`not a number: ${ret}`)
+        }
+        return (ret * 1e9).toString()
+      } catch (e) {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        this.logger.error(`failed to access gas oracle. using getGasPrice() instead.\n(url=${this.config.gasPriceOracleUrl} path=${this.config.gasPriceOraclePath} err: ${e.message})`)
+      }
+    }
+
     return await this.web3.eth.getGasPrice()
   }
 
