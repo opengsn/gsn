@@ -321,10 +321,10 @@ contract('KnownRelaysManager 2', function (accounts) {
       })
 
       it('should break large request into multiple chunks', async () => {
-        (knownRelaysManager as any).config.relayLookupWindowParts = 1
+        (knownRelaysManager as any).relayLookupWindowParts = 1
         const ret = await knownRelaysManager.getPastEventsForHub(1, 300)
 
-        assert.equal((knownRelaysManager as any).config.relayLookupWindowParts, 4)
+        assert.equal((knownRelaysManager as any).relayLookupWindowParts, 4)
         assert.equal(ret.length, 300)
         assert.equal(ret[0].event, 'event1-1-75')
         assert.equal(ret[299].event, 'event300-226-300')

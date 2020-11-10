@@ -53,6 +53,8 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
   private latestScannedBlock: number = 0
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
+  public relayLookupWindowParts: number
+
   public readonly knownRelays: RelayInfoUrl[][] = []
 
   constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
@@ -61,6 +63,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     this.relayFilter = relayFilter ?? EmptyFilter
     this.scoreCalculator = scoreCalculator ?? DefaultRelayScore
     this.contractInteractor = contractInteractor
+    this.relayLookupWindowParts = this.config.relayLookupWindowParts
   }
 
   async refresh (): Promise<void> {
@@ -121,7 +124,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
   async getPastEventsForHub (fromBlock: number, toBlock: number): Promise<EventData[]> {
     let relayEventParts: any[]
     while (true) {
-      const rangeParts = this.splitRange(fromBlock, toBlock, this.config.relayLookupWindowParts)
+      const rangeParts = this.splitRange(fromBlock, toBlock, this.relayLookupWindowParts)
       try {
         // eslint-disable-next-line @typescript-eslint/promise-function-async
         const getPastEventsPromises = rangeParts.map(({ fromBlock, toBlock }): Promise<any> =>
@@ -133,12 +136,12 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
         break
       } catch (e) {
         if (e.toString().match(/query returned more than/) != null &&
-          this.config.relayLookupWindowBlocks > this.config.relayLookupWindowParts
+          this.config.relayLookupWindowBlocks > this.relayLookupWindowParts
         ) {
-          if (this.config.relayLookupWindowParts >= 16) {
-            throw new Error(`Too many events after splitting by ${this.config.relayLookupWindowParts}`)
+          if (this.relayLookupWindowParts >= 16) {
+            throw new Error(`Too many events after splitting by ${this.relayLookupWindowParts}`)
           }
-          this.config.relayLookupWindowParts *= 4
+          this.relayLookupWindowParts *= 4
           continue
         } else {
           throw e
