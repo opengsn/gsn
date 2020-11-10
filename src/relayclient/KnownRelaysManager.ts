@@ -54,8 +54,8 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
   public relayLookupWindowParts: number
-
-  public readonly knownRelays: RelayInfoUrl[][] = []
+  public preferredRelayers: RelayInfoUrl[] = []
+  public allRelayers: RelayInfoUrl[] = []
 
   constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
     this.config = config
@@ -69,8 +69,8 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
   async refresh (): Promise<void> {
     this._refreshFailures()
     const recentlyActiveRelayManagers = await this._fetchRecentlyActiveRelayManagers()
-    this.knownRelays[0] = this.config.preferredRelays.map(relayUrl => { return { relayUrl } })
-    this.knownRelays[1] = await this.getRelayInfoForManagers(recentlyActiveRelayManagers)
+    this.preferredRelayers = this.config.preferredRelays.map(relayUrl => { return { relayUrl } })
+    this.allRelayers = await this.getRelayInfoForManagers(recentlyActiveRelayManagers)
   }
 
   async getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]> {
@@ -185,9 +185,9 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
 
   async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]> {
     const sortedRelays: RelayInfoUrl[][] = []
-    for (let i = 0; i < this.knownRelays.length; i++) {
-      sortedRelays[i] = await this._sortRelaysInternal(gsnTransactionDetails, this.knownRelays[i])
-    }
+    // preferred relays are copied as-is, unsorted (we don't have any info about them anyway to sort)
+    sortedRelays[0] = Array.from(this.preferredRelayers)
+    sortedRelays[1] = await this._sortRelaysInternal(gsnTransactionDetails, this.allRelayers)
     return sortedRelays
   }
 

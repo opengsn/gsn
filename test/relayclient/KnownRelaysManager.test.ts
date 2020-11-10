@@ -209,8 +209,8 @@ contract('KnownRelaysManager 2', function (accounts) {
 
     it('should consider all relay managers with stake and authorization as active', async function () {
       await knownRelaysManager.refresh()
-      const preferredRelays = knownRelaysManager.knownRelays[0]
-      const activeRelays = knownRelaysManager.knownRelays[1]
+      const preferredRelays = knownRelaysManager.preferredRelayers
+      const activeRelays = knownRelaysManager.allRelayers
       assert.equal(preferredRelays.length, 1)
       assert.equal(preferredRelays[0].relayUrl, 'http://localhost:8090')
       assert.equal(activeRelays.length, 3)
@@ -225,7 +225,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       }
       const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, config, relayFilter)
       await knownRelaysManagerWithFilter.refresh()
-      const relays = knownRelaysManagerWithFilter.knownRelays[1]
+      const relays = knownRelaysManagerWithFilter.allRelayers
       assert.equal(relays.length, 1)
       assert.equal(relays[0].relayUrl, 'stakeAndAuthorization2')
     })
@@ -359,7 +359,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), undefined, biasedRelayScore)
     before(function () {
-      const activeRelays: RelayRegisteredEventInfo[][] = [[], [{
+      const activeRelays: RelayRegisteredEventInfo[] = [{
         relayManager: accounts[0],
         relayUrl: 'alex',
         baseRelayFee: '100000000',
@@ -374,8 +374,8 @@ contract('KnownRelaysManager 2', function (accounts) {
         relayUrl: 'joe',
         baseRelayFee: '10',
         pctRelayFee: '4'
-      }]]
-      sinon.stub(knownRelaysManager, 'knownRelays').value(activeRelays)
+      }]
+      sinon.stub(knownRelaysManager, 'allRelayers').value(activeRelays)
     })
 
     it('should use provided score calculation method to sort the known relays', async function () {

@@ -27,7 +27,7 @@ import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDet
 import BadHttpClient from '../dummies/BadHttpClient'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import BadRelayedTransactionValidator from '../dummies/BadRelayedTransactionValidator'
-import { deployHub, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import PingResponse from '../../src/common/PingResponse'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
@@ -40,6 +40,7 @@ import HttpWrapper from '../../src/relayclient/HttpWrapper'
 import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
+import { ether } from '@openzeppelin/test-helpers'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -87,6 +88,22 @@ contract('RelayClient', function (accounts) {
   let from: Address
   let data: PrefixedHexString
   let gsnEvents: GsnEvent[] = []
+  const cheapRelayerUrl = 'http://localhost:54321'
+
+  // register a very cheap relayer, so client will attempt to use it first.
+  async function registerCheapRelayer (relayHub: RelayHubInstance): Promise<void> {
+    const relayWorker = '0x'.padEnd(42, '2')
+    const relayOwner = accounts[3]
+    const relayManager = accounts[4]
+    await stakeManager.stakeForAddress(relayManager, 1000, {
+      value: ether('2'),
+      from: relayOwner
+    })
+    await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
+
+    await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
+    await relayHub.registerRelayServer(1, 1, cheapRelayerUrl, { from: relayManager })
+  }
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
@@ -481,6 +498,35 @@ contract('RelayClient', function (accounts) {
       assert.isFalse(hasReceipt)
       assert.isTrue(wrongNonce)
       assert.equal(broadcastError?.message, BadContractInteractor.wrongNonceMessage)
+    })
+  })
+
+  describe('multiple relayers', () => {
+    let id: string
+    before(async () => {
+      id = (await snapshot()).result
+      await registerCheapRelayer(relayHub)
+    })
+    after(async () => {
+      await revert(id)
+    })
+
+    it('should succeed to relay, but report ping error', async () => {
+      const relayingResult = await relayClient.relayTransaction(options)
+      assert.isNotNull(relayingResult.transaction)
+      assert.match(relayingResult.pingErrors.get(cheapRelayerUrl)?.message as string, /ECONNREFUSED/,
+        `relayResult: ${_dumpRelayingResult(relayingResult)}`)
+    })
+
+    it('use preferred relay if one is set', async () => {
+      relayClient = new RelayClient(underlyingProvider, {
+        preferredRelays: ['http://localhost:8090'],
+        ...gsnConfig
+      })
+
+      const relayingResult = await relayClient.relayTransaction(options)
+      assert.isNotNull(relayingResult.transaction)
+      assert.equal(relayingResult.pingErrors.size, 0)
     })
   })
 })
