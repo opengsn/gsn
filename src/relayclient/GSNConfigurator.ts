@@ -31,6 +31,7 @@ const defaultGsnConfig: GSNConfig = {
   skipRecipientForwarderValidation: false,
   preferredRelays: [],
   relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
+  relayLookupWindowParts: 1,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   minGasPrice: 0,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
@@ -120,6 +121,7 @@ export interface GSNConfig {
   skipRecipientForwarderValidation: boolean
   preferredRelays: string[]
   relayLookupWindowBlocks: number
+  relayLookupWindowParts: number
   methodSuffix: string
   jsonStringifyRequest: boolean
   requiredVersionRange?: string
