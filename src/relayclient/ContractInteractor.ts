@@ -101,7 +101,7 @@ export default class ContractInteractor {
 
   constructor (provider: Web3Provider, logger: LoggerInterface, config: GSNConfig) {
     this.logger = logger
-    this.versionManager = new VersionsManager(gsnRuntimeVersion)
+    this.versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange)
     this.web3 = new Web3(provider)
     this.config = config
     this.provider = provider

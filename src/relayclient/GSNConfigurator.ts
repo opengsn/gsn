@@ -28,8 +28,10 @@ const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
 const DEFAULT_LOOKUP_WINDOW_BLOCKS = 60000
 
 const defaultGsnConfig: GSNConfig = {
+  skipRecipientForwarderValidation: false,
   preferredRelays: [],
   relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
+  relayLookupWindowParts: 1,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   minGasPrice: 0,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
@@ -116,10 +118,13 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
  * @field jsonStringifyRequest - should be 'true' for Metamask, false for ganache
  */
 export interface GSNConfig {
+  skipRecipientForwarderValidation: boolean
   preferredRelays: string[]
   relayLookupWindowBlocks: number
+  relayLookupWindowParts: number
   methodSuffix: string
   jsonStringifyRequest: boolean
+  requiredVersionRange?: string
   relayTimeoutGrace: number
   sliceSize: number
   logLevel: NpmLogLevel

@@ -1,5 +1,6 @@
 /* eslint-disable no-new */
 import VersionsManager from '../../src/common/VersionsManager'
+require('source-map-support').install({ errorFormatterForce: true })
 
 describe('VersionManager', function () {
   context('constructor', function () {
@@ -11,26 +12,30 @@ describe('VersionManager', function () {
     it('should not throw on valid semver string', function () {
       new VersionsManager('2.0.0-beta.1+opengsn.something')
     })
+    it('target version with zero patch', function () {
+      assert.equal(new VersionsManager('2.3.4+opengsn.something').requiredVersionRange, '^2.3.0')
+    })
+    it('target beta version with zero patch', function () {
+      assert.equal(new VersionsManager('2.3.4-beta.5+opengsn.something').requiredVersionRange, '^2.3.0-beta.5')
+    })
   })
 
   context('#isMinorSameOrNewer()', function () {
     const manager = new VersionsManager('1.2.3')
-    it('should return true if version is same or newer', function () {
-      const isNewerSame = manager.isMinorSameOrNewer('1.2.4')
-      const isNewerPatch = manager.isMinorSameOrNewer('1.2.4')
-      const isNewerMinor = manager.isMinorSameOrNewer('1.2.4')
-      assert.isTrue(isNewerSame)
-      assert.isTrue(isNewerPatch)
-      assert.isTrue(isNewerMinor)
+    it('should ignore patch level', function () {
+      assert.isTrue(manager.isMinorSameOrNewer('1.2.2'))
+      assert.isTrue(manager.isMinorSameOrNewer('1.2.3'))
+      assert.isTrue(manager.isMinorSameOrNewer('1.2.4'))
+    })
 
-      const isNewerMajor = manager.isMinorSameOrNewer('2.3.4')
-      const isNewerPatchFalse = manager.isMinorSameOrNewer('1.2.0')
-      const isNewerMinorFalse = manager.isMinorSameOrNewer('1.1.0')
-      const isNewerMajorFalse = manager.isMinorSameOrNewer('0.2.3')
-      assert.isFalse(isNewerMajor)
-      assert.isFalse(isNewerPatchFalse)
-      assert.isFalse(isNewerMinorFalse)
-      assert.isFalse(isNewerMajorFalse)
+    it('should require minor same or equal', function () {
+      assert.isTrue(manager.isMinorSameOrNewer('1.3.0'))
+      assert.isFalse(manager.isMinorSameOrNewer('1.1.3'))
+    })
+
+    it('should require exact same major', function () {
+      assert.isFalse(manager.isMinorSameOrNewer('0.2.3'))
+      assert.isFalse(manager.isMinorSameOrNewer('3.2.3'))
     })
   })
 })
