@@ -235,9 +235,7 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   )
   let v = bufferToInt(tx.v)
   if (v > 28) {
-    console.log('wtf is v', v, chainId, tx.v.toString('hex'))
     v -= chainId * 2 + 8
-    console.log('wtf is v after fix', v)
   }
   const data = `0x${encode(input).toString('hex')}`
   const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(

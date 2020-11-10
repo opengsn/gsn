@@ -26,6 +26,8 @@ contract('PenalizerService', function (accounts) {
 
   afterEach(async function () {
     await revert(id)
+    await penalizerService.transactionManager.txStoreManager.clearAll()
+    penalizerService.transactionManager._initNonces()
   })
 
   before(async function () {
