@@ -38,6 +38,8 @@ export interface ServerConfigParams {
   logLevel: NpmLogLevel
   loggerUrl: string
   loggerUserId: string
+  etherscanApiUrl: string
+  etherscanApiKey: string
 
   workerMinBalance: number
   workerTargetBalance: number
@@ -83,6 +85,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   devMode: false,
   logLevel: 'debug',
   loggerUrl: '',
+  etherscanApiUrl: '',
+  etherscanApiKey: '',
   loggerUserId: '',
   baseRelayFee: '0',
   pctRelayFee: 0,
@@ -131,7 +135,10 @@ const ConfigParamsTypes = {
   minHubWithdrawalBalance: 'number',
   defaultGasLimit: 'number',
 
-  trustedPaymasters: 'list'
+  trustedPaymasters: 'list',
+
+  etherscanApiUrl: 'string',
+  etherscanApiKey: 'string'
 
 } as any
 

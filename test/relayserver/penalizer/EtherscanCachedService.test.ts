@@ -2,7 +2,7 @@ import { EtherscanCachedService } from '../../../src/relayserver/penalizer/Ether
 import { TransactionDataCache } from '../../../src/relayserver/penalizer/TransactionDataCache'
 import { createClientLogger } from '../../../src/relayclient/ClientWinstonLogger'
 
-contract.only('EtherscanCachedService', function () {
+contract('EtherscanCachedService', function () {
   const testApiKey = '22E2FW3YJDPA76RETFSGYB3I41I1JHGSR9'
   const transactionHash = '0xc156b7c666a223a2ccb151f0258bd97ad2e87c979af1d7c854b409f082812a41'
   const account = '0xa975D1DE6d7dA3140E9e293509337373402558bE'
@@ -11,7 +11,7 @@ contract.only('EtherscanCachedService', function () {
 
   before(async function () {
     const logger = createClientLogger('error', '', '', '')
-    const transactionDataCache = new TransactionDataCache(logger)
+    const transactionDataCache = new TransactionDataCache(logger, '/tmp/test')
     await transactionDataCache.clearAll()
     service = new EtherscanCachedService('https://api-rinkeby.etherscan.io/api', testApiKey, logger, transactionDataCache)
   })

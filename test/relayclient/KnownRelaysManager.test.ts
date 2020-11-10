@@ -7,6 +7,7 @@ import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/Kno
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
+  PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
@@ -21,6 +22,7 @@ import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const Forwarder = artifacts.require('Forwarder')
@@ -57,6 +59,7 @@ contract('KnownRelaysManager', function (
     let logger: LoggerInterface
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
+    let penalizer: PenalizerInstance
     let relayHub: RelayHubInstance
     let testRecipient: TestRecipientInstance
     let paymaster: TestPaymasterConfigurableMisbehaviorInstance
@@ -70,7 +73,8 @@ contract('KnownRelaysManager', function (
       workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
       workerNotActive = await web3.eth.personal.newAccount('password')
       stakeManager = await StakeManager.new()
-      relayHub = await deployHub(stakeManager.address)
+      penalizer = await Penalizer.new()
+      relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
         logLevel: 'error',
         relayHubAddress: relayHub.address,
@@ -171,12 +175,14 @@ contract('KnownRelaysManager 2', function (accounts) {
     let knownRelaysManager: KnownRelaysManager
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
+    let penalizer: PenalizerInstance
     let relayHub: RelayHubInstance
     let config: GSNConfig
 
     before(async function () {
       stakeManager = await StakeManager.new()
-      relayHub = await deployHub(stakeManager.address)
+      penalizer = await Penalizer.new()
+      relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090'],
         relayHubAddress: relayHub.address

@@ -68,14 +68,14 @@ export class RelayServer extends EventEmitter {
 
   workerBalanceRequired: AmountRequired
 
-  constructor (config: Partial<ServerConfigParams>, dependencies: ServerDependencies) {
+  constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
     this.versionManager = new VersionsManager(gsnRuntimeVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
     this.txStoreManager = dependencies.txStoreManager
-    this.transactionManager = new TransactionManager(dependencies, this.config)
+    this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), this.logger)

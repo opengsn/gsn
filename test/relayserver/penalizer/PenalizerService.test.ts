@@ -11,18 +11,28 @@ import { Address } from '../../../src/relayclient/types/Aliases'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'
+import { revert, snapshot } from '../../TestUtils'
 
-contract.only('PenalizerService', function (accounts) {
+contract('PenalizerService', function (accounts) {
+  let id: string
   let env: ServerTestEnvironment
   let txByNonceService: MockTxByNonceService
   let penalizerService: PenalizerService
   let relayWorker: Address
 
+  beforeEach(async function () {
+    id = (await snapshot()).result
+  })
+
+  afterEach(async function () {
+    await revert(id)
+  })
+
   before(async function () {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init()
     await env.newServerInstance()
-    const logger = createServerLogger('debug', '', '')
+    const logger = createServerLogger('error', '', '')
     txByNonceService = new MockTxByNonceService(web3.currentProvider, env.relayServer.contractInteractor, logger)
     const penalizerParams: PenalizerParams = {
       transactionManager: env.relayServer.transactionManager,
@@ -71,7 +81,30 @@ contract.only('PenalizerService', function (accounts) {
 
     it('should penalize for a repeated nonce transaction', async function () {
       const ret = await penalizerService.penalizeRepeatedNonce(penalizeRequest)
-      assert.isTrue(ret, 'penalization failed')
+      assert.notEqual(ret, undefined, 'penalization failed')
+    })
+  })
+
+  describe('penalizeIllegalTransaction', function () {
+    let penalizeRequest: PenalizeRequest
+
+    before(async function () {
+      const rawTxOptions = env.relayServer.contractInteractor.getRawTxOptions()
+      const penalizableTx = new Transaction({
+        nonce: toBN(0),
+        gasPrice: toBN(1e9),
+        gasLimit: toBN(1e5),
+        to: constants.ZERO_ADDRESS,
+        value: toBN(1e16),
+        data: '0x1234'
+      }, rawTxOptions)
+      const signedTxToPenalize = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, penalizableTx)
+      penalizeRequest = { signedTx: signedTxToPenalize }
+    })
+
+    it('should penalize for an illegal transaction', async function () {
+      const ret = await penalizerService.penalizeIllegalTransaction(penalizeRequest)
+      assert.notEqual(ret, undefined, 'penalization failed')
     })
   })
 })

@@ -15,7 +15,7 @@ export class MockTxByNonceService implements BlockExplorerInterface {
 
   constructor (provider: provider, contractInteractor: ContractInteractor, logger: LoggerInterface) {
     this.web3 = new Web3(provider)
-    this.transactionDataCache = new TransactionDataCache(logger)
+    this.transactionDataCache = new TransactionDataCache(logger, '/tmp/test')
     this.contractInteractor = contractInteractor
   }
 

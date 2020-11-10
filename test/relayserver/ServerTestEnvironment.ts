@@ -28,7 +28,7 @@ import { RelayClient } from '../../src/relayclient/RelayClient'
 import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
 import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { RelayServer } from '../../src/relayserver/RelayServer'
-import { ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
+import { configureServer, ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
@@ -41,6 +41,7 @@ import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { RelayHubConfiguration } from '../../src/relayclient/types/RelayHubConfiguration'
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
+import { TransactionManager } from '../../src/relayserver/TransactionManager'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -186,7 +187,8 @@ export class ServerTestEnvironment {
       workersKeyManager
     }
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
-    this.relayServer = new RelayServer(mergedConfig, serverDependencies)
+    const transactionManager = new TransactionManager(serverDependencies, configureServer(mergedConfig))
+    this.relayServer = new RelayServer(mergedConfig, transactionManager, serverDependencies)
     this.relayServer.on('error', (e) => {
       console.log('newServer event', e.message)
     })

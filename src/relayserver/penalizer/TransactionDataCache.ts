@@ -17,7 +17,7 @@ export class TransactionDataCache {
   private readonly pagesStore: AsyncNedb<PagesQueried>
   private readonly logger: LoggerInterface
 
-  constructor (logger: LoggerInterface, workdir = '/tmp/test/') {
+  constructor (logger: LoggerInterface, workdir: string) {
     const filename = `${workdir}/${TX_STORE_FILENAME}`
     this.logger = logger
     this.txstore = new AsyncNedb({

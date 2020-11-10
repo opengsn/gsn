@@ -10,6 +10,7 @@ import { BaseTransactionReceipt, RelayProvider } from '../../src/relayclient/Rel
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
   RelayHubInstance,
+  PenalizerInstance,
   StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
@@ -31,6 +32,7 @@ const { expect, assert } = require('chai').use(chaiAsPromised)
 const IForwarder = artifacts.require('IForwarder')
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
@@ -84,6 +86,7 @@ contract('RelayProvider', function (accounts) {
   let gasLess: Address
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
+  let penalizer: PenalizerInstance
   let paymasterInstance: TestPaymasterEverythingAcceptedInstance
   let paymaster: Address
   let relayProcess: ChildProcessWithoutNullStreams
@@ -94,7 +97,8 @@ contract('RelayProvider', function (accounts) {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new()
-    relayHub = await deployHub(stakeManager.address)
+    penalizer = await Penalizer.new()
+    relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     await registerForwarderForGsn(forwarderInstance)
