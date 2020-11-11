@@ -9,6 +9,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { createServerLogger } from './ServerWinstonLogger'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 
 function error (err: string): never {
   console.error(err)
@@ -42,13 +43,15 @@ async function run (): Promise<void> {
   const txStoreManager = new TxStoreManager({ workdir }, logger)
   const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
   await contractInteractor.init()
+  const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
 
   const dependencies: ServerDependencies = {
     logger,
     txStoreManager,
     managerKeyManager,
     workersKeyManager,
-    contractInteractor
+    contractInteractor,
+    gasPriceFetcher
   }
 
   const relay = new RelayServer(config, dependencies)

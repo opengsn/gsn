@@ -17,6 +17,7 @@ import {
   StoredTransactionMetadata
 } from './StoredTransaction'
 import { LoggerInterface } from '../common/LoggerInterface'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString
@@ -43,6 +44,7 @@ export class TransactionManager {
   txStoreManager: TxStoreManager
   config: ServerConfigParams
   logger: LoggerInterface
+  gasPriceFetcher: GasPriceFetcher
 
   rawTxOptions!: TransactionOptions
 
@@ -51,6 +53,7 @@ export class TransactionManager {
     this.txStoreManager = dependencies.txStoreManager
     this.workersKeyManager = dependencies.workersKeyManager
     this.managerKeyManager = dependencies.managerKeyManager
+    this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.logger = dependencies.logger
     this.config = config
     this._initNonces()
@@ -110,7 +113,7 @@ data         | 0x${transaction.data.toString('hex')}
 
   async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice, creationBlockNumber, serverAction }: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = method?.encodeABI() ?? '0x'
-    const _gasPrice = parseInt(gasPrice ?? await this.contractInteractor.getGasPrice())
+    const _gasPrice = parseInt(gasPrice ?? await this.gasPriceFetcher.getGasPrice())
     const releaseMutex = await this.nonceMutex.acquire()
     let signedTx
     let storedTx: StoredTransaction
