@@ -10,6 +10,7 @@ import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '../common/LoggerInterface'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -61,6 +62,7 @@ export interface ServerDependencies {
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
   contractInteractor: ContractInteractor
+  gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager
   logger: LoggerInterface
 }

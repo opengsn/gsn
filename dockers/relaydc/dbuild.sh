@@ -1,6 +1,9 @@
 #!/bin/bash -e
+cd `cd \`dirname $0\`;pwd`
+
 IMAGE=opengsn/relaydc
-docker build -t $IMAGE `dirname $0`
+
+docker build -t $IMAGE .
 test -z "$VERSION" && VERSION=`perl -ne 'print $1 if /gsnRuntimeVersion.*=\D*([\d.]+)/' ../../src/common/Version.ts`
 docker tag $IMAGE $IMAGE:$VERSION
 echo "== To publish"
