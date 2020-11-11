@@ -40,7 +40,7 @@ async function run (): Promise<void> {
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir }, logger)
-  const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ ...config, relayHubAddress: config.relayHubAddress }))
   await contractInteractor.init()
 
   const dependencies: ServerDependencies = {

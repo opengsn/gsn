@@ -123,6 +123,10 @@ const ConfigParamsTypes = {
   readyTimeout: 'number',
   devMode: 'boolean',
   logLevel: 'string',
+
+  loggerUrl: 'string',
+  loggerUserId: 'string',
+
   customerToken: 'string',
   hostOverride: 'string',
   userId: 'string',
