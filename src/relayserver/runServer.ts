@@ -13,6 +13,7 @@ import { PenalizerDependencies, PenalizerService } from './penalizer/PenalizerSe
 import { TransactionManager } from './TransactionManager'
 import { EtherscanCachedService } from './penalizer/EtherscanCachedService'
 import { TransactionDataCache } from './penalizer/TransactionDataCache'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 
 function error (err: string): never {
   console.error(err)
@@ -48,13 +49,15 @@ async function run (): Promise<void> {
   const txStoreManager = new TxStoreManager({ workdir }, logger)
   const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
   await contractInteractor.init()
+  const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
 
   const dependencies: ServerDependencies = {
     logger,
     txStoreManager,
     managerKeyManager,
     workersKeyManager,
-    contractInteractor
+    contractInteractor,
+    gasPriceFetcher
   }
 
   const transactionManager: TransactionManager = new TransactionManager(dependencies, config)

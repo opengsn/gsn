@@ -18,6 +18,7 @@ import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../../src/relayserver/TransactionManager'
+import { GasPriceFetcher } from '../../src/relayclient/GasPriceFetcher'
 
 const { oneEther } = constants
 
@@ -110,12 +111,15 @@ contract('RegistrationManager', function (accounts) {
           relayHubAddress: env.relayHub.address
         }))
       await contractInteractor.init()
+      const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
+
       const serverDependencies: ServerDependencies = {
         logger,
         txStoreManager,
         managerKeyManager,
         workersKeyManager,
-        contractInteractor
+        contractInteractor,
+        gasPriceFetcher
       }
       const transactionManager = new TransactionManager(serverDependencies, configureServer(params))
       const newRelayServer = new RelayServer(params, transactionManager, serverDependencies)

@@ -42,6 +42,7 @@ import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { RelayHubConfiguration } from '../../src/relayclient/types/RelayHubConfiguration'
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../../src/relayserver/TransactionManager'
+import { GasPriceFetcher } from '../../src/relayclient/GasPriceFetcher'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -179,8 +180,10 @@ export class ServerTestEnvironment {
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
     const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir }, logger)
+    const gasPriceFetcher = new GasPriceFetcher('', '', this.contractInteractor, logger)
     const serverDependencies = {
       contractInteractor: this.contractInteractor,
+      gasPriceFetcher,
       logger,
       txStoreManager,
       managerKeyManager,

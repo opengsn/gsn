@@ -33,6 +33,8 @@ const defaultGsnConfig: GSNConfig = {
   relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
   relayLookupWindowParts: 1,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
+  gasPriceOracleUrl: '',
+  gasPriceOraclePath: '',
   minGasPrice: 0,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   sliceSize: 3,
@@ -133,6 +135,8 @@ export interface GSNConfig {
   loggerApplicationId: string
   loggerUserIdOverride: string
   gasPriceFactorPercent: number
+  gasPriceOracleUrl: string
+  gasPriceOraclePath: string
   minGasPrice: number
   maxRelayNonceGap: number
   relayHubAddress: Address

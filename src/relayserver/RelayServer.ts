@@ -7,6 +7,7 @@ import { toBN, toHex } from 'web3-utils'
 import { IRelayHubInstance } from '../../types/truffle-contracts'
 
 import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 import { IntString } from '../relayclient/types/Aliases'
 import { RelayTransactionRequest } from '../relayclient/types/RelayTransactionRequest'
 
@@ -50,6 +51,7 @@ export class RelayServer extends EventEmitter {
   alertedBlock: number = 0
   private initialized = false
   readonly contractInteractor: ContractInteractor
+  readonly gasPriceFetcher: GasPriceFetcher
   private readonly versionManager: VersionsManager
   private workerTask?: Timeout
   config: ServerConfigParams
@@ -73,6 +75,7 @@ export class RelayServer extends EventEmitter {
     this.versionManager = new VersionsManager(gsnRuntimeVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
+    this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.txStoreManager = dependencies.txStoreManager
     this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
@@ -492,7 +495,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _refreshGasPrice (): Promise<void> {
-    const gasPriceString = await this.contractInteractor.getGasPrice()
+    const gasPriceString = await this.gasPriceFetcher.getGasPrice()
     this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
     if (this.gasPrice === 0) {
       throw new Error('Could not get gasPrice from node')

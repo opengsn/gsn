@@ -17,6 +17,7 @@ import { defaultEnvironment } from '../common/Environments'
 import { configureServer, ServerConfigParams } from '../relayserver/ServerConfigParams'
 import { createServerLogger } from '../relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../relayserver/TransactionManager'
+import { GasPriceFetcher } from './GasPriceFetcher'
 
 export interface TestEnvironment {
   deploymentResult: DeploymentResult
@@ -148,9 +149,12 @@ class GsnTestEnvironmentClass {
         relayHubAddress: deploymentResult.relayHubAddress
       }))
     await contractInteractor.init()
+    const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
+
     const relayServerDependencies = {
       logger,
       contractInteractor,
+      gasPriceFetcher,
       txStoreManager,
       managerKeyManager,
       workersKeyManager

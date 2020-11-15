@@ -10,6 +10,7 @@ import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '../common/LoggerInterface'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -35,6 +36,8 @@ export interface ServerConfigParams {
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
   gasPriceFactor: number
+  gasPriceOracleUrl: string
+  gasPriceOraclePath: string
   logLevel: NpmLogLevel
   loggerUrl: string
   loggerUserId: string
@@ -63,6 +66,7 @@ export interface ServerDependencies {
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
   contractInteractor: ContractInteractor
+  gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager
   logger: LoggerInterface
 }
@@ -75,6 +79,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   gasPriceFactor: 1,
+  gasPriceOracleUrl: '',
+  gasPriceOraclePath: '',
   registrationBlockRate: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
@@ -118,12 +124,18 @@ const ConfigParamsTypes = {
   relayHubId: 'string',
   relayHubAddress: 'string',
   gasPriceFactor: 'number',
+  gasPriceOracleUrl: 'string',
+  gasPriceOraclePath: 'string',
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',
   readyTimeout: 'number',
   devMode: 'boolean',
   logLevel: 'string',
+
+  loggerUrl: 'string',
+  loggerUserId: 'string',
+
   customerToken: 'string',
   hostOverride: 'string',
   userId: 'string',
