@@ -42,11 +42,7 @@ export function createStoredTransaction (tx: Transaction, metadata: StoredTransa
     gas: ethUtils.bufferToInt(tx.gasLimit),
     gasPrice: ethUtils.bufferToInt(tx.gasPrice),
     data: ethUtils.bufferToHex(tx.data),
-    // value: ethUtils.bufferToHex(tx.value),
     nonce: ethUtils.bufferToInt(tx.nonce),
-    // v: ethUtils.bufferToHex(tx.v),
-    // r: ethUtils.bufferToHex(tx.r),
-    // s: ethUtils.bufferToHex(tx.s),
     txId: ethUtils.bufferToHex(tx.hash())
   }
   return Object.assign({}, details, metadata)

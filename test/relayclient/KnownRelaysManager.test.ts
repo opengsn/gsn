@@ -3,7 +3,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
-import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
+import { KnownRelaysManager, DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
@@ -17,7 +17,7 @@ import { deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 
 import { LoggerInterface } from '../../src/common/LoggerInterface'
-import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
@@ -394,6 +394,32 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.equal(sortedRelays[1][2].relayUrl, 'joe')
       assert.equal(sortedRelays[1][2].baseRelayFee, '10')
       assert.equal(sortedRelays[1][2].pctRelayFee, '4')
+    })
+  })
+
+  describe('#getAuditors()', function () {
+    const auditorsCount = 2
+    let knownRelaysManager: KnownRelaysManager
+    before(function () {
+      const activeRelays: RelayInfoUrl[] = [{ relayUrl: 'alice' }, { relayUrl: 'bob' }, { relayUrl: 'charlie' }]
+      knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({ auditorsCount }))
+      sinon.stub(knownRelaysManager, 'allRelayers').value(activeRelays)
+    })
+
+    it('should give correct number of unique random relay URLs', function () {
+      const auditors = knownRelaysManager.getAuditors()
+      const unique = auditors.filter((value, index, self) => {
+        return self.indexOf(value) === index
+      })
+      assert.equal(unique.length, auditorsCount)
+      assert.equal(auditors.length, auditorsCount)
+    })
+
+    it('should give all relays if requested more then available', function () {
+      // @ts-ignore
+      knownRelaysManager.config.auditorsCount = 4
+      const auditors = knownRelaysManager.getAuditors()
+      assert.deepEqual(auditors, ['alice', 'bob', 'charlie'])
     })
   })
 })

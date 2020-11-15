@@ -1,5 +1,4 @@
 import chalk from 'chalk'
-import ow from 'ow'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -9,7 +8,7 @@ import { IRelayHubInstance } from '../../types/truffle-contracts'
 
 import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
 import { IntString } from '../relayclient/types/Aliases'
-import { RelayTransactionRequest, RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
+import { RelayTransactionRequest } from '../relayclient/types/RelayTransactionRequest'
 
 import PingResponse from '../common/PingResponse'
 import VersionsManager from '../common/VersionsManager'
@@ -105,10 +104,6 @@ export class RelayServer extends EventEmitter {
       ready: this.isReady() ?? false,
       version: gsnRuntimeVersion
     }
-  }
-
-  validateInputTypes (req: RelayTransactionRequest): void {
-    ow(req, ow.object.exactShape(RelayTransactionRequestShape))
   }
 
   validateInput (req: RelayTransactionRequest): void {
@@ -240,7 +235,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (!this.isReady()) {
       throw new Error('relay not ready')
     }
-    this.validateInputTypes(req)
     this.validateInput(req)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)

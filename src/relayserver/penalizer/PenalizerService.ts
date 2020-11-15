@@ -1,41 +1,39 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import { PrefixedHexString, Transaction as EthereumJsTransaction, TransactionOptions, TxData } from 'ethereumjs-tx'
-import { bufferToHex, bufferToInt, isZeroAddress } from 'ethereumjs-util'
 import { Transaction as Web3CoreTransaction } from 'web3-core'
+import { bufferToHex, bufferToInt, isZeroAddress } from 'ethereumjs-util'
 
-import RelayHubABI from '../../common/interfaces/IRelayHub.json'
 import PayMasterABI from '../../common/interfaces/IPaymaster.json'
+import RelayHubABI from '../../common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../common/interfaces/IStakeManager.json'
 
 import ContractInteractor from '../../relayclient/ContractInteractor'
 import VersionsManager from '../../common/VersionsManager'
-import { BlockExplorerInterface } from './BlockExplorerInterface'
-import { getDataAndSignature } from '../../common/Utils'
 import replaceErrors from '../../common/ErrorReplacerJSON'
-import { TransactionManager } from '../TransactionManager'
-import { ServerAction } from '../StoredTransaction'
+import { BlockExplorerInterface } from './BlockExplorerInterface'
 import { LoggerInterface } from '../../common/LoggerInterface'
+import { PenalizeRequest, PenalizeResponse } from '../../relayclient/types/PenalizeRequest'
+import { ServerAction } from '../StoredTransaction'
+import { TransactionManager } from '../TransactionManager'
+import { getDataAndSignature } from '../../common/Utils'
 import { gsnRuntimeVersion } from '../../common/Version'
+import { ServerConfigParams } from '../ServerConfigParams'
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
 abiDecoder.addABI(StakeManagerABI)
 
-export enum Accusations {
-  repeatedNonce = 'repeatedNonce',
-  illegalTransaction = 'illegalTransaction'
-}
+const INVALID_SIGNATURE = 'Transaction does not have a valid signature'
+const UNKNOWN_WORKER = 'Transaction is sent by an unknown worker'
+const UNSTAKED_RELAY = 'Transaction is sent by an unstaked relay'
+const MINED_TRANSACTION = 'Transaction is the one mined on the current chain and no conflicting transaction is known to this server'
+const NONCE_FORWARD = 'Transaction nonce is higher then current account nonce and no conflicting transaction is known to this server'
 
-export interface PenalizeRequest {
-  signedTx: PrefixedHexString
-}
-
-export interface PenalizerParams {
+export interface PenalizerDependencies {
   transactionManager: TransactionManager
   contractInteractor: ContractInteractor
   txByNonceService: BlockExplorerInterface
-  devMode: boolean
 }
 
 // TODO: parseInt is dangerous here, convert directly to buffer
@@ -63,16 +61,16 @@ export class PenalizerService {
   txByNonceService: BlockExplorerInterface
   versionManager: VersionsManager
   logger: LoggerInterface
-  devMode: boolean
+  config: ServerConfigParams
   initialized: boolean = false
 
   managerAddress: string
 
-  constructor (params: PenalizerParams, logger: LoggerInterface) {
+  constructor (params: PenalizerDependencies, logger: LoggerInterface, config: ServerConfigParams) {
     this.transactionManager = params.transactionManager
     this.contractInteractor = params.contractInteractor
     this.versionManager = new VersionsManager(gsnRuntimeVersion)
-    this.devMode = params.devMode
+    this.config = config
     this.txByNonceService = params.txByNonceService
 
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
@@ -83,7 +81,7 @@ export class PenalizerService {
     if (this.initialized) {
       return
     }
-    if (this.devMode && (this.contractInteractor.getChainId() < 1000 || this.contractInteractor.getNetworkId() < 1000)) {
+    if (this.config.devMode && (this.contractInteractor.getChainId() < 1000 || this.contractInteractor.getNetworkId() < 1000)) {
       this.logger.error('Don\'t use real network\'s chainId & networkId while in devMode.')
       process.exit(1)
     }
@@ -92,19 +90,31 @@ export class PenalizerService {
     this.initialized = true
   }
 
-  async penalizeRepeatedNonce (req: PenalizeRequest): Promise<PrefixedHexString | undefined> {
+  async penalizeRepeatedNonce (req: PenalizeRequest): Promise<PenalizeResponse> {
     if (!this.initialized) {
       throw new Error('PenalizerService is not initialized')
+    }
+    if (this.config.etherscanApiUrl.length === 0) {
+      return {
+        message: 'Etherscan API URL is not set on this server!'
+      }
     }
     this.logger.info(`Validating tx ${req.signedTx}`)
     // deserialize the tx
     const rawTxOptions = this.contractInteractor.getRawTxOptions()
     const requestTx = new EthereumJsTransaction(req.signedTx, rawTxOptions)
-    const isValidTx = await this.validateTransaction(requestTx)
-    // af: so I guess there is no point in accepting the mined transaction as an input
+    const validationResult = await this.validateTransaction(requestTx)
+    if (!validationResult.valid) {
+      return {
+        message: validationResult.error
+      }
+    }
+
     const isMinedTx = await this.isTransactionMined(requestTx)
-    if (isMinedTx || !isValidTx) {
-      return undefined
+    if (isMinedTx) {
+      return {
+        message: MINED_TRANSACTION
+      }
     }
 
     const relayWorker = bufferToHex(requestTx.getSenderAddress())
@@ -116,8 +126,11 @@ export class PenalizerService {
     const transactionNonce = bufferToInt(requestTx.nonce)
     if (transactionNonce > currentNonce) {
       // TODO: store it, and see how sender behaves later...
+      //  also, if we have already stored some transaction for this sender, check if these two are in nonce conflict.
       //  this flow has nothing to do with this particular penalization, so just default to 'storeTxForLater' or something
-      return undefined
+      return {
+        message: NONCE_FORWARD
+      }
     }
 
     // run penalize in view mode to see if penalizable
@@ -132,27 +145,35 @@ export class PenalizerService {
     const minedTxBuffers = createWeb3Transaction(minedTx, rawTxOptions)
     const method = this.getPenalizeRepeatedNonceMethod(minedTxBuffers, requestTx)
     const isValidPenalization = await this.validatePenalization(method)
-    if (!isValidPenalization) {
-      return undefined
+    if (!isValidPenalization.valid) {
+      return {
+        message: isValidPenalization.error
+      }
     }
-    return await this.executePenalization('penalizeRepeatedNonce', method)
+    const penalizeTxHash = await this.executePenalization('penalizeRepeatedNonce', method)
+    return { penalizeTxHash }
   }
 
-  async penalizeIllegalTransaction (req: PenalizeRequest): Promise<PrefixedHexString | undefined> {
+  async penalizeIllegalTransaction (req: PenalizeRequest): Promise<PenalizeResponse> {
     const rawTxOptions = this.contractInteractor.getRawTxOptions()
     const requestTx = new EthereumJsTransaction(req.signedTx, rawTxOptions)
-    const isValidTx = await this.validateTransaction(requestTx)
-    if (!isValidTx) {
-      return undefined
+    const validationResult = await this.validateTransaction(requestTx)
+    if (!validationResult.valid) {
+      return {
+        message: validationResult.error
+      }
     }
 
     const method = this.getPenalizeIllegalTransactionMethod(requestTx)
     const isValidPenalization = await this.validatePenalization(method)
-    if (!isValidPenalization) {
-      return undefined
+    if (!isValidPenalization.valid) {
+      return {
+        message: isValidPenalization.error
+      }
     }
 
-    return await this.executePenalization('penalizeIllegalTransaction', method)
+    const penalizeTxHash = await this.executePenalization('penalizeIllegalTransaction', method)
+    return { penalizeTxHash }
   }
 
   async executePenalization (methodName: string, method: any): Promise<PrefixedHexString> {
@@ -189,25 +210,31 @@ export class PenalizerService {
       minedTxSig, this.contractInteractor.relayHubInstance.address)
   }
 
-  async validateTransaction (requestTx: EthereumJsTransaction): Promise<boolean> {
+  async validateTransaction (requestTx: EthereumJsTransaction): Promise<{ valid: boolean, error?: string }> {
     const txHash = requestTx.hash(true).toString('hex')
     if (!requestTx.verifySignature()) {
-      this.logger.info('Transaction does not have a valid signature')
-      return false
+      return {
+        valid: false,
+        error: INVALID_SIGNATURE
+      }
     }
     const relayWorker = bufferToHex(requestTx.getSenderAddress())
     const relayManager = await this.contractInteractor.relayHubInstance.workerToManager(relayWorker)
     if (isZeroAddress(relayManager)) {
-      this.logger.info('Transaction is sent by an unknown worker')
-      return false
+      return {
+        valid: false,
+        error: UNKNOWN_WORKER
+      }
     }
     const staked = await this.contractInteractor.relayHubInstance.isRelayManagerStaked(relayManager)
     if (!staked) {
-      this.logger.info('Transaction is sent by an unstaked relay')
-      return false
+      return {
+        valid: false,
+        error: UNSTAKED_RELAY
+      }
     }
     this.logger.info(`Transaction ${txHash} is valid`)
-    return true
+    return { valid: true }
   }
 
   async isTransactionMined (requestTx: EthereumJsTransaction): Promise<boolean> {
@@ -215,17 +242,22 @@ export class PenalizerService {
     return txFromNode != null
   }
 
-  async validatePenalization (method: any): Promise<boolean> {
+  async validatePenalization (method: any): Promise<{ valid: boolean, error?: string }> {
     try {
       const res = await method.call({
         from: this.managerAddress
       })
       this.logger.debug(`res is ${JSON.stringify(res)}`)
-      return true
+      return {
+        valid: true
+      }
     } catch (e) {
-      const message = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
-      this.logger.debug(`view call to penalizeRepeatedNonce reverted with error message ${message}.\nTx not penalizable.`)
-      return false
+      const error = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
+      this.logger.debug(`view call to penalizeRepeatedNonce reverted with error message ${error}.\nTx not penalizable.`)
+      return {
+        valid: false,
+        error
+      }
     }
   }
 }

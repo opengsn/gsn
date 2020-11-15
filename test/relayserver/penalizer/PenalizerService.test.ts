@@ -3,7 +3,8 @@ import { Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 
-import { PenalizeRequest, PenalizerParams, PenalizerService } from '../../../src/relayserver/penalizer/PenalizerService'
+import { PenalizerDependencies, PenalizerService } from '../../../src/relayserver/penalizer/PenalizerService'
+import { PenalizeRequest } from '../../../src/relayclient/types/PenalizeRequest'
 import { createServerLogger } from '../../../src/relayserver/ServerWinstonLogger'
 
 import { constants } from '../../../src/common/Constants'
@@ -12,6 +13,7 @@ import { Address } from '../../../src/relayclient/types/Aliases'
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'
 import { revert, snapshot } from '../../TestUtils'
+import { resolveServerConfig, ServerConfigParams } from '../../../src/relayserver/ServerConfigParams'
 
 contract('PenalizerService', function (accounts) {
   let id: string
@@ -36,13 +38,19 @@ contract('PenalizerService', function (accounts) {
     await env.newServerInstance()
     const logger = createServerLogger('error', '', '')
     txByNonceService = new MockTxByNonceService(web3.currentProvider, env.relayServer.contractInteractor, logger)
-    const penalizerParams: PenalizerParams = {
+    const penalizerParams: PenalizerDependencies = {
       transactionManager: env.relayServer.transactionManager,
       contractInteractor: env.relayServer.contractInteractor,
-      txByNonceService,
-      devMode: true
+      txByNonceService
     }
-    penalizerService = new PenalizerService(penalizerParams, logger)
+
+    const serverConfigParams = await resolveServerConfig({
+      url: '',
+      workdir: '',
+      etherscanApiUrl: 'etherscanApiUrl',
+      relayHubAddress: env.relayHub.address
+    }, web3.currentProvider) as ServerConfigParams
+    penalizerService = new PenalizerService(penalizerParams, logger, serverConfigParams)
     await penalizerService.init()
 
     relayWorker = env.relayServer.transactionManager.workersKeyManager.getAddress(0)

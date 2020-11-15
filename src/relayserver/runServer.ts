@@ -9,7 +9,7 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { createServerLogger } from './ServerWinstonLogger'
-import { PenalizerParams, PenalizerService } from './penalizer/PenalizerService'
+import { PenalizerDependencies, PenalizerService } from './penalizer/PenalizerService'
 import { TransactionManager } from './TransactionManager'
 import { EtherscanCachedService } from './penalizer/EtherscanCachedService'
 import { TransactionDataCache } from './penalizer/TransactionDataCache'
@@ -29,9 +29,9 @@ async function run (): Promise<void> {
     if (conf.ethereumNodeUrl == null) {
       error('missing ethereumNodeUrl')
     }
-    runPenalizer = conf.runPenalizer ?? false
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
     config = await resolveServerConfig(conf, web3provider) as ServerConfigParams
+    runPenalizer = config.runPenalizer
   } catch (e) {
     error(e.message)
   }
@@ -64,13 +64,13 @@ async function run (): Promise<void> {
     const transactionDataCache: TransactionDataCache = new TransactionDataCache(logger, config.workdir)
 
     const txByNonceService = new EtherscanCachedService(config.etherscanApiUrl, config.etherscanApiKey, logger, transactionDataCache)
-    const penalizerParams: PenalizerParams = {
+    const penalizerParams: PenalizerDependencies = {
       transactionManager,
       contractInteractor,
-      txByNonceService,
-      devMode
+      txByNonceService
     }
-    penalizerService = new PenalizerService(penalizerParams, logger)
+    penalizerService = new PenalizerService(penalizerParams, logger, config)
+    await penalizerService.init()
   }
   const relay = new RelayServer(config, transactionManager, dependencies)
   await relay.init()

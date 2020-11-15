@@ -1,11 +1,15 @@
+import * as core from 'express-serve-static-core'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import express, { Express, Request, Response } from 'express'
 import { Server } from 'http'
+import ow from 'ow'
 
-import { Accusations, PenalizerService } from './penalizer/PenalizerService'
+import { PenalizerService } from './penalizer/PenalizerService'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { RelayServer } from './RelayServer'
+import { PenalizeRequest, PenalizeRequestShape, PenalizeResponse } from '../relayclient/types/PenalizeRequest'
+import { RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
 
 export class HttpServer {
   app: Express
@@ -28,7 +32,7 @@ export class HttpServer {
     }
 
     if (this.penalizerService != null) {
-      this.app.post('/penalize', this.penalizeHandler.bind(this))
+      this.app.post('/audit', this.auditHandler.bind(this))
     }
   }
 
@@ -67,6 +71,7 @@ export class HttpServer {
       throw new Error('RelayServer not initialized')
     }
     try {
+      ow(req.body, ow.object.exactShape(RelayTransactionRequestShape))
       const signedTx = await this.relayService.createRelayTransaction(req.body)
       res.send({ signedTx })
     } catch (e) {
@@ -76,22 +81,27 @@ export class HttpServer {
     }
   }
 
-  async penalizeHandler (req: Request, res: Response): Promise<void> {
-    let penalizeTxHash: string | undefined
+  async auditHandler (req: Request<core.ParamsDictionary, PenalizeResponse, PenalizeRequest>, res: Response<PenalizeResponse>): Promise<void> {
+    if (this.penalizerService == null) {
+      throw new Error('PenalizerService not initialized')
+    }
     try {
-      switch (req.body.accusation) {
-        case Accusations.repeatedNonce:
-          penalizeTxHash = await this.penalizerService?.penalizeRepeatedNonce(req.body.penalizeRequest)
-          break
-        case Accusations.illegalTransaction:
-          penalizeTxHash = await this.penalizerService?.penalizeIllegalTransaction(req.body.penalizeRequest)
-          break
+      ow(req.body, ow.object.exactShape(PenalizeRequestShape))
+      let message = ''
+      let penalizeResponse = await this.penalizerService.penalizeRepeatedNonce(req.body)
+      message += penalizeResponse.message ?? ''
+      if (penalizeResponse.penalizeTxHash == null) {
+        penalizeResponse = await this.penalizerService.penalizeIllegalTransaction(req.body)
+        message += penalizeResponse.message ?? ''
       }
-      res.send({ penalizeTxHash })
+      res.send({
+        penalizeTxHash: penalizeResponse.penalizeTxHash,
+        message
+      })
     } catch (e) {
-      const error: string = e.message
-      res.send({ error })
-      this.logger.error(`penalization failed: ${error}`)
+      const message: string = e.message
+      res.send({ message })
+      this.logger.error(`penalization failed: ${message}`)
     }
   }
 }

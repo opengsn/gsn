@@ -6,6 +6,7 @@ import { LoggerInterface } from '../common/LoggerInterface'
 import HttpWrapper from './HttpWrapper'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
+import { PenalizeRequest, PenalizeResponse } from './types/PenalizeRequest'
 
 export default class HttpClient {
   private readonly httpWrapper: HttpWrapper
@@ -38,5 +39,12 @@ export default class HttpClient {
       throw new Error('body.signedTx field missing.')
     }
     return signedTx
+  }
+
+  async auditTransaction (relayUrl: string, signedTx: PrefixedHexString): Promise<PenalizeResponse> {
+    const penalizeRequest: PenalizeRequest = { signedTx }
+    const penalizeResponse: PenalizeResponse = await this.httpWrapper.sendPromise(relayUrl + '/audit', penalizeRequest)
+    this.logger.info(`auditTransaction response: ${JSON.stringify(penalizeResponse)}`)
+    return penalizeResponse
   }
 }

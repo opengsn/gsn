@@ -5,7 +5,7 @@ import path from 'path'
 
 import { ether } from '@openzeppelin/test-helpers'
 
-import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contracts'
+import { IStakeManagerInstance, RelayHubInstance } from '../types/truffle-contracts'
 import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
@@ -28,7 +28,7 @@ const localhostOne = 'http://localhost:8090'
 //
 export async function startRelay (
   relayHubAddress: string,
-  stakeManager: StakeManagerInstance,
+  stakeManager: IStakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 

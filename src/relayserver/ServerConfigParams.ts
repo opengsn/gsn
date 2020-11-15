@@ -54,6 +54,8 @@ export interface ServerConfigParams {
   retryGasPriceFactor: number
   maxGasPrice: string
   defaultGasLimit: number
+
+  runPenalizer: boolean
 }
 
 export interface ServerDependencies {
@@ -83,6 +85,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
+  runPenalizer: true,
   logLevel: 'debug',
   loggerUrl: '',
   etherscanApiUrl: '',
@@ -136,6 +139,8 @@ const ConfigParamsTypes = {
   defaultGasLimit: 'number',
 
   trustedPaymasters: 'list',
+
+  runPenalizer: 'boolean',
 
   etherscanApiUrl: 'string',
   etherscanApiKey: 'string'
