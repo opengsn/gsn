@@ -1,15 +1,15 @@
 import ow from 'ow'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-export interface PenalizeRequest {
+export interface AuditRequest {
   signedTx: PrefixedHexString
 }
 
-export interface PenalizeResponse {
+export interface AuditResponse {
   penalizeTxHash?: PrefixedHexString
   message?: string
 }
 
-export const PenalizeRequestShape = {
+export const AuditRequestShape = {
   signedTx: ow.string
 }

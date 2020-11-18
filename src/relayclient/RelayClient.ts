@@ -16,7 +16,7 @@ import RelayedTransactionValidator from './RelayedTransactionValidator'
 import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
 import { KnownRelaysManager } from './KnownRelaysManager'
 import { LoggerInterface } from '../common/LoggerInterface'
-import { PenalizeResponse } from './types/PenalizeRequest'
+import { AuditResponse } from './types/AuditRequest'
 import { RelayInfo } from './types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
@@ -49,14 +49,14 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 interface RelayingAttempt {
   transaction?: Transaction
   error?: Error
-  auditPromise?: Promise<PenalizeResponse>
+  auditPromise?: Promise<AuditResponse>
 }
 
 export interface RelayingResult {
   transaction?: Transaction
   pingErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
-  auditPromises?: Array<Promise<PenalizeResponse>>
+  auditPromises?: Array<Promise<AuditResponse>>
 }
 
 export class RelayClient {
@@ -201,7 +201,7 @@ export class RelayClient {
       throw new Error('no registered relayers')
     }
     const relayingErrors = new Map<string, Error>()
-    const auditPromises: Array<Promise<PenalizeResponse>> = []
+    const auditPromises: Array<Promise<AuditResponse>> = []
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
       const activeRelay = await relaySelectionManager.selectNextRelay()
@@ -262,13 +262,13 @@ export class RelayClient {
     }
     let hexTransaction: PrefixedHexString
     let transaction: Transaction
-    let auditPromise: Promise<PenalizeResponse>
+    let auditPromise: Promise<AuditResponse>
 
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
       hexTransaction = await this.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
       transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())
-      auditPromise = this.auditTransaction(hexTransaction)
+      auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
         .then((penalizeResponse) => {
           if (penalizeResponse.penalizeTxHash != null) {
             const txHash = bufferToHex(transaction.hash(true))
@@ -394,8 +394,8 @@ export class RelayClient {
     return forwarderAddress
   }
 
-  async auditTransaction (hexTransaction: PrefixedHexString): Promise<PenalizeResponse> {
-    const auditors = this.knownRelaysManager.getAuditors()
+  async auditTransaction (hexTransaction: PrefixedHexString, sourceRelayUrl: string): Promise<AuditResponse> {
+    const auditors = this.knownRelaysManager.getAuditors([sourceRelayUrl])
     let failedAuditorsCount = 0
     for (const auditor of auditors) {
       try {
@@ -412,7 +412,7 @@ export class RelayClient {
       this.logger.error('All auditors failed!')
     }
     return {
-      message: `Transaction was not penalized. Failed audit calls: ${failedAuditorsCount}/${auditors.length}`
+      message: `Transaction was not audited. Failed audit calls: ${failedAuditorsCount}/${auditors.length}`
     }
   }
 }

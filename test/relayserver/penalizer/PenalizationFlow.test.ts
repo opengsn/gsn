@@ -18,6 +18,8 @@ import { gsnRuntimeVersion } from '../../../src/common/Version'
 import { startRelay, stopRelay } from '../../TestUtils'
 
 contract('PenalizationFlow', function (accounts) {
+  const preferredRelays = ['http://www.my-preffered-relay.com']
+
   let penalizingRelayProcess: ChildProcessWithoutNullStreams
   let gsnTransactionDetails: GsnTransactionDetails
   let relayManagerAddress: Address
@@ -48,7 +50,7 @@ contract('PenalizationFlow', function (accounts) {
     const logger = createClientLogger('error', '', '', '')
     const partialConfig: Partial<GSNConfig> = {
       relayHubAddress: env.relayHub.address,
-      preferredRelays: [LocalhostOne],
+      preferredRelays,
       auditorsCount: 2
     }
     const httpClient = new HttpClient(new HttpWrapper(), logger, configureGSN(partialConfig))
@@ -57,7 +59,6 @@ contract('PenalizationFlow', function (accounts) {
 
     sinon
       .stub(httpClient, 'getPingResponse')
-      .onFirstCall()
       .returns(Promise.resolve({
         relayWorkerAddress,
         relayManagerAddress,
@@ -81,7 +82,6 @@ contract('PenalizationFlow', function (accounts) {
 
     sinon
       .stub(httpClient, 'relayTransaction')
-      .onFirstCall()
       .returns(Promise.resolve(signedTxToPenalize))
 
     const overrideDependencies: Partial<GSNDependencies> = {

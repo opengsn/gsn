@@ -6,7 +6,7 @@ import { LoggerInterface } from '../common/LoggerInterface'
 import HttpWrapper from './HttpWrapper'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
-import { PenalizeRequest, PenalizeResponse } from './types/PenalizeRequest'
+import { AuditRequest, AuditResponse } from './types/AuditRequest'
 
 export default class HttpClient {
   private readonly httpWrapper: HttpWrapper
@@ -41,10 +41,10 @@ export default class HttpClient {
     return signedTx
   }
 
-  async auditTransaction (relayUrl: string, signedTx: PrefixedHexString): Promise<PenalizeResponse> {
-    const penalizeRequest: PenalizeRequest = { signedTx }
-    const penalizeResponse: PenalizeResponse = await this.httpWrapper.sendPromise(relayUrl + '/audit', penalizeRequest)
-    this.logger.info(`auditTransaction response: ${JSON.stringify(penalizeResponse)}`)
-    return penalizeResponse
+  async auditTransaction (relayUrl: string, signedTx: PrefixedHexString): Promise<AuditResponse> {
+    const auditRequest: AuditRequest = { signedTx }
+    const auditResponse: AuditResponse = await this.httpWrapper.sendPromise(relayUrl + '/audit', auditRequest)
+    this.logger.info(`auditTransaction response: ${JSON.stringify(auditResponse)}`)
+    return auditResponse
   }
 }

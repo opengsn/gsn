@@ -401,13 +401,15 @@ contract('KnownRelaysManager 2', function (accounts) {
     const auditorsCount = 2
     let knownRelaysManager: KnownRelaysManager
     before(function () {
-      const activeRelays: RelayInfoUrl[] = [{ relayUrl: 'alice' }, { relayUrl: 'bob' }, { relayUrl: 'charlie' }]
+      const activeRelays: RelayInfoUrl[] = [{ relayUrl: 'alice' }, { relayUrl: 'bob' }, { relayUrl: 'charlie' }, { relayUrl: 'alice' }]
+      const preferredRelayers: RelayInfoUrl[] = [{ relayUrl: 'alice' }, { relayUrl: 'david' }]
       knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({ auditorsCount }))
+      sinon.stub(knownRelaysManager, 'preferredRelayers').value(preferredRelayers)
       sinon.stub(knownRelaysManager, 'allRelayers').value(activeRelays)
     })
 
     it('should give correct number of unique random relay URLs', function () {
-      const auditors = knownRelaysManager.getAuditors()
+      const auditors = knownRelaysManager.getAuditors([])
       const unique = auditors.filter((value, index, self) => {
         return self.indexOf(value) === index
       })
@@ -415,11 +417,11 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.equal(auditors.length, auditorsCount)
     })
 
-    it('should give all relays if requested more then available', function () {
+    it('should give all unique relays URLS if requested more then available', function () {
       // @ts-ignore
-      knownRelaysManager.config.auditorsCount = 4
-      const auditors = knownRelaysManager.getAuditors()
-      assert.deepEqual(auditors, ['alice', 'bob', 'charlie'])
+      knownRelaysManager.config.auditorsCount = 7
+      const auditors = knownRelaysManager.getAuditors([])
+      assert.deepEqual(auditors.sort(), ['alice', 'bob', 'charlie', 'david'])
     })
   })
 })

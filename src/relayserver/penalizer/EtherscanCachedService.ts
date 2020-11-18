@@ -22,6 +22,7 @@ export class EtherscanCachedService implements BlockExplorerInterface {
   }
 
   async searchTransactionEtherscan (address: string, nonce: number, lastPageQueried: number): Promise<TransactionData | undefined> {
+    const pageSize = 10
     let page = lastPageQueried + 1
     let response: AxiosResponse<EtherscanResponse>
     do {
@@ -30,7 +31,7 @@ export class EtherscanCachedService implements BlockExplorerInterface {
           address,
           page,
           apikey: this.etherscanApiKey,
-          offset: 10,
+          offset: pageSize,
           action: 'txlist',
           module: 'account',
           sort: 'asc',
@@ -51,7 +52,7 @@ export class EtherscanCachedService implements BlockExplorerInterface {
         return transaction
       }
       page++
-    } while (response.data.result.length > 0)
+    } while (response.data.result.length >= pageSize)
     return undefined
   }
 

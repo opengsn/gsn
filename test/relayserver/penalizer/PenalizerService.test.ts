@@ -4,7 +4,7 @@ import { bufferToHex } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 
 import { PenalizerDependencies, PenalizerService } from '../../../src/relayserver/penalizer/PenalizerService'
-import { PenalizeRequest } from '../../../src/relayclient/types/PenalizeRequest'
+import { AuditRequest } from '../../../src/relayclient/types/AuditRequest'
 import { createServerLogger } from '../../../src/relayserver/ServerWinstonLogger'
 
 import { constants } from '../../../src/common/Constants'
@@ -60,7 +60,7 @@ contract('PenalizerService', function (accounts) {
   })
 
   describe('penalizeRepeatedNonce', function () {
-    let penalizeRequest: PenalizeRequest
+    let auditRequest: AuditRequest
 
     before(async function () {
       const rawTxOptions = env.relayServer.contractInteractor.getRawTxOptions()
@@ -86,17 +86,17 @@ contract('PenalizerService', function (accounts) {
       const signedTxToPenalize = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, penalizableTx)
       await env.relayServer.transactionManager.contractInteractor.sendSignedTransaction(signedTxToMine)
       await txByNonceService.setTransactionByNonce(txToMine, relayWorker)
-      penalizeRequest = { signedTx: signedTxToPenalize }
+      auditRequest = { signedTx: signedTxToPenalize }
     })
 
     it('should penalize for a repeated nonce transaction', async function () {
-      const ret = await penalizerService.penalizeRepeatedNonce(penalizeRequest)
+      const ret = await penalizerService.penalizeRepeatedNonce(auditRequest)
       assert.notEqual(ret, undefined, 'penalization failed')
     })
   })
 
   describe('penalizeIllegalTransaction', function () {
-    let penalizeRequest: PenalizeRequest
+    let penalizeRequest: AuditRequest
 
     before(async function () {
       const rawTxOptions = env.relayServer.contractInteractor.getRawTxOptions()

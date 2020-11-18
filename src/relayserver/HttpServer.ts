@@ -8,14 +8,19 @@ import ow from 'ow'
 import { PenalizerService } from './penalizer/PenalizerService'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { RelayServer } from './RelayServer'
-import { PenalizeRequest, PenalizeRequestShape, PenalizeResponse } from '../relayclient/types/PenalizeRequest'
+import { AuditRequest, AuditRequestShape, AuditResponse } from '../relayclient/types/AuditRequest'
 import { RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
 
 export class HttpServer {
   app: Express
   private serverInstance?: Server
 
-  constructor (private readonly port: number, readonly logger: LoggerInterface, readonly relayService?: RelayServer, readonly penalizerService?: PenalizerService) {
+  constructor (
+    private readonly port: number,
+    readonly logger: LoggerInterface,
+    readonly relayService?: RelayServer,
+    readonly penalizerService?: PenalizerService
+  ) {
     this.app = express()
     this.app.use(cors())
 
@@ -81,12 +86,12 @@ export class HttpServer {
     }
   }
 
-  async auditHandler (req: Request<core.ParamsDictionary, PenalizeResponse, PenalizeRequest>, res: Response<PenalizeResponse>): Promise<void> {
+  async auditHandler (req: Request<core.ParamsDictionary, AuditResponse, AuditRequest>, res: Response<AuditResponse>): Promise<void> {
     if (this.penalizerService == null) {
       throw new Error('PenalizerService not initialized')
     }
     try {
-      ow(req.body, ow.object.exactShape(PenalizeRequestShape))
+      ow(req.body, ow.object.exactShape(AuditRequestShape))
       let message = ''
       let penalizeResponse = await this.penalizerService.penalizeRepeatedNonce(req.body)
       message += penalizeResponse.message ?? ''
