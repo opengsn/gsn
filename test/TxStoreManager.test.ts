@@ -87,18 +87,7 @@ contract('TxStoreManager', function (accounts) {
     assert.equal(tx.txId, txByNonce.txId)
   })
 
-  it('should remove tx by nonce', async function () {
-    let txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
-    assert.equal(tx.txId, txByNonce.txId)
-    assert.deepEqual(1, (await txmanager.getAll()).length)
-    await txmanager.removeTxByNonce(tx.from, tx.nonce)
-    txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
-    assert.equal(null, txByNonce)
-    assert.deepEqual([], await txmanager.getAll())
-  })
-
   it('should remove txs until nonce', async function () {
-    await txmanager.putTx(tx)
     await txmanager.putTx(tx2)
     await txmanager.putTx(tx3)
     let txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)

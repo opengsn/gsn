@@ -99,6 +99,7 @@ contract('RegistrationManager', function (accounts) {
         baseRelayFee: '0',
         pctRelayFee: 0,
         gasPriceFactor: 1,
+        runPaymasterReputations: false,
         checkInterval: 10
       }
       const logger = createServerLogger('error', '', '')

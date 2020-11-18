@@ -6,9 +6,12 @@ import { toBN, toHex } from 'web3-utils'
 
 import { IRelayHubInstance } from '../../types/truffle-contracts'
 
-import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
+import ContractInteractor, {
+  TransactionRejectedByPaymaster,
+  TransactionRelayed
+} from '../relayclient/ContractInteractor'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
-import { IntString } from '../relayclient/types/Aliases'
+import { Address, IntString } from '../relayclient/types/Aliases'
 import { RelayTransactionRequest } from '../relayclient/types/RelayTransactionRequest'
 
 import PingResponse from '../common/PingResponse'
@@ -28,6 +31,7 @@ import {
 } from '../common/Utils'
 
 import { RegistrationManager } from './RegistrationManager'
+import { PaymasterStatus, ReputationManager } from './ReputationManager'
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
@@ -60,6 +64,7 @@ export class RelayServer extends EventEmitter {
 
   lastMinedActiveTransaction?: EventData
 
+  reputationManager!: ReputationManager
   registrationManager!: RegistrationManager
   chainId!: number
   networkId!: number
@@ -81,6 +86,12 @@ export class RelayServer extends EventEmitter {
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), this.logger)
+    if (this.config.runPaymasterReputations) {
+      if (dependencies.reputationManager == null) {
+        throw new Error('ReputationManager is not initialized')
+      }
+      this.reputationManager = dependencies.reputationManager
+    }
     this.printServerAddresses()
     this.logger.warn(`RelayServer version', ${gsnRuntimeVersion}`)
     this.logger.info(`Using server configuration:\n ${JSON.stringify(this.config)}`)
@@ -95,7 +106,13 @@ export class RelayServer extends EventEmitter {
     return this.gasPrice
   }
 
-  pingHandler (paymaster?: string): PingResponse {
+  async pingHandler (paymaster?: string): Promise<PingResponse> {
+    if (this.config.runPaymasterReputations && paymaster != null) {
+      const status = await this.reputationManager.getPaymasterStatus(paymaster)
+      if (status === PaymasterStatus.BLOCKED || status === PaymasterStatus.ABUSED) {
+        throw new Error(`This paymaster will not be served, status: ${status}`)
+      }
+    }
     return {
       relayWorkerAddress: this.workerAddress,
       relayManagerAddress: this.managerAddress,
@@ -149,6 +166,26 @@ export class RelayServer extends EventEmitter {
     if (nonce > relayMaxNonce) {
       throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`)
     }
+  }
+
+  async validatePaymasterReputation (paymaster: Address): Promise<void> {
+    const status = await this.reputationManager.getPaymasterStatus(paymaster)
+    if (status === PaymasterStatus.GOOD) {
+      return
+    }
+    let message: string
+    switch (status) {
+      case PaymasterStatus.ABUSED:
+        message = 'This paymaster has failed a lot of transactions recently is temporarily blocked by this relay'
+        break
+      case PaymasterStatus.THROTTLED:
+        message = 'This paymaster only had a small number of successful transactions and is therefore throttled by this relay'
+        break
+      case PaymasterStatus.BLOCKED:
+        message = 'This paymaster had too many unsuccessful transactions and is now permanently blocked by this relay'
+        break
+    }
+    throw new Error(`Refusing to serve transactions for paymaster at ${paymaster}: ${message}`)
   }
 
   async validatePaymasterGasLimits (req: RelayTransactionRequest): Promise<{
@@ -242,9 +279,16 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
 
+    if (this.config.runPaymasterReputations) {
+      await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster)
+    }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasLimits(req)
     await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
+
+    if (this.config.runPaymasterReputations) {
+      await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
+    }
     // Send relayed transaction
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
@@ -559,7 +603,11 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       switch (event.event) {
         case TransactionRejectedByPaymaster:
           this.logger.debug(`handle TransactionRejectedByPaymaster event: ${JSON.stringify(event)}`)
-          await this._handleTransactionRejectedByPaymasterEvent(blockNumber)
+          await this._handleTransactionRejectedByPaymasterEvent(event.returnValues.paymaster, blockNumber)
+          break
+        case TransactionRelayed:
+          this.logger.debug(`handle TransactionRelayed event: ${JSON.stringify(event)}`)
+          await this._handleTransactionRelayedEvent(event.returnValues.paymaster, blockNumber)
           break
       }
     }
@@ -572,13 +620,23 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       toBlock: 'latest'
     }
     const events = await this.contractInteractor.getPastEventsForHub(topics, options)
+    this.logger.debug(`Found ${events.length} events since last scan`)
     return events
   }
 
-  async _handleTransactionRejectedByPaymasterEvent (blockNumber: number): Promise<void> {
+  async _handleTransactionRelayedEvent (paymaster: Address, blockNumber: number): Promise<void> {
+    if (this.config.runPaymasterReputations) {
+      await this.reputationManager.updatePaymasterStatus(paymaster, true)
+    }
+  }
+
+  async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, blockNumber: number): Promise<void> {
     this.alerted = true
     this.alertedBlock = blockNumber
     this.logger.error(`Relay entered alerted state. Block number: ${blockNumber}`)
+    if (this.config.runPaymasterReputations) {
+      await this.reputationManager.updatePaymasterStatus(paymaster, false)
+    }
   }
 
   async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {

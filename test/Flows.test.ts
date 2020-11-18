@@ -65,6 +65,7 @@ options.forEach(params => {
           // @ts-ignore
           ethereumNodeUrl: web3.currentProvider.host,
           gasPriceFactor,
+          initialReputation: 100,
           relaylog: process.env.relaylog
         })
         console.log('relay started')

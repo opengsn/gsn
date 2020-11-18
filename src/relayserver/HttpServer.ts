@@ -53,7 +53,7 @@ export class HttpServer {
     this.relayService?.stop()
   }
 
-  pingHandler (req: Request, res: Response): void {
+  async pingHandler (req: Request, res: Response): Promise<void> {
     if (this.relayService == null) {
       throw new Error('RelayServer not initialized')
     }
@@ -61,9 +61,16 @@ export class HttpServer {
     if (!(paymaster == null || typeof paymaster === 'string')) {
       throw new Error('Paymaster address is not a valid string')
     }
-    const pingResponse = this.relayService.pingHandler(paymaster)
-    res.send(pingResponse)
-    console.log(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
+
+    try {
+      const pingResponse = await this.relayService.pingHandler(paymaster)
+      res.send(pingResponse)
+      console.log(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
+    } catch (e) {
+      const message: string = e.message
+      res.send({ message })
+      this.logger.error(`ping handler rejected: ${message}`)
+    }
   }
 
   async relayHandler (req: Request, res: Response): Promise<void> {

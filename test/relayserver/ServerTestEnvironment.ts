@@ -173,6 +173,7 @@ export class ServerTestEnvironment {
 
   newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
     const shared: Partial<ServerConfigParams> = {
+      runPaymasterReputations: false,
       relayHubAddress: this.relayHub.address,
       checkInterval: 10
     }

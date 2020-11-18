@@ -110,6 +110,7 @@ contract('RelayProvider', function (accounts) {
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       relaylog: process.env.relaylog,
+      initialReputation: 100,
       stake: 1e18,
       url: 'asd',
       relayOwner: accounts[1],
