@@ -415,7 +415,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.equal(auditors.length, auditorsCount)
     })
 
-    it('should give all relays if requested more then available', function () {
+    it('should give all relays if requested more than available', function () {
       // @ts-ignore
       knownRelaysManager.config.auditorsCount = 4
       const auditors = knownRelaysManager.getAuditors()

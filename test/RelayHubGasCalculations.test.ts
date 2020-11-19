@@ -348,7 +348,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           .forEach(requestedFee => {
             // avoid duplicate coverage checks. they do the same, and take a lot of time:
             if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return
-            // 50k tests take more then 10 seconds to complete so will run once for sanity
+            // 50k tests take more than 10 seconds to complete so will run once for sanity
             if (messageLength === 50000 && requestedFee !== 10) return
             it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`, async function () {
               const beforeBalances = await getBalances()

@@ -45,7 +45,7 @@ export enum PaymasterStatus {
   BLOCKED
 }
 
-function resolveConfiguration (partialConfig: Partial<ReputationManagerConfiguration>): ReputationManagerConfiguration {
+function resolveReputationManagerConfiguration (partialConfig: Partial<ReputationManagerConfiguration>): ReputationManagerConfiguration {
   return Object.assign({}, defaultReputationConfig, partialConfig)
 }
 
@@ -55,7 +55,7 @@ export class ReputationManager {
   logger: LoggerInterface
 
   constructor (reputationStoreManager: ReputationStoreManager, logger: LoggerInterface, partialConfig: Partial<ReputationManagerConfiguration>) {
-    this.config = resolveConfiguration(partialConfig)
+    this.config = resolveReputationManagerConfiguration(partialConfig)
     this.reputationStoreManager = reputationStoreManager
     this.logger = logger
   }
@@ -102,6 +102,7 @@ export class ReputationManager {
     if (-changeInAbuseWindow >= this.config.abuseReputationChange) {
       await this.reputationStoreManager.setAbuseFlag(paymaster)
     }
-    await this.reputationStoreManager.updatePaymasterReputation(paymaster, change)
+    const oldChangesExpirationTs = Date.now() - this.config.abuseTimeWindowMs
+    await this.reputationStoreManager.updatePaymasterReputation(paymaster, change, oldChangesExpirationTs)
   }
 }

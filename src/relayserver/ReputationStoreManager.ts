@@ -58,16 +58,23 @@ export class ReputationStoreManager {
     await this.updateEntry(paymaster, update)
   }
 
-  async updatePaymasterReputation (paymaster: Address, change: number): Promise<void> {
+  async updatePaymasterReputation (paymaster: Address, change: number, oldChangesExpirationTs: number): Promise<void> {
+    const now = Date.now()
+    if (now <= oldChangesExpirationTs) {
+      throw new Error(`Invalid change expiration parameter! Passed ${oldChangesExpirationTs}, but current clock is at ${now}`)
+    }
     const existing: ReputationEntry = await this.txstore.asyncFindOne({ paymaster: paymaster.toLowerCase() })
     const reputationChange: ReputationChange = {
-      timestamp: Date.now(),
+      timestamp: now,
       change
     }
     const reputation = existing.reputation + change
+    const changes =
+      [...existing.changes, reputationChange]
+        .filter(it => it.timestamp > oldChangesExpirationTs)
     const update: Partial<ReputationEntry> = {
       reputation,
-      changes: [...existing.changes, reputationChange]
+      changes
     }
     this.logger.info(`Paymaster ${paymaster} reputation changed from ${existing.reputation} to ${reputation}. Change is ${change}`)
     await this.updateEntry(paymaster, update)
