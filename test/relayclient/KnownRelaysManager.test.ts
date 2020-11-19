@@ -423,5 +423,12 @@ contract('KnownRelaysManager 2', function (accounts) {
       const auditors = knownRelaysManager.getAuditors([])
       assert.deepEqual(auditors.sort(), ['alice', 'bob', 'charlie', 'david'])
     })
+
+    it('should not include explicitly excluded URLs', function () {
+      // @ts-ignore
+      knownRelaysManager.config.auditorsCount = 7
+      const auditors = knownRelaysManager.getAuditors(['charlie'])
+      assert.deepEqual(auditors.sort(), ['alice', 'bob', 'david'])
+    })
   })
 })
