@@ -11,7 +11,7 @@ import ContractInteractor, {
   TransactionRelayed
 } from '../relayclient/ContractInteractor'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
-import { IntString } from '../relayclient/types/Aliases'
+import { Address, IntString } from '../relayclient/types/Aliases'
 import { RelayTransactionRequest } from '../relayclient/types/RelayTransactionRequest'
 
 import PingResponse from '../common/PingResponse'
@@ -164,7 +164,10 @@ export class RelayServer extends EventEmitter {
     // Check that max nonce is valid
     const nonce = await this.transactionManager.pollNonce(this.workerAddress)
     if (nonce > relayMaxNonce) {
-      throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`
+      throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`)
+    }
+  }
+
   async validatePaymasterReputation (paymaster: Address): Promise<void> {
     const status = await this.reputationManager.getPaymasterStatus(paymaster)
     if (status === PaymasterStatus.GOOD) {
