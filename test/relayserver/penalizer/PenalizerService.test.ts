@@ -96,7 +96,7 @@ contract('PenalizerService', function (accounts) {
   })
 
   describe('penalizeIllegalTransaction', function () {
-    let penalizeRequest: AuditRequest
+    let auditRequest: AuditRequest
 
     before(async function () {
       const rawTxOptions = env.relayServer.contractInteractor.getRawTxOptions()
@@ -109,11 +109,11 @@ contract('PenalizerService', function (accounts) {
         data: '0x1234'
       }, rawTxOptions)
       const signedTxToPenalize = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, penalizableTx)
-      penalizeRequest = { signedTx: signedTxToPenalize }
+      auditRequest = { signedTx: signedTxToPenalize }
     })
 
     it('should penalize for an illegal transaction', async function () {
-      const ret = await penalizerService.penalizeIllegalTransaction(penalizeRequest)
+      const ret = await penalizerService.penalizeIllegalTransaction(auditRequest)
       assert.notEqual(ret, undefined, 'penalization failed')
     })
   })
