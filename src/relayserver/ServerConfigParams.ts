@@ -11,6 +11,7 @@ import { TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
+import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -59,6 +60,7 @@ export interface ServerConfigParams {
   defaultGasLimit: number
 
   runPenalizer: boolean
+  runPaymasterReputations: boolean
 }
 
 export interface ServerDependencies {
@@ -68,6 +70,7 @@ export interface ServerDependencies {
   contractInteractor: ContractInteractor
   gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager
+  reputationManager?: ReputationManager
   logger: LoggerInterface
 }
 
@@ -110,7 +113,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   confirmationsNeeded: 12,
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxGasPrice: 100e9.toString()
+  maxGasPrice: 100e9.toString(),
+  runPaymasterReputations: true
 }
 
 const ConfigParamsTypes = {
@@ -155,7 +159,10 @@ const ConfigParamsTypes = {
   runPenalizer: 'boolean',
 
   etherscanApiUrl: 'string',
-  etherscanApiKey: 'string'
+  etherscanApiKey: 'string',
+
+  // TODO: does not belong here
+  initialReputation: 'number'
 
 } as any
 
@@ -272,6 +279,17 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   return { ...serverDefaultConfiguration, ...config }
+}
+
+export function resolveReputationManagerConfig (config: any): Partial<ReputationManagerConfiguration> {
+  if (config.configFileName != null) {
+    if (!fs.existsSync(config.configFileName)) {
+      error(`unable to read config file "${config.configFileName as string}"`)
+    }
+    return JSON.parse(fs.readFileSync(config.configFileName, 'utf8'))
+  }
+  // TODO: something not insane!
+  return config as Partial<ReputationManagerConfiguration>
 }
 
 export function configureServer (partialConfig: Partial<ServerConfigParams>): ServerConfigParams {

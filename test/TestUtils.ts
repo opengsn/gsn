@@ -54,6 +54,12 @@ export async function startRelay (
   if (options.baseRelayFee) {
     args.push('--baseRelayFee', options.baseRelayFee)
   }
+  if (options.checkInterval) {
+    args.push('--checkInterval', options.checkInterval)
+  }
+  if (options.initialReputation) {
+    args.push('--initialReputation', options.initialReputation)
+  }
   const runServerPath = path.resolve(__dirname, '../src/relayserver/runServer.ts')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
     [runServerPath, ...args])

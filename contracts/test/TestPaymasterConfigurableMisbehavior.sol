@@ -12,6 +12,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool public revertPostRelayCall;
     bool public overspendAcceptGas;
     bool public revertPreRelayCall;
+    bool public revertPreRelayCallOnEvenBlocks;
     bool public greedyAcceptanceBudget;
     bool public expensiveGasLimits;
 
@@ -29,6 +30,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     }
     function setRevertPreRelayCall(bool val) public {
         revertPreRelayCall = val;
+    }
+    function setRevertPreRelayCallOnEvenBlocks(bool val) public {
+        revertPreRelayCallOnEvenBlocks = val;
     }
     function setOverspendAcceptGas(bool val) public {
         overspendAcceptGas = val;
@@ -67,6 +71,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         }
         if (revertPreRelayCall) {
             revert("You asked me to revert, remember?");
+        }
+        if (revertPreRelayCallOnEvenBlocks && block.number % 2 == 0) {
+            revert("You asked me to revert on even blocks, remember?");
         }
         return ("", trustRecipientRevert);
     }

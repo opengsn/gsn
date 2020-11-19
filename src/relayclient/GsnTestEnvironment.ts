@@ -14,7 +14,7 @@ import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
-import { configureServer, ServerConfigParams } from '../relayserver/ServerConfigParams'
+import { configureServer, ServerConfigParams, ServerDependencies } from '../relayserver/ServerConfigParams'
 import { createServerLogger } from '../relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../relayserver/TransactionManager'
 import { GasPriceFetcher } from './GasPriceFetcher'
@@ -151,7 +151,7 @@ class GsnTestEnvironmentClass {
     await contractInteractor.init()
     const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
-    const relayServerDependencies = {
+    const relayServerDependencies: ServerDependencies = {
       logger,
       contractInteractor,
       gasPriceFetcher,
@@ -167,6 +167,7 @@ class GsnTestEnvironmentClass {
       baseRelayFee: '0',
       pctRelayFee: 0,
       checkInterval: 10,
+      runPaymasterReputations: false,
       logLevel: 'error'
     }
     const transactionManager = new TransactionManager(relayServerDependencies, configureServer(relayServerParams))
