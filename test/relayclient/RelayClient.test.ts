@@ -11,6 +11,7 @@ import { HttpProvider } from 'web3-core'
 
 import {
   RelayHubInstance,
+  PenalizerInstance,
   StakeManagerInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance
@@ -43,6 +44,7 @@ import { LoggerInterface } from '../../src/common/LoggerInterface'
 import { ether } from '@openzeppelin/test-helpers'
 
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestVersions = artifacts.require('TestVersions')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -74,6 +76,7 @@ contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
+  let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let gasLess: Address
@@ -108,7 +111,8 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new()
-    relayHub = await deployHub(stakeManager.address)
+    penalizer = await Penalizer.new()
+    relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)

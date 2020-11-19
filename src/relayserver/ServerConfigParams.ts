@@ -41,6 +41,8 @@ export interface ServerConfigParams {
   logLevel: NpmLogLevel
   loggerUrl: string
   loggerUserId: string
+  etherscanApiUrl: string
+  etherscanApiKey: string
 
   workerMinBalance: number
   workerTargetBalance: number
@@ -55,6 +57,8 @@ export interface ServerConfigParams {
   retryGasPriceFactor: number
   maxGasPrice: string
   defaultGasLimit: number
+
+  runPenalizer: boolean
 }
 
 export interface ServerDependencies {
@@ -87,8 +91,11 @@ const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
+  runPenalizer: true,
   logLevel: 'debug',
   loggerUrl: '',
+  etherscanApiUrl: '',
+  etherscanApiKey: '',
   loggerUserId: '',
   baseRelayFee: '0',
   pctRelayFee: 0,
@@ -143,7 +150,12 @@ const ConfigParamsTypes = {
   minHubWithdrawalBalance: 'number',
   defaultGasLimit: 'number',
 
-  trustedPaymasters: 'list'
+  trustedPaymasters: 'list',
+
+  runPenalizer: 'boolean',
+
+  etherscanApiUrl: 'string',
+  etherscanApiKey: 'string'
 
 } as any
 

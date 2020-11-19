@@ -1,5 +1,4 @@
 import chalk from 'chalk'
-import ow from 'ow'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -10,7 +9,7 @@ import { IRelayHubInstance } from '../../types/truffle-contracts'
 import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 import { IntString } from '../relayclient/types/Aliases'
-import { RelayTransactionRequest, RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
+import { RelayTransactionRequest } from '../relayclient/types/RelayTransactionRequest'
 
 import PingResponse from '../common/PingResponse'
 import VersionsManager from '../common/VersionsManager'
@@ -70,7 +69,7 @@ export class RelayServer extends EventEmitter {
 
   workerBalanceRequired: AmountRequired
 
-  constructor (config: Partial<ServerConfigParams>, dependencies: ServerDependencies) {
+  constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
     this.versionManager = new VersionsManager(gsnRuntimeVersion)
@@ -78,7 +77,7 @@ export class RelayServer extends EventEmitter {
     this.contractInteractor = dependencies.contractInteractor
     this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.txStoreManager = dependencies.txStoreManager
-    this.transactionManager = new TransactionManager(dependencies, this.config)
+    this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), this.logger)
@@ -108,10 +107,6 @@ export class RelayServer extends EventEmitter {
       ready: this.isReady() ?? false,
       version: gsnRuntimeVersion
     }
-  }
-
-  validateInputTypes (req: RelayTransactionRequest): void {
-    ow(req, ow.object.exactShape(RelayTransactionRequestShape))
   }
 
   validateInput (req: RelayTransactionRequest): void {
@@ -243,7 +238,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (!this.isReady()) {
       throw new Error('relay not ready')
     }
-    this.validateInputTypes(req)
     this.validateInput(req)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)

@@ -9,6 +9,10 @@ import ContractInteractor from '../relayclient/ContractInteractor'
 import { configureGSN } from '../relayclient/GSNConfigurator'
 import { parseServerConfig, resolveServerConfig, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { createServerLogger } from './ServerWinstonLogger'
+import { PenalizerDependencies, PenalizerService } from './penalizer/PenalizerService'
+import { TransactionManager } from './TransactionManager'
+import { EtherscanCachedService } from './penalizer/EtherscanCachedService'
+import { TransactionDataCache } from './penalizer/TransactionDataCache'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 
 function error (err: string): never {
@@ -19,6 +23,7 @@ function error (err: string): never {
 async function run (): Promise<void> {
   let config: ServerConfigParams
   let web3provider
+  let runPenalizer: boolean
   console.log('Starting GSN Relay Server process...\n')
   try {
     const conf = await parseServerConfig(process.argv.slice(2), process.env)
@@ -27,6 +32,7 @@ async function run (): Promise<void> {
     }
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
     config = await resolveServerConfig(conf, web3provider) as ServerConfigParams
+    runPenalizer = config.runPenalizer
   } catch (e) {
     error(e.message)
   }
@@ -54,9 +60,24 @@ async function run (): Promise<void> {
     gasPriceFetcher
   }
 
-  const relay = new RelayServer(config, dependencies)
+  const transactionManager: TransactionManager = new TransactionManager(dependencies, config)
+
+  let penalizerService: PenalizerService | undefined
+  if (runPenalizer) {
+    const transactionDataCache: TransactionDataCache = new TransactionDataCache(logger, config.workdir)
+
+    const txByNonceService = new EtherscanCachedService(config.etherscanApiUrl, config.etherscanApiKey, logger, transactionDataCache)
+    const penalizerParams: PenalizerDependencies = {
+      transactionManager,
+      contractInteractor,
+      txByNonceService
+    }
+    penalizerService = new PenalizerService(penalizerParams, logger, config)
+    await penalizerService.init()
+  }
+  const relay = new RelayServer(config, transactionManager, dependencies)
   await relay.init()
-  const httpServer = new HttpServer(config.port, relay, logger)
+  const httpServer = new HttpServer(config.port, logger, relay, penalizerService)
   httpServer.start()
 }
 

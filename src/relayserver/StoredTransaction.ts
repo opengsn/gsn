@@ -7,7 +7,8 @@ export enum ServerAction {
   ADD_WORKER,
   RELAY_CALL,
   VALUE_TRANSFER,
-  DEPOSIT_WITHDRAWAL
+  DEPOSIT_WITHDRAWAL,
+  PENALIZATION
 }
 
 export interface StoredTransactionMetadata {

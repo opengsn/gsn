@@ -3,9 +3,9 @@ import childProcess, { ChildProcessWithoutNullStreams } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
-import { constants, ether } from '@openzeppelin/test-helpers'
+import { ether } from '@openzeppelin/test-helpers'
 
-import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contracts'
+import { IStakeManagerInstance, RelayHubInstance } from '../types/truffle-contracts'
 import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
 import { configureGSN } from '../src/relayclient/GSNConfigurator'
@@ -28,7 +28,7 @@ const localhostOne = 'http://localhost:8090'
 //
 export async function startRelay (
   relayHubAddress: string,
-  stakeManager: StakeManagerInstance,
+  stakeManager: IStakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 
@@ -224,8 +224,8 @@ export function encodeRevertReason (reason: string): PrefixedHexString {
 }
 
 export async function deployHub (
-  stakeManager: string = constants.ZERO_ADDRESS,
-  penalizer: string = constants.ZERO_ADDRESS,
+  stakeManager: string,
+  penalizer: string,
   configOverride: Partial<RelayHubConfiguration> = {}): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
     ...defaultEnvironment.relayHubConfiguration,

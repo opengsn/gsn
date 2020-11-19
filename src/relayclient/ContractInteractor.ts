@@ -20,6 +20,7 @@ import paymasterAbi from '../common/interfaces/IPaymaster.json'
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
 import forwarderAbi from '../common/interfaces/IForwarder.json'
 import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
+import penalizerAbi from '../common/interfaces/IPenalizer.json'
 import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
 import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
 
@@ -34,6 +35,7 @@ import {
   IForwarderInstance,
   IKnowForwarderAddressInstance,
   IPaymasterInstance,
+  IPenalizerInstance,
   IRelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance
@@ -73,6 +75,7 @@ export default class ContractInteractor {
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
   private readonly IForwarderContract: Contract<IForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
+  private readonly IPenalizer: Contract<IPenalizerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
 
@@ -80,6 +83,7 @@ export default class ContractInteractor {
   relayHubInstance!: IRelayHubInstance
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
+  penalizerInstance!: IPenalizerInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
   private knowForwarderAddressInstance?: IKnowForwarderAddressInstance
   private readonly relayCallMethod: any
@@ -122,6 +126,11 @@ export default class ContractInteractor {
       abi: stakeManagerAbi
     })
     // @ts-ignore
+    this.IPenalizer = TruffleContract({
+      contractName: 'IPenalizer',
+      abi: penalizerAbi
+    })
+    // @ts-ignore
     this.IRelayRecipient = TruffleContract({
       contractName: 'IRelayRecipient',
       abi: gsnRecipientAbi
@@ -135,6 +144,7 @@ export default class ContractInteractor {
     this.IRelayHubContract.setProvider(this.provider, undefined)
     this.IPaymasterContract.setProvider(this.provider, undefined)
     this.IForwarderContract.setProvider(this.provider, undefined)
+    this.IPenalizer.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
     this.IKnowForwarderAddress.setProvider(this.provider, undefined)
 
@@ -184,16 +194,22 @@ export default class ContractInteractor {
     if (this.config.relayHubAddress !== constants.ZERO_ADDRESS) {
       this.relayHubInstance = await this._createRelayHub(this.config.relayHubAddress)
       let hubStakeManagerAddress: string | undefined
-      let getStakeManagerError: Error | undefined
+      let hubPenalizerAddress: string | undefined
+      let getAddressesError: Error | undefined
       try {
         hubStakeManagerAddress = await this.relayHubInstance.stakeManager()
+        hubPenalizerAddress = await this.relayHubInstance.penalizer()
       } catch (e) {
-        getStakeManagerError = e
+        getAddressesError = e
       }
       if (hubStakeManagerAddress == null || hubStakeManagerAddress === constants.ZERO_ADDRESS) {
-        throw new Error(`StakeManager address not set in RelayHub (or threw error: ${getStakeManagerError?.message})`)
+        throw new Error(`StakeManager address not set in RelayHub (or threw error: ${getAddressesError?.message})`)
+      }
+      if (hubPenalizerAddress == null || hubPenalizerAddress === constants.ZERO_ADDRESS) {
+        throw new Error(`Penalizer address not set in RelayHub (or threw error: ${getAddressesError?.message})`)
       }
       this.stakeManagerInstance = await this._createStakeManager(hubStakeManagerAddress)
+      this.penalizerInstance = await this._createPenalizer(hubPenalizerAddress)
     }
     if (this.config.paymasterAddress !== constants.ZERO_ADDRESS) {
       this.paymasterInstance = await this._createPaymaster(this.config.paymasterAddress)
@@ -238,6 +254,10 @@ export default class ContractInteractor {
 
   async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
     return await this.IStakeManager.at(address)
+  }
+
+  async _createPenalizer (address: Address): Promise<IPenalizerInstance> {
+    return await this.IPenalizer.at(address)
   }
 
   async getForwarder (recipientAddress: Address): Promise<Address> {
