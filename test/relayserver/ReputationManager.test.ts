@@ -63,7 +63,7 @@ contract('ReputationManager', function () {
       await reputationStoreManager.setAbuseFlag(paymaster)
       let status = await reputationManager.getPaymasterStatus(paymaster)
       assert.equal(status, PaymasterStatus.ABUSED)
-      await sleep(abuseBlockDurationMs)
+      await sleep(2 * abuseBlockDurationMs)
       status = await reputationManager.getPaymasterStatus(paymaster)
       assert.equal(status, PaymasterStatus.GOOD)
     })
