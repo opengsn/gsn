@@ -233,13 +233,15 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
     stripZeros(toBuffer(0)),
     stripZeros(toBuffer(0))
   )
-  let v = bufferToInt(tx.v)
-  if (v > 28) {
-    v -= chainId * 2 + 8
+  let vInt = bufferToInt(tx.v)
+  if (vInt > 28) {
+    vInt -= chainId * 2 + 8
   }
   const data = `0x${encode(input).toString('hex')}`
-  const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
-    32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
+  const r = tx.r.toString('hex').padStart(64, '0')
+  const s = tx.s.toString('hex').padStart(64, '0')
+  const v = vInt.toString(16).padStart(2, '0')
+  const signature = `0x${r}${s}${v}`
   return {
     data,
     signature

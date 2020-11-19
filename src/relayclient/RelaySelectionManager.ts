@@ -68,9 +68,12 @@ export default class RelaySelectionManager {
         this.logger.info(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
         const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([managerAddress]))
         if (events.length === 1) {
+          // as preferred relay URL is not guaranteed to match the advertised one for the same manager, preserve URL
+          const relayInfo = events[0]
+          relayInfo.relayUrl = raceResult.winner.relayInfo.relayUrl
           return {
             pingResponse: raceResult.winner.pingResponse,
-            relayInfo: events[0]
+            relayInfo
           }
         } else {
           // TODO: do not throw! The preferred relay may be removed since.

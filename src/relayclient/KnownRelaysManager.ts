@@ -180,18 +180,23 @@ export class KnownRelaysManager {
     return sortedRelays
   }
 
-  getAuditors (): string[] {
+  getAuditors (excludeUrls: string[]): string[] {
     const indexes: number[] = []
     const auditors: string[] = []
-    const flatRelayers = [...this.preferredRelayers, ...this.allRelayers]
+    const flatRelayers =
+      [...this.preferredRelayers, ...this.allRelayers]
+        .map(it => it.relayUrl)
+        .filter(it => !excludeUrls.includes(it))
+        .filter((value, index, self) => {
+          return self.indexOf(value) === index
+        })
     if (flatRelayers.length <= this.config.auditorsCount) {
-      return flatRelayers.map((it) => it.relayUrl)
+      return flatRelayers
     }
     do {
       const index = Math.floor(Math.random() * flatRelayers.length)
-      const relayUrl = flatRelayers[index].relayUrl
       if (!indexes.includes(index)) {
-        auditors.push(relayUrl)
+        auditors.push(flatRelayers[index])
         indexes.push(index)
       }
     } while (auditors.length < this.config.auditorsCount)

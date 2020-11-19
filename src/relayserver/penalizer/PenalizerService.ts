@@ -13,7 +13,7 @@ import VersionsManager from '../../common/VersionsManager'
 import replaceErrors from '../../common/ErrorReplacerJSON'
 import { BlockExplorerInterface } from './BlockExplorerInterface'
 import { LoggerInterface } from '../../common/LoggerInterface'
-import { PenalizeRequest, PenalizeResponse } from '../../relayclient/types/PenalizeRequest'
+import { AuditRequest, AuditResponse } from '../../relayclient/types/AuditRequest'
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
 import { getDataAndSignature } from '../../common/Utils'
@@ -36,15 +36,16 @@ export interface PenalizerDependencies {
   txByNonceService: BlockExplorerInterface
 }
 
-// TODO: parseInt is dangerous here, convert directly to buffer
 function createWeb3Transaction (transaction: Web3CoreTransaction, rawTxOptions: TransactionOptions): EthereumJsTransaction {
+  const gasPrice = '0x' + BigInt(transaction.gasPrice).toString(16)
+  const value = '0x' + BigInt(transaction.value).toString(16)
   const txData: TxData = {
     gasLimit: transaction.gas,
-    gasPrice: parseInt(transaction.gasPrice),
+    gasPrice,
     to: transaction.to ?? '',
     data: transaction.input,
     nonce: transaction.nonce,
-    value: parseInt(transaction.value),
+    value,
     // @ts-ignore
     v: transaction.v,
     // @ts-ignore
@@ -81,16 +82,12 @@ export class PenalizerService {
     if (this.initialized) {
       return
     }
-    if (this.config.devMode && (this.contractInteractor.getChainId() < 1000 || this.contractInteractor.getNetworkId() < 1000)) {
-      this.logger.error('Don\'t use real network\'s chainId & networkId while in devMode.')
-      process.exit(1)
-    }
 
     this.logger.info('Penalizer service initialized')
     this.initialized = true
   }
 
-  async penalizeRepeatedNonce (req: PenalizeRequest): Promise<PenalizeResponse> {
+  async penalizeRepeatedNonce (req: AuditRequest): Promise<AuditResponse> {
     if (!this.initialized) {
       throw new Error('PenalizerService is not initialized')
     }
@@ -154,7 +151,7 @@ export class PenalizerService {
     return { penalizeTxHash }
   }
 
-  async penalizeIllegalTransaction (req: PenalizeRequest): Promise<PenalizeResponse> {
+  async penalizeIllegalTransaction (req: AuditRequest): Promise<AuditResponse> {
     const rawTxOptions = this.contractInteractor.getRawTxOptions()
     const requestTx = new EthereumJsTransaction(req.signedTx, rawTxOptions)
     const validationResult = await this.validateTransaction(requestTx)
