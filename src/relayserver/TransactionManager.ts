@@ -158,9 +158,10 @@ data         | 0x${transaction.data.toString('hex')}
     await this.txStoreManager.putTx(storedTx, true)
   }
 
-  async updateTransactionWithAttempt (txToSign: Transaction, tx: StoredTransaction): Promise<StoredTransaction> {
+  async updateTransactionWithAttempt (txToSign: Transaction, tx: StoredTransaction, currentBlock: number): Promise<StoredTransaction> {
     const metadata: StoredTransactionMetadata = {
       attempts: tx.attempts + 1,
+      boostBlockNumber: currentBlock,
       from: tx.from,
       serverAction: tx.serverAction,
       creationBlockNumber: tx.creationBlockNumber,
@@ -171,7 +172,7 @@ data         | 0x${transaction.data.toString('hex')}
     return storedTx
   }
 
-  async resendTransaction (tx: StoredTransaction): Promise<SignedTransactionDetails> {
+  async resendTransaction (tx: StoredTransaction, currentBlock: number): Promise<SignedTransactionDetails> {
     // Calculate new gas price as a % increase over the previous one
     let isMaxGasPriceReached = false
     let newGasPrice = tx.gasPrice * this.config.retryGasPriceFactor
@@ -194,7 +195,7 @@ data         | 0x${transaction.data.toString('hex')}
 
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
     const signedTx = keyManager.signTransaction(tx.from, txToSign)
-    const storedTx = await this.updateTransactionWithAttempt(txToSign, tx)
+    const storedTx = await this.updateTransactionWithAttempt(txToSign, tx, currentBlock)
 
     this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.gasPrice, isMaxGasPriceReached)
     this.printSendTransactionLog(txToSign, tx.from)
@@ -273,12 +274,13 @@ data         | 0x${transaction.data.toString('hex')}
       return null
     }
 
+    const lastSentAtBlockHeight = sortedTxs[0].boostBlockNumber ?? sortedTxs[0].creationBlockNumber
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
-    if (currentBlockHeight - sortedTxs[0].creationBlockNumber < this.config.pendingTransactionTimeoutBlocks) {
+    if (currentBlockHeight - lastSentAtBlockHeight < this.config.pendingTransactionTimeoutBlocks) {
       this.logger.debug(`${signer} : awaiting transaction with ID: ${sortedTxs[0].txId} to be mined. creationBlockNumber: ${sortedTxs[0].creationBlockNumber} nonce: ${nonce}`)
       return null
     }
-    const { transactionHash, signedTx } = await this.resendTransaction(sortedTxs[0])
+    const { transactionHash, signedTx } = await this.resendTransaction(sortedTxs[0], currentBlockHeight)
     this.logger.debug(`Replaced transaction: nonce: ${sortedTxs[0].nonce} sender: ${signer} | ${sortedTxs[0].txId} => ${transactionHash}`)
     if (sortedTxs[0].attempts > 2) {
       this.logger.debug(`resend ${signer}: Sent tx ${sortedTxs[0].attempts} times already`)
