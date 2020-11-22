@@ -1,12 +1,21 @@
-import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { NetworkSimulatingProvider } from '../../src/common/dev/NetworkSimulatingProvider'
 import { HttpProvider } from 'web3-core'
-import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
+import { toBN } from 'web3-utils'
+
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
+import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
+import { NetworkSimulatingProvider } from '../../src/common/dev/NetworkSimulatingProvider'
+import { ServerTestEnvironment } from './ServerTestEnvironment'
+import { SignedTransactionDetails } from '../../src/relayserver/TransactionManager'
+import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
+import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
+import { signedTransactionToHash } from '../../src/common/Utils'
 
 contract('Network Simulation for Relay Server', function (accounts) {
+  const pendingTransactionTimeoutBlocks = 5
+
   let logger: LoggerInterface
   let env: ServerTestEnvironment
   let provider: NetworkSimulatingProvider
@@ -20,8 +29,9 @@ contract('Network Simulation for Relay Server', function (accounts) {
       return contractInteractor
     }
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init({}, {}, contractFactory)
-    await env.newServerInstance()
+    const clientConfig: Partial<GSNConfig> = { maxRelayNonceGap: 5 }
+    await env.init(clientConfig, {}, contractFactory)
+    await env.newServerInstance({ pendingTransactionTimeoutBlocks })
     provider.setDelayTransactions(true)
   })
 
@@ -54,5 +64,126 @@ contract('Network Simulation for Relay Server', function (accounts) {
       await provider.mineTransaction(txs[1].txHash)
       await env.assertTransactionRelayed(txs[1].txHash, overrideDetails)
     })
+  })
+
+  describe('boosting stuck pending transactions', function () {
+    const gasPriceBelowMarket = '0x04a817c800'
+    const gasPriceAboveMarket = '0x06c088e200'
+    const expectedGasPriceAfterBoost = toBN(gasPriceBelowMarket).muln(12).divn(10).toString()
+    const stuckTransactionsCount = 5
+    const fairlyPricedTransactionIndex = 3
+    const originalTxHashes: string[] = []
+    const overrideParamsPerTx = new Map<PrefixedHexString, Partial<GsnTransactionDetails>>()
+
+    let rawTxOptions: TransactionOptions
+
+    before(async function () {
+      await env.relayServer.txStoreManager.clearAll()
+      await sendMultipleRelayedTransactions()
+    })
+
+    describe('first time boosting stuck transactions', function () {
+      let id: string
+
+      before(async () => {
+        id = (await snapshot()).result
+      })
+
+      after(async () => {
+        await revert(id)
+      })
+
+      it('should not boost and resend transactions if not that many blocks passed since it was sent', async function () {
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+        assert.equal(allBoostedTransactions.size, 0)
+        const storedTxs = await env.relayServer.txStoreManager.getAll()
+        assert.equal(storedTxs.length, stuckTransactionsCount)
+        for (let i = 0; i < stuckTransactionsCount; i++) {
+          assert.equal(storedTxs[i].txId, originalTxHashes[i])
+        }
+      })
+
+      it('should boost and resend underpriced transactions if the oldest one does not get mined after being sent for a long time', async function () {
+        // Increase time by mining necessary amount of blocks
+        await evmMineMany(pendingTransactionTimeoutBlocks)
+
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+
+        // NOTE: this is needed for the 'repeated boosting' test
+        for (const [originalTxHash, signedTransactionDetails] of allBoostedTransactions) {
+          overrideParamsPerTx.set(signedTransactionDetails.transactionHash, overrideParamsPerTx.get(originalTxHash)!)
+        }
+
+        // Tx #3 should not be changed
+        assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
+        await assertGasPrice(allBoostedTransactions, expectedGasPriceAfterBoost)
+      })
+    })
+
+    describe('repeated boosting', function () {
+      const expectedGasPriceAfterSecondBoost = toBN(expectedGasPriceAfterBoost).muln(12).divn(10).toString()
+
+      before('boosting transaction', async function () {
+        await env.relayServer.txStoreManager.clearAll()
+        await env.relayServer.transactionManager._initNonces()
+        await sendMultipleRelayedTransactions()
+        let latestBlock = await env.web3.eth.getBlock('latest')
+        // let allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+        // assert.equal(allBoostedTransactions.size, 0)
+        await evmMineMany(pendingTransactionTimeoutBlocks)
+        latestBlock = await env.web3.eth.getBlock('latest')
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+        assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
+      })
+
+      it('should not resend the transaction if not enough blocks passed since it was boosted', async function () {
+        await evmMineMany(pendingTransactionTimeoutBlocks - 1)
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+        assert.equal(allBoostedTransactions.size, 0)
+      })
+
+      it('should boost transactions that are not mined after being boosted another time', async function () {
+        await evmMine()
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+        assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
+        await assertGasPrice(allBoostedTransactions, expectedGasPriceAfterSecondBoost)
+      })
+    })
+
+    async function sendMultipleRelayedTransactions (): Promise<void> {
+      for (let i = 0; i < stuckTransactionsCount; i++) {
+        // Transaction #3 will have a sufficient gas price and shall not be boosted
+        // All transaction must come from different senders or else will be rejected on 'nonce mismatch'
+        const overrideTxParams: Partial<GsnTransactionDetails> = {
+          from: accounts[i],
+          gasPrice: i === fairlyPricedTransactionIndex ? gasPriceAboveMarket : gasPriceBelowMarket
+        }
+        const { signedTx } = await env.relayTransaction(false, overrideTxParams)
+        rawTxOptions = env.relayServer.transactionManager.rawTxOptions
+        const transactionHash = signedTransactionToHash(signedTx, rawTxOptions)
+        originalTxHashes.push(transactionHash)
+        overrideParamsPerTx.set(transactionHash, overrideTxParams)
+      }
+    }
+
+    async function assertGasPrice (signedTransactions: Map<PrefixedHexString, SignedTransactionDetails>, expectedGasPriceAfterBoost: string): Promise<void> {
+      let i = 0
+      for (const [originalTxHash, signedTransactionDetails] of signedTransactions) {
+        if (i === fairlyPricedTransactionIndex) {
+          await provider.mineTransaction(originalTxHashes[fairlyPricedTransactionIndex])
+        }
+        await provider.mineTransaction(signedTransactionDetails.transactionHash)
+        const minedTx = await env.web3.eth.getTransaction(signedTransactionDetails.transactionHash)
+        const actualTxGasPrice = toBN(minedTx.gasPrice).toString()
+        assert.equal(actualTxGasPrice, expectedGasPriceAfterBoost)
+        const overrideDetails = overrideParamsPerTx.get(originalTxHash)
+        await env.assertTransactionRelayed(signedTransactionDetails.transactionHash, overrideDetails)
+        i++
+      }
+    }
   })
 })
