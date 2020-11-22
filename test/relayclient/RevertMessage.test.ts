@@ -81,7 +81,7 @@ describe('RevertMessage.test', function () {
         paymasterAddress
       })
 
-      relayProvider = new RelayProvider(underlyingProvider as any, gsnConfig)
+      relayProvider = await new RelayProvider(underlyingProvider as any, gsnConfig).init()
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
 

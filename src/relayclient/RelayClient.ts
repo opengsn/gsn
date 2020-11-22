@@ -14,7 +14,7 @@ import RelaySelectionManager from './RelaySelectionManager'
 import { IKnownRelaysManager } from './KnownRelaysManager'
 import AccountManager from './AccountManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
-import { configureGSN, getDependencies, GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { getDependencies, GSNConfig, GSNDependencies, resolveConfigurationGSN } from './GSNConfigurator'
 import { RelayInfo } from './types/RelayInfo'
 
 import { decodeRevertReason } from '../common/Utils'
@@ -58,18 +58,19 @@ export interface RelayingResult {
 
 export class RelayClient {
   readonly emitter = new EventEmitter()
-  readonly config: GSNConfig
-  private readonly httpClient: HttpClient
-  protected contractInteractor: ContractInteractor
-  protected knownRelaysManager: IKnownRelaysManager
-  private readonly asyncApprovalData: AsyncDataCallback
-  private readonly asyncPaymasterData: AsyncDataCallback
-  private readonly transactionValidator: RelayedTransactionValidator
-  private readonly pingFilter: PingFilter
+  config!: GSNConfig
+  private readonly partialConfig?: { provider: HttpProvider, configOverride: Partial<GSNConfig>, overrideDependencies?: Partial<GSNDependencies> }
+  private httpClient!: HttpClient
+  protected contractInteractor!: ContractInteractor
+  protected knownRelaysManager!: IKnownRelaysManager
+  private asyncApprovalData!: AsyncDataCallback
+  private asyncPaymasterData!: AsyncDataCallback
+  private transactionValidator!: RelayedTransactionValidator
+  private pingFilter!: PingFilter
 
-  public readonly accountManager: AccountManager
-  private initialized = false
-  readonly logger: LoggerInterface
+  public accountManager!: AccountManager
+  initialized = false
+  logger!: LoggerInterface
   private readonly initMutex = new Mutex()
 
   /**
@@ -80,8 +81,34 @@ export class RelayClient {
     configOverride: Partial<GSNConfig>,
     overrideDependencies?: Partial<GSNDependencies>
   ) {
-    this.config = configureGSN(configOverride)
-    const dependencies = getDependencies(this.config, provider, overrideDependencies)
+    this.partialConfig = { provider, configOverride, overrideDependencies }
+    this.logger = console
+  }
+
+  initializing?: Promise<void>
+
+  async init (): Promise<this> {
+    if (this.initializing != null) {
+      await this.initializing
+    }
+    if (this.initialized) {
+      return this
+    }
+    let initializingResolve!: () => void
+    this.initializing = new Promise((resolve) => {
+      initializingResolve = resolve
+    })
+    await this._init()
+    initializingResolve()
+    return this
+  }
+
+  async _init (): Promise<void> {
+    if (this.partialConfig == null) {
+      throw new Error('null config')
+    }
+    this.config = await resolveConfigurationGSN(this.partialConfig.provider, this.partialConfig.configOverride)
+    const dependencies = getDependencies(this.config, this.partialConfig?.provider, this.partialConfig?.overrideDependencies)
     this.httpClient = dependencies.httpClient
     this.contractInteractor = dependencies.contractInteractor
     this.knownRelaysManager = dependencies.knownRelaysManager
@@ -90,7 +117,11 @@ export class RelayClient {
     this.pingFilter = dependencies.pingFilter
     this.asyncApprovalData = dependencies.asyncApprovalData
     this.asyncPaymasterData = dependencies.asyncPaymasterData
-    this.logger = dependencies.logger
+
+    this.emit(new GsnInitEvent())
+    await this.contractInteractor.init()
+    this.initialized = true
+    // return this
   }
 
   /**
@@ -164,22 +195,10 @@ export class RelayClient {
     return false
   }
 
-  async init (): Promise<this> {
-    await this.initMutex.runExclusive(async () => {
-      if (this.initialized) {
-        return this
-      }
-      this.emit(new GsnInitEvent())
-      await this.contractInteractor.init()
-      this.initialized = true
-    })
-    return this
-  }
-
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
     if (!this.initialized) {
       if (!this.initMutex.isLocked()) {
-        this._warn('better call RelayClient.init() in advance (to make first request faster)')
+        this._warn('suggestion: call RelayProvider.init()/RelayClient.init() in advance (to make first request faster)')
       }
       await this.init()
     }
@@ -369,6 +388,12 @@ export class RelayClient {
     }
 
     return forwarderAddress
+  }
+
+  verifyInitialized (): void {
+    if (!this.initialized) {
+      throw new Error('not initialized. must call RelayClient.init()')
+    }
   }
 }
 

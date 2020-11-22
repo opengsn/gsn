@@ -11,7 +11,7 @@ import GsnTransactionDetails from './types/GsnTransactionDetails'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, RelayClient } from './RelayClient'
-import { configureGSN, GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { GSNConfig, GSNDependencies } from './GSNConfigurator'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -29,10 +29,10 @@ interface ISendAsync {
 export class RelayProvider implements HttpProvider {
   protected readonly origProvider: HttpProvider & ISendAsync
   private readonly origProviderSend: any
-  protected readonly config: GSNConfig
+  protected config!: GSNConfig
 
   readonly relayClient: RelayClient
-  readonly logger: LoggerInterface
+  logger!: LoggerInterface
 
   /**
    * create a proxy provider, to relay transaction
@@ -42,24 +42,23 @@ export class RelayProvider implements HttpProvider {
    * @param gsnConfig
    */
   constructor (origProvider: HttpProvider, gsnConfig: Partial<GSNConfig>, overrideDependencies?: Partial<GSNDependencies>, relayClient?: RelayClient) {
-    const config = configureGSN(gsnConfig)
     this.host = origProvider.host
     this.connected = origProvider.connected
 
     this.origProvider = origProvider
-    this.config = config
     if (typeof this.origProvider.sendAsync === 'function') {
       this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
     } else {
       this.origProviderSend = this.origProvider.send.bind(this.origProvider)
     }
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
-    this.logger = this.relayClient.logger
     this._delegateEventsApi(origProvider)
   }
 
   async init (): Promise<this> {
     await this.relayClient.init()
+    this.config = this.relayClient.config
+    this.logger = this.relayClient.logger
     return this
   }
 
@@ -84,6 +83,7 @@ export class RelayProvider implements HttpProvider {
   }
 
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    this.relayClient.verifyInitialized()
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
         if (payload.params[0].to === undefined) {
@@ -213,10 +213,12 @@ export class RelayProvider implements HttpProvider {
   }
 
   newAccount (): AccountKeypair {
+    this.relayClient.verifyInitialized()
     return this.relayClient.accountManager.newAccount()
   }
 
   addAccount (keypair: AccountKeypair): void {
+    this.relayClient.verifyInitialized()
     this.relayClient.accountManager.addAccount(keypair)
   }
 
