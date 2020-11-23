@@ -1,6 +1,6 @@
 import { HttpProvider } from 'web3-core'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
-import { toBN } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
@@ -67,8 +67,8 @@ contract('Network Simulation for Relay Server', function (accounts) {
   })
 
   describe('boosting stuck pending transactions', function () {
-    const gasPriceBelowMarket = '0x04a817c800'
-    const gasPriceAboveMarket = '0x06c088e200'
+    const gasPriceBelowMarket = toHex(20e9)
+    const gasPriceAboveMarket = toHex(25e9)
     const expectedGasPriceAfterBoost = toBN(gasPriceBelowMarket).muln(12).divn(10).toString()
     const stuckTransactionsCount = 5
     const fairlyPricedTransactionIndex = 3
