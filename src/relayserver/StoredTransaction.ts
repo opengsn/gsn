@@ -7,7 +7,8 @@ export enum ServerAction {
   ADD_WORKER,
   RELAY_CALL,
   VALUE_TRANSFER,
-  DEPOSIT_WITHDRAWAL
+  DEPOSIT_WITHDRAWAL,
+  PENALIZATION
 }
 
 export interface StoredTransactionMetadata {
@@ -28,7 +29,14 @@ export interface StoredTransactionSerialized {
   readonly txId: PrefixedHexString
 }
 
-export type StoredTransaction = StoredTransactionSerialized & StoredTransactionMetadata
+export interface NonceSigner {
+  nonceSigner?: {
+    nonce: number
+    signer: Address
+  }
+}
+
+export type StoredTransaction = StoredTransactionSerialized & StoredTransactionMetadata & NonceSigner
 
 /**
  * Make sure not to pass {@link StoredTransaction} as {@param metadata}, as it will override fields from {@param tx}!

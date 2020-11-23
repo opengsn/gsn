@@ -68,12 +68,6 @@ interface IRelayHub {
         bytes returnValue
     );
 
-    event Penalized(
-        address indexed relayWorker,
-        address sender,
-        uint256 reward
-    );
-
     /// Reason error codes for the TransactionRelayed event
     /// @param OK - the transaction was successfully relayed and execution successful - never included in the event
     /// @param RelayedCallFailed - the transaction was relayed, but the relayed call failed

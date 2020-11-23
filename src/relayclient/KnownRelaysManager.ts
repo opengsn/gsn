@@ -33,17 +33,7 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   return score
 }
 
-export interface IKnownRelaysManager {
-  refresh: () => Promise<void>
-
-  saveRelayFailure: (lastErrorTime: number, relayManager: Address, relayUrl: string) => void
-
-  getRelaysSortedForTransaction: (gsnTransactionDetails: GsnTransactionDetails) => Promise<RelayInfoUrl[][]>
-
-  getRelayInfoForManagers: (relayManagers: Set<Address>) => Promise<RelayRegisteredEventInfo[]>
-}
-
-export default class KnownRelaysManager implements IKnownRelaysManager {
+export class KnownRelaysManager {
   private readonly contractInteractor: ContractInteractor
   private readonly logger: LoggerInterface
   private readonly config: GSNConfig
@@ -107,7 +97,7 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     return origRelays.filter(this.relayFilter)
   }
 
-  splitRange (fromBlock: number, toBlock: number, splits: number): Array<{fromBlock: number, toBlock: number}> {
+  splitRange (fromBlock: number, toBlock: number, splits: number): Array<{ fromBlock: number, toBlock: number }> {
     const totalBlocks = toBlock - fromBlock + 1
     const splitSize = Math.ceil(totalBlocks / splits)
 
@@ -142,7 +132,6 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
             throw new Error(`Too many events after splitting by ${this.relayLookupWindowParts}`)
           }
           this.relayLookupWindowParts *= 4
-          continue
         } else {
           throw e
         }
@@ -189,6 +178,29 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     sortedRelays[0] = Array.from(this.preferredRelayers)
     sortedRelays[1] = await this._sortRelaysInternal(gsnTransactionDetails, this.allRelayers)
     return sortedRelays
+  }
+
+  getAuditors (excludeUrls: string[]): string[] {
+    const indexes: number[] = []
+    const auditors: string[] = []
+    const flatRelayers =
+      [...this.preferredRelayers, ...this.allRelayers]
+        .map(it => it.relayUrl)
+        .filter(it => !excludeUrls.includes(it))
+        .filter((value, index, self) => {
+          return self.indexOf(value) === index
+        })
+    if (flatRelayers.length <= this.config.auditorsCount) {
+      return flatRelayers
+    }
+    do {
+      const index = Math.floor(Math.random() * flatRelayers.length)
+      if (!indexes.includes(index)) {
+        auditors.push(flatRelayers[index])
+        indexes.push(index)
+      }
+    } while (auditors.length < this.config.auditorsCount)
+    return auditors
   }
 
   async _sortRelaysInternal (gsnTransactionDetails: GsnTransactionDetails, activeRelays: RelayInfoUrl[]): Promise<RelayInfoUrl[]> {

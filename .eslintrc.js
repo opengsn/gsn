@@ -27,7 +27,13 @@ module.exports = {
     'dist/'
   ],
   rules: {
-    'no-console': 'off'
+    'no-console': 'off',
+    '@typescript-eslint/no-var-requires': 'off',
+    '@typescript-eslint/require-array-sort-compare': ['error',
+      {
+        ignoreStringArrays: true
+      }
+    ]
   },
   overrides: [
     {

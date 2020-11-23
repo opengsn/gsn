@@ -3,10 +3,11 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
-import KnownRelaysManager, { DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
+import { KnownRelaysManager, DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
 import ContractInteractor from '../../src/relayclient/ContractInteractor'
 import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
+  PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
@@ -16,11 +17,12 @@ import { deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 
 import { LoggerInterface } from '../../src/common/LoggerInterface'
-import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const Forwarder = artifacts.require('Forwarder')
@@ -57,6 +59,7 @@ contract('KnownRelaysManager', function (
     let logger: LoggerInterface
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
+    let penalizer: PenalizerInstance
     let relayHub: RelayHubInstance
     let testRecipient: TestRecipientInstance
     let paymaster: TestPaymasterConfigurableMisbehaviorInstance
@@ -70,7 +73,8 @@ contract('KnownRelaysManager', function (
       workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
       workerNotActive = await web3.eth.personal.newAccount('password')
       stakeManager = await StakeManager.new()
-      relayHub = await deployHub(stakeManager.address)
+      penalizer = await Penalizer.new()
+      relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
         logLevel: 'error',
         relayHubAddress: relayHub.address,
@@ -171,12 +175,14 @@ contract('KnownRelaysManager 2', function (accounts) {
     let knownRelaysManager: KnownRelaysManager
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
+    let penalizer: PenalizerInstance
     let relayHub: RelayHubInstance
     let config: GSNConfig
 
     before(async function () {
       stakeManager = await StakeManager.new()
-      relayHub = await deployHub(stakeManager.address)
+      penalizer = await Penalizer.new()
+      relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090'],
         relayHubAddress: relayHub.address
@@ -388,6 +394,41 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.equal(sortedRelays[1][2].relayUrl, 'joe')
       assert.equal(sortedRelays[1][2].baseRelayFee, '10')
       assert.equal(sortedRelays[1][2].pctRelayFee, '4')
+    })
+  })
+
+  describe('#getAuditors()', function () {
+    const auditorsCount = 2
+    let knownRelaysManager: KnownRelaysManager
+    before(function () {
+      const activeRelays: RelayInfoUrl[] = [{ relayUrl: 'alice' }, { relayUrl: 'bob' }, { relayUrl: 'charlie' }, { relayUrl: 'alice' }]
+      const preferredRelayers: RelayInfoUrl[] = [{ relayUrl: 'alice' }, { relayUrl: 'david' }]
+      knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({ auditorsCount }))
+      sinon.stub(knownRelaysManager, 'preferredRelayers').value(preferredRelayers)
+      sinon.stub(knownRelaysManager, 'allRelayers').value(activeRelays)
+    })
+
+    it('should give correct number of unique random relay URLs', function () {
+      const auditors = knownRelaysManager.getAuditors([])
+      const unique = auditors.filter((value, index, self) => {
+        return self.indexOf(value) === index
+      })
+      assert.equal(unique.length, auditorsCount)
+      assert.equal(auditors.length, auditorsCount)
+    })
+
+    it('should give all unique relays URLS if requested more then available', function () {
+      // @ts-ignore
+      knownRelaysManager.config.auditorsCount = 7
+      const auditors = knownRelaysManager.getAuditors([])
+      assert.deepEqual(auditors.sort(), ['alice', 'bob', 'charlie', 'david'])
+    })
+
+    it('should not include explicitly excluded URLs', function () {
+      // @ts-ignore
+      knownRelaysManager.config.auditorsCount = 7
+      const auditors = knownRelaysManager.getAuditors(['charlie'])
+      assert.deepEqual(auditors.sort(), ['alice', 'bob', 'david'])
     })
   })
 })

@@ -33,13 +33,14 @@ export class TxStoreManager {
     if (!tx || !tx.txId || !tx.attempts || tx.nonce === undefined) {
       throw new Error('Invalid tx:' + JSON.stringify(tx))
     }
-    const tx1 = {
+    const nonceSigner = {
+      nonce: tx.nonce,
+      signer: tx.from.toLowerCase()
+    }
+    const tx1: StoredTransaction = {
       ...tx,
       txId: tx.txId.toLowerCase(),
-      nonceSigner: {
-        nonce: tx.nonce,
-        signer: tx.from.toLowerCase()
-      }
+      nonceSigner
     }
     const existing = await this.txstore.asyncFindOne({ nonceSigner: tx1.nonceSigner })
     // eslint-disable-next-line
@@ -50,7 +51,10 @@ export class TxStoreManager {
     }
   }
 
-  async getTxByNonce (signer: PrefixedHexString, nonce: number): Promise<any> {
+  /**
+   * Only for testing
+   */
+  async getTxByNonce (signer: PrefixedHexString, nonce: number): Promise<StoredTransaction> {
     ow(nonce, ow.any(ow.number, ow.string))
     ow(signer, ow.string)
 
@@ -59,24 +63,24 @@ export class TxStoreManager {
         signer: signer.toLowerCase(),
         nonce
       }
-    }, { _id: 0 })
+    })
   }
 
-  async getTxById (txId: string): Promise<any> {
+  /**
+   * Only for testing
+   */
+  async getTxById (txId: string): Promise<StoredTransaction> {
     ow(txId, ow.string)
 
-    return await this.txstore.asyncFindOne({ txId: txId.toLowerCase() }, { _id: 0 })
+    return await this.txstore.asyncFindOne({ txId: txId.toLowerCase() })
   }
 
-  async removeTxByNonce (signer: PrefixedHexString, nonce: number): Promise<unknown> {
-    ow(nonce, ow.any(ow.string, ow.number))
-    ow(signer, ow.string)
-
-    return await this.txstore.asyncRemove({
+  async getTxsUntilNonce (signer: PrefixedHexString, nonce: number): Promise<StoredTransaction[]> {
+    return await this.txstore.asyncFind({
       $and: [
-        { 'nonceSigner.nonce': nonce },
+        { 'nonceSigner.nonce': { $lte: nonce } },
         { 'nonceSigner.signer': signer.toLowerCase() }]
-    }, { multi: true })
+    })
   }
 
   async removeTxsUntilNonce (signer: PrefixedHexString, nonce: number): Promise<unknown> {
