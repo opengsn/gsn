@@ -178,14 +178,14 @@ contract('RelayClient', function (accounts) {
 
   describe('#relayTransaction()', function () {
     it('should warn if called relayTransaction without calling init first', async function () {
-      const relayClient1 = new RelayClient(underlyingProvider, gsnConfig)
-      sinon.spy(relayClient1, '_warn')
+      const relayClient = new RelayClient(underlyingProvider, gsnConfig)
+      sinon.spy(relayClient, '_warn')
       try {
-        await relayClient1.relayTransaction(options)
-        expect(relayClient1._warn).to.have.been.calledWithMatch(/.*call.*RelayClient.init*/)
+        await relayClient.relayTransaction(options)
+        expect(relayClient._warn).to.have.been.calledWithMatch(/.*call.*RelayClient.init*/)
       } finally {
         // @ts-ignore
-        relayClient1._warn.restore()
+        relayClient._warn.restore()
       }
     })
     it('should not warn if called "new RelayClient().init()"', async function () {

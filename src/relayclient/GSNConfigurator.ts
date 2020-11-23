@@ -86,7 +86,6 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
   ] = await Promise.all([
 
     partialConfig.chainId ?? contractInteractor.getAsyncChainId(),
-    // @ts-ignore
     partialConfig.relayHubAddress ?? paymasterInstance.getHubAddr().catch(e => { throw new Error(`Not a paymaster contract: ${(e as Error).message}`) }),
     // @ts-ignore
     partialConfig.forwarderAddress ?? paymasterInstance.trustedForwarder().catch(e => { throw new Error(`paymaster has no trustedForwarder(): ${(e as Error).message}`) }),

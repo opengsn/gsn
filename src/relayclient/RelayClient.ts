@@ -85,28 +85,32 @@ export class RelayClient {
     this.logger = console
   }
 
-  initializing?: Promise<void>
+  initializingPromise?: Promise<void>
 
   async init (): Promise<this> {
-    if (this.initializing != null) {
-      await this.initializing
+    if (this.initializingPromise != null) {
+      await this.initializingPromise
     }
     if (this.initialized) {
       return this
     }
     let initializingResolve!: () => void
-    this.initializing = new Promise((resolve) => {
+    this.initializingPromise = new Promise((resolve) => {
       initializingResolve = resolve
     })
-    await this._init()
-    initializingResolve()
-    return this
+    try {
+      await this._initInternal()
+      return this
+    } finally {
+      initializingResolve()
+    }
   }
 
-  async _init (): Promise<void> {
+  async _initInternal (): Promise<void> {
     if (this.partialConfig == null) {
       throw new Error('null config')
     }
+    this.emit(new GsnInitEvent())
     this.config = await resolveConfigurationGSN(this.partialConfig.provider, this.partialConfig.configOverride)
     const dependencies = getDependencies(this.config, this.partialConfig?.provider, this.partialConfig?.overrideDependencies)
     this.httpClient = dependencies.httpClient
@@ -118,10 +122,8 @@ export class RelayClient {
     this.asyncApprovalData = dependencies.asyncApprovalData
     this.asyncPaymasterData = dependencies.asyncPaymasterData
 
-    this.emit(new GsnInitEvent())
     await this.contractInteractor.init()
     this.initialized = true
-    // return this
   }
 
   /**

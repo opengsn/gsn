@@ -92,7 +92,7 @@ options.forEach(params => {
         await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
 
         relayClientConfig = {
-          logLevel: 'debug',
+          logLevel: 'error',
           relayHubAddress: rhub.address,
           paymasterAddress: paymaster.address,
           chainId: 1 // required for ganache
