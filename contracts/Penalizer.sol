@@ -11,7 +11,7 @@ import "./interfaces/IPenalizer.sol";
 
 contract Penalizer is IPenalizer{
 
-    string public override versionPenalizer = "2.0.0+opengsn.penalizer.ipenalizer";
+    string public override versionPenalizer = "2.1.0+opengsn.penalizer.ipenalizer";
 
     using ECDSA for bytes32;
 
@@ -26,8 +26,30 @@ contract Penalizer is IPenalizer{
 
     }
 
-    modifier relayManagerOnly(IRelayHub hub) {
-        require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
+    mapping( bytes32=>bool ) public commits;
+
+    /**
+     * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure
+     * no-one can front-run it to claim this penalization
+     */
+    function commit(bytes32 commitHash) public {
+        bytes32 idx=keccak256(abi.encodePacked(commitHash,msg.sender));
+        commits[idx] = true;
+    }
+
+    function _commitRevealOrRelayManager(IRelayHub hub) internal {
+        bytes32 requestHash = keccak256(msg.data);
+        bytes32 idx=keccak256(abi.encodePacked(requestHash,msg.sender));
+
+        if ( commits[idx] ) {
+            commits[idx] = false;
+        } else {
+            require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
+        }
+    }
+
+    modifier commitRevealOrRelayManager(IRelayHub hub) {
+        _commitRevealOrRelayManager(hub);
         _;
     }
 
@@ -40,7 +62,7 @@ contract Penalizer is IPenalizer{
     )
     public
     override
-    relayManagerOnly(hub)
+    commitRevealOrRelayManager(hub)
     {
         // Can be called by a relay manager only.
         // If a relay attacked the system by signing multiple transactions with the same nonce
@@ -85,7 +107,7 @@ contract Penalizer is IPenalizer{
     )
     public
     override
-    relayManagerOnly(hub)
+    commitRevealOrRelayManager(hub)
     {
         Transaction memory decodedTx = decodeTransaction(unsignedTx);
         if (decodedTx.to == address(hub)) {
