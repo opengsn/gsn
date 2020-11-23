@@ -189,6 +189,36 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           'Unknown relay manager'
         )
       })
+      context('penalize with commit/reveal', () => {
+        let request: string
+        const committer = _
+
+        before('make a commitment', async () => {
+          request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address).encodeABI()
+          await penalizer.commit(web3.utils.keccak256(request), { from: committer })
+        })
+
+        it('should allow penalize after commit', async () => {
+          // this is not a failure: it passes the Penalizer modifier test (manager or commit test),
+          // it fails inside the RelayHub (since we didn't fully initialize this relay/worker)
+          await expectRevert(
+            penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, { from: committer }),
+            'Unknown relay worker'
+          )
+        })
+        it('should reject penalize if method call differs', async () => {
+          await expectRevert(
+            penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature + '00', relayHub.address, { from: committer }),
+            'Unknown relay manager'
+          )
+        })
+        it('should reject penalize if commit called from another account', async () => {
+          await expectRevert(
+            penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, { from: sender }),
+            'Unknown relay manager'
+          )
+        })
+      })
       it('penalizeRepeatedNonce', async function () {
         await expectRevert(
           penalizer.penalizeRepeatedNonce(penalizableTxData, penalizableTxSignature, penalizableTxData, penalizableTxSignature, relayHub.address, { from: other }),
