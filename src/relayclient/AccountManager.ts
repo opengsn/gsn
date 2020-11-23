@@ -37,6 +37,15 @@ export default class AccountManager {
   }
 
   addAccount (privateKey: PrefixedHexString): void {
+    // temporary backward-compatibility mode: addAccount used to accept AccountKeypair with Buffer in it
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    if (privateKey.privateKey) {
+      console.error('ERROR: addAccount accepts a private key as a prefixed hex string now!')
+      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      privateKey = `0x${privateKey.privateKey.toString('hex')}`
+    }
     const address = toAddress(privateKey)
     const keypair: AccountKeypair = {
       privateKey,
