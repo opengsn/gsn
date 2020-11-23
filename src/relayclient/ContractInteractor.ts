@@ -336,7 +336,12 @@ export default class ContractInteractor {
       // @ts-ignore
       const decoded = abi.decodeParameters(['bool', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
-      const returnValue = paymasterAccepted ? decoded[1] : this._decodeRevertFromResponse({}, { result: decoded[1] }) ?? decoded[1]
+      let returnValue: string
+      if (paymasterAccepted) {
+        returnValue = decoded[1]
+      } else {
+        returnValue = this._decodeRevertFromResponse({}, { result: decoded[1] }) ?? decoded[1]
+      }
       return {
         returnValue: returnValue,
         paymasterAccepted: paymasterAccepted,
