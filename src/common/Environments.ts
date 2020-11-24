@@ -11,9 +11,9 @@ interface Environment {
   readonly relayHubConfiguration: RelayHubConfiguration
 }
 
-export const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 35915,
-  postOverhead: 13016,
+const defaultRelayHubConfiguration: RelayHubConfiguration = {
+  gasOverhead: 35872,
+  postOverhead: 13950,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
