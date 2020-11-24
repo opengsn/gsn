@@ -114,21 +114,6 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('validation', function () {
-    describe('#validateInputTypes()', function () {
-      // skipped because error message changed here for no apparent reason
-      it.skip('should throw on undefined data', async function () {
-        const req = await env.createRelayHttpRequest()
-        // @ts-ignore
-        req.relayRequest.request.data = undefined
-        try {
-          env.relayServer.validateInputTypes(req)
-          assert.fail()
-        } catch (e) {
-          assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
-        }
-      })
-    })
-
     describe('#validateInput()', function () {
       it('should fail to relay with wrong relay worker', async function () {
         const req = await env.createRelayHttpRequest()

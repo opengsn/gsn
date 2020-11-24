@@ -14,8 +14,9 @@ import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
 import ContractInteractor from './ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
-import { ServerConfigParams } from '../relayserver/ServerConfigParams'
+import { configureServer, ServerConfigParams, ServerDependencies } from '../relayserver/ServerConfigParams'
 import { createServerLogger } from '../relayserver/ServerWinstonLogger'
+import { TransactionManager } from '../relayserver/TransactionManager'
 import { GasPriceFetcher } from './GasPriceFetcher'
 
 export interface TestEnvironment {
@@ -121,7 +122,7 @@ class GsnTestEnvironmentClass {
     if (this.httpServer !== undefined) {
       this.httpServer.stop()
       this.httpServer.close()
-      await this.httpServer.backend.transactionManager.txStoreManager.clearAll()
+      await this.httpServer.relayService?.transactionManager.txStoreManager.clearAll()
       this.httpServer = undefined
     }
   }
@@ -150,7 +151,7 @@ class GsnTestEnvironmentClass {
     await contractInteractor.init()
     const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
-    const relayServerDependencies = {
+    const relayServerDependencies: ServerDependencies = {
       logger,
       contractInteractor,
       gasPriceFetcher,
@@ -166,15 +167,17 @@ class GsnTestEnvironmentClass {
       baseRelayFee: '0',
       pctRelayFee: 0,
       checkInterval: 10,
+      runPaymasterReputations: false,
       logLevel: 'error'
     }
-    const backend = new RelayServer(relayServerParams, relayServerDependencies)
+    const transactionManager = new TransactionManager(relayServerDependencies, configureServer(relayServerParams))
+    const backend = new RelayServer(relayServerParams, transactionManager, relayServerDependencies)
     await backend.init()
 
     this.httpServer = new HttpServer(
       port,
-      backend,
-      logger
+      logger,
+      backend
     )
     this.httpServer.start()
   }

@@ -20,7 +20,7 @@ import { GsnTestEnvironment } from '../../src/relayclient/GsnTestEnvironment'
 
 const underlyingProvider = web3.currentProvider as HttpProvider
 
-describe('RevertMessage.test', function () {
+describe.skip('RevertMessage.test', function () {
   let web3: Web3
   let forwarderAddress: Address
   let relayHubAddress: Address

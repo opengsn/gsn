@@ -1,24 +1,27 @@
 import { EventEmitter } from 'events'
 import { HttpProvider } from 'web3-core'
+import { Mutex } from 'async-mutex'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { bufferToHex } from 'ethereumjs-util'
 
 import { constants } from '../common/Constants'
 
-import RelayRequest from '../common/EIP712/RelayRequest'
-import { RelayMetadata, RelayTransactionRequest } from './types/RelayTransactionRequest'
-import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
-import HttpClient from './HttpClient'
-import ContractInteractor from './ContractInteractor'
-import RelaySelectionManager from './RelaySelectionManager'
-import { IKnownRelaysManager } from './KnownRelaysManager'
 import AccountManager from './AccountManager'
+import ContractInteractor from './ContractInteractor'
+import GsnTransactionDetails from './types/GsnTransactionDetails'
+import HttpClient from './HttpClient'
+import RelayRequest from '../common/EIP712/RelayRequest'
+import RelaySelectionManager from './RelaySelectionManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
-import { getDependencies, GSNConfig, GSNDependencies, resolveConfigurationGSN } from './GSNConfigurator'
+import { Address, AsyncDataCallback, PingFilter } from './types/Aliases'
+import { KnownRelaysManager } from './KnownRelaysManager'
+import { LoggerInterface } from '../common/LoggerInterface'
+import { AuditResponse } from './types/AuditRequest'
 import { RelayInfo } from './types/RelayInfo'
+import { RelayMetadata, RelayTransactionRequest } from './types/RelayTransactionRequest'
+import { getDependencies, GSNConfig, GSNDependencies, resolveConfigurationGSN } from './GSNConfigurator'
 
 import { decodeRevertReason } from '../common/Utils'
-import { LoggerInterface } from '../common/LoggerInterface'
 
 import {
   GsnEvent,
@@ -27,7 +30,6 @@ import {
   GsnDoneRefreshRelaysEvent,
   GsnRefreshRelaysEvent, GsnRelayerResponseEvent, GsnSendToRelayerEvent, GsnSignRequestEvent, GsnValidateRequestEvent
 } from './GsnEvents'
-import { Mutex } from 'async-mutex'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -48,12 +50,14 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 interface RelayingAttempt {
   transaction?: Transaction
   error?: Error
+  auditPromise?: Promise<AuditResponse>
 }
 
 export interface RelayingResult {
   transaction?: Transaction
   pingErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
+  auditPromises?: Array<Promise<AuditResponse>>
 }
 
 export class RelayClient {
@@ -62,14 +66,14 @@ export class RelayClient {
   private readonly partialConfig?: { provider: HttpProvider, configOverride: Partial<GSNConfig>, overrideDependencies?: Partial<GSNDependencies> }
   private httpClient!: HttpClient
   protected contractInteractor!: ContractInteractor
-  protected knownRelaysManager!: IKnownRelaysManager
+  protected knownRelaysManager!: KnownRelaysManager
   private asyncApprovalData!: AsyncDataCallback
   private asyncPaymasterData!: AsyncDataCallback
   private transactionValidator!: RelayedTransactionValidator
   private pingFilter!: PingFilter
 
   public accountManager!: AccountManager
-  initialized = false
+  private initialized = false
   logger!: LoggerInterface
   private readonly initMutex = new Mutex()
 
@@ -121,7 +125,6 @@ export class RelayClient {
     this.pingFilter = dependencies.pingFilter
     this.asyncApprovalData = dependencies.asyncApprovalData
     this.asyncPaymasterData = dependencies.asyncPaymasterData
-
     await this.contractInteractor.init()
     this.initialized = true
   }
@@ -219,6 +222,7 @@ export class RelayClient {
       throw new Error('no registered relayers')
     }
     const relayingErrors = new Map<string, Error>()
+    const auditPromises: Array<Promise<AuditResponse>> = []
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
       const activeRelay = await relaySelectionManager.selectNextRelay()
@@ -226,6 +230,9 @@ export class RelayClient {
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
           .catch(error => ({ error }))
+        if (relayingAttempt.auditPromise != null) {
+          auditPromises.push(relayingAttempt.auditPromise)
+        }
         if (relayingAttempt.transaction == null) {
           relayingErrors.set(activeRelay.relayInfo.relayUrl, relayingAttempt.error ?? new Error('No error reason was given'))
           continue
@@ -234,6 +241,7 @@ export class RelayClient {
       return {
         transaction: relayingAttempt?.transaction,
         relayingErrors,
+        auditPromises,
         pingErrors: relaySelectionManager.errors
       }
     }
@@ -274,9 +282,20 @@ export class RelayClient {
       return { error: new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`) }
     }
     let hexTransaction: PrefixedHexString
+    let transaction: Transaction
+    let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
       hexTransaction = await this.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
+      transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())
+      auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
+        .then((penalizeResponse) => {
+          if (penalizeResponse.penalizeTxHash != null) {
+            const txHash = bufferToHex(transaction.hash(true))
+            this.logger.error(`The transaction with id: ${txHash} was penalized! Penalization tx id: ${penalizeResponse.penalizeTxHash}`)
+          }
+          return penalizeResponse
+        })
     } catch (error) {
       if (error?.message == null || error.message.indexOf('timeout') !== -1) {
         this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
@@ -284,15 +303,18 @@ export class RelayClient {
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error }
     }
-    const transaction = new Transaction(hexTransaction, this.contractInteractor.getRawTxOptions())
     if (!this.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
-      return { error: new Error('Returned transaction did not pass validation') }
+      return {
+        auditPromise,
+        error: new Error('Returned transaction did not pass validation')
+      }
     }
     this.emit(new GsnRelayerResponseEvent(true))
     await this._broadcastRawTx(transaction)
     return {
+      auditPromise,
       transaction
     }
   }
@@ -395,6 +417,28 @@ export class RelayClient {
   verifyInitialized (): void {
     if (!this.initialized) {
       throw new Error('not initialized. must call RelayClient.init()')
+    }
+  }
+
+  async auditTransaction (hexTransaction: PrefixedHexString, sourceRelayUrl: string): Promise<AuditResponse> {
+    const auditors = this.knownRelaysManager.getAuditors([sourceRelayUrl])
+    let failedAuditorsCount = 0
+    for (const auditor of auditors) {
+      try {
+        const penalizeResponse = await this.httpClient.auditTransaction(auditor, hexTransaction)
+        if (penalizeResponse.penalizeTxHash != null) {
+          return penalizeResponse
+        }
+      } catch (e) {
+        failedAuditorsCount++
+        this.logger.info(`Audit call failed for relay at URL: ${auditor}. Failed audit calls: ${failedAuditorsCount}/${auditors.length}`)
+      }
+    }
+    if (auditors.length === failedAuditorsCount) {
+      this.logger.error('All auditors failed!')
+    }
+    return {
+      message: `Transaction was not audited. Failed audit calls: ${failedAuditorsCount}/${auditors.length}`
     }
   }
 }

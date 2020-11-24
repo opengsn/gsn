@@ -7,7 +7,7 @@ import { KeyManager } from '../../src/relayserver/KeyManager'
 import { RegistrationManager } from '../../src/relayserver/RegistrationManager'
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import { ServerAction } from '../../src/relayserver/StoredTransaction'
-import { ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
+import { configureServer, ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
 import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
@@ -17,6 +17,7 @@ import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
+import { TransactionManager } from '../../src/relayserver/TransactionManager'
 import { GasPriceFetcher } from '../../src/relayclient/GasPriceFetcher'
 
 const { oneEther } = constants
@@ -98,6 +99,7 @@ contract('RegistrationManager', function (accounts) {
         baseRelayFee: '0',
         pctRelayFee: 0,
         gasPriceFactor: 1,
+        runPaymasterReputations: false,
         checkInterval: 10
       }
       const logger = createServerLogger('error', '', '')
@@ -120,7 +122,8 @@ contract('RegistrationManager', function (accounts) {
         contractInteractor,
         gasPriceFetcher
       }
-      const newRelayServer = new RelayServer(params, serverDependencies)
+      const transactionManager = new TransactionManager(serverDependencies, configureServer(params))
+      const newRelayServer = new RelayServer(params, transactionManager, serverDependencies)
       await newRelayServer.init()
       const latestBlock = await env.web3.eth.getBlock('latest')
       await newRelayServer._worker(latestBlock.number)

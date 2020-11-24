@@ -8,7 +8,7 @@ import AccountManager from './AccountManager'
 import ContractInteractor, { Web3Provider } from './ContractInteractor'
 import HttpClient from './HttpClient'
 import HttpWrapper from './HttpWrapper'
-import KnownRelaysManager, { DefaultRelayScore, EmptyFilter, IKnownRelaysManager } from './KnownRelaysManager'
+import { KnownRelaysManager, DefaultRelayScore, EmptyFilter } from './KnownRelaysManager'
 import RelayedTransactionValidator from './RelayedTransactionValidator'
 import {
   Address,
@@ -49,6 +49,7 @@ const defaultGsnConfig: GSNConfig = {
   loggerUrl: '',
   loggerApplicationId: '',
   loggerUserIdOverride: '',
+  auditorsCount: 1,
   clientId: '1'
 }
 
@@ -141,13 +142,14 @@ export interface GSNConfig {
   forwarderAddress: Address
   chainId: number
   clientId: IntString
+  auditorsCount: number
 }
 
 export interface GSNDependencies {
   httpClient: HttpClient
   logger: LoggerInterface
   contractInteractor: ContractInteractor
-  knownRelaysManager: IKnownRelaysManager
+  knownRelaysManager: KnownRelaysManager
   accountManager: AccountManager
   transactionValidator: RelayedTransactionValidator
   pingFilter: PingFilter
