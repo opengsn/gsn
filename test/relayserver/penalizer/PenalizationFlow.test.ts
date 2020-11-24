@@ -50,7 +50,9 @@ contract('PenalizationFlow', function (accounts) {
     const logger = createClientLogger('error', '', '', '')
     const partialConfig: Partial<GSNConfig> = {
       relayHubAddress: env.relayHub.address,
+      paymasterAddress: env.paymaster.address,
       preferredRelays,
+      chainId: 1,
       auditorsCount: 2
     }
     const httpClient = new HttpClient(new HttpWrapper(), logger, configureGSN(partialConfig))
