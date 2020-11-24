@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events'
 import { HttpProvider } from 'web3-core'
-import { Mutex } from 'async-mutex'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 
@@ -75,7 +74,6 @@ export class RelayClient {
   public accountManager!: AccountManager
   private initialized = false
   logger!: LoggerInterface
-  private readonly initMutex = new Mutex()
 
   /**
    * create a RelayClient library object, to force contracts to go through a relay.
@@ -92,22 +90,13 @@ export class RelayClient {
   initializingPromise?: Promise<void>
 
   async init (): Promise<this> {
-    if (this.initializingPromise != null) {
-      await this.initializingPromise
-    }
     if (this.initialized) {
-      return this
+      throw new Error('init() already called')
     }
-    let initializingResolve!: () => void
-    this.initializingPromise = new Promise((resolve) => {
-      initializingResolve = resolve
-    })
-    try {
-      await this._initInternal()
-      return this
-    } finally {
-      initializingResolve()
-    }
+    this.initializingPromise = this._initInternal()
+    await this.initializingPromise
+    this.initialized = true
+    return this
   }
 
   async _initInternal (): Promise<void> {
@@ -126,7 +115,6 @@ export class RelayClient {
     this.asyncApprovalData = dependencies.asyncApprovalData
     this.asyncPaymasterData = dependencies.asyncPaymasterData
     await this.contractInteractor.init()
-    this.initialized = true
   }
 
   /**
@@ -202,7 +190,7 @@ export class RelayClient {
 
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
     if (!this.initialized) {
-      if (!this.initMutex.isLocked()) {
+      if (this.initializingPromise == null) {
         this._warn('suggestion: call RelayProvider.init()/RelayClient.init() in advance (to make first request faster)')
       }
       await this.init()

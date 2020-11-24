@@ -193,6 +193,7 @@ contract('RelayClient', function (accounts) {
         relayClient._warn.restore()
       }
     })
+
     it('should not warn if called "new RelayClient().init()"', async function () {
       const relayClient1 = await new RelayClient(underlyingProvider, gsnConfig).init()
       sinon.spy(relayClient1, '_warn')
