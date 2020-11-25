@@ -35,26 +35,23 @@ contract Penalizer is IPenalizer {
      * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure
      * no-one can front-run it to claim this penalization
      */
-    function commit(bytes32 commitHash) public {
-        bytes32 idx = keccak256(abi.encodePacked(commitHash, msg.sender));
+    function commit(bytes32 msgDataHash, uint revealSalt) external override {
+        bytes32 idx = keccak256(abi.encodePacked(msgDataHash, revealSalt, msg.sender));
         commits[idx] = block.number;
-        emit Commit(commitHash, msg.sender);
+        emit Commit(msgDataHash, msg.sender);
     }
 
-    function _commitRevealOrRelayManager(IRelayHub hub) internal {
-        bytes32 requestHash = keccak256(msg.data);
-        bytes32 idx = keccak256(abi.encodePacked(requestHash, msg.sender));
-
-        if (commits[idx] != 0) {
-            require(commits[idx] + PENALIZE_BLOCK_DELAY < block.number, "must wait before revealing penalize");
-            commits[idx] = 0;
-        } else {
-            require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
-        }
+    modifier relayManagerOnly(IRelayHub hub) {
+        require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
+        _;
     }
 
-    modifier commitRevealOrRelayManager(IRelayHub hub) {
-        _commitRevealOrRelayManager(hub);
+    modifier commitRevealOnly(uint revealSalt) {
+        bytes32 msgDataHash = keccak256(msg.data);
+        bytes32 idx = keccak256(abi.encodePacked(msgDataHash, revealSalt, msg.sender));
+        uint commitValue = commits[idx];
+        require(commitValue != 0, "no commit");
+        require(commitValue + PENALIZE_BLOCK_DELAY < block.number, "must wait before revealing penalize");
         _;
     }
 
@@ -67,7 +64,33 @@ contract Penalizer is IPenalizer {
     )
     public
     override
-    commitRevealOrRelayManager(hub)
+    relayManagerOnly(hub)
+    {
+        _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
+    }
+
+    function penalizeRepeatedNonceWithSalt(
+        bytes memory unsignedTx1,
+        bytes memory signature1,
+        bytes memory unsignedTx2,
+        bytes memory signature2,
+        IRelayHub hub,
+        uint revealSalt
+    )
+    public
+    override
+    commitRevealOnly(revealSalt) {
+        _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
+    }
+
+    function _penalizeRepeatedNonce(
+        bytes memory unsignedTx1,
+        bytes memory signature1,
+        bytes memory unsignedTx2,
+        bytes memory signature2,
+        IRelayHub hub
+    )
+    private
     {
         // Can be called by a relay manager only.
         // If a relay attacked the system by signing multiple transactions with the same nonce
@@ -112,7 +135,29 @@ contract Penalizer is IPenalizer {
     )
     public
     override
-    commitRevealOrRelayManager(hub)
+    relayManagerOnly(hub)
+    {
+        _penalizeIllegalTransaction(unsignedTx, signature, hub);
+    }
+
+    function penalizeIllegalTransactionWithSalt(
+        bytes memory unsignedTx,
+        bytes memory signature,
+        IRelayHub hub,
+        uint revealSalt
+    )
+    public
+    override
+    commitRevealOnly(revealSalt) {
+        _penalizeIllegalTransaction(unsignedTx, signature, hub);
+    }
+
+    function _penalizeIllegalTransaction(
+        bytes memory unsignedTx,
+        bytes memory signature,
+        IRelayHub hub
+    )
+    private
     {
         Transaction memory decodedTx = decodeTransaction(unsignedTx);
         if (decodedTx.to == address(hub)) {
