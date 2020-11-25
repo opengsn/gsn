@@ -195,14 +195,14 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should not warn if called "new RelayClient().init()"', async function () {
-      const relayClient1 = await new RelayClient(underlyingProvider, gsnConfig).init()
-      sinon.spy(relayClient1, '_warn')
+      const relayClient = await new RelayClient(underlyingProvider, gsnConfig).init()
+      sinon.spy(relayClient, '_warn')
       try {
-        await relayClient1.relayTransaction(options)
-        expect(relayClient1._warn).to.have.not.been.called
+        await relayClient.relayTransaction(options)
+        expect(relayClient._warn).to.have.not.been.called
       } finally {
         // @ts-ignore
-        relayClient1._warn.restore()
+        relayClient._warn.restore()
       }
     })
 
