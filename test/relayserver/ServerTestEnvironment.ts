@@ -123,6 +123,7 @@ export class ServerTestEnvironment {
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
     this.gasLess = await this.web3.eth.personal.newAccount('password')
     const shared: Partial<GSNConfig> = {
+      logLevel: 'error',
       relayHubAddress: this.relayHub.address
     }
     if (contractFactory == null) {

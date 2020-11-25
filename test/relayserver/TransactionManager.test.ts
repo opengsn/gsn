@@ -1,28 +1,25 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
-import { toBN } from 'web3-utils'
 import Mutex from 'async-mutex/lib/Mutex'
 import * as ethUtils from 'ethereumjs-util'
 
-import { evmMineMany, revert, snapshot } from '../TestUtils'
+import { evmMineMany } from '../TestUtils'
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 
 contract('TransactionManager', function (accounts) {
-  const pendingTransactionTimeoutBlocks = 5
   const confirmationsNeeded = 12
-  let id: string
   let relayServer: RelayServer
   let env: ServerTestEnvironment
 
   before(async function () {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init()
-    await env.newServerInstance({ pendingTransactionTimeoutBlocks })
+    await env.newServerInstance()
     relayServer = env.relayServer
   })
 
-  describe('nonce sense', function () {
+  describe('nonce counter asynchronous access protection', function () {
     let _pollNonceOrig: (signer: string) => Promise<number>
     let nonceMutexOrig: Mutex
     let signTransactionOrig: (signer: string, tx: Transaction) => PrefixedHexString
@@ -113,52 +110,5 @@ contract('TransactionManager', function (accounts) {
       storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
       assert.deepEqual([], storedTransactions)
     })
-  })
-
-  describe('resend unconfirmed transactions task', function () {
-    before(async function () {
-      await relayServer.transactionManager.txStoreManager.clearAll()
-      relayServer.transactionManager._initNonces()
-      assert.deepEqual([], await relayServer.transactionManager.txStoreManager.getAll())
-    })
-
-    it('should resend unconfirmed transaction', async function () {
-      // Send a transaction via the relay, but then revert to a previous snapshot
-      id = (await snapshot()).result
-      const { signedTx } = await env.relayTransaction()
-      let parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx, relayServer.transactionManager.rawTxOptions)).hash())
-      const receiptBefore = await env.web3.eth.getTransactionReceipt(parsedTxHash)
-      const minedTxBefore = await env.web3.eth.getTransaction(parsedTxHash)
-      assert.equal(parsedTxHash, receiptBefore.transactionHash)
-      await revert(id)
-      // note that 'revert(id)' resets account nonces but transaction manager remembers the old values
-      relayServer.transactionManager._initNonces()
-      // Ensure tx is removed by the revert
-      const receiptAfter = await env.web3.eth.getTransactionReceipt(parsedTxHash)
-      assert.equal(null, receiptAfter)
-      // Should not do anything, as not enough time has passed
-      let sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
-      assert.equal(sortedTxs[0].txId, parsedTxHash)
-      let latestBlock = await env.web3.eth.getBlock('latest')
-      let allBoostedTransactions = await relayServer._boostStuckPendingTransactions(latestBlock.number)
-      assert.equal(allBoostedTransactions.length, 0)
-      sortedTxs = await relayServer.transactionManager.txStoreManager.getAll()
-      assert.equal(sortedTxs[0].txId, parsedTxHash)
-      // Increase time by mining necessary amount of blocks
-      await evmMineMany(pendingTransactionTimeoutBlocks)
-      // Resend tx, now should be ok
-      latestBlock = await env.web3.eth.getBlock('latest')
-      allBoostedTransactions = await relayServer._boostStuckPendingTransactions(latestBlock.number)
-      assert.equal(allBoostedTransactions.length, 1)
-      parsedTxHash = ethUtils.bufferToHex((new Transaction(allBoostedTransactions[0], relayServer.transactionManager.rawTxOptions)).hash())
-
-      // Validate relayed tx with increased gasPrice
-      const minedTxAfter = await env.web3.eth.getTransaction(parsedTxHash)
-      // BN.muln() does not support floats so to mul by 1.2, we have to mul by 12 and div by 10 to keep precision
-      assert.equal(toBN(minedTxAfter.gasPrice).toString(), toBN(minedTxBefore.gasPrice).muln(12).divn(10).toString())
-      await env.assertTransactionRelayed(parsedTxHash)
-    })
-
-    it('should resend multiple unconfirmed transactions')
   })
 })

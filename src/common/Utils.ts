@@ -1,10 +1,10 @@
 import BN from 'bn.js'
 import abi from 'web3-eth-abi'
-import ethUtils, { bufferToInt, stripZeros, toBuffer } from 'ethereumjs-util'
 import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
+import { bufferToHex, bufferToInt, ecrecover, pubToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 
 import { Address } from '../relayclient/types/Aliases'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
@@ -137,8 +137,8 @@ export function getEcRecoverMeta (message: PrefixedHexString, signature: string 
     throw new Error('web3Utils.sha3 failed somehow')
   }
   const bufSigned = Buffer.from(removeHexPrefix(signed), 'hex')
-  const recoveredPubKey = ethUtils.ecrecover(bufSigned, signature.v[0], Buffer.from(signature.r), Buffer.from(signature.s))
-  return ethUtils.bufferToHex(ethUtils.pubToAddress(recoveredPubKey))
+  const recoveredPubKey = ecrecover(bufSigned, signature.v[0], Buffer.from(signature.r), Buffer.from(signature.s))
+  return bufferToHex(pubToAddress(recoveredPubKey))
 }
 
 export function parseHexString (str: string): number[] {
@@ -246,4 +246,8 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
     data,
     signature
   }
+}
+
+export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TransactionOptions): PrefixedHexString {
+  return bufferToHex(new Transaction(signedTransaction, transactionOptions).hash())
 }

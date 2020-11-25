@@ -32,7 +32,7 @@ import {
 
 import { RegistrationManager } from './RegistrationManager'
 import { PaymasterStatus, ReputationManager } from './ReputationManager'
-import { SendTransactionDetails, TransactionManager } from './TransactionManager'
+import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
@@ -658,32 +658,32 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   /**
-   * Resend the earliest pending transactions of all signers (manager, workers)
-   * @return the receipt from the first request
+   * Resend all outgoing pending transactions with insufficient gas price by all signers (manager, workers)
+   * @return the mapping of the previous transaction hash to details of a new boosted transaction
    */
-  async _boostStuckPendingTransactions (blockNumber: number): Promise<PrefixedHexString[]> {
-    const transactionHashes: PrefixedHexString[] = []
+  async _boostStuckPendingTransactions (blockNumber: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+    const transactionDetails = new Map<PrefixedHexString, SignedTransactionDetails>()
     // repeat separately for each signer (manager, all workers)
-    let signedTx = await this._boostStuckTransactionsForManager(blockNumber)
-    if (signedTx != null) {
-      transactionHashes.push(signedTx)
+    const managerBoostedTransactions = await this._boostStuckTransactionsForManager(blockNumber)
+    for (const [txHash, boostedTxDetails] of managerBoostedTransactions) {
+      transactionDetails.set(txHash, boostedTxDetails)
     }
     for (const workerIndex of [0]) {
-      signedTx = await this._boostStuckTransactionsForWorker(blockNumber, workerIndex)
-      if (signedTx != null) {
-        transactionHashes.push(signedTx)
+      const workerBoostedTransactions = await this._boostStuckTransactionsForWorker(blockNumber, workerIndex)
+      for (const [txHash, boostedTxDetails] of workerBoostedTransactions) {
+        transactionDetails.set(txHash, boostedTxDetails)
       }
     }
-    return transactionHashes
+    return transactionDetails
   }
 
-  async _boostStuckTransactionsForManager (blockNumber: number): Promise<PrefixedHexString | null> {
-    return await this.transactionManager.boostOldestPendingTransactionForSigner(this.managerAddress, blockNumber)
+  async _boostStuckTransactionsForManager (blockNumber: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(this.managerAddress, blockNumber)
   }
 
-  async _boostStuckTransactionsForWorker (blockNumber: number, workerIndex: number): Promise<PrefixedHexString | null> {
+  async _boostStuckTransactionsForWorker (blockNumber: number, workerIndex: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const signer = this.workerAddress
-    return await this.transactionManager.boostOldestPendingTransactionForSigner(signer, blockNumber)
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(signer, blockNumber)
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {
