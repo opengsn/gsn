@@ -158,9 +158,10 @@ data         | 0x${transaction.data.toString('hex')}
     await this.txStoreManager.putTx(storedTx, true)
   }
 
-  async updateTransactionWithAttempt (txToSign: Transaction, tx: StoredTransaction): Promise<StoredTransaction> {
+  async updateTransactionWithAttempt (txToSign: Transaction, tx: StoredTransaction, currentBlock: number): Promise<StoredTransaction> {
     const metadata: StoredTransactionMetadata = {
       attempts: tx.attempts + 1,
+      boostBlockNumber: currentBlock,
       from: tx.from,
       serverAction: tx.serverAction,
       creationBlockNumber: tx.creationBlockNumber,
@@ -171,16 +172,7 @@ data         | 0x${transaction.data.toString('hex')}
     return storedTx
   }
 
-  async resendTransaction (tx: StoredTransaction): Promise<SignedTransactionDetails> {
-    // Calculate new gas price as a % increase over the previous one
-    let isMaxGasPriceReached = false
-    let newGasPrice = tx.gasPrice * this.config.retryGasPriceFactor
-    // TODO: use BN for ETH values
-    // Sanity check to ensure we are not burning all our balance in gas fees
-    if (newGasPrice > parseInt(this.config.maxGasPrice)) {
-      isMaxGasPriceReached = true
-      newGasPrice = parseInt(this.config.maxGasPrice)
-    }
+  async resendTransaction (tx: StoredTransaction, currentBlock: number, newGasPrice: number, isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
     // Resend transaction with exactly the same values except for gas price
     const txToSign = new Transaction(
       {
@@ -194,7 +186,7 @@ data         | 0x${transaction.data.toString('hex')}
 
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
     const signedTx = keyManager.signTransaction(tx.from, txToSign)
-    const storedTx = await this.updateTransactionWithAttempt(txToSign, tx)
+    const storedTx = await this.updateTransactionWithAttempt(txToSign, tx, currentBlock)
 
     this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.gasPrice, isMaxGasPriceReached)
     this.printSendTransactionLog(txToSign, tx.from)
@@ -208,6 +200,18 @@ data         | 0x${transaction.data.toString('hex')}
       transactionHash,
       signedTx
     }
+  }
+
+  _resolveNewGasPrice (oldGasPrice: number): { newGasPrice: number, isMaxGasPriceReached: boolean } {
+    let isMaxGasPriceReached = false
+    let newGasPrice = oldGasPrice * this.config.retryGasPriceFactor
+    // TODO: use BN for ETH values
+    // Sanity check to ensure we are not burning all our balance in gas fees
+    if (newGasPrice > parseInt(this.config.maxGasPrice)) {
+      isMaxGasPriceReached = true
+      newGasPrice = parseInt(this.config.maxGasPrice)
+    }
+    return { newGasPrice, isMaxGasPriceReached }
   }
 
   async pollNonce (signer: Address): Promise<number> {
@@ -260,29 +264,44 @@ data         | 0x${transaction.data.toString('hex')}
     }
   }
 
-  async boostOldestPendingTransactionForSigner (signer: string, currentBlockHeight: number): Promise<PrefixedHexString | null> {
+  /**
+   * This methods uses the oldest pending transaction for reference. If it was not mined in a reasonable time,
+   * it is boosted all consequent transactions with gas price lower then that are boosted as well.
+   */
+  async boostUnderpricedPendingTransactionsForSigner (signer: string, currentBlockHeight: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+    const boostedTransactions = new Map<PrefixedHexString, SignedTransactionDetails>()
+
     // Load unconfirmed transactions from store again
     const sortedTxs = await this.txStoreManager.getAllBySigner(signer)
     if (sortedTxs.length === 0) {
-      return null
+      return boostedTransactions
     }
     // Check if the tx was mined by comparing its nonce against the latest one
     const nonce = await this.contractInteractor.getTransactionCount(signer)
-    if (sortedTxs[0].nonce < nonce) {
-      this.logger.debug(`${signer} : transaction is mined, awaiting confirmations. Account nonce: ${nonce}, oldest transaction: nonce: ${sortedTxs[0].nonce} txId: ${sortedTxs[0].txId}`)
-      return null
+    const oldestPendingTx = sortedTxs[0]
+    if (oldestPendingTx.nonce < nonce) {
+      this.logger.debug(`${signer} : transaction is mined, awaiting confirmations. Account nonce: ${nonce}, oldest transaction: nonce: ${oldestPendingTx.nonce} txId: ${oldestPendingTx.txId}`)
+      return boostedTransactions
     }
 
+    const lastSentAtBlockHeight = oldestPendingTx.boostBlockNumber ?? oldestPendingTx.creationBlockNumber
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
-    if (currentBlockHeight - sortedTxs[0].creationBlockNumber < this.config.pendingTransactionTimeoutBlocks) {
-      this.logger.debug(`${signer} : awaiting transaction with ID: ${sortedTxs[0].txId} to be mined. creationBlockNumber: ${sortedTxs[0].creationBlockNumber} nonce: ${nonce}`)
-      return null
+    if (currentBlockHeight - lastSentAtBlockHeight < this.config.pendingTransactionTimeoutBlocks) {
+      this.logger.debug(`${signer} : awaiting transaction with ID: ${oldestPendingTx.txId} to be mined. creationBlockNumber: ${oldestPendingTx.creationBlockNumber} nonce: ${nonce}`)
+      return boostedTransactions
     }
-    const { transactionHash, signedTx } = await this.resendTransaction(sortedTxs[0])
-    this.logger.debug(`Replaced transaction: nonce: ${sortedTxs[0].nonce} sender: ${signer} | ${sortedTxs[0].txId} => ${transactionHash}`)
-    if (sortedTxs[0].attempts > 2) {
-      this.logger.debug(`resend ${signer}: Sent tx ${sortedTxs[0].attempts} times already`)
+
+    // Calculate new gas price as a % increase over the previous one
+    const { newGasPrice, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.gasPrice)
+    const underpricedTransactions = sortedTxs.filter(it => it.gasPrice < newGasPrice)
+    for (const transaction of underpricedTransactions) {
+      const boostedTransactionDetails = await this.resendTransaction(transaction, currentBlockHeight, newGasPrice, isMaxGasPriceReached)
+      boostedTransactions.set(transaction.txId, boostedTransactionDetails)
+      this.logger.debug(`Replaced transaction: nonce: ${transaction.nonce} sender: ${signer} | ${transaction.txId} => ${boostedTransactionDetails.transactionHash}`)
+      if (transaction.attempts > 2) {
+        this.logger.debug(`resend ${signer}: Sent tx ${transaction.attempts} times already`)
+      }
     }
-    return signedTx
+    return boostedTransactions
   }
 }
