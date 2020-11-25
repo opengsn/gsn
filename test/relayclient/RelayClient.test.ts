@@ -46,7 +46,7 @@ import { ether } from '@openzeppelin/test-helpers'
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
-const TestVersions = artifacts.require('TestVersions')
+const TestUtil = artifacts.require('TestUtil')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
 
@@ -130,11 +130,17 @@ contract('RelayClient', function (accounts) {
       ethereumNodeUrl: underlyingProvider.host
     })
 
+    const testUtil = await TestUtil.new()
+
     gsnConfig = {
-      relayHubAddress: relayHub.address
+      logLevel: 'debug',
+      chainId: (await testUtil.libGetChainID()).toNumber(),
+      relayHubAddress: relayHub.address,
+      paymasterAddress: paymaster.address
     }
     logger = createClientLogger('error', '', '', '')
     relayClient = new RelayClient(underlyingProvider, gsnConfig)
+    await relayClient.init()
     gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess
     to = testRecipient.address
@@ -161,13 +167,6 @@ contract('RelayClient', function (accounts) {
       assert.equal(forwarder, forwarderAddress)
     })
 
-    it('should throw an exception if recipient does not return address for getTrustedForwarder', async function () {
-      const badRecipient = await TestVersions.new()
-      const noForwarderDetails = Object.assign({}, options, { forwarder: undefined, to: badRecipient.address })
-      await expect(relayClient.resolveForwarder(noForwarderDetails))
-        .to.eventually.be.rejectedWith('No forwarder address configured and no getTrustedForwarder in target contract')
-    })
-
     it('should throw an exception if passed forwarder is not trusted', async function () {
       const badForwarderDetails = Object.assign({}, options, { forwarder: accounts[0] })
       await expect(relayClient.resolveForwarder(badForwarderDetails))
@@ -184,18 +183,19 @@ contract('RelayClient', function (accounts) {
 
   describe('#relayTransaction()', function () {
     it('should warn if called relayTransaction without calling init first', async function () {
-      relayClient = new RelayClient(underlyingProvider, gsnConfig)
+      const relayClient = new RelayClient(underlyingProvider, gsnConfig)
       sinon.spy(relayClient, '_warn')
       try {
         await relayClient.relayTransaction(options)
-        expect(relayClient._warn).to.have.been.calledWithMatch(/.*call RelayClient.init*/)
+        expect(relayClient._warn).to.have.been.calledWithMatch(/.*call.*RelayClient.init*/)
       } finally {
         // @ts-ignore
         relayClient._warn.restore()
       }
     })
+
     it('should not warn if called "new RelayClient().init()"', async function () {
-      relayClient = await new RelayClient(underlyingProvider, gsnConfig).init()
+      const relayClient = await new RelayClient(underlyingProvider, gsnConfig).init()
       sinon.spy(relayClient, '_warn')
       try {
         await relayClient.relayTransaction(options)
@@ -253,6 +253,7 @@ contract('RelayClient', function (accounts) {
         const relayClient = new RelayClient(underlyingProvider, gsnConfig, {
           httpClient: new MockHttpClient(mockServerPort, logger, new HttpWrapper({ timeout: 100 }), gsnConfig)
         })
+        await relayClient.init()
 
         // async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
         const relayingResult = await relayClient.relayTransaction(options)
@@ -275,6 +276,7 @@ contract('RelayClient', function (accounts) {
       const badHttpClient = new BadHttpClient(logger, configureGSN(gsnConfig), true, false, false)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { httpClient: badHttpClient })
+      await relayClient.init()
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(relayingErrors.size, 0)
@@ -286,6 +288,7 @@ contract('RelayClient', function (accounts) {
       const badHttpClient = new BadHttpClient(logger, configureGSN(gsnConfig), false, true, false)
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { httpClient: badHttpClient })
+      await relayClient.init()
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -298,6 +301,8 @@ contract('RelayClient', function (accounts) {
         new RelayClient(underlyingProvider, gsnConfig, {
           asyncApprovalData: async () => { throw new Error('approval-error') }
         })
+      await relayClient.init()
+
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -310,6 +315,8 @@ contract('RelayClient', function (accounts) {
         new RelayClient(underlyingProvider, gsnConfig, {
           asyncPaymasterData: async () => { throw new Error('paymasterData-error') }
         })
+      await relayClient.init()
+
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -323,6 +330,8 @@ contract('RelayClient', function (accounts) {
         new RelayClient(underlyingProvider, gsnConfig, {
           scoreCalculator: async () => { throw new Error('score-error') }
         })
+      await relayClient.init()
+
       const ret = await relayClient.relayTransaction(options)
       const { transaction, relayingErrors, pingErrors } = ret
       assert.isUndefined(transaction)
@@ -364,10 +373,12 @@ contract('RelayClient', function (accounts) {
       const minGasPrice = 1e18
       const gsnConfig: Partial<GSNConfig> = {
         logLevel: 'error',
-        relayHubAddress: relayHub.address,
+        paymasterAddress: paymaster.address,
         minGasPrice
       }
       const relayClient = new RelayClient(underlyingProvider, gsnConfig)
+      await relayClient.init()
+
       const calculatedGasPrice = await relayClient._calculateGasPrice()
       assert.equal(calculatedGasPrice, `0x${minGasPrice.toString(16)}`)
     })
@@ -445,6 +456,7 @@ contract('RelayClient', function (accounts) {
       dependencyTree.httpClient = badHttpClient
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, dependencyTree)
+      await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(dependencyTree.knownRelaysManager)
       await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -485,6 +497,7 @@ contract('RelayClient', function (accounts) {
             asyncApprovalData,
             asyncPaymasterData
           })
+        await relayClient.init()
         const httpRequest = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
         assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
@@ -499,6 +512,8 @@ contract('RelayClient', function (accounts) {
       const transaction = new Transaction('0x')
       const relayClient =
         new RelayClient(underlyingProvider, gsnConfig, { contractInteractor: badContractInteractor })
+      await relayClient.init()
+
       const { hasReceipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
       assert.isFalse(hasReceipt)
       assert.isTrue(wrongNonce)
@@ -528,6 +543,7 @@ contract('RelayClient', function (accounts) {
         preferredRelays: ['http://localhost:8090'],
         ...gsnConfig
       })
+      await relayClient.init()
 
       const relayingResult = await relayClient.relayTransaction(options)
       assert.isNotNull(relayingResult.transaction)

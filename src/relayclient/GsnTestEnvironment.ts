@@ -89,7 +89,7 @@ class GsnTestEnvironmentClass {
       preferredRelays: [relayUrl]
     })
 
-    const relayProvider = new RelayProvider(new Web3.providers.HttpProvider(_host), config)
+    const relayProvider = await new RelayProvider(new Web3.providers.HttpProvider(_host), config).init()
     console.error('== startGSN: ready.')
     return {
       deploymentResult,

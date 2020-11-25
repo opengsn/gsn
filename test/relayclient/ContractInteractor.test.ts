@@ -35,13 +35,6 @@ contract('ContractInteractor', function (accounts) {
       })
       await expect(relayClient.init()).to.be.eventually.rejectedWith('Provided Hub version(3.0.0) is not supported by the current interactor')
     })
-
-    it('should not throw if the hub address is not configured', async function () {
-      const relayClient = new RelayClient(web3.currentProvider as HttpProvider, {
-        logLevel: 'error'
-      })
-      await relayClient.init()
-    })
   })
 
   function addr (n: number): string {

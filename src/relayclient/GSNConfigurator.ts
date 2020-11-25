@@ -73,9 +73,6 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
     throw new Error('First param is not a web3 provider')
   }
 
-  if (partialConfig.relayHubAddress != null) {
-    throw new Error('Resolve cannot override passed values')
-  }
   if (partialConfig.paymasterAddress == null) {
     throw new Error('Cannot resolve GSN deployment without paymaster address')
   }
@@ -90,10 +87,11 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
   ] = await Promise.all([
 
     partialConfig.chainId ?? contractInteractor.getAsyncChainId(),
-    paymasterInstance.getHubAddr().catch(e => { throw new Error('Not a paymaster contract') }),
-    partialConfig.forwarderAddress ?? paymasterInstance.trustedForwarder().catch(e => { throw new Error('paymaster has no trustedForwarder()') }),
+    partialConfig.relayHubAddress ?? paymasterInstance.getHubAddr().catch(e => { throw new Error(`Not a paymaster contract: ${(e as Error).message}`) }),
+    // @ts-ignore
+    partialConfig.forwarderAddress ?? paymasterInstance.trustedForwarder().catch(e => { throw new Error(`paymaster has no trustedForwarder(): ${(e as Error).message}`) }),
     paymasterInstance.versionPaymaster().catch((e: any) => { throw new Error('Not a paymaster contract') }).then((version: string) => contractInteractor._validateVersion(version))
-      .catch(err => console.log('WARNING: beta ignore version compatibility', err))
+    // .catch(err => console.log('WARNING: beta ignore version compatibility', err))
   ])
 
   const isMetamask: boolean = (provider as any).isMetaMask

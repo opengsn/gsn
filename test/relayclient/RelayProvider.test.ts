@@ -129,10 +129,11 @@ contract('RelayProvider', function (accounts) {
       testRecipient = await TestRecipient.new(forwarderAddress)
       const gsnConfig = configureGSN({
         logLevel: 'error',
+        paymasterAddress: paymasterInstance.address,
         relayHubAddress: relayHub.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
-      relayProvider = new RelayProvider(websocketProvider as any, gsnConfig)
+      relayProvider = await new RelayProvider(websocketProvider as any, gsnConfig).init()
       // NOTE: in real application its enough to set the provider in web3.
       // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
       // so changing the global one is not enough.
@@ -228,6 +229,7 @@ contract('RelayProvider', function (accounts) {
 
       gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
+        paymasterAddress: paymasterInstance.address,
         logLevel: 'error'
       })
       // call to emitMessage('hello world')
@@ -253,6 +255,7 @@ contract('RelayProvider', function (accounts) {
     it('should call callback with error if relayTransaction throws', async function () {
       const badRelayClient = new BadRelayClient(true, false, underlyingProvider, gsnConfig)
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, {}, badRelayClient)
+      await relayProvider.init()
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -262,6 +265,7 @@ contract('RelayProvider', function (accounts) {
     it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
       const badRelayClient = new BadRelayClient(false, true, underlyingProvider, gsnConfig)
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig, {}, badRelayClient)
+      await relayProvider.init()
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -271,9 +275,11 @@ contract('RelayProvider', function (accounts) {
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
       const gsnConfig = configureGSN({
         logLevel: 'error',
-        relayHubAddress: relayHub.address
+        relayHubAddress: relayHub.address,
+        paymasterAddress: paymasterInstance.address
       })
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
+      await relayProvider.init()
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
         if (error != null) {
           reject(error)
@@ -302,16 +308,12 @@ contract('RelayProvider', function (accounts) {
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
-      const gsnConfig = configureGSN({
-        relayHubAddress: relayHub.address,
-        logLevel: 'error'
-      })
+
       // @ts-ignore
       Object.keys(TestRecipient.events).forEach(function (topic) {
         // @ts-ignore
         relayHub.constructor.network.events[topic] = TestRecipient.events[topic]
       })
-      relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
 
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
       await stakeManager.stakeForAddress(accounts[1], 1000, {
@@ -340,6 +342,14 @@ contract('RelayProvider', function (accounts) {
 
       await misbehavingPaymaster.setReturnInvalidErrorCode(false)
       await misbehavingPaymaster.setRevertPreRelayCall(true)
+
+      const gsnConfig: Partial<GSNConfig> = {
+        paymasterAddress: misbehavingPaymaster.address,
+        relayHubAddress: relayHub.address,
+        logLevel: 'error'
+      }
+      relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
+      await relayProvider.init()
 
       const innerTxFailedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
         from: accounts[0],
@@ -396,9 +406,10 @@ contract('RelayProvider', function (accounts) {
 
   describe('_getAccounts', function () {
     it('should append ephemeral accounts to the ones from the underlying provider', async function () {
-      const relayProvider = new RelayProvider(underlyingProvider, {
+      const relayProvider = await new RelayProvider(underlyingProvider, {
+        paymasterAddress: paymasterInstance.address,
         logLevel: 'error'
-      })
+      }).init()
       const web3 = new Web3(relayProvider)
       const accountsBefore = await web3.eth.getAccounts()
       const newAccount = relayProvider.newAccount()
@@ -414,14 +425,15 @@ contract('RelayProvider', function (accounts) {
 
   describe('new contract deployment', function () {
     let TestRecipient: TestRecipientContract
-    before(function () {
+    before(async function () {
       TestRecipient = artifacts.require('TestRecipient')
       const gsnConfig = configureGSN({
         logLevel: 'error',
-        relayHubAddress: relayHub.address
+        relayHubAddress: relayHub.address,
+        paymasterAddress: paymasterInstance.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
-      relayProvider = new RelayProvider(websocketProvider as any, gsnConfig)
+      relayProvider = await new RelayProvider(websocketProvider as any, gsnConfig).init()
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
     })

@@ -95,11 +95,12 @@ options.forEach(params => {
         relayClientConfig = {
           logLevel: 'error',
           relayHubAddress: rhub.address,
-          paymasterAddress: paymaster.address
+          paymasterAddress: paymaster.address,
+          chainId: 1 // required for ganache
         }
 
         // @ts-ignore
-        const relayProvider = new RelayProvider(web3.currentProvider, relayClientConfig)
+        const relayProvider = await new RelayProvider(web3.currentProvider, relayClientConfig).init()
 
         // web3.setProvider(relayProvider)
 
@@ -161,11 +162,11 @@ options.forEach(params => {
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
         })
 
-        const setRecipientProvider = function (asyncApprovalData: AsyncDataCallback): void {
+        const setRecipientProvider = async function (asyncApprovalData: AsyncDataCallback): Promise<void> {
           relayProvider =
             // @ts-ignore
-            new RelayProvider(web3.currentProvider,
-              relayClientConfig, { asyncApprovalData })
+            await new RelayProvider(web3.currentProvider,
+              relayClientConfig, { asyncApprovalData }).init()
           TestRecipient.web3.setProvider(relayProvider)
         }
 
@@ -176,7 +177,7 @@ options.forEach(params => {
               useGSN: false
             })
 
-            setRecipientProvider(async () => await Promise.resolve('0x414243'))
+            await setRecipientProvider(async () => await Promise.resolve('0x414243'))
 
             await sr.emitMessage('xxx', {
               from: gasless,
@@ -194,7 +195,7 @@ options.forEach(params => {
         })
 
         it(params.title + 'fail if asyncApprovalData throws', async () => {
-          setRecipientProvider(() => { throw new Error('approval-exception') })
+          await setRecipientProvider(() => { throw new Error('approval-exception') })
           await asyncShouldThrow(async () => {
             await sr.emitMessage('xxx', {
               from: gasless,
@@ -211,7 +212,7 @@ options.forEach(params => {
               useGSN: false
             })
             await asyncShouldThrow(async () => {
-              setRecipientProvider(async () => await Promise.resolve('0x'))
+              await setRecipientProvider(async () => await Promise.resolve('0x'))
 
               await sr.emitMessage('xxx', {
                 from: gasless,

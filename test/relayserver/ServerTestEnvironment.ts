@@ -124,7 +124,8 @@ export class ServerTestEnvironment {
     this.gasLess = await this.web3.eth.personal.newAccount('password')
     const shared: Partial<GSNConfig> = {
       logLevel: 'error',
-      relayHubAddress: this.relayHub.address
+      relayHubAddress: this.relayHub.address,
+      paymasterAddress: this.paymaster.address
     }
     if (contractFactory == null) {
       const logger = createServerLogger('error', '', '')
@@ -135,6 +136,7 @@ export class ServerTestEnvironment {
     }
     const mergedConfig = Object.assign({}, shared, clientConfig)
     this.relayClient = new RelayClient(this.provider, configureGSN(mergedConfig))
+    await this.relayClient.init()
   }
 
   async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): Promise<void> {
