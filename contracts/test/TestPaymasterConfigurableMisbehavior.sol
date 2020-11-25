@@ -56,7 +56,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     relayHubOnly
     returns (bytes memory, bool) {
         (signature, approvalData, maxPossibleGas);
-        _verifyForwarder(relayRequest);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {
@@ -75,6 +74,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         if (revertPreRelayCallOnEvenBlocks && block.number % 2 == 0) {
             revert("You asked me to revert on even blocks, remember?");
         }
+        _verifyForwarder(relayRequest);
         return ("", trustRecipientRevert);
     }
 

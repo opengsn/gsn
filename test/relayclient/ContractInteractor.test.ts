@@ -1,7 +1,7 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 
-import { TestVersionsInstance } from '../../types/truffle-contracts'
+import { RelayHubInstance, TestVersionsInstance } from '../../types/truffle-contracts'
 import { RelayClient } from '../../src/relayclient/RelayClient'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
@@ -11,12 +11,17 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import Transaction from 'ethereumjs-tx/dist/transaction'
 import { constants } from '../../src/common/Constants'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
+import RelayRequest from '../../src/common/EIP712/RelayRequest'
+import { deployHub } from '../TestUtils'
 
 const { expect } = chai.use(chaiAsPromised)
 
 const TestVersions = artifacts.require('TestVersions')
+const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
 
-contract('ContractInteractor', function () {
+contract('ContractInteractor', function (accounts) {
   let testVersions: TestVersionsInstance
   before(async function () {
     testVersions = await TestVersions.new()
@@ -32,6 +37,99 @@ contract('ContractInteractor', function () {
     })
   })
 
+  function addr (n: number): string {
+    return '0x'.padEnd(42, `${n}`)
+  }
+
+  context('#validateRelayCall', () => {
+    let rh: RelayHubInstance
+    const workerAddress = accounts[2]
+    const nullLogger = createClientLogger('error', '', '', '')
+
+    before(async () => {
+      const sm = await StakeManager.new()
+      const pen = await Penalizer.new()
+      rh = await deployHub(sm.address, pen.address)
+      const mgrAddress = accounts[1]
+      await sm.stakeForAddress(mgrAddress, 1000, { value: 1e18.toString() })
+      await sm.authorizeHubByOwner(mgrAddress, rh.address)
+      await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
+    })
+
+    it('should return relayCall revert reason', async () => {
+      const pm = await TestPaymasterConfigurableMisbehavior.new()
+      const contractInteractor = new ContractInteractor(web3.currentProvider as any, nullLogger, configureGSN({
+        paymasterAddress: pm.address, relayHubAddress: rh.address
+      }))
+      await contractInteractor.init()
+
+      const relayRequest: RelayRequest = {
+        request: {
+          to: constants.ZERO_ADDRESS,
+          data: '0x12345678',
+          from: constants.ZERO_ADDRESS,
+          nonce: '1',
+          value: '0',
+          gas: '50000'
+        },
+        relayData: {
+          gasPrice: '1',
+          pctRelayFee: '0',
+          baseRelayFee: '0',
+          relayWorker: workerAddress,
+          forwarder: constants.ZERO_ADDRESS,
+          paymaster: pm.address,
+          paymasterData: '0x',
+          clientId: '1'
+        }
+      }
+      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x')
+      assert.deepEqual(ret, {
+        paymasterAccepted: false,
+        returnValue: 'view call to \'relayCall\' reverted in client: Paymaster balance too low',
+        reverted: true
+      })
+    })
+
+    it('should return paymaster revert reason', async () => {
+      const pm = await TestPaymasterConfigurableMisbehavior.new()
+      await pm.setRelayHub(rh.address)
+      await rh.depositFor(pm.address, { value: 1e18.toString() })
+      await pm.setRevertPreRelayCall(true)
+      const contractInteractor = new ContractInteractor(web3.currentProvider as any, nullLogger, configureGSN({
+        paymasterAddress: pm.address, relayHubAddress: rh.address
+      }))
+      await contractInteractor.init()
+
+      const relayRequest: RelayRequest = {
+        request: {
+          to: addr(1),
+          data: '0x12345678',
+          from: addr(2),
+          nonce: '1',
+          value: '0',
+          gas: '50000'
+        },
+        relayData: {
+          gasPrice: '1',
+          pctRelayFee: '0',
+          baseRelayFee: '0',
+          relayWorker: workerAddress,
+          forwarder: addr(4),
+          paymaster: pm.address,
+          paymasterData: '0x',
+          clientId: '1'
+        }
+      }
+      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x')
+      assert.deepEqual(ret, {
+        paymasterAccepted: false,
+        returnValue: 'You asked me to revert, remember?',
+        reverted: false
+      })
+    })
+  })
+
   context('#broadcastTransaction()', function () {
     let provider: ProfilingProvider
     let contractInteractor: ContractInteractor
@@ -40,7 +138,7 @@ contract('ContractInteractor', function () {
 
     before(async function () {
       provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
-      const logger = createClientLogger('error', '', '', '')
+      const logger = createClientLogger('debug', '', '', '')
       contractInteractor = new ContractInteractor(provider, logger, configureGSN({}))
       const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
       const transaction = new Transaction({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })

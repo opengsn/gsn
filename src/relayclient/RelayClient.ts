@@ -408,9 +408,9 @@ export class RelayClient {
     return this.accountManager.newAccount()
   }
 
-  addAccount (keypair: AccountKeypair): void {
+  addAccount (privateKey: PrefixedHexString): void {
     this._verifyInitialized()
-    this.accountManager.addAccount(keypair)
+    this.accountManager.addAccount(privateKey)
   }
 
   _verifyInitialized (): void {
