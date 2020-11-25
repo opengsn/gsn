@@ -2,7 +2,7 @@
 import abiDecoder from 'abi-decoder'
 import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
-import { Transaction } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 
 import { LoggerInterface } from '../common/LoggerInterface'
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
@@ -216,8 +216,8 @@ export class RelayProvider implements HttpProvider {
     return this.relayClient.accountManager.newAccount()
   }
 
-  addAccount (keypair: AccountKeypair): void {
-    this.relayClient.accountManager.addAccount(keypair)
+  addAccount (privateKey: PrefixedHexString): void {
+    this.relayClient.accountManager.addAccount(privateKey)
   }
 
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {

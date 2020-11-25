@@ -403,10 +403,7 @@ contract('RelayProvider', function (accounts) {
       const accountsBefore = await web3.eth.getAccounts()
       const newAccount = relayProvider.newAccount()
       const address = '0x982a8cbe734cb8c29a6a7e02a3b0e4512148f6f9'
-      relayProvider.addAccount({
-        privateKey: Buffer.from('d353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c', 'hex'),
-        address
-      })
+      relayProvider.addAccount('0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c')
       const accountsAfter = await web3.eth.getAccounts()
       const newAccounts = accountsAfter.filter(value => !accountsBefore.includes(value)).map(it => it.toLowerCase())
       assert.equal(newAccounts.length, 2)

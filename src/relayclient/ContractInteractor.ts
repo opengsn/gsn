@@ -331,12 +331,17 @@ export default class ContractInteractor {
           }
         })
       })
-      this.logger.info(res)
+      this.logger.debug('relayCall res=' + res)
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'string'], res)
-      const paymasterAccepted = decoded[0]
-      const returnValue = decoded[1]
+      const decoded = abi.decodeParameters(['bool', 'bytes'], res)
+      const paymasterAccepted: boolean = decoded[0]
+      let returnValue: string
+      if (paymasterAccepted) {
+        returnValue = decoded[1]
+      } else {
+        returnValue = this._decodeRevertFromResponse({}, { result: decoded[1] }) ?? decoded[1]
+      }
       return {
         returnValue: returnValue,
         paymasterAccepted: paymasterAccepted,

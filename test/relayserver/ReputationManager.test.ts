@@ -1,12 +1,12 @@
 import { ReputationStoreManager } from '../../src/relayserver/ReputationStoreManager'
 import { constants } from '../../src/common/Constants'
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
-import { sleep } from '../../src/common/Utils'
 import {
   PaymasterStatus,
   ReputationManager,
   ReputationManagerConfiguration
 } from '../../src/relayserver/ReputationManager'
+require('source-map-support').install({ errorFormatterForce: true })
 
 /**
  * Attention: these tests are often order and timestamp-dependent! Use debugger with caution.
@@ -19,8 +19,21 @@ contract('ReputationManager', function () {
   const abuseBlockDurationMs = 1000
   let reputationManager: ReputationManager
   let reputationStoreManager: ReputationStoreManager
+  let saveNow: any
+  let currentNow: number
+
+  function mockSleep (sleepTime: number): void {
+    currentNow += sleepTime
+  }
 
   before(async function () {
+    saveNow = Date.now
+    currentNow = saveNow()
+    Date.now = () => {
+      currentNow++
+      return currentNow
+    }
+
     const logger = createServerLogger('error', '', '')
     const reputationManagerConfig: Partial<ReputationManagerConfiguration> = {
       initialReputation,
@@ -31,6 +44,10 @@ contract('ReputationManager', function () {
     reputationStoreManager = new ReputationStoreManager({}, logger)
     await reputationStoreManager.clearAll()
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
+  })
+
+  after(() => {
+    Date.now = saveNow
   })
 
   describe('getPaymasterStatus', function () {
@@ -44,7 +61,7 @@ contract('ReputationManager', function () {
     })
 
     it('should report paymaster as GOOD if enough time has passed since the last one', async function () {
-      await sleep(throttleDelayMs)
+      mockSleep(throttleDelayMs)
       const status = await reputationManager.getPaymasterStatus(paymaster)
       assert.equal(status, PaymasterStatus.GOOD)
     })
@@ -63,7 +80,7 @@ contract('ReputationManager', function () {
       await reputationStoreManager.setAbuseFlag(paymaster)
       let status = await reputationManager.getPaymasterStatus(paymaster)
       assert.equal(status, PaymasterStatus.ABUSED)
-      await sleep(2 * abuseBlockDurationMs)
+      mockSleep(abuseBlockDurationMs)
       status = await reputationManager.getPaymasterStatus(paymaster)
       assert.equal(status, PaymasterStatus.GOOD)
     })
