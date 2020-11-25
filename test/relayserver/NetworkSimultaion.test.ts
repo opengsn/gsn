@@ -68,7 +68,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
 
   describe('boosting stuck pending transactions', function () {
     const gasPriceBelowMarket = toHex(20e9)
-    const gasPriceAboveMarket = toHex(25e9)
+    const gasPriceAboveMarket = toHex(30e9)
     const expectedGasPriceAfterBoost = toBN(gasPriceBelowMarket).muln(12).divn(10).toString()
     const stuckTransactionsCount = 5
     const fairlyPricedTransactionIndex = 3
@@ -129,11 +129,8 @@ contract('Network Simulation for Relay Server', function (accounts) {
         await env.relayServer.txStoreManager.clearAll()
         await env.relayServer.transactionManager._initNonces()
         await sendMultipleRelayedTransactions()
-        let latestBlock = await env.web3.eth.getBlock('latest')
-        // let allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
-        // assert.equal(allBoostedTransactions.size, 0)
         await evmMineMany(pendingTransactionTimeoutBlocks)
-        latestBlock = await env.web3.eth.getBlock('latest')
+        const latestBlock = await env.web3.eth.getBlock('latest')
         const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
         assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
       })
