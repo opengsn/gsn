@@ -52,6 +52,11 @@ export class RelayProvider implements HttpProvider {
       this.origProviderSend = this.origProvider.send.bind(this.origProvider)
     }
     this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
+    this.logger = new Proxy(this.relayClient.logger, {
+      get: (target: any, prop: string) => {
+        return (this.relayClient.logger as any)[prop]
+      }
+    })
     this._delegateEventsApi(origProvider)
   }
 
@@ -83,7 +88,6 @@ export class RelayProvider implements HttpProvider {
   }
 
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
-    this.relayClient.verifyInitialized()
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
         if (payload.params[0].to === undefined) {

@@ -35,6 +35,7 @@ contract('ReputationFlow', function (accounts) {
 
     const relayClientConfig: Partial<GSNConfig> = {
       logLevel: 'error',
+      chainId: 1,
       relayHubAddress: relayHub.address,
       paymasterAddress: misbehavingPaymaster.address
     }
@@ -68,7 +69,7 @@ contract('ReputationFlow', function (accounts) {
             await evmMine()
             continue
           }
-          assert.ok(e.message.includes('Refusing to serve transactions for paymaster'))
+          assert.ok(e.message.includes('Refusing to serve transactions for paymaster'), e.message)
           assert.isAtLeast(i, 7, 'refused too soon')
           return
         }

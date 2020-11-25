@@ -114,6 +114,7 @@ export class RelayClient {
     this.pingFilter = dependencies.pingFilter
     this.asyncApprovalData = dependencies.asyncApprovalData
     this.asyncPaymasterData = dependencies.asyncPaymasterData
+    this.logger = dependencies.logger
     await this.contractInteractor.init()
   }
 
