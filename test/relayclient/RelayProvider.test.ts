@@ -129,6 +129,7 @@ contract('RelayProvider', function (accounts) {
       testRecipient = await TestRecipient.new(forwarderAddress)
       const gsnConfig = configureGSN({
         logLevel: 'error',
+        paymasterAddress: paymasterInstance.address,
         relayHubAddress: relayHub.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
@@ -228,6 +229,7 @@ contract('RelayProvider', function (accounts) {
 
       gsnConfig = configureGSN({
         relayHubAddress: relayHub.address,
+        paymasterAddress: paymasterInstance.address,
         logLevel: 'error'
       })
       // call to emitMessage('hello world')
@@ -273,7 +275,8 @@ contract('RelayProvider', function (accounts) {
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
       const gsnConfig = configureGSN({
         logLevel: 'error',
-        relayHubAddress: relayHub.address
+        relayHubAddress: relayHub.address,
+        paymasterAddress: paymasterInstance.address
       })
       const relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
       await relayProvider.init()
@@ -305,6 +308,12 @@ contract('RelayProvider', function (accounts) {
     before(async function () {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
+
+      // @ts-ignore
+      Object.keys(TestRecipient.events).forEach(function (topic) {
+        // @ts-ignore
+        relayHub.constructor.network.events[topic] = TestRecipient.events[topic]
+      })
 
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
       await stakeManager.stakeForAddress(accounts[1], 1000, {
@@ -339,11 +348,6 @@ contract('RelayProvider', function (accounts) {
         relayHubAddress: relayHub.address,
         logLevel: 'error'
       }
-      // @ts-ignore
-      Object.keys(TestRecipient.events).forEach(function (topic) {
-        // @ts-ignore
-        relayHub.constructor.network.events[topic] = TestRecipient.events[topic]
-      })
       relayProvider = new RelayProvider(underlyingProvider, gsnConfig)
       await relayProvider.init()
 
@@ -428,7 +432,8 @@ contract('RelayProvider', function (accounts) {
       TestRecipient = artifacts.require('TestRecipient')
       const gsnConfig = configureGSN({
         logLevel: 'error',
-        relayHubAddress: relayHub.address
+        relayHubAddress: relayHub.address,
+        paymasterAddress: paymasterInstance.address
       })
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
       relayProvider = await new RelayProvider(websocketProvider as any, gsnConfig).init()

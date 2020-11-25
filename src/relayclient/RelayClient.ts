@@ -5,7 +5,7 @@ import { bufferToHex } from 'ethereumjs-util'
 
 import { constants } from '../common/Constants'
 
-import AccountManager from './AccountManager'
+import AccountManager, { AccountKeypair } from './AccountManager'
 import ContractInteractor from './ContractInteractor'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 import HttpClient from './HttpClient'
@@ -403,7 +403,17 @@ export class RelayClient {
     return forwarderAddress
   }
 
-  verifyInitialized (): void {
+  newAccount (): AccountKeypair {
+    this._verifyInitialized()
+    return this.accountManager.newAccount()
+  }
+
+  addAccount (keypair: AccountKeypair): void {
+    this._verifyInitialized()
+    this.accountManager.addAccount(keypair)
+  }
+
+  _verifyInitialized (): void {
     if (!this.initialized) {
       throw new Error('not initialized. must call RelayClient.init()')
     }

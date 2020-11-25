@@ -123,7 +123,8 @@ export class ServerTestEnvironment {
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
     this.gasLess = await this.web3.eth.personal.newAccount('password')
     const shared: Partial<GSNConfig> = {
-      relayHubAddress: this.relayHub.address
+      relayHubAddress: this.relayHub.address,
+      paymasterAddress: this.paymaster.address
     }
     if (contractFactory == null) {
       const logger = createServerLogger('error', '', '')

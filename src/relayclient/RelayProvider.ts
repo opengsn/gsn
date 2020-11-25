@@ -217,13 +217,11 @@ export class RelayProvider implements HttpProvider {
   }
 
   newAccount (): AccountKeypair {
-    this.relayClient.verifyInitialized()
-    return this.relayClient.accountManager.newAccount()
+    return this.relayClient.newAccount()
   }
 
   addAccount (keypair: AccountKeypair): void {
-    this.relayClient.verifyInitialized()
-    this.relayClient.accountManager.addAccount(keypair)
+    this.relayClient.addAccount(keypair)
   }
 
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
