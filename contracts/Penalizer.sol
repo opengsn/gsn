@@ -9,11 +9,13 @@ import "./utils/GsnUtils.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPenalizer.sol";
 
-contract Penalizer is IPenalizer{
+contract Penalizer is IPenalizer {
 
     string public override versionPenalizer = "2.1.0+opengsn.penalizer.ipenalizer";
 
     using ECDSA for bytes32;
+
+    uint constant public PENALIZE_BLOCK_DELAY = 5;
 
     function decodeTransaction(bytes memory rawTransaction) private pure returns (Transaction memory transaction) {
         (transaction.nonce,
@@ -23,26 +25,29 @@ contract Penalizer is IPenalizer{
         transaction.value,
         transaction.data) = RLPReader.decodeTransaction(rawTransaction);
         return transaction;
-
     }
 
-    mapping( bytes32=>bool ) public commits;
+    mapping(bytes32 => uint) public commits;
+
+    event Commit(bytes32 indexed commitHash, address sender);
 
     /**
      * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure
      * no-one can front-run it to claim this penalization
      */
     function commit(bytes32 commitHash) public {
-        bytes32 idx=keccak256(abi.encodePacked(commitHash,msg.sender));
-        commits[idx] = true;
+        bytes32 idx = keccak256(abi.encodePacked(commitHash, msg.sender));
+        commits[idx] = block.number;
+        emit Commit(commitHash, msg.sender);
     }
 
     function _commitRevealOrRelayManager(IRelayHub hub) internal {
         bytes32 requestHash = keccak256(msg.data);
-        bytes32 idx=keccak256(abi.encodePacked(requestHash,msg.sender));
+        bytes32 idx = keccak256(abi.encodePacked(requestHash, msg.sender));
 
-        if ( commits[idx] ) {
-            commits[idx] = false;
+        if (commits[idx] != 0) {
+            require(commits[idx] + PENALIZE_BLOCK_DELAY < block.number, "must wait before revealing penalize");
+            commits[idx] = 0;
         } else {
             require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
         }

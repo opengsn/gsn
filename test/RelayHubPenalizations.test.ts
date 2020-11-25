@@ -20,7 +20,7 @@ import {
   TestRecipientInstance
 } from '../types/truffle-contracts'
 
-import { deployHub } from './TestUtils'
+import { deployHub, evmMineMany } from './TestUtils'
 import { getRawTxOptions } from '../src/common/ContractInteractor'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
 
@@ -194,7 +194,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           await penalizer.commit(web3.utils.keccak256(request), { from: committer })
         })
 
+        it('should fail to penalize too soon after commit', async () => {
+          await expectRevert(
+            penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, { from: committer }),
+            'must wait before revealing penalize'
+          )
+        })
         it('should allow penalize after commit', async () => {
+          await evmMineMany(10)
           // this is not a failure: it passes the Penalizer modifier test (manager or commit test),
           // it fails inside the RelayHub (since we didn't fully initialize this relay/worker)
           await expectRevert(
