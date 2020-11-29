@@ -5853,6 +5853,11 @@ ganache-core@^2.10.2, ganache-core@^2.5.3:
     ethereumjs-wallet "0.6.5"
     web3 "1.2.11"
 
+ganache@^6.4.4:
+  version "6.4.4"
+  resolved "https://registry.yarnpkg.com/ganache/-/ganache-6.4.4.tgz#efb3eb5157b8987e5213584f24090322827c3521"
+  integrity sha512-uBCxKuyj1SSjz/iONMk1ZiHr1wf0bPG5E+qSO2lxyDq+dtZ5d/VvW6iKtg9bWikhG8hd1jU7kRkoS5f4q7FrWQ==
+
 gauge@~2.7.3:
   version "2.7.4"
   resolved "https://registry.yarnpkg.com/gauge/-/gauge-2.7.4.tgz#2c03405c7538c39d7eb37b317022e325fb018bf7"

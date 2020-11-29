@@ -4,7 +4,7 @@ import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/t
 import BN from 'bn.js'
 
 import { Transaction } from 'ethereumjs-tx'
-import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
+import { bufferToHex, privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 import { encode } from 'rlp'
 import { expect } from 'chai'
 
@@ -438,7 +438,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
     function encodeRelayCallEIP155 (encodedCallArgs: any, relayCallArgs: any): Transaction {
       const privateKey = Buffer.from(relayCallArgs.privateKey, 'hex')
-      const relayWorker = privateToAddress(privateKey).toString('hex')
+      const relayWorker = bufferToHex(privateToAddress(privateKey))
       // TODO: 'encodedCallArgs' is no longer needed. just keep the RelayRequest in test
       const relayRequest: RelayRequest =
         {

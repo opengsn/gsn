@@ -165,7 +165,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     // note: since adding the revert reason to the emit, post overhead is dynamic
     it('should set correct gas limits and pass correct \'gasUsedWithoutPost\' to the \'postRelayCall\'', async () => {
       const gasPrice = 1e9
-      const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', {
+      const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x0', {
         gasPrice,
         pctRelayFee: 0,
         baseRelayFee: 0,

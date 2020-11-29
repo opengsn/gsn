@@ -4,6 +4,9 @@ import {
 } from '../../types/truffle-contracts'
 import { toHex } from 'web3-utils'
 
+// @ts-ignore
+import { decodeParameter } from 'web3-eth-abi'
+
 require('source-map-support').install({ errorFormatterForce: true })
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
@@ -43,7 +46,7 @@ contract('BaseRelayRecipient', ([from]) => {
         to: recipient.address,
         data: encoded + appended.replace(/^0x/, '')
       }) as string
-      return web3.eth.abi.decodeParameter('bytes', ret)
+      return decodeParameter('bytes', ret)
     }
 
     const extra = toHex('some extra data to add, which is longer than 20 bytes').slice(2)
