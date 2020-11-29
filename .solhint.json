@@ -1,7 +1,9 @@
 {
   "extends": "solhint:recommended",
   "rules": {
-    "compiler-version": ["error","^0.6.2"],
+    "compiler-version": ["error",">=0.6.10"],
+    "func-visibility": ["warn",{"ignoreConstructors":true}],
+    "reason-string": ["warn",{"maxLength":64}],
     "mark-callable-contracts": ["off"]
   }
 }
