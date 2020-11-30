@@ -2,14 +2,13 @@ import Web3 from 'web3'
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
+import ContractInteractor from '../../src/common/ContractInteractor'
 import { KeyManager } from '../../src/relayserver/KeyManager'
 import { RegistrationManager } from '../../src/relayserver/RegistrationManager'
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import { ServerAction } from '../../src/relayserver/StoredTransaction'
 import { configureServer, ServerConfigParams, ServerDependencies } from '../../src/relayserver/ServerConfigParams'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
 
 import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
@@ -107,10 +106,11 @@ contract('RegistrationManager', function (accounts) {
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
       const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
       const serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
-      const contractInteractor = new ContractInteractor(serverWeb3provider, logger,
-        configureGSN({
-          relayHubAddress: env.relayHub.address
-        }))
+      const contractInteractor = new ContractInteractor({
+        provider: serverWeb3provider,
+        logger,
+        deployment: { paymasterAddress: env.paymaster.address }
+      })
       await contractInteractor.init()
       const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 

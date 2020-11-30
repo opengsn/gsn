@@ -9,10 +9,10 @@ import { IRelayHubInstance } from '../../types/truffle-contracts'
 import ContractInteractor, {
   TransactionRejectedByPaymaster,
   TransactionRelayed
-} from '../relayclient/ContractInteractor'
+} from '../common/ContractInteractor'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
-import { Address, IntString } from '../relayclient/types/Aliases'
-import { RelayTransactionRequest } from '../relayclient/types/RelayTransactionRequest'
+import { Address, IntString } from '../common/types/Aliases'
+import { RelayTransactionRequest } from '../common/types/RelayTransactionRequest'
 
 import PingResponse from '../common/PingResponse'
 import VersionsManager from '../common/VersionsManager'
@@ -441,7 +441,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     )
     await this.registrationManager.init()
 
-    this.chainId = await this.contractInteractor.getChainId()
+    this.chainId = await this.contractInteractor.chainId
     this.networkId = await this.contractInteractor.getNetworkId()
     if (this.config.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
       this.logger.error('Don\'t use real network\'s chainId & networkId while in devMode.')

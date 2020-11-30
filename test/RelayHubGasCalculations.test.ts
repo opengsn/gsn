@@ -280,7 +280,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   context('charge calculation should not depend on return/revert value of request', () => {
     [[true, 0], [true, 20], [false, 0], [false, 50]]
-      .forEach(([doRevert, len, b]) => {
+      .forEach(([doRevert, len]) => {
         it(`should calculate overhead regardless of return value len (${len}) or revert (${doRevert})`, async () => {
           const beforeBalances = getBalances()
           const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
@@ -328,7 +328,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           if (len === 0) {
             assert.equal(resultEvent, null, 'should not get TransactionResult with zero len')
           } else {
-            assert.notEqual(resultEvent, null, 'didn\'t get TrasnactionResult where it should.')
+            assert.notEqual(resultEvent, null, 'didn\'t get TransactionResult where it should.')
           }
           const gasUsed = res.receipt.gasUsed
           const diff = await diffBalances(await beforeBalances)

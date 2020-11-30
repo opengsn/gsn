@@ -9,7 +9,7 @@ import { constants } from '@openzeppelin/test-helpers'
 import AccountManager from '../../src/relayclient/AccountManager'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import TypedRequestData from '../../src/common/EIP712/TypedRequestData'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import { configureGSN } from '../TestUtils'
 import { defaultEnvironment } from '../../src/common/Environments'
 import { isSameAddress } from '../../src/common/Utils'
 

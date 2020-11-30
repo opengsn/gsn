@@ -1,9 +1,7 @@
 import { TransactionReceipt } from 'web3-core'
 
-import ContractInteractor, { Web3Provider } from '../../src/relayclient/ContractInteractor'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { LoggerInterface } from '../../src/common/LoggerInterface'
+import ContractInteractor, { ConstructorParams } from '../../src/common/ContractInteractor'
 
 export default class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'
@@ -11,8 +9,8 @@ export default class BadContractInteractor extends ContractInteractor {
 
   private readonly failValidateARC: boolean
 
-  constructor (provider: Web3Provider, logger: LoggerInterface, config: GSNConfig, failValidateARC: boolean) {
-    super(provider, logger, config)
+  constructor (constructorParams: ConstructorParams, failValidateARC: boolean) {
+    super(constructorParams)
     this.failValidateARC = failValidateARC
   }
 

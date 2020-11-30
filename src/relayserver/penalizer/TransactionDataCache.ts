@@ -1,6 +1,6 @@
 import AsyncNedb from 'nedb-async'
 
-import { Address } from '../../relayclient/types/Aliases'
+import { Address } from '../../common/types/Aliases'
 import { LoggerInterface } from '../../common/LoggerInterface'
 import { TransactionData } from './BlockExplorerInterface'
 

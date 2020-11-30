@@ -1,5 +1,5 @@
 import { LoggerInterface } from '../common/LoggerInterface'
-import ContractInteractor from './ContractInteractor'
+import ContractInteractor from '../common/ContractInteractor'
 import axios from 'axios'
 
 export class GasPriceFetcher {

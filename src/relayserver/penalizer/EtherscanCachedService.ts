@@ -1,7 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 
 import { BlockExplorerInterface, EtherscanResponse, TransactionData } from './BlockExplorerInterface'
-import { Address } from '../../relayclient/types/Aliases'
+import { Address } from '../../common/types/Aliases'
 import { isSameAddress } from '../../common/Utils'
 import { LoggerInterface } from '../../common/LoggerInterface'
 import { TransactionDataCache } from './TransactionDataCache'

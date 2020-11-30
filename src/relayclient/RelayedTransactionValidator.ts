@@ -3,8 +3,8 @@ import { bufferToHex } from 'ethereumjs-util'
 
 import { isSameAddress } from '../common/Utils'
 
-import ContractInteractor from './ContractInteractor'
-import { RelayTransactionRequest } from './types/RelayTransactionRequest'
+import ContractInteractor from '../common/ContractInteractor'
+import { RelayTransactionRequest } from '../common/types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
 import { LoggerInterface } from '../common/LoggerInterface'
 
@@ -48,8 +48,13 @@ export default class RelayedTransactionValidator {
     const externalGasLimit = bufferToHex(transaction.gasLimit)
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
 
+    const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
+    if (relayHubAddress == null) {
+      throw new Error('no hub address')
+    }
+
     if (
-      isSameAddress(bufferToHex(transaction.to), this.config.relayHubAddress) &&
+      isSameAddress(bufferToHex(transaction.to), relayHubAddress) &&
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
@@ -67,7 +72,7 @@ export default class RelayedTransactionValidator {
 
       return true
     } else {
-      console.error('validateRelayResponse: req', relayRequestAbiEncode, this.config.relayHubAddress, request.relayRequest.relayData.relayWorker)
+      console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)
       console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to), signer)
       return false
     }

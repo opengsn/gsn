@@ -1,12 +1,12 @@
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import { evmMine, evmMineMany } from '../TestUtils'
-import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
+import ContractInteractor from '../../src/common/ContractInteractor'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
+import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
@@ -22,8 +22,10 @@ contract('RelayServerRequestsProfiling', function (accounts) {
   before(async function () {
     logger = createServerLogger('error', '', '')
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
-    const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
-      const contractInteractor = new ContractInteractor(provider, logger, configureGSN(partialConfig))
+    const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
+      const contractInteractor = new ContractInteractor({
+        provider, logger, deployment
+      })
       await contractInteractor.init()
       return contractInteractor
     }

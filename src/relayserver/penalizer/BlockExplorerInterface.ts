@@ -1,4 +1,4 @@
-import { Address } from '../../relayclient/types/Aliases'
+import { Address } from '../../common/types/Aliases'
 
 export interface BlockExplorerInterface {
   getTransactionByNonce: (account: Address, nonce: number) => Promise<TransactionData | undefined>

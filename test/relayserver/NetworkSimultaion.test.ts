@@ -2,16 +2,17 @@ import { HttpProvider } from 'web3-core'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
+import ContractInteractor from '../../src/common/ContractInteractor'
+import GsnTransactionDetails from '../../src/common/types/GsnTransactionDetails'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
 import { NetworkSimulatingProvider } from '../../src/common/dev/NetworkSimulatingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransactionDetails } from '../../src/relayserver/TransactionManager'
-import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
 import { signedTransactionToHash } from '../../src/common/Utils'
+import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
 
 contract('Network Simulation for Relay Server', function (accounts) {
   const pendingTransactionTimeoutBlocks = 5
@@ -21,10 +22,14 @@ contract('Network Simulation for Relay Server', function (accounts) {
   let provider: NetworkSimulatingProvider
 
   before(async function () {
-    logger = createClientLogger('error', '', '', '')
+    logger = createClientLogger({ logLevel: 'error' })
     provider = new NetworkSimulatingProvider(web3.currentProvider as HttpProvider)
-    const contractFactory = async function (partialConfig: Partial<GSNConfig>): Promise<ContractInteractor> {
-      const contractInteractor = new ContractInteractor(provider, logger, configureGSN(partialConfig))
+    const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
+      const contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        deployment
+      })
       await contractInteractor.init()
       return contractInteractor
     }

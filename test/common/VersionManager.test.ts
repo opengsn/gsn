@@ -23,19 +23,19 @@ describe('VersionManager', function () {
   context('#isMinorSameOrNewer()', function () {
     const manager = new VersionsManager('1.2.3')
     it('should ignore patch level', function () {
-      assert.isTrue(manager.isMinorSameOrNewer('1.2.2'))
-      assert.isTrue(manager.isMinorSameOrNewer('1.2.3'))
-      assert.isTrue(manager.isMinorSameOrNewer('1.2.4'))
+      assert.isTrue(manager.isRequiredVersionSatisfied('1.2.2'))
+      assert.isTrue(manager.isRequiredVersionSatisfied('1.2.3'))
+      assert.isTrue(manager.isRequiredVersionSatisfied('1.2.4'))
     })
 
     it('should require minor same or equal', function () {
-      assert.isTrue(manager.isMinorSameOrNewer('1.3.0'))
-      assert.isFalse(manager.isMinorSameOrNewer('1.1.3'))
+      assert.isTrue(manager.isRequiredVersionSatisfied('1.3.0'))
+      assert.isFalse(manager.isRequiredVersionSatisfied('1.1.3'))
     })
 
     it('should require exact same major', function () {
-      assert.isFalse(manager.isMinorSameOrNewer('0.2.3'))
-      assert.isFalse(manager.isMinorSameOrNewer('3.2.3'))
+      assert.isFalse(manager.isRequiredVersionSatisfied('0.2.3'))
+      assert.isFalse(manager.isRequiredVersionSatisfied('3.2.3'))
     })
   })
 })

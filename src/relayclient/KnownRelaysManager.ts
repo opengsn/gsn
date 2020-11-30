@@ -1,17 +1,17 @@
 import { addresses2topics } from '../common/Utils'
 
-import GsnTransactionDetails from './types/GsnTransactionDetails'
-import RelayFailureInfo from './types/RelayFailureInfo'
-import { Address, AsyncScoreCalculator, RelayFilter } from './types/Aliases'
+import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
+import RelayFailureInfo from '../common/types/RelayFailureInfo'
+import { Address, AsyncScoreCalculator, RelayFilter } from '../common/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
-import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
+import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from '../common/types/RelayRegisteredEventInfo'
 
 import ContractInteractor, {
   HubUnauthorized,
   RelayServerRegistered,
   StakePenalized,
   StakeUnlocked
-} from './ContractInteractor'
+} from '../common/ContractInteractor'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { EventData } from 'web3-eth-contract'
 

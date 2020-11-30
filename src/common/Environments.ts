@@ -3,7 +3,7 @@
  * So far the only conflict we will have is migration to Istanbul, as ETC does not integrate it as of this writing.
  * TODO: see the differences between networks we want to support and make project structure multi-chain
  */
-import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
+import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 
 interface Environment {
   readonly chainId: number
@@ -11,7 +11,7 @@ interface Environment {
   readonly relayHubConfiguration: RelayHubConfiguration
 }
 
-const defaultRelayHubConfiguration: RelayHubConfiguration = {
+export const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasOverhead: 35965,
   postOverhead: 13950,
   gasReserve: 100000,
@@ -31,7 +31,12 @@ export const environments: { [key: string]: Environment } = {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
     mintxgascost: 21000
+  },
+  ganacheLocal: {
+    chainId: 1337,
+    relayHubConfiguration: defaultRelayHubConfiguration,
+    mintxgascost: 21000
   }
 }
 
-export const defaultEnvironment = environments.istanbul
+export const defaultEnvironment = environments.ganacheLocal

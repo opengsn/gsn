@@ -1,4 +1,3 @@
-import Common from 'ethereumjs-common'
 import Web3 from 'web3'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
@@ -6,30 +5,24 @@ import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 import {
   BlockNumber,
-  HttpProvider,
-  IpcProvider,
-  provider,
   Transaction,
-  TransactionReceipt,
-  WebsocketProvider
+  TransactionReceipt
 } from 'web3-core'
 
 import abi from 'web3-eth-abi'
-import RelayRequest from '../common/EIP712/RelayRequest'
-import paymasterAbi from '../common/interfaces/IPaymaster.json'
-import relayHubAbi from '../common/interfaces/IRelayHub.json'
-import forwarderAbi from '../common/interfaces/IForwarder.json'
-import stakeManagerAbi from '../common/interfaces/IStakeManager.json'
-import penalizerAbi from '../common/interfaces/IPenalizer.json'
-import gsnRecipientAbi from '../common/interfaces/IRelayRecipient.json'
-import knowForwarderAddressAbi from '../common/interfaces/IKnowForwarderAddress.json'
+import RelayRequest from './EIP712/RelayRequest'
+import paymasterAbi from './interfaces/IPaymaster.json'
+import relayHubAbi from './interfaces/IRelayHub.json'
+import forwarderAbi from './interfaces/IForwarder.json'
+import stakeManagerAbi from './interfaces/IStakeManager.json'
+import penalizerAbi from './interfaces/IPenalizer.json'
+import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
+import knowForwarderAddressAbi from './interfaces/IKnowForwarderAddress.json'
 
-import VersionsManager from '../common/VersionsManager'
-import replaceErrors from '../common/ErrorReplacerJSON'
-import { LoggerInterface } from '../common/LoggerInterface'
-import { constants } from '../common/Constants'
-import { decodeRevertReason, event2topic } from '../common/Utils'
-import { gsnRuntimeVersion } from '../common/Version'
+import VersionsManager from './VersionsManager'
+import replaceErrors from './ErrorReplacerJSON'
+import { LoggerInterface } from './LoggerInterface'
+import { decodeRevertReason, event2topic } from './Utils'
 import {
   BaseRelayRecipientInstance,
   IForwarderInstance,
@@ -41,11 +34,14 @@ import {
   IStakeManagerInstance
 } from '../../types/truffle-contracts'
 
-import { Address, IntString } from './types/Aliases'
-import { GSNConfig } from './GSNConfigurator'
+import { Address, IntString, ISendProvider } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
-import { Contract, TruffleContract } from './LightTruffleContract'
+import { Contract, TruffleContract } from '../relayclient/LightTruffleContract'
+import { gsnRuntimeVersion } from './Version'
+import Common from 'ethereumjs-common'
+import { GSNContractsDeployment } from './GSNContractsDeployment'
+import TransactionDetails = Truffle.TransactionDetails
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -65,10 +61,12 @@ export const StakeUnlocked: EventName = 'StakeUnlocked'
 export const StakeWithdrawn: EventName = 'StakeWithdrawn'
 export const StakePenalized: EventName = 'StakePenalized'
 
-export type Web3Provider =
-  | HttpProvider
-  | IpcProvider
-  | WebsocketProvider
+export interface ConstructorParams {
+  provider: ISendProvider
+  logger: LoggerInterface
+  versionManager?: VersionsManager
+  deployment?: GSNContractsDeployment
+}
 
 export default class ContractInteractor {
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
@@ -89,21 +87,27 @@ export default class ContractInteractor {
   private readonly relayCallMethod: any
 
   readonly web3: Web3
-  private readonly provider: Web3Provider
-  private readonly config: GSNConfig
+  private readonly provider: ISendProvider
+  private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
 
   private rawTxOptions?: TransactionOptions
-  private chainId?: number
+  chainId!: number
   private networkId?: number
   private networkType?: string
 
-  constructor (provider: Web3Provider, logger: LoggerInterface, config: GSNConfig) {
+  constructor (
+    {
+      provider,
+      versionManager,
+      logger,
+      deployment = {}
+    }: ConstructorParams) {
     this.logger = logger
-    this.versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange)
-    this.web3 = new Web3(provider)
-    this.config = config
+    this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion)
+    this.web3 = new Web3(provider as any)
+    this.deployment = deployment
     this.provider = provider
     // @ts-ignore
     this.IPaymasterContract = TruffleContract({
@@ -151,28 +155,66 @@ export default class ContractInteractor {
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
 
-  getProvider (): provider { return this.provider }
-
-  async init (): Promise<void> {
+  async init (): Promise<ContractInteractor> {
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
     }
+    await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility().catch(err => console.log('WARNING: beta ignore version compatibility', err.message))
     const chain = await this.web3.eth.net.getNetworkType()
-    this.chainId = await this.getAsyncChainId()
+    this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
+    return this
   }
 
-  async getAsyncChainId (): Promise<number> {
-    return await this.web3.eth.getChainId()
+  async _resolveDeployment (): Promise<void> {
+    if (this.deployment.paymasterAddress != null && this.deployment.relayHubAddress != null) {
+      this.logger.error('Already resolved!')
+      return
+    }
+
+    if (this.deployment.paymasterAddress != null) {
+      await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
+    } else if (this.deployment.relayHubAddress != null) {
+      await this._resolveDeploymentFromRelayHub(this.deployment.relayHubAddress)
+    }
+  }
+
+  async _resolveDeploymentFromPaymaster (paymasterAddress: Address): Promise<void> {
+    this.paymasterInstance = await this._createPaymaster(paymasterAddress)
+    const [
+      relayHubAddress, forwarderAddress, paymasterVersion
+    ] = await Promise.all([
+      this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
+      this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
+      this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
+        this._validateVersion(version)
+        return version
+      })
+    ])
+    this.deployment.relayHubAddress = relayHubAddress
+    this.deployment.forwarderAddress = forwarderAddress
+    this.deployment.paymasterVersion = paymasterVersion
+    await this._resolveDeploymentFromRelayHub(relayHubAddress)
+  }
+
+  async _resolveDeploymentFromRelayHub (relayHubAddress: Address): Promise<void> {
+    this.relayHubInstance = await this._createRelayHub(relayHubAddress)
+    const [stakeManagerAddress, penalizerAddress] = await Promise.all([
+      this.relayHubInstance.stakeManager(),
+      this.relayHubInstance.penalizer()
+    ])
+    this.deployment.relayHubAddress = relayHubAddress
+    this.deployment.stakeManagerAddress = stakeManagerAddress
+    this.deployment.penalizerAddress = penalizerAddress
   }
 
   async _validateCompatibility (): Promise<void> {
-    if (this.config.relayHubAddress === constants.ZERO_ADDRESS) {
+    if (this.deployment == null) {
       return
     }
     const hub = this.relayHubInstance
@@ -181,38 +223,27 @@ export default class ContractInteractor {
   }
 
   _validateVersion (version: string): void {
-    const isNewer = this.versionManager.isMinorSameOrNewer(version)
-    if (!isNewer) {
-      throw new Error(`Provided Hub version(${version}) is not supported by the current interactor(${this.versionManager.componentVersion})`)
+    const versionSatisfied = this.versionManager.isRequiredVersionSatisfied(version)
+    if (!versionSatisfied) {
+      throw new Error(`Provided Hub version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
     }
   }
 
   async _initializeContracts (): Promise<void> {
-    if (this.config.forwarderAddress !== constants.ZERO_ADDRESS) {
-      this.forwarderInstance = await this._createForwarder(this.config.forwarderAddress)
+    if (this.relayHubInstance == null && this.deployment.relayHubAddress != null) {
+      this.relayHubInstance = await this._createRelayHub(this.deployment.relayHubAddress)
     }
-    if (this.config.relayHubAddress !== constants.ZERO_ADDRESS) {
-      this.relayHubInstance = await this._createRelayHub(this.config.relayHubAddress)
-      let hubStakeManagerAddress: string | undefined
-      let hubPenalizerAddress: string | undefined
-      let getAddressesError: Error | undefined
-      try {
-        hubStakeManagerAddress = await this.relayHubInstance.stakeManager()
-        hubPenalizerAddress = await this.relayHubInstance.penalizer()
-      } catch (e) {
-        getAddressesError = e
-      }
-      if (hubStakeManagerAddress == null || hubStakeManagerAddress === constants.ZERO_ADDRESS) {
-        throw new Error(`StakeManager address not set in RelayHub (or threw error: ${getAddressesError?.message})`)
-      }
-      if (hubPenalizerAddress == null || hubPenalizerAddress === constants.ZERO_ADDRESS) {
-        throw new Error(`Penalizer address not set in RelayHub (or threw error: ${getAddressesError?.message})`)
-      }
-      this.stakeManagerInstance = await this._createStakeManager(hubStakeManagerAddress)
-      this.penalizerInstance = await this._createPenalizer(hubPenalizerAddress)
+    if (this.paymasterInstance == null && this.deployment.paymasterAddress != null) {
+      this.paymasterInstance = await this._createPaymaster(this.deployment.paymasterAddress)
     }
-    if (this.config.paymasterAddress !== constants.ZERO_ADDRESS) {
-      this.paymasterInstance = await this._createPaymaster(this.config.paymasterAddress)
+    if (this.deployment.forwarderAddress != null) {
+      this.forwarderInstance = await this._createForwarder(this.deployment.forwarderAddress)
+    }
+    if (this.deployment.stakeManagerAddress != null) {
+      this.stakeManagerInstance = await this._createStakeManager(this.deployment.stakeManagerAddress)
+    }
+    if (this.deployment.penalizerAddress != null) {
+      this.penalizerInstance = await this._createPenalizer(this.deployment.penalizerAddress)
     }
   }
 
@@ -417,6 +448,7 @@ export default class ContractInteractor {
   }
 
   async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
+    // noinspection ES6RedundantAwait - PromiEvent makes lint less happy about this line
     return await this.web3.eth.sendSignedTransaction(rawTx)
   }
 
@@ -450,13 +482,6 @@ export default class ContractInteractor {
     return await this.web3.eth.getCode(address)
   }
 
-  getChainId (): number {
-    if (this.chainId == null) {
-      throw new Error('_init not called')
-    }
-    return this.chainId
-  }
-
   getNetworkId (): number {
     if (this.networkId == null) {
       throw new Error('_init not called')
@@ -486,9 +511,24 @@ export default class ContractInteractor {
     return await stakeManager.getStakeInfo(managerAddress)
   }
 
-  async hubBalanceOf (managerAddress: Address): Promise<BN> {
-    const hub = this.relayHubInstance
-    return await hub.balanceOf(managerAddress)
+  /**
+   * Gets balance of an address on the current RelayHub.
+   * @param address - can be a Paymaster or a Relay Manger
+   */
+  async hubBalanceOf (address: Address): Promise<BN> {
+    return await this.relayHubInstance.balanceOf(address)
+  }
+
+  async setDeployment (deployment: GSNContractsDeployment): Promise<void> {
+    this.deployment = deployment
+    await this._initializeContracts()
+  }
+
+  getDeployment (): GSNContractsDeployment {
+    if (this.deployment == null) {
+      throw new Error('Contracts deployment is not initialized for Blockchain Interactor!')
+    }
+    return this.deployment
   }
 
   async withdrawHubBalanceEstimateGas (amount: BN, destination: Address, managerAddress: Address, gasPrice: IntString): Promise<{
@@ -549,6 +589,10 @@ export default class ContractInteractor {
         }
       })
     })
+  }
+
+  async depositToRelayHubForAddress (paymaster: Address, transactionDetails: TransactionDetails): Promise<any> {
+    return await this.relayHubInstance.depositFor(paymaster, transactionDetails)
   }
 }
 

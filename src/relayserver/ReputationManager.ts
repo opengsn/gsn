@@ -1,4 +1,4 @@
-import { Address } from '../relayclient/types/Aliases'
+import { Address } from '../common/types/Aliases'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { ReputationStoreManager } from './ReputationStoreManager'
 import { ReputationChange } from './ReputationEntry'

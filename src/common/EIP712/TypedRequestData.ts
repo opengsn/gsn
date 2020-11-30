@@ -1,4 +1,4 @@
-import { Address } from '../../relayclient/types/Aliases'
+import { Address } from '../types/Aliases'
 import RelayRequest from './RelayRequest'
 import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types, TypedDataUtils } from 'eth-sig-util'
 

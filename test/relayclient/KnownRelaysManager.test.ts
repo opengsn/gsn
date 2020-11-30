@@ -4,8 +4,8 @@ import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
 import { KnownRelaysManager, DefaultRelayScore } from '../../src/relayclient/KnownRelaysManager'
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import ContractInteractor from '../../src/common/ContractInteractor'
+import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import {
   PenalizerInstance,
   RelayHubInstance,
@@ -13,11 +13,11 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance
 } from '../../types/truffle-contracts'
-import { deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
+import { configureGSN, deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 
 import { LoggerInterface } from '../../src/common/LoggerInterface'
-import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/common/types/RelayRegisteredEventInfo'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
@@ -76,12 +76,15 @@ contract('KnownRelaysManager', function (
       penalizer = await Penalizer.new()
       relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
-        logLevel: 'error',
-        relayHubAddress: relayHub.address,
+        loggerConfiguration: { logLevel: 'error' },
         relayLookupWindowBlocks
       })
-      logger = createClientLogger(config.logLevel, config.loggerUrl, config.loggerApplicationId, config.loggerUserIdOverride)
-      contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, config)
+      logger = createClientLogger(config.loggerConfiguration)
+      contractInteractor = new ContractInteractor({
+        provider: web3.currentProvider as HttpProvider,
+        logger,
+        deployment: { relayHubAddress: relayHub.address }
+      })
       await contractInteractor.init()
 
       const forwarderInstance = await Forwarder.new()
@@ -165,8 +168,11 @@ contract('KnownRelaysManager 2', function (accounts) {
   }
 
   before(async function () {
-    logger = createClientLogger('error', '', '', '')
-    contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, configureGSN({}))
+    logger = createClientLogger({ logLevel: 'error' })
+    contractInteractor = new ContractInteractor({
+      provider: web3.currentProvider as HttpProvider,
+      logger
+    })
     await contractInteractor.init()
   })
 
@@ -184,16 +190,20 @@ contract('KnownRelaysManager 2', function (accounts) {
       penalizer = await Penalizer.new()
       relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
-        preferredRelays: ['http://localhost:8090'],
-        relayHubAddress: relayHub.address
+        preferredRelays: ['http://localhost:8090']
       })
+      const deployment = { relayHubAddress: relayHub.address }
       relayProcess = await startRelay(relayHub.address, stakeManager, {
         stake: 1e18,
         url: 'asd',
         relayOwner: accounts[1],
         ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
-      contractInteractor = new ContractInteractor(web3.currentProvider as HttpProvider, logger, config)
+      contractInteractor = new ContractInteractor({
+        provider: web3.currentProvider as HttpProvider,
+        logger,
+        deployment
+      })
       await contractInteractor.init()
       knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
       await stake(stakeManager, relayHub, accounts[1], accounts[0])

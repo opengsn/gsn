@@ -17,7 +17,7 @@ import { sleep } from '../../src/common/Utils'
 
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from '../TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
-import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
+import { RelayTransactionRequest } from '../../src/common/types/RelayTransactionRequest'
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { ServerAction } from '../../src/relayserver/StoredTransaction'

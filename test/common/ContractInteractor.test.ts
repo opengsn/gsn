@@ -1,27 +1,28 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 
-import { RelayHubInstance, TestVersionsInstance } from '../../types/truffle-contracts'
-import { RelayClient } from '../../src/relayclient/RelayClient'
+import { RelayHubInstance } from '../../types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '../../src/common/dev/ProfilingProvider'
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import ContractInteractor from '../../src/common/ContractInteractor'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import Transaction from 'ethereumjs-tx/dist/transaction'
 import { constants } from '../../src/common/Constants'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { deployHub } from '../TestUtils'
+import VersionsManager from '../../src/common/VersionsManager'
+import { gsnRuntimeVersion } from '../../src/common/Version'
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { expect } = chai.use(chaiAsPromised)
 
-const TestVersions = artifacts.require('TestVersions')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 
 contract('ContractInteractor', function (accounts) {
+  /*
   let testVersions: TestVersionsInstance
   before(async function () {
     testVersions = await TestVersions.new()
@@ -36,6 +37,7 @@ contract('ContractInteractor', function (accounts) {
       await expect(relayClient.init()).to.be.eventually.rejectedWith('Provided Hub version(3.0.0) is not supported by the current interactor')
     })
   })
+  */
 
   function addr (n: number): string {
     return '0x'.padEnd(42, `${n}`)
@@ -44,7 +46,8 @@ contract('ContractInteractor', function (accounts) {
   context('#validateRelayCall', () => {
     let rh: RelayHubInstance
     const workerAddress = accounts[2]
-    const nullLogger = createClientLogger('error', '', '', '')
+    const nullLogger = createClientLogger({ logLevel: 'error' })
+    const versionManager = new VersionsManager(gsnRuntimeVersion)
 
     before(async () => {
       const sm = await StakeManager.new()
@@ -58,9 +61,14 @@ contract('ContractInteractor', function (accounts) {
 
     it('should return relayCall revert reason', async () => {
       const pm = await TestPaymasterConfigurableMisbehavior.new()
-      const contractInteractor = new ContractInteractor(web3.currentProvider as any, nullLogger, configureGSN({
-        paymasterAddress: pm.address, relayHubAddress: rh.address
-      }))
+      await pm.setRelayHub(rh.address)
+      const contractInteractor = new ContractInteractor(
+        {
+          provider: web3.currentProvider as HttpProvider,
+          versionManager,
+          logger: nullLogger,
+          deployment: { paymasterAddress: pm.address }
+        })
       await contractInteractor.init()
 
       const relayRequest: RelayRequest = {
@@ -96,9 +104,12 @@ contract('ContractInteractor', function (accounts) {
       await pm.setRelayHub(rh.address)
       await rh.depositFor(pm.address, { value: 1e18.toString() })
       await pm.setRevertPreRelayCall(true)
-      const contractInteractor = new ContractInteractor(web3.currentProvider as any, nullLogger, configureGSN({
-        paymasterAddress: pm.address, relayHubAddress: rh.address
-      }))
+      const contractInteractor = new ContractInteractor({
+        provider: web3.currentProvider as HttpProvider,
+        versionManager,
+        logger: nullLogger,
+        deployment: { paymasterAddress: pm.address }
+      })
       await contractInteractor.init()
 
       const relayRequest: RelayRequest = {
@@ -138,8 +149,8 @@ contract('ContractInteractor', function (accounts) {
 
     before(async function () {
       provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
-      const logger = createClientLogger('debug', '', '', '')
-      contractInteractor = new ContractInteractor(provider, logger, configureGSN({}))
+      const logger = createClientLogger({ logLevel: 'error' })
+      contractInteractor = new ContractInteractor({ provider, logger })
       const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
       const transaction = new Transaction({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
       transaction.sign(Buffer.from('46e6ef4a356fa3fa3929bf4b59e6b3eb9d0521ea660fd2879c67bd501002ac2b', 'hex'))

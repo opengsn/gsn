@@ -2,7 +2,7 @@ import AsyncNedb from 'nedb-async'
 
 import { LoggerInterface } from '../common/LoggerInterface'
 import { ReputationChange, ReputationEntry } from './ReputationEntry'
-import { Address } from '../relayclient/types/Aliases'
+import { Address } from '../common/types/Aliases'
 
 export const REPUTATION_STORE_FILENAME = 'reputation_store.db'
 

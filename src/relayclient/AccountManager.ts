@@ -2,12 +2,11 @@
 import ethWallet from 'ethereumjs-wallet'
 import Web3 from 'web3'
 import sigUtil from 'eth-sig-util'
-import { HttpProvider } from 'web3-core'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TypedRequestData from '../common/EIP712/TypedRequestData'
-import { Address } from './types/Aliases'
+import { Address, ISendProvider } from '../common/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '../common/Utils'
 
@@ -30,8 +29,8 @@ export default class AccountManager {
   private readonly config: GSNConfig
   readonly chainId: number
 
-  constructor (provider: HttpProvider, chainId: number, config: GSNConfig) {
-    this.web3 = new Web3(provider)
+  constructor (provider: ISendProvider, chainId: number, config: GSNConfig) {
+    this.web3 = new Web3(provider as any)
     this.chainId = chainId
     this.config = config
   }

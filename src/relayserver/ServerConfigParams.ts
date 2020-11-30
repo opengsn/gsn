@@ -2,10 +2,9 @@ import * as fs from 'fs'
 import parseArgs from 'minimist'
 
 import { VersionRegistry } from '../common/VersionRegistry'
-import ContractInteractor from '../relayclient/ContractInteractor'
-import { configureGSN } from '../relayclient/GSNConfigurator'
+import ContractInteractor from '../common/ContractInteractor'
 import { constants } from '../common/Constants'
-import { Address, NpmLogLevel } from '../relayclient/types/Aliases'
+import { Address, NpmLogLevel } from '../common/types/Aliases'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from './ServerWinstonLogger'
@@ -249,7 +248,11 @@ export function parseServerConfig (args: string[], env: any): any {
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
-  const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  const contractInteractor = new ContractInteractor({
+    provider: web3provider,
+    logger,
+    deployment: { relayHubAddress: config.relayHubAddress }
+  })
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')

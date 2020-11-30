@@ -1,6 +1,6 @@
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import * as ethUtils from 'ethereumjs-util'
-import { Address } from '../relayclient/types/Aliases'
+import { Address } from '../common/types/Aliases'
 
 export enum ServerAction {
   REGISTER_SERVER,

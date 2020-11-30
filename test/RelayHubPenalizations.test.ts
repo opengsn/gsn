@@ -4,9 +4,10 @@ import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/t
 import BN from 'bn.js'
 
 import { Transaction } from 'ethereumjs-tx'
-import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
+import { TransactionOptions } from 'ethereumjs-tx/dist/types'
 import { encode } from 'rlp'
 import { expect } from 'chai'
+import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
@@ -20,6 +21,7 @@ import {
 } from '../types/truffle-contracts'
 
 import { deployHub } from './TestUtils'
+import { getRawTxOptions } from '../src/common/ContractInteractor'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
 
 import TransactionResponse = Truffle.TransactionResponse
@@ -42,6 +44,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
   let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
+  let transactionOptions: TransactionOptions
 
   let forwarder: string
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
@@ -74,6 +77,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       // @ts-ignore
       Penalizer.network.events[topic] = StakeManager.events[topic]
     })
+    const networkId = await web3.eth.net.getId()
+    const chain = await web3.eth.net.getNetworkType()
+    transactionOptions = getRawTxOptions(chainId, networkId, chain)
   })
 
   async function prepareRelayCall (): Promise<{
@@ -469,30 +475,22 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         gasPrice: relayCallArgs.gasPrice,
         to: relayHub.address,
         value: relayCallArgs.value,
-        // @ts-ignore
-        chainId: 1,
         data: encodedCall
-      })
+      }, transactionOptions)
 
       transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'))
       return transaction
     }
 
     async function getDataAndSignatureFromHash (txHash: string, chainId: number): Promise<{ data: string, signature: string }> {
-      // @ts-ignore
-      const rpcTx = await web3.eth.getTransaction(txHash)
-      // eslint: this is stupid how many checks for 0 there are
-      // @ts-ignore
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      if (!chainId && parseInt(rpcTx.v, 16) > 28) {
+      const rpcTx: any = await web3.eth.getTransaction(txHash)
+      const vInteger = parseInt(rpcTx.v, 16)
+      if (chainId == null && vInteger > 28) {
         throw new Error('Missing ChainID for EIP-155 signature')
       }
-      // @ts-ignore
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      if (chainId && parseInt(rpcTx.v, 16) <= 28) {
+      if (chainId == null && vInteger <= 28) {
         throw new Error('Passed ChainID for non-EIP-155 signature')
       }
-      // @ts-ignore
       const tx = new Transaction({
         nonce: new BN(rpcTx.nonce),
         gasPrice: new BN(rpcTx.gasPrice),
@@ -500,13 +498,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         to: rpcTx.to,
         value: new BN(rpcTx.value),
         data: rpcTx.input,
-        // @ts-ignore
         v: rpcTx.v,
-        // @ts-ignore
         r: rpcTx.r,
-        // @ts-ignore
         s: rpcTx.s
-      })
+      }, transactionOptions)
 
       return getDataAndSignature(tx, chainId)
     }
@@ -521,7 +516,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           stripZeros(toBuffer(0))
         )
       }
-      let v = tx.v[0]
+      let v = parseInt(tx.v.toString('hex'), 16)
       if (v > 28) {
         v -= chainId * 2 + 8
       }
