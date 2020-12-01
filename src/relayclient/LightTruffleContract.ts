@@ -1,6 +1,6 @@
 import Web3 from 'web3'
 import { AbiItem, AbiOutput, toBN } from 'web3-utils'
-import { ISendProvider } from '../common/types/Aliases'
+import { Web3ProviderBaseInterface } from '../common/types/Aliases'
 
 function retypeItem (abiOutput: AbiOutput, ret: any): any {
   if (abiOutput.type.includes('int')) {
@@ -80,7 +80,7 @@ export class Contract<T> {
     return obj as unknown as T
   }
 
-  setProvider (provider: ISendProvider, _: unknown): void {
+  setProvider (provider: Web3ProviderBaseInterface, _: unknown): void {
     this.web3 = new Web3(provider as any)
   }
 }

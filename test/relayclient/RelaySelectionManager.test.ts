@@ -118,7 +118,7 @@ contract('RelaySelectionManager', function (accounts) {
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
 
-        await contractInteractor.setDeployment({
+        await contractInteractor.initDeployment({
           relayHubAddress: relayHub.address,
           stakeManagerAddress: stakeManager.address,
           penalizerAddress: penalizer.address

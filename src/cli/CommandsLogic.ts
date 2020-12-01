@@ -154,7 +154,7 @@ export default class CommandsLogic {
     const targetAmount = new BN(amount)
     if (currentBalance.lt(targetAmount)) {
       const value = targetAmount.sub(currentBalance)
-      await this.contractInteractor.depositToRelayHubForAddress(paymaster, {
+      await this.contractInteractor.hubDepositFor(paymaster, {
         value,
         from
       })
@@ -318,7 +318,7 @@ export default class CommandsLogic {
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
     }
 
-    await this.contractInteractor.setDeployment(this.deployment)
+    await this.contractInteractor.initDeployment(this.deployment)
     return this.deployment
   }
 

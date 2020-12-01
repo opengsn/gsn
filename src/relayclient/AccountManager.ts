@@ -6,7 +6,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 
 import RelayRequest from '../common/EIP712/RelayRequest'
 import TypedRequestData from '../common/EIP712/TypedRequestData'
-import { Address, ISendProvider } from '../common/types/Aliases'
+import { Address, Web3ProviderBaseInterface } from '../common/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '../common/Utils'
 
@@ -29,14 +29,15 @@ export default class AccountManager {
   private readonly config: GSNConfig
   readonly chainId: number
 
-  constructor (provider: ISendProvider, chainId: number, config: GSNConfig) {
+  constructor (provider: Web3ProviderBaseInterface, chainId: number, config: GSNConfig) {
     this.web3 = new Web3(provider as any)
     this.chainId = chainId
     this.config = config
   }
 
   addAccount (privateKey: PrefixedHexString): void {
-    // temporary backward-compatibility mode: addAccount used to accept AccountKeypair with Buffer in it
+    // TODO: backwards-compatibility 101 - remove on next version bump
+    // addAccount used to accept AccountKeypair with Buffer in it
     // @ts-ignore
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     if (privateKey.privateKey) {

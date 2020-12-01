@@ -34,7 +34,7 @@ import {
   IStakeManagerInstance
 } from '../../types/truffle-contracts'
 
-import { Address, IntString, ISendProvider } from './types/Aliases'
+import { Address, IntString, Web3ProviderBaseInterface } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from '../relayclient/LightTruffleContract'
@@ -62,7 +62,7 @@ export const StakeWithdrawn: EventName = 'StakeWithdrawn'
 export const StakePenalized: EventName = 'StakePenalized'
 
 export interface ConstructorParams {
-  provider: ISendProvider
+  provider: Web3ProviderBaseInterface
   logger: LoggerInterface
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
@@ -87,7 +87,7 @@ export default class ContractInteractor {
   private readonly relayCallMethod: any
 
   readonly web3: Web3
-  private readonly provider: ISendProvider
+  private readonly provider: Web3ProviderBaseInterface
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
@@ -173,7 +173,7 @@ export default class ContractInteractor {
 
   async _resolveDeployment (): Promise<void> {
     if (this.deployment.paymasterAddress != null && this.deployment.relayHubAddress != null) {
-      this.logger.error('Already resolved!')
+      this.logger.warn('Already resolved!')
       return
     }
 
@@ -181,6 +181,8 @@ export default class ContractInteractor {
       await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
     } else if (this.deployment.relayHubAddress != null) {
       await this._resolveDeploymentFromRelayHub(this.deployment.relayHubAddress)
+    } else {
+      this.logger.info(`Contract interactor cannot resolve a full deployment from the following input: ${JSON.stringify(this.deployment)}`)
     }
   }
 
@@ -519,14 +521,14 @@ export default class ContractInteractor {
     return await this.relayHubInstance.balanceOf(address)
   }
 
-  async setDeployment (deployment: GSNContractsDeployment): Promise<void> {
+  async initDeployment (deployment: GSNContractsDeployment): Promise<void> {
     this.deployment = deployment
     await this._initializeContracts()
   }
 
   getDeployment (): GSNContractsDeployment {
     if (this.deployment == null) {
-      throw new Error('Contracts deployment is not initialized for Blockchain Interactor!')
+      throw new Error('Contracts deployment is not initialized for Contract Interactor!')
     }
     return this.deployment
   }
@@ -591,7 +593,7 @@ export default class ContractInteractor {
     })
   }
 
-  async depositToRelayHubForAddress (paymaster: Address, transactionDetails: TransactionDetails): Promise<any> {
+  async hubDepositFor (paymaster: Address, transactionDetails: TransactionDetails): Promise<any> {
     return await this.relayHubInstance.depositFor(paymaster, transactionDetails)
   }
 }

@@ -19,9 +19,9 @@ import {
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { _dumpRelayingResult, RelayClient } from '../../src/relayclient/RelayClient'
-import { Address } from '../../src/common/types/Aliases'
+import { Address, Web3ProviderBaseInterface } from '../../src/common/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { GSNConfig, LoggerConfiguration } from '../../src/relayclient/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '../../src/relayclient/GSNConfigurator'
 import replaceErrors from '../../src/common/ErrorReplacerJSON'
 import GsnTransactionDetails from '../../src/common/types/GsnTransactionDetails'
 
@@ -154,6 +154,55 @@ contract('RelayClient', function (accounts) {
 
   after(async function () {
     await stopRelay(relayProcess)
+  })
+
+  describe('#_initInternal()', () => {
+    it('should set metamask defaults', async () => {
+      const metamaskProvider: Web3ProviderBaseInterface = {
+        isMetaMask: true,
+        send: (options: any, cb: any) => {
+          (web3.currentProvider as any).send(options, cb)
+        }
+      }
+      const constructorInput = {
+        provider: metamaskProvider,
+        partialConfig: { paymasterAddress: paymaster.address }
+      }
+      const anotherRelayClient = new RelayClient(constructorInput)
+      assert.equal(anotherRelayClient.config, undefined)
+      await anotherRelayClient._initInternal()
+      assert.equal(anotherRelayClient.config.methodSuffix, '_v4')
+      assert.equal(anotherRelayClient.config.jsonStringifyRequest, true)
+    })
+
+    it('should allow to override metamask defaults', async () => {
+      const minGasPrice = 777
+      const suffix = 'suffix'
+      const metamaskProvider = {
+        isMetaMask: true,
+        send: (options: any, cb: any) => {
+          (web3.currentProvider as any).send(options, cb)
+        }
+      }
+      const constructorInput = {
+        provider: metamaskProvider,
+        partialConfig: {
+          minGasPrice,
+          paymasterAddress: paymaster.address,
+          methodSuffix: suffix,
+          jsonStringifyRequest: 5 as any
+        }
+      }
+      const anotherRelayClient = new RelayClient(constructorInput)
+      assert.equal(anotherRelayClient.config, undefined)
+      // note: to check boolean override, we explicitly set it to something that
+      // is not in the defaults..
+      await anotherRelayClient._initInternal()
+      assert.equal(anotherRelayClient.config.methodSuffix, suffix)
+      assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
+      assert.equal(anotherRelayClient.config.minGasPrice, minGasPrice)
+      assert.equal(anotherRelayClient.config.sliceSize, defaultGsnConfig.sliceSize, 'default value expected for a skipped field')
+    })
   })
 
   describe('#relayTransaction()', function () {

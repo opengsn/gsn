@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events'
-import { HttpProvider } from 'web3-core'
 import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 
@@ -7,7 +6,7 @@ import ContractInteractor from '../common/ContractInteractor'
 import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
 import RelayRequest from '../common/EIP712/RelayRequest'
 import VersionsManager from '../common/VersionsManager'
-import { AsyncDataCallback, PingFilter } from '../common/types/Aliases'
+import { AsyncDataCallback, PingFilter, Web3ProviderBaseInterface } from '../common/types/Aliases'
 import { AuditResponse } from '../common/types/AuditRequest'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { RelayInfo } from '../common/types/RelayInfo'
@@ -53,7 +52,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 }
 
 export interface GSNUnresolvedConstructorInput {
-  provider: HttpProvider
+  provider: Web3ProviderBaseInterface
   partialConfig: Partial<GSNConfig>
   overrideDependencies?: Partial<GSNDependencies>
 }
@@ -84,6 +83,10 @@ export class RelayClient {
   constructor (
     rawConstructorInput: GSNUnresolvedConstructorInput
   ) {
+    // TODO: backwards-compatibility 102 - remove on next version bump
+    if (arguments[0] == null || arguments[0].send != null || arguments[2] != null) {
+      throw new Error('Sorry, but the constructor parameters of the RelayClient class have changed. See "GSNUnresolvedConstructorInput" interface for details.')
+    }
     this.rawConstructorInput = rawConstructorInput
     this.logger = rawConstructorInput.overrideDependencies?.logger ??
       createClientLogger(rawConstructorInput.partialConfig?.loggerConfiguration ?? defaultLoggerConfiguration)
@@ -101,7 +104,8 @@ export class RelayClient {
 
   async _initInternal (): Promise<void> {
     this.emit(new GsnInitEvent())
-    await this.resolveConfiguration(this.rawConstructorInput)
+    this.config = await this._resolveConfiguration(this.rawConstructorInput)
+    this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
   }
 
   /**
@@ -176,9 +180,6 @@ export class RelayClient {
     if (!this.initialized) {
       if (this.initializingPromise == null) {
         this._warn('suggestion: call RelayProvider.init()/RelayClient.init() in advance (to make first request faster)')
-      }
-      if (this.rawConstructorInput == null) {
-        throw new Error('Must pass initialization parameters to constructor if not calling init() in advance')
       }
       await this.init()
     }
@@ -367,32 +368,6 @@ export class RelayClient {
     return httpRequest
   }
 
-  // async resolveForwarder (gsnTransactionDetails: GsnTransactionDetails): Promise<Address> {
-  //   const forwarderAddress = gsnTransactionDetails.forwarder ?? this.contractInteractor.getDeployment().forwarderAddress
-  //   // if (forwarderAddress !== constants.ZERO_ADDRESS) {
-  //   const isRecipientDeployed = await this.contractInteractor.isContractDeployed(gsnTransactionDetails.to)
-  //   if (!isRecipientDeployed) {
-  //     console.warn(`No IRelayRecipient code at ${gsnTransactionDetails.to}, proceeding without validating 'isTrustedForwarder'!
-  //       Unless you are using some counterfactual contract deployment technique the transaction will fail!`)
-  //   } else if (!this.config.skipRecipientForwarderValidation) {
-  //     const isTrusted = await this.contractInteractor.isTrustedForwarder(gsnTransactionDetails.to, forwarderAddress)
-  //     if (!isTrusted) {
-  //       throw new Error('The Forwarder address configured but is not trusted by the Recipient contract')
-  //     }
-  //   }
-  // } else {
-  //   try {
-  //     this.logger.info(`will attempt to get trusted forwarder from: ${gsnTransactionDetails.to}`)
-  //     forwarderAddress = await this.contractInteractor.getForwarder(gsnTransactionDetails.to)
-  //     this.logger.info(`on-chain forwarder for: ${gsnTransactionDetails.to} is ${forwarderAddress}`)
-  //   } catch (e) {
-  //     throw new Error('No forwarder address configured and no getTrustedForwarder in target contract (fetching from Recipient failed)')
-  //   }
-  // }
-  //
-  // return forwarderAddress
-  // }
-
   newAccount (): AccountKeypair {
     this._verifyInitialized()
     return this.dependencies.accountManager.newAccount()
@@ -431,24 +406,14 @@ export class RelayClient {
     }
   }
 
-  getUnderlyingProvider (): HttpProvider {
+  getUnderlyingProvider (): Web3ProviderBaseInterface {
     return this.rawConstructorInput.provider
   }
 
-  async resolveConfiguration ({
+  async _resolveConfiguration ({
     provider,
-    partialConfig = {},
-    overrideDependencies = {}
-  }: GSNUnresolvedConstructorInput): Promise<void> {
-    const versionManager = new VersionsManager(gsnRuntimeVersion, partialConfig.requiredVersionRange)
-    const contractInteractor = overrideDependencies?.contractInteractor ??
-      await new ContractInteractor({
-        provider,
-        versionManager,
-        logger: this.logger,
-        deployment: { paymasterAddress: partialConfig?.paymasterAddress }
-      }).init()
-
+    partialConfig = {}
+  }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     const isMetamask: boolean = (provider as any).isMetaMask
 
     // provide defaults valid for metamask (unless explicitly specified values)
@@ -459,12 +424,26 @@ export class RelayClient {
       methodSuffix,
       jsonStringifyRequest
     }
-    this.config = {
+    return {
       ...defaultGsnConfig,
       ...resolvedConfig,
       ...partialConfig
     }
+  }
 
+  async _resolveDependencies ({
+    provider,
+    partialConfig = {},
+    overrideDependencies = {}
+  }: GSNUnresolvedConstructorInput): Promise<GSNDependencies> {
+    const versionManager = new VersionsManager(gsnRuntimeVersion, partialConfig.requiredVersionRange)
+    const contractInteractor = overrideDependencies?.contractInteractor ??
+      await new ContractInteractor({
+        provider,
+        versionManager,
+        logger: this.logger,
+        deployment: { paymasterAddress: partialConfig?.paymasterAddress }
+      }).init()
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)
 
     const httpClient = overrideDependencies?.httpClient ?? new HttpClient(new HttpWrapper(), this.logger)
@@ -476,10 +455,10 @@ export class RelayClient {
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
 
-    this.dependencies = {
+    return {
       logger: this.logger,
       httpClient,
-      contractInteractor: contractInteractor,
+      contractInteractor,
       knownRelaysManager,
       accountManager,
       transactionValidator,

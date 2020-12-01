@@ -12,7 +12,7 @@ import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from './RelayClient'
 import { GSNConfig } from './GSNConfigurator'
-import { ISendProvider } from '../common/types/Aliases'
+import { Web3ProviderBaseInterface } from '../common/types/Aliases'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -27,7 +27,7 @@ interface ISendAsync {
   sendAsync?: any
 }
 // TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
-export class RelayProvider implements HttpProvider, ISendProvider {
+export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   protected readonly origProvider: HttpProvider & ISendAsync
   private readonly origProviderSend: any
   protected config!: GSNConfig
@@ -39,14 +39,12 @@ export class RelayProvider implements HttpProvider, ISendProvider {
     return new RelayProvider(new RelayClient(input))
   }
 
-  /**
-   * create a proxy provider, to relay transaction
-   */
   constructor (
     relayClient: RelayClient
   ) {
     this.relayClient = relayClient
-    this.origProvider = this.relayClient.getUnderlyingProvider()
+    // TODO: stop faking the HttpProvider implementation
+    this.origProvider = this.relayClient.getUnderlyingProvider() as HttpProvider
     this.host = this.origProvider.host
     this.connected = this.origProvider.connected
 
