@@ -77,7 +77,7 @@ export async function resolveConfigurationGSN (provider: Web3Provider, partialCo
     throw new Error('Cannot resolve GSN deployment without paymaster address')
   }
 
-  const tmpConfig = Object.assign({}, partialConfig, defaultGsnConfig)
+  const tmpConfig = Object.assign({}, defaultGsnConfig, partialConfig)
   const logger = createClientLogger(tmpConfig.logLevel, tmpConfig.loggerUrl, tmpConfig.loggerApplicationId, tmpConfig.loggerUserIdOverride)
   const contractInteractor = new ContractInteractor(provider, logger, defaultGsnConfig)
   const paymasterInstance = await contractInteractor._createPaymaster(partialConfig.paymasterAddress)
