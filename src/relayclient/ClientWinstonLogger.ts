@@ -64,7 +64,7 @@ export function createClientLogger (loggerConfiguration?: LoggerConfiguration): 
 
   const localhostRegExp: RegExp = /http:\/\/(localhost)|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/
   let applicationId = loggerConfiguration.applicationId
-  if (loggerConfiguration.applicationId == null && typeof window !== 'undefined' && window.location != null && window.location.href != null && window.location.href.match(localhostRegExp) == null) {
+  if (loggerConfiguration.applicationId == null && window?.location?.href != null && window.location.href.match(localhostRegExp) == null) {
     applicationId = window.location.href
   }
   const logger = winston.createLogger({

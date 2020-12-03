@@ -70,7 +70,7 @@ contract('RelaySelectionManager', function (accounts) {
         provider: web3.currentProvider as HttpProvider,
         logger
       }).init()
-      httpClient = new HttpClient(new HttpWrapper(), this.logger)
+      httpClient = new HttpClient(new HttpWrapper(), logger)
       knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), EmptyFilter)
       stubGetRelaysSorted = sinon.stub(knownRelaysManager, 'getRelaysSortedForTransaction')
       stubGetRelaysSorted.returns(Promise.resolve([[eventInfo]]))
