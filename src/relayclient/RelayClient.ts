@@ -53,7 +53,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 
 export interface GSNUnresolvedConstructorInput {
   provider: Web3ProviderBaseInterface
-  partialConfig: Partial<GSNConfig>
+  config: Partial<GSNConfig>
   overrideDependencies?: Partial<GSNDependencies>
 }
 
@@ -89,7 +89,7 @@ export class RelayClient {
     }
     this.rawConstructorInput = rawConstructorInput
     this.logger = rawConstructorInput.overrideDependencies?.logger ??
-      createClientLogger(rawConstructorInput.partialConfig?.loggerConfiguration ?? defaultLoggerConfiguration)
+      createClientLogger(rawConstructorInput.config?.loggerConfiguration ?? defaultLoggerConfiguration)
   }
 
   async init (): Promise<this> {
@@ -412,13 +412,13 @@ export class RelayClient {
 
   async _resolveConfiguration ({
     provider,
-    partialConfig = {}
+    config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     const isMetamask: boolean = (provider as any).isMetaMask
 
     // provide defaults valid for metamask (unless explicitly specified values)
-    const methodSuffix = partialConfig.methodSuffix ?? (isMetamask ? '_v4' : defaultGsnConfig.methodSuffix)
-    const jsonStringifyRequest = partialConfig.jsonStringifyRequest ?? (isMetamask ? true : defaultGsnConfig.jsonStringifyRequest)
+    const methodSuffix = config.methodSuffix ?? (isMetamask ? '_v4' : defaultGsnConfig.methodSuffix)
+    const jsonStringifyRequest = config.jsonStringifyRequest ?? (isMetamask ? true : defaultGsnConfig.jsonStringifyRequest)
 
     const resolvedConfig: Partial<GSNConfig> = {
       methodSuffix,
@@ -427,22 +427,22 @@ export class RelayClient {
     return {
       ...defaultGsnConfig,
       ...resolvedConfig,
-      ...partialConfig
+      ...config
     }
   }
 
   async _resolveDependencies ({
     provider,
-    partialConfig = {},
+    config = {},
     overrideDependencies = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNDependencies> {
-    const versionManager = new VersionsManager(gsnRuntimeVersion, partialConfig.requiredVersionRange)
+    const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange)
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
         provider,
         versionManager,
         logger: this.logger,
-        deployment: { paymasterAddress: partialConfig?.paymasterAddress }
+        deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)
 

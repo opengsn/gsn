@@ -48,7 +48,7 @@ contract('PenalizationFlow', function (accounts) {
     })
 
     const logger = createClientLogger({ logLevel: 'error' })
-    const partialConfig: Partial<GSNConfig> = {
+    const config: Partial<GSNConfig> = {
       paymasterAddress: env.paymaster.address,
       preferredRelays,
       auditorsCount: 2
@@ -97,7 +97,7 @@ contract('PenalizationFlow', function (accounts) {
       clientId: '1'
     }
 
-    relayClient = new RelayClient({ provider: currentProvider, partialConfig, overrideDependencies })
+    relayClient = new RelayClient({ provider: currentProvider, config, overrideDependencies })
     await relayClient.init()
   })
 

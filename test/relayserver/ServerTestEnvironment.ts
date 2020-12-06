@@ -141,7 +141,7 @@ export class ServerTestEnvironment {
     const mergedConfig = Object.assign({}, shared, clientConfig)
     this.relayClient = new RelayClient({
       provider: this.provider,
-      partialConfig: mergedConfig
+      config: mergedConfig
     })
     await this.relayClient.init()
   }

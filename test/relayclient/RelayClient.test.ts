@@ -18,7 +18,7 @@ import {
 } from '../../types/truffle-contracts'
 
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
-import { _dumpRelayingResult, RelayClient } from '../../src/relayclient/RelayClient'
+import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from '../../src/relayclient/RelayClient'
 import { Address, Web3ProviderBaseInterface } from '../../src/common/types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '../../src/relayclient/GSNConfigurator'
@@ -135,7 +135,7 @@ contract('RelayClient', function (accounts) {
       paymasterAddress: paymaster.address
     }
     logger = createClientLogger(loggerConfiguration)
-    relayClient = new RelayClient({ provider: underlyingProvider, partialConfig: gsnConfig })
+    relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
     await relayClient.init()
     gasLess = await web3.eth.personal.newAccount('password')
     from = gasLess
@@ -159,14 +159,15 @@ contract('RelayClient', function (accounts) {
   describe('#_initInternal()', () => {
     it('should set metamask defaults', async () => {
       const metamaskProvider: Web3ProviderBaseInterface = {
+        // @ts-ignore
         isMetaMask: true,
         send: (options: any, cb: any) => {
           (web3.currentProvider as any).send(options, cb)
         }
       }
-      const constructorInput = {
+      const constructorInput: GSNUnresolvedConstructorInput = {
         provider: metamaskProvider,
-        partialConfig: { paymasterAddress: paymaster.address }
+        config: { paymasterAddress: paymaster.address }
       }
       const anotherRelayClient = new RelayClient(constructorInput)
       assert.equal(anotherRelayClient.config, undefined)
@@ -184,9 +185,9 @@ contract('RelayClient', function (accounts) {
           (web3.currentProvider as any).send(options, cb)
         }
       }
-      const constructorInput = {
+      const constructorInput: GSNUnresolvedConstructorInput = {
         provider: metamaskProvider,
-        partialConfig: {
+        config: {
           minGasPrice,
           paymasterAddress: paymaster.address,
           methodSuffix: suffix,
@@ -207,7 +208,7 @@ contract('RelayClient', function (accounts) {
 
   describe('#relayTransaction()', function () {
     it('should warn if called relayTransaction without calling init first', async function () {
-      const relayClient = new RelayClient({ provider: underlyingProvider, partialConfig: gsnConfig })
+      const relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
       sinon.spy(relayClient, '_warn')
       try {
         await relayClient.relayTransaction(options)
@@ -219,7 +220,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should not warn if called "new RelayClient().init()"', async function () {
-      const relayClient = await new RelayClient({ provider: underlyingProvider, partialConfig: gsnConfig }).init()
+      const relayClient = await new RelayClient({ provider: underlyingProvider, config: gsnConfig }).init()
       sinon.spy(relayClient, '_warn')
       try {
         await relayClient.relayTransaction(options)
@@ -276,7 +277,7 @@ contract('RelayClient', function (accounts) {
         // it uses the mockServer's port
         const relayClient = new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: {
             httpClient: new MockHttpClient(mockServerPort, logger, new HttpWrapper({ timeout: 100 }), gsnConfig)
           }
@@ -305,7 +306,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
@@ -321,7 +322,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
@@ -336,7 +337,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: {
             asyncApprovalData: async () => { throw new Error('approval-error') }
           }
@@ -354,7 +355,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: {
             asyncPaymasterData: async () => { throw new Error('paymasterData-error') }
           }
@@ -373,7 +374,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: {
             scoreCalculator: async () => { throw new Error('score-error') }
           }
@@ -393,7 +394,7 @@ contract('RelayClient', function (accounts) {
       }
 
       before('registerEventsListener', async () => {
-        relayClient = await new RelayClient({ provider: underlyingProvider, partialConfig: gsnConfig }).init()
+        relayClient = await new RelayClient({ provider: underlyingProvider, config: gsnConfig }).init()
         relayClient.registerEventListener(eventsHandler)
       })
       it('should call all events handler', async function () {
@@ -424,7 +425,7 @@ contract('RelayClient', function (accounts) {
         paymasterAddress: paymaster.address,
         minGasPrice
       }
-      const relayClient = new RelayClient({ provider: underlyingProvider, partialConfig: gsnConfig })
+      const relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
       await relayClient.init()
 
       const calculatedGasPrice = await relayClient._calculateGasPrice()
@@ -484,7 +485,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
@@ -498,7 +499,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
@@ -514,7 +515,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
@@ -535,7 +536,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: {
             contractInteractor,
             httpClient: badHttpClient,
@@ -564,7 +565,7 @@ contract('RelayClient', function (accounts) {
         const relayClient =
           new RelayClient({
             provider: underlyingProvider,
-            partialConfig: gsnConfig,
+            config: gsnConfig,
             overrideDependencies: {
               asyncApprovalData,
               asyncPaymasterData
@@ -590,7 +591,7 @@ contract('RelayClient', function (accounts) {
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,
-          partialConfig: gsnConfig,
+          config: gsnConfig,
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
@@ -622,7 +623,7 @@ contract('RelayClient', function (accounts) {
     it('use preferred relay if one is set', async () => {
       relayClient = new RelayClient({
         provider: underlyingProvider,
-        partialConfig: {
+        config: {
           preferredRelays: ['http://localhost:8090'],
           ...gsnConfig
         }

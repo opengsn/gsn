@@ -39,7 +39,6 @@ export type Web3Provider =
  * The only thing that is guaranteed a Web3 provider or a similar object is a {@link send} method.
  */
 export interface Web3ProviderBaseInterface {
-  isMetaMask?: boolean
   send: (
     payload: JsonRpcPayload,
     callback: (error: Error | null, result?: JsonRpcResponse) => void

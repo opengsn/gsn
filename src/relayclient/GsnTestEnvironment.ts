@@ -84,14 +84,14 @@ class GsnTestEnvironmentClass {
 
     await commandsLogic.waitForRelay(relayUrl)
 
-    const partialConfig: Partial<GSNConfig> = {
+    const config: Partial<GSNConfig> = {
       preferredRelays: [relayUrl],
       paymasterAddress: deploymentResult.paymasterAddress
     }
     const provider = new Web3.providers.HttpProvider(_host)
     const input: GSNUnresolvedConstructorInput = {
       provider,
-      partialConfig
+      config
     }
     const relayProvider = await RelayProvider.newProvider(input).init()
     console.error('== startGSN: ready.')

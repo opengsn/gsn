@@ -34,7 +34,7 @@ contract('ReputationFlow', function (accounts) {
 
     const relayProvider = await RelayProvider.newProvider({
       provider: web3.currentProvider as HttpProvider,
-      partialConfig: {
+      config: {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: misbehavingPaymaster.address
       }

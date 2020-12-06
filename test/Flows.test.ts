@@ -101,7 +101,7 @@ options.forEach(params => {
         const relayProvider = await RelayProvider.newProvider(
           {
             provider: web3.currentProvider as HttpProvider,
-            partialConfig: relayClientConfig
+            config: relayClientConfig
           }).init()
 
         // web3.setProvider(relayProvider)
@@ -168,7 +168,7 @@ options.forEach(params => {
           relayProvider =
             await RelayProvider.newProvider({
               provider: web3.currentProvider as HttpProvider,
-              partialConfig: relayClientConfig,
+              config: relayClientConfig,
               overrideDependencies: { asyncApprovalData }
             }).init()
           TestRecipient.web3.setProvider(relayProvider)

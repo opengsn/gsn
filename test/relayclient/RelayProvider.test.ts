@@ -41,7 +41,7 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 const paymasterData = '0x'
 const clientId = '1'
 
-const partialConfig: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' } }
+const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' } }
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
@@ -132,9 +132,9 @@ contract('RelayProvider', function (accounts) {
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
       relayProvider = await RelayProvider.newProvider({
         provider: websocketProvider as any,
-        partialConfig: {
+        config: {
           paymasterAddress: paymasterInstance.address,
-          ...partialConfig
+          ...config
         }
       }).init()
       // NOTE: in real application its enough to set the provider in web3.
@@ -251,9 +251,9 @@ contract('RelayProvider', function (accounts) {
 
     it('should call callback with error if relayTransaction throws', async function () {
       const badRelayClient = new BadRelayClient(true, false, {
-        partialConfig: {
+        config: {
           paymasterAddress: paymasterInstance.address,
-          ...partialConfig
+          ...config
         },
         provider: underlyingProvider
       })
@@ -266,7 +266,7 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should call callback with error containing relaying results dump if relayTransaction does not return a transaction object', async function () {
-      const badRelayClient = new BadRelayClient(false, true, { provider: underlyingProvider, partialConfig })
+      const badRelayClient = new BadRelayClient(false, true, { provider: underlyingProvider, config })
       const relayProvider = new RelayProvider(badRelayClient)
       await relayProvider.init()
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
@@ -278,9 +278,9 @@ contract('RelayProvider', function (accounts) {
     it('should convert a returned transaction to a compatible rpc transaction hash response', async function () {
       const relayProvider = await RelayProvider.newProvider({
         provider: underlyingProvider,
-        partialConfig: {
+        config: {
           paymasterAddress: paymasterInstance.address,
-          ...partialConfig
+          ...config
         }
       }).init()
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
@@ -350,7 +350,7 @@ contract('RelayProvider', function (accounts) {
         paymasterAddress: misbehavingPaymaster.address,
         loggerConfiguration: { logLevel: 'error' }
       }
-      relayProvider = RelayProvider.newProvider({ provider: underlyingProvider, partialConfig: gsnConfig })
+      relayProvider = RelayProvider.newProvider({ provider: underlyingProvider, config: gsnConfig })
       await relayProvider.init()
 
       const innerTxFailedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
@@ -410,7 +410,7 @@ contract('RelayProvider', function (accounts) {
     it('should append ephemeral accounts to the ones from the underlying provider', async function () {
       const relayProvider = await RelayProvider.newProvider({
         provider: underlyingProvider,
-        partialConfig: {
+        config: {
           paymasterAddress: paymasterInstance.address,
           loggerConfiguration: { logLevel: 'error' }
         }
@@ -439,7 +439,7 @@ contract('RelayProvider', function (accounts) {
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
       relayProvider = await RelayProvider.newProvider({
         provider: websocketProvider as any,
-        partialConfig: gsnConfig
+        config: gsnConfig
       }).init()
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
