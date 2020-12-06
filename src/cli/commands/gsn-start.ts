@@ -10,8 +10,8 @@ gsnCommander(['n'])
   try {
     const network: string = commander.network
     const env = await GsnTestEnvironment.startGsn(network)
-    saveDeployment(env.deploymentResult, commander.workdir)
-    showDeployment(env.deploymentResult, 'GSN started')
+    saveDeployment(env.contractsDeployment, commander.workdir)
+    showDeployment(env.contractsDeployment, 'GSN started')
 
     console.log(`Relay is active, URL = ${env.relayUrl} . Press Ctrl-C to abort`)
   } catch (e) {

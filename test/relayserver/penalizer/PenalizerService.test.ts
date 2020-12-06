@@ -4,11 +4,11 @@ import { bufferToHex } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 
 import { PenalizerDependencies, PenalizerService } from '../../../src/relayserver/penalizer/PenalizerService'
-import { AuditRequest } from '../../../src/relayclient/types/AuditRequest'
+import { AuditRequest } from '../../../src/common/types/AuditRequest'
 import { createServerLogger } from '../../../src/relayserver/ServerWinstonLogger'
 
 import { constants } from '../../../src/common/Constants'
-import { Address } from '../../../src/relayclient/types/Aliases'
+import { Address } from '../../../src/common/types/Aliases'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'
@@ -37,7 +37,7 @@ contract('PenalizerService', function (accounts) {
     await env.init()
     await env.newServerInstance()
     const logger = createServerLogger('error', '', '')
-    txByNonceService = new MockTxByNonceService(web3.currentProvider, env.relayServer.contractInteractor, logger)
+    txByNonceService = new MockTxByNonceService(env.relayServer.contractInteractor, logger)
     const penalizerParams: PenalizerDependencies = {
       transactionManager: env.relayServer.transactionManager,
       contractInteractor: env.relayServer.contractInteractor,

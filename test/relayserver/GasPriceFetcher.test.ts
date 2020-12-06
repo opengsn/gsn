@@ -1,8 +1,8 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
+import { HttpProvider } from 'web3-core'
 
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
+import ContractInteractor from '../../src/common/ContractInteractor'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
 import express from 'express'
 import { Server } from 'net'
@@ -28,7 +28,10 @@ context('GasPriceFetcher', function () {
   const etherscanOracleResponse = '{"status":"1","message":"OK-Missing/Invalid API Key, rate limit of 1/5sec applied","result":{"LastBlock":"11236652","SafeGasPrice":"18","ProposeGasPrice":"39","FastGasPrice":"54"}}'
 
   before(async () => {
-    contractInteractor = new ContractInteractor(web3.currentProvider as any, logger, configureGSN({}))
+    contractInteractor = new ContractInteractor({
+      provider: web3.currentProvider as HttpProvider,
+      logger
+    })
 
     const mockServer = express()
     mockServer.get('/geturl', async (req, res) => {

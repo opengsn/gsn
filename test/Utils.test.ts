@@ -3,7 +3,6 @@
 import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai from 'chai'
-import { HttpProvider } from 'web3-core'
 
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
@@ -16,15 +15,10 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../t
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { encodeRevertReason } from './TestUtils'
-import CommandsLogic from '../src/cli/CommandsLogic'
-import { configureGSN, GSNConfig, resolveConfigurationGSN } from '../src/relayclient/GSNConfigurator'
-import { defaultEnvironment } from '../src/common/Environments'
-import { Web3Provider } from '../src/relayclient/ContractInteractor'
-import { createCommandsLogger } from '../src/cli/CommandsWinstonLogger'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
-const { expect, assert } = chai.use(chaiAsPromised)
+const { assert } = chai.use(chaiAsPromised)
 
 const TestUtil = artifacts.require('TestUtil')
 const Forwarder = artifacts.require('Forwarder')
@@ -193,38 +187,6 @@ contract('Utils', function (accounts) {
         const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
       })
-    })
-  })
-
-  describe('#resolveGSNDeploymentFromPaymaster()', function () {
-    it('should resolve the deployment from paymaster', async function () {
-      const logger = createCommandsLogger('error')
-      const host = (web3.currentProvider as HttpProvider).host
-      const defaultConfiguration = configureGSN({})
-      const commandsLogic = new CommandsLogic(host, logger, defaultConfiguration)
-      const deploymentResult = await commandsLogic.deployGsnContracts({
-        from: accounts[0],
-        gasPrice: '1',
-        deployPaymaster: true,
-        skipConfirmation: true,
-        relayHubConfiguration: defaultEnvironment.relayHubConfiguration
-      })
-      const minGasPrice = 777
-      const partialConfig: Partial<GSNConfig> = {
-        paymasterAddress: deploymentResult.naivePaymasterAddress,
-        minGasPrice
-      }
-      const resolvedPartialConfig = await resolveConfigurationGSN(web3.currentProvider as Web3Provider, partialConfig)
-      assert.equal(resolvedPartialConfig.paymasterAddress, deploymentResult.naivePaymasterAddress)
-      assert.equal(resolvedPartialConfig.relayHubAddress, deploymentResult.relayHubAddress)
-      assert.equal(resolvedPartialConfig.minGasPrice, minGasPrice, 'Input value lost')
-      assert.equal(resolvedPartialConfig.sliceSize, defaultConfiguration.sliceSize, 'Unexpected value appeared')
-    })
-
-    it('should throw if no paymaster at address', async function () {
-      await expect(resolveConfigurationGSN(
-        web3.currentProvider as Web3Provider, {})
-      ).to.be.eventually.rejectedWith('Cannot resolve GSN deployment without paymaster address')
     })
   })
 })

@@ -5,8 +5,7 @@ import { HttpServer } from './HttpServer'
 import { RelayServer } from './RelayServer'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
-import ContractInteractor from '../relayclient/ContractInteractor'
-import { configureGSN } from '../relayclient/GSNConfigurator'
+import ContractInteractor from '../common/ContractInteractor'
 import {
   parseServerConfig,
   resolveReputationManagerConfig,
@@ -68,7 +67,11 @@ async function run (): Promise<void> {
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir }, logger)
-  const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  const contractInteractor = new ContractInteractor({
+    provider: web3provider,
+    logger,
+    deployment: { relayHubAddress: config.relayHubAddress }
+  })
   await contractInteractor.init()
   const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
 

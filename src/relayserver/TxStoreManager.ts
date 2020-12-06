@@ -2,7 +2,7 @@ import AsyncNedb from 'nedb-async'
 import ow from 'ow'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-import { Address } from '../relayclient/types/Aliases'
+import { Address } from '../common/types/Aliases'
 import { isSameAddress } from '../common/Utils'
 
 import { ServerAction, StoredTransaction } from './StoredTransaction'

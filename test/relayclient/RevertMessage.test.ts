@@ -11,19 +11,18 @@ import { HttpProvider } from 'web3-core'
 import Web3 from 'web3'
 
 import { RelayProvider } from '../../src/relayclient/RelayProvider'
-import { configureGSN } from '../../src/relayclient/GSNConfigurator'
 import {
   TestRecipientInstance
 } from '../../types/truffle-contracts'
-import { Address } from '../../src/relayclient/types/Aliases'
+import { Address } from '../../src/common/types/Aliases'
 import { GsnTestEnvironment } from '../../src/relayclient/GsnTestEnvironment'
+import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 describe.skip('RevertMessage.test', function () {
   let web3: Web3
   let forwarderAddress: Address
-  let relayHubAddress: Address
   let paymasterAddress: Address
   let relayProvider: RelayProvider
 
@@ -52,12 +51,10 @@ describe.skip('RevertMessage.test', function () {
     const chain = await web3.eth.net.getId()
     if (chain > 1000) {
       // @ts-ignore
-      const { deploymentResult } = await GsnTestEnvironment.startGsn(web3.currentProvider?.host ?? 'localhost')
-      forwarderAddress = deploymentResult.forwarderAddress
-      relayHubAddress = deploymentResult.relayHubAddress
-      paymasterAddress = deploymentResult.naivePaymasterAddress
+      const { contractsDeployment } = await GsnTestEnvironment.startGsn(web3.currentProvider?.host ?? 'localhost')
+      forwarderAddress = contractsDeployment.forwarderAddress!
+      paymasterAddress = contractsDeployment.paymasterAddress!
     } else {
-      relayHubAddress = networks[chain].hub
       paymasterAddress = networks[chain].paymaster
       forwarderAddress = networks[chain].forwarder
     }
@@ -75,13 +72,12 @@ describe.skip('RevertMessage.test', function () {
       this.timeout(30000)
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
-      const gsnConfig = configureGSN({
-        logLevel: 'error',
-        relayHubAddress,
+      const gsnConfig: Partial<GSNConfig> = {
+        loggerConfiguration: { logLevel: 'error' },
         paymasterAddress
-      })
+      }
 
-      relayProvider = await new RelayProvider(underlyingProvider as any, gsnConfig).init()
+      relayProvider = await RelayProvider.newProvider({ provider: underlyingProvider, config: gsnConfig }).init()
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
 

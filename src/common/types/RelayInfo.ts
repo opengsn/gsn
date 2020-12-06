@@ -1,4 +1,4 @@
-import PingResponse from '../../common/PingResponse'
+import PingResponse from '../PingResponse'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from './RelayRegisteredEventInfo'
 
 // Well, I still don't like it

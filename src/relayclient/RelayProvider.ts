@@ -7,11 +7,12 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { LoggerInterface } from '../common/LoggerInterface'
 import relayHubAbi from '../common/interfaces/IRelayHub.json'
 
-import GsnTransactionDetails from './types/GsnTransactionDetails'
+import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
-import { _dumpRelayingResult, RelayClient } from './RelayClient'
-import { GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from './RelayClient'
+import { GSNConfig } from './GSNConfigurator'
+import { Web3ProviderBaseInterface } from '../common/types/Aliases'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -25,8 +26,8 @@ export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) =>
 interface ISendAsync {
   sendAsync?: any
 }
-
-export class RelayProvider implements HttpProvider {
+// TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
+export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   protected readonly origProvider: HttpProvider & ISendAsync
   private readonly origProviderSend: any
   protected config!: GSNConfig
@@ -34,30 +35,25 @@ export class RelayProvider implements HttpProvider {
   readonly relayClient: RelayClient
   logger!: LoggerInterface
 
-  /**
-   * create a proxy provider, to relay transaction
-   * @param overrideDependencies
-   * @param relayClient
-   * @param origProvider - the underlying web3 provider
-   * @param gsnConfig
-   */
-  constructor (origProvider: HttpProvider, gsnConfig: Partial<GSNConfig>, overrideDependencies?: Partial<GSNDependencies>, relayClient?: RelayClient) {
-    this.host = origProvider.host
-    this.connected = origProvider.connected
+  static newProvider (input: GSNUnresolvedConstructorInput): RelayProvider {
+    return new RelayProvider(new RelayClient(input))
+  }
 
-    this.origProvider = origProvider
+  constructor (
+    relayClient: RelayClient
+  ) {
+    this.relayClient = relayClient
+    // TODO: stop faking the HttpProvider implementation
+    this.origProvider = this.relayClient.getUnderlyingProvider() as HttpProvider
+    this.host = this.origProvider.host
+    this.connected = this.origProvider.connected
+
     if (typeof this.origProvider.sendAsync === 'function') {
       this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
     } else {
       this.origProviderSend = this.origProvider.send.bind(this.origProvider)
     }
-    this.relayClient = relayClient ?? new RelayClient(origProvider, gsnConfig, overrideDependencies)
-    this.logger = new Proxy(this.relayClient.logger, {
-      get: (target: any, prop: string) => {
-        return (this.relayClient.logger as any)[prop]
-      }
-    })
-    this._delegateEventsApi(origProvider)
+    this._delegateEventsApi()
   }
 
   async init (): Promise<this> {
@@ -75,14 +71,14 @@ export class RelayProvider implements HttpProvider {
     this.relayClient.unregisterEventListener(handler)
   }
 
-  _delegateEventsApi (origProvider: HttpProvider): void {
+  _delegateEventsApi (): void {
     // If the subprovider is a ws or ipc provider, then register all its methods on this provider
     // and delegate calls to the subprovider. This allows subscriptions to work.
     ['on', 'removeListener', 'removeAllListeners', 'reset', 'disconnect', 'addDefaultEvents', 'once', 'reconnect'].forEach(func => {
       // @ts-ignore
-      if (origProvider[func] !== undefined) {
+      if (this.origProvider[func] !== undefined) {
         // @ts-ignore
-        this[func] = origProvider[func].bind(origProvider)
+        this[func] = this.origProvider[func].bind(this.origProvider)
       }
     })
   }
@@ -227,7 +223,7 @@ export class RelayProvider implements HttpProvider {
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
       if (rpcResponse != null && Array.isArray(rpcResponse.result)) {
-        const ephemeralAccounts = this.relayClient.accountManager.getAccounts()
+        const ephemeralAccounts = this.relayClient.dependencies.accountManager.getAccounts()
         rpcResponse.result = rpcResponse.result.concat(ephemeralAccounts)
       }
       callback(error, rpcResponse)

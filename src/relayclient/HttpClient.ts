@@ -4,18 +4,15 @@ import PingResponse from '../common/PingResponse'
 import { LoggerInterface } from '../common/LoggerInterface'
 
 import HttpWrapper from './HttpWrapper'
-import { RelayTransactionRequest } from './types/RelayTransactionRequest'
-import { GSNConfig } from './GSNConfigurator'
-import { AuditRequest, AuditResponse } from './types/AuditRequest'
+import { RelayTransactionRequest } from '../common/types/RelayTransactionRequest'
+import { AuditRequest, AuditResponse } from '../common/types/AuditRequest'
 
 export default class HttpClient {
   private readonly httpWrapper: HttpWrapper
   private readonly logger: LoggerInterface
-  private readonly config: Partial<GSNConfig>
 
-  constructor (httpWrapper: HttpWrapper, logger: LoggerInterface, config: Partial<GSNConfig>) {
+  constructor (httpWrapper: HttpWrapper, logger: LoggerInterface) {
     this.httpWrapper = httpWrapper
-    this.config = config
     this.logger = logger
   }
 

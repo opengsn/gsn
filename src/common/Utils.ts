@@ -6,7 +6,7 @@ import { JsonRpcResponse } from 'web3-core-helpers'
 import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
 import { bufferToHex, bufferToInt, ecrecover, pubToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 
-import { Address } from '../relayclient/types/Aliases'
+import { Address } from './types/Aliases'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 import TypedRequestData from './EIP712/TypedRequestData'

@@ -2,8 +2,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import HttpClient from '../../src/relayclient/HttpClient'
 import HttpWrapper from '../../src/relayclient/HttpWrapper'
 import PingResponse from '../../src/common/PingResponse'
-import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
-import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { RelayTransactionRequest } from '../../src/common/types/RelayTransactionRequest'
 import { LoggerInterface } from '../../src/common/LoggerInterface'
 
 export default class BadHttpClient extends HttpClient {
@@ -15,8 +14,8 @@ export default class BadHttpClient extends HttpClient {
   private readonly stubRelay: string | undefined
   private readonly stubPing: PingResponse | undefined
 
-  constructor (logger: LoggerInterface, config: GSNConfig, failPing: boolean, failRelay: boolean, timeoutRelay: boolean, stubPing?: PingResponse, stubRelay?: string) {
-    super(new HttpWrapper(), logger, config)
+  constructor (logger: LoggerInterface, failPing: boolean, failRelay: boolean, timeoutRelay: boolean, stubPing?: PingResponse, stubRelay?: string) {
+    super(new HttpWrapper(), logger)
     this.failPing = failPing
     this.failRelay = failRelay
     this.timeoutRelay = timeoutRelay

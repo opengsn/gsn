@@ -1,8 +1,8 @@
-import ContractInteractor, { RelayServerRegistered } from '../relayclient/ContractInteractor'
+import ContractInteractor, { RelayServerRegistered } from '../common/ContractInteractor'
 import HttpClient from '../relayclient/HttpClient'
 import PingResponse from '../common/PingResponse'
-import { RelayRegisteredEventInfo } from '../relayclient/types/RelayRegisteredEventInfo'
-import { Address } from '../relayclient/types/Aliases'
+import { RelayRegisteredEventInfo } from '../common/types/RelayRegisteredEventInfo'
+import { Address } from '../common/types/Aliases'
 
 interface StatusConfig {
   blockHistoryCount: number

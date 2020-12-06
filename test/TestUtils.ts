@@ -8,11 +8,11 @@ import { ether } from '@openzeppelin/test-helpers'
 import { IStakeManagerInstance, RelayHubInstance } from '../types/truffle-contracts'
 import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
-import { configureGSN } from '../src/relayclient/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { sleep } from '../src/common/Utils'
-import { RelayHubConfiguration } from '../src/relayclient/types/RelayHubConfiguration'
+import { RelayHubConfiguration } from '../src/common/types/RelayHubConfiguration'
 import { createServerLogger } from '../src/relayserver/ServerWinstonLogger'
 
 require('source-map-support').install({ errorFormatterForce: true })
@@ -96,7 +96,7 @@ export async function startRelay (
 
   const logger = createServerLogger('error', '', '')
   let res: any
-  const http = new HttpClient(new HttpWrapper(), logger, configureGSN({}))
+  const http = new HttpClient(new HttpWrapper(), logger)
   let count1 = 3
   while (count1-- > 0) {
     try {
@@ -219,7 +219,7 @@ export async function revert (id: string): Promise<void> {
   })
 }
 
-// encode revert reason string as a byte error returned by revert(stirng)
+// encode revert reason string as a byte error returned by revert(string)
 export function encodeRevertReason (reason: string): PrefixedHexString {
   return web3.eth.abi.encodeFunctionCall({
     name: 'Error',
@@ -247,6 +247,10 @@ export async function deployHub (
     relayHubConfiguration.maximumRecipientDeposit,
     relayHubConfiguration.minimumUnstakeDelay,
     relayHubConfiguration.minimumStake)
+}
+
+export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
+  return Object.assign({}, defaultGsnConfig, partialConfig) as GSNConfig
 }
 
 /**

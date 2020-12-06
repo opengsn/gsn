@@ -10,7 +10,7 @@ contract('EtherscanCachedService', function () {
   let service: EtherscanCachedService
 
   before(async function () {
-    const logger = createClientLogger('error', '', '', '')
+    const logger = createClientLogger({ logLevel: 'error' })
     const transactionDataCache = new TransactionDataCache(logger, '/tmp/test')
     await transactionDataCache.clearAll()
     service = new EtherscanCachedService('https://api-rinkeby.etherscan.io/api', testApiKey, logger, transactionDataCache)

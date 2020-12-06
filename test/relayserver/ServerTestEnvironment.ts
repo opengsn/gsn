@@ -5,7 +5,7 @@ import crypto from 'crypto'
 import { HttpProvider } from 'web3-core'
 import { toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
-import { Address } from '../../src/relayclient/types/Aliases'
+import { Address } from '../../src/common/types/Aliases'
 import {
   IForwarderInstance,
   IPenalizerInstance,
@@ -19,30 +19,31 @@ import {
   getTemporaryWorkdirs,
   ServerWorkdirs
 } from './ServerTestUtils'
-import ContractInteractor from '../../src/relayclient/ContractInteractor'
-import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
+import ContractInteractor from '../../src/common/ContractInteractor'
+import GsnTransactionDetails from '../../src/common/types/GsnTransactionDetails'
 import PingResponse from '../../src/common/PingResponse'
 import { KeyManager } from '../../src/relayserver/KeyManager'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { RelayClient } from '../../src/relayclient/RelayClient'
-import { RelayInfo } from '../../src/relayclient/types/RelayInfo'
-import { RelayRegisteredEventInfo } from '../../src/relayclient/types/RelayRegisteredEventInfo'
+import { RelayInfo } from '../../src/common/types/RelayInfo'
+import { RelayRegisteredEventInfo } from '../../src/common/types/RelayRegisteredEventInfo'
 import { RelayServer } from '../../src/relayserver/RelayServer'
 import { configureServer, ServerConfigParams } from '../../src/relayserver/ServerConfigParams'
 import { TxStoreManager } from '../../src/relayserver/TxStoreManager'
-import { configureGSN, GSNConfig } from '../../src/relayclient/GSNConfigurator'
+import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
 import { constants } from '../../src/common/Constants'
 import { deployHub } from '../TestUtils'
 import { ether, removeHexPrefix } from '../../src/common/Utils'
-import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
+import { RelayTransactionRequest } from '../../src/common/types/RelayTransactionRequest'
 import RelayHubABI from '../../src/common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../src/common/interfaces/IStakeManager.json'
 import PayMasterABI from '../../src/common/interfaces/IPaymaster.json'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
-import { RelayHubConfiguration } from '../../src/relayclient/types/RelayHubConfiguration'
+import { RelayHubConfiguration } from '../../src/common/types/RelayHubConfiguration'
 import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../../src/relayserver/TransactionManager'
 import { GasPriceFetcher } from '../../src/relayclient/GasPriceFetcher'
+import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -107,7 +108,7 @@ export class ServerTestEnvironment {
    * @param contractFactory - added for Profiling test, as it requires Test Environment to be using
    * different provider from the contract interactor itself.
    */
-  async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (clientConfig: Partial<GSNConfig>) => Promise<ContractInteractor>): Promise<void> {
+  async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new()
     this.penalizer = await Penalizer.new()
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
@@ -123,19 +124,25 @@ export class ServerTestEnvironment {
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
     this.gasLess = await this.web3.eth.personal.newAccount('password')
     const shared: Partial<GSNConfig> = {
-      logLevel: 'error',
-      relayHubAddress: this.relayHub.address,
+      loggerConfiguration: { logLevel: 'error' },
       paymasterAddress: this.paymaster.address
     }
     if (contractFactory == null) {
       const logger = createServerLogger('error', '', '')
-      this.contractInteractor = new ContractInteractor(this.provider, logger, configureGSN(shared))
+      this.contractInteractor = new ContractInteractor({
+        provider: this.provider,
+        logger,
+        deployment: { paymasterAddress: this.paymaster.address }
+      })
       await this.contractInteractor.init()
     } else {
       this.contractInteractor = await contractFactory(shared)
     }
     const mergedConfig = Object.assign({}, shared, clientConfig)
-    this.relayClient = new RelayClient(this.provider, configureGSN(mergedConfig))
+    this.relayClient = new RelayClient({
+      provider: this.provider,
+      config: mergedConfig
+    })
     await this.relayClient.init()
   }
 
@@ -220,7 +227,6 @@ export class ServerTestEnvironment {
       from: this.gasLess,
       to: this.recipient.address,
       data: this.encodedFunction,
-      paymaster: this.paymaster.address,
       forwarder: this.forwarder.address,
       gas: toHex(1000000),
       gasPrice: toHex(20000000000)

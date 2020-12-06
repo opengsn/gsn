@@ -8,8 +8,8 @@ import ow from 'ow'
 import { PenalizerService } from './penalizer/PenalizerService'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { RelayServer } from './RelayServer'
-import { AuditRequest, AuditRequestShape, AuditResponse } from '../relayclient/types/AuditRequest'
-import { RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
+import { AuditRequest, AuditRequestShape, AuditResponse } from '../common/types/AuditRequest'
+import { RelayTransactionRequestShape } from '../common/types/RelayTransactionRequest'
 
 export class HttpServer {
   app: Express

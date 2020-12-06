@@ -3,9 +3,10 @@
 // the two modes must behave just the same (with an exception of gasless test, which must fail on direct mode, and must
 // succeed in gasless)
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
+import { HttpProvider } from 'web3-core'
 
 import { RelayProvider } from '../src/relayclient/RelayProvider'
-import { Address, AsyncDataCallback } from '../src/relayclient/types/Aliases'
+import { Address, AsyncDataCallback } from '../src/common/types/Aliases'
 import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
@@ -93,14 +94,15 @@ options.forEach(params => {
         await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
 
         relayClientConfig = {
-          logLevel: 'error',
-          relayHubAddress: rhub.address,
-          paymasterAddress: paymaster.address,
-          chainId: 1 // required for ganache
+          loggerConfiguration: { logLevel: 'error' },
+          paymasterAddress: paymaster.address
         }
 
-        // @ts-ignore
-        const relayProvider = await new RelayProvider(web3.currentProvider, relayClientConfig).init()
+        const relayProvider = await RelayProvider.newProvider(
+          {
+            provider: web3.currentProvider as HttpProvider,
+            config: relayClientConfig
+          }).init()
 
         // web3.setProvider(relayProvider)
 
@@ -164,9 +166,11 @@ options.forEach(params => {
 
         const setRecipientProvider = async function (asyncApprovalData: AsyncDataCallback): Promise<void> {
           relayProvider =
-            // @ts-ignore
-            await new RelayProvider(web3.currentProvider,
-              relayClientConfig, { asyncApprovalData }).init()
+            await RelayProvider.newProvider({
+              provider: web3.currentProvider as HttpProvider,
+              config: relayClientConfig,
+              overrideDependencies: { asyncApprovalData }
+            }).init()
           TestRecipient.web3.setProvider(relayProvider)
         }
 
@@ -177,7 +181,7 @@ options.forEach(params => {
               useGSN: false
             })
 
-            await setRecipientProvider(async () => await Promise.resolve('0x414243'))
+            await setRecipientProvider(async () => '0x414243')
 
             await sr.emitMessage('xxx', {
               from: gasless,
@@ -212,7 +216,7 @@ options.forEach(params => {
               useGSN: false
             })
             await asyncShouldThrow(async () => {
-              await setRecipientProvider(async () => await Promise.resolve('0x'))
+              await setRecipientProvider(async () => '0x')
 
               await sr.emitMessage('xxx', {
                 from: gasless,

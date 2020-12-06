@@ -1,10 +1,10 @@
 import replaceErrors from '../common/ErrorReplacerJSON'
 import { LoggerInterface } from '../common/LoggerInterface'
 
-import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { PartialRelayInfo, RelayInfo } from './types/RelayInfo'
-import { PingFilter } from './types/Aliases'
-import { isInfoFromEvent, RelayInfoUrl } from './types/RelayRegisteredEventInfo'
+import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
+import { PartialRelayInfo, RelayInfo } from '../common/types/RelayInfo'
+import { PingFilter } from '../common/types/Aliases'
+import { isInfoFromEvent, RelayInfoUrl } from '../common/types/RelayRegisteredEventInfo'
 
 import HttpClient from './HttpClient'
 import { GSNConfig } from './GSNConfigurator'

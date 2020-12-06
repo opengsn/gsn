@@ -8,12 +8,12 @@ import PayMasterABI from '../../common/interfaces/IPaymaster.json'
 import RelayHubABI from '../../common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../common/interfaces/IStakeManager.json'
 
-import ContractInteractor from '../../relayclient/ContractInteractor'
+import ContractInteractor from '../../common/ContractInteractor'
 import VersionsManager from '../../common/VersionsManager'
 import replaceErrors from '../../common/ErrorReplacerJSON'
 import { BlockExplorerInterface } from './BlockExplorerInterface'
 import { LoggerInterface } from '../../common/LoggerInterface'
-import { AuditRequest, AuditResponse } from '../../relayclient/types/AuditRequest'
+import { AuditRequest, AuditResponse } from '../../common/types/AuditRequest'
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
 import { getDataAndSignature } from '../../common/Utils'
@@ -191,7 +191,7 @@ export class PenalizerService {
   }
 
   getPenalizeIllegalTransactionMethod (requestTx: EthereumJsTransaction): any {
-    const chainId = this.contractInteractor.getChainId()
+    const chainId = this.contractInteractor.chainId
     const { data, signature } = getDataAndSignature(requestTx, chainId)
     return this.contractInteractor.penalizerInstance.contract.methods.penalizeIllegalTransaction(
       data, signature, this.contractInteractor.relayHubInstance.address
@@ -199,7 +199,7 @@ export class PenalizerService {
   }
 
   getPenalizeRepeatedNonceMethod (minedTx: EthereumJsTransaction, requestTx: EthereumJsTransaction): any {
-    const chainId = this.contractInteractor.getChainId()
+    const chainId = this.contractInteractor.chainId
     const { data: unsignedMinedTx, signature: minedTxSig } = getDataAndSignature(minedTx, chainId)
     const { data: unsignedRequestTx, signature: requestTxSig } = getDataAndSignature(requestTx, chainId)
     return this.contractInteractor.penalizerInstance.contract.methods.penalizeRepeatedNonce(

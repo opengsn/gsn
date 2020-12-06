@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
-import { Address, IntString } from '../relayclient/types/Aliases'
+import { Address, IntString } from '../common/types/Aliases'
 import { AmountRequired } from '../common/AmountRequired'
 import {
   address2topic,
@@ -23,7 +23,7 @@ import ContractInteractor, {
   StakeAdded,
   StakeUnlocked,
   StakeWithdrawn
-} from '../relayclient/ContractInteractor'
+} from '../common/ContractInteractor'
 
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerConfigParams } from './ServerConfigParams'

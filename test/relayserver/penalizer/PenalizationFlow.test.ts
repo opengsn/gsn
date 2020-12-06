@@ -5,13 +5,13 @@ import { Transaction } from 'ethereumjs-tx'
 import { ether } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 
-import GsnTransactionDetails from '../../../src/relayclient/types/GsnTransactionDetails'
+import GsnTransactionDetails from '../../../src/common/types/GsnTransactionDetails'
 import HttpClient from '../../../src/relayclient/HttpClient'
 import HttpWrapper from '../../../src/relayclient/HttpWrapper'
-import { Address } from '../../../src/relayclient/types/Aliases'
+import { Address } from '../../../src/common/types/Aliases'
 import { LocalhostOne, ServerTestEnvironment } from '../ServerTestEnvironment'
 import { RelayClient } from '../../../src/relayclient/RelayClient'
-import { configureGSN, GSNConfig, GSNDependencies } from '../../../src/relayclient/GSNConfigurator'
+import { GSNConfig, GSNDependencies } from '../../../src/relayclient/GSNConfigurator'
 import { constants } from '../../../src/common/Constants'
 import { createClientLogger } from '../../../src/relayclient/ClientWinstonLogger'
 import { gsnRuntimeVersion } from '../../../src/common/Version'
@@ -47,15 +47,13 @@ contract('PenalizationFlow', function (accounts) {
       relaylog: process.env.relaylog
     })
 
-    const logger = createClientLogger('error', '', '', '')
-    const partialConfig: Partial<GSNConfig> = {
-      relayHubAddress: env.relayHub.address,
+    const logger = createClientLogger({ logLevel: 'error' })
+    const config: Partial<GSNConfig> = {
       paymasterAddress: env.paymaster.address,
       preferredRelays,
-      chainId: 1,
       auditorsCount: 2
     }
-    const httpClient = new HttpClient(new HttpWrapper(), logger, configureGSN(partialConfig))
+    const httpClient = new HttpClient(new HttpWrapper(), logger)
     const relayWorkerAddress = env.relayServer.transactionManager.workersKeyManager.getAddress(0)
     const relayManagerAddress = env.relayServer.transactionManager.managerKeyManager.getAddress(0)
 
@@ -95,12 +93,11 @@ contract('PenalizationFlow', function (accounts) {
       to: env.recipient.address,
       data: env.recipient.contract.methods.emitMessage('hello world').encodeABI(),
       forwarder: env.forwarder.address,
-      paymaster: env.paymaster.address,
       paymasterData: '0x',
       clientId: '1'
     }
 
-    relayClient = new RelayClient(currentProvider, partialConfig, overrideDependencies)
+    relayClient = new RelayClient({ provider: currentProvider, config, overrideDependencies })
     await relayClient.init()
   })
 

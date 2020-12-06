@@ -1,30 +1,27 @@
-import { RelayClient, RelayingResult } from '../../src/relayclient/RelayClient'
-import GsnTransactionDetails from '../../src/relayclient/types/GsnTransactionDetails'
-import { GSNConfig } from '../../src/relayclient/GSNConfigurator'
-import { HttpProvider } from 'web3-core'
+import { GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from '../../src/relayclient/RelayClient'
+import GsnTransactionDetails from '../../src/common/types/GsnTransactionDetails'
 
 export default class BadRelayClient extends RelayClient {
   static readonly message = 'This is not the transaction you are looking for'
 
   private readonly failRelay: boolean
-  private readonly returnUndefindedTransaction: boolean
+  private readonly returnUndefinedTransaction: boolean
 
   constructor (
     failRelay: boolean,
     returnNullTransaction: boolean,
-    provider: HttpProvider,
-    config: GSNConfig
+    rawConstructorInput: GSNUnresolvedConstructorInput
   ) {
-    super(provider, config)
+    super(rawConstructorInput)
     this.failRelay = failRelay
-    this.returnUndefindedTransaction = returnNullTransaction
+    this.returnUndefinedTransaction = returnNullTransaction
   }
 
   async relayTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayingResult> {
     if (this.failRelay) {
       throw new Error(BadRelayClient.message)
     }
-    if (this.returnUndefindedTransaction) {
+    if (this.returnUndefinedTransaction) {
       return {
         transaction: undefined,
         pingErrors: new Map<string, Error>(),

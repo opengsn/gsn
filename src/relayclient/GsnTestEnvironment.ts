@@ -1,26 +1,28 @@
 import net from 'net'
 import { ether } from '../common/Utils'
 
-import CommandsLogic, { DeploymentResult } from '../cli/CommandsLogic'
+import CommandsLogic from '../cli/CommandsLogic'
 import { KeyManager } from '../relayserver/KeyManager'
 
-import { configureGSN } from './GSNConfigurator'
 import { getNetworkUrl, loadDeployment, supportedNetworks } from '../cli/utils'
 import { TxStoreManager } from '../relayserver/TxStoreManager'
 import { RelayServer } from '../relayserver/RelayServer'
 import { HttpServer } from '../relayserver/HttpServer'
-import { Address } from './types/Aliases'
+import { Address } from '../common/types/Aliases'
 import { RelayProvider } from './RelayProvider'
 import Web3 from 'web3'
-import ContractInteractor from './ContractInteractor'
+import ContractInteractor from '../common/ContractInteractor'
 import { defaultEnvironment } from '../common/Environments'
 import { configureServer, ServerConfigParams, ServerDependencies } from '../relayserver/ServerConfigParams'
 import { createServerLogger } from '../relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../relayserver/TransactionManager'
 import { GasPriceFetcher } from './GasPriceFetcher'
+import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
+import { GSNConfig } from './GSNConfigurator'
+import { GSNUnresolvedConstructorInput } from './RelayClient'
 
 export interface TestEnvironment {
-  deploymentResult: DeploymentResult
+  contractsDeployment: GSNContractsDeployment
   relayProvider: RelayProvider
   httpServer: HttpServer
   relayUrl: string
@@ -32,10 +34,9 @@ class GsnTestEnvironmentClass {
   /**
    *
    * @param host:
-   * @param deployPaymaster - whether to deploy the naive paymaster instance for tests
    * @return
    */
-  async startGsn (host: string, deployPaymaster: boolean = true): Promise<TestEnvironment> {
+  async startGsn (host: string): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     if (_host == null) {
@@ -43,17 +44,18 @@ class GsnTestEnvironmentClass {
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
     const logger = createServerLogger('error', '', '')
-    const commandsLogic = new CommandsLogic(_host, logger, configureGSN({}))
+    const commandsLogic = new CommandsLogic(_host, logger, {})
+    await commandsLogic.init()
     const from = await commandsLogic.findWealthyAccount()
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
       gasPrice: '1',
-      deployPaymaster,
+      deployPaymaster: true,
       skipConfirmation: true,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
-    if (deployPaymaster) {
-      const balance = await commandsLogic.fundPaymaster(from, deploymentResult.naivePaymasterAddress, ether('1'))
+    if (deploymentResult.paymasterAddress != null) {
+      const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
       console.log('Naive Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
     }
 
@@ -82,17 +84,19 @@ class GsnTestEnvironmentClass {
 
     await commandsLogic.waitForRelay(relayUrl)
 
-    const config = configureGSN({
-      logLevel: 'error',
-      relayHubAddress: deploymentResult.relayHubAddress,
-      paymasterAddress: deploymentResult.naivePaymasterAddress,
-      preferredRelays: [relayUrl]
-    })
-
-    const relayProvider = await new RelayProvider(new Web3.providers.HttpProvider(_host), config).init()
+    const config: Partial<GSNConfig> = {
+      preferredRelays: [relayUrl],
+      paymasterAddress: deploymentResult.paymasterAddress
+    }
+    const provider = new Web3.providers.HttpProvider(_host)
+    const input: GSNUnresolvedConstructorInput = {
+      provider,
+      config
+    }
+    const relayProvider = await RelayProvider.newProvider(input).init()
     console.error('== startGSN: ready.')
     return {
-      deploymentResult,
+      contractsDeployment: deploymentResult,
       relayProvider,
       relayUrl,
       httpServer: this.httpServer
@@ -129,7 +133,7 @@ class GsnTestEnvironmentClass {
 
   async _runServer (
     host: string,
-    deploymentResult: DeploymentResult,
+    deploymentResult: GSNContractsDeployment,
     from: Address,
     relayUrl: string,
     port: number
@@ -142,12 +146,12 @@ class GsnTestEnvironmentClass {
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
-    const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host),
-      logger,
-      configureGSN({
-        logLevel: 'error',
-        relayHubAddress: deploymentResult.relayHubAddress
-      }))
+    const contractInteractor = new ContractInteractor(
+      {
+        provider: new Web3.providers.HttpProvider(host),
+        logger,
+        deployment: deploymentResult
+      })
     await contractInteractor.init()
     const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
@@ -186,7 +190,7 @@ class GsnTestEnvironmentClass {
    * return deployment saved by "gsn start"
    * @param workdir
    */
-  loadDeployment (workdir = './build/gsn'): DeploymentResult {
+  loadDeployment (workdir = './build/gsn'): GSNContractsDeployment {
     return loadDeployment(workdir)
   }
 }

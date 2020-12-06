@@ -1,5 +1,4 @@
 import CommandsLogic from '../CommandsLogic'
-import { configureGSN } from '../../relayclient/GSNConfigurator'
 import DateFormatter from 'date-format'
 import {
   getMnemonic,
@@ -57,7 +56,7 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
 
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const logic = new CommandsLogic(nodeURL, logger, configureGSN({}), mnemonic)
+  const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic)
   const provider = (logic as any).web3.currentProvider
   const versionRegistryAddress = getRegistryAddress(commander.registry) ?? error('must specify --registry')
   console.log('Using registry at address: ', versionRegistryAddress)
