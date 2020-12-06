@@ -142,7 +142,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')
         break
     }
-    commander.option('-l, --loglevel <string>', 'error | warn | info | debug', 'debug')
   })
+  commander.option('-l, --loglevel <string>', 'error | warn | info | debug', 'debug')
   return commander
 }
