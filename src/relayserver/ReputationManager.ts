@@ -14,11 +14,13 @@ export interface ReputationManagerConfiguration {
   throttleDelayMs: number
   /** Paymasters with reputation below this value will never be served */
   blockReputation: number
-  /** If a paymaster loses this number of reputation points within {@link abuseTimeWindowMs}, it will be blocked for {@link abuseBlockDurationMs} */
+  /** If a paymaster loses this number of reputation points within {@link abuseTimeWindowBlocks}, it
+   * will be blocked for {@link abuseBlacklistDurationBlocks}
+   */
   abuseReputationChange: number
-  abuseTimeWindowMs: number
-  abuseBlockDurationMs: number
-  /** After {@link abuseBlockDurationMs}, the Paymaster reputation will be reset to this value */
+  abuseTimeWindowBlocks: number
+  abuseBlacklistDurationBlocks: number
+  /** After {@link abuseBlacklistDurationBlocks}, the Paymaster reputation will be reset to this value */
   abuseTimeoutReputation: number
 }
 
@@ -30,8 +32,8 @@ const defaultReputationConfig: ReputationManagerConfiguration = {
   blockReputation: 0,
   abuseTimeoutReputation: 1,
   abuseReputationChange: 20,
-  abuseTimeWindowMs: 3600000,
-  abuseBlockDurationMs: 86400000
+  abuseTimeWindowBlocks: 240,
+  abuseBlacklistDurationBlocks: 6000
 }
 
 /**
@@ -59,11 +61,13 @@ export class ReputationManager {
 
   constructor (reputationStoreManager: ReputationStoreManager, logger: LoggerInterface, partialConfig: Partial<ReputationManagerConfiguration>) {
     this.config = resolveReputationManagerConfiguration(partialConfig)
-    // this.reputationStoreManager = reputationStoreManager
+    /*
+    this.reputationStoreManager = reputationStoreManager
+     */
     this.logger = logger
   }
 
-  async getPaymasterStatus (paymaster: Address): Promise<PaymasterStatus> {
+  async getPaymasterStatus (paymaster: Address, currentBlockNumber: number): Promise<PaymasterStatus> {
     /*
     const entry =
       await this.reputationStoreManager.getEntry(paymaster) ??
@@ -74,14 +78,14 @@ export class ReputationManager {
     if (entry.reputation <= this.config.blockReputation) {
       return PaymasterStatus.BLOCKED
     }
-    if (entry.abuseStartedTs !== 0) {
-      if (Date.now() - entry.abuseStartedTs <= this.config.abuseTimeWindowMs) {
+    if (entry.abuseStartedBlock !== 0) {
+      if (currentBlockNumber - entry.abuseStartedBlock <= this.config.abuseTimeWindowBlocks) {
         return PaymasterStatus.ABUSED
       } else {
         /*
         await this.reputationStoreManager.clearAbuseFlag(paymaster, this.config.abuseTimeoutReputation)
          */
-        entry.abuseStartedTs = 0
+        entry.abuseStartedBlock = 0
       }
     }
     if (
@@ -97,7 +101,7 @@ export class ReputationManager {
       paymaster: paymaster.toLowerCase(),
       reputation: this.config.initialReputation,
       lastAcceptedRelayRequestTs: 0,
-      abuseStartedTs: 0,
+      abuseStartedBlock: 0,
       changes: []
     }
     this.localReputationEntries.set(paymaster.toLowerCase(), newEntry)
@@ -115,7 +119,7 @@ export class ReputationManager {
     this.logger.debug(`Paymaster ${paymaster} was last accepted at ${lastAcceptedRelayRequestTs}`)
   }
 
-  async updatePaymasterStatus (paymaster: Address, transactionSuccess: boolean): Promise<void> {
+  async updatePaymasterStatus (paymaster: Address, transactionSuccess: boolean, eventBlockNumber: number): Promise<void> {
     const change = transactionSuccess ? 1 : -1
     /*
     const entry =
@@ -130,37 +134,41 @@ export class ReputationManager {
       return
     }
     const changeInAbuseWindow = entry.changes
-      .filter(it => Date.now() - it.timestamp < this.config.abuseTimeWindowMs)
+      .filter(it => eventBlockNumber - it.blockNumber < this.config.abuseTimeWindowBlocks)
       .reduce((previousValue: number, currentValue: ReputationChange) => previousValue + currentValue.change, 0)
     if (-changeInAbuseWindow >= this.config.abuseReputationChange) {
       /*
       await this.reputationStoreManager.setAbuseFlag(paymaster)
        */
-      entry.abuseStartedTs = Date.now()
+      entry.abuseStartedBlock = eventBlockNumber
     }
-    const oldChangesExpirationTs = Date.now() - this.config.abuseTimeWindowMs
+    const oldChangesExpirationBlock = eventBlockNumber - this.config.abuseTimeWindowBlocks
     /*
     await this.reputationStoreManager.updatePaymasterReputation(paymaster, change, oldChangesExpirationTs)
      */
-    this.updatePaymasterReputation(paymaster, change, oldChangesExpirationTs)
+    this.updatePaymasterReputation(paymaster, change, oldChangesExpirationBlock, eventBlockNumber)
   }
 
-  updatePaymasterReputation (paymaster: Address, change: number, oldChangesExpirationTs: number): void {
-    const now = Date.now()
-    if (now <= oldChangesExpirationTs) {
-      throw new Error(`Invalid change expiration parameter! Passed ${oldChangesExpirationTs}, but current clock is at ${now}`)
+  updatePaymasterReputation (
+    paymaster: Address,
+    change: number,
+    oldChangesExpirationBlock: number,
+    eventBlockNumber: number
+  ): void {
+    if (eventBlockNumber <= oldChangesExpirationBlock) {
+      throw new Error(`Invalid change expiration parameter! Passed ${oldChangesExpirationBlock}, but event was emitted at block height ${eventBlockNumber}`)
     }
 
     const existing: ReputationEntry = this.localReputationEntries.get(paymaster.toLowerCase()) ??
       this.createNewEntry(paymaster)
     const reputationChange: ReputationChange = {
-      timestamp: now,
+      blockNumber: eventBlockNumber,
       change
     }
     const reputation = existing.reputation + change
     const changes =
       [...existing.changes, reputationChange]
-        .filter(it => it.timestamp > oldChangesExpirationTs)
+        .filter(it => it.blockNumber > oldChangesExpirationBlock)
     existing.reputation = reputation
     existing.changes = changes
     this.logger.info(`Paymaster ${paymaster} reputation changed from ${existing.reputation} to ${reputation}. Change is ${change}`)

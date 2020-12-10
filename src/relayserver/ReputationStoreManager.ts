@@ -27,7 +27,7 @@ export class ReputationStoreManager {
       paymaster: paymaster.toLowerCase(),
       reputation,
       lastAcceptedRelayRequestTs: 0,
-      abuseStartedTs: 0,
+      abuseStartedBlock: 0,
       changes: []
     }
     return await this.txstore.asyncInsert(entry)
@@ -36,14 +36,14 @@ export class ReputationStoreManager {
   async clearAbuseFlag (paymaster: Address, reputation: number): Promise<void> {
     const update: Partial<ReputationEntry> = {
       reputation,
-      abuseStartedTs: 0
+      abuseStartedBlock: 0
     }
     await this.updateEntry(paymaster, update)
   }
 
-  async setAbuseFlag (paymaster: Address): Promise<void> {
+  async setAbuseFlag (paymaster: Address, currentBlockNumber: number): Promise<void> {
     const update: Partial<ReputationEntry> = {
-      abuseStartedTs: Date.now()
+      abuseStartedBlock: currentBlockNumber
     }
     this.logger.warn(`Paymaster ${paymaster} was flagged as abused`)
     await this.updateEntry(paymaster, update)
@@ -58,20 +58,19 @@ export class ReputationStoreManager {
     await this.updateEntry(paymaster, update)
   }
 
-  async updatePaymasterReputation (paymaster: Address, change: number, oldChangesExpirationTs: number): Promise<void> {
-    const now = Date.now()
-    if (now <= oldChangesExpirationTs) {
-      throw new Error(`Invalid change expiration parameter! Passed ${oldChangesExpirationTs}, but current clock is at ${now}`)
+  async updatePaymasterReputation (paymaster: Address, change: number, oldChangesExpirationBlock: number, eventBlockNumber: number): Promise<void> {
+    if (eventBlockNumber <= oldChangesExpirationBlock) {
+      throw new Error(`Invalid change expiration parameter! Passed ${oldChangesExpirationBlock}, but event was emitted at block height ${eventBlockNumber}`)
     }
     const existing: ReputationEntry = await this.txstore.asyncFindOne({ paymaster: paymaster.toLowerCase() })
     const reputationChange: ReputationChange = {
-      timestamp: now,
+      blockNumber: eventBlockNumber,
       change
     }
     const reputation = existing.reputation + change
     const changes =
       [...existing.changes, reputationChange]
-        .filter(it => it.timestamp > oldChangesExpirationTs)
+        .filter(it => it.blockNumber > oldChangesExpirationBlock)
     const update: Partial<ReputationEntry> = {
       reputation,
       changes

@@ -108,7 +108,8 @@ export class RelayServer extends EventEmitter {
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
     if (this.config.runPaymasterReputations && paymaster != null) {
-      const status = await this.reputationManager.getPaymasterStatus(paymaster)
+      const currentBlockNumber = await this.contractInteractor.getBlockNumber()
+      const status = await this.reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       if (status === PaymasterStatus.BLOCKED || status === PaymasterStatus.ABUSED) {
         throw new Error(`This paymaster will not be served, status: ${status}`)
       }
@@ -169,7 +170,8 @@ export class RelayServer extends EventEmitter {
   }
 
   async validatePaymasterReputation (paymaster: Address): Promise<void> {
-    const status = await this.reputationManager.getPaymasterStatus(paymaster)
+    const currentBlockNumber = await this.contractInteractor.getBlockNumber()
+    const status = await this.reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
     if (status === PaymasterStatus.GOOD) {
       return
     }
@@ -546,30 +548,30 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  async _handleChanges (blockNumber: number): Promise<PrefixedHexString[]> {
+  async _handleChanges (currentBlockNumber: number): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    const shouldRegisterAgain = await this._shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
-    transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, blockNumber, shouldRegisterAgain))
-    await this.transactionManager.removeConfirmedTransactions(blockNumber)
-    await this._boostStuckPendingTransactions(blockNumber)
-    this.lastScannedBlock = blockNumber
+    const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
+    transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber, shouldRegisterAgain))
+    await this.transactionManager.removeConfirmedTransactions(currentBlockNumber)
+    await this._boostStuckPendingTransactions(currentBlockNumber)
+    this.lastScannedBlock = currentBlockNumber
     const isRegistered = await this.registrationManager.isRegistered()
     if (!isRegistered) {
       this.setReadyState(false)
       return transactionHashes
     }
-    await this.handlePastHubEvents(blockNumber, hubEventsSinceLastScan)
+    await this.handlePastHubEvents(currentBlockNumber, hubEventsSinceLastScan)
     const workerIndex = 0
-    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, blockNumber))
+    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlockNumber))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
       this.setReadyState(false)
       return transactionHashes
     }
     this.setReadyState(true)
-    if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < blockNumber) {
-      this.logger.warn(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockNumber}`)
+    if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < currentBlockNumber) {
+      this.logger.warn(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${currentBlockNumber}`)
       this.alerted = false
     }
     return transactionHashes
@@ -598,16 +600,16 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return currentBlock - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || !this.isReady()
   }
 
-  async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
+  async handlePastHubEvents (currentBlockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
     for (const event of hubEventsSinceLastScan) {
       switch (event.event) {
         case TransactionRejectedByPaymaster:
           this.logger.debug(`handle TransactionRejectedByPaymaster event: ${JSON.stringify(event)}`)
-          await this._handleTransactionRejectedByPaymasterEvent(event.returnValues.paymaster, blockNumber)
+          await this._handleTransactionRejectedByPaymasterEvent(event.returnValues.paymaster, currentBlockNumber, event.blockNumber)
           break
         case TransactionRelayed:
           this.logger.debug(`handle TransactionRelayed event: ${JSON.stringify(event)}`)
-          await this._handleTransactionRelayedEvent(event.returnValues.paymaster, blockNumber)
+          await this._handleTransactionRelayedEvent(event.returnValues.paymaster, event.blockNumber)
           break
       }
     }
@@ -624,18 +626,21 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return events
   }
 
-  async _handleTransactionRelayedEvent (paymaster: Address, blockNumber: number): Promise<void> {
+  async _handleTransactionRelayedEvent (paymaster: Address, eventBlockNumber: number): Promise<void> {
     if (this.config.runPaymasterReputations) {
-      await this.reputationManager.updatePaymasterStatus(paymaster, true)
+      await this.reputationManager.updatePaymasterStatus(paymaster, true, eventBlockNumber)
     }
   }
 
-  async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, blockNumber: number): Promise<void> {
-    this.alerted = true
-    this.alertedBlock = blockNumber
-    this.logger.error(`Relay entered alerted state. Block number: ${blockNumber}`)
+  async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, currentBlockNumber: number, eventBlockNumber: number): Promise<void> {
+    // TODO: do not call this method when events are processed already (stateful server thing)
+    if (currentBlockNumber - eventBlockNumber < 30) {
+      this.alerted = true
+      this.alertedBlock = currentBlockNumber
+    }
+    this.logger.error(`Relay entered alerted state. Block number: ${currentBlockNumber}`)
     if (this.config.runPaymasterReputations) {
-      await this.reputationManager.updatePaymasterStatus(paymaster, false)
+      await this.reputationManager.updatePaymasterStatus(paymaster, false, eventBlockNumber)
     }
   }
 
