@@ -108,8 +108,7 @@ export class RelayServer extends EventEmitter {
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
     if (this.config.runPaymasterReputations && paymaster != null) {
-      const currentBlockNumber = await this.contractInteractor.getBlockNumber()
-      const status = await this.reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
+      const status = await this.reputationManager.getPaymasterStatus(paymaster, this.lastScannedBlock)
       if (status === PaymasterStatus.BLOCKED || status === PaymasterStatus.ABUSED) {
         throw new Error(`This paymaster will not be served, status: ${status}`)
       }
@@ -169,8 +168,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async validatePaymasterReputation (paymaster: Address): Promise<void> {
-    const currentBlockNumber = await this.contractInteractor.getBlockNumber()
+  async validatePaymasterReputation (paymaster: Address, currentBlockNumber: number): Promise<void> {
     const status = await this.reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
     if (status === PaymasterStatus.GOOD) {
       return
@@ -286,7 +284,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
 
     if (this.config.runPaymasterReputations) {
-      await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster)
+      await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
     }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasLimits(req)
