@@ -256,11 +256,11 @@ export class RelayServer extends EventEmitter {
           from: this.workerAddress,
           gasPrice: req.relayRequest.relayData.gasPrice,
           gasLimit: maxPossibleGas
-        })
+        }, 'pending')
     } catch (e) {
       throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
-    this.logger.debug(`Result for view-only relay call:
+    this.logger.debug(`Result for view-only relay call (on pending blck):
 paymasterAccepted  | ${viewRelayCallRet.paymasterAccepted ? chalk.green('true') : chalk.red('false')}
 returnValue        | ${viewRelayCallRet.returnValue}
 `)
