@@ -275,6 +275,10 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (!this.isReady()) {
       throw new Error('relay not ready')
     }
+    if (this.alerted) {
+      this.logger.error('Alerted state: slowing down traffic')
+      await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
+    }
     this.validateInput(req)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
@@ -308,10 +312,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(0, currentBlock)
-    if (this.alerted) {
-      this.logger.error('Alerted state: slowing down traffic')
-      await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
-    }
     return signedTx
   }
 
