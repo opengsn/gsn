@@ -1,3 +1,4 @@
+import BN from 'bn.js'
 import Web3 from 'web3'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
@@ -328,7 +329,7 @@ export default class ContractInteractor {
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = this.relayHubInstance
     try {
-      const externalGasLimit = await this._getBlockGasLimit()
+      const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest)
       const encodedRelayCall = relayHub.contract.methods.relayCall(
         paymasterMaxAcceptanceBudget,
         relayRequest,
@@ -388,6 +389,13 @@ export default class ContractInteractor {
         returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
+  }
+
+  async getMaxViewableGasLimit (relayRequest: RelayRequest): Promise<BN> {
+    const blockGasLimit = await this._getBlockGasLimit()
+    const blockGasWorthOfEther = toBN(relayRequest.relayData.gasPrice).mul(toBN(blockGasLimit))
+    const workerBalance = toBN(await this.getBalance(relayRequest.relayData.relayWorker))
+    return BN.min(blockGasWorthOfEther, workerBalance)
   }
 
   /**
