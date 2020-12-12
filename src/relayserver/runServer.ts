@@ -77,7 +77,7 @@ async function run (): Promise<void> {
 
   let reputationManager: ReputationManager | undefined
   if (runPaymasterReputations) {
-    const reputationStoreManager = new ReputationStoreManager({ workdir }, logger)
+    const reputationStoreManager = new ReputationStoreManager({ workdir, inMemory: true }, logger)
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
   }
 
