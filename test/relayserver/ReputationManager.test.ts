@@ -46,7 +46,7 @@ contract('ReputationManager', function () {
       abuseTimeWindowBlocks,
       abuseBlacklistDurationBlocks
     }
-    reputationStoreManager = new ReputationStoreManager({}, logger)
+    reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
     await reputationStoreManager.clearAll()
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
     contractInteractor = new ContractInteractor({
@@ -91,11 +91,6 @@ contract('ReputationManager', function () {
       await reputationStoreManager.clearAll()
       await reputationStoreManager.createEntry(paymaster, initialReputation)
       await reputationStoreManager.setAbuseFlag(paymaster, currentBlockNumber)
-      /* start - disabled storage */
-      reputationManager.localReputationEntries.clear()
-      reputationManager.createNewEntry(paymaster)
-      reputationManager.localReputationEntries.get(paymaster)!.abuseStartedBlock = currentBlockNumber
-      /* end - disabled storage */
       let status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.ABUSED)
       await evmMineMany(abuseBlacklistDurationBlocks + 1)
@@ -109,11 +104,6 @@ contract('ReputationManager', function () {
     beforeEach(async function () {
       await reputationStoreManager.clearAll()
       await reputationStoreManager.createEntry(paymaster, 100)
-      /* start - disabled storage */
-      reputationManager.localReputationEntries.clear()
-      reputationManager.createNewEntry(paymaster)
-      reputationManager.localReputationEntries.get(paymaster)!.reputation = 100
-      /* end - disabled storage */
     })
 
     it('should detect an abuse if the reputation drops too fast', async function () {

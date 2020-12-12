@@ -10,16 +10,18 @@ export class ReputationStoreManager {
   private readonly txstore: AsyncNedb<any>
   private readonly logger: LoggerInterface
 
-  constructor ({ workdir = '/tmp/test/' }, logger: LoggerInterface) {
+  constructor ({ workdir = '/tmp/test/', inMemory = false }, logger: LoggerInterface) {
     this.logger = logger
-    const filename = `${workdir}/${REPUTATION_STORE_FILENAME}`
+    const filename = inMemory ? undefined : `${workdir}/${REPUTATION_STORE_FILENAME}`
     this.txstore = new AsyncNedb({
       filename,
       autoload: true,
       timestampData: true
     })
     this.txstore.ensureIndex({ fieldName: 'paymaster', unique: true })
-    this.logger.info(`Reputation system database location: ${filename}`)
+
+    const dbLocationStr = inMemory ? 'memory' : `${workdir}/${REPUTATION_STORE_FILENAME}`
+    this.logger.info(`Reputation system database location: ${dbLocationStr}`)
   }
 
   async createEntry (paymaster: Address, reputation: number): Promise<ReputationEntry> {
@@ -41,9 +43,9 @@ export class ReputationStoreManager {
     await this.updateEntry(paymaster, update)
   }
 
-  async setAbuseFlag (paymaster: Address, currentBlockNumber: number): Promise<void> {
+  async setAbuseFlag (paymaster: Address, eventBlockNumber: number): Promise<void> {
     const update: Partial<ReputationEntry> = {
-      abuseStartedBlock: currentBlockNumber
+      abuseStartedBlock: eventBlockNumber
     }
     this.logger.warn(`Paymaster ${paymaster} was flagged as abused`)
     await this.updateEntry(paymaster, update)
