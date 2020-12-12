@@ -633,12 +633,10 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
+  // TODO: do not call this method when events are processed already (stateful server thing)
   async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, currentBlockNumber: number, eventBlockNumber: number): Promise<void> {
-    // TODO: do not call this method when events are processed already (stateful server thing)
-    if (currentBlockNumber - eventBlockNumber < 30) {
-      this.alerted = true
-      this.alertedBlock = currentBlockNumber
-    }
+    this.alerted = true
+    this.alertedBlock = eventBlockNumber
     this.logger.error(`Relay entered alerted state. Block number: ${currentBlockNumber}`)
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.updatePaymasterStatus(paymaster, false, eventBlockNumber)
