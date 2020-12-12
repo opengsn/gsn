@@ -589,10 +589,13 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       (await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)) ||
       (await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER))
     if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
+      this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
       return false
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
-    return currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+    const registrationExpired = currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+    this.logger.debug(`_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+    return registrationExpired
   }
 
   _shouldRefreshState (currentBlock: number): boolean {
@@ -651,9 +654,11 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const latestTransactionSinceLastScan = getLatestEventData(eventsSinceLastScan)
     if (latestTransactionSinceLastScan != null) {
       this.lastMinedActiveTransaction = latestTransactionSinceLastScan
+      this.logger.debug(`found newer block ${this.lastMinedActiveTransaction?.blockNumber}`)
     }
     if (this.lastMinedActiveTransaction == null) {
       this.lastMinedActiveTransaction = await this._queryLatestActiveEvent()
+      this.logger.debug(`queried node for last active server event, found in block ${this.lastMinedActiveTransaction?.blockNumber}`)
     }
   }
 
