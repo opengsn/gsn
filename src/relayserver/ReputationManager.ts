@@ -91,7 +91,8 @@ export class ReputationManager {
   async updatePaymasterStatus (paymaster: Address, transactionSuccess: boolean, eventBlockNumber: number): Promise<void> {
     const change = transactionSuccess ? 1 : -1
     const entry =
-      await this.reputationStoreManager.getEntry(paymaster)
+      await this.reputationStoreManager.getEntry(paymaster) ??
+      await this.reputationStoreManager.createEntry(paymaster, this.config.initialReputation)
     if (entry == null) {
       throw new Error(`Could not query reputation for paymaster: ${paymaster}`)
     }
