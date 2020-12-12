@@ -75,7 +75,6 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     }
 
     /// check current deposit on relay hub.
-    // (wanted to name it "getRelayHubDeposit()", but we use the name from IRelayRecipient...
     function getRelayHubDeposit()
     public
     override

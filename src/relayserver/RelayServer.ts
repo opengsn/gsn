@@ -549,6 +549,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async _handleChanges (currentBlockNumber: number): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
+    await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
     const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
     transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber, shouldRegisterAgain))
     await this.transactionManager.removeConfirmedTransactions(currentBlockNumber)
@@ -590,7 +591,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
       return false
     }
-    const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
+    const latestTxBlockNumber = this._getLatestTxBlockNumber()
     return currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
   }
 
@@ -620,7 +621,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       toBlock: 'latest'
     }
     const events = await this.contractInteractor.getPastEventsForHub(topics, options)
-    this.logger.debug(`Found ${events.length} events since last scan`)
+    if (events.length !== 0) {
+      this.logger.debug(`Found ${events.length} events since last scan`)
+    }
     return events
   }
 
@@ -642,7 +645,11 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {
+  _getLatestTxBlockNumber (): number {
+    return this.lastMinedActiveTransaction?.blockNumber ?? -1
+  }
+
+  async _updateLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<void> {
     const latestTransactionSinceLastScan = getLatestEventData(eventsSinceLastScan)
     if (latestTransactionSinceLastScan != null) {
       this.lastMinedActiveTransaction = latestTransactionSinceLastScan
@@ -650,7 +657,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.lastMinedActiveTransaction == null) {
       this.lastMinedActiveTransaction = await this._queryLatestActiveEvent()
     }
-    return this.lastMinedActiveTransaction?.blockNumber ?? -1
   }
 
   async _queryLatestActiveEvent (): Promise<EventData | undefined> {
