@@ -25,3 +25,4 @@ done
 tsc
 
 cp -r types dist/
+rm -rf dist/test
