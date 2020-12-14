@@ -39,7 +39,7 @@ import { Address, IntString, Web3ProviderBaseInterface } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from '../relayclient/LightTruffleContract'
-import { gsnRuntimeVersion } from './Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from 'ethereumjs-common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import TransactionDetails = Truffle.TransactionDetails
@@ -106,7 +106,7 @@ export default class ContractInteractor {
       deployment = {}
     }: ConstructorParams) {
     this.logger = logger
-    this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion)
+    this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
@@ -162,7 +162,7 @@ export default class ContractInteractor {
     }
     await this._resolveDeployment()
     await this._initializeContracts()
-    await this._validateCompatibility().catch(err => console.log('WARNING: beta ignore version compatibility', err.message))
+    await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
@@ -217,7 +217,7 @@ export default class ContractInteractor {
   }
 
   async _validateCompatibility (): Promise<void> {
-    if (this.deployment == null) {
+    if (this.deployment == null || this.relayHubInstance == null) {
       return
     }
     const hub = this.relayHubInstance

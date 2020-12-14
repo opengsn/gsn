@@ -60,6 +60,8 @@ export interface ServerConfigParams {
 
   runPenalizer: boolean
   runPaymasterReputations: boolean
+
+  requiredVersionRange?: string
 }
 
 export interface ServerDependencies {
