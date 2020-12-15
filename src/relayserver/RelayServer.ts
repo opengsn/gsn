@@ -594,7 +594,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
     const registrationExpired = currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
-    this.logger.debug(`_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+    if (!registrationExpired) {
+      this.logger.debug(`_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+    }
     return registrationExpired
   }
 
