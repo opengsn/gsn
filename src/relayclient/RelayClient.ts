@@ -12,7 +12,7 @@ import { LoggerInterface } from '../common/LoggerInterface'
 import { RelayInfo } from '../common/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '../common/types/RelayTransactionRequest'
 import { decodeRevertReason } from '../common/Utils'
-import { gsnRuntimeVersion } from '../common/Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from '../common/Version'
 
 import AccountManager, { AccountKeypair } from './AccountManager'
 import HttpClient from './HttpClient'
@@ -398,7 +398,7 @@ export class RelayClient {
         this.logger.info(`Audit call failed for relay at URL: ${auditor}. Failed audit calls: ${failedAuditorsCount}/${auditors.length}`)
       }
     }
-    if (auditors.length === failedAuditorsCount) {
+    if (auditors.length === failedAuditorsCount && failedAuditorsCount !== 0) {
       this.logger.error('All auditors failed!')
     }
     return {
@@ -436,7 +436,7 @@ export class RelayClient {
     config = {},
     overrideDependencies = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNDependencies> {
-    const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange)
+    const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
         provider,

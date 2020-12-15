@@ -19,7 +19,7 @@ import VersionsManager from '../common/VersionsManager'
 import { AmountRequired } from '../common/AmountRequired'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { defaultEnvironment } from '../common/Environments'
-import { gsnRuntimeVersion } from '../common/Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from '../common/Version'
 import {
   address2topic,
   calculateTransactionMaxPossibleGas,
@@ -77,7 +77,7 @@ export class RelayServer extends EventEmitter {
   constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
-    this.versionManager = new VersionsManager(gsnRuntimeVersion)
+    this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
     this.gasPriceFetcher = dependencies.gasPriceFetcher
