@@ -140,10 +140,6 @@
     "webpack": "4.37.0",
     "webpack-cli": "3.3.6"
   },
-  "files": [
-    "contracts/",
-    "dist/"
-  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts"
 }
