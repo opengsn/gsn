@@ -42,6 +42,9 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   constructor (
     relayClient: RelayClient
   ) {
+    if ((relayClient as any).send != null) {
+      throw new Error('Using new RelayProvider() constructor directly is deprecated.\nPlease create provider using RelayProvider.newProvider({})')
+    }
     this.relayClient = relayClient
     // TODO: stop faking the HttpProvider implementation
     this.origProvider = this.relayClient.getUnderlyingProvider() as HttpProvider
