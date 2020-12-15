@@ -22,5 +22,6 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'relayserver.js'
-  }
+  },
+  stats: 'errors-only'
 }
