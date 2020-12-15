@@ -17,7 +17,7 @@ import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { deployHub } from '../TestUtils'
 import VersionsManager from '../../src/common/VersionsManager'
-import { gsnRuntimeVersion } from '../../src/common/Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from '../../src/common/Version'
 import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
 
 const { expect } = chai.use(chaiAsPromised)
@@ -53,7 +53,7 @@ contract('ContractInteractor', function (accounts) {
   }
 
   context('#validateRelayCall', () => {
-    const versionManager = new VersionsManager(gsnRuntimeVersion)
+    const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     it('should return relayCall revert reason', async () => {
       const contractInteractor = new ContractInteractor(
         {

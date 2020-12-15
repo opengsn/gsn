@@ -23,5 +23,5 @@ for c in RelayProvider RelayClient GsnEvents GSNConfigurator GsnTestEnvironment;
 done
 
 tsc
-
+chmod a+rx ./dist/src/cli/commands/*.js
 cp -r types dist/
