@@ -392,10 +392,11 @@ export default class ContractInteractor {
   }
 
   async getMaxViewableGasLimit (relayRequest: RelayRequest): Promise<BN> {
-    const blockGasLimit = await this._getBlockGasLimit()
-    const blockGasWorthOfEther = toBN(relayRequest.relayData.gasPrice).mul(toBN(blockGasLimit))
+    const blockGasLimit = toBN(await this._getBlockGasLimit())
     const workerBalance = toBN(await this.getBalance(relayRequest.relayData.relayWorker))
-    return BN.min(blockGasWorthOfEther, workerBalance)
+    const workerGasLimit = workerBalance.div(toBN(
+      relayRequest.relayData.gasPrice === '0' ? 1 : relayRequest.relayData.gasPrice))
+    return BN.min(blockGasLimit, workerGasLimit)
   }
 
   /**
