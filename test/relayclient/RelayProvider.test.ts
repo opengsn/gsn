@@ -130,18 +130,31 @@ contract('RelayProvider', function (accounts) {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
-      relayProvider = await RelayProvider.newProvider({
+      relayProvider = RelayProvider.newProvider({
         provider: websocketProvider as any,
         config: {
           paymasterAddress: paymasterInstance.address,
           ...config
         }
-      }).init()
+      })
       // NOTE: in real application its enough to set the provider in web3.
       // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
       // so changing the global one is not enough.
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
+    })
+    it('should support getAccounts() before initialize', async () => {
+      const myWeb3 = new Web3(relayProvider)
+      const gsnAccounts = await myWeb3.eth.getAccounts()
+      const accounts = await web3.eth.getAccounts()
+      assert.deepEqual(gsnAccounts, accounts)
+    })
+
+    it('should support view functions before initialize', async () => {
+      assert.ok((relayProvider as any).relayClient.initialized === false, 'must be un-intialized before test')
+      const res = await testRecipient.versionRecipient()
+      assert.ok(res.length > 0, res)
+      assert.ok((relayProvider as any).relayClient.initialized === false, 'view function should not trigger init()')
     })
     it('should relay transparently', async function () {
       const res = await testRecipient.emitMessage('hello world', {

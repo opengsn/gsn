@@ -46,6 +46,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       throw new Error('Using new RelayProvider() constructor directly is deprecated.\nPlease create provider using RelayProvider.newProvider({})')
     }
     this.relayClient = relayClient
+    this.logger = this.relayClient.logger
     // TODO: stop faking the HttpProvider implementation
     this.origProvider = this.relayClient.getUnderlyingProvider() as HttpProvider
     this.host = this.origProvider.host
@@ -62,7 +63,6 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   async init (): Promise<this> {
     await this.relayClient.init()
     this.config = this.relayClient.config
-    this.logger = this.relayClient.logger
     return this
   }
 
@@ -226,7 +226,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
       if (rpcResponse != null && Array.isArray(rpcResponse.result)) {
-        const ephemeralAccounts = this.relayClient.dependencies.accountManager.getAccounts()
+        const ephemeralAccounts = this.relayClient.dependencies?.accountManager.getAccounts() ?? []
         rpcResponse.result = rpcResponse.result.concat(ephemeralAccounts)
       }
       callback(error, rpcResponse)
