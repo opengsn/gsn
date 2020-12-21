@@ -126,16 +126,29 @@ contract('RelayServer', function (accounts) {
         }
       })
 
-      it('should fail to relay with unacceptable gasPrice', async function () {
-        const wrongGasPrice = '100'
+      it('should fail to relay with low gasPrice', async function () {
+        const wrongGasPrice = env.relayServer.minGasPrice - 1
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.relayData.gasPrice = wrongGasPrice
+        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
         try {
           env.relayServer.validateInput(req)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
-            `Unacceptable gasPrice: relayServer's gasPrice:${env.relayServer.gasPrice} request's gasPrice: ${wrongGasPrice}`)
+            `gasPrice too low: relayServer's gasPrice:${env.relayServer.minGasPrice} request's gasPrice: ${wrongGasPrice}`)
+        }
+      })
+
+      it('should fail to relay with high gasPrice', async function () {
+        const wrongGasPrice = parseInt(env.relayServer.config.maxGasPrice) + 1
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
+        try {
+          env.relayServer.validateInput(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            `gasPrice too high: relayServer's gasPrice:${env.relayServer.config.maxGasPrice} request's gasPrice: ${wrongGasPrice}`)
         }
       })
 
