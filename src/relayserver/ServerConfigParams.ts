@@ -35,6 +35,7 @@ export interface ServerConfigParams {
   minAlertedDelayMS: number
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
+  blacklistedPaymasters: Address[]
   gasPriceFactor: number
   gasPriceOracleUrl: string
   gasPriceOraclePath: string
@@ -82,6 +83,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   maxAcceptanceBudget: 2e5,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
+  blacklistedPaymasters: [],
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -156,6 +158,7 @@ const ConfigParamsTypes = {
   defaultGasLimit: 'number',
 
   trustedPaymasters: 'list',
+  blacklistedPaymasters: 'list',
 
   runPenalizer: 'boolean',
 
