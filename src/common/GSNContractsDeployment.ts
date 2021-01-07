@@ -1,7 +1,6 @@
-import { Address, SemVerString } from './types/Aliases'
+import { Address } from './types/Aliases'
 
 export interface GSNContractsDeployment {
-  paymasterVersion?: SemVerString
   forwarderAddress?: Address
   paymasterAddress?: Address
   penalizerAddress?: Address

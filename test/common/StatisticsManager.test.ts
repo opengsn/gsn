@@ -1,0 +1,70 @@
+import { HttpProvider } from 'web3-core'
+
+import StatisticsManager from '../../src/common/statistics/StatisticsManager'
+import HttpClient from '../../src/relayclient/HttpClient'
+import HttpWrapper from '../../src/relayclient/HttpWrapper'
+import { ServerTestEnvironment } from '../relayserver/ServerTestEnvironment'
+import { TestPaymasterConfigurableMisbehaviorInstance } from '../../types/truffle-contracts'
+import { evmMine } from '../TestUtils'
+
+const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+
+contract.only('StatisticsManager', function (accounts) {
+  let statusLogic: StatisticsManager
+  let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
+
+  before(async function () {
+    const env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
+    await env.init()
+
+    // add misbehaving paymaster
+    misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
+    await misbehavingPaymaster.setRelayHub(env.relayHub.address)
+    await misbehavingPaymaster.setTrustedForwarder(env.forwarder.address)
+    await env.relayHub.depositFor(misbehavingPaymaster.address, {
+      from: accounts[0],
+      value: 1e18.toString(),
+      gasPrice: 0
+    })
+    // create 3 relays
+    await env.newServerInstance()
+    const relayToUnregister = env.relayServer
+    await env.newServerInstance({
+      baseRelayFee: '77777777777', // 77.7 gwei
+      pctRelayFee: 66
+    })
+    await env.newServerInstance()
+    let block = await web3.eth.getBlockNumber()
+
+    // unregister 1 relay
+    await env.stakeManager.unlockStake(relayToUnregister.managerAddress, { from: accounts[4] })
+    await relayToUnregister._worker(block)
+
+    // second registration
+    await env.relayServer.registrationManager.attemptRegistration(block)
+
+    // three transactions to relay, one transaction to be rejected
+    await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
+    await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
+    await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
+    block = await web3.eth.getBlockNumber()
+    if (block % 2 !== 0) {
+      await evmMine()
+    }
+    await misbehavingPaymaster.setRevertPreRelayCallOnEvenBlocks(true)
+    await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest({ paymaster: misbehavingPaymaster.address }))
+
+    const httpClient = new HttpClient(new HttpWrapper(), env.relayServer.logger)
+    statusLogic = new StatisticsManager(env.contractInteractor, httpClient)
+  })
+
+  // TODO: cover more code paths
+  describe('on active GSN deployment', function () {
+    it('should gather network statistics', async function () {
+      const statistics = await statusLogic.gatherStatistics()
+      // console.log(new CommandLineStatisticsPresenter().getStatisticsStringPresentation(statistics))
+      assert.equal(statistics.relayServers.length, 4)
+      assert.equal(statistics.paymasters.length, 2)
+    })
+  })
+})

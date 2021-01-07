@@ -29,13 +29,10 @@ export function padTo64 (hex: string): string {
   return hex
 }
 
-export function event2topic (contract: any, names: any): any {
+export function event2topic (contract: any, names: string[]): any {
   // for testing: don't crash on mockup..
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!contract.options || !contract.options.jsonInterface) { return names }
-  if (typeof names === 'string') {
-    return event2topic(contract, [names])[0]
-  }
   return contract.options.jsonInterface
     .filter((e: any) => names.includes(e.name))
     // @ts-ignore
@@ -168,24 +165,22 @@ export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
 
-export function isSecondEventLater (a: EventData, b: EventData): boolean {
+export function eventsComparator (a: EventData, b: EventData): number {
   if (a.blockNumber === b.blockNumber) {
-    return b.transactionIndex > a.transactionIndex
+    return b.transactionIndex - a.transactionIndex
   }
-  return b.blockNumber > a.blockNumber
+  return b.blockNumber - a.blockNumber
+}
+
+export function isSecondEventLater (a: EventData, b: EventData): boolean {
+  return eventsComparator(a, b) > 0
 }
 
 export function getLatestEventData (events: EventData[]): EventData | undefined {
   if (events.length === 0) {
     return
   }
-  const eventDataSorted = events.sort(
-    (a: EventData, b: EventData) => {
-      if (a.blockNumber === b.blockNumber) {
-        return b.transactionIndex - a.transactionIndex
-      }
-      return b.blockNumber - a.blockNumber
-    })
+  const eventDataSorted = events.sort(eventsComparator)
   return eventDataSorted[0]
 }
 

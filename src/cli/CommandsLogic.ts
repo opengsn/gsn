@@ -309,7 +309,6 @@ export default class CommandsLogic {
     await registerForwarderForGsn(fInstance, options)
 
     this.deployment = {
-      paymasterVersion,
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
       penalizerAddress: pInstance.options.address,

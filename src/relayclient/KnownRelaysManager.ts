@@ -4,16 +4,19 @@ import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
 import RelayFailureInfo from '../common/types/RelayFailureInfo'
 import { Address, AsyncScoreCalculator, RelayFilter } from '../common/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
-import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from '../common/types/RelayRegisteredEventInfo'
 
-import ContractInteractor, {
+import {
   HubUnauthorized,
+  RelayInfoUrl,
+  RelayRegisteredEventInfo,
   RelayServerRegistered,
   StakePenalized,
-  StakeUnlocked
-} from '../common/ContractInteractor'
+  StakeUnlocked,
+  isInfoFromEvent
+} from '../common/types/GSNContractsDataTypes'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { EventData } from 'web3-eth-contract'
+import ContractInteractor from '../common/ContractInteractor'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true

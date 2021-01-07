@@ -17,7 +17,7 @@ import { configureGSN, deployHub, evmMineMany, startRelay, stopRelay } from '../
 import { prepareTransaction } from './RelayProvider.test'
 
 import { LoggerInterface } from '../../src/common/LoggerInterface'
-import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/common/types/RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/common/types/GSNContractsDataTypes'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 
