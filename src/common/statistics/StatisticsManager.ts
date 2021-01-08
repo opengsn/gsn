@@ -342,7 +342,6 @@ export default class StatisticsManager {
         eventData => {
           return {
             eventData,
-            explorerURL: 'TODO TODO',
             returnValues: eventData.returnValues as T
           }
         }

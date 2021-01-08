@@ -19,7 +19,6 @@ export interface PingResult {
  * Simplified structure derived from 'EventData' for better types support and user-visible output.
  */
 export interface EventTransactionInfo<T extends GNSContractsEvent> {
-  explorerURL?: string
   eventData: EventData
   // TODO: is it useful? There are untyped 'returnValues' in eventData anyways
   returnValues: T
