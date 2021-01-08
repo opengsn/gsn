@@ -1,9 +1,9 @@
 import { EventData } from 'web3-eth-contract'
 
+import ContractInteractor from '../ContractInteractor'
 import HttpClient from '../../relayclient/HttpClient'
 import { Address, EventName, IntString, ObjectMap, SemVerString } from '../types/Aliases'
-import ContractInteractor from '../ContractInteractor'
-import { address2topic, eventsComparator, isSameAddress } from '../Utils'
+import { eventsComparator, isSameAddress } from '../Utils'
 
 import {
   Deposited,
@@ -41,27 +41,29 @@ import {
   RelayHubEvents,
   RelayServerInfo,
   RelayServerRegistrationInfo,
-  RelayServerRegistrationStatus,
-  RelaysByStakeStatus,
+  RelayServerStakeStatus,
   SenderInfo,
   StakeMangerEvents
-} from '../../cli/GSNStatistics'
+} from '../types/GSNStatistics'
 
 import { gsnRuntimeVersion } from '../Version'
+import { LoggerInterface } from '../LoggerInterface'
 
 export default class StatisticsManager {
   private readonly contractInteractor: ContractInteractor
   private readonly httpClient: HttpClient
+  private readonly logger: LoggerInterface
+
   private allStakeManagerEvents!: StakeMangerEvents
+  private allRelayHubEvents!: RelayHubEvents
 
-  // TODO: hub events object maybe?
-  private depositedEvents!: Array<EventTransactionInfo<DepositedEventInfo>>
-  private transactionRelayedEvents: Array<EventTransactionInfo<TransactionRelayedEventInfo>> = []
-  private transactionRejectedEvents: Array<EventTransactionInfo<TransactionRejectedByPaymasterEventInfo>> = []
-
-  constructor (contractInteractor: ContractInteractor, httpClient: HttpClient) {
+  constructor (
+    contractInteractor: ContractInteractor,
+    httpClient: HttpClient,
+    logger: LoggerInterface) {
     this.contractInteractor = contractInteractor
     this.httpClient = httpClient
+    this.logger = logger
   }
 
   async gatherStatistics (): Promise<GSNStatistics> {
@@ -71,37 +73,8 @@ export default class StatisticsManager {
 
     const stakeManagerAddress = this.contractInteractor.stakeManagerAddress()
     const totalStakesByRelays = await this.contractInteractor.getBalance(stakeManagerAddress)
-
-    this.allStakeManagerEvents = await this.getStakeManagerEvents()
-
-    // TODO: copy-pasted code from the 'getServersInfo', refactor!
-    const transactionDepositedEventsData =
-      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [Deposited])
-    this.depositedEvents = this.extractTransactionInfos<DepositedEventInfo>(transactionDepositedEventsData, Deposited)
-
-    const transactionRelayedEventsData =
-      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [TransactionRelayed])
-    this.transactionRelayedEvents = this.extractTransactionInfos<TransactionRelayedEventInfo>(transactionRelayedEventsData, TransactionRelayed)
-
-    const transactionRejectedEventsData =
-      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [TransactionRejectedByPaymaster])
-    this.transactionRejectedEvents = this.extractTransactionInfos<TransactionRejectedByPaymasterEventInfo>(transactionRejectedEventsData, TransactionRejectedByPaymaster)
-
-    const relayHubEvents: RelayHubEvents = {
-      relayRegisteredEvents: [], // TODO
-      transactionRelayedEvents: this.transactionRelayedEvents,
-      transactionRejectedEvents: this.transactionRejectedEvents
-    }
-    // TODO
-    const stakeManagerEvents: StakeMangerEvents = {
-      allEvents: [],
-      stakeAddedEvents: [],
-      stakeUnlockedEvents: [],
-      stakeWithdrawnEvents: [],
-      stakePenalizedEvents: [],
-      hubAuthorizedEvents: [],
-      hubUnauthorizedEvents: []
-    }
+    await this.fetchStakeManagerEvents()
+    await this.fetchRelayHubEvents()
 
     const relayServers = await this.getRelayServersInfo()
     const paymasters = await this.getPaymastersInfo()
@@ -114,8 +87,8 @@ export default class StatisticsManager {
     const deploymentVersions = await this.contractInteractor.resolveDeploymentVersions()
     const deploymentBalances = await this.contractInteractor.queryDeploymentBalances()
     return {
-      relayHubEvents,
-      stakeManagerEvents,
+      relayHubEvents: this.allRelayHubEvents,
+      stakeManagerEvents: this.allStakeManagerEvents,
       relayHubConstructorParams,
       deploymentBalances,
       chainId,
@@ -132,6 +105,31 @@ export default class StatisticsManager {
     }
   }
 
+  async fetchRelayHubEvents (): Promise<void> {
+    const transactionDepositedEventsData =
+      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [Deposited])
+    const depositedEvents = this.extractTransactionInfos<DepositedEventInfo>(transactionDepositedEventsData, Deposited)
+
+    const relayRegisteredEventsData =
+      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [RelayServerRegistered])
+    const relayRegisteredEvents = this.extractTransactionInfos<RelayRegisteredEventInfo>(relayRegisteredEventsData, RelayServerRegistered)
+
+    const transactionRelayedEventsData =
+      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [TransactionRelayed])
+    const transactionRelayedEvents = this.extractTransactionInfos<TransactionRelayedEventInfo>(transactionRelayedEventsData, TransactionRelayed)
+
+    const transactionRejectedEventsData =
+      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [TransactionRejectedByPaymaster])
+    const transactionRejectedEvents = this.extractTransactionInfos<TransactionRejectedByPaymasterEventInfo>(transactionRejectedEventsData, TransactionRejectedByPaymaster)
+
+    this.allRelayHubEvents = {
+      depositedEvents,
+      relayRegisteredEvents,
+      transactionRelayedEvents,
+      transactionRejectedEvents
+    }
+  }
+
   // TODO
   async getSendersInfo (): Promise<SenderInfo[]> {
     return []
@@ -144,14 +142,14 @@ export default class StatisticsManager {
 
   async getPaymastersInfo (): Promise<PaymasterInfo[]> {
     const paymasters = new Set<Address>()
-    for (const depositedEventInfo of this.depositedEvents) {
+    for (const depositedEventInfo of this.allRelayHubEvents.depositedEvents ?? []) {
       paymasters.add(depositedEventInfo.returnValues.paymaster)
     }
     const paymasterInfos: PaymasterInfo[] = []
     for (const address of paymasters) {
       const relayHubBalance = (await this.contractInteractor.hubBalanceOf(address)).toString()
-      const acceptedTransactionsCount = this.transactionRelayedEvents.filter(it => isSameAddress(it.returnValues.paymaster, address)).length
-      const rejectedTransactionsCount = this.transactionRejectedEvents.filter(it => isSameAddress(it.returnValues.paymaster, address)).length
+      const acceptedTransactionsCount = this.allRelayHubEvents.transactionRelayedEvents.filter(it => isSameAddress(it.returnValues.paymaster, address)).length
+      const rejectedTransactionsCount = this.allRelayHubEvents.transactionRejectedEvents.filter(it => isSameAddress(it.returnValues.paymaster, address)).length
       paymasterInfos.push({
         address,
         relayHubBalance,
@@ -162,70 +160,77 @@ export default class StatisticsManager {
     return paymasterInfos
   }
 
-  extractUnique (events: Array<EventTransactionInfo<StakeChangeEvent>>): Set<Address> {
+  extractUnique (events: Array<EventTransactionInfo<StakeChangeEvent>>): Address[] {
     const set = new Set<Address>()
     events.forEach(it => {
       set.add(it.returnValues.relayManager)
     })
-    return set
+    return Array.from(set)
   }
 
-  // TODO: extract shared code
-  async getRelaysByStakeStatus (): Promise<RelaysByStakeStatus> {
+  getRelaysStakeStatus (): Array<{ address: Address, status: RelayServerStakeStatus }> {
     const allEverStakedRelays = this.extractUnique(this.allStakeManagerEvents.stakeAddedEvents)
     const allEverUnlockedRelays = this.extractUnique(this.allStakeManagerEvents.stakeUnlockedEvents)
     const allCurrentlyWithdrawnRelays = this.extractUnique(this.allStakeManagerEvents.stakeWithdrawnEvents)
     const allCurrentlyPenalizedRelays = this.extractUnique(this.allStakeManagerEvents.stakePenalizedEvents)
     const allCurrentlyUnlockedRelays = new Set(
       [...allEverUnlockedRelays]
-        .filter(it => !allCurrentlyWithdrawnRelays.has(it))
-        .filter(it => !allCurrentlyPenalizedRelays.has(it))
+        .filter(it => !allCurrentlyWithdrawnRelays.includes(it))
+        .filter(it => !allCurrentlyPenalizedRelays.includes(it))
     )
     const allCurrentlyStakedRelays = new Set(
       [...allEverStakedRelays]
-        .filter(it => !allCurrentlyWithdrawnRelays.has(it))
-        .filter(it => !allCurrentlyPenalizedRelays.has(it))
+        .filter(it => !allEverUnlockedRelays.includes(it))
+        .filter(it => !allCurrentlyPenalizedRelays.includes(it))
     )
-    return {
-      allCurrentlyStakedRelays,
-      allCurrentlyUnlockedRelays,
-      allCurrentlyWithdrawnRelays,
-      allCurrentlyPenalizedRelays
-    }
+    return [
+      ...Array.from(allCurrentlyStakedRelays).map(address => {
+        return {
+          address,
+          status: RelayServerStakeStatus.STAKE_LOCKED
+        }
+      }),
+      ...Array.from(allCurrentlyUnlockedRelays).map(address => {
+        return {
+          address,
+          status: RelayServerStakeStatus.STAKE_UNLOCKED
+        }
+      }),
+      ...Array.from(allCurrentlyWithdrawnRelays).map(address => {
+        return {
+          address,
+          status: RelayServerStakeStatus.STAKE_WITHDRAWN
+        }
+      }),
+      ...Array.from(allCurrentlyPenalizedRelays).map(address => {
+        return {
+          address,
+          status: RelayServerStakeStatus.STAKE_PENALIZED
+        }
+      })
+    ]
   }
 
   async getRelayServersInfo (): Promise<RelayServerInfo[]> {
-    const relayServersInfo: RelayServerInfo[] = []
-    const relaysByStatus = await this.getRelaysByStakeStatus()
-    for (const inactiveRelayManager of relaysByStatus.allCurrentlyWithdrawnRelays) {
-      relayServersInfo.push(await this.gatherRelayInfo(inactiveRelayManager, RelayServerRegistrationStatus.WITHDRAWN))
+    const relayServersInfo: Array<Promise<RelayServerInfo>> = []
+    const relaysByStatus = this.getRelaysStakeStatus()
+    for (const relay of relaysByStatus) {
+      relayServersInfo.push(this.gatherRelayInfo(relay.address, relay.status))
     }
-    for (const inactiveRelayManager of relaysByStatus.allCurrentlyUnlockedRelays) {
-      relayServersInfo.push(await this.gatherRelayInfo(inactiveRelayManager, RelayServerRegistrationStatus.UNLOCKED))
-    }
-    for (const inactiveRelayManager of relaysByStatus.allCurrentlyPenalizedRelays) {
-      relayServersInfo.push(await this.gatherRelayInfo(inactiveRelayManager, RelayServerRegistrationStatus.PENALIZED))
-    }
-    for (const inactiveRelayManager of relaysByStatus.allCurrentlyStakedRelays) {
-      relayServersInfo.push(await this.gatherRelayInfo(inactiveRelayManager, RelayServerRegistrationStatus.STAKED))
-    }
-    return relayServersInfo
+    return await Promise.all(relayServersInfo)
   }
 
-  async gatherRelayInfo (managerAddress: Address, relayServerRegistrationStatus: RelayServerRegistrationStatus): Promise<RelayServerInfo> {
+  async gatherRelayInfo (managerAddress: Address, stakeStatus: RelayServerStakeStatus): Promise<RelayServerInfo> {
     let registrationInfo: RelayServerRegistrationInfo | undefined
-    let currentStatus = relayServerRegistrationStatus
     const stakeManagerEvents = await this.getStakeManagerEvents(managerAddress)
     const authorizedHubs = await this.getAuthorizedHubsAndVersions(stakeManagerEvents)
 
-    // TODO: here we can use pre-queried all events for hub (may require pagination) instead of 2 RPC calls
-    const relayRegisteredEventsData =
-      await this.contractInteractor.getPastEventsForHub([address2topic(managerAddress)], { fromBlock: 1 }, [RelayServerRegistered])
-    const relayRegisteredEvents = this.extractTransactionInfos<RelayRegisteredEventInfo>(relayRegisteredEventsData, RelayServerRegistered)
-    const transactionRelayedEventsData =
-      await this.contractInteractor.getPastEventsForHub([address2topic(managerAddress)], { fromBlock: 1 }, [TransactionRelayed, TransactionRejectedByPaymaster])
-    const transactionRelayedEvents = this.extractTransactionInfos<TransactionRelayedEventInfo>(transactionRelayedEventsData, TransactionRelayed)
-    const transactionRejectedEvents = this.extractTransactionInfos<TransactionRejectedByPaymasterEventInfo>(transactionRelayedEventsData, TransactionRejectedByPaymaster)
+    const relayRegisteredEvents =
+      this.allRelayHubEvents.relayRegisteredEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const transactionRelayedEvents =
+      this.allRelayHubEvents.transactionRelayedEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const transactionRejectedEvents =
+      this.allRelayHubEvents.transactionRejectedEvents.filter(it => it.returnValues.relayManager === managerAddress)
 
     const relayHubEvents: RelayHubEvents = {
       relayRegisteredEvents,
@@ -233,13 +238,12 @@ export default class StatisticsManager {
       transactionRejectedEvents
     }
 
-    const isServerRegistered = relayServerRegistrationStatus === RelayServerRegistrationStatus.STAKED && relayRegisteredEvents.length !== 0
+    const isRegistered = stakeStatus === RelayServerStakeStatus.STAKE_LOCKED && relayRegisteredEvents.length !== 0
     const relayHubEarningsBalance = (await this.contractInteractor.hubBalanceOf(managerAddress)).toString()
     const stakeInfo = await this.contractInteractor.stakeManagerStakeInfo(managerAddress)
     const ownerBalance = await this.contractInteractor.getBalance(stakeInfo.owner)
     const managerBalance = await this.contractInteractor.getBalance(managerAddress)
-    if (isServerRegistered) {
-      currentStatus = RelayServerRegistrationStatus.REGISTERED
+    if (isRegistered) {
       const lastRegisteredUrl = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.relayUrl
       const lastRegisteredBaseFee = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.baseRelayFee
       const lastRegisteredPctFee = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.pctRelayFee
@@ -261,7 +265,8 @@ export default class StatisticsManager {
     return {
       ownerBalance,
       managerBalance,
-      currentStatus,
+      stakeStatus,
+      isRegistered,
       authorizedHubs,
       managerAddress,
       stakeInfo,
@@ -272,12 +277,34 @@ export default class StatisticsManager {
     }
   }
 
-  async getStakeManagerEvents (managerAddress?: Address): Promise<StakeMangerEvents> {
-    const extraTopics = []
-    if (managerAddress != null) {
-      extraTopics.push(address2topic(managerAddress))
+  getStakeManagerEvents (managerAddress?: Address): StakeMangerEvents {
+    const stakeAddedEvents =
+      this.allStakeManagerEvents.stakeAddedEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const stakeUnlockedEvents =
+      this.allStakeManagerEvents.stakeUnlockedEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const stakeWithdrawnEvents =
+      this.allStakeManagerEvents.stakeWithdrawnEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const stakePenalizedEvents =
+      this.allStakeManagerEvents.stakePenalizedEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const hubAuthorizedEvents =
+      this.allStakeManagerEvents.hubAuthorizedEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const hubUnauthorizedEvents =
+      this.allStakeManagerEvents.hubUnauthorizedEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    const allEvents =
+      this.allStakeManagerEvents.allEvents.filter(it => it.returnValues.relayManager === managerAddress)
+    return {
+      allEvents,
+      stakeAddedEvents,
+      stakeUnlockedEvents,
+      stakeWithdrawnEvents,
+      stakePenalizedEvents,
+      hubAuthorizedEvents,
+      hubUnauthorizedEvents
     }
-    const allEvents = await this.contractInteractor.getPastEventsForStakeManager(allStakeManagerEvents, extraTopics, { fromBlock: 1 })
+  }
+
+  async fetchStakeManagerEvents (): Promise<void> {
+    const allEvents = await this.contractInteractor.getPastEventsForStakeManager(allStakeManagerEvents, [], { fromBlock: 1 })
 
     const stakeAddedEvents = this.extractTransactionInfos<StakeAddedEventInfo>(allEvents, StakeAdded)
     const stakeUnlockedEvents = this.extractTransactionInfos<StakeUnlockedEventInfo>(allEvents, StakeUnlocked)
@@ -286,7 +313,7 @@ export default class StatisticsManager {
     const hubAuthorizedEvents = this.extractTransactionInfos<HubAuthorizedEventInfo>(allEvents, HubAuthorized)
     const hubUnauthorizedEvents = this.extractTransactionInfos<HubUnauthorizedEventInfo>(allEvents, HubUnauthorized)
 
-    return {
+    this.allStakeManagerEvents = {
       allEvents,
       stakeAddedEvents,
       stakeUnlockedEvents,
@@ -322,10 +349,6 @@ export default class StatisticsManager {
       )
   }
 
-  // setListener (listener: (() => void)): void {
-  //   listener()
-  // }
-  // TODO REFACTOR!!!
   async getAuthorizedHubsAndVersions (stakeManagerEvents: StakeMangerEvents): Promise<ObjectMap<SemVerString>> {
     const authorizedHubs = new Set<Address>()
     const orderedEvents =

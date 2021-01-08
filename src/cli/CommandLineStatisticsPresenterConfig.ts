@@ -1,5 +1,5 @@
 export interface CommandLineStatisticsPresenterConfig {
-  addressTruncateToLength: number
+  urlTruncateToLength: number
   txHashTruncateToLength: number
   valuesTruncateToLength: number
   nativeTokenTickerSymbol: string
@@ -9,7 +9,7 @@ export interface CommandLineStatisticsPresenterConfig {
 }
 
 export const defaultCommandLineStatisticsPresenterConfig: CommandLineStatisticsPresenterConfig = {
-  addressTruncateToLength: 8,
+  urlTruncateToLength: 8,
   txHashTruncateToLength: 8,
   valuesTruncateToLength: 4,
   averageBlocksPerDay: 6000,

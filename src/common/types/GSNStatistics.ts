@@ -1,12 +1,13 @@
-import { Address, IntString, ObjectMap, SemVerString } from '../common/types/Aliases'
+import { Address, IntString, ObjectMap, SemVerString } from './Aliases'
 import {
+  DepositedEventInfo,
   GNSContractsEvent, HubAuthorizedEventInfo, HubUnauthorizedEventInfo,
   RelayRegisteredEventInfo,
   StakeAddedEventInfo, StakeInfo, StakePenalizedEventInfo,
   StakeUnlockedEventInfo, StakeWithdrawnEventInfo, TransactionRejectedByPaymasterEventInfo, TransactionRelayedEventInfo
-} from '../common/types/GSNContractsDataTypes'
-import PingResponse from '../common/PingResponse'
-import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
+} from './GSNContractsDataTypes'
+import PingResponse from '../PingResponse'
+import { GSNContractsDeployment } from '../GSNContractsDeployment'
 import { EventData } from 'web3-eth-contract'
 
 export interface PingResult {
@@ -24,27 +25,19 @@ export interface EventTransactionInfo<T extends GNSContractsEvent> {
   returnValues: T
 }
 
-export enum RelayServerRegistrationStatus {
+export enum RelayServerStakeStatus {
   /** only staked, but never registered on currently selected RelayHub */
-  STAKED,
-  /** staked and registered on currently selected RelayHub */
-  REGISTERED,
+  STAKE_LOCKED,
   /** stake unlocked but not yet withdrawn */
-  UNLOCKED,
+  STAKE_UNLOCKED,
   /** stake withdrawn */
-  WITHDRAWN,
+  STAKE_WITHDRAWN,
   /** stake has been penalized */
-  PENALIZED
-}
-
-export interface RelaysByStakeStatus {
-  allCurrentlyStakedRelays: Set<Address>
-  allCurrentlyUnlockedRelays: Set<Address>
-  allCurrentlyWithdrawnRelays: Set<Address>
-  allCurrentlyPenalizedRelays: Set<Address>
+  STAKE_PENALIZED
 }
 
 export interface RelayHubEvents {
+  depositedEvents?: Array<EventTransactionInfo<DepositedEventInfo>>
   relayRegisteredEvents: Array<EventTransactionInfo<RelayRegisteredEventInfo>>
   transactionRelayedEvents: Array<EventTransactionInfo<TransactionRelayedEventInfo>>
   transactionRejectedEvents: Array<EventTransactionInfo<TransactionRejectedByPaymasterEventInfo>>
@@ -97,13 +90,11 @@ export interface RelayHubConstructorParams {
 }
 
 export interface RelayServerInfo {
-  /**
-   * Only when {@link currentStatus} is {@link RelayServerRegistrationStatus.REGISTERED}
-   * this object will contain {@link RelayServerRegistrationInfo}
-   * */
+  /** Only when {@link isRegistered} is true this object will contain {@link RelayServerRegistrationInfo} */
   stakeInfo: StakeInfo
   ownerBalance: IntString
-  currentStatus: RelayServerRegistrationStatus
+  stakeStatus: RelayServerStakeStatus
+  isRegistered: boolean
   managerAddress: Address
   managerBalance: IntString
   /** maps address to queried version */

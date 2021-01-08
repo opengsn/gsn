@@ -9,7 +9,7 @@ import { evmMine } from '../TestUtils'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract.only('StatisticsManager', function (accounts) {
+contract('StatisticsManager', function (accounts) {
   let statusLogic: StatisticsManager
   let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
 
@@ -28,7 +28,7 @@ contract.only('StatisticsManager', function (accounts) {
     })
     // create 3 relays
     await env.newServerInstance()
-    const relayToUnregister = env.relayServer
+    const relayToUnregister = env.relayServer.managerAddress
     await env.newServerInstance({
       baseRelayFee: '77777777777', // 77.7 gwei
       pctRelayFee: 66
@@ -37,8 +37,7 @@ contract.only('StatisticsManager', function (accounts) {
     let block = await web3.eth.getBlockNumber()
 
     // unregister 1 relay
-    await env.stakeManager.unlockStake(relayToUnregister.managerAddress, { from: accounts[4] })
-    await relayToUnregister._worker(block)
+    await env.stakeManager.unlockStake(relayToUnregister, { from: accounts[4] })
 
     // second registration
     await env.relayServer.registrationManager.attemptRegistration(block)
@@ -55,15 +54,15 @@ contract.only('StatisticsManager', function (accounts) {
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest({ paymaster: misbehavingPaymaster.address }))
 
     const httpClient = new HttpClient(new HttpWrapper(), env.relayServer.logger)
-    statusLogic = new StatisticsManager(env.contractInteractor, httpClient)
+    statusLogic = new StatisticsManager(env.contractInteractor, httpClient, env.relayServer.logger)
   })
 
   // TODO: cover more code paths
   describe('on active GSN deployment', function () {
     it('should gather network statistics', async function () {
       const statistics = await statusLogic.gatherStatistics()
-      // console.log(new CommandLineStatisticsPresenter().getStatisticsStringPresentation(statistics))
-      assert.equal(statistics.relayServers.length, 4)
+      // console.log(new CommandLineStatisticsPresenter(defaultCommandLineStatisticsPresenterConfig).getStatisticsStringPresentation(statistics))
+      assert.equal(statistics.relayServers.length, 3)
       assert.equal(statistics.paymasters.length, 2)
     })
   })

@@ -1,4 +1,5 @@
 import Web3 from 'web3'
+import clear from 'clear'
 
 import ContractInteractor from '../../common/ContractInteractor'
 import HttpClient from '../../relayclient/HttpClient'
@@ -34,7 +35,7 @@ const commander = gsnCommander(['n', 'h'])
   const timeout = 1000
   const httpClient = new HttpClient(new HttpWrapper({ timeout }), logger)
 
-  const statusLogic = new StatisticsManager(contractInteractor, httpClient)
+  const statusLogic = new StatisticsManager(contractInteractor, httpClient, logger)
 
   const statistics = await statusLogic.gatherStatistics()
   const blockExplorerUrl = networksBlockExplorers.get(commander.network)
@@ -42,6 +43,7 @@ const commander = gsnCommander(['n', 'h'])
     Object.assign({}, defaultCommandLineStatisticsPresenterConfig, { blockExplorerUrl })
   const statisticsStringPresentation = new CommandLineStatisticsPresenter(presenterConfig)
     .getStatisticsStringPresentation(statistics)
+  clear()
   console.log(statisticsStringPresentation)
 })().catch(
   reason => {

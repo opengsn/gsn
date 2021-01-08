@@ -1,26 +1,32 @@
 // @ts-ignore
 import EthVal from 'ethval'
 import Table from 'cli-table'
-import * as asciichart from 'asciichart'
 import colors from 'colors'
+import moment from 'moment'
 import terminalLink from 'terminal-link'
+import { PrefixedHexString } from 'ethereumjs-tx'
+import * as asciichart from 'asciichart'
+
+import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
+import { IntString, ObjectMap, SemVerString } from '../common/types/Aliases'
+import { CommandLineStatisticsPresenterConfig } from './CommandLineStatisticsPresenterConfig'
 
 import {
   EventTransactionInfo,
-  GSNStatistics, PaymasterInfo, RelayHubConstructorParams, RelayHubEvents,
+  GSNStatistics,
+  PaymasterInfo,
+  RelayHubConstructorParams,
+  RelayHubEvents,
   RelayServerInfo,
   RelayServerRegistrationInfo,
-  RelayServerRegistrationStatus
-} from './GSNStatistics'
-import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
-import { Address, IntString, ObjectMap, SemVerString } from '../common/types/Aliases'
+  RelayServerStakeStatus
+} from '../common/types/GSNStatistics'
+
 import {
   RelayRegisteredEventInfo,
   TransactionRejectedByPaymasterEventInfo,
   TransactionRelayedEventInfo
 } from '../common/types/GSNContractsDataTypes'
-import moment from 'moment'
-import { CommandLineStatisticsPresenterConfig } from './CommandLineStatisticsPresenterConfig'
 
 export class CommandLineStatisticsPresenter {
   config: CommandLineStatisticsPresenterConfig
@@ -55,37 +61,22 @@ export class CommandLineStatisticsPresenter {
     if (deployment.versionRegistryAddress != null) {
       table.push({ 'Version Registry': [deployment.versionRegistryAddress, versions[deployment.versionRegistryAddress ?? '']] })
     }
-    table.push({ 'Stake Manager': [this.addressToLink(deployment.stakeManagerAddress), this.ethValueStr(balances[deployment.stakeManagerAddress ?? '']), versions[deployment.stakeManagerAddress ?? '']] })
-    table.push({ 'Penalizer ': [this.addressToLink(deployment.penalizerAddress), this.ethValueStr(balances[deployment.penalizerAddress ?? '']), versions[deployment.penalizerAddress ?? '']] })
-    table.push({ 'Relay Hub': [this.addressToLink(deployment.relayHubAddress), this.ethValueStr(balances[deployment.relayHubAddress ?? '']), versions[deployment.relayHubAddress ?? '']] })
+    table.push({ 'Stake Manager': [this.toBlockExplorerLink(deployment.stakeManagerAddress, true), this.ethValueStr(balances[deployment.stakeManagerAddress ?? '']), versions[deployment.stakeManagerAddress ?? '']] })
+    table.push({ 'Penalizer ': [this.toBlockExplorerLink(deployment.penalizerAddress, true), this.ethValueStr(balances[deployment.penalizerAddress ?? '']), versions[deployment.penalizerAddress ?? '']] })
+    table.push({ 'Relay Hub': [this.toBlockExplorerLink(deployment.relayHubAddress, true), this.ethValueStr(balances[deployment.relayHubAddress ?? '']), versions[deployment.relayHubAddress ?? '']] })
     return table.toString()
   }
 
-  addressToLink (address: Address = ''): string {
-    let truncatedAddress = address.slice(0, this.config.addressTruncateToLength + 2)
-    if (this.config.addressTruncateToLength < 20) {
+  toBlockExplorerLink (value: PrefixedHexString = '', isAddress: boolean = true): string {
+    let truncatedAddress = value.slice(0, this.config.urlTruncateToLength + 2)
+    if (this.config.urlTruncateToLength < value.length) {
       truncatedAddress += '…'
     }
     if (this.config.blockExplorerUrl == null) {
       return truncatedAddress
     }
-    const url = this.config.blockExplorerUrl + 'address/' + address
-    if (!terminalLink.isSupported) {
-      return url
-    }
-    return terminalLink(truncatedAddress, url)
-  }
-
-  // TODO: deduplicate!
-  txHashToLink (txHash: string): string {
-    let truncatedAddress = txHash.slice(0, this.config.addressTruncateToLength + 2)
-    if (this.config.addressTruncateToLength < 20) {
-      truncatedAddress += '…'
-    }
-    if (this.config.blockExplorerUrl == null) {
-      return truncatedAddress
-    }
-    const url = this.config.blockExplorerUrl + 'tx/' + txHash
+    const type = isAddress ? 'address/' : 'tx/'
+    const url = this.config.blockExplorerUrl + type + value
     if (!terminalLink.isSupported) {
       return url
     }
@@ -110,7 +101,7 @@ export class CommandLineStatisticsPresenter {
   }
 
   printActiveServersInfo (currentBlock: number, relayServerInfos: RelayServerInfo[]): string {
-    const activeRelays = relayServerInfos.filter(it => it.currentStatus === RelayServerRegistrationStatus.REGISTERED)
+    const activeRelays = relayServerInfos.filter(it => it.isRegistered)
     if (activeRelays.length === 0) {
       return 'no active relays found'
     }
@@ -138,14 +129,14 @@ export class CommandLineStatisticsPresenter {
   }
 
   printNonActiveServersInfo (currentBlock: number, relayServerInfos: RelayServerInfo[]): string {
-    const nonActiveRelays = relayServerInfos.filter(it => it.currentStatus !== RelayServerRegistrationStatus.REGISTERED)
+    const nonActiveRelays = relayServerInfos.filter(it => !it.isRegistered)
     if (nonActiveRelays.length === 0) {
       return 'no non-active relays found'
     }
-    const table = new Table({ head: ['MGR', 'Status', 'First Seen', 'Last Seen', 'Total Relayed'] })
+    const table = new Table({ head: ['Manager address', 'Status', 'First Seen', 'Last Seen', 'Total Relayed'] })
     for (const relay of nonActiveRelays) {
-      const status = this.stringServerStatus(relay.currentStatus)
-      const managerAddressLink = this.addressToLink(relay.managerAddress)
+      const status = this.stringServerStatus(relay.stakeStatus)
+      const managerAddressLink = this.toBlockExplorerLink(relay.managerAddress, true)
       const firstSeen = 'TODO'
       const lastSeen = 'TODO'
       const totalTx = relay.relayHubEvents.transactionRelayedEvents.length
@@ -156,11 +147,11 @@ export class CommandLineStatisticsPresenter {
 
   createAddressesAndBalancesSubTable (relayServerInfo: RelayServerInfo): string {
     const table = new Table({ head: ['Role', 'Address', 'Balance'] })
-    table.push(['OWN', this.addressToLink(relayServerInfo.stakeInfo.owner), this.ethValueStr(relayServerInfo.ownerBalance)])
-    table.push(['MGR', this.addressToLink(relayServerInfo.managerAddress), this.ethValueStr(relayServerInfo.managerBalance)])
+    table.push(['OWN', this.toBlockExplorerLink(relayServerInfo.stakeInfo.owner, true), this.ethValueStr(relayServerInfo.ownerBalance)])
+    table.push(['MGR', this.toBlockExplorerLink(relayServerInfo.managerAddress, true), this.ethValueStr(relayServerInfo.managerBalance)])
     for (const workerAddress of relayServerInfo.registrationInfo?.registeredWorkers ?? []) {
       const workerBalance = this.ethValueStr(relayServerInfo.registrationInfo?.workerBalances[workerAddress])
-      table.push(['W#1', this.addressToLink(workerAddress), workerBalance])
+      table.push(['W#1', this.toBlockExplorerLink(workerAddress, true), workerBalance])
     }
     const table2 = new Table()
     const relayHubEarningsBalance = this.ethValueStr(relayServerInfo.relayHubEarningsBalance)
@@ -179,7 +170,7 @@ export class CommandLineStatisticsPresenter {
   createAuthorizedHubsSubTable (relayServerInfo: RelayServerInfo): string {
     const table = new Table({ head: ['Address', 'Version'] })
     for (const hub of Object.keys(relayServerInfo.authorizedHubs)) {
-      table.push([this.addressToLink(hub), relayServerInfo.authorizedHubs[hub]])
+      table.push([this.toBlockExplorerLink(hub, true), relayServerInfo.authorizedHubs[hub]])
     }
     return table.toString()
   }
@@ -198,7 +189,7 @@ export class CommandLineStatisticsPresenter {
         asciichart.red
       ],
       format: function (x: number) {
-        return `${x} `
+        return `${x.toString().padStart(3, '0')} `
       }
     }
     // this code is ugly af but does work with negative 'beginning block'
@@ -214,27 +205,25 @@ export class CommandLineStatisticsPresenter {
   getEventsByDayCount (transactionRelayedEvents: Array<EventTransactionInfo<TransactionRelayedEventInfo | TransactionRejectedByPaymasterEventInfo>>, weekBeginningBlockApprox: number): number[] {
     const eventsByDay: number[] = new Array(this.config.daysToPlotTransactions).fill(0)
     for (const event of transactionRelayedEvents) {
-      if (event.eventData.blockNumber < weekBeginningBlockApprox) {
+      if (event.eventData.blockNumber <= weekBeginningBlockApprox) {
         continue
       }
-      // TODO: Ok, this is shit. If the event is in the CURRENT block, it will 'floor' to 7 while last index is 6. Reconsider this code.
-      const index = Math.min(Math.floor((event.eventData.blockNumber - weekBeginningBlockApprox) / this.config.averageBlocksPerDay), this.config.daysToPlotTransactions - 1)
+      // If the event is in the CURRENT block, it will 'floor' to 7 while last index is 6
+      const index = Math.floor((event.eventData.blockNumber - weekBeginningBlockApprox - 1) / this.config.averageBlocksPerDay)
       eventsByDay[index]++
     }
     return eventsByDay
   }
 
-  stringServerStatus (status: RelayServerRegistrationStatus): string {
+  stringServerStatus (status: RelayServerStakeStatus): string {
     switch (status) {
-      case RelayServerRegistrationStatus.REGISTERED:
-        return 'registered'
-      case RelayServerRegistrationStatus.STAKED:
-        return 'staked'
-      case RelayServerRegistrationStatus.WITHDRAWN:
+      case RelayServerStakeStatus.STAKE_LOCKED:
+        return 'stake locked'
+      case RelayServerStakeStatus.STAKE_WITHDRAWN:
         return 'withdrawn'
-      case RelayServerRegistrationStatus.UNLOCKED:
+      case RelayServerStakeStatus.STAKE_UNLOCKED:
         return 'unlocked'
-      case RelayServerRegistrationStatus.PENALIZED:
+      case RelayServerStakeStatus.STAKE_PENALIZED:
         return 'penalized'
     }
   }
@@ -248,7 +237,7 @@ export class CommandLineStatisticsPresenter {
       const estimateDays = (currentBlock - eventBlock) / this.config.averageBlocksPerDay
       const blockMoment = moment().subtract(estimateDays, 'days')
 
-      const link = this.txHashToLink(event.eventData.transactionHash)
+      const link = this.toBlockExplorerLink(event.eventData.transactionHash, false)
       table.push([link, eventBlock, blockMoment.fromNow()])
     }
     return table.toString()
@@ -262,7 +251,7 @@ export class CommandLineStatisticsPresenter {
     const paymastersSortedSliced = paymasters.sort((a, b) => b.acceptedTransactionsCount - a.acceptedTransactionsCount)
       .slice(0, 10)
     for (const paymaster of paymastersSortedSliced) {
-      const address = this.addressToLink(paymaster.address)
+      const address = this.toBlockExplorerLink(paymaster.address, true)
       const balance = this.ethValueStr(paymaster.relayHubBalance)
       table.push([address, balance, paymaster.acceptedTransactionsCount, paymaster.rejectedTransactionsCount])
     }

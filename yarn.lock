@@ -872,6 +872,11 @@
   resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.2.13.tgz#8a3801f6655179d1803d81e94a2e4aaf317abd16"
   integrity sha512-o3SGYRlOpvLFpwJA6Sl1UPOwKFEvE4FxTEB/c9XHI2whdnd4kmPVkNLL8gY4vWGBxWWDumzLbKsAhEH5SKn37Q==
 
+"@types/clear@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@types/clear/-/clear-0.1.1.tgz#f5b5217d74f540682dce941f6f6323768ab1bc91"
+  integrity sha512-Wu6DxCnSjFiqymbTeyb63VdU1oKYW0qCnmOSBjpMyuvcuvI9keXfS6RbEcKYqUY0dPOLa34qV+XHAdgiRzPBtg==
+
 "@types/cli-table@^0.3.0":
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/@types/cli-table/-/cli-table-0.3.0.tgz#f1857156bf5fd115c6a2db260ba0be1f8fc5671c"
@@ -3148,6 +3153,11 @@ class-utils@^0.3.5:
     define-property "^0.2.5"
     isobject "^3.0.0"
     static-extend "^0.1.1"
+
+clear@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/clear/-/clear-0.1.0.tgz#b81b1e03437a716984fd7ac97c87d73bdfe7048a"
+  integrity sha512-qMjRnoL+JDPJHeLePZJuao6+8orzHMGP04A8CdwCNsKhRbOnKRjefxONR7bwILT3MHecxKBjHkKL/tkZ8r4Uzw==
 
 cli-cursor@^2.1.0:
   version "2.1.0"

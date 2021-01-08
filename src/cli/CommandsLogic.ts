@@ -300,10 +300,8 @@ export default class CommandsLogic {
     }
 
     let pmInstance: Contract | undefined
-    let paymasterVersion = ''
     if (deployOptions.deployPaymaster === true) {
       pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
-      paymasterVersion = await pmInstance.methods.versionPaymaster()
     }
 
     await registerForwarderForGsn(fInstance, options)
