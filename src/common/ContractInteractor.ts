@@ -1,3 +1,4 @@
+import BN from 'bn.js'
 import Web3 from 'web3'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
@@ -38,7 +39,7 @@ import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBas
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from '../relayclient/LightTruffleContract'
-import { gsnRuntimeVersion } from './Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from 'ethereumjs-common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
@@ -91,7 +92,7 @@ export default class ContractInteractor {
       deployment = {}
     }: ConstructorParams) {
     this.logger = logger
-    this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion)
+    this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
@@ -147,7 +148,7 @@ export default class ContractInteractor {
     }
     await this._resolveDeployment()
     await this._initializeContracts()
-    await this._validateCompatibility().catch(err => console.log('WARNING: beta ignore version compatibility', err.message))
+    await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
@@ -202,7 +203,7 @@ export default class ContractInteractor {
   }
 
   async _validateCompatibility (): Promise<void> {
-    if (this.deployment == null) {
+    if (this.deployment == null || this.relayHubInstance == null) {
       return
     }
     const hub = this.relayHubInstance
@@ -314,7 +315,7 @@ export default class ContractInteractor {
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = this.relayHubInstance
     try {
-      const externalGasLimit = await this._getBlockGasLimit()
+      const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest)
       const encodedRelayCall = relayHub.contract.methods.relayCall(
         paymasterMaxAcceptanceBudget,
         relayRequest,
@@ -374,6 +375,14 @@ export default class ContractInteractor {
         returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
+  }
+
+  async getMaxViewableGasLimit (relayRequest: RelayRequest): Promise<BN> {
+    const blockGasLimit = toBN(await this._getBlockGasLimit())
+    const workerBalance = toBN(await this.getBalance(relayRequest.relayData.relayWorker))
+    const workerGasLimit = workerBalance.div(toBN(
+      relayRequest.relayData.gasPrice === '0' ? 1 : relayRequest.relayData.gasPrice))
+    return BN.min(blockGasLimit, workerGasLimit)
   }
 
   /**

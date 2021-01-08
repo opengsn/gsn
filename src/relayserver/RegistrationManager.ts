@@ -193,6 +193,7 @@ export class RegistrationManager {
     const isRegistrationCorrect = await this._isRegistrationCorrect()
     const isRegistrationPending = await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER)
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
+      this.logger.debug(`will attempt registration: isRegistrationPending=${isRegistrationPending} isRegistrationCorrect=${isRegistrationCorrect} forceRegistration=${forceRegistration}`)
       transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock))
     }
     return transactionHashes
@@ -303,6 +304,7 @@ export class RegistrationManager {
       destination: this.hubAddress,
       creationBlockNumber: currentBlock
     }
+    this.logger.info(`adding relay worker ${this.workerAddress}`)
     const { transactionHash } = await this.transactionManager.sendTransaction(details)
     return transactionHash
   }
@@ -315,6 +317,7 @@ export class RegistrationManager {
       this.stakeRequired.isSatisfied &&
       this.balanceRequired.isSatisfied
     if (!allPrerequisitesOk) {
+      this.logger.debug('will not actually attempt registration - prerequisites not satisfied')
       return []
     }
 

@@ -22,7 +22,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
   const host = getNetworkUrl(commander.network)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logger = createCommandsLogger(commander.loglevel)
-  const logic = new CommandsLogic(host, logger, {}, mnemonic)
+  const logic = await new CommandsLogic(host, logger, {}, mnemonic).init()
   const registerOptions = {
     from: commander.from ?? await logic.findWealthyAccount(),
     stake: ether(commander.stake),

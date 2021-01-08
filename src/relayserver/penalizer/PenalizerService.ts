@@ -17,7 +17,7 @@ import { AuditRequest, AuditResponse } from '../../common/types/AuditRequest'
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
 import { getDataAndSignature } from '../../common/Utils'
-import { gsnRuntimeVersion } from '../../common/Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from '../../common/Version'
 import { ServerConfigParams } from '../ServerConfigParams'
 
 abiDecoder.addABI(RelayHubABI)
@@ -70,7 +70,7 @@ export class PenalizerService {
   constructor (params: PenalizerDependencies, logger: LoggerInterface, config: ServerConfigParams) {
     this.transactionManager = params.transactionManager
     this.contractInteractor = params.contractInteractor
-    this.versionManager = new VersionsManager(gsnRuntimeVersion)
+    this.versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
     this.config = config
     this.txByNonceService = params.txByNonceService
 

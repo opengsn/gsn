@@ -6,6 +6,10 @@ import {
   ReputationManager,
   ReputationManagerConfiguration
 } from '../../src/relayserver/ReputationManager'
+import { evmMineMany } from '../TestUtils'
+import ContractInteractor from '../../src/common/ContractInteractor'
+import { HttpProvider } from 'web3-core'
+
 require('source-map-support').install({ errorFormatterForce: true })
 
 /**
@@ -15,8 +19,9 @@ contract('ReputationManager', function () {
   const paymaster = constants.ZERO_ADDRESS
   const initialReputation = 2
   const throttleDelayMs = 100
-  const abuseTimeWindowMs = 1000
-  const abuseBlockDurationMs = 1000
+  const abuseTimeWindowBlocks = 100
+  const abuseBlacklistDurationBlocks = 100
+  let contractInteractor: ContractInteractor
   let reputationManager: ReputationManager
   let reputationStoreManager: ReputationStoreManager
   let saveNow: any
@@ -38,12 +43,16 @@ contract('ReputationManager', function () {
     const reputationManagerConfig: Partial<ReputationManagerConfiguration> = {
       initialReputation,
       throttleDelayMs,
-      abuseTimeWindowMs,
-      abuseBlockDurationMs
+      abuseTimeWindowBlocks,
+      abuseBlacklistDurationBlocks
     }
-    reputationStoreManager = new ReputationStoreManager({}, logger)
+    reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
     await reputationStoreManager.clearAll()
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
+    contractInteractor = new ContractInteractor({
+      provider: web3.currentProvider as HttpProvider,
+      logger
+    })
   })
 
   after(() => {
@@ -52,36 +61,41 @@ contract('ReputationManager', function () {
 
   describe('getPaymasterStatus', function () {
     it('should report paymaster as THROTTLED if requesting multiple transactions too fast', async function () {
-      let status = await reputationManager.getPaymasterStatus(paymaster)
+      const currentBlockNumber = await contractInteractor.getBlockNumber()
+      let status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.GOOD)
-      await reputationManager.updatePaymasterStatus(paymaster, false)
+      await reputationManager.updatePaymasterStatus(paymaster, false, currentBlockNumber)
       await reputationManager.onRelayRequestAccepted(paymaster)
-      status = await reputationManager.getPaymasterStatus(paymaster)
+      status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.THROTTLED)
     })
 
     it('should report paymaster as GOOD if enough time has passed since the last one', async function () {
       mockSleep(throttleDelayMs)
-      const status = await reputationManager.getPaymasterStatus(paymaster)
+      const currentBlockNumber = await contractInteractor.getBlockNumber()
+      const status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.GOOD)
     })
 
     it('should report paymaster as BLOCKED if the reputation falls to 0', async function () {
-      let status = await reputationManager.getPaymasterStatus(paymaster)
+      const currentBlockNumber = await contractInteractor.getBlockNumber()
+      let status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.GOOD)
-      await reputationManager.updatePaymasterStatus(paymaster, false)
-      status = await reputationManager.getPaymasterStatus(paymaster)
+      await reputationManager.updatePaymasterStatus(paymaster, false, currentBlockNumber)
+      status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.BLOCKED)
     })
 
     it('should reset the paymaster reputation after abuse cool-down period', async function () {
+      let currentBlockNumber = await contractInteractor.getBlockNumber()
       await reputationStoreManager.clearAll()
       await reputationStoreManager.createEntry(paymaster, initialReputation)
-      await reputationStoreManager.setAbuseFlag(paymaster)
-      let status = await reputationManager.getPaymasterStatus(paymaster)
+      await reputationStoreManager.setAbuseFlag(paymaster, currentBlockNumber)
+      let status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.ABUSED)
-      mockSleep(abuseBlockDurationMs)
-      status = await reputationManager.getPaymasterStatus(paymaster)
+      await evmMineMany(abuseBlacklistDurationBlocks + 1)
+      currentBlockNumber = await contractInteractor.getBlockNumber()
+      status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.GOOD)
     })
   })
@@ -93,19 +107,21 @@ contract('ReputationManager', function () {
     })
 
     it('should detect an abuse if the reputation drops too fast', async function () {
-      let status = await reputationManager.getPaymasterStatus(paymaster)
+      const currentBlockNumber = await contractInteractor.getBlockNumber()
+      let status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.GOOD)
       for (let i = 0; i <= 20; i++) {
-        await reputationManager.updatePaymasterStatus(paymaster, false)
+        await reputationManager.updatePaymasterStatus(paymaster, false, currentBlockNumber)
       }
-      status = await reputationManager.getPaymasterStatus(paymaster)
+      status = await reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
       assert.equal(status, PaymasterStatus.ABUSED)
     })
 
     it('should not update reputation above the specified maximum value', async function () {
+      const currentBlockNumber = await contractInteractor.getBlockNumber()
       const entry = await reputationStoreManager.getEntry(paymaster)
       assert.equal(entry?.reputation, 100)
-      await reputationManager.updatePaymasterStatus(paymaster, true)
+      await reputationManager.updatePaymasterStatus(paymaster, true, currentBlockNumber)
       assert.equal(entry?.reputation, 100)
     })
   })

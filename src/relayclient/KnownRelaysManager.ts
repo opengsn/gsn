@@ -194,6 +194,9 @@ export class KnownRelaysManager {
           return self.indexOf(value) === index
         })
     if (flatRelayers.length <= this.config.auditorsCount) {
+      if (flatRelayers.length < this.config.auditorsCount) {
+        this.logger.warn(`Not enough auditors: request ${this.config.auditorsCount} but only have ${flatRelayers.length}`)
+      }
       return flatRelayers
     }
     do {

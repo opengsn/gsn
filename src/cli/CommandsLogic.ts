@@ -84,8 +84,9 @@ export default class CommandsLogic {
     this.web3 = new Web3(provider)
   }
 
-  async init (): Promise<void> {
+  async init (): Promise<this> {
     await this.contractInteractor.init()
+    return this
   }
 
   async findWealthyAccount (requiredBalance = ether('2')): Promise<string> {
