@@ -6,7 +6,7 @@ const fs = require('fs')
 const path = require('path')
 
 // TODO: pass all these things as parameters
-const outAbiFolder = 'src/common'
+const outAbiFolder = 'packages/common/src'
 const contractsFolderToExtract = './contracts/interfaces'
 
 /*

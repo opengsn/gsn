@@ -10,12 +10,11 @@ node_modules
 /coverage.json
 /webtools/openeth-webtools.pack.js
 /.eslintcache
-/src/common/interfaces/
+/packages/common/src/interfaces/
 /ganache.pid
-/types/truffle-contracts/
 /dist/
 cache
-/src/cli/compiled/
+/packages/cli/src/compiled/
 /opengsn-gsn-*.tgz
 /RelayClient.ts
 /RelayProvider.ts
@@ -27,3 +26,4 @@ artifacts
 /jsrelay/dist/relayserver.js
 /json-input.json
 /combined.log
+**/dist

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.6.2;
-import "../../contracts/BaseRelayRecipient.sol";
+import "../BaseRelayRecipient.sol";
 
 //make sure that "payable" function that uses _msgSender() still works
 // (its not required to use _msgSender(), since the default function

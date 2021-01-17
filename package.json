@@ -1,4 +1,13 @@
 {
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ],
+    "nohoist": [
+      "**eslint**"
+    ]
+  },
   "version": "2.1.0",
   "description": "Open Gas Stations Network",
   "name": "@opengsn/gsn",
@@ -50,7 +59,11 @@
     "tsc-and-chmod": "tsc && chmod a+x ./dist/src/cli/commands/gsn.js",
     "postinstall": "patch-package",
     "postpack": "./scripts/postpack",
-    "prepare": "./scripts/prepublish"
+    "prepare": "./scripts/prepublish",
+    "lerna-tsc": "lerna run tsc",
+    "lerna-lint": "lerna run lint",
+    "lerna-rm-dist": "lerna run rm-dist",
+    "lerna-test": "yarn generate && yarn lerna-tsc && run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'lerna run test'"
   },
   "dependencies": {
     "@openeth/truffle-typings": "0.0.6",
@@ -92,6 +105,7 @@
     "ethval": "^2.1.1",
     "express": "^4.17.1",
     "jsonrpc-lite": "^2.2.0",
+    "lerna": "^3.22.1",
     "lodash": "^4.17.20",
     "loglevel": "^1.7.0",
     "minimist": "^1.2.5",

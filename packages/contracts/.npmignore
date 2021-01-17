@@ -1,0 +1,6 @@
+#this is an ignore file, so we pack exactly its reverse:
+# pack only "dist", but not dist/tests
+# pack all contracts, but not contracts/test
+/*
+!/contracts
+/contracts/test
