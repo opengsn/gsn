@@ -1,4 +1,4 @@
-/build/
+packages/dev/build/
 .DS_Store
 node_modules
 /.vscode/settings.json
@@ -27,3 +27,4 @@ artifacts
 /json-input.json
 /combined.log
 **/dist
+tsconfig.tsbuildinfo

@@ -9,7 +9,7 @@ mkdir -p src/cli/compiled/
 
 CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
 BUILDFOLDER=./build/contracts
-OUTFOLDER=./src/cli/compiled/
+OUTFOLDER=./packages/cli/src/compiled/
 for c in $CONTRACTS; do
   echo copy $OUTFOLDER/$c.json
   cp $BUILDFOLDER/$c.json $OUTFOLDER
@@ -22,6 +22,5 @@ for c in RelayProvider RelayClient GsnEvents GSNConfigurator GsnTestEnvironment;
   (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
 done
 
-tsc
 chmod a+rx ./dist/src/cli/commands/*.js
 cp -r types dist/
