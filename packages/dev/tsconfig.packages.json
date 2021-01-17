@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.packages.json",
+  "include": [
+    "truffle.js",
+    "test/**/*.ts"
+  ]
+}
