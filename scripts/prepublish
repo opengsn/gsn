@@ -5,15 +5,15 @@ npx lerna run --scope @opengsn/dev truffle-compile
 npx lerna run --scope @opengsn/dev generate
 npx lerna run tsc
 
-#mkdir -p src/cli/compiled/
-#
-#CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
-#BUILDFOLDER=.packages/dev/build/contracts
-#OUTFOLDER=./packages/cli/src/compiled/
-#for c in $CONTRACTS; do
-#  echo copy $OUTFOLDER/$c.json
-#  cp $BUILDFOLDER/$c.json $OUTFOLDER
-#done
+mkdir -p src/cli/compiled/
+
+CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
+BUILDFOLDER=.packages/dev/build/contracts
+OUTFOLDER=./packages/cli/src/compiled/
+for c in $CONTRACTS; do
+  echo copy $OUTFOLDER/$c.json
+  cp $BUILDFOLDER/$c.json $OUTFOLDER
+done
 
 
 #these files are created for packing only (removed by "postpack")
