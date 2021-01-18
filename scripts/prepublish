@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-rm -rf ./dist/
+yarn run lerna-rm-dist
 npx lerna run --scope @opengsn/dev truffle-compile
 npx lerna run --scope @opengsn/dev generate
 

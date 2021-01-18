@@ -44,15 +44,15 @@
   },
   "prepublish": "npm run prepare",
   "scripts": {
-    "test": "yarn prepare && yarn lerna-lint && yarn lerna-tsc && yarn lerna-run-test",
+    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "postinstall": "patch-package",
     "postpack": "./scripts/postpack",
     "prepare": "./scripts/prepublish",
-    "lerna-tsc": "lerna run tsc",
-    "lerna-lint": "lerna run lint",
-    "lerna-rm-dist": "lerna run rm-dist",
-    "lerna-run-test": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'lerna run test --stream --no-prefix'"
+    "lerna-tsc": "npx lerna run tsc",
+    "lerna-lint": "npx lerna run lint",
+    "lerna-rm-dist": "npx lerna run rm-dist",
+    "lerna-run-test": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'npx lerna run test --stream --no-prefix'"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "0.5.5",
@@ -62,6 +62,7 @@
     "@types/eth-sig-util": "^2.1.0",
     "@typescript-eslint/eslint-plugin": "^4.8.1",
     "@typescript-eslint/parser": "^4.8.1",
+    "lerna": "^3.22.1",
     "patch-package": "^6.2.2",
     "eth-sig-util": "2.5.2",
     "eslint": "^7.13.0",
