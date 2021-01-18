@@ -3,10 +3,8 @@
 rm -rf ./dist/
 npx lerna run --scope @opengsn/dev truffle-compile
 npx lerna run --scope @opengsn/dev generate
-npx lerna run tsc
 
-mkdir -p src/cli/compiled/
-
+mkdir -p ./packages/cli/src/compiled/
 CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
 BUILDFOLDER=.packages/dev/build/contracts
 OUTFOLDER=./packages/cli/src/compiled/
@@ -22,5 +20,6 @@ done
 #  (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
 #done
 
+npx lerna run tsc
 chmod a+rx ./packages/cli/dist/commands/*.js
 #cp -r types dist/
