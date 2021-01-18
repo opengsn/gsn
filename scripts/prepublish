@@ -6,8 +6,8 @@ npx lerna run --scope @opengsn/dev generate
 
 mkdir -p ./packages/cli/src/compiled/
 CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
-BUILDFOLDER=.packages/dev/build/contracts
-OUTFOLDER=./packages/cli/src/compiled/
+BUILDFOLDER=./packages/dev/build/contracts
+OUTFOLDER=./packages/cli/src/compiled
 for c in $CONTRACTS; do
   echo copy $OUTFOLDER/$c.json
   cp $BUILDFOLDER/$c.json $OUTFOLDER
