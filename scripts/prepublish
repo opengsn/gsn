@@ -1,9 +1,9 @@
 #!/bin/bash -e
 
 rm -rf ./dist/
-lerna run --scope @opengsn/dev truffle-compile
-lerna run --scope @opengsn/dev generate
-lerna run tsc
+npx lerna run --scope @opengsn/dev truffle-compile
+npx lerna run --scope @opengsn/dev generate
+npx lerna run tsc
 
 #mkdir -p src/cli/compiled/
 #
