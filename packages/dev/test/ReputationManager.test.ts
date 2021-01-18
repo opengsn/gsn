@@ -1,11 +1,11 @@
-import { ReputationStoreManager } from '@opengsn/relayserver/dist/ReputationStoreManager'
+import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { constants } from '@opengsn/common/dist/Constants'
-import { createServerLogger } from '@opengsn/relayserver/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import {
   PaymasterStatus,
   ReputationManager,
   ReputationManagerConfiguration
-} from '@opengsn/relayserver/dist/ReputationManager'
+} from '@opengsn/relay/dist/ReputationManager'
 import { evmMineMany } from './TestUtils'
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
 import { HttpProvider } from 'web3-core'

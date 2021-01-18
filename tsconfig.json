@@ -10,10 +10,10 @@
       "path": "./packages/dev"
     },
     {
-      "path": "./packages/relayserver"
+      "path": "./packages/relay"
     },
     {
-      "path": "./packages/relayclient"
+      "path": "./packages/provider"
     }
   ]
 }

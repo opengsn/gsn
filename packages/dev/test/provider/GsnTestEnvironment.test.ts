@@ -1,6 +1,6 @@
 import { GsnTestEnvironment, TestEnvironment } from '../../src/GsnTestEnvironment'
 import { HttpProvider } from 'web3-core'
-import { RelayClient } from '@opengsn/relayclient/dist/RelayClient'
+import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { TestRecipientInstance } from '../../../../types/truffle-contracts'
 

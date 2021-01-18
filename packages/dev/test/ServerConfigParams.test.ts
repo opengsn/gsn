@@ -4,7 +4,7 @@ import {
   filterType,
   parseServerConfig,
   resolveServerConfig
-} from '@opengsn/relayserver/dist/ServerConfigParams'
+} from '@opengsn/relay/dist/ServerConfigParams'
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import {

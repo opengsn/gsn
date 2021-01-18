@@ -3,7 +3,7 @@ import Mutex from 'async-mutex/lib/Mutex'
 import * as ethUtils from 'ethereumjs-util'
 
 import { evmMineMany } from './TestUtils'
-import { RelayServer } from '@opengsn/relayserver/dist/RelayServer'
+import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 

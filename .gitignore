@@ -28,3 +28,5 @@ artifacts
 /combined.log
 **/dist
 tsconfig.tsbuildinfo
+/packages/dev/json-input.json
+yarn-error.log

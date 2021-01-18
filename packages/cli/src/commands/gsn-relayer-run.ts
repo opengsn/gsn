@@ -1,1 +1,1 @@
-require('../../../relayserver/src/runServer')
+require('../../../relay/src/runServer')

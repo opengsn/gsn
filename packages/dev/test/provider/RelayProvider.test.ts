@@ -6,8 +6,8 @@ import chaiAsPromised from 'chai-as-promised'
 import Web3 from 'web3'
 import { toBN } from 'web3-utils'
 
-import { BaseTransactionReceipt, RelayProvider } from '@opengsn/relayclient/dist/RelayProvider'
-import { GSNConfig } from '@opengsn/relayclient/dist/GSNConfigurator'
+import { BaseTransactionReceipt, RelayProvider } from '@opengsn/provider/dist/RelayProvider'
+import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   RelayHubInstance,
   PenalizerInstance,

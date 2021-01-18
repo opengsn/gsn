@@ -32,6 +32,7 @@
       "./types"
     ],
     "types": [
+      "eth-sig-util",
       "truffle-contracts",
       "openzeppelin__test-helpers",
       "date-format",

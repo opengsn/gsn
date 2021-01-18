@@ -5,7 +5,7 @@
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
 import { HttpProvider } from 'web3-core'
 
-import { RelayProvider } from '@opengsn/relayclient/dist/RelayProvider'
+import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import { Address, AsyncDataCallback } from '@opengsn/common/dist/types/Aliases'
 import {
   RelayHubInstance, StakeManagerInstance,
@@ -14,7 +14,7 @@ import {
 } from '../../../types/truffle-contracts'
 import { deployHub, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import { GSNConfig } from '@opengsn/relayclient/dist/GSNConfigurator'
+import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')

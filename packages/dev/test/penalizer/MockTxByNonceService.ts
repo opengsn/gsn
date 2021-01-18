@@ -1,10 +1,10 @@
 import { Transaction } from 'ethereumjs-tx'
 
-import { BlockExplorerInterface, TransactionData } from '@opengsn/relayserver/dist/penalizer/BlockExplorerInterface'
+import { BlockExplorerInterface, TransactionData } from '@opengsn/relay/dist/penalizer/BlockExplorerInterface'
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { Address } from '@opengsn/common/dist/types/Aliases'
-import { TransactionDataCache } from '@opengsn/relayserver/dist/penalizer/TransactionDataCache'
+import { TransactionDataCache } from '@opengsn/relay/dist/penalizer/TransactionDataCache'
 import * as ethUtils from 'ethereumjs-util'
 
 export class MockTxByNonceService implements BlockExplorerInterface {

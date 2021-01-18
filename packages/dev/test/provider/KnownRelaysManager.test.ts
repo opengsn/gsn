@@ -3,9 +3,9 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
-import { KnownRelaysManager, DefaultRelayScore } from '@opengsn/relayclient/dist/KnownRelaysManager'
+import { KnownRelaysManager, DefaultRelayScore } from '@opengsn/provider/dist/KnownRelaysManager'
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import { GSNConfig } from '@opengsn/relayclient/dist/GSNConfigurator'
+import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   PenalizerInstance,
   RelayHubInstance,
@@ -18,7 +18,7 @@ import { prepareTransaction } from './RelayProvider.test'
 
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { createClientLogger } from '@opengsn/relayclient/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')

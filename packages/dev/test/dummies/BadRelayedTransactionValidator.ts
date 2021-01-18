@@ -1,6 +1,6 @@
-import RelayedTransactionValidator from '@opengsn/relayclient/dist/RelayedTransactionValidator'
+import RelayedTransactionValidator from '@opengsn/provider/dist/RelayedTransactionValidator'
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import { GSNConfig } from '@opengsn/relayclient/dist'
+import { GSNConfig } from '@opengsn/provider/dist'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 

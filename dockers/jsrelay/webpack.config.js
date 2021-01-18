@@ -8,7 +8,7 @@ module.exports = {
     new IgnorePlugin(/^scrypt$/)
   ],
   target: 'node',
-  entry: '../../packages/relayserver/dist/runServer.js',
+  entry: '../../packages/relay/dist/runServer.js',
   mode: 'development',
   module: {
     rules: [

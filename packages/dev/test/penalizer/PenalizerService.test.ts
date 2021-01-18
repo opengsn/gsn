@@ -3,9 +3,9 @@ import { Transaction } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 
-import { PenalizerDependencies, PenalizerService } from '@opengsn/relayserver/dist/penalizer/PenalizerService'
+import { PenalizerDependencies, PenalizerService } from '@opengsn/relay/dist/penalizer/PenalizerService'
 import { AuditRequest } from '@opengsn/common/dist/types/AuditRequest'
-import { createServerLogger } from '@opengsn/relayserver/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 
 import { constants } from '@opengsn/common/dist/Constants'
 import { Address } from '@opengsn/common/dist/types/Aliases'
@@ -13,7 +13,7 @@ import { Address } from '@opengsn/common/dist/types/Aliases'
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'
 import { revert, snapshot } from '../TestUtils'
-import { resolveServerConfig, ServerConfigParams } from '@opengsn/relayserver/dist/ServerConfigParams'
+import { resolveServerConfig, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 
 contract('PenalizerService', function (accounts) {
   let id: string

@@ -87,6 +87,7 @@ export default class AccountManager {
       // Sanity check only
       // @ts-ignore
       rec = sigUtil.recoverTypedSignature_v4({
+        // @ts-ignore
         data: signedData,
         sig: signature
       })

@@ -4,7 +4,7 @@ import { TestPaymasterConfigurableMisbehaviorInstance, TestRecipientInstance } f
 import { deployHub, evmMine, startRelay, stopRelay } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { HttpProvider } from 'web3-core'
-import { RelayProvider } from '@opengsn/relayclient/dist/RelayProvider'
+import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestRecipient = artifacts.require('TestRecipient')

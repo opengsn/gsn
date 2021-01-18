@@ -1,0 +1,21 @@
+{
+  "name": "@opengsn/relay",
+  "version": "2.1.0",
+  "main": "dist/src/runServer",
+  "scripts": {
+    "tsc": "tsc",
+    "lint": "eslint -f unix .",
+    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
+  },
+  "dependencies": {
+    "@opengsn/common": "^2.1.0",
+    "@types/cors": "^2.8.7",
+    "@types/express": "^4.17.8",
+    "@types/minimist": "^1.2.0",
+    "@types/nedb": "^1.8.11",
+    "async-mutex": "^0.2.4",
+    "ethereumjs-tx": "^2.1.2",
+    "ethereumjs-util": "^6.2.1",
+    "nedb-async": "^0.1.3"
+  }
+}

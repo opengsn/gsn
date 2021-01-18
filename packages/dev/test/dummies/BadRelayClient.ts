@@ -1,4 +1,4 @@
-import { GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from '@opengsn/relayclient/dist'
+import { GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from '@opengsn/provider/dist'
 import GsnTransactionDetails from '@opengsn/common/dist/types/GsnTransactionDetails'
 
 export default class BadRelayClient extends RelayClient {

@@ -3,21 +3,21 @@ import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import { KeyManager } from '@opengsn/relayserver/dist/KeyManager'
-import { RegistrationManager } from '@opengsn/relayserver/dist/RegistrationManager'
-import { RelayServer } from '@opengsn/relayserver/dist/RelayServer'
-import { ServerAction } from '@opengsn/relayserver/dist/StoredTransaction'
-import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relayserver/dist/ServerConfigParams'
-import { TxStoreManager } from '@opengsn/relayserver/dist/TxStoreManager'
+import { KeyManager } from '@opengsn/relay/dist/KeyManager'
+import { RegistrationManager } from '@opengsn/relay/dist/RegistrationManager'
+import { RelayServer } from '@opengsn/relay/dist/RelayServer'
+import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
+import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
+import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { constants } from '@opengsn/common/dist/Constants'
 
 import { evmMine, evmMineMany, revert, snapshot } from './TestUtils'
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
-import { createServerLogger } from '@opengsn/relayserver/dist/ServerWinstonLogger'
-import { TransactionManager } from '@opengsn/relayserver/dist/TransactionManager'
-import { GasPriceFetcher } from '@opengsn/relayserver/dist/GasPriceFetcher'
+import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
+import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
 const { oneEther } = constants
 

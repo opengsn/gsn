@@ -1,7 +1,7 @@
 require('ts-node/register/transpile-only')
 
-var HDWalletProvider = require('truffle-hdwallet-provider')
-var mnemonic = 'digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six'
+const HDWalletProvider = require('@truffle/hdwallet-provider')
+const mnemonic = 'digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six'
 
 const secretMnemonicFile = './secret_mnemonic'
 const fs = require('fs')
@@ -22,11 +22,11 @@ module.exports = {
       port: 8545,
       network_id: '*'
     },
-    coverage: { // coverage/trace provider. note that it currently can't run extrnal-process relay.
-      provider: require('./coverage-prov.js'),
-      verbose: process.env.VERBOSE,
-      network_id: '*'
-    },
+    // coverage: { // coverage/trace provider. note that it currently can't run extrnal-process relay.
+    //   provider: require('./coverage-prov.js'),
+    //   verbose: process.env.VERBOSE,
+    //   network_id: '*'
+    // },
     npmtest: { // used from "npm test". see package.json
       verbose: process.env.VERBOSE,
       host: '127.0.0.1',
@@ -59,8 +59,7 @@ module.exports = {
     },
     xdai_poa_mainnet: {
       provider: function () {
-        const wallet = new HDWalletProvider(secretMnemonic, 'https://dai.poa.network')
-        return wallet
+        return new HDWalletProvider(secretMnemonic, 'https://dai.poa.network')
       },
       network_id: 100
     },

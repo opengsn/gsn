@@ -6,7 +6,7 @@ import sinonChai from 'sinon-chai'
 import { HttpProvider } from 'web3-core'
 import { constants } from '@openzeppelin/test-helpers'
 
-import AccountManager from '@opengsn/relayclient/dist/AccountManager'
+import AccountManager from '@opengsn/provider/dist/AccountManager'
 import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
 import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { configureGSN } from '../TestUtils'

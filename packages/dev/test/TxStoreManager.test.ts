@@ -1,8 +1,8 @@
 import fs from 'fs'
 
-import { ServerAction, StoredTransaction } from '@opengsn/relayserver/dist/StoredTransaction'
-import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relayserver/dist/TxStoreManager'
-import { createServerLogger } from '@opengsn/relayserver/dist/ServerWinstonLogger'
+import { ServerAction, StoredTransaction } from '@opengsn/relay/dist/StoredTransaction'
+import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
+import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'

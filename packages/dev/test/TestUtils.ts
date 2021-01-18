@@ -8,12 +8,12 @@ import { ether } from '@openzeppelin/test-helpers'
 import { IStakeManagerInstance, RelayHubInstance } from '../../../types/truffle-contracts'
 import HttpWrapper from '@opengsn/common/dist/HttpWrapper'
 import HttpClient from '@opengsn/common/dist/HttpClient'
-import { defaultGsnConfig, GSNConfig } from '@opengsn/relayclient/dist/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { createServerLogger } from '@opengsn/relayserver/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -60,7 +60,7 @@ export async function startRelay (
   if (options.initialReputation) {
     args.push('--initialReputation', options.initialReputation)
   }
-  const runServerPath = path.resolve(__dirname, '../../relayserver/dist/runServer.js')
+  const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
     [runServerPath, ...args])
 
