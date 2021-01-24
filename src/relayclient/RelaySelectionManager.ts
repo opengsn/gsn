@@ -4,7 +4,7 @@ import { LoggerInterface } from '../common/LoggerInterface'
 import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
 import { PartialRelayInfo, RelayInfo } from '../common/types/RelayInfo'
 import { PingFilter } from '../common/types/Aliases'
-import { isInfoFromEvent, RelayInfoUrl } from '../common/types/RelayRegisteredEventInfo'
+import { isInfoFromEvent, RelayInfoUrl } from '../common/types/GSNContractsDataTypes'
 
 import HttpClient from './HttpClient'
 import { GSNConfig } from './GSNConfigurator'

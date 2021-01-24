@@ -23,7 +23,7 @@ import knowForwarderAddressAbi from './interfaces/IKnowForwarderAddress.json'
 import VersionsManager from './VersionsManager'
 import replaceErrors from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
-import { decodeRevertReason, event2topic } from './Utils'
+import { address2topic, decodeRevertReason, event2topic } from './Utils'
 import {
   BaseRelayRecipientInstance,
   IForwarderInstance,
@@ -35,32 +35,17 @@ import {
   IStakeManagerInstance
 } from '../../types/truffle-contracts'
 
-import { Address, IntString, Web3ProviderBaseInterface } from './types/Aliases'
+import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from '../relayclient/LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from 'ethereumjs-common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
+import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
 import TransactionDetails = Truffle.TransactionDetails
 
 require('source-map-support').install({ errorFormatterForce: true })
-
-type EventName = string
-
-export const RelayServerRegistered: EventName = 'RelayServerRegistered'
-export const RelayWorkersAdded: EventName = 'RelayWorkersAdded'
-export const TransactionRelayed: EventName = 'TransactionRelayed'
-export const TransactionRejectedByPaymaster: EventName = 'TransactionRejectedByPaymaster'
-
-const ActiveManagerEvents = [RelayServerRegistered, RelayWorkersAdded, TransactionRelayed, TransactionRejectedByPaymaster]
-
-export const HubAuthorized: EventName = 'HubAuthorized'
-export const HubUnauthorized: EventName = 'HubUnauthorized'
-export const StakeAdded: EventName = 'StakeAdded'
-export const StakeUnlocked: EventName = 'StakeUnlocked'
-export const StakeWithdrawn: EventName = 'StakeWithdrawn'
-export const StakePenalized: EventName = 'StakePenalized'
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
@@ -97,6 +82,7 @@ export default class ContractInteractor {
   chainId!: number
   private networkId?: number
   private networkType?: string
+  private paymasterVersion?: SemVerString
 
   constructor (
     {
@@ -201,15 +187,15 @@ export default class ContractInteractor {
     ])
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.forwarderAddress = forwarderAddress
-    this.deployment.paymasterVersion = paymasterVersion
+    this.paymasterVersion = paymasterVersion
     await this._resolveDeploymentFromRelayHub(relayHubAddress)
   }
 
   async _resolveDeploymentFromRelayHub (relayHubAddress: Address): Promise<void> {
     this.relayHubInstance = await this._createRelayHub(relayHubAddress)
     const [stakeManagerAddress, penalizerAddress] = await Promise.all([
-      this.relayHubInstance.stakeManager(),
-      this.relayHubInstance.penalizer()
+      this._hubStakeManagerAddress(),
+      this._hubPenalizerAddress()
     ])
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.stakeManagerAddress = stakeManagerAddress
@@ -439,11 +425,11 @@ export default class ContractInteractor {
     return await this._getPastEvents(stakeManager.contract, names, extraTopics, options)
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async _getPastEvents (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const topics: string[][] = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
+    // TODO: AFAIK this means only the first parameter of the event is supported
     if (extraTopics.length > 0) {
       topics.push(extraTopics)
     }
@@ -530,6 +516,14 @@ export default class ContractInteractor {
     return await this.relayHubInstance.balanceOf(address)
   }
 
+  /**
+   * Gets stake of an address on the current StakeManager.
+   * @param address - must be a Relay Manger
+   */
+  async stakeManagerStakeInfo (address: Address): Promise<StakeInfo> {
+    return await this.stakeManagerInstance.getStakeInfo(address)
+  }
+
   async initDeployment (deployment: GSNContractsDeployment): Promise<void> {
     this.deployment = deployment
     await this._initializeContracts()
@@ -604,6 +598,56 @@ export default class ContractInteractor {
 
   async hubDepositFor (paymaster: Address, transactionDetails: TransactionDetails): Promise<any> {
     return await this.relayHubInstance.depositFor(paymaster, transactionDetails)
+  }
+
+  async resolveDeploymentVersions (): Promise<ObjectMap<PrefixedHexString>> {
+    const versionsMap: ObjectMap<PrefixedHexString> = {}
+    if (this.deployment.relayHubAddress != null) {
+      versionsMap[this.deployment.relayHubAddress] = await this.relayHubInstance.versionHub()
+    }
+    if (this.deployment.penalizerAddress != null) {
+      versionsMap[this.deployment.penalizerAddress] = await this.penalizerInstance.versionPenalizer()
+    }
+    if (this.deployment.stakeManagerAddress != null) {
+      versionsMap[this.deployment.stakeManagerAddress] = await this.stakeManagerInstance.versionSM()
+    }
+    return versionsMap
+  }
+
+  async queryDeploymentBalances (): Promise<ObjectMap<IntString>> {
+    const balances: ObjectMap<IntString> = {}
+    if (this.deployment.relayHubAddress != null) {
+      balances[this.deployment.relayHubAddress] = await this.getBalance(this.deployment.relayHubAddress)
+    }
+    if (this.deployment.penalizerAddress != null) {
+      balances[this.deployment.penalizerAddress] = await this.getBalance(this.deployment.penalizerAddress)
+    }
+    if (this.deployment.stakeManagerAddress != null) {
+      balances[this.deployment.stakeManagerAddress] = await this.getBalance(this.deployment.stakeManagerAddress)
+    }
+    return balances
+  }
+
+  private async _hubStakeManagerAddress (): Promise<Address> {
+    return await this.relayHubInstance.stakeManager()
+  }
+
+  stakeManagerAddress (): Address {
+    return this.stakeManagerInstance.address
+  }
+
+  private async _hubPenalizerAddress (): Promise<Address> {
+    return await this.relayHubInstance.penalizer()
+  }
+
+  penalizerAddress (): Address {
+    return this.penalizerInstance.address
+  }
+
+  async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {
+    const topics = address2topic(managerAddress)
+    const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
+    return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
   }
 }
 

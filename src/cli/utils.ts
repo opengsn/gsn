@@ -1,8 +1,9 @@
 // TODO: allow reading network URLs from 'truffle-config.js'
 import commander, { CommanderStatic } from 'commander'
 import fs from 'fs'
-import { Address } from '../common/types/Aliases'
 import path from 'path'
+
+import { Address } from '../common/types/Aliases'
 import { RelayHubConfiguration } from '../common/types/RelayHubConfiguration'
 import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
 
@@ -17,11 +18,20 @@ export const networks = new Map<string, string>([
   ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId]
 ])
 
+export const networksBlockExplorers = new Map<string, string>([
+  ['xdai', 'https://blockscout.com/poa/xdai/'],
+  ['ropsten', 'https://ropsten.etherscan.io/'],
+  ['rinkeby', 'https://rinkeby.etherscan.io/'],
+  ['kovan', 'https://kovan.etherscan.io/'],
+  ['goerli', 'https://goerli.etherscan.io/'],
+  ['mainnet', 'https://etherscan.io/']
+])
+
 export function supportedNetworks (): string[] {
   return Array.from(networks.keys())
 }
 
-export function getNetworkUrl (network: string, env: {[key: string]: string|undefined} = process.env): string {
+export function getNetworkUrl (network: string, env: { [key: string]: string | undefined } = process.env): string {
   const net = networks.get(network)
   if (net == null) {
     const match = network.match(/^(https?:\/\/.*)/) ?? []
@@ -136,7 +146,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-h, --hub <address>', 'address of the hub contract (default: the address from build/gsn/RelayHub.json if exists)')
         break
       case 'm':
-        commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\' (default: empty)')
+        commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\' (default: "mnemonic")', 'mnemonic')
         break
       case 'g':
         commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')

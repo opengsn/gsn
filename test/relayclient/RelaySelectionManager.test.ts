@@ -11,7 +11,7 @@ import { EmptyFilter, KnownRelaysManager } from '../../src/relayclient/KnownRela
 import { GasPricePingFilter } from '../../src/relayclient/RelayClient'
 import { PartialRelayInfo } from '../../src/common/types/RelayInfo'
 import { PingFilter } from '../../src/common/types/Aliases'
-import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/common/types/RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/common/types/GSNContractsDataTypes'
 import { configureGSN, deployHub } from '../TestUtils'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
@@ -70,7 +70,7 @@ contract('RelaySelectionManager', function (accounts) {
         provider: web3.currentProvider as HttpProvider,
         logger
       }).init()
-      httpClient = new HttpClient(new HttpWrapper(), logger)
+      httpClient = new HttpClient(new HttpWrapper(), this.logger)
       knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), EmptyFilter)
       stubGetRelaysSorted = sinon.stub(knownRelaysManager, 'getRelaysSortedForTransaction')
       stubGetRelaysSorted.returns(Promise.resolve([[eventInfo]]))

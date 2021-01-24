@@ -1,5 +1,5 @@
 import PingResponse from '../PingResponse'
-import { RelayInfoUrl, RelayRegisteredEventInfo } from './RelayRegisteredEventInfo'
+import { RelayInfoUrl, RelayRegisteredEventInfo } from './GSNContractsDataTypes'
 
 // Well, I still don't like it
 // Some info is known from the event, some from ping

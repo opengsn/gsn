@@ -15,21 +15,20 @@ import {
   boolString
 } from '../common/Utils'
 import { defaultEnvironment } from '../common/Environments'
-import ContractInteractor, {
-  HubAuthorized,
-  HubUnauthorized,
-  RelayServerRegistered,
-  RelayWorkersAdded,
-  StakeAdded,
-  StakeUnlocked,
-  StakeWithdrawn
-} from '../common/ContractInteractor'
 
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerConfigParams } from './ServerConfigParams'
 import { TxStoreManager } from './TxStoreManager'
 import { ServerAction } from './StoredTransaction'
 import { LoggerInterface } from '../common/LoggerInterface'
+import ContractInteractor from '../common/ContractInteractor'
+import {
+  HubAuthorized,
+  HubUnauthorized, RelayServerRegistered, RelayWorkersAdded,
+  StakeAdded,
+  StakeUnlocked,
+  StakeWithdrawn
+} from '../common/types/GSNContractsDataTypes'
 
 export interface RelayServerRegistryInfo {
   baseRelayFee: IntString

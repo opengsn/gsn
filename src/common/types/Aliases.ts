@@ -4,11 +4,12 @@ import PingResponse from '../PingResponse'
 import RelayRequest from '../EIP712/RelayRequest'
 import GsnTransactionDetails from './GsnTransactionDetails'
 import RelayFailureInfo from './RelayFailureInfo'
-import { RelayRegisteredEventInfo } from './RelayRegisteredEventInfo'
+import { RelayRegisteredEventInfo } from './GSNContractsDataTypes'
 import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
 export type Address = string
+export type EventName = string
 export type IntString = string
 export type SemVerString = string
 /**
@@ -43,4 +44,8 @@ export interface Web3ProviderBaseInterface {
     payload: JsonRpcPayload,
     callback: (error: Error | null, result?: JsonRpcResponse) => void
   ) => void
+}
+
+export interface ObjectMap<T> {
+  [key: string]: T
 }

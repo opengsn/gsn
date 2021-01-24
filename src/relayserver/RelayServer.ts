@@ -6,10 +6,8 @@ import { toBN, toHex } from 'web3-utils'
 
 import { IRelayHubInstance } from '../../types/truffle-contracts'
 
-import ContractInteractor, {
-  TransactionRejectedByPaymaster,
-  TransactionRelayed
-} from '../common/ContractInteractor'
+import ContractInteractor from '../common/ContractInteractor'
+import { TransactionRejectedByPaymaster, TransactionRelayed } from '../common/types/GSNContractsDataTypes'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 import { Address, IntString } from '../common/types/Aliases'
 import { RelayTransactionRequest } from '../common/types/RelayTransactionRequest'
