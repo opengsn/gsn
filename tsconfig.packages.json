@@ -1,0 +1,42 @@
+{
+  "exclude": [
+    "**/node_modules",
+    "**/dist"
+  ],
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "composite": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "target": "es2017",
+    "module": "commonjs",
+    "strict": true,
+    "moduleResolution": "node",
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "declaration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "lib": [
+      "dom",
+      "es2015",
+      "esnext.asynciterable"
+    ],
+    "sourceMap": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules/@0x/typescript-typings/types",
+      "./types"
+    ],
+    "types": [
+      "eth-sig-util",
+      "truffle-contracts",
+      "openzeppelin__test-helpers",
+      "date-format",
+      "chai-bn"
+    ]
+  }
+}

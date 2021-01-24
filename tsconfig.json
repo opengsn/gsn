@@ -1,47 +1,19 @@
 {
-  "compilerOptions": {
-    "allowJs": true,
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "target": "es2017",
-    "module": "commonjs",
-    "strict": true,
-    "moduleResolution": "node",
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "declaration": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "dist",
-    "lib": [
-      "dom",
-      "es2015",
-      "esnext.asynciterable"
-    ],
-    "sourceMap": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./node_modules/@0x/typescript-typings/types",
-      "./types"
-    ],
-    "types": [
-      "truffle-contracts",
-      "openzeppelin__test-helpers",
-      "ganache-core",
-      "date-format",
-      "chai-bn"
-    ]
-  },
-  "include": [
-    "**/*.ts",
-    "src/**/*"
-  ],
-  "exclude": [
-    "dist",
-    "jsrelay/dist",
-    "node_modules",
-    "example",
-    "build"
+  "references": [
+    {
+      "path": "./packages/cli"
+    },
+    {
+      "path": "./packages/common"
+    },
+    {
+      "path": "./packages/dev"
+    },
+    {
+      "path": "./packages/relay"
+    },
+    {
+      "path": "./packages/provider"
+    }
   ]
 }

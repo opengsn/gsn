@@ -19,11 +19,11 @@ module.exports = {
   // This is needed to add configuration to rules with type information
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    // The 'tsconfig.eslint.json' is needed to add all JavaScript files to the project
-    project: ['./tsconfig.json', './tsconfig.eslint.json']
+    // The 'tsconfig.packages.json' is needed to add not-compiled files to the project
+    project: ['./tsconfig.json', './tsconfig.packages.json']
   },
   ignorePatterns: [
-    'types/truffle-contracts',
+    '**/types/truffle-contracts',
     'dist/'
   ],
   rules: {
@@ -38,7 +38,7 @@ module.exports = {
   overrides: [
     {
       files: [
-        './test/**/*.ts'
+        '**/test/**/*.ts'
       ],
       rules: {
         'no-unused-expressions': 'off',

@@ -1,0 +1,13 @@
+{
+  "name": "@opengsn/contracts",
+  "version": "2.1.0",
+  "scripts": {
+    "lint": "solhint -f unix \"src/**/*.sol\" --max-warnings 0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.2.0"
+  },
+  "devDependencies": {
+    "solhint": "3.0.0"
+  }
+}

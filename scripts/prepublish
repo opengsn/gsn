@@ -1,15 +1,13 @@
 #!/bin/bash -e
 
-rm -rf ./dist/
-yarn truffle-compile
-yarn extract_abi
-yarn generate
+yarn run lerna-rm-dist
+npx lerna run --scope @opengsn/dev truffle-compile
+npx lerna run --scope @opengsn/dev generate
 
-mkdir -p src/cli/compiled/
-
+mkdir -p ./packages/cli/src/compiled/
 CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
-BUILDFOLDER=./build/contracts
-OUTFOLDER=./src/cli/compiled/
+BUILDFOLDER=./packages/dev/build/contracts
+OUTFOLDER=./packages/cli/src/compiled
 for c in $CONTRACTS; do
   echo copy $OUTFOLDER/$c.json
   cp $BUILDFOLDER/$c.json $OUTFOLDER
@@ -17,11 +15,11 @@ done
 
 
 #these files are created for packing only (removed by "postpack")
-for c in RelayProvider RelayClient GsnEvents GSNConfigurator GsnTestEnvironment; do
-  echo gen ./$c.ts:
-  (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
-done
+#for c in RelayProvider RelayClient GsnEvents GSNConfigurator GsnTestEnvironment; do
+#  echo gen ./$c.ts:
+#  (echo "// generated during pack";echo "export * from './src/relayclient/$c'") > $c.ts
+#done
 
-tsc
-chmod a+rx ./dist/src/cli/commands/*.js
-cp -r types dist/
+npx lerna run tsc
+chmod a+rx ./packages/cli/dist/commands/*.js
+#cp -r types dist/

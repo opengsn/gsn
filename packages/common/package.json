@@ -1,0 +1,28 @@
+{
+  "name": "@opengsn/common",
+  "version": "2.1.0",
+  "main": "dist/Version",
+  "scripts": {
+    "tsc": "tsc",
+    "lint": "eslint -f unix .",
+    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
+  },
+  "dependencies": {
+    "@types/eth-sig-util": "^2.1.0",
+    "@types/web3": "1.2.2",
+    "@types/semver": "^7.3.4",
+    "axios": "^0.21.1",
+    "ethval": "^2.1.1",
+    "eth-sig-util": "2.5.2",
+    "ethereumjs-tx": "^2.1.2",
+    "ethereumjs-util": "^6.2.1",
+    "ow": "^0.17.0",
+    "semver": "^7.3.2",
+    "web3-core": "1.2.6",
+    "web3-core-helpers": "1.2.6",
+    "web3-eth": "1.2.6",
+    "web3-eth-abi": "1.2.6",
+    "web3-eth-contract": "1.2.6",
+    "web3-utils": "1.2.6"
+  }
+}
