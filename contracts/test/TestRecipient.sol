@@ -77,6 +77,7 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     //function with no return value (also test revert with no msg.
     function checkNoReturnValues(bool doRevert) public view {
         (this);
+        /* solhint-disable reason-string*/
         require(!doRevert);
     }
 

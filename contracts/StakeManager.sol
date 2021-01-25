@@ -28,7 +28,7 @@ contract StakeManager is IStakeManager {
     function stakeForAddress(address relayManager, uint256 unstakeDelay) external override payable {
         require(stakes[relayManager].owner == address(0) || stakes[relayManager].owner == msg.sender, "not owner");
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
-        require(msg.sender != relayManager, "relayManager cannot stake for itself");
+        require(msg.sender != relayManager, "relayManager cannot stake itself");
         require(stakes[msg.sender].owner == address(0), "sender is a relayManager itself");
         stakes[relayManager].owner = msg.sender;
         stakes[relayManager].stake += msg.value;

@@ -308,7 +308,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               {
                 gas
               }),
-            'relay worker cannot be a smart contract')
+            'relay worker can\'t be a contract')
         })
       })
       context('with view functions only', function () {
@@ -554,7 +554,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gasPrice,
               gas
             }),
-            'Not enough gas left for innerRelayCall to complete')
+            'no gas for innerRelayCall')
         })
 
         it('should not accept relay requests with gas price lower then user specified', async function () {

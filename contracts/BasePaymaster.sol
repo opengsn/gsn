@@ -62,7 +62,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
      * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
      */
     modifier relayHubOnly() {
-        require(msg.sender == getHubAddr(), "Function can only be called by RelayHub");
+        require(msg.sender == getHubAddr(), "can only be called by RelayHub");
         _;
     }
 

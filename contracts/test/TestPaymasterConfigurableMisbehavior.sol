@@ -45,6 +45,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         expensiveGasLimits = val;
     }
 
+    // solhint-disable reason-string
+    // contains comments that are checked in tests
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,

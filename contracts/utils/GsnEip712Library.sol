@@ -70,8 +70,8 @@ library GsnEip712Library {
                 IRelayRecipient.isTrustedForwarder.selector, relayRequest.relayData.forwarder
             )
         );
-        require(success, "isTrustedForwarder reverted");
-        require(ret.length == 32, "isTrustedForwarder returned invalid response");
+        require(success, "isTrustedForwarder: reverted");
+        require(ret.length == 32, "isTrustedForwarder: bad response");
         require(abi.decode(ret, (bool)), "invalid forwarder for recipient");
     }
 
