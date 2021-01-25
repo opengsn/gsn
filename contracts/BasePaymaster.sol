@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.10;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -8,7 +8,7 @@ import "./interfaces/GsnTypes.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
 import "./utils/GsnEip712Library.sol";
-import "./forwarder/Forwarder.sol";
+import "./forwarder/IForwarder.sol";
 
 /**
  * Abstract base class to be inherited by a concrete Paymaster

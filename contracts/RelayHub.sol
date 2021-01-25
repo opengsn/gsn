@@ -4,8 +4,8 @@
 /* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -23,15 +23,15 @@ contract RelayHub is IRelayHub {
 
     string public override versionHub = "2.0.0+opengsn.hub.irelayhub";
 
-    uint256 public override minimumStake;
-    uint256 public override minimumUnstakeDelay;
-    uint256 public override maximumRecipientDeposit;
-    uint256 public override gasOverhead;
-    uint256 public override postOverhead;
-    uint256 public override gasReserve;
-    uint256 public override maxWorkerCount;
-    IStakeManager override public stakeManager;
-    address override public penalizer;
+    uint256 public immutable override minimumStake;
+    uint256 public immutable override minimumUnstakeDelay;
+    uint256 public immutable override maximumRecipientDeposit;
+    uint256 public immutable override gasOverhead;
+    uint256 public immutable override postOverhead;
+    uint256 public immutable override gasReserve;
+    uint256 public immutable override maxWorkerCount;
+    IStakeManager immutable  override public stakeManager;
+    address immutable override public penalizer;
 
     // maps relay worker's address to its manager's address
     mapping(address => address) public override workerToManager;
@@ -51,7 +51,7 @@ contract RelayHub is IRelayHub {
         uint256 _maximumRecipientDeposit,
         uint256 _minimumUnstakeDelay,
         uint256 _minimumStake
-    ) public {
+    ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
         maxWorkerCount = _maxWorkerCount;

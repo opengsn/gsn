@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
@@ -77,9 +77,9 @@ library GsnEip712Library {
 
     function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
-        bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
+        bytes32 _domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         IForwarder forwarder = IForwarder(payable(relayRequest.relayData.forwarder));
-        forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
+        forwarder.verify(forwardRequest, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 
     function verify(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
@@ -89,11 +89,11 @@ library GsnEip712Library {
 
     function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool forwarderSuccess, bool callSuccess, bytes memory ret) {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
-        bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
+        bytes32 _domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         /* solhint-disable-next-line avoid-low-level-calls */
         (forwarderSuccess, ret) = relayRequest.relayData.forwarder.call(
             abi.encodeWithSelector(IForwarder.execute.selector,
-            forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
+            forwardRequest, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
         ));
         if ( forwarderSuccess ) {
 

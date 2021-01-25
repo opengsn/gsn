@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "./forwarder/Forwarder.sol";
 import "./BaseRelayRecipient.sol";
@@ -14,7 +14,7 @@ contract BatchForwarder is Forwarder, BaseRelayRecipient {
 
     string public override versionRecipient = "2.0.0+opengsn.batched.irelayrecipient";
 
-    constructor() public {
+    constructor() {
         //needed for sendBatch
         trustedForwarder = address(this);
     }
