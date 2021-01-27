@@ -171,14 +171,14 @@ contract('Forwarder', ([from]) => {
       it('should fail on unregistered domain separator', async () => {
         const dummyDomainSeparator = bytes32(1)
 
-        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'.padEnd(65 * 2 + 2, '1b')), 'unregistered domain separator')
+        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'.padEnd(65 * 2 + 2, '1b')), 'FWD: unregistered domain sep.')
       })
 
       it('should fail on wrong nonce', async () => {
         await expectRevert(fwd.verify({
           ...req,
           nonce: 123
-        }, domainSeparator, typeHash, '0x', '0x'), 'revert nonce mismatch')
+        }, domainSeparator, typeHash, '0x', '0x'), 'FWD: nonce mismatch')
       })
       it('should fail on invalid signature', async () => {
         await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x'), 'invalid signature length')
@@ -275,7 +275,7 @@ contract('Forwarder', ([from]) => {
     })
   })
 
-  describe('#verifyAndCall', () => {
+  describe('#execute', () => {
     let data: EIP712TypedData
     let typeName: string
     let typeHash: string
@@ -341,7 +341,33 @@ contract('Forwarder', ([from]) => {
       const logs = await recipient.getPastEvents('TestForwarderMessage')
       assert.equal(logs.length, 1, 'TestRecipient should emit')
       assert.equal(logs[0].args.realSender, senderAddress, 'TestRecipient should "see" real sender of meta-tx')
-      assert.equal('1', (await fwd.getNonce(senderAddress)).toString(), 'verifyAndCall should increment nonce')
+      assert.equal('1', (await fwd.getNonce(senderAddress)).toString(), 'execute should increment nonce')
+    })
+
+    it('should revert if not given enough gas', async () => {
+      const nonce = await fwd.getNonce(senderAddress)
+
+      const func = recipient.contract.methods.emitMessage('hello').encodeABI()
+      const funcGasEtimate = await recipient.emitMessage.estimateGas('hello')
+
+      const req1 = {
+        to: recipient.address,
+        data: func,
+        value: '0',
+        from: senderAddress,
+        nonce: nonce.toString(),
+        gas: funcGasEtimate
+      }
+      const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+      const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
+
+      const outerGasEstimate = await testfwd.callExecute.estimateGas(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig)
+
+      // should fail if too little gas
+      expectRevert(testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate - 1 }), 'insufficient gas')
+
+      // and succeed with exact amount
+      await testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate })
     })
 
     it('should return revert message of target revert', async () => {
