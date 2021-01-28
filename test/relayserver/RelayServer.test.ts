@@ -311,7 +311,7 @@ contract('RelayServer', function (accounts) {
           await env.relayServer.validateViewCallSucceeds(req, 150000, 2000000)
           assert.fail()
         } catch (e) {
-          assert.include(e.message, 'Paymaster rejected in server: signature mismatch')
+          assert.include(e.message, 'Paymaster rejected in server: FWD: signature mismatch')
         }
       })
     })

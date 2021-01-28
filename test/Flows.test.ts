@@ -149,7 +149,7 @@ options.forEach(params => {
     it(params.title + 'running testRevert (should always fail)', async () => {
       await asyncShouldThrow(async () => {
         await sr.testRevert({ from: from })
-      }, 'revert')
+      }, 'always fail')
     })
 
     if (params.relay) {
@@ -185,7 +185,8 @@ options.forEach(params => {
 
             await sr.emitMessage('xxx', {
               from: gasless,
-              paymaster: approvalPaymaster.address
+              paymaster: approvalPaymaster.address,
+              gas: 1e6
             })
           } catch (e) {
             console.log('error1: ', e)

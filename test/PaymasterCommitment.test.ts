@@ -292,7 +292,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         gasPrice
       })
 
-      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.equal(paid, 0)

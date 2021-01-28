@@ -461,7 +461,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             gasPrice
           })
 
-          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
+          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
         })
         // This test is added due to a regression that almost slipped to production.
         it('relayCall executes the transaction with no parameters', async function () {
