@@ -114,16 +114,6 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
       )
     })
 
-    // it('relay managers cannot stake for themselves', async function () {
-    //   await expectRevert(
-    //     stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
-    //       value: initialStake,
-    //       from: relayManager
-    //     }),
-    //     'relayManager cannot stake for itself'
-    //   )
-    // })
-
     it('with owner set', async function () {
       before(async function () {
         await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
@@ -172,13 +162,6 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
         unstakeDelay: initialUnstakeDelay
       })
     })
-
-    // it('should not allow one relayManager stake', async function () {
-    //   await expectRevert(
-    //     stakeManager.stakeForRelayManager(nonOwner, initialUnstakeDelay, { from: relayManager }),
-    //     'sender is a relayManager itself'
-    //   )
-    // })
 
     it('owner can increase the relay stake', async function () {
       const addedStake = ether('2')
