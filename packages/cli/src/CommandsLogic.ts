@@ -33,7 +33,7 @@ require('source-map-support').install({ errorFormatterForce: true })
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
   sleep: number
-  /** number of times to sleep before timeout*/
+  /** number of times to sleep before timeout */
   sleepCount: number
   from: Address
   gasPrice: string | BN
