@@ -56,7 +56,7 @@ contract Forwarder is IForwarder {
     override
     returns (bool success, bytes memory ret) {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
-        _updateNonce(req);
+        _verifyAndUpdateNonce(req);
 
         bytes memory callData = abi.encodePacked(req.data, req.from);
         require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
@@ -74,8 +74,8 @@ contract Forwarder is IForwarder {
         require(nonces[req.from] == req.nonce, "FWD: nonce mismatch");
     }
 
-    function _updateNonce(ForwardRequest memory req) internal {
-        require(nonces[req.from]++ == req.nonce, "nonce mismatch");
+    function _verifyAndUpdateNonce(ForwardRequest memory req) internal {
+        require(nonces[req.from]++ == req.nonce, "FWD: nonce mismatch");
     }
 
     function registerRequestType(string calldata typeName, string calldata typeSuffix) external override {
