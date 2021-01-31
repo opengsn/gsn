@@ -318,6 +318,8 @@ contract('RelayProvider', function (accounts) {
         relayHub.constructor.network.events[topic] = TestRecipient.events[topic]
       })
 
+      await stakeManager.setRelayManagerOwner(accounts[2], { from: accounts[1] })
+
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
       await stakeManager.stakeForAddress(accounts[1], 1000, {
         value: ether('1'),

@@ -566,6 +566,11 @@ export default class ContractInteractor {
     return hub.contract.methods.addRelayWorkers(workers)
   }
 
+  async getSetRelayManagerMethod (owner: Address): Promise<any> {
+    const sm = this.stakeManagerInstance
+    return sm.contract.methods.setRelayManagerOwner(owner)
+  }
+
   /**
    * Web3.js as of 1.2.6 (see web3-core-method::_confirmTransaction) does not allow
    * broadcasting of a transaction without waiting for it to be mined.

@@ -68,6 +68,7 @@ export const StakeAdded: EventName = 'StakeAdded'
 export const StakePenalized: EventName = 'StakePenalized'
 export const StakeUnlocked: EventName = 'StakeUnlocked'
 export const StakeWithdrawn: EventName = 'StakeWithdrawn'
+export const OwnerSet: EventName = 'OwnerSet'
 
 export const allStakeManagerEvents = [StakeAdded, HubAuthorized, HubUnauthorized, StakeUnlocked, StakeWithdrawn, StakePenalized]
 

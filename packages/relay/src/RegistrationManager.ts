@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
+import { Address } from '@opengsn/common/dist/types/Aliases'
 import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
 import {
   address2topic,
@@ -23,24 +23,24 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
 import {
   HubAuthorized,
-  HubUnauthorized, RelayServerRegistered, RelayWorkersAdded,
+  HubUnauthorized,
+  OwnerSet,
+  RelayServerRegistered,
+  RelayWorkersAdded,
   StakeAdded,
   StakeUnlocked,
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { isRegistrationValid } from './Utils'
-
-export interface RelayServerRegistryInfo {
-  baseRelayFee: IntString
-  pctRelayFee: number
-  url: string
-}
+import { constants } from '@opengsn/common/dist/Constants'
 
 const mintxgascost = defaultEnvironment.mintxgascost
 
 export class RegistrationManager {
   balanceRequired: AmountRequired
   stakeRequired: AmountRequired
+  _isSetOwnerCalled = false
+  _isOwnerSetOnStakeManager = false
   _isHubAuthorized = false
   _isStakeLocked = false
 
@@ -125,6 +125,8 @@ export class RegistrationManager {
     if (this.lastMinedRegisterTransaction == null) {
       this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
+    await this.refreshBalance()
+    await this.refreshStake()
     this.isInitialized = true
   }
 
@@ -137,30 +139,52 @@ export class RegistrationManager {
       fromBlock: lastScannedBlock + 1,
       toBlock: 'latest'
     }
-    const eventNames = [HubAuthorized, StakeAdded, HubUnauthorized, StakeUnlocked, StakeWithdrawn]
+    const eventNames = [HubAuthorized, StakeAdded, HubUnauthorized, StakeUnlocked, StakeWithdrawn, OwnerSet]
     const decodedEvents = await this.contractInteractor.getPastEventsForStakeManager(eventNames, topics, options)
     this.printEvents(decodedEvents, options)
     let transactionHashes: PrefixedHexString[] = []
+    if (!this._isOwnerSetOnStakeManager) {
+      if (this.balanceRequired.isSatisfied) {
+        // TODO: _isSetOwnerCalled is different from 'isActionPending' only cause we handle owner outside the event loop
+        if (!this._isSetOwnerCalled) {
+          this._isSetOwnerCalled = true
+          transactionHashes = transactionHashes.concat(await this.setOwnerInStakeManager(currentBlock))
+        }
+      } else {
+        this.logger.debug('owner is not set and balance requirement is not satisfied')
+        // TODO: relay should stop handling events at this point as action by owner is required;
+        //  current architecture does not allow to skip handling events; assume
+      }
+    }
     // TODO: what about 'penalize' events? should send balance to owner, I assume
     // TODO TODO TODO 'StakeAdded' is not the event you want to cat upon if there was no 'HubAuthorized' event
     for (const eventData of decodedEvents) {
       switch (eventData.event) {
         case HubAuthorized:
+          this.logger.warn(`Handling HubAuthorized event: ${JSON.stringify(eventData)} in block ${currentBlock}`)
           await this._handleHubAuthorizedEvent(eventData)
+          break
+        case OwnerSet:
+          await this.refreshStake()
+          this.logger.warn(`Handling OwnerSet event: ${JSON.stringify(eventData)} in block ${currentBlock}`)
           break
         case StakeAdded:
           await this.refreshStake()
+          this.logger.warn(`Handling StakeAdded event: ${JSON.stringify(eventData)} in block ${currentBlock}`)
           break
         case HubUnauthorized:
+          this.logger.warn(`Handling HubUnauthorized event: ${JSON.stringify(eventData)} in block ${currentBlock}`)
           if (isSameAddress(eventData.returnValues.relayHub, this.hubAddress)) {
             this.isHubAuthorized = false
             this.delayedEvents.push({ block: eventData.returnValues.removalBlock.toString(), eventData })
           }
           break
         case StakeUnlocked:
+          this.logger.warn(`Handling StakeUnlocked event: ${JSON.stringify(eventData)} in block ${currentBlock}`)
           await this.refreshStake()
           break
         case StakeWithdrawn:
+          this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(eventData)} in block ${currentBlock}`)
           await this.refreshStake()
           transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock))
           break
@@ -276,6 +300,10 @@ export class RegistrationManager {
   async refreshStake (): Promise<void> {
     const stakeInfo = await this.contractInteractor.getStakeInfo(this.managerAddress)
     const stake = toBN(stakeInfo.stake)
+    this._isOwnerSetOnStakeManager = stakeInfo.owner !== constants.ZERO_ADDRESS
+    if (this._isOwnerSetOnStakeManager && !isSameAddress(stakeInfo.owner, this.config.ownerAddress)) {
+      throw new Error(`This Relay Manager has set owner to already! On-chain: ${stakeInfo.owner}, in config: ${this.config.ownerAddress}`)
+    }
     if (stake.eq(toBN(0))) {
       return
     }
@@ -405,7 +433,11 @@ export class RegistrationManager {
     const transactionHashes: PrefixedHexString[] = []
     const gasPrice = await this.contractInteractor.getGasPrice()
     const managerHubBalance = await this.contractInteractor.hubBalanceOf(this.managerAddress)
-    const { gasLimit, gasCost, method } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
+    const {
+      gasLimit,
+      gasCost,
+      method
+    } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
     if (managerHubBalance.gte(gasCost)) {
       this.logger.info(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
       const details: SendTransactionDetails = {
@@ -475,5 +507,22 @@ Block     | ${decodedEvent.blockNumber}
 TxHash    | ${decodedEvent.transactionHash}
 `)
     }
+  }
+
+  // TODO: duplicated code; another leaked web3 'method' abstraction
+  async setOwnerInStakeManager (currentBlock: number): Promise<PrefixedHexString> {
+    const setRelayManagerMethod = await this.contractInteractor.getSetRelayManagerMethod(this.config.ownerAddress)
+    const gasLimit = await this.transactionManager.attemptEstimateGas('SetRelayManager', setRelayManagerMethod, this.managerAddress)
+    const details: SendTransactionDetails = {
+      signer: this.managerAddress,
+      gasLimit,
+      serverAction: ServerAction.SET_OWNER,
+      method: setRelayManagerMethod,
+      destination: this.config.stakeManagerAddress,
+      creationBlockNumber: currentBlock
+    }
+    this.logger.info(`setting relay owner ${this.config.ownerAddress} at StakeManager ${this.config.stakeManagerAddress}`)
+    const { transactionHash } = await this.transactionManager.sendTransaction(details)
+    return transactionHash
   }
 }

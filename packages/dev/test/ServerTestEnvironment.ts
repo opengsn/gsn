@@ -146,11 +146,20 @@ export class ServerTestEnvironment {
     await this.relayClient.init()
   }
 
-  async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): Promise<void> {
-    await this.newServerInstanceNoInit(config, serverWorkdirs)
+  async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
+    this.newServerInstanceNoFunding(config, serverWorkdirs)
+    await this.fundServer()
+
     await this.relayServer.init()
     // initialize server - gas price, stake, owner, etc, whatever
-    const latestBlock = await this.web3.eth.getBlock('latest')
+    let latestBlock = await this.web3.eth.getBlock('latest')
+
+    // This run should call 'setOwner'
+    await this.relayServer._worker(latestBlock.number)
+    latestBlock = await this.web3.eth.getBlock('latest')
+    await this.stakeAndAuthorizeHub(unstakeDelay)
+
+    // This run should call 'registerRelayServer' and 'addWorkers'
     const receipts = await this.relayServer._worker(latestBlock.number)
     await assertRelayAdded(receipts, this.relayServer) // sanity check
     await this.relayServer._worker(latestBlock.number + 1)
@@ -164,14 +173,16 @@ export class ServerTestEnvironment {
     }
   }
 
-  async newServerInstanceNoInit (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
-    this.newServerInstanceNoFunding(config, serverWorkdirs)
+  async fundServer (): Promise<void> {
     await web3.eth.sendTransaction({
       to: this.relayServer.managerAddress,
       from: this.relayOwner,
       value: web3.utils.toWei('2', 'ether')
     })
+  }
 
+  async stakeAndAuthorizeHub (unstakeDelay: number): Promise<void> {
+    // Now owner can do its operations
     await this.stakeManager.stakeForAddress(this.relayServer.managerAddress, unstakeDelay, {
       from: this.relayOwner,
       value: ether('1')
@@ -184,6 +195,8 @@ export class ServerTestEnvironment {
   newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
     const shared: Partial<ServerConfigParams> = {
       runPaymasterReputations: false,
+      ownerAddress: this.relayOwner,
+      stakeManagerAddress: this.stakeManager.address,
       relayHubAddress: this.relayHub.address,
       checkInterval: 10
     }

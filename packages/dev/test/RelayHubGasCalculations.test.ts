@@ -71,6 +71,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       from: other
     })
 
+    await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
     await stakeManager.stakeForAddress(relayManager, unstakeDelay, {
       value: ether('2'),
       from: relayOwner

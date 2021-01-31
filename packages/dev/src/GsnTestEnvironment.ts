@@ -68,6 +68,8 @@ class GsnTestEnvironmentClass {
 
     const registerOptions = {
       from,
+      sleep: 100,
+      sleepCount: 5,
       stake: ether('1'),
       funds: ether('1'),
       relayUrl: relayUrl,
@@ -167,6 +169,8 @@ class GsnTestEnvironmentClass {
       devMode: true,
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,
+      stakeManagerAddress: deploymentResult.stakeManagerAddress,
+      ownerAddress: from,
       gasPriceFactor: 1,
       baseRelayFee: '0',
       pctRelayFee: 0,

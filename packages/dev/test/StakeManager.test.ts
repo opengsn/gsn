@@ -1,4 +1,4 @@
-import { balance, ether, expectEvent, expectRevert, constants } from '@openzeppelin/test-helpers'
+import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { expect } from 'chai'
 import { evmMineMany } from './TestUtils'
 import BN from 'bn.js'
@@ -7,12 +7,21 @@ import { StakeManagerInstance } from '../../../types/truffle-contracts'
 
 const StakeManager = artifacts.require('StakeManager')
 
-contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwner]) {
+contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwner, secondRelayManager]) {
   const initialUnstakeDelay = new BN(4)
   const initialStake = ether('1')
   let stakeManager: StakeManagerInstance
 
-  function testCanStake (relayManager: string): void {
+  function testNotOwnerCannotStake (): void {
+    it('should not allow not owner to stake for owned relayManager address', async function () {
+      await expectRevert(
+        stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, { from: nonOwner }),
+        'not owner'
+      )
+    })
+  }
+
+  function testOwnerCanStake (): void {
     it('should allow owner to stake for unowned addresses', async function () {
       const { logs } = await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
         value: initialStake,
@@ -70,6 +79,34 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     testStakeNotValid()
 
+    it('should not allow anyone to stake before owner is set', async function () {
+      await expectRevert(
+        stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+          value: initialStake,
+          from: owner
+        }),
+        'not owner'
+      )
+    })
+
+    it('should allow manager to set its owner', async function () {
+      const { logs } = await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
+      expectEvent.inLogs(logs, 'OwnerSet', {
+        relayManager,
+        owner
+      })
+    })
+
+    it('should not allow manager to change its owner', async function () {
+      await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
+      await expectRevert(
+        stakeManager.setRelayManagerOwner(owner, {
+          from: relayManager
+        }),
+        'already owned'
+      )
+    })
+
     it('should not allow not owner to schedule unlock', async function () {
       await expectRevert(
         stakeManager.unlockStake(nonOwner, { from: owner }),
@@ -77,22 +114,29 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
       )
     })
 
-    it('relay managers cannot stake for themselves', async function () {
-      await expectRevert(
-        stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
-          value: initialStake,
-          from: relayManager
-        }),
-        'relayManager cannot stake for itself'
-      )
-    })
+    // it('relay managers cannot stake for themselves', async function () {
+    //   await expectRevert(
+    //     stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+    //       value: initialStake,
+    //       from: relayManager
+    //     }),
+    //     'relayManager cannot stake for itself'
+    //   )
+    // })
 
-    testCanStake(relayManager)
+    it('with owner set', async function () {
+      before(async function () {
+        await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
+      })
+
+      testOwnerCanStake()
+    })
   })
 
   describe('with stake deposited for relay server', function () {
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
+      await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
       await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
@@ -115,14 +159,26 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
       expect(actualUnstakeDelay).to.be.bignumber.equal(initialUnstakeDelay)
     })
 
-    testCanStake(nonOwner)
-
-    it('should not allow one relayManager stake', async function () {
-      await expectRevert(
-        stakeManager.stakeForAddress(nonOwner, initialUnstakeDelay, { from: relayManager }),
-        'sender is a relayManager itself'
-      )
+    it('should allow owner to stake for a second manager', async function () {
+      await stakeManager.setRelayManagerOwner(owner, { from: secondRelayManager })
+      const { logs } = await stakeManager.stakeForAddress(secondRelayManager, initialUnstakeDelay, {
+        value: initialStake,
+        from: owner
+      })
+      expectEvent.inLogs(logs, 'StakeAdded', {
+        relayManager: secondRelayManager,
+        owner,
+        stake: initialStake,
+        unstakeDelay: initialUnstakeDelay
+      })
     })
+
+    // it('should not allow one relayManager stake', async function () {
+    //   await expectRevert(
+    //     stakeManager.stakeForAddress(nonOwner, initialUnstakeDelay, { from: relayManager }),
+    //     'sender is a relayManager itself'
+    //   )
+    // })
 
     it('owner can increase the relay stake', async function () {
       const addedStake = ether('2')
@@ -162,12 +218,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
       )
     })
 
-    it('not owner cannot stake for owned relayManager address', async function () {
-      await expectRevert(
-        stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, { from: nonOwner }),
-        'not owner'
-      )
-    })
+    testNotOwnerCannotStake()
 
     it('should not allow owner to withdraw stakes when not scheduled', async function () {
       await expectRevert(stakeManager.withdrawStake(relayManager, { from: owner }), 'Withdrawal is not scheduled')
@@ -220,6 +271,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
   describe('with authorized hub', function () {
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
+      await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
       await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
@@ -306,6 +358,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
   describe('with scheduled deauthorization of an authorized hub', function () {
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
+      await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
       await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
@@ -337,6 +390,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
   describe('with scheduled unlock while hub still authorized', function () {
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
+      await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
       await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
@@ -386,16 +440,23 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
         await stakeManager.withdrawStake(relayManager, { from: owner })
       })
 
-      it('should have no memory of removed relayManager', async function () {
+      it('should remove stake, unstake delay of removed relayManager, but remember the owner', async function () {
         // @ts-ignore (typechain does not declare names or iterator for return types)
-        const { stake: actualStake, unstakeDelay: actualUnstakeDelay, owner: actualOwner } =
+        const { stake: actualStake, unstakeDelay: actualUnstakeDelay, withdrawBlock: actualBlock, owner: actualOwner } =
           await stakeManager.stakes(relayManager)
-        expect(actualOwner).to.equal(constants.ZERO_ADDRESS)
+
+        // relay owner and unstake delay are kept
+        expect(actualOwner).to.equal(owner)
+        expect(actualUnstakeDelay).to.be.bignumber.equal(initialUnstakeDelay)
+
+        // staked amount and withdrawal block are reset
         expect(actualStake).to.be.bignumber.equal(new BN(0))
-        expect(actualUnstakeDelay).to.be.bignumber.equal(new BN(0))
+        expect(actualBlock).to.be.bignumber.equal(new BN(0))
       })
 
-      testCanStake(nonOwner)
+      testNotOwnerCannotStake()
+
+      testOwnerCanStake()
     })
   })
 })
