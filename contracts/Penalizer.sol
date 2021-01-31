@@ -35,10 +35,9 @@ contract Penalizer is IPenalizer {
      * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure
      * no-one can front-run it to claim this penalization
      */
-    function commit(bytes32 msgDataHash, uint revealSalt) external override {
-        bytes32 idx = keccak256(abi.encodePacked(msgDataHash, revealSalt, msg.sender));
-        commits[idx] = block.number;
-        emit Commit(msgDataHash, msg.sender);
+    function commit(bytes32 commitHash) external override {
+        commits[commitHash] = block.number;
+        emit Commit(commitHash, msg.sender);
     }
 
     modifier relayManagerOnly(IRelayHub hub) {
@@ -46,12 +45,11 @@ contract Penalizer is IPenalizer {
         _;
     }
 
-    modifier commitRevealOnly(uint revealSalt) {
-        bytes32 msgDataHash = keccak256(msg.data);
-        bytes32 idx = keccak256(abi.encodePacked(msgDataHash, revealSalt, msg.sender));
-        uint commitValue = commits[idx];
-        require(commitValue != 0, "no commit");
-        require(commitValue + PENALIZE_BLOCK_DELAY < block.number, "reveal penalize too soon");
+    modifier commitRevealOnly() {
+        bytes32 commitHash = keccak256(abi.encodePacked(keccak256(msg.data), msg.sender));
+        uint commitBlockNumber = commits[commitHash];
+        require(commitBlockNumber != 0, "no commit");
+        require(commitBlockNumber + PENALIZE_BLOCK_DELAY < block.number, "reveal penalize too soon");
         _;
     }
 
@@ -69,17 +67,16 @@ contract Penalizer is IPenalizer {
         _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
     }
 
-    function penalizeRepeatedNonceWithSalt(
+    function penalizeRepeatedNonceAfterCommit(
         bytes memory unsignedTx1,
         bytes memory signature1,
         bytes memory unsignedTx2,
         bytes memory signature2,
-        IRelayHub hub,
-        uint revealSalt
+        IRelayHub hub
     )
     public
     override
-    commitRevealOnly(revealSalt) {
+    commitRevealOnly {
         _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
     }
 
@@ -140,15 +137,14 @@ contract Penalizer is IPenalizer {
         _penalizeIllegalTransaction(unsignedTx, signature, hub);
     }
 
-    function penalizeIllegalTransactionWithSalt(
+    function penalizeIllegalTransactionAfterCommit(
         bytes memory unsignedTx,
         bytes memory signature,
-        IRelayHub hub,
-        uint revealSalt
+        IRelayHub hub
     )
     public
     override
-    commitRevealOnly(revealSalt) {
+    commitRevealOnly {
         _penalizeIllegalTransaction(unsignedTx, signature, hub);
     }
 

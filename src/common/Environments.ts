@@ -17,7 +17,6 @@ interface Environment {
  * This is done to prevent mistakenly setting an unstake delay to millions of years.
  */
 const defaultStakeManagerMaxUnstakeDelay: number = 10000000
-
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasOverhead: 33346,
   postOverhead: 13302,
