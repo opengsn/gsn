@@ -59,7 +59,7 @@ contract('ReputationFlow', function (accounts) {
     it('should stop serving the paymaster after specified number of on-chain rejected transactions', async function () {
       for (let i = 0; i < 20; i++) {
         try {
-          await testRecipient.emitMessage('Hello there!')
+          await testRecipient.emitMessage('Hello there!', { gas: 100000 })
         } catch (e) {
           if (e.message.includes('Transaction has been reverted by the EVM') === true) {
             continue
