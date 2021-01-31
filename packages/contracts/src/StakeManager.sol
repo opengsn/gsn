@@ -30,7 +30,7 @@ contract StakeManager is IStakeManager {
     /// Put a stake for a relayManager and set its unstake delay. Only the owner can call this function.
     /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
-    function stakeForAddress(address relayManager, uint256 unstakeDelay) external override payable ownerOnly(relayManager) {
+    function stakeForRelayManager(address relayManager, uint256 unstakeDelay) external override payable ownerOnly(relayManager) {
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
         stakes[relayManager].stake += msg.value;
         stakes[relayManager].unstakeDelay = unstakeDelay;
