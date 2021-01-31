@@ -49,8 +49,8 @@ contract StakeManager is IStakeManager {
         require(info.withdrawBlock > 0, "Withdrawal is not scheduled");
         require(info.withdrawBlock <= block.number, "Withdrawal is not due");
         uint256 amount = info.stake;
-        stakes[relayManager].stake = 0;
-        stakes[relayManager].withdrawBlock = 0;
+        info.stake = 0;
+        info.withdrawBlock = 0;
         msg.sender.transfer(amount);
         emit StakeWithdrawn(relayManager, msg.sender, amount);
     }

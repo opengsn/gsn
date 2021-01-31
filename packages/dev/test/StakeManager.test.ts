@@ -109,7 +109,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     it('should not allow not owner to schedule unlock', async function () {
       await expectRevert(
-        stakeManager.unlockStake(nonOwner, { from: owner }),
+        stakeManager.unlockStake(relayManager, { from: nonOwner }),
         'not owner'
       )
     })

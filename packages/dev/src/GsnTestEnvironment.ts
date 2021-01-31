@@ -1,7 +1,7 @@
 import net from 'net'
 import { ether } from '@opengsn/common/dist/Utils'
 
-import CommandsLogic from '@opengsn/cli/dist/CommandsLogic'
+import CommandsLogic, { RegisterOptions } from '@opengsn/cli/dist/CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 
 import { getNetworkUrl, loadDeployment, supportedNetworks } from '@opengsn/cli/dist/utils'
@@ -66,9 +66,9 @@ class GsnTestEnvironmentClass {
       throw new Error('Failed to run a local Relay Server')
     }
 
-    const registerOptions = {
+    const registerOptions: RegisterOptions = {
       from,
-      sleep: 100,
+      sleepMs: 100,
       sleepCount: 5,
       stake: ether('1'),
       funds: ether('1'),

@@ -32,7 +32,7 @@ require('source-map-support').install({ errorFormatterForce: true })
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
-  sleep: number
+  sleepMs: number
   /** number of times to sleep before timeout */
   sleepCount: number
   from: Address
@@ -230,9 +230,9 @@ export default class CommandsLogic {
       if (owner === constants.ZERO_ADDRESS) {
         let i = 0
         while (true) {
-          await sleep(options.sleep)
+          await sleep(options.sleepMs)
           const newStakeInfo = await stakeManager.getStakeInfo(relayAddress)
-          if (isSameAddress(newStakeInfo.owner, options.from)) {
+          if (newStakeInfo.owner !== constants.ZERO_ADDRESS && isSameAddress(newStakeInfo.owner, options.from)) {
             console.log('RelayServer successfully set its owner on the StakeManager')
             break
           }
