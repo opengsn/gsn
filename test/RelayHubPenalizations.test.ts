@@ -36,7 +36,8 @@ const Forwarder = artifacts.require('Forwarder')
 const paymasterData = '0x'
 const clientId = '0'
 
-contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherRelayWorker, sender, other, relayManager, otherRelayManager, thirdRelayWorker, reporterRelayManager]) { // eslint-disable-line no-unused-vars
+contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, committer, nonCommitter,
+  sender, other, relayManager, thirdRelayWorker, reporterRelayManager]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
 
   let stakeManager: StakeManagerInstance
@@ -187,44 +188,39 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       })
       context('penalize with commit/reveal', () => {
         let request: string
-        const committer = _
 
         before('make a commitment', async () => {
-          request = penalizer.contract.methods.penalizeIllegalTransactionWithSalt(penalizableTxData, penalizableTxSignature, relayHub.address, 1).encodeABI()
-          await penalizer.commit(web3.utils.keccak256(request), 1, { from: committer })
+          request = penalizer.contract.methods.penalizeIllegalTransactionAfterCommit(penalizableTxData, penalizableTxSignature, relayHub.address).encodeABI()
+
+          const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
+          await penalizer.commit(commitHash, { from: committer })
         })
 
         it('should fail to penalize too soon after commit', async () => {
           await expectRevert(
-            penalizer.penalizeIllegalTransactionWithSalt(penalizableTxData, penalizableTxSignature, relayHub.address, 1, { from: committer }),
-            'must wait before revealing penalize'
+            penalizer.penalizeIllegalTransactionAfterCommit(penalizableTxData, penalizableTxSignature, relayHub.address, { from: committer }),
+            'reveal penalize too soon'
           )
         })
 
-        it('should fail to penalize with wrong salt', async () => {
-          await expectRevert(
-            penalizer.penalizeIllegalTransactionWithSalt(penalizableTxData, penalizableTxSignature, relayHub.address, 2, { from: committer }),
-            'no commit'
-          )
-        })
         it('should allow penalize after commit', async () => {
           await evmMineMany(10)
           // this is not a failure: it passes the Penalizer modifier test (commit test),
           // it then reverts inside the RelayHub (since we didn't fully initialize this relay/worker)
           await expectRevert(
-            penalizer.penalizeIllegalTransactionWithSalt(penalizableTxData, penalizableTxSignature, relayHub.address, 1, { from: committer }),
+            penalizer.penalizeIllegalTransactionAfterCommit(penalizableTxData, penalizableTxSignature, relayHub.address, { from: committer }),
             'Unknown relay worker'
           )
         })
         it('should reject penalize if method call differs', async () => {
           await expectRevert(
-            penalizer.penalizeIllegalTransactionWithSalt(penalizableTxData, penalizableTxSignature + '00', relayHub.address, 1, { from: committer }),
+            penalizer.penalizeIllegalTransactionAfterCommit(penalizableTxData, penalizableTxSignature + '00', relayHub.address, { from: committer }),
             'no commit'
           )
         })
         it('should reject penalize if commit called from another account', async () => {
           await expectRevert(
-            penalizer.penalizeIllegalTransactionWithSalt(penalizableTxData, penalizableTxSignature, relayHub.address, 1, { from: sender }),
+            penalizer.penalizeIllegalTransactionAfterCommit(penalizableTxData, penalizableTxSignature, relayHub.address, { from: nonCommitter }),
             'no commit'
           )
         })

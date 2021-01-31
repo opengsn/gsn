@@ -28,22 +28,20 @@ interface IPenalizer {
         IRelayHub hub
     ) external;
 
-    function commit(bytes32 msgDataHash, uint256 revealSalt) external;
+    function commit(bytes32 commitHash) external;
 
-    function penalizeRepeatedNonceWithSalt(
+    function penalizeRepeatedNonceAfterCommit(
         bytes calldata unsignedTx1,
         bytes calldata signature1,
         bytes calldata unsignedTx2,
         bytes calldata signature2,
-        IRelayHub hub,
-        uint256 revealSalt
+        IRelayHub hub
     ) external;
 
-    function penalizeIllegalTransactionWithSalt(
+    function penalizeIllegalTransactionAfterCommit(
         bytes calldata unsignedTx,
         bytes calldata signature,
-        IRelayHub hub,
-        uint256 revealSalt
+        IRelayHub hub
     ) external;
 
     function versionPenalizer() external view returns (string memory);
