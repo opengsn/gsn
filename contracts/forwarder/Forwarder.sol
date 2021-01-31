@@ -59,9 +59,10 @@ contract Forwarder is IForwarder {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
+        bytes memory callData = abi.encodePacked(req.data, req.from);
         require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
         // solhint-disable-next-line avoid-low-level-calls
-        (success,ret) = req.to.call{gas : req.gas, value : req.value}(abi.encodePacked(req.data, req.from));
+        (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
         if ( address(this).balance>0 ) {
             //can't fail: req.from signed (off-chain) the request, so it must be an EOA...
             payable(req.from).transfer(address(this).balance);
