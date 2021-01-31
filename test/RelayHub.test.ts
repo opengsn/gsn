@@ -308,7 +308,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               {
                 gas
               }),
-            'relay worker can\'t be a contract')
+            'relay worker must be EOA')
         })
       })
       context('with view functions only', function () {
