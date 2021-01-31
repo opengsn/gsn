@@ -177,7 +177,7 @@ contract RelayHub is IRelayHub {
         (signature);
         RelayCallData memory vars;
         vars.functionSelector = MinLibBytes.readBytes4(relayRequest.request.data, 0);
-        require(msg.sender == tx.origin, "relay worker can't be a contract");
+        require(msg.sender == tx.origin, "relay worker must be EOA");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
         require(
@@ -283,7 +283,7 @@ contract RelayHub is IRelayHub {
 
         // This external function can only be called by RelayHub itself, creating an internal transaction. Calls to the
         // recipient (preRelayedCall, the relayedCall, and postRelayedCall) are called from inside this transaction.
-        require(msg.sender == address(this), "My be called by RelayHub");
+        require(msg.sender == address(this), "Must be called by RelayHub");
 
         // If either pre or post reverts, the whole internal transaction will be reverted, reverting all side effects on
         // the recipient. The recipient will still be charged for the used gas by the relay.
