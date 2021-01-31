@@ -15,5 +15,15 @@
     {
       "path": "./packages/provider"
     }
-  ]
+  ],
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "types": [
+      "eth-sig-util",
+      "truffle-contracts",
+      "openzeppelin__test-helpers",
+      "date-format",
+      "chai-bn"
+    ]
+  }
 }

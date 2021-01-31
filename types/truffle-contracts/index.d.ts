@@ -1578,7 +1578,27 @@ export interface IRelayRecipientInstance extends Truffle.ContractInstance {
 }
 
 export interface IStakeManagerInstance extends Truffle.ContractInstance {
-  stakeForAddress: {
+  // TODO: manual change in a generated file! As of this writing, TypeChain is disabled.
+  setRelayManagerOwner: {
+    (
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<Truffle.TransactionResponse>;
+    call(
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<void>;
+    sendTransaction(
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<string>;
+    estimateGas(
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<number>;
+  };
+
+  stakeForRelayManager: {
     (
       relayManager: string | BN,
       unstakeDelay: number | BN | string,
@@ -2427,7 +2447,27 @@ export interface StakeManagerInstance extends Truffle.ContractInstance {
     owner: string;
   }>;
 
-  stakeForAddress: {
+  // TODO: manual change in a generated file! As of this writing, TypeChain is disabled.
+  setRelayManagerOwner: {
+    (
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<Truffle.TransactionResponse>;
+    call(
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<void>;
+    sendTransaction(
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<string>;
+    estimateGas(
+      owner: string | BN,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<number>;
+  };
+
+  stakeForRelayManager: {
     (
       relayManager: string | BN,
       unstakeDelay: number | BN | string,

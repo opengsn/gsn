@@ -20,37 +20,37 @@ contract StakeManager is IStakeManager {
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
 
-    /// Put a stake for a relayManager and set its unstake delay.
-    /// If the entry does not exist, it is created, and the caller of this function becomes its owner.
-    /// If the entry already exists, only the owner can call this function.
+    function setRelayManagerOwner(address payable owner) external override {
+        require(owner != address(0), "invalid owner");
+        require(stakes[msg.sender].owner == address(0), "already owned");
+        stakes[msg.sender].owner = owner;
+        emit OwnerSet(msg.sender, owner);
+    }
+
+    /// Put a stake for a relayManager and set its unstake delay. Only the owner can call this function.
     /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
-    function stakeForAddress(address relayManager, uint256 unstakeDelay) external override payable {
-        require(stakes[relayManager].owner == address(0) || stakes[relayManager].owner == msg.sender, "not owner");
+    function stakeForRelayManager(address relayManager, uint256 unstakeDelay) external override payable ownerOnly(relayManager) {
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
-        require(msg.sender != relayManager, "relayManager cannot stake for itself");
-        require(stakes[msg.sender].owner == address(0), "sender is a relayManager itself");
-        stakes[relayManager].owner = msg.sender;
         stakes[relayManager].stake += msg.value;
         stakes[relayManager].unstakeDelay = unstakeDelay;
         emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
     }
 
-    function unlockStake(address relayManager) external override {
+    function unlockStake(address relayManager) external override ownerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
-        require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock == 0, "already pending");
         info.withdrawBlock = block.number.add(info.unstakeDelay);
         emit StakeUnlocked(relayManager, msg.sender, info.withdrawBlock);
     }
 
-    function withdrawStake(address relayManager) external override {
+    function withdrawStake(address relayManager) external override ownerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
-        require(info.owner == msg.sender, "not owner");
         require(info.withdrawBlock > 0, "Withdrawal is not scheduled");
         require(info.withdrawBlock <= block.number, "Withdrawal is not due");
         uint256 amount = info.stake;
-        delete stakes[relayManager];
+        info.stake = 0;
+        info.withdrawBlock = 0;
         msg.sender.transfer(amount);
         emit StakeWithdrawn(relayManager, msg.sender, amount);
     }

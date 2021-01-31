@@ -7,7 +7,7 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 
-import { GSNConfig } from '@opengsn/relayclient/GSNConfigurator'
+import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { SendTransactionDetails, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
@@ -60,7 +60,7 @@ contract('RelayServer', function (accounts) {
     it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
       const env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
       await env.init({})
-      await env.newServerInstanceNoInit()
+      env.newServerInstanceNoFunding()
       const relayServerToInit = env.relayServer
       const chainId = await env.web3.eth.getChainId()
       const networkId = await env.web3.eth.net.getId()
@@ -581,7 +581,14 @@ contract('RelayServer', function (accounts) {
 
     async function attackTheServer (server: RelayServer): Promise<void> {
       const _sendTransactionOrig = server.transactionManager.sendTransaction
-      server.transactionManager.sendTransaction = async function ({ signer, method, destination, value = '0x', gasLimit, gasPrice }: SendTransactionDetails): Promise<SignedTransactionDetails> {
+      server.transactionManager.sendTransaction = async function ({
+        signer,
+        method,
+        destination,
+        value = '0x',
+        gasLimit,
+        gasPrice
+      }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore
         return (await _sendTransactionOrig.call(server.transactionManager, ...arguments))
