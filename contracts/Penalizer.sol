@@ -51,7 +51,7 @@ contract Penalizer is IPenalizer {
         bytes32 idx = keccak256(abi.encodePacked(msgDataHash, revealSalt, msg.sender));
         uint commitValue = commits[idx];
         require(commitValue != 0, "no commit");
-        require(commitValue + PENALIZE_BLOCK_DELAY < block.number, "must wait before revealing penalize");
+        require(commitValue + PENALIZE_BLOCK_DELAY < block.number, "reveal penalize too soon");
         _;
     }
 
