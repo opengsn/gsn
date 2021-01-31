@@ -39,7 +39,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const senderNonce = new BN('0')
   const magicNumbers = {
     pre: 5451,
-    post: 1644
+    post: 1639
   }
 
   let relayHub: RelayHubInstance
@@ -280,7 +280,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   context('charge calculation should not depend on return/revert value of request', () => {
     [[true, 0], [true, 20], [false, 0], [false, 50]]
-      .forEach(([doRevert, len, b]) => {
+      .forEach(([doRevert, len]) => {
         it(`should calculate overhead regardless of return value len (${len}) or revert (${doRevert})`, async () => {
           const beforeBalances = getBalances()
           const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
@@ -328,7 +328,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           if (len === 0) {
             assert.equal(resultEvent, null, 'should not get TransactionResult with zero len')
           } else {
-            assert.notEqual(resultEvent, null, 'didn\'t get TrasnactionResult where it should.')
+            assert.notEqual(resultEvent, null, 'didn\'t get TransactionResult where it should.')
           }
           const gasUsed = res.receipt.gasUsed
           const diff = await diffBalances(await beforeBalances)
@@ -348,7 +348,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           .forEach(requestedFee => {
             // avoid duplicate coverage checks. they do the same, and take a lot of time:
             if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return
-            // 50k tests take more then 10 seconds to complete so will run once for sanity
+            // 50k tests take more than 10 seconds to complete so will run once for sanity
             if (messageLength === 50000 && requestedFee !== 10) return
             it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`, async function () {
               const beforeBalances = await getBalances()

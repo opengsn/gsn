@@ -1,14 +1,14 @@
 import replaceErrors from '../common/ErrorReplacerJSON'
 import { LoggerInterface } from '../common/LoggerInterface'
 
-import GsnTransactionDetails from './types/GsnTransactionDetails'
-import { PartialRelayInfo, RelayInfo } from './types/RelayInfo'
-import { PingFilter } from './types/Aliases'
-import { isInfoFromEvent, RelayInfoUrl } from './types/RelayRegisteredEventInfo'
+import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
+import { PartialRelayInfo, RelayInfo } from '../common/types/RelayInfo'
+import { PingFilter } from '../common/types/Aliases'
+import { isInfoFromEvent, RelayInfoUrl } from '../common/types/RelayRegisteredEventInfo'
 
 import HttpClient from './HttpClient'
 import { GSNConfig } from './GSNConfigurator'
-import { IKnownRelaysManager } from './KnownRelaysManager'
+import { KnownRelaysManager } from './KnownRelaysManager'
 
 interface RaceResult {
   winner?: PartialRelayInfo
@@ -16,7 +16,7 @@ interface RaceResult {
 }
 
 export default class RelaySelectionManager {
-  private readonly knownRelaysManager: IKnownRelaysManager
+  private readonly knownRelaysManager: KnownRelaysManager
   private readonly httpClient: HttpClient
   private readonly config: GSNConfig
   private readonly logger: LoggerInterface
@@ -28,7 +28,7 @@ export default class RelaySelectionManager {
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
-  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: IKnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, logger: LoggerInterface, config: GSNConfig) {
+  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, logger: LoggerInterface, config: GSNConfig) {
     this.gsnTransactionDetails = gsnTransactionDetails
     this.knownRelaysManager = knownRelaysManager
     this.httpClient = httpClient
@@ -68,9 +68,12 @@ export default class RelaySelectionManager {
         this.logger.info(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
         const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([managerAddress]))
         if (events.length === 1) {
+          // as preferred relay URL is not guaranteed to match the advertised one for the same manager, preserve URL
+          const relayInfo = events[0]
+          relayInfo.relayUrl = raceResult.winner.relayInfo.relayUrl
           return {
             pingResponse: raceResult.winner.pingResponse,
-            relayInfo: events[0]
+            relayInfo
           }
         } else {
           // TODO: do not throw! The preferred relay may be removed since.

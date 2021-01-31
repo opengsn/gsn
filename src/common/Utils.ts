@@ -1,16 +1,17 @@
 import BN from 'bn.js'
 import abi from 'web3-eth-abi'
-import ethUtils from 'ethereumjs-util'
 import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
+import { bufferToHex, bufferToInt, ecrecover, pubToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 
-import { Address } from '../relayclient/types/Aliases'
+import { Address } from './types/Aliases'
 import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 
 import TypedRequestData from './EIP712/TypedRequestData'
 import chalk from 'chalk'
+import { encode } from 'rlp'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -136,8 +137,8 @@ export function getEcRecoverMeta (message: PrefixedHexString, signature: string 
     throw new Error('web3Utils.sha3 failed somehow')
   }
   const bufSigned = Buffer.from(removeHexPrefix(signed), 'hex')
-  const recoveredPubKey = ethUtils.ecrecover(bufSigned, signature.v[0], Buffer.from(signature.r), Buffer.from(signature.s))
-  return ethUtils.bufferToHex(ethUtils.pubToAddress(recoveredPubKey))
+  const recoveredPubKey = ecrecover(bufSigned, signature.v[0], Buffer.from(signature.r), Buffer.from(signature.s))
+  return bufferToHex(pubToAddress(recoveredPubKey))
 }
 
 export function parseHexString (str: string): number[] {
@@ -223,4 +224,30 @@ interface Signature {
 
 export function boolString (bool: boolean): string {
   return bool ? chalk.green('good'.padEnd(14)) : chalk.red('wrong'.padEnd(14))
+}
+
+export function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
+  const input = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]
+  input.push(
+    toBuffer(chainId),
+    stripZeros(toBuffer(0)),
+    stripZeros(toBuffer(0))
+  )
+  let vInt = bufferToInt(tx.v)
+  if (vInt > 28) {
+    vInt -= chainId * 2 + 8
+  }
+  const data = `0x${encode(input).toString('hex')}`
+  const r = tx.r.toString('hex').padStart(64, '0')
+  const s = tx.s.toString('hex').padStart(64, '0')
+  const v = vInt.toString(16).padStart(2, '0')
+  const signature = `0x${r}${s}${v}`
+  return {
+    data,
+    signature
+  }
+}
+
+export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TransactionOptions): PrefixedHexString {
+  return bufferToHex(new Transaction(signedTransaction, transactionOptions).hash())
 }

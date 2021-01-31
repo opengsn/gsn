@@ -1,5 +1,4 @@
 import chalk from 'chalk'
-import ow from 'ow'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -7,16 +6,20 @@ import { toBN, toHex } from 'web3-utils'
 
 import { IRelayHubInstance } from '../../types/truffle-contracts'
 
-import ContractInteractor, { TransactionRejectedByPaymaster } from '../relayclient/ContractInteractor'
-import { IntString } from '../relayclient/types/Aliases'
-import { RelayTransactionRequest, RelayTransactionRequestShape } from '../relayclient/types/RelayTransactionRequest'
+import ContractInteractor, {
+  TransactionRejectedByPaymaster,
+  TransactionRelayed
+} from '../common/ContractInteractor'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
+import { Address, IntString } from '../common/types/Aliases'
+import { RelayTransactionRequest } from '../common/types/RelayTransactionRequest'
 
 import PingResponse from '../common/PingResponse'
 import VersionsManager from '../common/VersionsManager'
 import { AmountRequired } from '../common/AmountRequired'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { defaultEnvironment } from '../common/Environments'
-import { gsnRuntimeVersion } from '../common/Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from '../common/Version'
 import {
   address2topic,
   calculateTransactionMaxPossibleGas,
@@ -28,7 +31,8 @@ import {
 } from '../common/Utils'
 
 import { RegistrationManager } from './RegistrationManager'
-import { SendTransactionDetails, TransactionManager } from './TransactionManager'
+import { PaymasterStatus, ReputationManager } from './ReputationManager'
+import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
@@ -51,6 +55,7 @@ export class RelayServer extends EventEmitter {
   alertedBlock: number = 0
   private initialized = false
   readonly contractInteractor: ContractInteractor
+  readonly gasPriceFetcher: GasPriceFetcher
   private readonly versionManager: VersionsManager
   private workerTask?: Timeout
   config: ServerConfigParams
@@ -59,6 +64,7 @@ export class RelayServer extends EventEmitter {
 
   lastMinedActiveTransaction?: EventData
 
+  reputationManager!: ReputationManager
   registrationManager!: RegistrationManager
   chainId!: number
   networkId!: number
@@ -68,17 +74,24 @@ export class RelayServer extends EventEmitter {
 
   workerBalanceRequired: AmountRequired
 
-  constructor (config: Partial<ServerConfigParams>, dependencies: ServerDependencies) {
+  constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
-    this.versionManager = new VersionsManager(gsnRuntimeVersion)
+    this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
+    this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.txStoreManager = dependencies.txStoreManager
-    this.transactionManager = new TransactionManager(dependencies, this.config)
+    this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
     this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), this.logger)
+    if (this.config.runPaymasterReputations) {
+      if (dependencies.reputationManager == null) {
+        throw new Error('ReputationManager is not initialized')
+      }
+      this.reputationManager = dependencies.reputationManager
+    }
     this.printServerAddresses()
     this.logger.warn(`RelayServer version', ${gsnRuntimeVersion}`)
     this.logger.info(`Using server configuration:\n ${JSON.stringify(this.config)}`)
@@ -93,7 +106,13 @@ export class RelayServer extends EventEmitter {
     return this.gasPrice
   }
 
-  pingHandler (paymaster?: string): PingResponse {
+  async pingHandler (paymaster?: string): Promise<PingResponse> {
+    if (this.config.runPaymasterReputations && paymaster != null) {
+      const status = await this.reputationManager.getPaymasterStatus(paymaster, this.lastScannedBlock)
+      if (status === PaymasterStatus.BLOCKED || status === PaymasterStatus.ABUSED) {
+        throw new Error(`This paymaster will not be served, status: ${status}`)
+      }
+    }
     return {
       relayWorkerAddress: this.workerAddress,
       relayManagerAddress: this.managerAddress,
@@ -105,10 +124,6 @@ export class RelayServer extends EventEmitter {
       ready: this.isReady() ?? false,
       version: gsnRuntimeVersion
     }
-  }
-
-  validateInputTypes (req: RelayTransactionRequest): void {
-    ow(req, ow.object.exactShape(RelayTransactionRequestShape))
   }
 
   validateInput (req: RelayTransactionRequest): void {
@@ -151,6 +166,26 @@ export class RelayServer extends EventEmitter {
     if (nonce > relayMaxNonce) {
       throw new Error(`Unacceptable relayMaxNonce: ${relayMaxNonce}. current nonce: ${nonce}`)
     }
+  }
+
+  async validatePaymasterReputation (paymaster: Address, currentBlockNumber: number): Promise<void> {
+    const status = await this.reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
+    if (status === PaymasterStatus.GOOD) {
+      return
+    }
+    let message: string
+    switch (status) {
+      case PaymasterStatus.ABUSED:
+        message = 'This paymaster has failed a lot of transactions recently is temporarily blocked by this relay'
+        break
+      case PaymasterStatus.THROTTLED:
+        message = 'This paymaster only had a small number of successful transactions and is therefore throttled by this relay'
+        break
+      case PaymasterStatus.BLOCKED:
+        message = 'This paymaster had too many unsuccessful transactions and is now permanently blocked by this relay'
+        break
+    }
+    throw new Error(`Refusing to serve transactions for paymaster at ${paymaster}: ${message}`)
   }
 
   async validatePaymasterGasLimits (req: RelayTransactionRequest): Promise<{
@@ -221,11 +256,11 @@ export class RelayServer extends EventEmitter {
           from: this.workerAddress,
           gasPrice: req.relayRequest.relayData.gasPrice,
           gasLimit: maxPossibleGas
-        })
+        }, 'pending')
     } catch (e) {
       throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
-    this.logger.debug(`Result for view-only relay call:
+    this.logger.debug(`Result for view-only relay call (on pending blck):
 paymasterAccepted  | ${viewRelayCallRet.paymasterAccepted ? chalk.green('true') : chalk.red('false')}
 returnValue        | ${viewRelayCallRet.returnValue}
 `)
@@ -240,14 +275,24 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (!this.isReady()) {
       throw new Error('relay not ready')
     }
-    this.validateInputTypes(req)
+    if (this.alerted) {
+      this.logger.error('Alerted state: slowing down traffic')
+      await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
+    }
     this.validateInput(req)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
 
+    if (this.config.runPaymasterReputations) {
+      await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
+    }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasLimits(req)
     await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
+
+    if (this.config.runPaymasterReputations) {
+      await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
+    }
     // Send relayed transaction
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
@@ -267,10 +312,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(0, currentBlock)
-    if (this.alerted) {
-      this.logger.error('Alerted state: slowing down traffic')
-      await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
-    }
     return signedTx
   }
 
@@ -400,7 +441,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     )
     await this.registrationManager.init()
 
-    this.chainId = await this.contractInteractor.getChainId()
+    this.chainId = await this.contractInteractor.chainId
     this.networkId = await this.contractInteractor.getNetworkId()
     if (this.config.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
       this.logger.error('Don\'t use real network\'s chainId & networkId while in devMode.')
@@ -498,37 +539,38 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _refreshGasPrice (): Promise<void> {
-    const gasPriceString = await this.contractInteractor.getGasPrice()
+    const gasPriceString = await this.gasPriceFetcher.getGasPrice()
     this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
     if (this.gasPrice === 0) {
       throw new Error('Could not get gasPrice from node')
     }
   }
 
-  async _handleChanges (blockNumber: number): Promise<PrefixedHexString[]> {
+  async _handleChanges (currentBlockNumber: number): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    const shouldRegisterAgain = await this._shouldRegisterAgain(blockNumber, hubEventsSinceLastScan)
-    transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, blockNumber, shouldRegisterAgain))
-    await this.transactionManager.removeConfirmedTransactions(blockNumber)
-    await this._boostStuckPendingTransactions(blockNumber)
-    this.lastScannedBlock = blockNumber
+    await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
+    const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
+    transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber, shouldRegisterAgain))
+    await this.transactionManager.removeConfirmedTransactions(currentBlockNumber)
+    await this._boostStuckPendingTransactions(currentBlockNumber)
+    this.lastScannedBlock = currentBlockNumber
     const isRegistered = await this.registrationManager.isRegistered()
     if (!isRegistered) {
       this.setReadyState(false)
       return transactionHashes
     }
-    await this.handlePastHubEvents(blockNumber, hubEventsSinceLastScan)
+    await this.handlePastHubEvents(currentBlockNumber, hubEventsSinceLastScan)
     const workerIndex = 0
-    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, blockNumber))
+    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlockNumber))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
       this.setReadyState(false)
       return transactionHashes
     }
     this.setReadyState(true)
-    if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < blockNumber) {
-      this.logger.warn(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${blockNumber}`)
+    if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < currentBlockNumber) {
+      this.logger.warn(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${currentBlockNumber}`)
       this.alerted = false
     }
     return transactionHashes
@@ -547,22 +589,31 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       (await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)) ||
       (await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER))
     if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
+      this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
       return false
     }
-    const latestTxBlockNumber = await this._getLatestTxBlockNumber(hubEventsSinceLastScan)
-    return currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+    const latestTxBlockNumber = this._getLatestTxBlockNumber()
+    const registrationExpired = currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+    if (!registrationExpired) {
+      this.logger.debug(`_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+    }
+    return registrationExpired
   }
 
   _shouldRefreshState (currentBlock: number): boolean {
     return currentBlock - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || !this.isReady()
   }
 
-  async handlePastHubEvents (blockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
+  async handlePastHubEvents (currentBlockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
     for (const event of hubEventsSinceLastScan) {
       switch (event.event) {
         case TransactionRejectedByPaymaster:
           this.logger.debug(`handle TransactionRejectedByPaymaster event: ${JSON.stringify(event)}`)
-          await this._handleTransactionRejectedByPaymasterEvent(blockNumber)
+          await this._handleTransactionRejectedByPaymasterEvent(event.returnValues.paymaster, currentBlockNumber, event.blockNumber)
+          break
+        case TransactionRelayed:
+          this.logger.debug(`handle TransactionRelayed event: ${JSON.stringify(event)}`)
+          await this._handleTransactionRelayedEvent(event.returnValues.paymaster, event.blockNumber)
           break
       }
     }
@@ -575,24 +626,42 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       toBlock: 'latest'
     }
     const events = await this.contractInteractor.getPastEventsForHub(topics, options)
+    if (events.length !== 0) {
+      this.logger.debug(`Found ${events.length} events since last scan`)
+    }
     return events
   }
 
-  async _handleTransactionRejectedByPaymasterEvent (blockNumber: number): Promise<void> {
-    this.alerted = true
-    this.alertedBlock = blockNumber
-    this.logger.error(`Relay entered alerted state. Block number: ${blockNumber}`)
+  async _handleTransactionRelayedEvent (paymaster: Address, eventBlockNumber: number): Promise<void> {
+    if (this.config.runPaymasterReputations) {
+      await this.reputationManager.updatePaymasterStatus(paymaster, true, eventBlockNumber)
+    }
   }
 
-  async _getLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<number> {
+  // TODO: do not call this method when events are processed already (stateful server thing)
+  async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, currentBlockNumber: number, eventBlockNumber: number): Promise<void> {
+    this.alerted = true
+    this.alertedBlock = eventBlockNumber
+    this.logger.error(`Relay entered alerted state. Block number: ${currentBlockNumber}`)
+    if (this.config.runPaymasterReputations) {
+      await this.reputationManager.updatePaymasterStatus(paymaster, false, eventBlockNumber)
+    }
+  }
+
+  _getLatestTxBlockNumber (): number {
+    return this.lastMinedActiveTransaction?.blockNumber ?? -1
+  }
+
+  async _updateLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<void> {
     const latestTransactionSinceLastScan = getLatestEventData(eventsSinceLastScan)
     if (latestTransactionSinceLastScan != null) {
       this.lastMinedActiveTransaction = latestTransactionSinceLastScan
+      this.logger.debug(`found newer block ${this.lastMinedActiveTransaction?.blockNumber}`)
     }
     if (this.lastMinedActiveTransaction == null) {
       this.lastMinedActiveTransaction = await this._queryLatestActiveEvent()
+      this.logger.debug(`queried node for last active server event, found in block ${this.lastMinedActiveTransaction?.blockNumber}`)
     }
-    return this.lastMinedActiveTransaction?.blockNumber ?? -1
   }
 
   async _queryLatestActiveEvent (): Promise<EventData | undefined> {
@@ -603,32 +672,32 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   /**
-   * Resend the earliest pending transactions of all signers (manager, workers)
-   * @return the receipt from the first request
+   * Resend all outgoing pending transactions with insufficient gas price by all signers (manager, workers)
+   * @return the mapping of the previous transaction hash to details of a new boosted transaction
    */
-  async _boostStuckPendingTransactions (blockNumber: number): Promise<PrefixedHexString[]> {
-    const transactionHashes: PrefixedHexString[] = []
+  async _boostStuckPendingTransactions (blockNumber: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+    const transactionDetails = new Map<PrefixedHexString, SignedTransactionDetails>()
     // repeat separately for each signer (manager, all workers)
-    let signedTx = await this._boostStuckTransactionsForManager(blockNumber)
-    if (signedTx != null) {
-      transactionHashes.push(signedTx)
+    const managerBoostedTransactions = await this._boostStuckTransactionsForManager(blockNumber)
+    for (const [txHash, boostedTxDetails] of managerBoostedTransactions) {
+      transactionDetails.set(txHash, boostedTxDetails)
     }
     for (const workerIndex of [0]) {
-      signedTx = await this._boostStuckTransactionsForWorker(blockNumber, workerIndex)
-      if (signedTx != null) {
-        transactionHashes.push(signedTx)
+      const workerBoostedTransactions = await this._boostStuckTransactionsForWorker(blockNumber, workerIndex)
+      for (const [txHash, boostedTxDetails] of workerBoostedTransactions) {
+        transactionDetails.set(txHash, boostedTxDetails)
       }
     }
-    return transactionHashes
+    return transactionDetails
   }
 
-  async _boostStuckTransactionsForManager (blockNumber: number): Promise<PrefixedHexString | null> {
-    return await this.transactionManager.boostOldestPendingTransactionForSigner(this.managerAddress, blockNumber)
+  async _boostStuckTransactionsForManager (blockNumber: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(this.managerAddress, blockNumber)
   }
 
-  async _boostStuckTransactionsForWorker (blockNumber: number, workerIndex: number): Promise<PrefixedHexString | null> {
+  async _boostStuckTransactionsForWorker (blockNumber: number, workerIndex: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const signer = this.workerAddress
-    return await this.transactionManager.boostOldestPendingTransactionForSigner(signer, blockNumber)
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(signer, blockNumber)
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {

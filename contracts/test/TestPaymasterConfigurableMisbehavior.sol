@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "./TestPaymasterEverythingAccepted.sol";
 
@@ -12,6 +12,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool public revertPostRelayCall;
     bool public overspendAcceptGas;
     bool public revertPreRelayCall;
+    bool public revertPreRelayCallOnEvenBlocks;
     bool public greedyAcceptanceBudget;
     bool public expensiveGasLimits;
 
@@ -30,6 +31,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function setRevertPreRelayCall(bool val) public {
         revertPreRelayCall = val;
     }
+    function setRevertPreRelayCallOnEvenBlocks(bool val) public {
+        revertPreRelayCallOnEvenBlocks = val;
+    }
     function setOverspendAcceptGas(bool val) public {
         overspendAcceptGas = val;
     }
@@ -41,6 +45,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         expensiveGasLimits = val;
     }
 
+    // solhint-disable reason-string
+    // contains comments that are checked in tests
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -52,7 +58,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     relayHubOnly
     returns (bytes memory, bool) {
         (signature, approvalData, maxPossibleGas);
-        _verifyForwarder(relayRequest);
         if (overspendAcceptGas) {
             uint i = 0;
             while (true) {
@@ -68,6 +73,10 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         if (revertPreRelayCall) {
             revert("You asked me to revert, remember?");
         }
+        if (revertPreRelayCallOnEvenBlocks && block.number % 2 == 0) {
+            revert("You asked me to revert on even blocks, remember?");
+        }
+        _verifyForwarder(relayRequest);
         return ("", trustRecipientRevert);
     }
 

@@ -3,7 +3,7 @@ import { ConsoleTransportOptions, HttpTransportOptions } from 'winston/lib/winst
 
 import { gsnRuntimeVersion } from '../common/Version'
 
-import { NpmLogLevel } from '../relayclient/types/Aliases'
+import { NpmLogLevel } from '../common/types/Aliases'
 
 const service = 'gsn-server'
 

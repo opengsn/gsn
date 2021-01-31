@@ -1,9 +1,9 @@
 import Web3 from 'web3'
 
-import ContractInteractor from '../../relayclient/ContractInteractor'
-import { configureGSN } from '../../relayclient/GSNConfigurator'
+import ContractInteractor from '../../common/ContractInteractor'
 import HttpClient from '../../relayclient/HttpClient'
 import HttpWrapper from '../../relayclient/HttpWrapper'
+import { GSNContractsDeployment } from '../../common/GSNContractsDeployment'
 
 import { getNetworkUrl, getRelayHubAddress, gsnCommander } from '../utils'
 import StatusLogic from '../StatusLogic'
@@ -27,11 +27,12 @@ const commander = gsnCommander(['n', 'h'])
     relayHubAddress
   }
 
-  const config = configureGSN({ relayHubAddress })
+  const deployment: GSNContractsDeployment = { relayHubAddress }
   const logger = createCommandsLogger(commander.loglevel)
-  const contractInteractor = new ContractInteractor(new Web3.providers.HttpProvider(host), logger, config)
+  const provider = new Web3.providers.HttpProvider(host)
+  const contractInteractor = new ContractInteractor({ provider, logger, deployment })
   await contractInteractor.init()
-  const httpClient = new HttpClient(new HttpWrapper({ timeout: statusConfig.getAddressTimeout }), logger, config)
+  const httpClient = new HttpClient(new HttpWrapper({ timeout: statusConfig.getAddressTimeout }), logger)
 
   const statusLogic = new StatusLogic(contractInteractor, httpClient, statusConfig)
 

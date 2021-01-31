@@ -17,7 +17,7 @@ import { sleep } from '../../src/common/Utils'
 
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from '../TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
-import { RelayTransactionRequest } from '../../src/relayclient/types/RelayTransactionRequest'
+import { RelayTransactionRequest } from '../../src/common/types/RelayTransactionRequest'
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { ServerAction } from '../../src/relayserver/StoredTransaction'
@@ -114,21 +114,6 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('validation', function () {
-    describe('#validateInputTypes()', function () {
-      // skipped because error message changed here for no apparent reason
-      it.skip('should throw on undefined data', async function () {
-        const req = await env.createRelayHttpRequest()
-        // @ts-ignore
-        req.relayRequest.request.data = undefined
-        try {
-          env.relayServer.validateInputTypes(req)
-          assert.fail()
-        } catch (e) {
-          assert.include(e.message, 'Expected argument to be of type `string` but received type `undefined`')
-        }
-      })
-    })
-
     describe('#validateInput()', function () {
       it('should fail to relay with wrong relay worker', async function () {
         const req = await env.createRelayHttpRequest()
@@ -326,7 +311,7 @@ contract('RelayServer', function (accounts) {
           await env.relayServer.validateViewCallSucceeds(req, 150000, 2000000)
           assert.fail()
         } catch (e) {
-          assert.include(e.message, 'Paymaster rejected in server: signature mismatch')
+          assert.include(e.message, 'Paymaster rejected in server: FWD: signature mismatch')
         }
       })
     })

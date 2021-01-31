@@ -17,7 +17,7 @@ contract('GsnTestEnvironment', function () {
     it('should create a valid test environment for other tests to rely on', async function () {
       const host = (web3.currentProvider as HttpProvider).host
       const testEnv = await GsnTestEnvironment.startGsn(host)
-      assert.equal(testEnv.deploymentResult.relayHubAddress.length, 42)
+      assert.equal(testEnv.contractsDeployment.relayHubAddress!.length, 42)
     })
 
     after(async function () {
@@ -34,7 +34,7 @@ contract('GsnTestEnvironment', function () {
       sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
       relayClient = testEnvironment.relayProvider.relayClient
-      sr = await TestRecipient.new(testEnvironment.deploymentResult.forwarderAddress)
+      sr = await TestRecipient.new(testEnvironment.contractsDeployment.forwarderAddress!)
     })
 
     after(async () => {
@@ -46,7 +46,6 @@ contract('GsnTestEnvironment', function () {
         from: sender,
         to: sr.address,
         forwarder: await sr.getTrustedForwarder(),
-        paymaster: testEnvironment.deploymentResult.naivePaymasterAddress,
         gas: '0x' + 1e6.toString(16),
         data: sr.contract.methods.emitMessage('hello').encodeABI()
       })
@@ -64,7 +63,7 @@ contract('GsnTestEnvironment', function () {
     before(async function () {
       sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
-      sr = await TestRecipient.new(testEnvironment.deploymentResult.forwarderAddress)
+      sr = await TestRecipient.new(testEnvironment.contractsDeployment.forwarderAddress!)
 
       // @ts-ignore
       TestRecipient.web3.setProvider(testEnvironment.relayProvider)
@@ -76,8 +75,9 @@ contract('GsnTestEnvironment', function () {
     it('should send relayed transaction through RelayProvider', async () => {
       const txDetails = {
         from: sender,
-        paymaster: testEnvironment.deploymentResult.naivePaymasterAddress,
-        forwarder: await sr.getTrustedForwarder()
+        paymaster: testEnvironment.contractsDeployment.paymasterAddress,
+        forwarder: await sr.getTrustedForwarder(),
+        gas: 100000
       }
       const ret = await sr.emitMessage('hello', txDetails)
 

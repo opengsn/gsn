@@ -1,18 +1,19 @@
 import { addresses2topics } from '../common/Utils'
 
-import GsnTransactionDetails from './types/GsnTransactionDetails'
-import RelayFailureInfo from './types/RelayFailureInfo'
-import { Address, AsyncScoreCalculator, RelayFilter } from './types/Aliases'
+import GsnTransactionDetails from '../common/types/GsnTransactionDetails'
+import RelayFailureInfo from '../common/types/RelayFailureInfo'
+import { Address, AsyncScoreCalculator, RelayFilter } from '../common/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
-import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from './types/RelayRegisteredEventInfo'
+import { isInfoFromEvent, RelayInfoUrl, RelayRegisteredEventInfo } from '../common/types/RelayRegisteredEventInfo'
 
 import ContractInteractor, {
   HubUnauthorized,
   RelayServerRegistered,
   StakePenalized,
   StakeUnlocked
-} from './ContractInteractor'
+} from '../common/ContractInteractor'
 import { LoggerInterface } from '../common/LoggerInterface'
+import { EventData } from 'web3-eth-contract'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -32,17 +33,7 @@ export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo
   return score
 }
 
-export interface IKnownRelaysManager {
-  refresh: () => Promise<void>
-
-  saveRelayFailure: (lastErrorTime: number, relayManager: Address, relayUrl: string) => void
-
-  getRelaysSortedForTransaction: (gsnTransactionDetails: GsnTransactionDetails) => Promise<RelayInfoUrl[][]>
-
-  getRelayInfoForManagers: (relayManagers: Set<Address>) => Promise<RelayRegisteredEventInfo[]>
-}
-
-export default class KnownRelaysManager implements IKnownRelaysManager {
+export class KnownRelaysManager {
   private readonly contractInteractor: ContractInteractor
   private readonly logger: LoggerInterface
   private readonly config: GSNConfig
@@ -52,7 +43,9 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
   private latestScannedBlock: number = 0
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
-  public readonly knownRelays: RelayInfoUrl[][] = []
+  public relayLookupWindowParts: number
+  public preferredRelayers: RelayInfoUrl[] = []
+  public allRelayers: RelayInfoUrl[] = []
 
   constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
     this.config = config
@@ -60,13 +53,14 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     this.relayFilter = relayFilter ?? EmptyFilter
     this.scoreCalculator = scoreCalculator ?? DefaultRelayScore
     this.contractInteractor = contractInteractor
+    this.relayLookupWindowParts = this.config.relayLookupWindowParts
   }
 
   async refresh (): Promise<void> {
     this._refreshFailures()
     const recentlyActiveRelayManagers = await this._fetchRecentlyActiveRelayManagers()
-    this.knownRelays[0] = this.config.preferredRelays.map(relayUrl => { return { relayUrl } })
-    this.knownRelays[1] = await this.getRelayInfoForManagers(recentlyActiveRelayManagers)
+    this.preferredRelayers = this.config.preferredRelays.map(relayUrl => { return { relayUrl } })
+    this.allRelayers = await this.getRelayInfoForManagers(recentlyActiveRelayManagers)
   }
 
   async getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]> {
@@ -103,14 +97,54 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
     return origRelays.filter(this.relayFilter)
   }
 
+  splitRange (fromBlock: number, toBlock: number, splits: number): Array<{ fromBlock: number, toBlock: number }> {
+    const totalBlocks = toBlock - fromBlock + 1
+    const splitSize = Math.ceil(totalBlocks / splits)
+
+    const ret: Array<{ fromBlock: number, toBlock: number }> = []
+    let b
+    for (b = fromBlock; b < toBlock; b += splitSize) {
+      ret.push({ fromBlock: b, toBlock: Math.min(toBlock, b + splitSize - 1) })
+    }
+    return ret
+  }
+
+  // return events from hub. split requested range into "window parts", to avoid
+  // fetching too many events at once.
+  async getPastEventsForHub (fromBlock: number, toBlock: number): Promise<EventData[]> {
+    let relayEventParts: any[]
+    while (true) {
+      const rangeParts = this.splitRange(fromBlock, toBlock, this.relayLookupWindowParts)
+      try {
+        // eslint-disable-next-line @typescript-eslint/promise-function-async
+        const getPastEventsPromises = rangeParts.map(({ fromBlock, toBlock }): Promise<any> =>
+          this.contractInteractor.getPastEventsForHub([], {
+            fromBlock,
+            toBlock
+          }))
+        relayEventParts = await Promise.all(getPastEventsPromises)
+        break
+      } catch (e) {
+        if (e.toString().match(/query returned more than/) != null &&
+          this.config.relayLookupWindowBlocks > this.relayLookupWindowParts
+        ) {
+          if (this.relayLookupWindowParts >= 16) {
+            throw new Error(`Too many events after splitting by ${this.relayLookupWindowParts}`)
+          }
+          this.relayLookupWindowParts *= 4
+        } else {
+          throw e
+        }
+      }
+    }
+    return relayEventParts.flat()
+  }
+
   async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub([], {
-      fromBlock,
-      toBlock
-    })
+    const relayEvents: any[] = await this.getPastEventsForHub(fromBlock, toBlock)
 
     this.logger.info(`fetchRelaysAdded: found ${relayEvents.length} events`)
     const foundRelayManagers: Set<Address> = new Set()
@@ -140,10 +174,36 @@ export default class KnownRelaysManager implements IKnownRelaysManager {
 
   async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]> {
     const sortedRelays: RelayInfoUrl[][] = []
-    for (let i = 0; i < this.knownRelays.length; i++) {
-      sortedRelays[i] = await this._sortRelaysInternal(gsnTransactionDetails, this.knownRelays[i])
-    }
+    // preferred relays are copied as-is, unsorted (we don't have any info about them anyway to sort)
+    sortedRelays[0] = Array.from(this.preferredRelayers)
+    sortedRelays[1] = await this._sortRelaysInternal(gsnTransactionDetails, this.allRelayers)
     return sortedRelays
+  }
+
+  getAuditors (excludeUrls: string[]): string[] {
+    const indexes: number[] = []
+    const auditors: string[] = []
+    const flatRelayers =
+      [...this.preferredRelayers, ...this.allRelayers]
+        .map(it => it.relayUrl)
+        .filter(it => !excludeUrls.includes(it))
+        .filter((value, index, self) => {
+          return self.indexOf(value) === index
+        })
+    if (flatRelayers.length <= this.config.auditorsCount) {
+      if (flatRelayers.length < this.config.auditorsCount) {
+        this.logger.warn(`Not enough auditors: request ${this.config.auditorsCount} but only have ${flatRelayers.length}`)
+      }
+      return flatRelayers
+    }
+    do {
+      const index = Math.floor(Math.random() * flatRelayers.length)
+      if (!indexes.includes(index)) {
+        auditors.push(flatRelayers[index])
+        indexes.push(index)
+      }
+    } while (auditors.length < this.config.auditorsCount)
+    return auditors
   }
 
   async _sortRelaysInternal (gsnTransactionDetails: GsnTransactionDetails, activeRelays: RelayInfoUrl[]): Promise<RelayInfoUrl[]> {

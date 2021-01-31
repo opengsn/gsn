@@ -3,9 +3,10 @@
 // the two modes must behave just the same (with an exception of gasless test, which must fail on direct mode, and must
 // succeed in gasless)
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
+import { HttpProvider } from 'web3-core'
 
 import { RelayProvider } from '../src/relayclient/RelayProvider'
-import { Address, AsyncDataCallback } from '../src/relayclient/types/Aliases'
+import { Address, AsyncDataCallback } from '../src/common/types/Aliases'
 import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
@@ -65,6 +66,7 @@ options.forEach(params => {
           // @ts-ignore
           ethereumNodeUrl: web3.currentProvider.host,
           gasPriceFactor,
+          initialReputation: 100,
           relaylog: process.env.relaylog
         })
         console.log('relay started')
@@ -92,13 +94,15 @@ options.forEach(params => {
         await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
 
         relayClientConfig = {
-          logLevel: 'error',
-          relayHubAddress: rhub.address,
+          loggerConfiguration: { logLevel: 'error' },
           paymasterAddress: paymaster.address
         }
 
-        // @ts-ignore
-        const relayProvider = new RelayProvider(web3.currentProvider, relayClientConfig)
+        const relayProvider = await RelayProvider.newProvider(
+          {
+            provider: web3.currentProvider as HttpProvider,
+            config: relayClientConfig
+          }).init()
 
         // web3.setProvider(relayProvider)
 
@@ -145,7 +149,7 @@ options.forEach(params => {
     it(params.title + 'running testRevert (should always fail)', async () => {
       await asyncShouldThrow(async () => {
         await sr.testRevert({ from: from })
-      }, 'revert')
+      }, 'always fail')
     })
 
     if (params.relay) {
@@ -160,11 +164,13 @@ options.forEach(params => {
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
         })
 
-        const setRecipientProvider = function (asyncApprovalData: AsyncDataCallback): void {
+        const setRecipientProvider = async function (asyncApprovalData: AsyncDataCallback): Promise<void> {
           relayProvider =
-            // @ts-ignore
-            new RelayProvider(web3.currentProvider,
-              relayClientConfig, { asyncApprovalData })
+            await RelayProvider.newProvider({
+              provider: web3.currentProvider as HttpProvider,
+              config: relayClientConfig,
+              overrideDependencies: { asyncApprovalData }
+            }).init()
           TestRecipient.web3.setProvider(relayProvider)
         }
 
@@ -175,11 +181,12 @@ options.forEach(params => {
               useGSN: false
             })
 
-            setRecipientProvider(async () => await Promise.resolve('0x414243'))
+            await setRecipientProvider(async () => '0x414243')
 
             await sr.emitMessage('xxx', {
               from: gasless,
-              paymaster: approvalPaymaster.address
+              paymaster: approvalPaymaster.address,
+              gas: 1e6
             })
           } catch (e) {
             console.log('error1: ', e)
@@ -193,7 +200,7 @@ options.forEach(params => {
         })
 
         it(params.title + 'fail if asyncApprovalData throws', async () => {
-          setRecipientProvider(() => { throw new Error('approval-exception') })
+          await setRecipientProvider(() => { throw new Error('approval-exception') })
           await asyncShouldThrow(async () => {
             await sr.emitMessage('xxx', {
               from: gasless,
@@ -210,7 +217,7 @@ options.forEach(params => {
               useGSN: false
             })
             await asyncShouldThrow(async () => {
-              setRecipientProvider(async () => await Promise.resolve('0x'))
+              await setRecipientProvider(async () => '0x')
 
               await sr.emitMessage('xxx', {
                 from: gasless,

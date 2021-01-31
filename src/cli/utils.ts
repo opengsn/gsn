@@ -1,10 +1,10 @@
 // TODO: allow reading network URLs from 'truffle-config.js'
 import commander, { CommanderStatic } from 'commander'
 import fs from 'fs'
-import { Address } from '../relayclient/types/Aliases'
+import { Address } from '../common/types/Aliases'
 import path from 'path'
-import { DeploymentResult } from './CommandsLogic'
-import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
+import { RelayHubConfiguration } from '../common/types/RelayHubConfiguration'
+import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
 
 const cliInfuraId = '$INFURA_ID'
 export const networks = new Map<string, string>([
@@ -76,21 +76,24 @@ function getAddressFromFile (path: string, defaultAddress?: string): string | un
   return defaultAddress
 }
 
-function saveContractToFile (address: Address, workdir: string, filename: string): void {
+function saveContractToFile (address: Address | undefined, workdir: string, filename: string): void {
+  if (address == null) {
+    throw new Error('Address is not initialized!')
+  }
   fs.mkdirSync(workdir, { recursive: true })
   fs.writeFileSync(path.join(workdir, filename), `{ "address": "${address}" }`)
 }
 
-export function saveDeployment (deploymentResult: DeploymentResult, workdir: string): void {
+export function saveDeployment (deploymentResult: GSNContractsDeployment, workdir: string): void {
   saveContractToFile(deploymentResult.stakeManagerAddress, workdir, 'StakeManager.json')
   saveContractToFile(deploymentResult.penalizerAddress, workdir, 'Penalizer.json')
   saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
-  saveContractToFile(deploymentResult.naivePaymasterAddress, workdir, 'Paymaster.json')
+  saveContractToFile(deploymentResult.paymasterAddress, workdir, 'Paymaster.json')
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
   saveContractToFile(deploymentResult.versionRegistryAddress, workdir, 'VersionRegistry.json')
 }
 
-export function showDeployment (deploymentResult: DeploymentResult, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
+export function showDeployment (deploymentResult: GSNContractsDeployment, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
   if (title != null) {
     console.log(title)
   }
@@ -100,10 +103,10 @@ export function showDeployment (deploymentResult: DeploymentResult, title: strin
   Penalizer: ${deploymentResult.penalizerAddress}
   VersionRegistry: ${deploymentResult.versionRegistryAddress}
   Forwarder: ${deploymentResult.forwarderAddress}
-  Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.naivePaymasterAddress}`)
+  Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.paymasterAddress}`)
 }
 
-export function loadDeployment (workdir: string): DeploymentResult {
+export function loadDeployment (workdir: string): GSNContractsDeployment {
   function getAddress (name: string): string {
     return getAddressFromFile(path.join(workdir, name + '.json')) as string
   }
@@ -114,7 +117,7 @@ export function loadDeployment (workdir: string): DeploymentResult {
     penalizerAddress: getAddress('Penalizer'),
     forwarderAddress: getAddress('Forwarder'),
     versionRegistryAddress: getAddress('VersionRegistry'),
-    naivePaymasterAddress: getAddress('Paymaster')
+    paymasterAddress: getAddress('Paymaster')
   }
 }
 
@@ -139,7 +142,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')
         break
     }
-    commander.option('-l, --loglevel <string>', 'error | warn | info | debug', 'debug')
   })
+  commander.option('-l, --loglevel <string>', 'error | warn | info | debug', 'debug')
   return commander
 }

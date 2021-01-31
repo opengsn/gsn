@@ -1,6 +1,5 @@
 import commander from 'commander'
 import CommandsLogic from '../CommandsLogic'
-import { configureGSN } from '../../relayclient/GSNConfigurator'
 import {
   getMnemonic,
   getNetworkUrl,
@@ -32,7 +31,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? defaultEnvironment.relayHubConfiguration
-  const logic = new CommandsLogic(nodeURL, logger, configureGSN({}), mnemonic)
+  const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
 
   async function getGasPrice (): Promise<string> {

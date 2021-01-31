@@ -63,6 +63,24 @@ module.exports = {
         return wallet
       },
       network_id: 100
+    },
+    tbnb: {
+      provider: function () {
+        return new HDWalletProvider(secretMnemonic, 'https://data-seed-prebsc-1-s1.binance.org:8545')
+      },
+      network_id: 0x61
+    },
+    bnb: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://bsc-dataseed.binance.org/')
+      },
+      network_id: 0x38
+    },
+    kotti: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://kotti.connect.bloq.cloud/v1/roast-blossom-sentence')
+      },
+      network_id: '6'
     }
   },
   mocha: {
@@ -70,7 +88,7 @@ module.exports = {
   },
   compilers: {
     solc: {
-      version: '0.6.10',
+      version: '0.7.6',
       settings: {
         evmVersion: 'istanbul',
         optimizer: {

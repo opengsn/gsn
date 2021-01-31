@@ -3,16 +3,16 @@ import childProcess, { ChildProcessWithoutNullStreams } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
-import { constants, ether } from '@openzeppelin/test-helpers'
+import { ether } from '@openzeppelin/test-helpers'
 
-import { RelayHubInstance, StakeManagerInstance } from '../types/truffle-contracts'
+import { IStakeManagerInstance, RelayHubInstance } from '../types/truffle-contracts'
 import HttpWrapper from '../src/relayclient/HttpWrapper'
 import HttpClient from '../src/relayclient/HttpClient'
-import { configureGSN } from '../src/relayclient/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { sleep } from '../src/common/Utils'
-import { RelayHubConfiguration } from '../src/relayclient/types/RelayHubConfiguration'
+import { RelayHubConfiguration } from '../src/common/types/RelayHubConfiguration'
 import { createServerLogger } from '../src/relayserver/ServerWinstonLogger'
 
 require('source-map-support').install({ errorFormatterForce: true })
@@ -28,7 +28,7 @@ const localhostOne = 'http://localhost:8090'
 //
 export async function startRelay (
   relayHubAddress: string,
-  stakeManager: StakeManagerInstance,
+  stakeManager: IStakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 
@@ -53,6 +53,12 @@ export async function startRelay (
   }
   if (options.baseRelayFee) {
     args.push('--baseRelayFee', options.baseRelayFee)
+  }
+  if (options.checkInterval) {
+    args.push('--checkInterval', options.checkInterval)
+  }
+  if (options.initialReputation) {
+    args.push('--initialReputation', options.initialReputation)
   }
   const runServerPath = path.resolve(__dirname, '../src/relayserver/runServer.ts')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
@@ -90,7 +96,7 @@ export async function startRelay (
 
   const logger = createServerLogger('error', '', '')
   let res: any
-  const http = new HttpClient(new HttpWrapper(), logger, configureGSN({}))
+  const http = new HttpClient(new HttpWrapper(), logger)
   let count1 = 3
   while (count1-- > 0) {
     try {
@@ -213,7 +219,7 @@ export async function revert (id: string): Promise<void> {
   })
 }
 
-// encode revert reason string as a byte error returned by revert(stirng)
+// encode revert reason string as a byte error returned by revert(string)
 export function encodeRevertReason (reason: string): PrefixedHexString {
   return web3.eth.abi.encodeFunctionCall({
     name: 'Error',
@@ -224,8 +230,8 @@ export function encodeRevertReason (reason: string): PrefixedHexString {
 }
 
 export async function deployHub (
-  stakeManager: string = constants.ZERO_ADDRESS,
-  penalizer: string = constants.ZERO_ADDRESS,
+  stakeManager: string,
+  penalizer: string,
   configOverride: Partial<RelayHubConfiguration> = {}): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
     ...defaultEnvironment.relayHubConfiguration,
@@ -241,6 +247,10 @@ export async function deployHub (
     relayHubConfiguration.maximumRecipientDeposit,
     relayHubConfiguration.minimumUnstakeDelay,
     relayHubConfiguration.minimumStake)
+}
+
+export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
+  return Object.assign({}, defaultGsnConfig, partialConfig) as GSNConfig
 }
 
 /**

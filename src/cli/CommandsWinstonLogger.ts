@@ -1,6 +1,6 @@
 import winston, { transport } from 'winston'
 
-import { NpmLogLevel } from '../relayclient/types/Aliases'
+import { NpmLogLevel } from '../common/types/Aliases'
 import { LoggerInterface } from '../common/LoggerInterface'
 
 const format = winston.format.combine(

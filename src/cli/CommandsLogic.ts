@@ -17,16 +17,16 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import VersionRegistryAbi from './compiled/VersionRegistry.json'
-import { Address } from '../relayclient/types/Aliases'
-import ContractInteractor from '../relayclient/ContractInteractor'
-import { GSNConfig } from '../relayclient/GSNConfigurator'
+import { Address } from '../common/types/Aliases'
+import ContractInteractor from '../common/ContractInteractor'
 import HttpClient from '../relayclient/HttpClient'
-import HttpWrapper from '../relayclient/HttpWrapper'
 import { constants } from '../common/Constants'
-import { RelayHubConfiguration } from '../relayclient/types/RelayHubConfiguration'
+import { RelayHubConfiguration } from '../common/types/RelayHubConfiguration'
 import { string32 } from '../common/VersionRegistry'
 import { registerForwarderForGsn } from '../common/EIP712/ForwarderUtil'
 import { LoggerInterface } from '../common/LoggerInterface'
+import HttpWrapper from '../relayclient/HttpWrapper'
+import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -54,15 +54,6 @@ interface DeployOptions {
   relayHubConfiguration: RelayHubConfiguration
 }
 
-export interface DeploymentResult {
-  relayHubAddress: Address
-  stakeManagerAddress: Address
-  penalizerAddress: Address
-  forwarderAddress: Address
-  versionRegistryAddress: Address
-  naivePaymasterAddress: Address
-}
-
 interface RegistrationResult {
   success: boolean
   transactions?: string[]
@@ -72,19 +63,30 @@ interface RegistrationResult {
 export default class CommandsLogic {
   private readonly contractInteractor: ContractInteractor
   private readonly httpClient: HttpClient
-  private readonly config: GSNConfig
   private readonly web3: Web3
 
-  constructor (host: string, logger: LoggerInterface, config: GSNConfig, mnemonic?: string) {
+  private deployment?: GSNContractsDeployment
+
+  constructor (
+    host: string,
+    logger: LoggerInterface,
+    deployment: GSNContractsDeployment,
+    mnemonic?: string
+  ) {
     let provider: HttpProvider | HDWalletProvider = new Web3.providers.HttpProvider(host)
     if (mnemonic != null) {
       // web3 defines provider type quite narrowly
       provider = new HDWalletProvider(mnemonic, provider) as unknown as HttpProvider
     }
-    this.contractInteractor = new ContractInteractor(provider, logger, config)
-    this.httpClient = new HttpClient(new HttpWrapper(), logger, config)
-    this.config = config
+    this.httpClient = new HttpClient(new HttpWrapper(), logger)
+    this.contractInteractor = new ContractInteractor({ provider, logger, deployment })
+    this.deployment = deployment
     this.web3 = new Web3(provider)
+  }
+
+  async init (): Promise<this> {
+    await this.contractInteractor.init()
+    return this
   }
 
   async findWealthyAccount (requiredBalance = ether('2')): Promise<string> {
@@ -129,8 +131,10 @@ export default class CommandsLogic {
   }
 
   async getPaymasterBalance (paymaster: Address): Promise<BN> {
-    const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
-    return await relayHub.balanceOf(paymaster)
+    if (this.deployment == null) {
+      throw new Error('Deployment is not initialized!')
+    }
+    return await this.contractInteractor.hubBalanceOf(paymaster)
   }
 
   /**
@@ -144,12 +148,14 @@ export default class CommandsLogic {
   async fundPaymaster (
     from: Address, paymaster: Address, amount: string | BN
   ): Promise<BN> {
-    const relayHub = await this.contractInteractor._createRelayHub(this.config.relayHubAddress)
+    if (this.deployment == null) {
+      throw new Error('Deployment is not initialized!')
+    }
+    const currentBalance = await this.contractInteractor.hubBalanceOf(paymaster)
     const targetAmount = new BN(amount)
-    const currentBalance = await relayHub.balanceOf(paymaster)
     if (currentBalance.lt(targetAmount)) {
       const value = targetAmount.sub(currentBalance)
-      await relayHub.depositFor(paymaster, {
+      await this.contractInteractor.hubDepositFor(paymaster, {
         value,
         from
       })
@@ -172,8 +178,8 @@ export default class CommandsLogic {
           error: 'Nothing to do. Relayer already registered'
         }
       }
-      const chainId = await this.contractInteractor.getAsyncChainId().then(x => x.toString())
-      if (response.chainId !== chainId) {
+      const chainId = this.contractInteractor.chainId
+      if (response.chainId !== chainId.toString()) {
         throw new Error(`wrong chain-id: Relayer on (${response.chainId}) but our provider is on (${chainId})`)
       }
       const relayAddress = response.relayManagerAddress
@@ -264,7 +270,7 @@ export default class CommandsLogic {
     return new this.web3.eth.Contract(file.abi, address, { data: file.bytecode })
   }
 
-  async deployGsnContracts (deployOptions: DeployOptions): Promise<DeploymentResult> {
+  async deployGsnContracts (deployOptions: DeployOptions): Promise<GSNContractsDeployment> {
     const options: Required<SendOptions> = {
       from: deployOptions.from,
       gas: 0, // gas limit will be filled in at deployment
@@ -294,26 +300,27 @@ export default class CommandsLogic {
       console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
     }
 
-    let paymasterAddress = constants.ZERO_ADDRESS
+    let pmInstance: Contract | undefined
+    let paymasterVersion = ''
     if (deployOptions.deployPaymaster === true) {
-      const pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
-      paymasterAddress = pmInstance.options.address
-
-      // Overriding saved configuration with newly deployed instances
-      this.config.paymasterAddress = paymasterAddress
+      pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
+      paymasterVersion = await pmInstance.methods.versionPaymaster()
     }
-    this.config.relayHubAddress = rInstance.options.address
 
     await registerForwarderForGsn(fInstance, options)
 
-    return {
+    this.deployment = {
+      paymasterVersion,
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
       penalizerAddress: pInstance.options.address,
       forwarderAddress: fInstance.options.address,
       versionRegistryAddress: regInstance.options.address,
-      naivePaymasterAddress: paymasterAddress
+      paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
     }
+
+    await this.contractInteractor.initDeployment(this.deployment)
+    return this.deployment
   }
 
   private async getContractInstance (json: any, constructorArgs: any, address: Address | undefined, options: Required<SendOptions>, skipConfirmation: boolean = false): Promise<Contract> {

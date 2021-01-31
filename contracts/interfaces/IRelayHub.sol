@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import "./GsnTypes.sol";
 import "./IStakeManager.sol";
@@ -66,12 +66,6 @@ interface IRelayHub {
     event TransactionResult(
         RelayCallStatus status,
         bytes returnValue
-    );
-
-    event Penalized(
-        address indexed relayWorker,
-        address sender,
-        uint256 reward
     );
 
     /// Reason error codes for the TransactionRelayed event

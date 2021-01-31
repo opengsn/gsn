@@ -2,9 +2,9 @@ import log from 'loglevel'
 import winston, { transport } from 'winston'
 import { HttpTransportOptions } from 'winston/lib/winston/transports'
 
-import { NpmLogLevel } from './types/Aliases'
 import { gsnRuntimeVersion } from '../common/Version'
 import { LoggerInterface } from '../common/LoggerInterface'
+import { LoggerConfiguration } from './GSNConfigurator'
 
 const format = winston.format.combine(
   winston.format.uncolorize(),
@@ -26,13 +26,14 @@ function getOrCreateUserId (): string {
   return userId
 }
 
-export function createClientLogger (level: NpmLogLevel, loggerUrl: string, applicationId: string, userIdOverride: string): LoggerInterface {
-  if (loggerUrl.length === 0 || typeof window === 'undefined' || window.localStorage == null) {
-    log.setLevel(level)
+export function createClientLogger (loggerConfiguration?: LoggerConfiguration): LoggerInterface {
+  loggerConfiguration = loggerConfiguration ?? { logLevel: 'info' }
+  if (loggerConfiguration.loggerUrl == null || typeof window === 'undefined' || window.localStorage == null) {
+    log.setLevel(loggerConfiguration.logLevel)
     return log
   }
 
-  const url = new URL(loggerUrl)
+  const url = new URL(loggerConfiguration.loggerUrl)
   const host = url.host
   const path = url.pathname
   const ssl = url.protocol === 'https:'
@@ -55,18 +56,19 @@ export function createClientLogger (level: NpmLogLevel, loggerUrl: string, appli
     new winston.transports.Http(httpTransportOptions)
   ]
   let userId: string
-  if (userIdOverride.length !== 0) {
-    userId = userIdOverride
+  if (loggerConfiguration.userId != null) {
+    userId = loggerConfiguration.userId
   } else {
     userId = getOrCreateUserId()
   }
 
   const localhostRegExp: RegExp = /http:\/\/(localhost)|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/
-  if (applicationId.length === 0 && typeof window !== 'undefined' && window.location != null && window.location.href != null && window.location.href.match(localhostRegExp) == null) {
+  let applicationId = loggerConfiguration.applicationId
+  if (loggerConfiguration.applicationId == null && window?.location?.href != null && window.location.href.match(localhostRegExp) == null) {
     applicationId = window.location.href
   }
   const logger = winston.createLogger({
-    level,
+    level: loggerConfiguration.logLevel,
     defaultMeta: {
       version: gsnRuntimeVersion,
       service,
@@ -77,7 +79,7 @@ export function createClientLogger (level: NpmLogLevel, loggerUrl: string, appli
     transports
   })
   logger.debug(`Created remote logs collecting logger for userId: ${userId} and applicationId: ${applicationId}`)
-  if (applicationId.length === 0) {
+  if (applicationId == null) {
     logger.warn('application ID is not set!')
   }
   return logger

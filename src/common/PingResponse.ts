@@ -1,4 +1,4 @@
-import { Address, IntString } from '../relayclient/types/Aliases'
+import { Address, IntString } from './types/Aliases'
 
 export default interface PingResponse {
   relayWorkerAddress: Address

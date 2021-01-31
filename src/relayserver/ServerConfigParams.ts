@@ -2,14 +2,15 @@ import * as fs from 'fs'
 import parseArgs from 'minimist'
 
 import { VersionRegistry } from '../common/VersionRegistry'
-import ContractInteractor from '../relayclient/ContractInteractor'
-import { configureGSN } from '../relayclient/GSNConfigurator'
+import ContractInteractor from '../common/ContractInteractor'
 import { constants } from '../common/Constants'
-import { Address, NpmLogLevel } from '../relayclient/types/Aliases'
+import { Address, NpmLogLevel } from '../common/types/Aliases'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '../common/LoggerInterface'
+import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
+import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -35,9 +36,13 @@ export interface ServerConfigParams {
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
   gasPriceFactor: number
+  gasPriceOracleUrl: string
+  gasPriceOraclePath: string
   logLevel: NpmLogLevel
   loggerUrl: string
   loggerUserId: string
+  etherscanApiUrl: string
+  etherscanApiKey: string
 
   workerMinBalance: number
   workerTargetBalance: number
@@ -52,6 +57,11 @@ export interface ServerConfigParams {
   retryGasPriceFactor: number
   maxGasPrice: string
   defaultGasLimit: number
+
+  runPenalizer: boolean
+  runPaymasterReputations: boolean
+
+  requiredVersionRange?: string
 }
 
 export interface ServerDependencies {
@@ -59,7 +69,9 @@ export interface ServerDependencies {
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
   contractInteractor: ContractInteractor
+  gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager
+  reputationManager?: ReputationManager
   logger: LoggerInterface
 }
 
@@ -71,6 +83,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   gasPriceFactor: 1,
+  gasPriceOracleUrl: '',
+  gasPriceOraclePath: '',
   registrationBlockRate: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
@@ -81,8 +95,11 @@ const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
+  runPenalizer: true,
   logLevel: 'debug',
   loggerUrl: '',
+  etherscanApiUrl: '',
+  etherscanApiKey: '',
   loggerUserId: '',
   baseRelayFee: '0',
   pctRelayFee: 0,
@@ -97,7 +114,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   confirmationsNeeded: 12,
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxGasPrice: 100e9.toString()
+  maxGasPrice: 100e9.toString(),
+  runPaymasterReputations: true
 }
 
 const ConfigParamsTypes = {
@@ -111,12 +129,18 @@ const ConfigParamsTypes = {
   relayHubId: 'string',
   relayHubAddress: 'string',
   gasPriceFactor: 'number',
+  gasPriceOracleUrl: 'string',
+  gasPriceOraclePath: 'string',
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',
   readyTimeout: 'number',
   devMode: 'boolean',
   logLevel: 'string',
+
+  loggerUrl: 'string',
+  loggerUserId: 'string',
+
   customerToken: 'string',
   hostOverride: 'string',
   userId: 'string',
@@ -131,7 +155,15 @@ const ConfigParamsTypes = {
   minHubWithdrawalBalance: 'number',
   defaultGasLimit: 'number',
 
-  trustedPaymasters: 'list'
+  trustedPaymasters: 'list',
+
+  runPenalizer: 'boolean',
+
+  etherscanApiUrl: 'string',
+  etherscanApiKey: 'string',
+
+  // TODO: does not belong here
+  initialReputation: 'number'
 
 } as any
 
@@ -218,7 +250,11 @@ export function parseServerConfig (args: string[], env: any): any {
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
-  const contractInteractor = new ContractInteractor(web3provider, logger, configureGSN({ relayHubAddress: config.relayHubAddress }))
+  const contractInteractor = new ContractInteractor({
+    provider: web3provider,
+    logger,
+    deployment: { relayHubAddress: config.relayHubAddress }
+  })
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
@@ -248,6 +284,17 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   return { ...serverDefaultConfiguration, ...config }
+}
+
+export function resolveReputationManagerConfig (config: any): Partial<ReputationManagerConfiguration> {
+  if (config.configFileName != null) {
+    if (!fs.existsSync(config.configFileName)) {
+      error(`unable to read config file "${config.configFileName as string}"`)
+    }
+    return JSON.parse(fs.readFileSync(config.configFileName, 'utf8'))
+  }
+  // TODO: something not insane!
+  return config as Partial<ReputationManagerConfiguration>
 }
 
 export function configureServer (partialConfig: Partial<ServerConfigParams>): ServerConfigParams {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./IForwarder.sol";
@@ -27,14 +27,14 @@ contract Forwarder is IForwarder {
         return nonces[from];
     }
 
-    constructor() public {
+    constructor() {
 
         string memory requestType = string(abi.encodePacked("ForwardRequest(", GENERIC_PARAMS, ")"));
         registerRequestTypeInternal(requestType);
     }
 
     function verify(
-        ForwardRequest memory req,
+        ForwardRequest calldata req,
         bytes32 domainSeparator,
         bytes32 requestTypeHash,
         bytes calldata suffixData,
@@ -46,7 +46,7 @@ contract Forwarder is IForwarder {
     }
 
     function execute(
-        ForwardRequest memory req,
+        ForwardRequest calldata req,
         bytes32 domainSeparator,
         bytes32 requestTypeHash,
         bytes calldata suffixData,
@@ -58,8 +58,10 @@ contract Forwarder is IForwarder {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _updateNonce(req);
 
+        bytes memory callData = abi.encodePacked(req.data, req.from);
+        require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
         // solhint-disable-next-line avoid-low-level-calls
-        (success,ret) = req.to.call{gas : req.gas, value : req.value}(abi.encodePacked(req.data, req.from));
+        (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
         if ( address(this).balance>0 ) {
             //can't fail: req.from signed (off-chain) the request, so it must be an EOA...
             payable(req.from).transfer(address(this).balance);
@@ -69,7 +71,7 @@ contract Forwarder is IForwarder {
 
 
     function _verifyNonce(ForwardRequest memory req) internal view {
-        require(nonces[req.from] == req.nonce, "nonce mismatch");
+        require(nonces[req.from] == req.nonce, "FWD: nonce mismatch");
     }
 
     function _updateNonce(ForwardRequest memory req) internal {
@@ -80,7 +82,7 @@ contract Forwarder is IForwarder {
 
         for (uint i = 0; i < bytes(typeName).length; i++) {
             bytes1 c = bytes(typeName)[i];
-            require(c != "(" && c != ")", "invalid typename");
+            require(c != "(" && c != ")", "FWD: invalid typename");
         }
 
         string memory requestType = string(abi.encodePacked(typeName, "(", GENERIC_PARAMS, ",", typeSuffix));
@@ -118,7 +120,7 @@ contract Forwarder is IForwarder {
 
 
     function _verifySig(
-        ForwardRequest memory req,
+        ForwardRequest calldata req,
         bytes32 domainSeparator,
         bytes32 requestTypeHash,
         bytes memory suffixData,
@@ -126,17 +128,17 @@ contract Forwarder is IForwarder {
     internal
     view
     {
-        require(domains[domainSeparator], "unregistered domain separator");
-        require(typeHashes[requestTypeHash], "unregistered request typehash");
+        require(domains[domainSeparator], "FWD: unregistered domain sep.");
+        require(typeHashes[requestTypeHash], "FWD: unregistered typehash");
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", domainSeparator,
                 keccak256(_getEncoded(req, requestTypeHash, suffixData))
             ));
-        require(digest.recover(sig) == req.from, "signature mismatch");
+        require(digest.recover(sig) == req.from, "FWD: signature mismatch");
     }
 
     function _getEncoded(
-        ForwardRequest memory req,
+        ForwardRequest calldata req,
         bytes32 requestTypeHash,
         bytes memory suffixData
     )

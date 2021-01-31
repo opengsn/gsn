@@ -1,6 +1,5 @@
 import Web3 from 'web3'
 import CommandsLogic from '../CommandsLogic'
-import { configureGSN } from '../../relayclient/GSNConfigurator'
 import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 
@@ -16,12 +15,12 @@ const commander = gsnCommander(['h', 'n', 'm'])
   const paymaster = getPaymasterAddress(commander.paymaster)
 
   if (hub == null || paymaster == null) {
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     throw new Error(`Contracts not found: hub: ${hub} paymaster: ${paymaster} `)
   }
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const logic = new CommandsLogic(nodeURL, logger, configureGSN({ relayHubAddress: hub }), mnemonic)
+
+  const logic = new CommandsLogic(nodeURL, logger, { relayHubAddress: hub }, mnemonic)
   const balance = await logic.getPaymasterBalance(paymaster)
   console.log(`Account ${paymaster} has a GSN balance of ${Web3.utils.fromWei(balance)} ETH`)
 })().catch(
