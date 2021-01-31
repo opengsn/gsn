@@ -4,8 +4,8 @@
 /* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -23,15 +23,15 @@ contract RelayHub is IRelayHub {
 
     string public override versionHub = "2.0.0+opengsn.hub.irelayhub";
 
-    uint256 public override minimumStake;
-    uint256 public override minimumUnstakeDelay;
-    uint256 public override maximumRecipientDeposit;
-    uint256 public override gasOverhead;
-    uint256 public override postOverhead;
-    uint256 public override gasReserve;
-    uint256 public override maxWorkerCount;
-    IStakeManager override public stakeManager;
-    address override public penalizer;
+    uint256 public immutable override minimumStake;
+    uint256 public immutable override minimumUnstakeDelay;
+    uint256 public immutable override maximumRecipientDeposit;
+    uint256 public immutable override gasOverhead;
+    uint256 public immutable override postOverhead;
+    uint256 public immutable override gasReserve;
+    uint256 public immutable override maxWorkerCount;
+    IStakeManager immutable  override public stakeManager;
+    address immutable override public penalizer;
 
     // maps relay worker's address to its manager's address
     mapping(address => address) public override workerToManager;
@@ -51,7 +51,7 @@ contract RelayHub is IRelayHub {
         uint256 _maximumRecipientDeposit,
         uint256 _minimumUnstakeDelay,
         uint256 _minimumStake
-    ) public {
+    ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
         maxWorkerCount = _maxWorkerCount;
@@ -137,7 +137,7 @@ contract RelayHub is IRelayHub {
         // run out of gas later in this function.
         require(
             initialGas >= maxPossibleGas,
-            "Not enough gas left for innerRelayCall to complete");
+            "no gas for innerRelayCall");
 
         uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
@@ -177,7 +177,7 @@ contract RelayHub is IRelayHub {
         (signature);
         RelayCallData memory vars;
         vars.functionSelector = MinLibBytes.readBytes4(relayRequest.request.data, 0);
-        require(msg.sender == tx.origin, "relay worker cannot be a smart contract");
+        require(msg.sender == tx.origin, "relay worker must be EOA");
         require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
         require(
@@ -283,7 +283,7 @@ contract RelayHub is IRelayHub {
 
         // This external function can only be called by RelayHub itself, creating an internal transaction. Calls to the
         // recipient (preRelayedCall, the relayedCall, and postRelayedCall) are called from inside this transaction.
-        require(msg.sender == address(this), "Only RelayHub should call this function");
+        require(msg.sender == address(this), "Must be called by RelayHub");
 
         // If either pre or post reverts, the whole internal transaction will be reverted, reverting all side effects on
         // the recipient. The recipient will still be charged for the used gas by the relay.
