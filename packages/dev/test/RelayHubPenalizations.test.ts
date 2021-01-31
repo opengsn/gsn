@@ -61,7 +61,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
     paymaster = await TestPaymasterEverythingAccepted.new()
 
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForAddress(relayManager, 1000, {
+    await stakeManager.stakeForRelayManager(relayManager, 1000, {
       from: relayOwner,
       value: ether('1')
     })
@@ -135,7 +135,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
     before('register reporter as relayer', async function () {
       await stakeManager.setRelayManagerOwner(relayOwner, { from: reporterRelayManager })
-      await stakeManager.stakeForAddress(reporterRelayManager, 1000, {
+      await stakeManager.stakeForRelayManager(reporterRelayManager, 1000, {
         value: ether('1'),
         from: relayOwner
       })
@@ -224,7 +224,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       })
 
       beforeEach('staking for relay', async function () {
-        await stakeManager.stakeForAddress(relayManager, 1000, {
+        await stakeManager.stakeForRelayManager(relayManager, 1000, {
           value: stake,
           from: relayOwner
         })
@@ -311,7 +311,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
         it('penalizes relay worker transactions to illegal RelayHub functions (stake)', async function () {
           await stakeManager.setRelayManagerOwner(relayWorker, { from: other })
           // Relay staking for a second relay
-          const { tx } = await stakeManager.stakeForAddress(other, 1000, {
+          const { tx } = await stakeManager.stakeForRelayManager(other, 1000, {
             value: ether('1'),
             from: relayWorker
           })
@@ -423,7 +423,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
 
         context('with staked and locked relay manager and ', function () {
           beforeEach(async function () {
-            await stakeManager.stakeForAddress(relayManager, 1000, {
+            await stakeManager.stakeForRelayManager(relayManager, 1000, {
               from: relayOwner,
               value: ether('1')
             })

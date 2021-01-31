@@ -38,7 +38,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     hub = await deployHub(stakeManager.address, penalizer.address)
     const relayHub = hub
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForAddress(relayManager, 2000, {
+    await stakeManager.stakeForRelayManager(relayManager, 2000, {
       value: ether('2'),
       from: relayOwner
     })

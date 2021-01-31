@@ -76,7 +76,7 @@ contract('RegistrationManager', function (accounts) {
       const transactionHashes = await relayServer._worker(latestBlock.number)
       assert.equal(transactionHashes.length, 0)
       assert.equal(relayServer.isReady(), false, 'relay should not be ready yet')
-      const res = await env.stakeManager.stakeForAddress(relayServer.managerAddress, unstakeDelay, {
+      const res = await env.stakeManager.stakeForRelayManager(relayServer.managerAddress, unstakeDelay, {
         from: relayOwner,
         value: oneEther
       })
@@ -361,7 +361,7 @@ contract('RegistrationManager', function (accounts) {
 
       it('should ignore unauthorizeHub of another hub', async function () {
         await env.stakeManager.setRelayManagerOwner(env.relayOwner, { from: anotherRelayer })
-        await env.stakeManager.stakeForAddress(anotherRelayer, 1000, { from: env.relayOwner })
+        await env.stakeManager.stakeForRelayManager(anotherRelayer, 1000, { from: env.relayOwner })
         await env.stakeManager.authorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
         await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)

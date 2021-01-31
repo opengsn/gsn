@@ -15,7 +15,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
   function testNotOwnerCannotStake (): void {
     it('should not allow not owner to stake for owned relayManager address', async function () {
       await expectRevert(
-        stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, { from: nonOwner }),
+        stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, { from: nonOwner }),
         'not owner'
       )
     })
@@ -23,7 +23,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
   function testOwnerCanStake (): void {
     it('should allow owner to stake for unowned addresses', async function () {
-      const { logs } = await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+      const { logs } = await stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
       })
@@ -81,7 +81,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     it('should not allow anyone to stake before owner is set', async function () {
       await expectRevert(
-        stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+        stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
           value: initialStake,
           from: owner
         }),
@@ -116,7 +116,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     // it('relay managers cannot stake for themselves', async function () {
     //   await expectRevert(
-    //     stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+    //     stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
     //       value: initialStake,
     //       from: relayManager
     //     }),
@@ -137,7 +137,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
       await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
-      await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+      await stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
       })
@@ -161,7 +161,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     it('should allow owner to stake for a second manager', async function () {
       await stakeManager.setRelayManagerOwner(owner, { from: secondRelayManager })
-      const { logs } = await stakeManager.stakeForAddress(secondRelayManager, initialUnstakeDelay, {
+      const { logs } = await stakeManager.stakeForRelayManager(secondRelayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
       })
@@ -175,7 +175,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     // it('should not allow one relayManager stake', async function () {
     //   await expectRevert(
-    //     stakeManager.stakeForAddress(nonOwner, initialUnstakeDelay, { from: relayManager }),
+    //     stakeManager.stakeForRelayManager(nonOwner, initialUnstakeDelay, { from: relayManager }),
     //     'sender is a relayManager itself'
     //   )
     // })
@@ -183,7 +183,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     it('owner can increase the relay stake', async function () {
       const addedStake = ether('2')
       const stake = initialStake.add(addedStake)
-      const { logs } = await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+      const { logs } = await stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
         value: addedStake,
         from: owner
       })
@@ -200,7 +200,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     it('should allow owner to increase the unstake delay', async function () {
       const newUnstakeDelay = new BN(5)
-      const { logs } = await stakeManager.stakeForAddress(relayManager, newUnstakeDelay, { from: owner })
+      const { logs } = await stakeManager.stakeForRelayManager(relayManager, newUnstakeDelay, { from: owner })
       expectEvent.inLogs(logs, 'StakeAdded', {
         relayManager,
         stake: initialStake,
@@ -213,7 +213,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     it('should not allow owner to decrease the unstake delay', async function () {
       await expectRevert(
-        stakeManager.stakeForAddress(relayManager, initialUnstakeDelay.subn(1), { from: owner }),
+        stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay.subn(1), { from: owner }),
         'unstakeDelay cannot be decreased'
       )
     })
@@ -272,7 +272,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
       await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
-      await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+      await stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
       })
@@ -359,7 +359,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
       await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
-      await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+      await stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
       })
@@ -391,7 +391,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
     beforeEach(async function () {
       stakeManager = await StakeManager.new()
       await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
-      await stakeManager.stakeForAddress(relayManager, initialUnstakeDelay, {
+      await stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
         value: initialStake,
         from: owner
       })

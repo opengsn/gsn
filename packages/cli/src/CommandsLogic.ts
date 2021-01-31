@@ -252,7 +252,7 @@ export default class CommandsLogic {
           stake === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
 
         const stakeTx = await stakeManager
-          .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
+          .stakeForRelayManager(relayAddress, options.unstakeDelay.toString(), {
             value: stakeValue,
             from: options.from,
             gas: 1e6,

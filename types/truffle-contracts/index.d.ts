@@ -1598,7 +1598,7 @@ export interface IStakeManagerInstance extends Truffle.ContractInstance {
     ): Promise<number>;
   };
 
-  stakeForAddress: {
+  stakeForRelayManager: {
     (
       relayManager: string | BN,
       unstakeDelay: number | BN | string,
@@ -2467,7 +2467,7 @@ export interface StakeManagerInstance extends Truffle.ContractInstance {
     ): Promise<number>;
   };
 
-  stakeForAddress: {
+  stakeForRelayManager: {
     (
       relayManager: string | BN,
       unstakeDelay: number | BN | string,

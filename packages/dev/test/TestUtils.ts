@@ -138,7 +138,7 @@ export async function startRelay (
     }
   }
 
-  await stakeManager.stakeForAddress(relayManagerAddress, options.delay || 2000, {
+  await stakeManager.stakeForRelayManager(relayManagerAddress, options.delay || 2000, {
     from: options.relayOwner,
     value: options.stake || ether('1')
   })

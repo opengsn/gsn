@@ -109,7 +109,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     relayHub = relayHubInstance.address
 
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForAddress(relayManager, 1000, {
+    await stakeManager.stakeForRelayManager(relayManager, 1000, {
       value: ether('2'),
       from: relayOwner
     })

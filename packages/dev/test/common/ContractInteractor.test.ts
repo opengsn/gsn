@@ -44,7 +44,7 @@ contract('ContractInteractor', function (accounts) {
     await pm.setRelayHub(rh.address)
     const mgrAddress = accounts[1]
     await sm.setRelayManagerOwner(accounts[0], { from: mgrAddress })
-    await sm.stakeForAddress(mgrAddress, 1000, { value: 1e18.toString() })
+    await sm.stakeForRelayManager(mgrAddress, 1000, { value: 1e18.toString() })
     await sm.authorizeHubByOwner(mgrAddress, rh.address)
     await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
   })

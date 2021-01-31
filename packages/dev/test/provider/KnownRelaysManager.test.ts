@@ -29,7 +29,7 @@ const Forwarder = artifacts.require('Forwarder')
 
 export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
   await stakeManager.setRelayManagerOwner(owner, { from: manager })
-  await stakeManager.stakeForAddress(manager, 1000, {
+  await stakeManager.stakeForRelayManager(manager, 1000, {
     value: ether('1'),
     from: owner
   })

@@ -230,7 +230,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       context('with manager stake unlocked', function () {
         beforeEach(async function () {
           await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-          await stakeManager.stakeForAddress(relayManager, 1000, {
+          await stakeManager.stakeForRelayManager(relayManager, 1000, {
             value: ether('1'),
             from: relayOwner
           })
@@ -262,7 +262,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
       beforeEach(async function () {
         await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-        await stakeManager.stakeForAddress(relayManager, 1000, {
+        await stakeManager.stakeForRelayManager(relayManager, 1000, {
           value: ether('2'),
           from: relayOwner
         })

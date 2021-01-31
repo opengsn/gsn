@@ -183,7 +183,7 @@ export class ServerTestEnvironment {
 
   async stakeAndAuthorizeHub (unstakeDelay: number): Promise<void> {
     // Now owner can do its operations
-    await this.stakeManager.stakeForAddress(this.relayServer.managerAddress, unstakeDelay, {
+    await this.stakeManager.stakeForRelayManager(this.relayServer.managerAddress, unstakeDelay, {
       from: this.relayOwner,
       value: ether('1')
     })
