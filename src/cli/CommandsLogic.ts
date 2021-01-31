@@ -31,6 +31,10 @@ import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
 require('source-map-support').install({ errorFormatterForce: true })
 
 export interface RegisterOptions {
+  /** ms to sleep if waiting for RelayServer to set its owner */
+  sleepMs: number
+  /** number of times to sleep before timeout */
+  sleepCount: number
   from: Address
   gasPrice: string | BN
   stake: string | BN
@@ -73,7 +77,10 @@ export default class CommandsLogic {
     deployment: GSNContractsDeployment,
     mnemonic?: string
   ) {
-    let provider: HttpProvider | HDWalletProvider = new Web3.providers.HttpProvider(host)
+    let provider: HttpProvider | HDWalletProvider = new Web3.providers.HttpProvider(host, {
+      keepAlive: true,
+      timeout: 120000
+    })
     if (mnemonic != null) {
       // web3 defines provider type quite narrowly
       provider = new HDWalletProvider(mnemonic, provider) as unknown as HttpProvider
@@ -196,38 +203,6 @@ export default class CommandsLogic {
         throw new Error(`Already owned by ${owner}, our account=${options.from}`)
       }
 
-      if (toBN(unstakeDelay).gte(toBN(options.unstakeDelay)) &&
-        toBN(stake).gte(toBN(options.stake.toString()))
-      ) {
-        console.log('Relayer already staked')
-      } else {
-        const stakeValue = toBN(options.stake.toString()).sub(toBN(stake))
-        console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} eth`,
-          stake === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
-
-        const stakeTx = await stakeManager
-          .stakeForAddress(relayAddress, options.unstakeDelay.toString(), {
-            value: stakeValue,
-            from: options.from,
-            gas: 1e6,
-            gasPrice: options.gasPrice
-          })
-        transactions.push(stakeTx.tx)
-      }
-
-      if (isSameAddress(owner, options.from)) {
-        console.log('Relayer already authorized')
-      } else {
-        console.log('Authorizing relayer for hub')
-        const authorizeTx = await stakeManager
-          .authorizeHubByOwner(relayAddress, relayHubAddress, {
-            from: options.from,
-            gas: 1e6,
-            gasPrice: options.gasPrice
-          })
-        transactions.push(authorizeTx.tx)
-      }
-
       const bal = await this.contractInteractor.getBalance(relayAddress)
       if (toBN(bal).gt(toBN(options.funds.toString()))) {
         console.log('Relayer already funded')
@@ -249,6 +224,54 @@ export default class CommandsLogic {
           }
         }
         transactions.push(fundTx.transactionHash)
+      }
+
+      if (owner === constants.ZERO_ADDRESS) {
+        let i = 0
+        while (true) {
+          await sleep(options.sleepMs)
+          const newStakeInfo = await stakeManager.getStakeInfo(relayAddress)
+          if (newStakeInfo.owner !== constants.ZERO_ADDRESS && isSameAddress(newStakeInfo.owner, options.from)) {
+            console.log('RelayServer successfully set its owner on the StakeManager')
+            break
+          }
+          if (options.sleepCount === i++) {
+            throw new Error('RelayServer failed to set its owner on the StakeManager')
+          }
+        }
+      }
+
+      if (toBN(unstakeDelay).gte(toBN(options.unstakeDelay)) &&
+        toBN(stake).gte(toBN(options.stake.toString()))
+      ) {
+        console.log('Relayer already staked')
+      } else {
+        const stakeValue = toBN(options.stake.toString()).sub(toBN(stake))
+        console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} eth`,
+          stake === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
+
+        const stakeTx = await stakeManager
+          .stakeForRelayManager(relayAddress, options.unstakeDelay.toString(), {
+            value: stakeValue,
+            from: options.from,
+            gas: 1e6,
+            gasPrice: options.gasPrice
+          })
+        transactions.push(stakeTx.tx)
+      }
+
+      // TODO: this is an incorrect check. Rewrite is needed (OG-404)
+      if (isSameAddress(owner, options.from)) {
+        console.log('Relayer already authorized')
+      } else {
+        console.log('Authorizing relayer for hub')
+        const authorizeTx = await stakeManager
+          .authorizeHubByOwner(relayAddress, relayHubAddress, {
+            from: options.from,
+            gas: 1e6,
+            gasPrice: options.gasPrice
+          })
+        transactions.push(authorizeTx.tx)
       }
 
       await this.waitForRelay(options.relayUrl)

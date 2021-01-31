@@ -97,7 +97,8 @@ contract('RelayClient', function (accounts) {
     const relayWorker = '0x'.padEnd(42, '2')
     const relayOwner = accounts[3]
     const relayManager = accounts[4]
-    await stakeManager.stakeForAddress(relayManager, 1000, {
+    await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+    await stakeManager.stakeForRelayManager(relayManager, 1000, {
       value: ether('2'),
       from: relayOwner
     })
@@ -443,7 +444,8 @@ contract('RelayClient', function (accounts) {
     let optionsWithGas: GsnTransactionDetails
 
     before(async function () {
-      await stakeManager.stakeForAddress(relayManager, 7 * 24 * 3600, {
+      await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+      await stakeManager.stakeForRelayManager(relayManager, 7 * 24 * 3600, {
         from: relayOwner,
         value: (2e18).toString()
       })
