@@ -64,7 +64,7 @@ Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
 // - standard forwarder reverts: PM always pay (since commitment > gas of (preRelayedCall,forwarder))
 // - nonstandard forwardeR: PM pays above commitment
 // - trusted recipient: PM pays above commitment.
-contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other]) { // eslint-disable-line no-unused-vars
+contract.only('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),

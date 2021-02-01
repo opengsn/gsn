@@ -30,10 +30,11 @@ interface IPaymaster {
      *      note that an OOG will revert the transaction, but the paymaster already committed to pay,
      *      so the relay will get compensated, at the expense of the paymaster
      */
-    struct GasLimits {
+    struct GasAndDataLimits {
         uint256 acceptanceBudget;
         uint256 preRelayedCallGasLimit;
         uint256 postRelayedCallGasLimit;
+        uint256 calldataSizeLimit;
     }
 
     /**
@@ -43,7 +44,7 @@ interface IPaymaster {
     external
     view
     returns (
-        GasLimits memory limits
+        GasAndDataLimits memory limits
     );
 
     function trustedForwarder() external view returns (IForwarder);

@@ -114,23 +114,23 @@ contract RelayHub is IRelayHub {
         emit Withdrawn(account, dest, amount);
     }
 
-    function verifyGasLimits(
+    function verifyGasAndDataLimits(
         uint256 paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGas
     )
     private
     view
-    returns (IPaymaster.GasLimits memory gasLimits, uint256 maxPossibleGas) {
-        gasLimits =
+    returns (IPaymaster.GasAndDataLimits memory gasAndDataLimits, uint256 maxPossibleGas) {
+        gasAndDataLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasAndDataLimits{gas:50000}();
-
-        require(paymasterMaxAcceptanceBudget >= gasLimits.acceptanceBudget, "unexpected high acceptanceBudget");
+        require(msg.data.length <= gasAndDataLimits.calldataSizeLimit, "msg.data exceeded limit" );
+        require(paymasterMaxAcceptanceBudget >= gasAndDataLimits.acceptanceBudget, "unexpected high acceptanceBudget");
 
         maxPossibleGas =
             gasOverhead.add(
-            gasLimits.preRelayedCallGasLimit).add(
-            gasLimits.postRelayedCallGasLimit).add(
+            gasAndDataLimits.preRelayedCallGasLimit).add(
+            gasAndDataLimits.postRelayedCallGasLimit).add(
             relayRequest.request.gas);
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
@@ -155,7 +155,7 @@ contract RelayHub is IRelayHub {
         bytes4 functionSelector;
         bytes recipientContext;
         bytes relayedCallReturnValue;
-        IPaymaster.GasLimits gasLimits;
+        IPaymaster.GasAndDataLimits gasAndDataLimits;
         RelayCallStatus status;
         uint256 innerGasUsed;
         uint256 maxPossibleGas;
@@ -187,8 +187,8 @@ contract RelayHub is IRelayHub {
         require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
-        (vars.gasLimits, vars.maxPossibleGas) =
-             verifyGasLimits(paymasterMaxAcceptanceBudget, relayRequest, externalGasLimit);
+        (vars.gasAndDataLimits, vars.maxPossibleGas) =
+             verifyGasAndDataLimits(paymasterMaxAcceptanceBudget, relayRequest, externalGasLimit);
 
     {
 
@@ -202,7 +202,7 @@ contract RelayHub is IRelayHub {
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
-            abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasLimits,
+            abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasAndDataLimits,
                 _tmpInitialGas - gasleft(),
                 vars.maxPossibleGas
                 )
@@ -217,7 +217,7 @@ contract RelayHub is IRelayHub {
     {
         if (!vars.success) {
             //Failure cases where the PM doesn't pay
-            if ( (vars.innerGasUsed < vars.gasLimits.acceptanceBudget ) && (
+            if ( (vars.innerGasUsed < vars.gasAndDataLimits.acceptanceBudget ) && (
                     vars.status == RelayCallStatus.RejectedByPreRelayed ||
                     vars.status == RelayCallStatus.RejectedByForwarder ||
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
@@ -270,7 +270,7 @@ contract RelayHub is IRelayHub {
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
-        IPaymaster.GasLimits calldata gasLimits,
+        IPaymaster.GasAndDataLimits calldata gasAndDataLimits,
         uint256 totalInitialGas,
         uint256 maxPossibleGas
     )
@@ -301,7 +301,7 @@ contract RelayHub is IRelayHub {
         {
             bool success;
             bytes memory retData;
-            (success, retData) = relayRequest.relayData.paymaster.call{gas:gasLimits.preRelayedCallGasLimit}(vars.data);
+            (success, retData) = relayRequest.relayData.paymaster.call{gas:gasAndDataLimits.preRelayedCallGasLimit}(vars.data);
             if (!success) {
                 GsnEip712Library.truncateInPlace(retData);
                 revertWithStatus(RelayCallStatus.RejectedByPreRelayed, retData);
@@ -335,7 +335,7 @@ contract RelayHub is IRelayHub {
         );
 
         {
-        (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasLimits.postRelayedCallGasLimit}(vars.data);
+        (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasAndDataLimits.postRelayedCallGasLimit}(vars.data);
 
         if (!successPost) {
             revertWithStatus(RelayCallStatus.PostRelayedFailed, ret);

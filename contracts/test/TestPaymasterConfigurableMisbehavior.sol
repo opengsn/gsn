@@ -105,11 +105,11 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         return balance;
     }
 
-    IPaymaster.GasLimits private limits = super.getGasAndDataLimits();
+    IPaymaster.GasAndDataLimits private limits = super.getGasAndDataLimits();
 
     function getGasAndDataLimits()
     public override view
-    returns (IPaymaster.GasLimits memory) {
+    returns (IPaymaster.GasAndDataLimits memory) {
 
         if (expensiveGasLimits) {
             uint sum;
@@ -119,7 +119,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
             }
         }
         if (greedyAcceptanceBudget) {
-            return IPaymaster.GasLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit);
+            return IPaymaster.GasAndDataLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit,
+            limits.calldataSizeLimit);
         }
         return limits;
     }
@@ -127,10 +128,11 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool private trustRecipientRevert;
 
     function setGasLimits(uint acceptanceBudget, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
-        limits = IPaymaster.GasLimits(
+        limits = IPaymaster.GasAndDataLimits(
             acceptanceBudget,
             preRelayedCallGasLimit,
-            postRelayedCallGasLimit
+            postRelayedCallGasLimit,
+            limits.calldataSizeLimit
         );
     }
 
