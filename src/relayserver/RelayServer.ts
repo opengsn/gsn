@@ -208,7 +208,7 @@ export class RelayServer extends EventEmitter {
     if (gasLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
-        gasLimits = await paymasterContract.getGasLimits()
+        gasLimits = await paymasterContract.getGasAndDataLimits()
       } catch (e) {
         const error = e as Error
         let message = `unknown paymaster error: ${error.message}`
@@ -396,7 +396,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   /***
    * initialize data from trusted paymasters.
    * "Trusted" paymasters means that:
-   * - we trust their code not to alter the gas limits (getGasLimits returns constants)
+   * - we trust their code not to alter the gas limits (getGasAndDataLimits returns constants)
    * - we trust preRelayedCall to be consistent: off-chain call and on-chain calls should either both succeed
    *    or both revert.
    * - given that, we agree to give the requested acceptanceBudget (since breaking one of the above two "invariants"
@@ -408,7 +408,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.trustedPaymastersGasLimits.clear()
     for (const paymasterAddress of paymasters) {
       const paymaster = await this.contractInteractor._createPaymaster(paymasterAddress)
-      const gasLimits = await paymaster.getGasLimits().catch((e: Error) => {
+      const gasLimits = await paymaster.getGasAndDataLimits().catch((e: Error) => {
         throw new Error(`not a valid paymaster address in trustedPaymasters list: ${paymasterAddress}: ${e.message}`)
       })
       this.trustedPaymastersGasLimits.set(paymasterAddress.toLowerCase(), gasLimits)

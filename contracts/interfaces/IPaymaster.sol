@@ -37,9 +37,9 @@ interface IPaymaster {
     }
 
     /**
-     * Return the GasLimits constants used by the Paymaster.
+     * Return the Gas Limits and msg.data max size constants used by the Paymaster.
      */
-    function getGasLimits()
+    function getGasAndDataLimits()
     external
     view
     returns (
@@ -82,7 +82,7 @@ interface IPaymaster {
      *              Note that in most cases the paymaster shouldn't try use it at all. It is always checked
      *              by the forwarder immediately after preRelayedCall returns.
      *  @param approvalData - extra dapp-specific data (e.g. signature from trusted party)
-     *  @param maxPossibleGas - based on values returned from {@link getGasLimits},
+     *  @param maxPossibleGas - based on values returned from {@link getGasAndDataLimits},
      *         the RelayHub will calculate the maximum possible amount of gas the user may be charged for.
      *         In order to convert this value to wei, the Paymaster has to call "relayHub.calculateCharge()"
      *  return:

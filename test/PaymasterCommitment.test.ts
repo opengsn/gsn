@@ -207,7 +207,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const gasLimits = await paymasterContract.getGasLimits()
+      const gasLimits = await paymasterContract.getGasAndDataLimits()
       // fail if a bit lower
       expectRevert(relayHubInstance.relayCall(parseInt(gasLimits.acceptanceBudget) - 1, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,

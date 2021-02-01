@@ -33,7 +33,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
     uint256 constant public PAYMASTER_ACCEPTANCE_BUDGET = PRE_RELAYED_CALL_GAS_LIMIT + FORWARDER_HUB_OVERHEAD;
 
-    function getGasLimits()
+    function getGasAndDataLimits()
     public
     override
     virtual

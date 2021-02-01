@@ -312,7 +312,7 @@ contract('RelayServer', function (accounts) {
 
         it('should accept a transaction from paymaster returning below configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
-          const gasLimits = await rejectingPaymaster.getGasLimits()
+          const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
           assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
           await env.relayServer.validatePaymasterGasLimits(req)
         })
@@ -322,7 +322,7 @@ contract('RelayServer', function (accounts) {
           const req = await env.createRelayHttpRequest()
           try {
             await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
-            const gasLimits = await rejectingPaymaster.getGasLimits()
+            const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
             assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
             await env.relayServer.validatePaymasterGasLimits(req)
           } finally {

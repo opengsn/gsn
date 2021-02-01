@@ -123,7 +123,7 @@ contract RelayHub is IRelayHub {
     view
     returns (IPaymaster.GasLimits memory gasLimits, uint256 maxPossibleGas) {
         gasLimits =
-            IPaymaster(relayRequest.relayData.paymaster).getGasLimits{gas:50000}();
+            IPaymaster(relayRequest.relayData.paymaster).getGasAndDataLimits{gas:50000}();
 
         require(paymasterMaxAcceptanceBudget >= gasLimits.acceptanceBudget, "unexpected high acceptanceBudget");
 

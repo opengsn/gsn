@@ -144,7 +144,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           gasPrice
         })
         const { tx } = res
-        const gasLimits = await paymaster.getGasLimits()
+        const gasLimits = await paymaster.getGasAndDataLimits()
         const hubOverhead = (await relayHub.gasOverhead()).toNumber()
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasLimits,
