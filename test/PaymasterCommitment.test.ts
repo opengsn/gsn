@@ -64,7 +64,7 @@ async function makeRequest (web3: Web3, req: PartialRelayRequest, defaultRequest
 // - standard forwarder reverts: PM always pay (since commitment > gas of (preRelayedCall,forwarder))
 // - nonstandard forwardeR: PM pays above commitment
 // - trusted recipient: PM pays above commitment.
-contract.only('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other]) { // eslint-disable-line no-unused-vars
+contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),
