@@ -25,7 +25,7 @@ import {
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
-  PaymasterGasLimits,
+  PaymasterGasAndDataLimits,
   randomInRange,
   sleep
 } from '../common/Utils'
@@ -70,7 +70,7 @@ export class RelayServer extends EventEmitter {
   networkId!: number
   relayHubContract!: IRelayHubInstance
 
-  trustedPaymastersGasLimits: Map<String | undefined, PaymasterGasLimits> = new Map<String | undefined, PaymasterGasLimits>()
+  trustedPaymastersGasAndDataLimits: Map<String | undefined, PaymasterGasAndDataLimits> = new Map<String | undefined, PaymasterGasAndDataLimits>()
 
   workerBalanceRequired: AmountRequired
 
@@ -198,17 +198,17 @@ export class RelayServer extends EventEmitter {
     throw new Error(`Refusing to serve transactions for paymaster at ${paymaster}: ${message}`)
   }
 
-  async validatePaymasterGasLimits (req: RelayTransactionRequest): Promise<{
+  async validatePaymasterGasAndDataLimits (req: RelayTransactionRequest): Promise<{
     maxPossibleGas: number
     acceptanceBudget: number
   }> {
     const paymaster = req.relayRequest.relayData.paymaster
-    let gasLimits = this.trustedPaymastersGasLimits.get(paymaster)
+    let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymaster)
     let acceptanceBudget: number
-    if (gasLimits == null) {
+    if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
-        gasLimits = await paymasterContract.getGasAndDataLimits()
+        gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       } catch (e) {
         const error = e as Error
         let message = `unknown paymaster error: ${error.message}`
@@ -220,7 +220,7 @@ export class RelayServer extends EventEmitter {
         throw new Error(message)
       }
       acceptanceBudget = this.config.maxAcceptanceBudget
-      const paymasterAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
+      const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
       if (paymasterAcceptanceBudget > acceptanceBudget) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
@@ -231,12 +231,12 @@ export class RelayServer extends EventEmitter {
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      acceptanceBudget = parseInt(gasLimits.acceptanceBudget)
+      acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
-      gasLimits,
+      gasAndDataLimits: gasAndDataLimits,
       hubOverhead,
       relayCallGasLimit: req.relayRequest.request.gas
     })
@@ -297,7 +297,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
     }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
-    const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasLimits(req)
+    const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
     await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
 
     if (this.config.runPaymasterReputations) {
@@ -405,18 +405,18 @@ returnValue        | ${viewRelayCallRet.returnValue}
    * @param paymasters list of trusted paymaster addresses
    */
   async _initTrustedPaymasters (paymasters: string[] = []): Promise<void> {
-    this.trustedPaymastersGasLimits.clear()
+    this.trustedPaymastersGasAndDataLimits.clear()
     for (const paymasterAddress of paymasters) {
       const paymaster = await this.contractInteractor._createPaymaster(paymasterAddress)
-      const gasLimits = await paymaster.getGasAndDataLimits().catch((e: Error) => {
+      const gasAndDataLimits = await paymaster.getGasAndDataLimits().catch((e: Error) => {
         throw new Error(`not a valid paymaster address in trustedPaymasters list: ${paymasterAddress}: ${e.message}`)
       })
-      this.trustedPaymastersGasLimits.set(paymasterAddress.toLowerCase(), gasLimits)
+      this.trustedPaymastersGasAndDataLimits.set(paymasterAddress.toLowerCase(), gasAndDataLimits)
     }
   }
 
   _getPaymasterMaxAcceptanceBudget (paymaster?: string): IntString {
-    const limits = this.trustedPaymastersGasLimits.get(paymaster?.toLocaleLowerCase())
+    const limits = this.trustedPaymastersGasAndDataLimits.get(paymaster?.toLocaleLowerCase())
     if (limits != null) {
       return limits.acceptanceBudget
     } else {
@@ -715,7 +715,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {
-    return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
+    return this.trustedPaymastersGasAndDataLimits.get(paymaster.toLocaleLowerCase()) != null
   }
 
   _isBlacklistedPaymaster (paymaster: string): boolean {
