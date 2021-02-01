@@ -24,7 +24,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
+contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 1000
   const chainId = defaultEnvironment.chainId
@@ -144,21 +144,21 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           gasPrice
         })
         const { tx } = res
-        const gasLimits = await paymaster.getGasAndDataLimits()
+        const gasAndDataLimits = await paymaster.getGasAndDataLimits()
         const hubOverhead = (await relayHub.gasOverhead()).toNumber()
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
-          gasLimits,
+          gasLimits: gasAndDataLimits,
           hubOverhead,
           relayCallGasLimit: gasLimit.toString()
         })
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
-          gasleft: (parseInt(gasLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
+          gasleft: (parseInt(gasAndDataLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
           maxPossibleGas: maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPostCallWithValues', {
-          gasleft: (parseInt(gasLimits.postRelayedCallGasLimit) - magicNumbers.post).toString()
+          gasleft: (parseInt(gasAndDataLimits.postRelayedCallGasLimit) - magicNumbers.post).toString()
         })
       })
 

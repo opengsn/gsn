@@ -34,7 +34,7 @@ interface PartialRelayRequest {
 // given partial request, fill it in from defaults, and return request and signature to send.
 // if nonce is not explicitly specified, read it from forwarder
 async function makeRequest (web3: Web3, req: PartialRelayRequest, defaultRequest: RelayRequest, chainId: number, forwarderInstance: ForwarderInstance):
-Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
+  Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
   const filledRequest = {
     request: { ...defaultRequest.request, ...req.request },
     relayData: { ...defaultRequest.relayData, ...req.relayData }
@@ -187,6 +187,26 @@ contract.only('Paymaster Commitment', function ([_, relayOwner, relayManager, re
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       // console.log('actual paid=', paid, 'gasUsed=', gasUsed, 'diff=', paid - gasUsed)
       assert.closeTo(paid, gasUsed, 50)
+    })
+
+    it('paymaster should not pay for requests exceeding msg.data size limit', async () => {
+      const r = await makeRequest(web3, {
+        request: {
+          // nonce: '4',
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
+        },
+        relayData: { paymaster }
+
+      }, sharedRelayRequestData, chainId, forwarderInstance)
+
+      const hugeApprovalData = '0x' + 'ef'.repeat(22000)
+      expectRevert(
+        relayHubInstance.relayCall(10e6, r.req, r.sig, hugeApprovalData, externalGasLimit, {
+          from: relayWorker,
+          gas: externalGasLimit,
+          gasPrice
+        }), 'msg.data exceeded limit'
+      )
     })
 
     it('paymaster should not change its acceptanceBudget before transaction', async () => {
