@@ -59,6 +59,7 @@ export const StakeAdded: EventName = 'StakeAdded'
 export const StakeUnlocked: EventName = 'StakeUnlocked'
 export const StakeWithdrawn: EventName = 'StakeWithdrawn'
 export const StakePenalized: EventName = 'StakePenalized'
+export const OwnerSet: EventName = 'OwnerSet'
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
@@ -548,6 +549,11 @@ export default class ContractInteractor {
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
     const hub = this.relayHubInstance
     return hub.contract.methods.addRelayWorkers(workers)
+  }
+
+  async getSetRelayManagerMethod (owner: Address): Promise<any> {
+    const sm = this.stakeManagerInstance
+    return sm.contract.methods.setRelayManagerOwner(owner)
   }
 
   /**
