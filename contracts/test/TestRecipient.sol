@@ -5,9 +5,8 @@ pragma solidity ^0.7.5;
 import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
-import "../interfaces/IKnowForwarderAddress.sol";
 
-contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
+contract TestRecipient is BaseRelayRecipient {
 
     string public override versionRecipient = "2.0.0+opengsn.test.irelayrecipient";
 
@@ -15,7 +14,7 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
         setTrustedForwarder(forwarder);
     }
 
-    function getTrustedForwarder() public override view returns(address) {
+    function getTrustedForwarder() public view returns(address) {
         return trustedForwarder;
     }
 

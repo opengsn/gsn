@@ -108,7 +108,7 @@ interface IRelayHub {
 
 
     /// Relays a transaction. For this to succeed, multiple conditions must be met:
-    ///  - Paymaster's "acceptRelayCall" method must succeed and not revert
+    ///  - Paymaster's "preRelayCall" method must succeed and not revert
     ///  - the sender must be a registered Relay Worker that the user signed
     ///  - the transaction's gas price must be equal or larger than the one that was signed by the sender
     ///  - the transaction must have enough gas to run all internal transactions if they use all gas available to them
@@ -117,6 +117,7 @@ interface IRelayHub {
     /// If all conditions are met, the call will be relayed and the recipient charged.
     ///
     /// Arguments:
+    /// @param paymasterMaxAcceptanceBudget - max valid value for paymaster.getGasLimits().acceptanceBudget
     /// @param relayRequest - all details of the requested relayed call
     /// @param signature - client's EIP-712 signature over the relayRequest struct
     /// @param approvalData: dapp-specific data forwarded to preRelayedCall.

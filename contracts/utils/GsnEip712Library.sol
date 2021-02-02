@@ -148,6 +148,4 @@ library GsnEip712Library {
                 req.clientId
             ));
     }
-
-
 }
