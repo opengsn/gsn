@@ -161,6 +161,7 @@ contract RelayHub is IRelayHub {
         uint256 maxPossibleGas;
         uint256 gasBeforeInner;
         bytes retData;
+        address relayManager;
     }
 
     function relayCall(
@@ -176,12 +177,13 @@ contract RelayHub is IRelayHub {
     {
         (signature);
         RelayCallData memory vars;
-        vars.functionSelector = MinLibBytes.readBytes4(relayRequest.request.data, 0);
+        vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
         require(msg.sender == tx.origin, "relay worker must be EOA");
-        require(workerToManager[msg.sender] != address(0), "Unknown relay worker");
+        vars.relayManager = workerToManager[msg.sender];
+        require(vars.relayManager != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
         require(
-            isRelayManagerStaked(workerToManager[msg.sender]),
+            isRelayManagerStaked(vars.relayManager),
             "relay manager not staked"
         );
         require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
@@ -225,7 +227,7 @@ contract RelayHub is IRelayHub {
                 paymasterAccepted=false;
 
                 emit TransactionRejectedByPaymaster(
-                    workerToManager[msg.sender],
+                    vars.relayManager,
                     relayRequest.relayData.paymaster,
                     relayRequest.request.from,
                     relayRequest.request.to,
@@ -241,10 +243,10 @@ contract RelayHub is IRelayHub {
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
-        balances[workerToManager[msg.sender]] = balances[workerToManager[msg.sender]].add(charge);
+        balances[vars.relayManager] = balances[vars.relayManager].add(charge);
 
         emit TransactionRelayed(
-            workerToManager[msg.sender],
+            vars.relayManager,
             msg.sender,
             relayRequest.request.from,
             relayRequest.request.to,
