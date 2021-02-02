@@ -42,6 +42,7 @@ import { LoggerInterface } from '../../src/common/LoggerInterface'
 import { ether } from '@openzeppelin/test-helpers'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import ContractInteractor from '../../src/common/ContractInteractor'
+import { defaultStakeManagerMaxUnstakeDelay } from '../../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -110,7 +111,7 @@ contract('RelayClient', function (accounts) {
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
-    stakeManager = await StakeManager.new()
+    stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()

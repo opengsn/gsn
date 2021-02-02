@@ -75,8 +75,9 @@ contract RelayHub is IRelayHub {
 
     function addRelayWorkers(address[] calldata newRelayWorkers) external override {
         address relayManager = msg.sender;
-        workerCount[relayManager] = workerCount[relayManager] + newRelayWorkers.length;
-        require(workerCount[relayManager] <= maxWorkerCount, "too many workers");
+        uint256 newWorkerCount = workerCount[relayManager] + newRelayWorkers.length;
+        workerCount[relayManager] = newWorkerCount;
+        require(newWorkerCount <= maxWorkerCount, "too many workers");
 
         require(
             isRelayManagerStaked(relayManager),
@@ -88,7 +89,7 @@ contract RelayHub is IRelayHub {
             workerToManager[newRelayWorkers[i]] = relayManager;
         }
 
-        emit RelayWorkersAdded(relayManager, newRelayWorkers, workerCount[relayManager]);
+        emit RelayWorkersAdded(relayManager, newRelayWorkers, newWorkerCount);
     }
 
     function depositFor(address target) public override payable {
@@ -321,7 +322,7 @@ contract RelayHub is IRelayHub {
             }
 
             if (vars.rejectOnRecipientRevert && !vars.relayedCallSuccess) {
-                //we trusted the recipient, but it reverted...
+                // we trusted the recipient, but it reverted...
                 revertWithStatus(RelayCallStatus.RejectedByRecipientRevert, vars.relayedCallReturnValue);
             }
         }
@@ -367,7 +368,6 @@ contract RelayHub is IRelayHub {
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
-        //       relayData.baseRelayFee + (gasUsed * relayData.gasPrice * (100 + relayData.pctRelayFee)) / 100;
         return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 

@@ -3,7 +3,7 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
 import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
-import { defaultEnvironment } from '../src/common/Environments'
+import { defaultEnvironment, defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
 
 import {
@@ -58,7 +58,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
-    stakeManager = await StakeManager.new()
+    stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     await paymaster.setTrustedForwarder(forwarder)

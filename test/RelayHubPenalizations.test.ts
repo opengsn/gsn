@@ -12,7 +12,7 @@ import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 import RelayRequest from '../src/common/EIP712/RelayRequest'
 import { getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
-import { defaultEnvironment } from '../src/common/Environments'
+import { defaultEnvironment, defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
 import {
   PenalizerInstance,
   RelayHubInstance, StakeManagerInstance,
@@ -49,7 +49,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
   let forwarder: string
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
-    stakeManager = await StakeManager.new()
+    stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()

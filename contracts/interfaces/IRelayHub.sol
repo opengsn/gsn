@@ -22,14 +22,14 @@ interface IRelayHub {
         uint256 workersCount
     );
 
-    // Emitted when an account withdraws funds from RelayHub.
+    /// Emitted when an account withdraws funds from RelayHub.
     event Withdrawn(
         address indexed account,
         address indexed dest,
         uint256 amount
     );
 
-    // Emitted when depositFor is called, including the amount and account that was funded.
+    /// Emitted when depositFor is called, including the amount and account that was funded.
     event Deposited(
         address indexed paymaster,
         address indexed from,
@@ -49,10 +49,10 @@ interface IRelayHub {
         uint256 innerGasUsed,
         bytes reason);
 
-    // Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
-    // indicated in the status field.
-    // Useful when monitoring a relay's operation and relayed calls to a contract.
-    // Charge is the ether value deducted from the recipient's balance, paid to the relay's manager.
+    /// Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
+    /// indicated in the status field.
+    /// Useful when monitoring a relay's operation and relayed calls to a contract.
+    /// Charge is the ether value deducted from the recipient's balance, paid to the relay's manager.
     event TransactionRelayed(
         address indexed relayManager,
         address indexed relayWorker,
@@ -94,14 +94,14 @@ interface IRelayHub {
 
     // Balance management
 
-    // Deposits ether for a contract, so that it can receive (and pay for) relayed transactions. Unused balance can only
-    // be withdrawn by the contract itself, by calling withdraw.
-    // Emits a Deposited event.
+    /// Deposits ether for a contract, so that it can receive (and pay for) relayed transactions. Unused balance can only
+    /// be withdrawn by the contract itself, by calling withdraw.
+    /// Emits a Deposited event.
     function depositFor(address target) external payable;
 
-    // Withdraws from an account's balance, sending it back to it. Relay managers call this to retrieve their revenue, and
-    // contracts can also use it to reduce their funding.
-    // Emits a Withdrawn event.
+    /// Withdraws from an account's balance, sending it back to it. Relay managers call this to retrieve their revenue, and
+    /// contracts can also use it to reduce their funding.
+    /// Emits a Withdrawn event.
     function withdraw(uint256 amount, address payable dest) external;
 
     // Relaying
@@ -151,38 +151,37 @@ interface IRelayHub {
     /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.
     function balanceOf(address target) external view returns (uint256);
 
-    // Minimum stake a relay can have. An attack to the network will never cost less than half this value.
+    /// Minimum stake a relay can have. An attack to the network will never cost less than half this value.
     function minimumStake() external view returns (uint256);
 
-    // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
+    /// Minimum unstake delay blocks of a relay manager's stake on the StakeManager
     function minimumUnstakeDelay() external view returns (uint256);
 
-    // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
+    /// Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
     function maximumRecipientDeposit() external view returns (uint256);
 
-    //gas overhead to calculate gasUseWithoutPost
+    /// Gas overhead to calculate gasUseWithoutPost
     function postOverhead() external view returns (uint256);
 
-    // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
+    /// Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
     function gasReserve() external view returns (uint256);
 
-    // maximum number of worker account allowed per manager
+    /// maximum number of worker accounts allowed per manager
     function maxWorkerCount() external view returns (uint256);
 
     function workerToManager(address worker) external view returns(address);
 
     function workerCount(address manager) external view returns(uint256);
 
+    /// Uses StakeManager info to decide if the Relay Manager can be considered staked
+    /// @return true if stake size and delay satisfy all requirements
     function isRelayManagerStaked(address relayManager) external view returns(bool);
 
-    /**
-    * @dev the total gas overhead of relayCall(), before the first gasleft() and after the last gasleft().
-    * Assume that relay has non-zero balance (costs 15'000 more otherwise).
-    */
-
-    // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
+    /// Gas cost of all relayCall() instructions after actual 'calculateCharge()'
+    /// Assume that relay has non-zero balance (costs 15'000 more otherwise).
     function gasOverhead() external view returns (uint256);
 
+    /// @return a SemVer-compliant version of the hub contract
     function versionHub() external view returns (string memory);
 }
 

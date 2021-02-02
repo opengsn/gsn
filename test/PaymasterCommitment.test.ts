@@ -18,6 +18,7 @@ import ForwardRequest from '../src/common/EIP712/ForwardRequest'
 import RelayData from '../src/common/EIP712/RelayData'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
+import { defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -92,7 +93,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   const pctRelayFee = '0'
 
   before(async function () {
-    stakeManager = await StakeManager.new()
+    stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
 

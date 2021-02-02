@@ -16,6 +16,7 @@ import { deployHub, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
+import { defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -53,7 +54,7 @@ options.forEach(params => {
       gasless = await web3.eth.personal.newAccount('password')
       await web3.eth.personal.unlockAccount(gasless, 'password', 0)
 
-      sm = await StakeManager.new()
+      sm = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
       const p = await Penalizer.new()
       rhub = await deployHub(sm.address, p.address)
       if (params.relay) {

@@ -6,7 +6,7 @@ import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 
 import { getEip712Signature } from '../src/common/Utils'
 
-import { defaultEnvironment } from '../src/common/Environments'
+import { defaultEnvironment, defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
 import {
   RelayHubInstance,
   TestPaymasterEverythingAcceptedInstance,
@@ -33,7 +33,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   before(async () => {
     const paymasterDeposit = 1e18.toString()
 
-    const stakeManager = await StakeManager.new()
+    const stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
     const penalizer = await Penalizer.new()
     hub = await deployHub(stakeManager.address, penalizer.address)
     const relayHub = hub

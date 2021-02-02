@@ -101,5 +101,7 @@ interface IStakeManager {
 
     function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo);
 
+    function maxUnstakeDelay() external view returns (uint256);
+
     function versionSM() external view returns (string memory);
 }

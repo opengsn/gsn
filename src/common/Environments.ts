@@ -11,6 +11,12 @@ interface Environment {
   readonly relayHubConfiguration: RelayHubConfiguration
 }
 
+/**
+ * With about 6000 blocks per day, maximum unstake delay is defined at around 5 years for the mainnet.
+ * This is done to prevent mistakenly setting an unstake delay to millions of years.
+ */
+export const defaultStakeManagerMaxUnstakeDelay: number = 10000000
+
 export const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasOverhead: 33346,
   postOverhead: 13016,

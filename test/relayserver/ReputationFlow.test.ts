@@ -5,6 +5,7 @@ import { deployHub, evmMine, startRelay, stopRelay } from '../TestUtils'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { HttpProvider } from 'web3-core'
 import { RelayProvider } from '../../src/relayclient/RelayProvider'
+import { defaultStakeManagerMaxUnstakeDelay } from '../../src/common/Environments'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -18,7 +19,7 @@ contract('ReputationFlow', function (accounts) {
   let testRecipient: TestRecipientInstance
 
   before(async function () {
-    const stakeManager = await StakeManager.new()
+    const stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
     const penalizer = await Penalizer.new()
     const relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
