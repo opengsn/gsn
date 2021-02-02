@@ -53,8 +53,8 @@ contract Penalizer is IPenalizer{
         // If reported via a relay, the forfeited stake is split between
         // msg.sender (the relay used for reporting) and the address that reported it.
 
-        address addr1 = keccak256(abi.encodePacked(unsignedTx1)).recover(signature1);
-        address addr2 = keccak256(abi.encodePacked(unsignedTx2)).recover(signature2);
+        address addr1 = keccak256(unsignedTx1).recover(signature1);
+        address addr2 = keccak256(unsignedTx2).recover(signature2);
 
         require(addr1 == addr2, "Different signer");
         require(addr1 != address(0), "ecrecover failed");
@@ -96,7 +96,7 @@ contract Penalizer is IPenalizer{
                 isWrongMethodCall || isGasLimitWrong,
                 "Legal relay transaction");
         }
-        address relay = keccak256(abi.encodePacked(unsignedTx)).recover(signature);
+        address relay = keccak256(unsignedTx).recover(signature);
         require(relay != address(0), "ecrecover failed");
 
         penalize(relay, hub);

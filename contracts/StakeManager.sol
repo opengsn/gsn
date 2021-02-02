@@ -40,8 +40,9 @@ contract StakeManager is IStakeManager {
     function unlockStake(address relayManager) external override ownerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawBlock == 0, "already pending");
-        info.withdrawBlock = block.number.add(info.unstakeDelay);
-        emit StakeUnlocked(relayManager, msg.sender, info.withdrawBlock);
+        uint withdrawBlock = block.number.add(info.unstakeDelay);
+        info.withdrawBlock = withdrawBlock;
+        emit StakeUnlocked(relayManager, msg.sender, withdrawBlock);
     }
 
     function withdrawStake(address relayManager) external override ownerOnly(relayManager) {

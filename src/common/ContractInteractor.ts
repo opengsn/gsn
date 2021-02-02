@@ -18,7 +18,6 @@ import forwarderAbi from './interfaces/IForwarder.json'
 import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
 import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
-import knowForwarderAddressAbi from './interfaces/IKnowForwarderAddress.json'
 
 import VersionsManager from './VersionsManager'
 import replaceErrors from './ErrorReplacerJSON'
@@ -27,7 +26,6 @@ import { decodeRevertReason, event2topic } from './Utils'
 import {
   BaseRelayRecipientInstance,
   IForwarderInstance,
-  IKnowForwarderAddressInstance,
   IPaymasterInstance,
   IPenalizerInstance,
   IRelayHubInstance,
@@ -77,7 +75,6 @@ export default class ContractInteractor {
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IPenalizer: Contract<IPenalizerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
-  private readonly IKnowForwarderAddress: Contract<IKnowForwarderAddressInstance>
 
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
@@ -85,7 +82,6 @@ export default class ContractInteractor {
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
-  private knowForwarderAddressInstance?: IKnowForwarderAddressInstance
   private readonly relayCallMethod: any
 
   readonly web3: Web3
@@ -141,18 +137,13 @@ export default class ContractInteractor {
       contractName: 'IRelayRecipient',
       abi: gsnRecipientAbi
     })
-    // @ts-ignore
-    this.IKnowForwarderAddress = TruffleContract({
-      contractName: 'IKnowForwarderAddress',
-      abi: knowForwarderAddressAbi
-    })
+
     this.IStakeManager.setProvider(this.provider, undefined)
     this.IRelayHubContract.setProvider(this.provider, undefined)
     this.IPaymasterContract.setProvider(this.provider, undefined)
     this.IForwarderContract.setProvider(this.provider, undefined)
     this.IPenalizer.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
-    this.IKnowForwarderAddress.setProvider(this.provider, undefined)
 
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
@@ -259,14 +250,6 @@ export default class ContractInteractor {
     return this.rawTxOptions
   }
 
-  async _createKnowsForwarder (address: Address): Promise<IKnowForwarderAddressInstance> {
-    if (this.knowForwarderAddressInstance != null && this.knowForwarderAddressInstance.address.toLowerCase() === address.toLowerCase()) {
-      return this.knowForwarderAddressInstance
-    }
-    this.knowForwarderAddressInstance = await this.IKnowForwarderAddress.at(address)
-    return this.knowForwarderAddressInstance
-  }
-
   async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
     if (this.relayRecipientInstance != null && this.relayRecipientInstance.address.toLowerCase() === address.toLowerCase()) {
       return this.relayRecipientInstance
@@ -293,11 +276,6 @@ export default class ContractInteractor {
 
   async _createPenalizer (address: Address): Promise<IPenalizerInstance> {
     return await this.IPenalizer.at(address)
-  }
-
-  async getForwarder (recipientAddress: Address): Promise<Address> {
-    const recipient = await this._createKnowsForwarder(recipientAddress)
-    return await recipient.getTrustedForwarder()
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {

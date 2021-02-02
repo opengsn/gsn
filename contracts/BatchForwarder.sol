@@ -25,8 +25,6 @@ contract BatchForwarder is Forwarder, BaseRelayRecipient {
         for (uint i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory ret) = targets[i].call(abi.encodePacked(encodedFunctions[i], sender));
-            // TODO: currently, relayed transaction does not report exception string. when it does, this
-            // will propagate the inner call exception description
             if (!success){
                 //re-throw the revert with the same revert reason.
                 GsnUtils.revertWithData(ret);
