@@ -30,6 +30,7 @@ contract RelayHub is IRelayHub {
     uint256 public override postOverhead;
     uint256 public override gasReserve;
     uint256 public override maxWorkerCount;
+    uint256 public override dataGasCostPerByte;
     IStakeManager override public stakeManager;
     address override public penalizer;
 
@@ -50,7 +51,8 @@ contract RelayHub is IRelayHub {
         uint256 _gasOverhead,
         uint256 _maximumRecipientDeposit,
         uint256 _minimumUnstakeDelay,
-        uint256 _minimumStake
+        uint256 _minimumStake,
+        uint256 _dataGasCostPerByte
     ) public {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
@@ -61,6 +63,7 @@ contract RelayHub is IRelayHub {
         maximumRecipientDeposit = _maximumRecipientDeposit;
         minimumUnstakeDelay = _minimumUnstakeDelay;
         minimumStake =  _minimumStake;
+        dataGasCostPerByte = _dataGasCostPerByte;
     }
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
@@ -127,11 +130,13 @@ contract RelayHub is IRelayHub {
         require(msg.data.length <= gasAndDataLimits.calldataSizeLimit, "msg.data exceeded limit" );
         require(paymasterMaxAcceptanceBudget >= gasAndDataLimits.acceptanceBudget, "unexpected high acceptanceBudget");
 
+        uint256 dataGasCost = dataGasCostPerByte.mul(msg.data.length);
         maxPossibleGas =
             gasOverhead.add(
             gasAndDataLimits.preRelayedCallGasLimit).add(
             gasAndDataLimits.postRelayedCallGasLimit).add(
-            relayRequest.request.gas);
+            relayRequest.request.gas).add(
+            dataGasCost);
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.

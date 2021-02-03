@@ -14,13 +14,14 @@ interface Environment {
 }
 
 export const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 35901,
-  postOverhead: 13950,
+  gasOverhead: 35965,
+  postOverhead: 14063,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
-  maximumRecipientDeposit: 2e18.toString()
+  maximumRecipientDeposit: 2e18.toString(),
+  dataGasCostPerByte: 20
 }
 
 export const environments: { [key: string]: Environment } = {

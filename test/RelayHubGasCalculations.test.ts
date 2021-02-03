@@ -16,6 +16,7 @@ import {
 } from '../types/truffle-contracts'
 import { calculateCalldataCost, deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
+import { toBuffer } from 'ethereumjs-util'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -24,7 +25,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
+contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 1000
   const chainId = defaultEnvironment.chainId
@@ -35,8 +36,6 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
   const externalGasLimit = 5e6.toString()
   const paymasterData = '0x'
   const clientId = '1'
-  // TODO
-  const hubDataCostPerByte = 15
 
   const senderNonce = new BN('0')
   const magicNumbers = {
@@ -54,6 +53,7 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
   let signature: string
   let relayRequest: RelayRequest
   let forwarder: string
+  let hubDataGasCostPerByte: number
 
   beforeEach(async function prepareForHub () {
     forwarderInstance = await Forwarder.new()
@@ -63,6 +63,7 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     stakeManager = await StakeManager.new()
     penalizer = await Penalizer.new()
     relayHub = await deployHub(stakeManager.address, penalizer.address)
+    hubDataGasCostPerByte = (await relayHub.dataGasCostPerByte()).toNumber()
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
@@ -148,10 +149,13 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
         const { tx } = res
         const gasAndDataLimits = await paymaster.getGasAndDataLimits()
         const hubOverhead = (await relayHub.gasOverhead()).toNumber()
+        const msgDataLength = toBuffer(relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()).length
+        const msgDataGasCost = hubDataGasCostPerByte * msgDataLength
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasAndDataLimits: gasAndDataLimits,
           hubOverhead,
-          relayCallGasLimit: gasLimit.toString()
+          relayCallGasLimit: gasLimit.toString(),
+          msgDataGasCost
         })
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
@@ -339,7 +343,7 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
       })
   })
 
-  describe.only('relayCall()\'s msg.data cost calculations', function () {
+  describe('relayCall()\'s msg.data cost calculations', function () {
     enum RelayCallDynamicArg {
       APPROVAL_DATA = 'approvalData',
       ENCODED_FUNCTION = 'encodedFunction',
@@ -351,7 +355,7 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
     });
     [RelayCallDynamicArg.APPROVAL_DATA, RelayCallDynamicArg.ENCODED_FUNCTION, RelayCallDynamicArg.PAYMASTER_DATA].forEach(dynamicArg => {
       const gassesUsed: any[] = [];
-      [0, 32, 64, 128, 256, 1024, 2048, 4096, 8192, 16384 /*32768, 65536*/].forEach(dataLength => {
+      [0, 32, 128, 16384/* , 32768, 65536 */].forEach(dataLength => {
         it(`with arg: ${dynamicArg} length: ${dataLength}`, async function () {
           // console.log('gasUsed: ', gassesUsed)
           const id = (await snapshot()).result
@@ -362,6 +366,7 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
           if (dynamicArg === RelayCallDynamicArg.APPROVAL_DATA) {
             approvalData = '0x' + 'ff'.repeat(dataLength)
           } else if (dynamicArg === RelayCallDynamicArg.ENCODED_FUNCTION) {
+            // encoded function arg is an ascii string, so each char is a byte. We append half the length then.
             encodedFunction = recipient.contract.methods.dontEmitMessage('f'.repeat(dataLength)).encodeABI()
             // console.log('encodedFunction', encodedFunction)
           } else if (dynamicArg === RelayCallDynamicArg.PAYMASTER_DATA) {
@@ -410,8 +415,8 @@ contract.only('RelayHub gas calculations', function ([_, relayOwner, relayWorker
             const diff = gassesUsed[gassesUsed.length - 1] - gassesUsed[0]
             // console.log('diff is', diff)
             // console.log('diff per byte is', diff / dataLength)
-            if (diff / dataLength > hubDataCostPerByte) {
-              assert.fail(`calculated data cost per byte (${diff / dataLength}) higher than hub's (${hubDataCostPerByte})`)
+            if (diff / dataLength > hubDataGasCostPerByte) {
+              assert.fail(`calculated data cost per byte (${diff / dataLength}) higher than hub's (${hubDataGasCostPerByte})`)
             }
           }
           await revert(id)

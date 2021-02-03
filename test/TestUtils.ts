@@ -246,7 +246,8 @@ export async function deployHub (
     relayHubConfiguration.gasOverhead,
     relayHubConfiguration.maximumRecipientDeposit,
     relayHubConfiguration.minimumUnstakeDelay,
-    relayHubConfiguration.minimumStake)
+    relayHubConfiguration.minimumStake,
+    relayHubConfiguration.dataGasCostPerByte)
 }
 
 export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {

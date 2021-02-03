@@ -111,9 +111,11 @@ export function calculateTransactionMaxPossibleGas (
   {
     gasAndDataLimits,
     hubOverhead,
-    relayCallGasLimit
-  }: TransactionGasComponents): number {
+    relayCallGasLimit,
+    msgDataGasCost
+  }: TransactionGasCostComponents): number {
   return hubOverhead +
+    msgDataGasCost +
     parseInt(relayCallGasLimit) +
     parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
     parseInt(gasAndDataLimits.postRelayedCallGasLimit)
@@ -204,10 +206,11 @@ export function isRegistrationValid (registerEvent: EventData | undefined, confi
  * @param calldataSize
  * @param gtxdatanonzero
  */
-interface TransactionGasComponents {
+interface TransactionGasCostComponents {
   gasAndDataLimits: PaymasterGasAndDataLimits
   hubOverhead: number
   relayCallGasLimit: string
+  msgDataGasCost: number
 }
 
 export interface PaymasterGasAndDataLimits {

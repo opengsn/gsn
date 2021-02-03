@@ -38,6 +38,7 @@ import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 
 import Timeout = NodeJS.Timeout
+import { toBuffer } from 'ethereumjs-util'
 
 const GAS_RESERVE = 100000
 
@@ -235,10 +236,15 @@ export class RelayServer extends EventEmitter {
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
+    const hubDataGasCostPerByte = (await this.relayHubContract.dataGasCostPerByte()).toNumber()
+    const maxBlockGas = 12e6
+    const msgDataLength = toBuffer(this.relayHubContract.contract.methods.relayCall(
+      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxBlockGas).encodeABI()).length
     const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
       gasAndDataLimits: gasAndDataLimits,
       hubOverhead,
-      relayCallGasLimit: req.relayRequest.request.gas
+      relayCallGasLimit: req.relayRequest.request.gas,
+      msgDataGasCost: hubDataGasCostPerByte * msgDataLength
     })
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)

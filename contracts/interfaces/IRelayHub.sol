@@ -168,6 +168,9 @@ interface IRelayHub {
     // maximum number of worker account allowed per manager
     function maxWorkerCount() external view returns (uint256);
 
+    // relayCall()'s msg.data upper bound gas cost per byte
+    function dataGasCostPerByte() external view returns (uint256);
+
     function workerToManager(address worker) external view returns(address);
 
     function workerCount(address manager) external view returns(uint256);
