@@ -222,15 +222,17 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1000)
-      const relayCallParams = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
+      const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
-      assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(), 'relayCall() msg.data should be set to max size')
-
-      const res = await relayHubInstance.relayCall(...relayCallParams, {
+      assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
+        'relayCall() msg.data should be set to max size')
+      const txdetails: Truffle.TransactionDetails = {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
-      })
+      }
+      relayCallParams.push(txdetails)
+      const res = await relayHubInstance.relayCall(...relayCallParams)
       expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('You asked me to revert, remember?') })
     })
 

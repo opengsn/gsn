@@ -263,11 +263,12 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     paymasters: BN
     relayWorkers: BN
     relayManagers: BN
-  }): Promise<{
-    paymasters: BN
-    relayWorkers: BN
-    relayManagers: BN
-  }> {
+  }):
+    Promise<{
+      paymasters: BN
+      relayWorkers: BN
+      relayManagers: BN
+    }> {
     const balances = await getBalances()
     return {
       paymasters: startBalances.paymasters.sub(balances.paymasters),
