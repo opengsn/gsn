@@ -36,9 +36,9 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { toBuffer } from 'ethereumjs-util'
 
 import Timeout = NodeJS.Timeout
-import { toBuffer } from 'ethereumjs-util'
 
 const GAS_RESERVE = 100000
 
