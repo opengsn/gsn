@@ -55,7 +55,7 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function dontEmitMessage(string memory message) public {}
+    function dontEmitMessage(string calldata message) public {}
 
     function emitMessageNoParams() public {
         emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, 0, address(this).balance);

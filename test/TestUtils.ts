@@ -253,6 +253,13 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
   return Object.assign({}, defaultGsnConfig, partialConfig) as GSNConfig
 }
 
+export function calculateCalldataCost (calldata: string): number {
+  const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
+  let sum = 0
+  calldataBuf.forEach(ch => { sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero) })
+  return sum
+}
+
 /**
  * Not all "signatures" are valid, so using a hard-coded one for predictable error message.
  */

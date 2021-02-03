@@ -9,6 +9,8 @@ interface Environment {
   readonly chainId: number
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
+  readonly gtxdatanonzero: number
+  readonly gtxdatazero: number
 }
 
 export const defaultRelayHubConfiguration: RelayHubConfiguration = {
@@ -25,17 +27,23 @@ export const environments: { [key: string]: Environment } = {
   istanbul: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
-    mintxgascost: 21000
+    mintxgascost: 21000,
+    gtxdatanonzero: 16,
+    gtxdatazero: 4
   },
   constantinople: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
-    mintxgascost: 21000
+    mintxgascost: 21000,
+    gtxdatanonzero: 16,
+    gtxdatazero: 4
   },
   ganacheLocal: {
     chainId: 1337,
     relayHubConfiguration: defaultRelayHubConfiguration,
-    mintxgascost: 21000
+    mintxgascost: 21000,
+    gtxdatanonzero: 16,
+    gtxdatazero: 4
   }
 }
 
