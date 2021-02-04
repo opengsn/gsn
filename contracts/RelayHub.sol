@@ -206,7 +206,8 @@ contract RelayHub is IRelayHub {
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasLimits,
                 _tmpInitialGas - gasleft(),
-                vars.maxPossibleGas
+                vars.maxPossibleGas,
+                vars.gasBeforeInner
                 )
         );
         vars.success = success;
@@ -266,6 +267,7 @@ contract RelayHub is IRelayHub {
         bytes recipientContext;
         bytes data;
         bool rejectOnRecipientRevert;
+        uint gasUsedByCall;
     }
 
     function innerRelayCall(
@@ -274,12 +276,15 @@ contract RelayHub is IRelayHub {
         bytes calldata approvalData,
         IPaymaster.GasLimits calldata gasLimits,
         uint256 totalInitialGas,
-        uint256 maxPossibleGas
+        uint256 maxPossibleGas,
+        uint gasBeforeInner
     )
     external
     returns (RelayCallStatus, bytes memory)
     {
         InnerRelayCallData memory vars;
+        vars.gasUsedByCall = gasBeforeInner-gasleft();
+
         // A new gas measurement is performed inside innerRelayCall, since
         // due to EIP150 available gas amounts cannot be directly compared across external calls
 
@@ -309,6 +314,15 @@ contract RelayHub is IRelayHub {
                 revertWithStatus(RelayCallStatus.RejectedByPreRelayed, retData);
             }
             (vars.recipientContext, vars.rejectOnRecipientRevert) = abi.decode(retData, (bytes,bool));
+        }
+        // vars.gasBeforeInner-gasleft()  : actual gas used to call preRelayedCall (including data transfer)
+        // gasLimits.acceptanceBudget-gasLimits.preRelayedCallGasLimit: max expected cost (gas) of forwarder verifications
+        // gasUsedByCall - calculated cost of calling external function with RelayRequest
+        if( gasBeforeInner-gasleft() +
+            gasLimits.acceptanceBudget-gasLimits.preRelayedCallGasLimit +
+            vars.gasUsedByCall > gasLimits.acceptanceBudget ) {
+
+            revertWithStatus(RelayCallStatus.RejectedByPreRelayed, "oog");
         }
 
         // The actual relayed call is now executed. The sender's address is appended at the end of the transaction data
