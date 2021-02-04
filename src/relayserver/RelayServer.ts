@@ -422,7 +422,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   _getPaymasterMaxAcceptanceBudget (paymaster?: string): IntString {
-    const limits = this.trustedPaymastersGasAndDataLimits.get(paymaster?.toLocaleLowerCase())
+    const limits = this.trustedPaymastersGasAndDataLimits.get(paymaster?.toLowerCase())
     if (limits != null) {
       return limits.acceptanceBudget
     } else {
@@ -721,7 +721,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {
-    return this.trustedPaymastersGasAndDataLimits.get(paymaster.toLocaleLowerCase()) != null
+    return this.trustedPaymastersGasAndDataLimits.get(paymaster.toLowerCase()) != null
   }
 
   _isBlacklistedPaymaster (paymaster: string): boolean {
