@@ -66,7 +66,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         from,
         nonce: '1',
         value: '0',
-        gas: 1e6.toString()
+        gas: 1e6.toString(),
+        validUntil: '0'
       },
       relayData: {
         pctRelayFee: '1',

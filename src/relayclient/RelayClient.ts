@@ -35,6 +35,9 @@ import {
   GsnValidateRequestEvent
 } from './GsnEvents'
 
+// forwarder requests are signed with expiration time.
+const REQUEST_VALID_SEC = 3600 * 24
+
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
 // approvalData is created after request is filled and signed.
@@ -306,6 +309,10 @@ export class RelayClient {
       throw new Error('Contract addresses are not initialized!')
     }
 
+    // validTime is relative to current block time (don't rely on local clock, but also for test support)
+    const validUntilPromise = this.dependencies.contractInteractor.getBlock('latest')
+      .then(block => (parseInt(block.timestamp.toString()) + REQUEST_VALID_SEC).toString())
+
     const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
     const relayWorker = relayInfo.pingResponse.relayWorkerAddress
     const gasPriceHex = gsnTransactionDetails.gasPrice
@@ -329,7 +336,8 @@ export class RelayClient {
         from: gsnTransactionDetails.from,
         value: value,
         nonce: senderNonce,
-        gas: gasLimit
+        gas: gasLimit,
+        validUntil: await validUntilPromise
       },
       relayData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,

@@ -16,7 +16,7 @@ library GsnEip712Library {
     uint256 private constant MAX_RETURN_SIZE = 1024;
 
     //copied from Forwarder (can't reference string constants even from another library)
-    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
 
     bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)";
 
@@ -58,7 +58,7 @@ library GsnEip712Library {
             req.request.nonce,
             req.request.data,
             req.request.validUntil
-    );
+        );
         suffixData = abi.encode(
             hashRelayData(req.relayData));
     }

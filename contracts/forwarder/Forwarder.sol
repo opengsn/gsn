@@ -60,7 +60,8 @@ contract Forwarder is IForwarder {
 
         bytes memory callData = abi.encodePacked(req.data, req.from);
         require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
-        require(req.validUntil==0 || req.validUntil < block.timestamp, "FWD: request expired");
+        // solhint-disable-next-line not-rely-on-time
+        require(req.validUntil==0 || req.validUntil > block.timestamp, "FWD: request expired");
 
         // solhint-disable-next-line avoid-low-level-calls
         (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
@@ -116,11 +117,6 @@ contract Forwarder is IForwarder {
         typeHashes[requestTypehash] = true;
         emit RequestTypeRegistered(requestTypehash, requestType);
     }
-
-    event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);
-
-    event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
-
 
     function _verifySig(
         ForwardRequest calldata req,

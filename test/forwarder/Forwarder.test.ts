@@ -417,6 +417,23 @@ contract('Forwarder', ([from]) => {
       await expectRevert(testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
     })
 
+    it('should revert if validUntil is passed', async () => {
+      const func = recipient.contract.methods.testRevert().encodeABI()
+
+      const req1 = {
+        to: recipient.address,
+        data: func,
+        value: 0,
+        from: senderAddress,
+        nonce: (await fwd.getNonce(senderAddress)).toString(),
+        gas: 1e6,
+        validUntil: '1' // Math.trunc(Date.now() / 1000 - 10).toString()
+      }
+      const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+
+      await expectRevert(fwd.execute(req1, domainSeparator, typeHash, '0x', sig), 'FWD: request expired')
+    })
+
     describe('value transfer', () => {
       let recipient: TestForwarderTargetInstance
 
