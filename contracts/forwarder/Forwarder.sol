@@ -67,7 +67,7 @@ contract Forwarder is IForwarder {
 
         //this is a signed number (can be nagative). all params are known values,
         // so can't overflow.
-        uint excessBalance = address (this).balance - preBalance + req.value;
+        int excessBalance = int(address (this).balance - preBalance + req.value);
 
         // preBalance is the balance before this TX (and value sent to it as payable)
         // preBalance-req.value - the expected balance after the call, assuming it didn't send anything back
@@ -75,9 +75,9 @@ contract Forwarder is IForwarder {
         //   positive: the value sent by the method back to us: transfer to "from" address
         //   negative: too much was sent to the forwarder (preBalance > req.value)
         //         this excess is inaccessible.
-        if ( int(excessBalance)>0 ) {
+        if ( excessBalance>0 ) {
             //can't fail: req.from signed (off-chain) the request, so it must be an EOA...
-            payable(req.from).transfer(excessBalance);
+            payable(req.from).transfer(uint(excessBalance));
         }
         return (success,ret);
     }
