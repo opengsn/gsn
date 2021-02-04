@@ -72,3 +72,4 @@ interface IForwarder {
      */
     function registerDomainSeparator(string calldata name, string calldata version) external;
 }
+

@@ -9,6 +9,7 @@ import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
+import { revert, snapshot } from '../TestUtils'
 require('source-map-support').install({ errorFormatterForce: true })
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
@@ -364,7 +365,7 @@ contract('Forwarder', ([from]) => {
       const outerGasEstimate = await testfwd.callExecute.estimateGas(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig)
 
       // should fail if too little gas
-      expectRevert(testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate - 1 }), 'insufficient gas')
+      await expectRevert(testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate - 1 }), 'insufficient gas')
 
       // and succeed with exact amount
       await testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate })
@@ -433,8 +434,7 @@ contract('Forwarder', ([from]) => {
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
-        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
-        assert.equal(ret.logs[0].args.success, false)
+        await expectRevert(testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig), 'FWD: insufficient value')
       })
 
       it('should fail to forward request if value specified but not enough not provided', async () => {
@@ -451,8 +451,7 @@ contract('Forwarder', ([from]) => {
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
-        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { value })
-        assert.equal(ret.logs[0].args.success, false)
+        await expectRevert(testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { value }), 'FWD: insufficient value')
       })
 
       it('should forward request with value', async () => {
@@ -477,34 +476,40 @@ contract('Forwarder', ([from]) => {
         assert.equal(await web3.eth.getBalance(recipient.address), value.toString())
       })
 
-      it('should forward all funds left in forwarder to "from" address', async () => {
-        const senderPrivateKey = toBuffer(bytes32(2))
-        const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
+      it('should leave excess forwarder funds in forwarder', async () => {
+        const snap = await snapshot()
+        try {
+          const senderPrivateKey = toBuffer(bytes32(2))
+          const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
-        const value = ether('1')
-        const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
+          const value = ether('1')
+          const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
 
-        // value = ether('0');
-        const req1 = {
-          to: recipient.address,
-          data: func,
-          from: senderAddress,
-          nonce: (await fwd.getNonce(senderAddress)).toString(),
-          value: value.toString(),
-          gas: 1e6
+          // value = ether('0');
+          const req1 = {
+            to: recipient.address,
+            data: func,
+            from: senderAddress,
+            nonce: (await fwd.getNonce(senderAddress)).toString(),
+            value: value.toString(),
+            gas: 1e6
+          }
+
+          const extraFunds = ether('4')
+          await web3.eth.sendTransaction({ from, to: fwd.address, value: extraFunds })
+
+          const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+
+          // note: not transfering value in TX.
+          const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
+          assert.equal(ret.logs[0].args.error, '')
+          assert.equal(ret.logs[0].args.success, true)
+
+          assert.equal(await web3.eth.getBalance(fwd.address), extraFunds.sub(value).toString())
+        } finally {
+          // revert so that our "afterEach" won't complain on balance in fwd
+          await revert(snap.result)
         }
-
-        const extraFunds = ether('4')
-        await web3.eth.sendTransaction({ from, to: fwd.address, value: extraFunds })
-
-        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
-
-        // note: not transfering value in TX.
-        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
-        assert.equal(ret.logs[0].args.error, '')
-        assert.equal(ret.logs[0].args.success, true)
-
-        assert.equal(await web3.eth.getBalance(senderAddress), extraFunds.sub(value).toString())
       })
     })
   })

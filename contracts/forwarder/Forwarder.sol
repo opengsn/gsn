@@ -59,12 +59,25 @@ contract Forwarder is IForwarder {
         _verifyAndUpdateNonce(req);
 
         bytes memory callData = abi.encodePacked(req.data, req.from);
+        uint preBalance = address (this).balance;
+        require(preBalance >= req.value, "FWD: insufficient value");
         require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
         // solhint-disable-next-line avoid-low-level-calls
         (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
-        if ( address(this).balance>0 ) {
+
+        //this is a signed number (can be nagative). all params are known values,
+        // so can't overflow.
+        uint excessBalance = address (this).balance - preBalance + req.value;
+
+        // preBalance is the balance before this TX (and value sent to it as payable)
+        // preBalance-req.value - the expected balance after the call, assuming it didn't send anything back
+        // this.balance-(preBalance-req.value) = this.balance-preBalance+req.value
+        //   positive: the value sent by the method back to us: transfer to "from" address
+        //   negative: too much was sent to the forwarder (preBalance > req.value)
+        //         this excess is inaccessible.
+        if ( int(excessBalance)>0 ) {
             //can't fail: req.from signed (off-chain) the request, so it must be an EOA...
-            payable(req.from).transfer(address(this).balance);
+            payable(req.from).transfer(excessBalance);
         }
         return (success,ret);
     }
