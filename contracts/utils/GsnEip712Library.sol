@@ -56,8 +56,9 @@ library GsnEip712Library {
             req.request.value,
             req.request.gas,
             req.request.nonce,
-            req.request.data
-        );
+            req.request.data,
+            req.request.validUntil
+    );
         suffixData = abi.encode(
             hashRelayData(req.relayData));
     }

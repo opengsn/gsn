@@ -11,6 +11,7 @@ interface IForwarder {
         uint256 gas;
         uint256 nonce;
         bytes data;
+        uint64 validUntil;
     }
 
     function getNonce(address from)

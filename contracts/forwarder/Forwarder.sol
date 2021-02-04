@@ -8,7 +8,7 @@ import "./IForwarder.sol";
 contract Forwarder is IForwarder {
     using ECDSA for bytes32;
 
-    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
 
     string public constant EIP712_DOMAIN_TYPE = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
 
@@ -60,12 +60,15 @@ contract Forwarder is IForwarder {
 
         bytes memory callData = abi.encodePacked(req.data, req.from);
         require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
+        require(req.validUntil==0 || req.validUntil < block.timestamp, "FWD: request expired");
+
         // solhint-disable-next-line avoid-low-level-calls
         (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
         if ( address(this).balance>0 ) {
             //can't fail: req.from signed (off-chain) the request, so it must be an EOA...
             payable(req.from).transfer(address(this).balance);
         }
+
         return (success,ret);
     }
 
@@ -155,7 +158,8 @@ contract Forwarder is IForwarder {
                 req.value,
                 req.gas,
                 req.nonce,
-                keccak256(req.data)
+                keccak256(req.data),
+                req.validUntil
             ),
             suffixData
         );
