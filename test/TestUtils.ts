@@ -37,7 +37,11 @@ export async function startRelay (
   fs.rmdirSync(serverWorkDir, { recursive: true })
   args.push('--workdir', serverWorkDir)
   args.push('--devMode')
-  args.push('--checkInterval', 10)
+  if (options.checkInterval) {
+    args.push('--checkInterval', options.checkInterval)
+  } else {
+    args.push('--checkInterval', 10)
+  }
   args.push('--logLevel', 'debug')
   args.push('--relayHubAddress', relayHubAddress)
   const configFile = path.resolve(__dirname, './server-config.json')

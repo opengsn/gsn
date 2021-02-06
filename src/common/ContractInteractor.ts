@@ -46,6 +46,8 @@ require('source-map-support').install({ errorFormatterForce: true })
 
 type EventName = string
 
+export const CommitAdded: EventName = 'CommitAdded'
+
 export const RelayServerRegistered: EventName = 'RelayServerRegistered'
 export const RelayWorkersAdded: EventName = 'RelayWorkersAdded'
 export const TransactionRelayed: EventName = 'TransactionRelayed'
@@ -416,6 +418,10 @@ export default class ContractInteractor {
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const stakeManager = await this.stakeManagerInstance
     return await this._getPastEvents(stakeManager.contract, names, extraTopics, options)
+  }
+
+  async getPastEventsForPenalizer (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    return await this._getPastEvents(this.penalizerInstance.contract, names, extraTopics, options)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await

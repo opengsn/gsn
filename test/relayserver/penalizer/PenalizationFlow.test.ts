@@ -15,7 +15,8 @@ import { GSNConfig, GSNDependencies } from '../../../src/relayclient/GSNConfigur
 import { constants } from '../../../src/common/Constants'
 import { createClientLogger } from '../../../src/relayclient/ClientWinstonLogger'
 import { gsnRuntimeVersion } from '../../../src/common/Version'
-import { startRelay, stopRelay } from '../../TestUtils'
+import { evmMineMany, startRelay, stopRelay } from '../../TestUtils'
+import { sleep } from '../../../src/common/Utils'
 
 contract('PenalizationFlow', function (accounts) {
   const preferredRelays = ['http://www.my-preffered-relay.com']
@@ -38,6 +39,8 @@ contract('PenalizationFlow', function (accounts) {
 
     penalizingRelayProcess = await startRelay(env.relayHub.address, env.stakeManager, {
       stake: 1e18,
+      // TODO: adding 'intervalHandler' to the PenalizationService made tests crash/hang with 10ms interval...
+      checkInterval: 500,
       delay: 3600 * 24 * 7,
       pctRelayFee: 12,
       url: LocalhostOne,
@@ -106,6 +109,7 @@ contract('PenalizationFlow', function (accounts) {
   })
 
   describe('with a cheating relay', function () {
+    // TODO: as an integration test, only tests the 'illegal tx' as mock Etherscan API is not set on server
     it('should penalize illegal transaction', async function () {
       let penalizationEvents = await env.stakeManager.contract.getPastEvents('StakePenalized', { fromBlock: 1 })
       assert.equal(penalizationEvents.length, 0)
@@ -114,7 +118,11 @@ contract('PenalizationFlow', function (accounts) {
       assert.equal(relayingResult.transaction, undefined)
 
       const auditResult = await relayingResult.auditPromises![0]
-      assert.equal(auditResult?.penalizeTxHash?.length, 66)
+      assert.equal(auditResult?.commitTxHash?.length, 66)
+
+      // let the relay run its 'intervalHandler'
+      await evmMineMany(5)
+      await sleep(1000)
 
       penalizationEvents = await env.stakeManager.contract.getPastEvents('StakePenalized', { fromBlock: 1 })
       assert.equal(penalizationEvents.length, 1)

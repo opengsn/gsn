@@ -3,12 +3,13 @@ import abiDecoder from 'abi-decoder'
 import { PrefixedHexString, Transaction as EthereumJsTransaction, TransactionOptions, TxData } from 'ethereumjs-tx'
 import { Transaction as Web3CoreTransaction } from 'web3-core'
 import { bufferToHex, bufferToInt, isZeroAddress } from 'ethereumjs-util'
+import * as ethUtils from 'ethereumjs-util'
 
 import PayMasterABI from '../../common/interfaces/IPaymaster.json'
 import RelayHubABI from '../../common/interfaces/IRelayHub.json'
 import StakeManagerABI from '../../common/interfaces/IStakeManager.json'
 
-import ContractInteractor from '../../common/ContractInteractor'
+import ContractInteractor, { CommitAdded } from '../../common/ContractInteractor'
 import VersionsManager from '../../common/VersionsManager'
 import replaceErrors from '../../common/ErrorReplacerJSON'
 import { BlockExplorerInterface } from './BlockExplorerInterface'
@@ -16,9 +17,11 @@ import { LoggerInterface } from '../../common/LoggerInterface'
 import { AuditRequest, AuditResponse } from '../../common/types/AuditRequest'
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
-import { getDataAndSignature } from '../../common/Utils'
+import { constants } from '../../common/Constants'
+import { address2topic, getDataAndSignature } from '../../common/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '../../common/Version'
 import { ServerConfigParams } from '../ServerConfigParams'
+import Timeout = NodeJS.Timeout
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -56,7 +59,29 @@ function createWeb3Transaction (transaction: Web3CoreTransaction, rawTxOptions: 
   return new EthereumJsTransaction(txData, rawTxOptions)
 }
 
+/**
+ * types of penalization supported by a penalizer
+ * string values are for logging purposes only
+ */
+enum PenalizationTypes {
+  ILLEGAL_TRANSACTION = 'penalizeIllegalTransaction',
+  REPEATED_NONCE = 'penalizeRepeatedNonce'
+}
+
+interface DelayedPenalization {
+  readyBlockNumber?: number
+  type: PenalizationTypes
+  commitHash: PrefixedHexString
+  methodArgs: PrefixedHexString[]
+}
+
 export class PenalizerService {
+  private workerTask?: Timeout
+
+  // TODO: TransactionManager is not integrated with Penalizer Service, so there is a duplication here
+  /** Maps block where commitment becomes valid to penalization details */
+  scheduledPenalizations: DelayedPenalization[] = []
+
   transactionManager: TransactionManager
   contractInteractor: ContractInteractor
   txByNonceService: BlockExplorerInterface
@@ -78,13 +103,24 @@ export class PenalizerService {
     this.logger = logger
   }
 
-  async init (): Promise<void> {
+  async init (startWorker: boolean = true): Promise<void> {
     if (this.initialized) {
       return
     }
 
     this.logger.info('Penalizer service initialized')
+    if (startWorker) {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      this.workerTask = setInterval(this.intervalHandler.bind(this), this.config.checkInterval)
+      this.logger.debug(`Started checking for ready penalization commitments every ${this.config.checkInterval}ms`)
+    }
     this.initialized = true
+  }
+
+  stop (): void {
+    if (this.workerTask != null) {
+      clearInterval(this.workerTask)
+    }
   }
 
   async penalizeRepeatedNonce (req: AuditRequest): Promise<AuditResponse> {
@@ -140,15 +176,81 @@ export class PenalizerService {
       throw Error(`Failed to get transaction ${minedTransactionData.hash} from node`)
     }
     const minedTxBuffers = createWeb3Transaction(minedTx, rawTxOptions)
-    const method = this.getPenalizeRepeatedNonceMethod(minedTxBuffers, requestTx)
+    const penalizationArguments = this.getPenalizeRepeatedNonceArguments(minedTxBuffers, requestTx)
+    const method = this.getMethod(PenalizationTypes.REPEATED_NONCE, penalizationArguments)
     const isValidPenalization = await this.validatePenalization(method)
-    if (!isValidPenalization.valid) {
+    if (!validationResult.valid) {
       return {
         message: isValidPenalization.error
       }
     }
-    const penalizeTxHash = await this.executePenalization('penalizeRepeatedNonce', method)
-    return { penalizeTxHash }
+    const commitHash = this.calculateCommitHash(method)
+    const delayedPenalization: DelayedPenalization = {
+      commitHash,
+      type: PenalizationTypes.REPEATED_NONCE,
+      methodArgs: penalizationArguments
+    }
+    const commitTxHash = await this.commitAndScheduleReveal(delayedPenalization)
+    return { commitTxHash }
+  }
+
+  calculateCommitHash (method: any): PrefixedHexString {
+    const msgData = method.encodeABI()
+    const msgDataHash = `0x${ethUtils.keccak256(msgData).toString('hex')}`
+    return `0x${ethUtils.keccak256(msgDataHash + this.managerAddress.slice(2).toLowerCase()).toString('hex')}`
+  }
+
+  async intervalHandler (): Promise<PrefixedHexString[]> {
+    if (this.scheduledPenalizations.length === 0) {
+      return []
+    }
+    console.log('interval handler called')
+    // step 1. see if sent some commitments and these are now mined
+    await this.queryReadyBlocksForMinedCommitments()
+    // step 2. now all commitments have a due date, let's see if any are up for penalization
+    return await this.executeReadyPenalizations()
+  }
+
+  async executeReadyPenalizations (): Promise<PrefixedHexString[]> {
+    const currentBlockNumber = await this.contractInteractor.getBlockNumber()
+    const readyPenalizations = this.scheduledPenalizations.filter(it => {
+      return it.readyBlockNumber != null && it.readyBlockNumber <= currentBlockNumber
+    })
+    const executedPenalizations: PrefixedHexString[] = []
+
+    for (const penalization of readyPenalizations) {
+      // Remove ready penalizations from memory
+      const index = this.scheduledPenalizations.indexOf(penalization)
+      this.scheduledPenalizations.splice(index, 1)
+
+      // now broadcast the penalization transaction
+      const penalizationTxHash = await this.executeDelayedPenalization(penalization)
+      executedPenalizations.push(penalizationTxHash)
+    }
+    return executedPenalizations
+  }
+
+  /**
+   * Note: this method modifies elements of {@link scheduledPenalizations} in-place
+   */
+  async queryReadyBlocksForMinedCommitments (): Promise<void> {
+    const unconfirmedPenalizations = this.scheduledPenalizations.filter(it => it.readyBlockNumber === undefined)
+    const nonMinedCommitHashes = unconfirmedPenalizations.map(up => up.commitHash)
+    if (unconfirmedPenalizations.length > 0) {
+      // TODO: sanitize functional stuff
+      const topics = [address2topic(this.managerAddress)]
+      const commitments = await this.contractInteractor.getPastEventsForPenalizer([CommitAdded], topics, { fromBlock: 1 })
+      const newlyMinedCommitments = commitments
+        .filter(it => {
+          return nonMinedCommitHashes.includes(it.returnValues.commitHash)
+        })
+      unconfirmedPenalizations.forEach(it => {
+        const commitment = newlyMinedCommitments.find(nmc => nmc.returnValues.commitHash === it.commitHash)
+        if (commitment != null) {
+          it.readyBlockNumber = commitment.returnValues.readyBlockNumber
+        }
+      })
+    }
   }
 
   async penalizeIllegalTransaction (req: AuditRequest): Promise<AuditResponse> {
@@ -161,7 +263,9 @@ export class PenalizerService {
       }
     }
 
-    const method = this.getPenalizeIllegalTransactionMethod(requestTx)
+    // TODO: remove duplication
+    const penalizationArguments = this.getPenalizeIllegalTransactionArguments(requestTx)
+    const method = this.getMethod(PenalizationTypes.ILLEGAL_TRANSACTION, penalizationArguments)
     const isValidPenalization = await this.validatePenalization(method)
     if (!isValidPenalization.valid) {
       return {
@@ -169,11 +273,28 @@ export class PenalizerService {
       }
     }
 
-    const penalizeTxHash = await this.executePenalization('penalizeIllegalTransaction', method)
-    return { penalizeTxHash }
+    const commitHash = this.calculateCommitHash(method)
+    const delayedPenalization: DelayedPenalization = {
+      commitHash,
+      type: PenalizationTypes.ILLEGAL_TRANSACTION,
+      methodArgs: penalizationArguments
+    }
+    const commitTxHash = await this.commitAndScheduleReveal(delayedPenalization)
+    return { commitTxHash }
   }
 
-  async executePenalization (methodName: string, method: any): Promise<PrefixedHexString> {
+  async commitAndScheduleReveal (delayedPenalization: DelayedPenalization): Promise<any> {
+    this.scheduledPenalizations.push(delayedPenalization)
+    const method = this.contractInteractor.penalizerInstance.contract.methods.commit(delayedPenalization.commitHash)
+    return await this.broadcastTransaction('commit', method)
+  }
+
+  async executeDelayedPenalization (delayedPenalization: DelayedPenalization): Promise<PrefixedHexString> {
+    const method = this.getMethod(delayedPenalization.type, delayedPenalization.methodArgs)
+    return await this.broadcastTransaction(delayedPenalization.type.valueOf(), method)
+  }
+
+  async broadcastTransaction (methodName: string, method: any): Promise<PrefixedHexString> {
     const gasLimit = await this.transactionManager.attemptEstimateGas(methodName, method, this.managerAddress)
     const creationBlockNumber = await this.contractInteractor.getBlockNumber()
     const serverAction = ServerAction.PENALIZATION
@@ -190,21 +311,22 @@ export class PenalizerService {
     return transactionHash
   }
 
-  getPenalizeIllegalTransactionMethod (requestTx: EthereumJsTransaction): any {
+  getPenalizeIllegalTransactionArguments (requestTx: EthereumJsTransaction): PrefixedHexString[] {
     const chainId = this.contractInteractor.chainId
     const { data, signature } = getDataAndSignature(requestTx, chainId)
-    return this.contractInteractor.penalizerInstance.contract.methods.penalizeIllegalTransaction(
+    return [
       data, signature, this.contractInteractor.relayHubInstance.address
-    )
+    ]
   }
 
-  getPenalizeRepeatedNonceMethod (minedTx: EthereumJsTransaction, requestTx: EthereumJsTransaction): any {
+  getPenalizeRepeatedNonceArguments (minedTx: EthereumJsTransaction, requestTx: EthereumJsTransaction): PrefixedHexString[] {
     const chainId = this.contractInteractor.chainId
     const { data: unsignedMinedTx, signature: minedTxSig } = getDataAndSignature(minedTx, chainId)
     const { data: unsignedRequestTx, signature: requestTxSig } = getDataAndSignature(requestTx, chainId)
-    return this.contractInteractor.penalizerInstance.contract.methods.penalizeRepeatedNonce(
+    return [
       unsignedRequestTx, requestTxSig, unsignedMinedTx,
-      minedTxSig, this.contractInteractor.relayHubInstance.address)
+      minedTxSig, this.contractInteractor.relayHubInstance.address
+    ]
   }
 
   async validateTransaction (requestTx: EthereumJsTransaction): Promise<{ valid: boolean, error?: string }> {
@@ -242,7 +364,7 @@ export class PenalizerService {
   async validatePenalization (method: any): Promise<{ valid: boolean, error?: string }> {
     try {
       const res = await method.call({
-        from: this.managerAddress
+        from: constants.ZERO_ADDRESS
       })
       this.logger.debug(`res is ${JSON.stringify(res)}`)
       return {
@@ -255,6 +377,15 @@ export class PenalizerService {
         valid: false,
         error
       }
+    }
+  }
+
+  getMethod (penalizationTypes: PenalizationTypes, methodArgs: PrefixedHexString[]): any {
+    switch (penalizationTypes) {
+      case PenalizationTypes.REPEATED_NONCE:
+        return this.contractInteractor.penalizerInstance.contract.methods.penalizeRepeatedNonce(...methodArgs)
+      case PenalizationTypes.ILLEGAL_TRANSACTION:
+        return this.contractInteractor.penalizerInstance.contract.methods.penalizeIllegalTransaction(...methodArgs)
     }
   }
 }

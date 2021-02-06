@@ -5,6 +5,8 @@ import "./IRelayHub.sol";
 
 interface IPenalizer {
 
+    event CommitAdded(address indexed sender, bytes32 indexed commitHash, uint256 readyBlockNumber);
+
     struct Transaction {
         uint256 nonce;
         uint256 gasPrice;
@@ -13,6 +15,8 @@ interface IPenalizer {
         uint256 value;
         bytes data;
     }
+
+    function commit(bytes32 commitHash) external;
 
     function penalizeRepeatedNonce(
         bytes calldata unsignedTx1,
@@ -23,22 +27,6 @@ interface IPenalizer {
     ) external;
 
     function penalizeIllegalTransaction(
-        bytes calldata unsignedTx,
-        bytes calldata signature,
-        IRelayHub hub
-    ) external;
-
-    function commit(bytes32 commitHash) external;
-
-    function penalizeRepeatedNonceAfterCommit(
-        bytes calldata unsignedTx1,
-        bytes calldata signature1,
-        bytes calldata unsignedTx2,
-        bytes calldata signature2,
-        IRelayHub hub
-    ) external;
-
-    function penalizeIllegalTransactionAfterCommit(
         bytes calldata unsignedTx,
         bytes calldata signature,
         IRelayHub hub
