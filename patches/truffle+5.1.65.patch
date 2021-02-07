@@ -1,8 +1,8 @@
 diff --git a/node_modules/truffle/build/cli.bundled.js b/node_modules/truffle/build/cli.bundled.js
-index 5991472..eab1676 100755
+index c2d4ff6..c154b4f 100755
 --- a/node_modules/truffle/build/cli.bundled.js
 +++ b/node_modules/truffle/build/cli.bundled.js
-@@ -199453,6 +199453,7 @@ async function invokeCompiler({ compilerInput, options }) {
+@@ -155889,6 +155889,7 @@ async function invokeCompiler({ compilerInput, options }) {
  
    // perform compilation
    const inputString = JSON.stringify(compilerInput);
