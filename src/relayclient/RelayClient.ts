@@ -36,7 +36,7 @@ import {
 } from './GsnEvents'
 
 // forwarder requests are signed with expiration time.
-const REQUEST_VALID_SEC = 3600 * 24
+const REQUEST_VALID_BLOCKS = 6000 // roughly a day
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -310,8 +310,8 @@ export class RelayClient {
     }
 
     // validTime is relative to current block time (don't rely on local clock, but also for test support)
-    const validUntilPromise = this.dependencies.contractInteractor.getBlock('latest')
-      .then(block => (parseInt(block.timestamp.toString()) + REQUEST_VALID_SEC).toString())
+    const validUntilPromise = this.dependencies.contractInteractor.getBlockNumber()
+      .then((num: number) => (num + REQUEST_VALID_BLOCKS).toString())
 
     const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
     const relayWorker = relayInfo.pingResponse.relayWorkerAddress
