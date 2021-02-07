@@ -22,11 +22,14 @@ module.exports = {
       port: 8545,
       network_id: '*'
     },
+/* 0x sol-coverage doesn't work. 
+(requires "yarn add "@0x/sol-coverage": "4.0.8" "@0x/sol-profiler": "4.0.8" "@0x/sol-trace": "3.0.8" "@0x/subproviders": "4.1.0")
     coverage: { // coverage/trace provider. note that it currently can't run extrnal-process relay.
       provider: require('./coverage-prov.js'),
       verbose: process.env.VERBOSE,
       network_id: '*'
     },
+*/
     npmtest: { // used from "npm test". see pakcage.json
       verbose: process.env.VERBOSE,
       host: '127.0.0.1',

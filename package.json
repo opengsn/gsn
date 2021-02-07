@@ -104,10 +104,6 @@
     "winston": "^3.3.3"
   },
   "devDependencies": {
-    "@0x/sol-coverage": "4.0.8",
-    "@0x/sol-profiler": "4.0.8",
-    "@0x/sol-trace": "3.0.8",
-    "@0x/subproviders": "4.1.0",
     "@openzeppelin/test-helpers": "0.5.5",
     "@types/js-cookie": "^2.2.6",
     "@typescript-eslint/eslint-plugin": "^4.8.1",
