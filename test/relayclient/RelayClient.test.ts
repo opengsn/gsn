@@ -154,8 +154,8 @@ contract('RelayClient', function (accounts) {
     }
   })
 
-  after(async function () {
-    await stopRelay(relayProcess)
+  after(function () {
+    stopRelay(relayProcess)
   })
 
   describe('#_initInternal()', () => {

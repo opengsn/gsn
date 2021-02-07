@@ -100,7 +100,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
-  runPenalizer: true,
+  runPenalizer: false,
   logLevel: 'debug',
   loggerUrl: '',
   etherscanApiUrl: '',
