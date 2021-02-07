@@ -8,7 +8,7 @@ import {
   TestPaymasterEverythingAcceptedInstance
 } from '../types/truffle-contracts'
 import { deployHub } from './TestUtils'
-import { defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
+import { defaultEnvironment } from '../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -25,7 +25,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
   let penalizer: PenalizerInstance
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     paymaster = await TestPaymasterEverythingAccepted.new()

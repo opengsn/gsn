@@ -4,7 +4,7 @@ import chai from 'chai'
 
 import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '../src/common/Utils'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
-import { defaultEnvironment, defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
+import { defaultEnvironment } from '../src/common/Environments'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 
 import {
@@ -55,7 +55,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let forwarder: string
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
     paymasterContract = await TestPaymasterEverythingAccepted.new()

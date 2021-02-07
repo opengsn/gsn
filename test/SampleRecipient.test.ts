@@ -7,7 +7,7 @@ import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { deployHub } from './TestUtils'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
-import { defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
+import { defaultEnvironment } from '../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -44,7 +44,7 @@ contract('SampleRecipient', function (accounts) {
   // TODO: this test is in a wrong file
   it('should allow owner to withdraw balance from RelayHub', async function () {
     const deposit = new BN('100000000000000000')
-    const stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
+    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     const penalizer = await Penalizer.new()
     const rhub = await deployHub(stakeManager.address, penalizer.address)
     await paymaster.setTrustedForwarder(forwarder)

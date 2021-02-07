@@ -44,7 +44,7 @@ import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../../src/relayserver/TransactionManager'
 import { GasPriceFetcher } from '../../src/relayclient/GasPriceFetcher'
 import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
-import { defaultStakeManagerMaxUnstakeDelay } from '../../src/common/Environments'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -110,7 +110,7 @@ export class ServerTestEnvironment {
    * different provider from the contract interactor itself.
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
-    this.stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
+    this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     this.penalizer = await Penalizer.new()
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
     this.forwarder = await Forwarder.new()

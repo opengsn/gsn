@@ -4,7 +4,7 @@ import { evmMineMany } from './TestUtils'
 import BN from 'bn.js'
 
 import { StakeManagerInstance } from '../types/truffle-contracts'
-import { defaultStakeManagerMaxUnstakeDelay } from '../src/common/Environments'
+import { defaultEnvironment } from '../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 
@@ -122,7 +122,7 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
       it('should not allow owner to stake with an unstake delay exceeding maximum', async function () {
         await expectRevert(
-          stakeManager.stakeForRelayManager(relayManager, defaultStakeManagerMaxUnstakeDelay + 1, {
+          stakeManager.stakeForRelayManager(relayManager, defaultEnvironment.maxUnstakeDelay + 1, {
             value: initialStake,
             from: owner
           }),

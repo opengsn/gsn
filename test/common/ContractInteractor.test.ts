@@ -19,7 +19,7 @@ import { deployHub } from '../TestUtils'
 import VersionsManager from '../../src/common/VersionsManager'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '../../src/common/Version'
 import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
-import { defaultStakeManagerMaxUnstakeDelay } from '../../src/common/Environments'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -38,7 +38,7 @@ contract('ContractInteractor', function (accounts) {
   let pm: TestPaymasterConfigurableMisbehaviorInstance
 
   before(async () => {
-    sm = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
+    sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     pen = await Penalizer.new()
     rh = await deployHub(sm.address, pen.address)
     pm = await TestPaymasterConfigurableMisbehavior.new()

@@ -27,7 +27,7 @@ import { registerForwarderForGsn } from '../common/EIP712/ForwarderUtil'
 import { LoggerInterface } from '../common/LoggerInterface'
 import HttpWrapper from '../relayclient/HttpWrapper'
 import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
-import { defaultStakeManagerMaxUnstakeDelay } from '../common/Environments'
+import { defaultEnvironment } from '../common/Environments'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -303,7 +303,7 @@ export default class CommandsLogic {
     }
 
     const sInstance = await this.getContractInstance(StakeManager, {
-      arguments: [defaultStakeManagerMaxUnstakeDelay]
+      arguments: [defaultEnvironment.maxUnstakeDelay]
     }, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {}, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)

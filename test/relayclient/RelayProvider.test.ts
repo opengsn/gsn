@@ -18,7 +18,7 @@ import {
   TestRecipientInstance
 } from '../../types/truffle-contracts'
 import { Address } from '../../src/common/types/Aliases'
-import { defaultEnvironment, defaultStakeManagerMaxUnstakeDelay } from '../../src/common/Environments'
+import { defaultEnvironment } from '../../src/common/Environments'
 import { deployHub, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
 import BadRelayClient from '../dummies/BadRelayClient'
 
@@ -98,7 +98,7 @@ contract('RelayProvider', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
-    stakeManager = await StakeManager.new(defaultStakeManagerMaxUnstakeDelay)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
