@@ -40,7 +40,7 @@ export async function startRelay (
   if (options.checkInterval) {
     args.push('--checkInterval', options.checkInterval)
   } else {
-    args.push('--checkInterval', 10)
+    args.push('--checkInterval', 100)
   }
   args.push('--logLevel', 'debug')
   args.push('--relayHubAddress', relayHubAddress)

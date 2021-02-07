@@ -40,7 +40,7 @@ contract('PenalizationFlow', function (accounts) {
     penalizingRelayProcess = await startRelay(env.relayHub.address, env.stakeManager, {
       stake: 1e18,
       // TODO: adding 'intervalHandler' to the PenalizationService made tests crash/hang with 10ms interval...
-      checkInterval: 500,
+      checkInterval: 100,
       delay: 3600 * 24 * 7,
       pctRelayFee: 12,
       url: LocalhostOne,

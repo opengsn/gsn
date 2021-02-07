@@ -45,7 +45,7 @@ contract('ReputationFlow', function (accounts) {
 
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       initialReputation: 10,
-      checkInterval: 10,
+      checkInterval: 100,
       stake: 1e18,
       relayOwner: accounts[1],
       ethereumNodeUrl: (web3.currentProvider as HttpProvider).host

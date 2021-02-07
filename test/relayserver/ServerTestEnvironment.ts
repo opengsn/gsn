@@ -199,7 +199,7 @@ export class ServerTestEnvironment {
       ownerAddress: this.relayOwner,
       stakeManagerAddress: this.stakeManager.address,
       relayHubAddress: this.relayHub.address,
-      checkInterval: 10
+      checkInterval: 100
     }
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)

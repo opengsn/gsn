@@ -174,7 +174,7 @@ class GsnTestEnvironmentClass {
       gasPriceFactor: 1,
       baseRelayFee: '0',
       pctRelayFee: 0,
-      checkInterval: 10,
+      checkInterval: 100,
       runPaymasterReputations: false,
       logLevel: 'error'
     }
