@@ -309,7 +309,7 @@ export class RelayClient {
       throw new Error('Contract addresses are not initialized!')
     }
 
-    // validTime is relative to current block time (don't rely on local clock, but also for test support)
+    // valid that many blocks into the future.
     const validUntilPromise = this.dependencies.contractInteractor.getBlockNumber()
       .then((num: number) => (num + REQUEST_VALID_BLOCKS).toString())
 

@@ -119,7 +119,7 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.relayWorker = accounts[1]
         try {
-          env.relayServer.validateInput(req)
+          env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message, `Wrong worker address: ${accounts[1]}`)
@@ -131,7 +131,7 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.gasPrice = wrongGasPrice
         try {
-          env.relayServer.validateInput(req)
+          env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
@@ -144,11 +144,23 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         req.metadata.relayHubAddress = wrongHubAddress
         try {
-          env.relayServer.validateInput(req)
+          env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
             `Wrong hub address.\nRelay server's hub address: ${env.relayServer.config.relayHubAddress}, request's hub address: ${wrongHubAddress}\n`)
+        }
+      })
+
+      it('should fail to relay request too close to expiration', async function () {
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.request.validUntil = '1010'
+        try {
+          env.relayServer.validateInput(req, 1000)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            'expired in 10 blocks')
         }
       })
     })
