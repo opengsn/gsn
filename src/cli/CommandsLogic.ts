@@ -310,7 +310,7 @@ export default class CommandsLogic {
     const pInstance = await this.getContractInstance(Penalizer, {
       arguments: [
         deployOptions.penalizerConfiguration.penalizeBlockDelay,
-        deployOptions.penalizerConfiguration.penalizeBlockExpiration,
+        deployOptions.penalizerConfiguration.penalizeBlockExpiration
       ]
     }, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
