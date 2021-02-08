@@ -31,7 +31,8 @@ const ForwardRequestType = [
   { name: 'value', type: 'uint256' },
   { name: 'gas', type: 'uint256' },
   { name: 'nonce', type: 'uint256' },
-  { name: 'data', type: 'bytes' }
+  { name: 'data', type: 'bytes' },
+  { name: 'validUntil', type: 'uint256' }
 ]
 
 const RelayRequestType = [

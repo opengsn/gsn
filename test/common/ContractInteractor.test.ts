@@ -73,7 +73,8 @@ contract('ContractInteractor', function (accounts) {
           from: constants.ZERO_ADDRESS,
           nonce: '1',
           value: '0',
-          gas: '50000'
+          gas: '50000',
+          validUntil: '0'
         },
         relayData: {
           gasPrice: '1',
@@ -114,7 +115,8 @@ contract('ContractInteractor', function (accounts) {
           from: addr(2),
           nonce: '1',
           value: '0',
-          gas: '50000'
+          gas: '50000',
+          validUntil: '0'
         },
         relayData: {
           gasPrice: '1',

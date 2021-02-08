@@ -188,7 +188,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           from: senderAddress,
           nonce: senderNonce,
           value: '0',
-          gas: gasLimit
+          gas: gasLimit,
+          validUntil: '0'
         },
         relayData: {
           pctRelayFee,

@@ -20,7 +20,7 @@ const defaultStakeManagerMaxUnstakeDelay: number = 10000000
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasOverhead: 33346,
-  postOverhead: 13016,
+  postOverhead: 13302,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
