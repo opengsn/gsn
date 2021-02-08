@@ -543,7 +543,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
 
     function encodeRelayCallEIP155 (encodedCallArgs: any, relayCallArgs: any): Transaction {
       const privateKey = Buffer.from(relayCallArgs.privateKey, 'hex')
-      const relayWorker = `0x${privateToAddress(privateKey).toString('hex')}`
+      const relayWorker = privateToAddress(privateKey).toString('hex')
       // TODO: 'encodedCallArgs' is no longer needed. just keep the RelayRequest in test
       const relayRequest: RelayRequest =
         {
