@@ -38,7 +38,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    pre: 5451,
+    pre: 5429,
     post: 1639
   }
 
@@ -87,7 +87,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         from: senderAddress,
         nonce: senderNonce.toString(),
         value: '0',
-        gas: gasLimit.toString()
+        gas: gasLimit.toString(),
+        validUntil: '0'
       },
       relayData: {
         baseRelayFee: baseFee.toString(),
@@ -298,7 +299,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               from: senderAddress,
               nonce: senderNonce,
               value: '0',
-              gas: gasLimit.toString()
+              gas: gasLimit.toString(),
+              validUntil: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -364,7 +366,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   from: senderAddress,
                   nonce: senderNonce,
                   value: '0',
-                  gas: gasLimit.toString()
+                  gas: gasLimit.toString(),
+                  validUntil: '0'
                 },
                 relayData: {
                   baseRelayFee,
