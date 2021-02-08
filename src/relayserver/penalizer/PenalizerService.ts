@@ -1,5 +1,6 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
+import crypto from 'crypto'
 import { PrefixedHexString, Transaction as EthereumJsTransaction, TransactionOptions, TxData } from 'ethereumjs-tx'
 import { Transaction as Web3CoreTransaction } from 'web3-core'
 import { bufferToHex, bufferToInt, isZeroAddress } from 'ethereumjs-util'
@@ -18,7 +19,7 @@ import { AuditRequest, AuditResponse } from '../../common/types/AuditRequest'
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
 import { constants } from '../../common/Constants'
-import { address2topic, getDataAndSignature, randomInRange } from '../../common/Utils'
+import { address2topic, getDataAndSignature } from '../../common/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '../../common/Version'
 import { ServerConfigParams } from '../ServerConfigParams'
 import Timeout = NodeJS.Timeout
@@ -176,7 +177,7 @@ export class PenalizerService {
       throw Error(`Failed to get transaction ${minedTransactionData.hash} from node`)
     }
     const minedTxBuffers = createWeb3Transaction(minedTx, rawTxOptions)
-    const randomValue = randomInRange(0, 0xffffffff).toString(16)
+    const randomValue = bufferToHex(crypto.randomBytes(32))
     const penalizationArguments = this.getPenalizeRepeatedNonceArguments(minedTxBuffers, requestTx, randomValue)
     const method = this.getMethod(PenalizationTypes.REPEATED_NONCE, penalizationArguments)
     const isValidPenalization = await this.validatePenalization(method)
@@ -265,7 +266,7 @@ export class PenalizerService {
     }
 
     // TODO: remove duplication
-    const randomValue = randomInRange(0, 0xffffffff).toString(16)
+    const randomValue = bufferToHex(crypto.randomBytes(32))
     const penalizationArguments = this.getPenalizeIllegalTransactionArguments(requestTx, randomValue)
     const method = this.getMethod(PenalizationTypes.ILLEGAL_TRANSACTION, penalizationArguments)
     const isValidPenalization = await this.validatePenalization(method)
@@ -318,7 +319,7 @@ export class PenalizerService {
     const { data, signature } = getDataAndSignature(requestTx, chainId)
     return [
       data, signature, this.contractInteractor.relayHubInstance.address,
-      `0x${randomValue}`
+      randomValue
     ]
   }
 
@@ -329,7 +330,7 @@ export class PenalizerService {
     return [
       unsignedRequestTx, requestTxSig, unsignedMinedTx,
       minedTxSig, this.contractInteractor.relayHubInstance.address,
-      `0x${randomValue}`
+      randomValue
     ]
   }
 

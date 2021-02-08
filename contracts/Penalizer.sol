@@ -21,7 +21,7 @@ contract Penalizer is IPenalizer {
     constructor(
         uint256 _penalizeBlockDelay,
         uint256 _penalizeBlockExpiration
-    ) public {
+    ) {
         penalizeBlockDelay = _penalizeBlockDelay;
         penalizeBlockExpiration = _penalizeBlockExpiration;
     }
@@ -67,7 +67,7 @@ contract Penalizer is IPenalizer {
         bytes memory unsignedTx2,
         bytes memory signature2,
         IRelayHub hub,
-        bytes4 randomValue
+        uint256 randomValue
     )
     public
     override
@@ -124,7 +124,7 @@ contract Penalizer is IPenalizer {
         bytes memory unsignedTx,
         bytes memory signature,
         IRelayHub hub,
-        bytes4 randomValue
+        uint256 randomValue
     )
     public
     override
