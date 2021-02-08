@@ -9,9 +9,16 @@ interface Environment {
   readonly chainId: number
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
+  readonly maxUnstakeDelay: number
 }
 
-export const defaultRelayHubConfiguration: RelayHubConfiguration = {
+/**
+ * With about 6000 blocks per day, maximum unstake delay is defined at around 5 years for the mainnet.
+ * This is done to prevent mistakenly setting an unstake delay to millions of years.
+ */
+const defaultStakeManagerMaxUnstakeDelay: number = 10000000
+
+const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasOverhead: 33346,
   postOverhead: 13302,
   gasReserve: 100000,
@@ -25,16 +32,19 @@ export const environments: { [key: string]: Environment } = {
   istanbul: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000
   },
   constantinople: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000
   },
   ganacheLocal: {
     chainId: 1337,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000
   }
 }

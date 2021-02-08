@@ -33,7 +33,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   before(async () => {
     const paymasterDeposit = 1e18.toString()
 
-    const stakeManager = await StakeManager.new()
+    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     const penalizer = await Penalizer.new()
     hub = await deployHub(stakeManager.address, penalizer.address)
     const relayHub = hub

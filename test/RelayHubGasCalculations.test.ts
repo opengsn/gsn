@@ -58,7 +58,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
-    stakeManager = await StakeManager.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new()
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     await paymaster.setTrustedForwarder(forwarder)
