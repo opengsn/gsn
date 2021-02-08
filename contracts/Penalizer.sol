@@ -15,7 +15,16 @@ contract Penalizer is IPenalizer {
 
     using ECDSA for bytes32;
 
-    uint constant public PENALIZE_BLOCK_DELAY = 5;
+    uint256 public immutable override penalizeBlockDelay;
+    uint256 public immutable override penalizeBlockExpiration;
+
+    constructor(
+        uint256 _penalizeBlockDelay,
+        uint256 _penalizeBlockExpiration
+    ) public {
+        penalizeBlockDelay = _penalizeBlockDelay;
+        penalizeBlockExpiration = _penalizeBlockExpiration;
+    }
 
     function decodeTransaction(bytes memory rawTransaction) private pure returns (Transaction memory transaction) {
         (transaction.nonce,
@@ -34,7 +43,7 @@ contract Penalizer is IPenalizer {
      * no-one can front-run it to claim this penalization
      */
     function commit(bytes32 commitHash) external override {
-        uint256 readyBlockNumber = block.number + PENALIZE_BLOCK_DELAY;
+        uint256 readyBlockNumber = block.number + penalizeBlockDelay;
         commits[commitHash] = readyBlockNumber;
         emit CommitAdded(msg.sender, commitHash, readyBlockNumber);
     }
@@ -47,6 +56,7 @@ contract Penalizer is IPenalizer {
         if(msg.sender != address(0)) {
             require(readyBlockNumber != 0, "no commit");
             require(readyBlockNumber < block.number, "reveal penalize too soon");
+            require(readyBlockNumber + penalizeBlockExpiration > block.number, "reveal penalize too late");
         }
         _;
     }
@@ -56,11 +66,13 @@ contract Penalizer is IPenalizer {
         bytes memory signature1,
         bytes memory unsignedTx2,
         bytes memory signature2,
-        IRelayHub hub
+        IRelayHub hub,
+        bytes4 randomValue
     )
     public
     override
     commitRevealOnly {
+        (randomValue);
         _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
     }
 
@@ -111,11 +123,13 @@ contract Penalizer is IPenalizer {
     function penalizeIllegalTransaction(
         bytes memory unsignedTx,
         bytes memory signature,
-        IRelayHub hub
+        IRelayHub hub,
+        bytes4 randomValue
     )
     public
     override
     commitRevealOnly {
+        (randomValue);
         _penalizeIllegalTransaction(unsignedTx, signature, hub);
     }
 

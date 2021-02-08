@@ -56,7 +56,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
   beforeEach(async function () {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new()
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Forwarder.new()

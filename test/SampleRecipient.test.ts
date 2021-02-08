@@ -45,7 +45,7 @@ contract('SampleRecipient', function (accounts) {
   it('should allow owner to withdraw balance from RelayHub', async function () {
     const deposit = new BN('100000000000000000')
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    const penalizer = await Penalizer.new()
+    const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     const rhub = await deployHub(stakeManager.address, penalizer.address)
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(rhub.address)

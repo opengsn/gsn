@@ -59,7 +59,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new()
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)

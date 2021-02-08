@@ -23,14 +23,18 @@ interface IPenalizer {
         bytes calldata signature1,
         bytes calldata unsignedTx2,
         bytes calldata signature2,
-        IRelayHub hub
+        IRelayHub hub,
+        bytes4 salt
     ) external;
 
     function penalizeIllegalTransaction(
         bytes calldata unsignedTx,
         bytes calldata signature,
-        IRelayHub hub
+        IRelayHub hub,
+        bytes4 salt
     ) external;
 
     function versionPenalizer() external view returns (string memory);
+    function penalizeBlockDelay() external view returns (uint256);
+    function penalizeBlockExpiration() external view returns (uint256);
 }

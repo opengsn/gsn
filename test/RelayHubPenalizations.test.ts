@@ -20,7 +20,7 @@ import {
   TestRecipientInstance
 } from '../types/truffle-contracts'
 
-import { deployHub, evmMineMany } from './TestUtils'
+import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
 import { getRawTxOptions } from '../src/common/ContractInteractor'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
 
@@ -49,7 +49,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new()
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, 40)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
@@ -143,7 +143,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
     })
 
     async function commitPenalizationAndReturnMethod (method: any, ...args: any[]): Promise<any> {
-      const methodInvoked = method(...args)
+      const methodInvoked = method(...args, '0x00000000')
       const penalizeMsgData = methodInvoked.encodeABI()
 
       const defaultOptions: Truffle.TransactionDetails = {
@@ -211,7 +211,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
           data: penalizableTxData,
           signature: penalizableTxSignature
         } = await getDataAndSignatureFromHash(transactionHash, chainId))
-        request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address).encodeABI()
+        request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x').encodeABI()
 
         const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
         await penalizer.commit(commitHash, { from: committer })
@@ -219,21 +219,50 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
 
       it('should fail to penalize too soon after commit', async () => {
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
           'reveal penalize too soon'
         )
       })
 
+      it('should fail to penalize too late after commit', async () => {
+        const id = (await snapshot()).result
+        await evmMineMany(50)
+        await expectRevert(
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          'reveal penalize too late'
+        )
+        await revert(id)
+      })
+
+      it('should fail to penalize with incorrect randomValue', async () => {
+        const id = (await snapshot()).result
+        request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0xcafef00d').encodeABI()
+        const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
+        await penalizer.commit(commitHash, { from: committer })
+        await evmMineMany(10)
+        await expectRevert(
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0xdeadbeef', { from: committer }),
+          'no commit'
+        )
+        // this is not a failure: it passes the Penalizer modifier test (commit test),
+        // it then reverts inside the RelayHub (since we didn't fully initialize this relay/worker)
+        await expectRevert(
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0xcafef00d', { from: committer }),
+          'Unknown relay worker'
+        )
+        await revert(id)
+      })
+
       it('should reject penalize if method call differs', async () => {
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature + '00', relayHub.address, { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature + '00', relayHub.address, '0x', { from: committer }),
           'no commit'
         )
       })
 
       it('should reject penalize if commit called from another account', async () => {
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, { from: nonCommitter }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: nonCommitter }),
           'no commit'
         )
       })
@@ -243,7 +272,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
         // this is not a failure: it passes the Penalizer modifier test (commit test),
         // it then reverts inside the RelayHub (since we didn't fully initialize this relay/worker)
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
           'Unknown relay worker'
         )
       })

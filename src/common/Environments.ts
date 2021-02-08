@@ -4,11 +4,13 @@
  * TODO: see the differences between networks we want to support and make project structure multi-chain
  */
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
+import { PenalizerConfiguration } from './types/PenalizerConfiguration'
 
 interface Environment {
   readonly chainId: number
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
+  readonly penalizerConfiguration: PenalizerConfiguration
   readonly maxUnstakeDelay: number
 }
 
@@ -17,6 +19,12 @@ interface Environment {
  * This is done to prevent mistakenly setting an unstake delay to millions of years.
  */
 const defaultStakeManagerMaxUnstakeDelay: number = 10000000
+
+const defaultPenalizerConfiguration: PenalizerConfiguration = {
+  penalizeBlockDelay: 5,
+  penalizeBlockExpiration: 60000
+}
+
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasOverhead: 33346,
   postOverhead: 13302,
@@ -31,18 +39,21 @@ export const environments: { [key: string]: Environment } = {
   istanbul: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    penalizerConfiguration: defaultPenalizerConfiguration,
     maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000
   },
   constantinople: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    penalizerConfiguration: defaultPenalizerConfiguration,
     maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000
   },
   ganacheLocal: {
     chainId: 1337,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    penalizerConfiguration: defaultPenalizerConfiguration,
     maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000
   }

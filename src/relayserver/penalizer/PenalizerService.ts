@@ -18,7 +18,7 @@ import { AuditRequest, AuditResponse } from '../../common/types/AuditRequest'
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
 import { constants } from '../../common/Constants'
-import { address2topic, getDataAndSignature } from '../../common/Utils'
+import { address2topic, getDataAndSignature, randomInRange } from '../../common/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '../../common/Version'
 import { ServerConfigParams } from '../ServerConfigParams'
 import Timeout = NodeJS.Timeout
@@ -176,7 +176,8 @@ export class PenalizerService {
       throw Error(`Failed to get transaction ${minedTransactionData.hash} from node`)
     }
     const minedTxBuffers = createWeb3Transaction(minedTx, rawTxOptions)
-    const penalizationArguments = this.getPenalizeRepeatedNonceArguments(minedTxBuffers, requestTx)
+    const randomValue = randomInRange(0, 0xffffffff).toString(16)
+    const penalizationArguments = this.getPenalizeRepeatedNonceArguments(minedTxBuffers, requestTx, randomValue)
     const method = this.getMethod(PenalizationTypes.REPEATED_NONCE, penalizationArguments)
     const isValidPenalization = await this.validatePenalization(method)
     if (!validationResult.valid) {
@@ -195,7 +196,7 @@ export class PenalizerService {
   }
 
   calculateCommitHash (method: any): PrefixedHexString {
-    const msgData = method.encodeABI()
+    const msgData: string = method.encodeABI()
     const msgDataHash = `0x${ethUtils.keccak256(msgData).toString('hex')}`
     return `0x${ethUtils.keccak256(msgDataHash + this.managerAddress.slice(2).toLowerCase()).toString('hex')}`
   }
@@ -264,7 +265,8 @@ export class PenalizerService {
     }
 
     // TODO: remove duplication
-    const penalizationArguments = this.getPenalizeIllegalTransactionArguments(requestTx)
+    const randomValue = randomInRange(0, 0xffffffff).toString(16)
+    const penalizationArguments = this.getPenalizeIllegalTransactionArguments(requestTx, randomValue)
     const method = this.getMethod(PenalizationTypes.ILLEGAL_TRANSACTION, penalizationArguments)
     const isValidPenalization = await this.validatePenalization(method)
     if (!isValidPenalization.valid) {
@@ -311,21 +313,23 @@ export class PenalizerService {
     return transactionHash
   }
 
-  getPenalizeIllegalTransactionArguments (requestTx: EthereumJsTransaction): PrefixedHexString[] {
+  getPenalizeIllegalTransactionArguments (requestTx: EthereumJsTransaction, randomValue: string): PrefixedHexString[] {
     const chainId = this.contractInteractor.chainId
     const { data, signature } = getDataAndSignature(requestTx, chainId)
     return [
-      data, signature, this.contractInteractor.relayHubInstance.address
+      data, signature, this.contractInteractor.relayHubInstance.address,
+      `0x${randomValue}`
     ]
   }
 
-  getPenalizeRepeatedNonceArguments (minedTx: EthereumJsTransaction, requestTx: EthereumJsTransaction): PrefixedHexString[] {
+  getPenalizeRepeatedNonceArguments (minedTx: EthereumJsTransaction, requestTx: EthereumJsTransaction, randomValue: string): PrefixedHexString[] {
     const chainId = this.contractInteractor.chainId
     const { data: unsignedMinedTx, signature: minedTxSig } = getDataAndSignature(minedTx, chainId)
     const { data: unsignedRequestTx, signature: requestTxSig } = getDataAndSignature(requestTx, chainId)
     return [
       unsignedRequestTx, requestTxSig, unsignedMinedTx,
-      minedTxSig, this.contractInteractor.relayHubInstance.address
+      minedTxSig, this.contractInteractor.relayHubInstance.address,
+      `0x${randomValue}`
     ]
   }
 

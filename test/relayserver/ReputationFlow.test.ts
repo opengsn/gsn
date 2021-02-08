@@ -20,7 +20,7 @@ contract('ReputationFlow', function (accounts) {
 
   before(async function () {
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    const penalizer = await Penalizer.new()
+    const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     const relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     testRecipient = await TestRecipient.new(forwarderInstance.address)
