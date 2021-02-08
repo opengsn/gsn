@@ -15,7 +15,16 @@ contract Penalizer is IPenalizer {
 
     using ECDSA for bytes32;
 
-    uint constant public PENALIZE_BLOCK_DELAY = 5;
+    uint256 public immutable override penalizeBlockDelay;
+    uint256 public immutable override penalizeBlockExpiration;
+
+    constructor(
+        uint256 _penalizeBlockDelay,
+        uint256 _penalizeBlockExpiration
+    ) {
+        penalizeBlockDelay = _penalizeBlockDelay;
+        penalizeBlockExpiration = _penalizeBlockExpiration;
+    }
 
     function decodeTransaction(bytes memory rawTransaction) private pure returns (Transaction memory transaction) {
         (transaction.nonce,
@@ -29,27 +38,26 @@ contract Penalizer is IPenalizer {
 
     mapping(bytes32 => uint) public commits;
 
-    event Commit(bytes32 indexed commitHash, address sender);
-
     /**
      * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure
      * no-one can front-run it to claim this penalization
      */
     function commit(bytes32 commitHash) external override {
-        commits[commitHash] = block.number;
-        emit Commit(commitHash, msg.sender);
-    }
-
-    modifier relayManagerOnly(IRelayHub hub) {
-        require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
-        _;
+        uint256 readyBlockNumber = block.number + penalizeBlockDelay;
+        commits[commitHash] = readyBlockNumber;
+        emit CommitAdded(msg.sender, commitHash, readyBlockNumber);
     }
 
     modifier commitRevealOnly() {
         bytes32 commitHash = keccak256(abi.encodePacked(keccak256(msg.data), msg.sender));
-        uint commitBlockNumber = commits[commitHash];
-        require(commitBlockNumber != 0, "no commit");
-        require(commitBlockNumber + PENALIZE_BLOCK_DELAY < block.number, "reveal penalize too soon");
+        uint256 readyBlockNumber = commits[commitHash];
+        delete commits[commitHash];
+        // msg.sender can only be fake during off-chain view call, allowing Penalizer process to check transactions
+        if(msg.sender != address(0)) {
+            require(readyBlockNumber != 0, "no commit");
+            require(readyBlockNumber < block.number, "reveal penalize too soon");
+            require(readyBlockNumber + penalizeBlockExpiration > block.number, "reveal penalize too late");
+        }
         _;
     }
 
@@ -58,25 +66,13 @@ contract Penalizer is IPenalizer {
         bytes memory signature1,
         bytes memory unsignedTx2,
         bytes memory signature2,
-        IRelayHub hub
-    )
-    public
-    override
-    relayManagerOnly(hub)
-    {
-        _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
-    }
-
-    function penalizeRepeatedNonceAfterCommit(
-        bytes memory unsignedTx1,
-        bytes memory signature1,
-        bytes memory unsignedTx2,
-        bytes memory signature2,
-        IRelayHub hub
+        IRelayHub hub,
+        uint256 randomValue
     )
     public
     override
     commitRevealOnly {
+        (randomValue);
         _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
     }
 
@@ -89,7 +85,6 @@ contract Penalizer is IPenalizer {
     )
     private
     {
-        // Can be called by a relay manager only.
         // If a relay attacked the system by signing multiple transactions with the same nonce
         // (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
         // Check whether unsignedTx1 != unsignedTx2, that both are signed by the same address,
@@ -128,23 +123,13 @@ contract Penalizer is IPenalizer {
     function penalizeIllegalTransaction(
         bytes memory unsignedTx,
         bytes memory signature,
-        IRelayHub hub
-    )
-    public
-    override
-    relayManagerOnly(hub)
-    {
-        _penalizeIllegalTransaction(unsignedTx, signature, hub);
-    }
-
-    function penalizeIllegalTransactionAfterCommit(
-        bytes memory unsignedTx,
-        bytes memory signature,
-        IRelayHub hub
+        IRelayHub hub,
+        uint256 randomValue
     )
     public
     override
     commitRevealOnly {
+        (randomValue);
         _penalizeIllegalTransaction(unsignedTx, signature, hub);
     }
 

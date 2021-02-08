@@ -269,9 +269,9 @@ export class RelayClient {
       transaction = new Transaction(hexTransaction, this.dependencies.contractInteractor.getRawTxOptions())
       auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
         .then((penalizeResponse) => {
-          if (penalizeResponse.penalizeTxHash != null) {
+          if (penalizeResponse.commitTxHash != null) {
             const txHash = bufferToHex(transaction.hash(true))
-            this.logger.error(`The transaction with id: ${txHash} was penalized! Penalization tx id: ${penalizeResponse.penalizeTxHash}`)
+            this.logger.error(`The transaction with id: ${txHash} was penalized! Penalization commitment tx id: ${penalizeResponse.commitTxHash}`)
           }
           return penalizeResponse
         })
@@ -398,7 +398,7 @@ export class RelayClient {
     for (const auditor of auditors) {
       try {
         const penalizeResponse = await this.dependencies.httpClient.auditTransaction(auditor, hexTransaction)
-        if (penalizeResponse.penalizeTxHash != null) {
+        if (penalizeResponse.commitTxHash != null) {
           return penalizeResponse
         }
       } catch (e) {

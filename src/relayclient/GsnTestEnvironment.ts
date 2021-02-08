@@ -52,6 +52,7 @@ class GsnTestEnvironmentClass {
       gasPrice: '1',
       deployPaymaster: true,
       skipConfirmation: true,
+      penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
     if (deploymentResult.paymasterAddress != null) {
@@ -174,7 +175,7 @@ class GsnTestEnvironmentClass {
       gasPriceFactor: 1,
       baseRelayFee: '0',
       pctRelayFee: 0,
-      checkInterval: 10,
+      checkInterval: 100,
       runPaymasterReputations: false,
       logLevel: 'error'
     }
