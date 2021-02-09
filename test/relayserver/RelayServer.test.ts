@@ -337,7 +337,7 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         req.metadata.signature = INCORRECT_ECDSA_SIGNATURE
         try {
-          await env.relayServer.validateViewCallSucceeds(req, 150000, 2000000)
+          await env.relayServer.validateViewCallSucceeds(req, 200000, 2000000)
           assert.fail()
         } catch (e) {
           assert.include(e.message, 'Paymaster rejected in server: signature mismatch')

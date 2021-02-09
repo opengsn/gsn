@@ -117,8 +117,12 @@ contract RelayHub is IRelayHub {
         emit Withdrawn(account, dest, amount);
     }
 
+    function calldataGasCost(uint256 length) public override view returns (uint256) {
+        return dataGasCostPerByte.mul(length);
+}
+
     function verifyGasAndDataLimits(
-        uint256 paymasterMaxAcceptanceBudget,
+        uint256 maxRelayExposure,
         GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGas
     )
@@ -128,9 +132,9 @@ contract RelayHub is IRelayHub {
         gasAndDataLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasAndDataLimits{gas:50000}();
         require(msg.data.length <= gasAndDataLimits.calldataSizeLimit, "msg.data exceeded limit" );
-        require(paymasterMaxAcceptanceBudget >= gasAndDataLimits.acceptanceBudget, "unexpected high acceptanceBudget");
+        uint256 dataGasCost = calldataGasCost(msg.data.length);
+        require(maxRelayExposure >= gasAndDataLimits.acceptanceBudget.add(dataGasCost), "unexpected high maxRelayExposure");
 
-        uint256 dataGasCost = dataGasCostPerByte.mul(msg.data.length);
         maxPossibleGas =
             gasOverhead.add(
             gasAndDataLimits.preRelayedCallGasLimit).add(
@@ -166,10 +170,11 @@ contract RelayHub is IRelayHub {
         uint256 maxPossibleGas;
         uint256 gasBeforeInner;
         bytes retData;
+        uint256 dataGasCost;
     }
 
     function relayCall(
-        uint paymasterMaxAcceptanceBudget,
+        uint maxRelayExposure,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -193,7 +198,7 @@ contract RelayHub is IRelayHub {
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
-             verifyGasAndDataLimits(paymasterMaxAcceptanceBudget, relayRequest, externalGasLimit);
+             verifyGasAndDataLimits(maxRelayExposure, relayRequest, externalGasLimit);
 
     {
 
@@ -220,9 +225,10 @@ contract RelayHub is IRelayHub {
         }
     }
     {
+        vars.dataGasCost = calldataGasCost(msg.data.length);
         if (!vars.success) {
             //Failure cases where the PM doesn't pay
-            if ( (vars.innerGasUsed < vars.gasAndDataLimits.acceptanceBudget ) && (
+            if ( (vars.innerGasUsed <= vars.gasAndDataLimits.acceptanceBudget.add(vars.dataGasCost) ) && (
                     vars.status == RelayCallStatus.RejectedByPreRelayed ||
                     vars.status == RelayCallStatus.RejectedByForwarder ||
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true

@@ -4,6 +4,7 @@
  * TODO: see the differences between networks we want to support and make project structure multi-chain
  */
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
+import { PaymasterConfiguration } from './types/PaymasterConfiguration'
 
 interface Environment {
   readonly chainId: number
@@ -14,14 +15,25 @@ interface Environment {
 }
 
 export const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 35965,
-  postOverhead: 14063,
+  gasOverhead: 35901,
+  postOverhead: 15026,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
   maximumRecipientDeposit: 2e18.toString(),
   dataGasCostPerByte: 20
+}
+
+// TODO add as constructor params to paymaster instead of constants
+const preRelayedCallGasLimit = 1e5
+const forwarderHubOverhead = 5e4
+export const defaultPaymasterConfiguration: PaymasterConfiguration = {
+  forwarderHubOverhead: forwarderHubOverhead,
+  preRelayedCallGasLimit: preRelayedCallGasLimit,
+  postRelayedCallGasLimit: 11e4,
+  acceptanceBudget: preRelayedCallGasLimit + forwarderHubOverhead,
+  calldataSizeLimit: 10020
 }
 
 export const environments: { [key: string]: Environment } = {

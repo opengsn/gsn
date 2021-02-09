@@ -242,12 +242,12 @@ export class RelayClient {
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayingAttempt> {
     this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
-    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.maxAcceptanceBudget)
+    const maxRelayExposure = parseInt(relayInfo.pingResponse.maxRelayExposure)
     const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
 
     this.emit(new GsnValidateRequestEvent())
 
-    const acceptRelayCallResult = await this.dependencies.contractInteractor.validateRelayCall(maxAcceptanceBudget, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData)
+    const acceptRelayCallResult = await this.dependencies.contractInteractor.validateRelayCall(maxRelayExposure, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {
@@ -279,7 +279,7 @@ export class RelayClient {
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error }
     }
-    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
+    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, maxRelayExposure, hexTransaction)) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return {

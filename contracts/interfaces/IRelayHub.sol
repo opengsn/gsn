@@ -125,7 +125,7 @@ interface IRelayHub {
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
-        uint paymasterMaxAcceptanceBudget,
+        uint maxRelayExposure,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -170,6 +170,8 @@ interface IRelayHub {
 
     // relayCall()'s msg.data upper bound gas cost per byte
     function dataGasCostPerByte() external view returns (uint256);
+
+    function calldataGasCost(uint256 length) external view returns (uint256);
 
     function workerToManager(address worker) external view returns(address);
 

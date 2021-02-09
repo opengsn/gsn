@@ -357,7 +357,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     });
     [RelayCallDynamicArg.APPROVAL_DATA, RelayCallDynamicArg.ENCODED_FUNCTION, RelayCallDynamicArg.PAYMASTER_DATA].forEach(dynamicArg => {
       const gassesUsed: any[] = [];
-      [0, 32, 128, 16384/* , 32768, 65536 */].forEach(dataLength => {
+      [0, 32, 128, 8192/* , 32768, 65536 */].forEach(dataLength => {
         it(`with arg: ${dynamicArg} length: ${dataLength}`, async function () {
           // console.log('gasUsed: ', gassesUsed)
           const id = (await snapshot()).result
