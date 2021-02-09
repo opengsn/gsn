@@ -176,7 +176,6 @@ contract RelayHub is IRelayHub {
     override
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
-        (signature);
         RelayCallData memory vars;
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
         require(msg.sender == tx.origin, "relay worker must be EOA");

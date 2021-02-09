@@ -173,6 +173,77 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
       return receipt
     }
 
+    describe('#penalizer.relayCall should validate param sizes', function () {
+      let pen: RelayHubInstance
+      before(() => {
+        pen = penalizer as any as RelayHubInstance
+      })
+      it('#len1 should return dynamic structure size', async () => {
+        const len1 = async function (size: number): Promise<number> { return await penalizer.len1('0x' + '11'.repeat(size)).then(x => x.toNumber()) }
+
+        assert.equal(await len1(0), 1 * 32)
+        assert.equal(await len1(1), 2 * 32)
+        assert.equal(await len1(32), 2 * 32)
+        assert.equal(await len1(33), 3 * 32)
+        assert.equal(await len1(64), 3 * 32)
+        assert.equal(await len1(65), 4 * 32)
+      });
+
+      [{},
+        { approvalData: '0x12' },
+        { approvalData: '0x123456' },
+        { approvalData: '0x123456', signature: '0xabcd' },
+        { signature: '0xab' },
+        { data: '0x1234' },
+        { data: '0x1234', signature: '0xabcdef' },
+        { paymasterData: '0x12345678' },
+        { suffix: '123456' },
+        { data: '0x1234', signature: '0xabcdef', suffix: '123456' }
+      ].forEach((appended: any) => {
+        it(`test relayCall with "${JSON.stringify(appended)}" `, async () => {
+          // note that relayCall takes the parameters of IRelayHub.relayCall but return penalizer info
+          const suffix = appended.suffix ?? ''
+          const encoded = await pen.contract.methods.relayCall(1,
+            {
+              request: {
+                from: sender,
+                to: recipient.address,
+                value: 0,
+                gas: 1,
+                nonce: 2,
+                data: appended.data ?? '0x',
+                validUntil: 0
+              },
+              relayData: {
+                gasPrice: 0,
+                pctRelayFee: 1,
+                baseRelayFee: 2,
+                relayWorker,
+                paymaster: paymaster.address,
+                paymasterData: appended.paymasterData ?? '0x',
+                clientId: 3,
+                forwarder
+              }
+            },
+            appended.signature ?? '0x',
+            appended.approvalData ?? '0x',
+            12345).encodeABI()
+
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+          const encodedWithSuffix = `${encoded}${suffix}`
+
+          const ret: any = await web3.eth.call({ data: encodedWithSuffix, to: penalizer.address }).catch(e => e.message)
+          if (suffix.length > 0) {
+            assert.include(ret, 'extra msg.data')
+          } else {
+            const decoded = web3.eth.abi.decodeParameters(['uint256'], ret)
+            const retExternalGasLimit = decoded[0]
+            assert.equal(retExternalGasLimit, 12345)
+          }
+        })
+      })
+    })
+
     describe('penalization access control (relay manager only)', function () {
       before(async function () {
         const { transactionHash } = await send.ether(thirdRelayWorker, other, ether('0.5'));
@@ -340,7 +411,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           )
         })
 
-        it('does not penalize legal relay transactions', async function () {
+        async function makeTx (): Promise<{ data: string, signature: string }> {
           // relayCall is a legal transaction
           const baseFee = new BN('300')
           const fee = new BN('10')
@@ -390,6 +461,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, otherR
           })
 
           const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx, chainId)
+          return relayCallTxDataSig
+        }
+        it('does not penalize legal relay transactions', async function () {
+          const relayCallTxDataSig = await makeTx()
           await expectRevert(
             penalizer.penalizeIllegalTransaction(relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address, { from: reporterRelayManager }),
             'Legal relay transaction'
