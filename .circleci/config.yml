@@ -15,8 +15,8 @@ jobs: # a collection of steps
       - restore_cache: # special step to restore the dependency cache
           key: dependency-cache-{{ checksum "package.json" }}-yarn2
       - run:
-          name: yarn-install
-          command: yarn
+          name: yarn-install-if-needed
+          command: test -d node_modules || yarn
 
       - save_cache: # special step to save the dependency cache
           key: dependency-cache-{{ checksum "package.json" }}-yarn2
