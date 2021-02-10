@@ -49,7 +49,7 @@ export class RelayServer extends EventEmitter {
   lastSuccessfulRounds = Number.MAX_SAFE_INTEGER
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
-  gasPrice: number = 0
+  minGasPrice: number = 0
   _workerSemaphoreOn = false
   alerted = false
   alertedBlock: number = 0
@@ -103,7 +103,7 @@ export class RelayServer extends EventEmitter {
   }
 
   getMinGasPrice (): number {
-    return this.gasPrice
+    return this.minGasPrice
   }
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
@@ -139,10 +139,10 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    // Check that the gasPrice is initialized & acceptable
-    if (this.gasPrice > parseInt(req.relayRequest.relayData.gasPrice)) {
+    const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
+    if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
-        `Unacceptable gasPrice: relayServer's gasPrice:${this.gasPrice} request's gasPrice: ${req.relayRequest.relayData.gasPrice}`)
+        `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
     }
 
     // validate the validUntil is not too close
@@ -547,9 +547,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _refreshGasPrice (): Promise<void> {
     const gasPriceString = await this.gasPriceFetcher.getGasPrice()
-    this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
-    if (this.gasPrice === 0) {
+    this.minGasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
+    if (this.minGasPrice === 0) {
       throw new Error('Could not get gasPrice from node')
+    }
+    if (this.minGasPrice > parseInt(this.config.maxGasPrice)) {
+      throw new Error(`network gas price ${this.minGasPrice} is higher than max gas price ${this.config.maxGasPrice}`)
     }
   }
 

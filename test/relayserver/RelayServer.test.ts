@@ -126,16 +126,29 @@ contract('RelayServer', function (accounts) {
         }
       })
 
-      it('should fail to relay with unacceptable gasPrice', async function () {
-        const wrongGasPrice = '100'
+      it('should fail to relay with low gasPrice', async function () {
+        const wrongGasPrice = env.relayServer.minGasPrice - 1
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.relayData.gasPrice = wrongGasPrice
+        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
-            `Unacceptable gasPrice: relayServer's gasPrice:${env.relayServer.gasPrice} request's gasPrice: ${wrongGasPrice}`)
+            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
+        }
+      })
+
+      it('should fail to relay with high gasPrice', async function () {
+        const wrongGasPrice = parseInt(env.relayServer.config.maxGasPrice) + 1
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
+        try {
+          env.relayServer.validateInput(req, 0)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
         }
       })
 
@@ -240,6 +253,27 @@ contract('RelayServer', function (accounts) {
             assert.include(e.message, 'Unacceptable relayMaxNonce:')
           }
         })
+      })
+    })
+
+    describe('#_refreshGasPrice()', function () {
+      it('should set min gas price to network average * gas price factor', async function () {
+        env.relayServer.minGasPrice = 0
+        await env.relayServer._refreshGasPrice()
+        const gasPrice = parseInt(await env.web3.eth.getGasPrice())
+        assert.equal(env.relayServer.minGasPrice, env.relayServer.config.gasPriceFactor * gasPrice)
+      })
+      it('should throw when min gas price is higher than max', async function () {
+        const originalMaxPrice = env.relayServer.config.maxGasPrice
+        env.relayServer.config.maxGasPrice = (env.relayServer.minGasPrice - 1).toString()
+        try {
+          await env.relayServer._refreshGasPrice()
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
+        } finally {
+          env.relayServer.config.maxGasPrice = originalMaxPrice
+        }
       })
     })
 
