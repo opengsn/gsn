@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
@@ -19,6 +19,7 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
         uint256 maxPossibleGas
     )
     external
+    view
     override
     returns (bytes memory, bool) {
         (signature, maxPossibleGas);

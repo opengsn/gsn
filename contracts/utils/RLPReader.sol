@@ -3,7 +3,7 @@
 * Taken from https://github.com/hamdiallam/Solidity-RLP
 */
 /* solhint-disable */
-pragma solidity ^0.6.2;
+pragma solidity ^0.7.5;
 
 library RLPReader {
 

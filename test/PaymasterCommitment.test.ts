@@ -18,6 +18,7 @@ import ForwardRequest from '../src/common/EIP712/ForwardRequest'
 import RelayData from '../src/common/EIP712/RelayData'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
+import { defaultEnvironment } from '../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -62,7 +63,7 @@ Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
 // - PM always pay for non-reverted TXs (either high or low gas use)
 // - if preRelayedCall reverts: PM always pay (=as long as commitment>preRelayedCallGasLimit)
 // - standard forwarder reverts: PM always pay (since commitment > gas of (preRelayedCall,forwarder))
-// - nonstandard forwardeR: PM pays above commitment
+// - nonstandard forwarder: PM pays above commitment
 // - trusted recipient: PM pays above commitment.
 contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
@@ -92,8 +93,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   const pctRelayFee = '0'
 
   before(async function () {
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
 
     forwarderInstance = await Forwarder.new()
@@ -108,7 +109,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     target = recipientContract.address
     relayHub = relayHubInstance.address
 
-    await stakeManager.stakeForAddress(relayManager, 1000, {
+    await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+    await stakeManager.stakeForRelayManager(relayManager, 1000, {
       value: ether('2'),
       from: relayOwner
     })
@@ -145,7 +147,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           from: senderAddress,
           nonce: senderNonce,
           value: '0',
-          gas: gasLimit
+          gas: gasLimit,
+          validUntil: '0'
         },
         relayData: {
           pctRelayFee,
@@ -192,7 +195,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     it('paymaster should not change its acceptanceBudget before transaction', async () => {
       // the protocol of the relay to perform a view function of relayCall(), and then
       // issue it on-chain.
-      // this test comes to verify the paymaster didn't chagne its acceptanceBalance between these
+      // this test comes to verify the paymaster didn't change its acceptanceBalance between these
       // calls to a higher value.
       // it is assumed that the relay already made the view function and validated the acceptanceBalance to
       // be small, and now making a 2nd call on-chain, but with the acceptanceBalance as parameter.
@@ -292,7 +295,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         gasPrice
       })
 
-      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.equal(paid, 0)

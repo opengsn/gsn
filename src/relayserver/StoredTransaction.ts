@@ -8,7 +8,8 @@ export enum ServerAction {
   RELAY_CALL,
   VALUE_TRANSFER,
   DEPOSIT_WITHDRAWAL,
-  PENALIZATION
+  PENALIZATION,
+  SET_OWNER
 }
 
 export interface StoredTransactionMetadata {

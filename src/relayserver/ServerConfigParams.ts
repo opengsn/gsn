@@ -16,6 +16,7 @@ require('source-map-support').install({ errorFormatterForce: true })
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
+  ownerAddress: string
   baseRelayFee: string
   pctRelayFee: number
   url: string
@@ -24,6 +25,7 @@ export interface ServerConfigParams {
   versionRegistryDelayPeriod?: number
   relayHubId?: string
   relayHubAddress: string
+  stakeManagerAddress: string
   ethereumNodeUrl: string
   workdir: string
   checkInterval: number
@@ -58,6 +60,7 @@ export interface ServerConfigParams {
   retryGasPriceFactor: number
   maxGasPrice: string
   defaultGasLimit: number
+  requestMinValidBlocks: number
 
   runPenalizer: boolean
   runPaymasterReputations: boolean
@@ -77,11 +80,13 @@ export interface ServerDependencies {
 }
 
 const serverDefaultConfiguration: ServerConfigParams = {
+  ownerAddress: constants.ZERO_ADDRESS,
   alertedBlockDelay: 0,
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
   maxAcceptanceBudget: 2e5,
   relayHubAddress: constants.ZERO_ADDRESS,
+  stakeManagerAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   blacklistedPaymasters: [],
   gasPriceFactor: 1,
@@ -117,10 +122,14 @@ const serverDefaultConfiguration: ServerConfigParams = {
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
   maxGasPrice: 100e9.toString(),
+
+  requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true
 }
 
 const ConfigParamsTypes = {
+  stakeManagerAddress: 'string',
+  ownerAddress: 'string',
   config: 'string',
   baseRelayFee: 'number',
   pctRelayFee: 'number',
@@ -156,6 +165,7 @@ const ConfigParamsTypes = {
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
   defaultGasLimit: 'number',
+  requestMinValidBlocks: 'number',
 
   trustedPaymasters: 'list',
   blacklistedPaymasters: 'list',

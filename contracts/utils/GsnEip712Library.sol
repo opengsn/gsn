@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import "../interfaces/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";
@@ -16,7 +16,7 @@ library GsnEip712Library {
     uint256 private constant MAX_RETURN_SIZE = 1024;
 
     //copied from Forwarder (can't reference string constants even from another library)
-    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
 
     bytes public constant RELAYDATA_TYPE = "RelayData(uint256 gasPrice,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)";
 
@@ -56,7 +56,8 @@ library GsnEip712Library {
             req.request.value,
             req.request.gas,
             req.request.nonce,
-            req.request.data
+            req.request.data,
+            req.request.validUntil
         );
         suffixData = abi.encode(
             hashRelayData(req.relayData));
@@ -70,16 +71,16 @@ library GsnEip712Library {
                 IRelayRecipient.isTrustedForwarder.selector, relayRequest.relayData.forwarder
             )
         );
-        require(success, "isTrustedForwarder reverted");
-        require(ret.length == 32, "isTrustedForwarder returned invalid response");
+        require(success, "isTrustedForwarder: reverted");
+        require(ret.length == 32, "isTrustedForwarder: bad response");
         require(abi.decode(ret, (bool)), "invalid forwarder for recipient");
     }
 
     function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
-        bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
+        bytes32 _domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         IForwarder forwarder = IForwarder(payable(relayRequest.relayData.forwarder));
-        forwarder.verify(forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
+        forwarder.verify(forwardRequest, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 
     function verify(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
@@ -89,11 +90,11 @@ library GsnEip712Library {
 
     function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool forwarderSuccess, bool callSuccess, bytes memory ret) {
         (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
-        bytes32 domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
+        bytes32 _domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         /* solhint-disable-next-line avoid-low-level-calls */
         (forwarderSuccess, ret) = relayRequest.relayData.forwarder.call(
             abi.encodeWithSelector(IForwarder.execute.selector,
-            forwardRequest, domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
+            forwardRequest, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
         ));
         if ( forwarderSuccess ) {
 
@@ -148,6 +149,4 @@ library GsnEip712Library {
                 req.clientId
             ));
     }
-
-
 }

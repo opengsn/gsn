@@ -17,8 +17,9 @@ import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import RelayRequest from '../../src/common/EIP712/RelayRequest'
 import { deployHub } from '../TestUtils'
 import VersionsManager from '../../src/common/VersionsManager'
-import { gsnRuntimeVersion } from '../../src/common/Version'
+import { gsnRequiredVersion, gsnRuntimeVersion } from '../../src/common/Version'
 import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -37,13 +38,14 @@ contract('ContractInteractor', function (accounts) {
   let pm: TestPaymasterConfigurableMisbehaviorInstance
 
   before(async () => {
-    sm = await StakeManager.new()
-    pen = await Penalizer.new()
+    sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    pen = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     rh = await deployHub(sm.address, pen.address)
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
     const mgrAddress = accounts[1]
-    await sm.stakeForAddress(mgrAddress, 1000, { value: 1e18.toString() })
+    await sm.setRelayManagerOwner(accounts[0], { from: mgrAddress })
+    await sm.stakeForRelayManager(mgrAddress, 1000, { value: 1e18.toString() })
     await sm.authorizeHubByOwner(mgrAddress, rh.address)
     await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
   })
@@ -53,7 +55,7 @@ contract('ContractInteractor', function (accounts) {
   }
 
   context('#validateRelayCall', () => {
-    const versionManager = new VersionsManager(gsnRuntimeVersion)
+    const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     it('should return relayCall revert reason', async () => {
       const contractInteractor = new ContractInteractor(
         {
@@ -71,7 +73,8 @@ contract('ContractInteractor', function (accounts) {
           from: constants.ZERO_ADDRESS,
           nonce: '1',
           value: '0',
-          gas: '50000'
+          gas: '50000',
+          validUntil: '0'
         },
         relayData: {
           gasPrice: '1',
@@ -112,7 +115,8 @@ contract('ContractInteractor', function (accounts) {
           from: addr(2),
           nonce: '1',
           value: '0',
-          gas: '50000'
+          gas: '50000',
+          validUntil: '0'
         },
         relayData: {
           gasPrice: '1',

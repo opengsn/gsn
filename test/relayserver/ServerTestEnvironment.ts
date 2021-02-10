@@ -44,6 +44,7 @@ import { createServerLogger } from '../../src/relayserver/ServerWinstonLogger'
 import { TransactionManager } from '../../src/relayserver/TransactionManager'
 import { GasPriceFetcher } from '../../src/relayclient/GasPriceFetcher'
 import { GSNContractsDeployment } from '../../src/common/GSNContractsDeployment'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -109,8 +110,8 @@ export class ServerTestEnvironment {
    * different provider from the contract interactor itself.
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
-    this.stakeManager = await StakeManager.new()
-    this.penalizer = await Penalizer.new()
+    this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
@@ -146,11 +147,20 @@ export class ServerTestEnvironment {
     await this.relayClient.init()
   }
 
-  async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): Promise<void> {
-    await this.newServerInstanceNoInit(config, serverWorkdirs)
+  async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
+    this.newServerInstanceNoFunding(config, serverWorkdirs)
+    await this.fundServer()
+
     await this.relayServer.init()
     // initialize server - gas price, stake, owner, etc, whatever
-    const latestBlock = await this.web3.eth.getBlock('latest')
+    let latestBlock = await this.web3.eth.getBlock('latest')
+
+    // This run should call 'setOwner'
+    await this.relayServer._worker(latestBlock.number)
+    latestBlock = await this.web3.eth.getBlock('latest')
+    await this.stakeAndAuthorizeHub(unstakeDelay)
+
+    // This run should call 'registerRelayServer' and 'addWorkers'
     const receipts = await this.relayServer._worker(latestBlock.number)
     await assertRelayAdded(receipts, this.relayServer) // sanity check
     await this.relayServer._worker(latestBlock.number + 1)
@@ -164,15 +174,17 @@ export class ServerTestEnvironment {
     }
   }
 
-  async newServerInstanceNoInit (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
-    this.newServerInstanceNoFunding(config, serverWorkdirs)
+  async fundServer (): Promise<void> {
     await web3.eth.sendTransaction({
       to: this.relayServer.managerAddress,
       from: this.relayOwner,
       value: web3.utils.toWei('2', 'ether')
     })
+  }
 
-    await this.stakeManager.stakeForAddress(this.relayServer.managerAddress, unstakeDelay, {
+  async stakeAndAuthorizeHub (unstakeDelay: number): Promise<void> {
+    // Now owner can do its operations
+    await this.stakeManager.stakeForRelayManager(this.relayServer.managerAddress, unstakeDelay, {
       from: this.relayOwner,
       value: ether('1')
     })
@@ -184,8 +196,10 @@ export class ServerTestEnvironment {
   newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
     const shared: Partial<ServerConfigParams> = {
       runPaymasterReputations: false,
+      ownerAddress: this.relayOwner,
+      stakeManagerAddress: this.stakeManager.address,
       relayHubAddress: this.relayHub.address,
-      checkInterval: 10
+      checkInterval: 100
     }
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
