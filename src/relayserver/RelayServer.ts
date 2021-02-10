@@ -145,6 +145,10 @@ export class RelayServer extends EventEmitter {
         `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
     }
 
+    if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
+      throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
+    }
+
     // validate the validUntil is not too close
     const expiredInBlocks = parseInt(req.relayRequest.request.validUntil) - currentBlockNumber
     if (expiredInBlocks < this.config.requestMinValidBlocks) {
@@ -160,10 +164,12 @@ export class RelayServer extends EventEmitter {
     }
     // Check that the fee is acceptable
     if (parseInt(req.relayRequest.relayData.pctRelayFee) < this.config.pctRelayFee) {
-      throw new Error(`Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
+      throw new Error(
+        `Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
     }
     if (toBN(req.relayRequest.relayData.baseRelayFee).lt(toBN(this.config.baseRelayFee))) {
-      throw new Error(`Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
+      throw new Error(
+        `Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
     }
   }
 
@@ -561,7 +567,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
     const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
-    transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber, shouldRegisterAgain))
+    transactionHashes = transactionHashes.concat(
+      await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber,
+        shouldRegisterAgain))
     await this.transactionManager.removeConfirmedTransactions(currentBlockNumber)
     await this._boostStuckPendingTransactions(currentBlockNumber)
     this.lastScannedBlock = currentBlockNumber
@@ -605,7 +613,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
     const registrationExpired = currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
     if (!registrationExpired) {
-      this.logger.debug(`_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+      this.logger.debug(
+        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
     }
     return registrationExpired
   }
@@ -712,6 +721,10 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   _isTrustedPaymaster (paymaster: string): boolean {
     return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
+  }
+
+  _isBlacklistedPaymaster (paymaster: string): boolean {
+    return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
   isReady (): boolean {
