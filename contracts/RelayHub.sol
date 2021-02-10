@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/GsnUtils.sol";
 import "./utils/GsnEip712Library.sol";
+import "./utils/RelayHubValidator.sol";
 import "./interfaces/GsnTypes.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
@@ -191,6 +192,8 @@ contract RelayHub is IRelayHub {
 
         (vars.gasLimits, vars.maxPossibleGas) =
              verifyGasLimits(paymasterMaxAcceptanceBudget, relayRequest, externalGasLimit);
+
+        RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
 
     {
 

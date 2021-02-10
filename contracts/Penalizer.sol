@@ -27,7 +27,7 @@ contract Penalizer is IPenalizer{
     }
 
     modifier relayManagerOnly(IRelayHub hub) {
-        require(msg.sender==address(0) || hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
+        require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
         _;
     }
 
@@ -90,61 +90,16 @@ contract Penalizer is IPenalizer{
         Transaction memory decodedTx = decodeTransaction(unsignedTx);
         if (decodedTx.to == address(hub)) {
             bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
-            bool isRelayCall = selector == IRelayHub.relayCall.selector;
-            uint externalGasLimit;
-            if ( isRelayCall ) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (bool success, bytes memory ret) = address(this).call(decodedTx.data);
-                if (!success ) {
-                    isRelayCall=false;
-                } else {
-                    (externalGasLimit) = abi.decode(ret,(uint));
-                }
-            }
+            bool isWrongMethodCall = selector != IRelayHub.relayCall.selector;
+            bool isGasLimitWrong = GsnUtils.getParam(decodedTx.data, 4) != decodedTx.gasLimit;
             require(
-                !isRelayCall ||
-                externalGasLimit != decodedTx.gasLimit,
+                isWrongMethodCall || isGasLimitWrong,
                 "Legal relay transaction");
         }
         address relay = keccak256(unsignedTx).recover(signature);
         require(relay != address(0), "ecrecover failed");
 
         penalize(relay, hub);
-    }
-
-    // Helper method for verification.
-    // can (and should) be called with encoded IRelayHub.relayCall()
-    // before submitting it on chain.
-    // reverts if the message is not structured properly, and is penalizeable
-    // NOTE: return value differs from real method is used by penalizer
-    function relayCall(
-        uint paymasterMaxAcceptanceBudget,
-        GsnTypes.RelayRequest calldata relayRequest,
-        bytes calldata signature,
-        bytes calldata approvalData,
-        uint externalGasLimit
-    ) external pure returns (uint retExternalGasLimit) {
-        (paymasterMaxAcceptanceBudget);
-        // abicoder v2: https://docs.soliditylang.org/en/latest/abi-spec.html
-        // static params are 1 word
-        // struct (with dynamic members) has offset to struct
-        // dynamic member has offset,length and ceil(length/32) for data
-        // 5 method params,
-        // relayRequest: 2 members
-        // relayData 8 members
-        // ForwardRequest: 7 members
-        // total 22 words if all dynamic params are zero-length.
-
-        uint expectedMsgDataLen = 4 + 22*32 +
-            len1(signature) + len1(approvalData) + len1(relayRequest.request.data) + len1(relayRequest.relayData.paymasterData);
-        require(signature.length <= 65, "invalid signature length");
-        int extraMsgData = int(expectedMsgDataLen - msg.data.length);
-        require(extraMsgData == 0, "extra msg.data");
-
-        return (externalGasLimit);
-    }
-    function len1(bytes calldata buf) public pure returns (uint) {
-        return (1+(buf.length+31)/32)*32;
     }
 
     function penalize(address relayWorker, IRelayHub hub) private {

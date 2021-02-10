@@ -258,12 +258,6 @@ export class RelayServer extends EventEmitter {
       acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
-      // make a view call into the penalizer, to validate the method is packed correctly (and not penalizeable)
-      await this.contractInteractor.web3.eth.call({
-        from: this.workerAddress,
-        to: this.contractInteractor.penalizerInstance.address,
-        data: method.encodeABI()
-      })
       viewRelayCallRet =
         await method.call({
           from: this.workerAddress,
