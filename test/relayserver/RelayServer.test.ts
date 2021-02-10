@@ -144,7 +144,7 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
         try {
-          env.relayServer.validateInput(req)
+          env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
