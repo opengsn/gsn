@@ -145,6 +145,10 @@ export class RelayServer extends EventEmitter {
         `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
     }
 
+    if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
+      throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
+    }
+
     // validate the validUntil is not too close
     const expiredInBlocks = parseInt(req.relayRequest.request.validUntil) - currentBlockNumber
     if (expiredInBlocks < this.config.requestMinValidBlocks) {
