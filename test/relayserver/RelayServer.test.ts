@@ -135,7 +135,7 @@ contract('RelayServer', function (accounts) {
           assert.fail()
         } catch (e) {
           assert.include(e.message,
-            `gasPrice too low: relayServer's gasPrice:${env.relayServer.minGasPrice} request's gasPrice: ${wrongGasPrice}`)
+            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
         }
       })
 
@@ -148,7 +148,7 @@ contract('RelayServer', function (accounts) {
           assert.fail()
         } catch (e) {
           assert.include(e.message,
-            `gasPrice too high: relayServer's gasPrice:${env.relayServer.config.maxGasPrice} request's gasPrice: ${wrongGasPrice}`)
+            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
         }
       })
 
@@ -241,6 +241,27 @@ contract('RelayServer', function (accounts) {
             assert.include(e.message, 'Unacceptable relayMaxNonce:')
           }
         })
+      })
+    })
+
+    describe('#_refreshGasPrice()', function () {
+      it('should set min gas price to network average * gas price factor', async function () {
+        env.relayServer.minGasPrice = 0
+        await env.relayServer._refreshGasPrice()
+        const gasPrice = parseInt(await env.web3.eth.getGasPrice())
+        assert.equal(env.relayServer.minGasPrice, env.relayServer.config.gasPriceFactor * gasPrice)
+      })
+      it('should throw when min gas price is higher than max', async function () {
+        const originalMaxPrice = env.relayServer.config.maxGasPrice
+        env.relayServer.config.maxGasPrice = (env.relayServer.minGasPrice - 1).toString()
+        try {
+          await env.relayServer._refreshGasPrice()
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
+        } finally {
+          env.relayServer.config.maxGasPrice = originalMaxPrice
+        }
       })
     })
 

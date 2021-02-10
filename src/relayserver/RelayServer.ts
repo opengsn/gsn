@@ -139,15 +139,10 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    // Check that the gasPrice is initialized & acceptable
     const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
-    if (this.minGasPrice > requestGasPrice) {
+    if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
-        `gasPrice too low: relayServer's gasPrice:${this.minGasPrice} request's gasPrice: ${requestGasPrice}`)
-    }
-    if (parseInt(this.config.maxGasPrice) < requestGasPrice) {
-      throw new Error(
-        `gasPrice too high: relayServer's gasPrice:${this.config.maxGasPrice} request's gasPrice: ${requestGasPrice}`)
+        `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
     }
   }
 
@@ -548,6 +543,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     this.minGasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
     if (this.minGasPrice === 0) {
       throw new Error('Could not get gasPrice from node')
+    }
+    if (this.minGasPrice > parseInt(this.config.maxGasPrice)) {
+      throw new Error(`network gas price ${this.minGasPrice} is higher than max gas price ${this.config.maxGasPrice}`)
     }
   }
 
