@@ -24,8 +24,8 @@ jobs: # a collection of steps
             - ./node_modules
 
       - run: # run tests
-          name: test
-          command: yarn test | tee /tmp/test-results.log
+          name: CI
+          command: yarn ci | tee /tmp/test-results.log
 
 #coverage is broken (doesn't cover all contracts). disabled for now..
 #      - restore_cache: # special cache for coverage test
