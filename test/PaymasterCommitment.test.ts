@@ -94,7 +94,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
   before(async function () {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new()
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
 
     forwarderInstance = await Forwarder.new()
