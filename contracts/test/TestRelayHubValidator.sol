@@ -18,7 +18,7 @@ contract TestRelayHubValidator {
     }
 
     // helper method for verifyTransactionPacking
-    function len1(bytes calldata buf) external pure returns (uint) {
-        return RelayHubValidator.len1(buf);
+    function dynamicParamSize(bytes calldata buf) external pure returns (uint) {
+        return RelayHubValidator.dynamicParamSize(buf);
     }
 }

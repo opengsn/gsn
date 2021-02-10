@@ -9,14 +9,14 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
   })
 
   it('#len1 should return dynamic structure size', async () => {
-    const len1 = async function (size: number): Promise<number> { return validator.len1('0x' + '11'.repeat(size)).then((x: any) => x.toNumber()) }
+    const wrappedDynamicParamSize = async function (bytesLength: number): Promise<number> { return validator.dynamicParamSize('0x' + '11'.repeat(bytesLength)).then((x: any) => x.toNumber()) }
 
-    assert.equal(await len1(0), 1 * 32)
-    assert.equal(await len1(1), 2 * 32)
-    assert.equal(await len1(32), 2 * 32)
-    assert.equal(await len1(33), 3 * 32)
-    assert.equal(await len1(64), 3 * 32)
-    assert.equal(await len1(65), 4 * 32)
+    assert.equal(await wrappedDynamicParamSize(0), 1 * 32)
+    assert.equal(await wrappedDynamicParamSize(1), 2 * 32)
+    assert.equal(await wrappedDynamicParamSize(32), 2 * 32)
+    assert.equal(await wrappedDynamicParamSize(33), 3 * 32)
+    assert.equal(await wrappedDynamicParamSize(64), 3 * 32)
+    assert.equal(await wrappedDynamicParamSize(65), 4 * 32)
   });
 
   [{},
@@ -30,7 +30,7 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
     { suffix: '123456' },
     { data: '0x1234', signature: '0xabcdef', suffix: '123456' }
   ].forEach((appended: any) => {
-    it(`test verify length with "${JSON.stringify(appended)}" `, async () => {
+    it(`should verify correct length with "${JSON.stringify(appended)}" `, async () => {
       const suffix = appended.suffix ?? ''
 
       const verifyTransactionPacking = await validator.contract.methods.dummyRelayCall(0,
