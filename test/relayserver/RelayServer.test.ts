@@ -185,7 +185,7 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.paymaster = blacklistedPaymaster
         try {
-          env.relayServer.validateInput(req)
+          env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
