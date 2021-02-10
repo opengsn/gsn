@@ -49,7 +49,7 @@ export class RelayServer extends EventEmitter {
   lastSuccessfulRounds = Number.MAX_SAFE_INTEGER
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
-  gasPrice: number = 0
+  minGasPrice: number = 0
   _workerSemaphoreOn = false
   alerted = false
   alertedBlock: number = 0
@@ -103,7 +103,7 @@ export class RelayServer extends EventEmitter {
   }
 
   getMinGasPrice (): number {
-    return this.gasPrice
+    return this.minGasPrice
   }
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
@@ -139,10 +139,14 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    // Check that the gasPrice is initialized & acceptable
-    if (this.gasPrice > parseInt(req.relayRequest.relayData.gasPrice)) {
+    const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
+    if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
-        `Unacceptable gasPrice: relayServer's gasPrice:${this.gasPrice} request's gasPrice: ${req.relayRequest.relayData.gasPrice}`)
+        `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
+    }
+
+    if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
+      throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
     }
 
     // validate the validUntil is not too close
@@ -160,10 +164,12 @@ export class RelayServer extends EventEmitter {
     }
     // Check that the fee is acceptable
     if (parseInt(req.relayRequest.relayData.pctRelayFee) < this.config.pctRelayFee) {
-      throw new Error(`Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
+      throw new Error(
+        `Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
     }
     if (toBN(req.relayRequest.relayData.baseRelayFee).lt(toBN(this.config.baseRelayFee))) {
-      throw new Error(`Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
+      throw new Error(
+        `Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
     }
   }
 
@@ -547,9 +553,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _refreshGasPrice (): Promise<void> {
     const gasPriceString = await this.gasPriceFetcher.getGasPrice()
-    this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
-    if (this.gasPrice === 0) {
+    this.minGasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
+    if (this.minGasPrice === 0) {
       throw new Error('Could not get gasPrice from node')
+    }
+    if (this.minGasPrice > parseInt(this.config.maxGasPrice)) {
+      throw new Error(`network gas price ${this.minGasPrice} is higher than max gas price ${this.config.maxGasPrice}`)
     }
   }
 
@@ -558,7 +567,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
     const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
-    transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber, shouldRegisterAgain))
+    transactionHashes = transactionHashes.concat(
+      await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber,
+        shouldRegisterAgain))
     await this.transactionManager.removeConfirmedTransactions(currentBlockNumber)
     await this._boostStuckPendingTransactions(currentBlockNumber)
     this.lastScannedBlock = currentBlockNumber
@@ -602,7 +613,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
     const registrationExpired = currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
     if (!registrationExpired) {
-      this.logger.debug(`_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+      this.logger.debug(
+        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
     }
     return registrationExpired
   }
@@ -709,6 +721,10 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   _isTrustedPaymaster (paymaster: string): boolean {
     return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
+  }
+
+  _isBlacklistedPaymaster (paymaster: string): boolean {
+    return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
   isReady (): boolean {
