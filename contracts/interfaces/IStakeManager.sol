@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -46,6 +46,11 @@ interface IStakeManager {
         uint256 removalBlock
     );
 
+    event OwnerSet(
+        address indexed relayManager,
+        address indexed owner
+    );
+
     /// @param stake - amount of ether staked for this relay
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
     /// @param withdrawBlock - first block number 'withdraw' will be callable, or zero if the unlock has not been called
@@ -61,12 +66,15 @@ interface IStakeManager {
         uint256 removalBlock;
     }
 
-    /// Put a stake for a relayManager and set its unstake delay.
-    /// If the entry does not exist, it is created, and the caller of this function becomes its owner.
-    /// If the entry already exists, only the owner can call this function.
+    /// Set the owner of a Relay Manager. Called only by the RelayManager itself.
+    /// Note that owners cannot transfer ownership - if the entry already exists, reverts.
+    /// @param owner - owner of the relay (as configured off-chain)
+    function setRelayManagerOwner(address payable owner) external;
+
+    /// Only the owner can call this function. If the entry does not exist, reverts.
     /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
-    function stakeForAddress(address relayManager, uint256 unstakeDelay) external payable;
+    function stakeForRelayManager(address relayManager, uint256 unstakeDelay) external payable;
 
     function unlockStake(address relayManager) external;
 
@@ -92,6 +100,8 @@ interface IStakeManager {
     function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external;
 
     function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo);
+
+    function maxUnstakeDelay() external view returns (uint256);
 
     function versionSM() external view returns (string memory);
 }

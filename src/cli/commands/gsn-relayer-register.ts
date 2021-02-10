@@ -1,6 +1,6 @@
 import { ether } from '../../common/Utils'
 
-import CommandsLogic from '../CommandsLogic'
+import CommandsLogic, { RegisterOptions } from '../CommandsLogic'
 import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
 import { toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
@@ -16,14 +16,24 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     '--funds <funds>',
     'amount to transfer to the relayer to pay for relayed transactions, in ETH', '2'
   )
+  .option(
+    '--sleep <sleep>',
+    'ms to sleep each time if waiting for RelayServer to set its owner', '10000'
+  )
+  .option(
+    '--sleepCount <sleepCount>',
+    'number of times to sleep before timeout', '5'
+  )
   .parse(process.argv);
 
 (async () => {
   const host = getNetworkUrl(commander.network)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logger = createCommandsLogger(commander.loglevel)
-  const logic = new CommandsLogic(host, logger, {}, mnemonic)
-  const registerOptions = {
+  const logic = await new CommandsLogic(host, logger, {}, mnemonic).init()
+  const registerOptions: RegisterOptions = {
+    sleepMs: commander.sleep,
+    sleepCount: commander.sleepCount,
     from: commander.from ?? await logic.findWealthyAccount(),
     stake: ether(commander.stake),
     funds: ether(commander.funds),

@@ -12,7 +12,7 @@ import { Address } from '../../../src/common/types/Aliases'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'
-import { revert, snapshot } from '../../TestUtils'
+import { evmMineMany, revert, snapshot } from '../../TestUtils'
 import { resolveServerConfig, ServerConfigParams } from '../../../src/relayserver/ServerConfigParams'
 
 contract('PenalizerService', function (accounts) {
@@ -51,7 +51,7 @@ contract('PenalizerService', function (accounts) {
       relayHubAddress: env.relayHub.address
     }, web3.currentProvider) as ServerConfigParams
     penalizerService = new PenalizerService(penalizerParams, logger, serverConfigParams)
-    await penalizerService.init()
+    await penalizerService.init(false)
 
     relayWorker = env.relayServer.transactionManager.workersKeyManager.getAddress(0)
     // @ts-ignore
@@ -89,9 +89,27 @@ contract('PenalizerService', function (accounts) {
       auditRequest = { signedTx: signedTxToPenalize }
     })
 
-    it('should penalize for a repeated nonce transaction', async function () {
+    it('should commit and penalize for a repeated nonce transaction', async function () {
+      assert.equal(penalizerService.scheduledPenalizations.length, 0, 'should start with empty penalization schedule')
       const ret = await penalizerService.penalizeRepeatedNonce(auditRequest)
-      assert.notEqual(ret, undefined, 'penalization failed')
+      assert.equal(ret.message, undefined, `penalization failed whit message: ${ret.message}`)
+      assert.notEqual(ret.commitTxHash, undefined, 'notice that penalization failed but error message is not given')
+      assert.equal(penalizerService.scheduledPenalizations.length, 1, 'should save the penalization for after commitment is ready')
+
+      const currentBlock = await web3.eth.getBlockNumber()
+      assert.equal(penalizerService.scheduledPenalizations[0].readyBlockNumber, undefined, 'should not know when is commitment mined before intervalHandler')
+
+      let penalizedTransactions = await penalizerService.intervalHandler()
+      assert.equal(penalizerService.scheduledPenalizations[0].readyBlockNumber, currentBlock + 5, 'should set the ready block once mined')
+      assert.equal(penalizedTransactions.length, 0, 'penalized something before commitment delay')
+      await evmMineMany(5)
+
+      penalizedTransactions = await penalizerService.intervalHandler()
+      assert.equal(penalizedTransactions.length, 1, 'should only penalize one ready transaction')
+      assert.equal(penalizerService.scheduledPenalizations.length, 0, 'should remove penalization from schedule')
+
+      penalizedTransactions = await penalizerService.intervalHandler()
+      assert.equal(penalizedTransactions.length, 0, 'penalized something again? How?')
     })
   })
 
@@ -112,9 +130,19 @@ contract('PenalizerService', function (accounts) {
       auditRequest = { signedTx: signedTxToPenalize }
     })
 
+    // TODO: duplicated test for different type of penalization - run in a loop if more types are added!
     it('should penalize for an illegal transaction', async function () {
       const ret = await penalizerService.penalizeIllegalTransaction(auditRequest)
-      assert.notEqual(ret, undefined, 'penalization failed')
+      assert.equal(ret.message, undefined, `penalization failed with message: ${ret.message}`)
+      assert.notEqual(ret.commitTxHash, undefined, 'notice that penalization failed but error message is not given')
+
+      let penalizedTransactions = await penalizerService.intervalHandler()
+      assert.equal(penalizedTransactions.length, 0, 'penalized something before commitment delay')
+      await evmMineMany(5)
+
+      penalizedTransactions = await penalizerService.intervalHandler()
+      assert.equal(penalizedTransactions.length, 1, 'should only penalize one ready transaction')
+      assert.equal(penalizerService.scheduledPenalizations.length, 0, 'should remove penalization from schedule')
     })
   })
 })

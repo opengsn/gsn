@@ -126,7 +126,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateInput (req: RelayTransactionRequest): void {
+  validateInput (req: RelayTransactionRequest, currentBlockNumber: number): void {
     // Check that the relayHub is the correct one
     if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
       throw new Error(
@@ -143,6 +143,13 @@ export class RelayServer extends EventEmitter {
     if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
         `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
+    }
+
+    // validate the validUntil is not too close
+    const expiredInBlocks = parseInt(req.relayRequest.request.validUntil) - currentBlockNumber
+    if (expiredInBlocks < this.config.requestMinValidBlocks) {
+      throw new Error(
+          `Request expired (or too close): expired in ${expiredInBlocks} blocks, we expect it to be valid for ${this.config.requestMinValidBlocks}`)
     }
   }
 
@@ -279,7 +286,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.logger.error('Alerted state: slowing down traffic')
       await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
     }
-    this.validateInput(req)
+    const currentBlock = await this.contractInteractor.getBlockNumber()
+    this.validateInput(req, currentBlock)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
 
@@ -298,7 +306,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
 
     const method = this.relayHubContract.contract.methods.relayCall(
       acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
-    const currentBlock = await this.contractInteractor.getBlockNumber()
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,
@@ -592,7 +599,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       (await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)) ||
       (await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER))
     if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
-      this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
+      // this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
       return false
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()

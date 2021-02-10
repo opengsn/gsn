@@ -15,6 +15,7 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/common/types/R
 import { configureGSN, deployHub } from '../TestUtils'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -112,8 +113,8 @@ contract('RelaySelectionManager', function (accounts) {
       before(async function () {
         const StakeManager = artifacts.require('StakeManager')
         const Penalizer = artifacts.require('Penalizer')
-        const stakeManager = await StakeManager.new()
-        const penalizer = await Penalizer.new()
+        const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+        const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
         relayHub = await deployHub(stakeManager.address, penalizer.address)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')

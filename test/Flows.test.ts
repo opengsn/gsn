@@ -16,6 +16,7 @@ import { deployHub, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
+import { defaultEnvironment } from '../src/common/Environments'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -53,8 +54,8 @@ options.forEach(params => {
       gasless = await web3.eth.personal.newAccount('password')
       await web3.eth.personal.unlockAccount(gasless, 'password', 0)
 
-      sm = await StakeManager.new()
-      const p = await Penalizer.new()
+      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       rhub = await deployHub(sm.address, p.address)
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
@@ -149,7 +150,7 @@ options.forEach(params => {
     it(params.title + 'running testRevert (should always fail)', async () => {
       await asyncShouldThrow(async () => {
         await sr.testRevert({ from: from })
-      }, 'revert')
+      }, 'always fail')
     })
 
     if (params.relay) {
@@ -185,7 +186,8 @@ options.forEach(params => {
 
             await sr.emitMessage('xxx', {
               from: gasless,
-              paymaster: approvalPaymaster.address
+              paymaster: approvalPaymaster.address,
+              gas: 1e6
             })
           } catch (e) {
             console.log('error1: ', e)

@@ -1,7 +1,7 @@
 import net from 'net'
 import { ether } from '../common/Utils'
 
-import CommandsLogic from '../cli/CommandsLogic'
+import CommandsLogic, { RegisterOptions } from '../cli/CommandsLogic'
 import { KeyManager } from '../relayserver/KeyManager'
 
 import { getNetworkUrl, loadDeployment, supportedNetworks } from '../cli/utils'
@@ -52,6 +52,7 @@ class GsnTestEnvironmentClass {
       gasPrice: '1',
       deployPaymaster: true,
       skipConfirmation: true,
+      penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
     if (deploymentResult.paymasterAddress != null) {
@@ -66,8 +67,10 @@ class GsnTestEnvironmentClass {
       throw new Error('Failed to run a local Relay Server')
     }
 
-    const registerOptions = {
+    const registerOptions: RegisterOptions = {
       from,
+      sleepMs: 100,
+      sleepCount: 5,
       stake: ether('1'),
       funds: ether('1'),
       relayUrl: relayUrl,
@@ -167,10 +170,12 @@ class GsnTestEnvironmentClass {
       devMode: true,
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,
+      stakeManagerAddress: deploymentResult.stakeManagerAddress,
+      ownerAddress: from,
       gasPriceFactor: 1,
       baseRelayFee: '0',
       pctRelayFee: 0,
-      checkInterval: 10,
+      checkInterval: 100,
       runPaymasterReputations: false,
       logLevel: 'error'
     }

@@ -41,12 +41,13 @@ const ForwardRequestType = [
   { name: 'value', type: 'uint256' },
   { name: 'gas', type: 'uint256' },
   { name: 'nonce', type: 'uint256' },
-  { name: 'data', type: 'bytes' }
+  { name: 'data', type: 'bytes' },
+  { name: 'validUntil', type: 'uint256' }
 ]
 
 contract('Forwarder', ([from]) => {
-  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data'
-  // our generic params has 6 bytes32 values
+  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil'
+  // our generic params has 7 bytes32 values
   const countParams = ForwardRequestType.length
 
   let fwd: ForwarderInstance
@@ -165,20 +166,21 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         value: '0',
         nonce: 0,
-        gas: 123
+        gas: 123,
+        validUntil: 0
       }
 
       it('should fail on unregistered domain separator', async () => {
         const dummyDomainSeparator = bytes32(1)
 
-        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'.padEnd(65 * 2 + 2, '1b')), 'unregistered domain separator')
+        await expectRevert(fwd.verify(req, dummyDomainSeparator, typeHash, '0x', '0x'.padEnd(65 * 2 + 2, '1b')), 'FWD: unregistered domain sep.')
       })
 
       it('should fail on wrong nonce', async () => {
         await expectRevert(fwd.verify({
           ...req,
           nonce: 123
-        }, domainSeparator, typeHash, '0x', '0x'), 'revert nonce mismatch')
+        }, domainSeparator, typeHash, '0x', '0x'), 'FWD: nonce mismatch')
       })
       it('should fail on invalid signature', async () => {
         await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x'), 'invalid signature length')
@@ -193,7 +195,8 @@ contract('Forwarder', ([from]) => {
         value: '0',
         from: senderAddress,
         nonce: 0,
-        gas: 123
+        gas: 123,
+        validUntil: 0
       }
 
       let data: EIP712TypedData
@@ -238,6 +241,7 @@ contract('Forwarder', ([from]) => {
           from: senderAddress,
           nonce: 0,
           gas: 123,
+          validUntil: 0,
           extra: {
             extraAddr: addr(5)
           }
@@ -267,7 +271,7 @@ contract('Forwarder', ([from]) => {
 
         // encode entire struct, to extract "suffixData" from it
         const encoded = TypedDataUtils.encodeData(extendedData.primaryType, extendedData.message, extendedData.types)
-        // skip default params: typehash, and 5 params, so 32*6
+        // skip default params: typehash, and 6 params, so 32*7
         const suffixData = bufferToHex(encoded.slice((1 + countParams) * 32))
 
         await fwd.verify(extendedReq, bufferToHex(domainSeparator), typeHash, suffixData, sig)
@@ -275,7 +279,7 @@ contract('Forwarder', ([from]) => {
     })
   })
 
-  describe('#verifyAndCall', () => {
+  describe('#execute', () => {
     let data: EIP712TypedData
     let typeName: string
     let typeHash: string
@@ -329,7 +333,8 @@ contract('Forwarder', ([from]) => {
         value: '0',
         from: senderAddress,
         nonce: 0,
-        gas: 1e6
+        gas: 1e6,
+        validUntil: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
@@ -341,7 +346,34 @@ contract('Forwarder', ([from]) => {
       const logs = await recipient.getPastEvents('TestForwarderMessage')
       assert.equal(logs.length, 1, 'TestRecipient should emit')
       assert.equal(logs[0].args.realSender, senderAddress, 'TestRecipient should "see" real sender of meta-tx')
-      assert.equal('1', (await fwd.getNonce(senderAddress)).toString(), 'verifyAndCall should increment nonce')
+      assert.equal('1', (await fwd.getNonce(senderAddress)).toString(), 'execute should increment nonce')
+    })
+
+    it('should revert if not given enough gas', async () => {
+      const nonce = await fwd.getNonce(senderAddress)
+
+      const func = recipient.contract.methods.emitMessage('hello').encodeABI()
+      const funcGasEtimate = await recipient.emitMessage.estimateGas('hello')
+
+      const req1 = {
+        to: recipient.address,
+        data: func,
+        value: '0',
+        from: senderAddress,
+        nonce: nonce.toString(),
+        gas: funcGasEtimate,
+        validUntil: 0
+      }
+      const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+      const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
+
+      const outerGasEstimate = await testfwd.callExecute.estimateGas(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig)
+
+      // should fail if too little gas
+      expectRevert(testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate - 1 }), 'insufficient gas')
+
+      // and succeed with exact amount
+      await testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate })
     })
 
     it('should return revert message of target revert', async () => {
@@ -353,7 +385,8 @@ contract('Forwarder', ([from]) => {
         value: '0',
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
-        gas: 1e6
+        gas: 1e6,
+        validUntil: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -371,7 +404,8 @@ contract('Forwarder', ([from]) => {
         value: 0,
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
-        gas: 1e6
+        gas: 1e6,
+        validUntil: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -381,6 +415,23 @@ contract('Forwarder', ([from]) => {
       assert.equal(ret.logs[0].args.success, false)
 
       await expectRevert(testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig), 'nonce mismatch')
+    })
+
+    it('should revert if validUntil is passed', async () => {
+      const func = recipient.contract.methods.testRevert().encodeABI()
+
+      const req1 = {
+        to: recipient.address,
+        data: func,
+        value: 0,
+        from: senderAddress,
+        nonce: (await fwd.getNonce(senderAddress)).toString(),
+        gas: 1e6,
+        validUntil: '1' // Math.trunc(Date.now() / 1000 - 10).toString()
+      }
+      const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+
+      await expectRevert(fwd.execute(req1, domainSeparator, typeHash, '0x', sig), 'FWD: request expired')
     })
 
     describe('value transfer', () => {
@@ -403,7 +454,8 @@ contract('Forwarder', ([from]) => {
           from: senderAddress,
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
-          gas: 1e6
+          gas: 1e6,
+          validUntil: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -421,7 +473,8 @@ contract('Forwarder', ([from]) => {
           from: senderAddress,
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: ether('2').toString(),
-          gas: 1e6
+          gas: 1e6,
+          validUntil: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -440,7 +493,8 @@ contract('Forwarder', ([from]) => {
           from: senderAddress,
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
-          gas: 1e6
+          gas: 1e6,
+          validUntil: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -465,7 +519,8 @@ contract('Forwarder', ([from]) => {
           from: senderAddress,
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
-          gas: 1e6
+          gas: 1e6,
+          validUntil: 0
         }
 
         const extraFunds = ether('4')

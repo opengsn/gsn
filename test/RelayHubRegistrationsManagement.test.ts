@@ -8,6 +8,7 @@ import {
   TestPaymasterEverythingAcceptedInstance
 } from '../types/truffle-contracts'
 import { deployHub } from './TestUtils'
+import { defaultEnvironment } from '../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -24,8 +25,8 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
   let penalizer: PenalizerInstance
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setRelayHub(relayHub.address)
@@ -41,7 +42,8 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
     })
     context('after stake unlocked for relayManager', function () {
       beforeEach(async function () {
-        await stakeManager.stakeForAddress(relayManager, 2000, {
+        await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+        await stakeManager.stakeForRelayManager(relayManager, 2000, {
           value: ether('2'),
           from: relayOwner
         })
@@ -60,7 +62,8 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
   context('with stake for relayManager and no active workers added', function () {
     beforeEach(async function () {
-      await stakeManager.stakeForAddress(relayManager, 2000, {
+      await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+      await stakeManager.stakeForRelayManager(relayManager, 2000, {
         value: ether('2'),
         from: relayOwner
       })
@@ -93,7 +96,8 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
   context('with stake for relay manager and active relay workers', function () {
     beforeEach(async function () {
-      await stakeManager.stakeForAddress(relayManager, 2000, {
+      await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+      await stakeManager.stakeForRelayManager(relayManager, 2000, {
         value: ether('2'),
         from: relayOwner
       })

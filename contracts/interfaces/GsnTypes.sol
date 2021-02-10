@@ -1,9 +1,10 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity >=0.7.5;
 
 import "../forwarder/IForwarder.sol";
 
 interface GsnTypes {
+    /// @notice gasPrice, pctRelayFee and baseRelayFee must be validated inside of the paymaster's preRelayedCall in order not to overpay
     struct RelayData {
         uint256 gasPrice;
         uint256 pctRelayFee;
