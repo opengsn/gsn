@@ -347,14 +347,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   describe('relayCall()\'s msg.data cost calculations', function () {
     enum RelayCallDynamicArg {
-      APPROVAL_DATA = 'approvalData',
-      ENCODED_FUNCTION = 'encodedFunction',
-      PAYMASTER_DATA = 'paymasterData'
+      APPROVAL_DATA,
+      ENCODED_FUNCTION,
+      PAYMASTER_DATA
     }
-
-    before(async function () {
-
-    });
+    const costsPerByte: number[] = [];
     [RelayCallDynamicArg.APPROVAL_DATA, RelayCallDynamicArg.ENCODED_FUNCTION, RelayCallDynamicArg.PAYMASTER_DATA].forEach(dynamicArg => {
       const gassesUsed: any[] = [];
       [0, 32, 128, 8192/* , 32768, 65536 */].forEach(dataLength => {
@@ -368,7 +365,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           if (dynamicArg === RelayCallDynamicArg.APPROVAL_DATA) {
             approvalData = '0x' + 'ff'.repeat(dataLength)
           } else if (dynamicArg === RelayCallDynamicArg.ENCODED_FUNCTION) {
-            // encoded function arg is an ascii string, so each char is a byte. We append half the length then.
             encodedFunction = recipient.contract.methods.dontEmitMessage('f'.repeat(dataLength)).encodeABI()
             // console.log('encodedFunction', encodedFunction)
           } else if (dynamicArg === RelayCallDynamicArg.PAYMASTER_DATA) {
@@ -415,15 +411,21 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           // console.log('calculateCalldataCost is', calculateCalldataCost(relayCall.encodeABI()))
           if (gassesUsed.length > 1) {
             const diff = gassesUsed[gassesUsed.length - 1] - gassesUsed[0]
-            // console.log('diff is', diff)
             // console.log('diff per byte is', diff / dataLength)
-            if (diff / dataLength > hubDataGasCostPerByte) {
-              assert.fail(`calculated data cost per byte (${diff / dataLength}) higher than hub's (${hubDataGasCostPerByte})`)
+            // console.log('diff is', diff)
+            const costPerByte = diff / dataLength
+            costsPerByte.push(costPerByte)
+            if (costPerByte > hubDataGasCostPerByte) {
+              assert.fail(`calculated data cost per byte (${costPerByte}) higher than hub's (${hubDataGasCostPerByte})`)
             }
           }
           await revert(id)
         })
       })
+    })
+    after('validate max gas cost per byte in relay hub', async function () {
+      const maxCostPerByte = Math.max(...costsPerByte)
+      assert.closeTo(hubDataGasCostPerByte, maxCostPerByte, 6)
     })
   })
 

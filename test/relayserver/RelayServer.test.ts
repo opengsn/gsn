@@ -306,7 +306,7 @@ contract('RelayServer', function (accounts) {
             await env.relayServer.validatePaymasterGasAndDataLimits(req)
             assert.fail()
           } catch (e) {
-            assert.include(e.message, 'paymaster acceptance budget too high')
+            assert.include(e.message, 'paymaster acceptance budget + msg.data gas cost too high')
           }
         })
 

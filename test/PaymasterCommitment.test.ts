@@ -289,7 +289,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
-      }), 'unexpected high maxRelayExposure')
+      }), 'acceptanceBudget and dataGasCost too high')
 
       // but succeed if the value is OK
       const res = await relayHubInstance.relayCall(maxRelayExposure, r.req, r.sig, '0x', externalGasLimit, {

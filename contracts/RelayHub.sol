@@ -133,7 +133,7 @@ contract RelayHub is IRelayHub {
             IPaymaster(relayRequest.relayData.paymaster).getGasAndDataLimits{gas:50000}();
         require(msg.data.length <= gasAndDataLimits.calldataSizeLimit, "msg.data exceeded limit" );
         uint256 dataGasCost = calldataGasCost(msg.data.length);
-        require(maxRelayExposure >= gasAndDataLimits.acceptanceBudget.add(dataGasCost), "unexpected high maxRelayExposure");
+        require(maxRelayExposure >= gasAndDataLimits.acceptanceBudget.add(dataGasCost), "acceptanceBudget and dataGasCost too high");
 
         maxPossibleGas =
             gasOverhead.add(

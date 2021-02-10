@@ -207,10 +207,10 @@ export class RelayServer extends EventEmitter {
     let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymaster)
     let relayExposure: number
 
-    const maxBlockGas = 12e6
+    const dummyBlockGas = 12e6
     relayExposure = this.config.maxRelayExposure
     const msgDataLength = toBuffer(this.relayHubContract.contract.methods.relayCall(
-      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxBlockGas).encodeABI()).length
+      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()).length
     const dataGasCost = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
     if (gasAndDataLimits == null) {
       try {
@@ -232,7 +232,7 @@ export class RelayServer extends EventEmitter {
       if (paymasterAcceptanceBudget + dataGasCost > relayExposure) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
-            `paymaster acceptance budget too high. given: ${paymasterAcceptanceBudget} max allowed: ${this.config.maxRelayExposure}`)
+            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + dataGasCost} max allowed: ${this.config.maxRelayExposure}`)
         }
         this.logger.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
         relayExposure = paymasterAcceptanceBudget + dataGasCost
