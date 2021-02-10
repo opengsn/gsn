@@ -111,7 +111,7 @@ export class ServerTestEnvironment {
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    this.penalizer = await Penalizer.new()
+    this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
@@ -199,7 +199,7 @@ export class ServerTestEnvironment {
       ownerAddress: this.relayOwner,
       stakeManagerAddress: this.stakeManager.address,
       relayHubAddress: this.relayHub.address,
-      checkInterval: 10
+      checkInterval: 100
     }
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)

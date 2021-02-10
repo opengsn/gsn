@@ -55,7 +55,7 @@ options.forEach(params => {
       await web3.eth.personal.unlockAccount(gasless, 'password', 0)
 
       sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-      const p = await Penalizer.new()
+      const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       rhub = await deployHub(sm.address, p.address)
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
