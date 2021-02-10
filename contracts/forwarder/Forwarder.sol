@@ -8,7 +8,7 @@ import "./IForwarder.sol";
 contract Forwarder is IForwarder {
     using ECDSA for bytes32;
 
-    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
 
     string public constant EIP712_DOMAIN_TYPE = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
 
@@ -62,6 +62,7 @@ contract Forwarder is IForwarder {
         uint256 preBalance = address(this).balance;
         require(preBalance >= req.value, "FWD: insufficient value");
         require(gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
+        require(req.validUntil == 0 || req.validUntil > block.number, "FWD: request expired");
         // solhint-disable-next-line avoid-low-level-calls
         (success,ret) = req.to.call{gas: req.gas, value: req.value}(callData);
 
@@ -125,9 +126,6 @@ contract Forwarder is IForwarder {
         emit RequestTypeRegistered(requestTypehash, requestType);
     }
 
-    event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);
-
-    event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
 
 
     function _verifySig(
@@ -166,7 +164,8 @@ contract Forwarder is IForwarder {
                 req.value,
                 req.gas,
                 req.nonce,
-                keccak256(req.data)
+                keccak256(req.data),
+                req.validUntil
             ),
             suffixData
         );

@@ -10,6 +10,7 @@ contract StakeManager is IStakeManager {
     using SafeMath for uint256;
 
     string public override versionSM = "2.0.0+opengsn.stakemanager.istakemanager";
+    uint256 public immutable override maxUnstakeDelay;
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
@@ -19,6 +20,10 @@ contract StakeManager is IStakeManager {
 
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
+
+    constructor(uint256 _maxUnstakeDelay) {
+        maxUnstakeDelay = _maxUnstakeDelay;
+    }
 
     function setRelayManagerOwner(address payable owner) external override {
         require(owner != address(0), "invalid owner");
@@ -32,6 +37,7 @@ contract StakeManager is IStakeManager {
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
     function stakeForRelayManager(address relayManager, uint256 unstakeDelay) external override payable ownerOnly(relayManager) {
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
+        require(unstakeDelay <= maxUnstakeDelay, "unstakeDelay too big");
         stakes[relayManager].stake += msg.value;
         stakes[relayManager].unstakeDelay = unstakeDelay;
         emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);

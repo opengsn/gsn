@@ -5,6 +5,7 @@ import { deployHub, evmMine, startRelay, stopRelay } from '../TestUtils'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
 import { HttpProvider } from 'web3-core'
 import { RelayProvider } from '../../src/relayclient/RelayProvider'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -18,8 +19,8 @@ contract('ReputationFlow', function (accounts) {
   let testRecipient: TestRecipientInstance
 
   before(async function () {
-    const stakeManager = await StakeManager.new()
-    const penalizer = await Penalizer.new()
+    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     const relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     testRecipient = await TestRecipient.new(forwarderInstance.address)
@@ -44,7 +45,7 @@ contract('ReputationFlow', function (accounts) {
 
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       initialReputation: 10,
-      checkInterval: 10,
+      checkInterval: 100,
       stake: 1e18,
       relayOwner: accounts[1],
       ethereumNodeUrl: (web3.currentProvider as HttpProvider).host

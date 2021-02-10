@@ -11,7 +11,12 @@ interface IForwarder {
         uint256 gas;
         uint256 nonce;
         bytes data;
+        uint64 validUntil;
     }
+
+    event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);
+
+    event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);
 
     function getNonce(address from)
     external view

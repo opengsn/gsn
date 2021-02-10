@@ -55,7 +55,8 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       from: account,
       nonce: senderNonce,
       value: '0',
-      gas: '10000'
+      gas: '10000',
+      validUntil: '0'
     },
     relayData: {
       pctRelayFee: '1',
@@ -98,8 +99,8 @@ contract('RelayProvider', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     gasLess = await web3.eth.personal.newAccount('password')
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address

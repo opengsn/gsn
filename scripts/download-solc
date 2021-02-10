@@ -1,0 +1,9 @@
+#!/bin/bash -xe
+FOLDER=~/.config/truffle/compilers/node_modules/
+SOLC=soljson-v0.7.6+commit.7338295f.js
+mkdir -p $FOLDER
+
+COMPILER=$FOLDER/$SOLC
+curl -sL https://github.com/ethereum/solidity/releases/download/v0.7.6/soljson.js > $COMPILER
+md5sum $COMPILER | grep bd086ddf0f3585a0373c086e001982c3
+

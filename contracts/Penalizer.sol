@@ -9,11 +9,22 @@ import "./utils/GsnUtils.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPenalizer.sol";
 
-contract Penalizer is IPenalizer{
+contract Penalizer is IPenalizer {
 
-    string public override versionPenalizer = "2.0.0+opengsn.penalizer.ipenalizer";
+    string public override versionPenalizer = "2.1.0+opengsn.penalizer.ipenalizer";
 
     using ECDSA for bytes32;
+
+    uint256 public immutable override penalizeBlockDelay;
+    uint256 public immutable override penalizeBlockExpiration;
+
+    constructor(
+        uint256 _penalizeBlockDelay,
+        uint256 _penalizeBlockExpiration
+    ) {
+        penalizeBlockDelay = _penalizeBlockDelay;
+        penalizeBlockExpiration = _penalizeBlockExpiration;
+    }
 
     function decodeTransaction(bytes memory rawTransaction) private pure returns (Transaction memory transaction) {
         (transaction.nonce,
@@ -23,11 +34,30 @@ contract Penalizer is IPenalizer{
         transaction.value,
         transaction.data) = RLPReader.decodeTransaction(rawTransaction);
         return transaction;
-
     }
 
-    modifier relayManagerOnly(IRelayHub hub) {
-        require(hub.isRelayManagerStaked(msg.sender), "Unknown relay manager");
+    mapping(bytes32 => uint) public commits;
+
+    /**
+     * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure
+     * no-one can front-run it to claim this penalization
+     */
+    function commit(bytes32 commitHash) external override {
+        uint256 readyBlockNumber = block.number + penalizeBlockDelay;
+        commits[commitHash] = readyBlockNumber;
+        emit CommitAdded(msg.sender, commitHash, readyBlockNumber);
+    }
+
+    modifier commitRevealOnly() {
+        bytes32 commitHash = keccak256(abi.encodePacked(keccak256(msg.data), msg.sender));
+        uint256 readyBlockNumber = commits[commitHash];
+        delete commits[commitHash];
+        // msg.sender can only be fake during off-chain view call, allowing Penalizer process to check transactions
+        if(msg.sender != address(0)) {
+            require(readyBlockNumber != 0, "no commit");
+            require(readyBlockNumber < block.number, "reveal penalize too soon");
+            require(readyBlockNumber + penalizeBlockExpiration > block.number, "reveal penalize too late");
+        }
         _;
     }
 
@@ -36,13 +66,25 @@ contract Penalizer is IPenalizer{
         bytes memory signature1,
         bytes memory unsignedTx2,
         bytes memory signature2,
-        IRelayHub hub
+        IRelayHub hub,
+        uint256 randomValue
     )
     public
     override
-    relayManagerOnly(hub)
+    commitRevealOnly {
+        (randomValue);
+        _penalizeRepeatedNonce(unsignedTx1, signature1, unsignedTx2, signature2, hub);
+    }
+
+    function _penalizeRepeatedNonce(
+        bytes memory unsignedTx1,
+        bytes memory signature1,
+        bytes memory unsignedTx2,
+        bytes memory signature2,
+        IRelayHub hub
+    )
+    private
     {
-        // Can be called by a relay manager only.
         // If a relay attacked the system by signing multiple transactions with the same nonce
         // (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
         // Check whether unsignedTx1 != unsignedTx2, that both are signed by the same address,
@@ -81,11 +123,22 @@ contract Penalizer is IPenalizer{
     function penalizeIllegalTransaction(
         bytes memory unsignedTx,
         bytes memory signature,
-        IRelayHub hub
+        IRelayHub hub,
+        uint256 randomValue
     )
     public
     override
-    relayManagerOnly(hub)
+    commitRevealOnly {
+        (randomValue);
+        _penalizeIllegalTransaction(unsignedTx, signature, hub);
+    }
+
+    function _penalizeIllegalTransaction(
+        bytes memory unsignedTx,
+        bytes memory signature,
+        IRelayHub hub
+    )
+    private
     {
         Transaction memory decodedTx = decodeTransaction(unsignedTx);
         if (decodedTx.to == address(hub)) {

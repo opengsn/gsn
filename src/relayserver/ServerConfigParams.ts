@@ -59,6 +59,7 @@ export interface ServerConfigParams {
   retryGasPriceFactor: number
   maxGasPrice: string
   defaultGasLimit: number
+  requestMinValidBlocks: number
 
   runPenalizer: boolean
   runPaymasterReputations: boolean
@@ -119,6 +120,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
   maxGasPrice: 100e9.toString(),
+
+  requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true
 }
 
@@ -160,6 +163,7 @@ const ConfigParamsTypes = {
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
   defaultGasLimit: 'number',
+  requestMinValidBlocks: 'number',
 
   trustedPaymasters: 'list',
 

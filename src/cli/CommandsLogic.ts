@@ -27,6 +27,8 @@ import { registerForwarderForGsn } from '../common/EIP712/ForwarderUtil'
 import { LoggerInterface } from '../common/LoggerInterface'
 import HttpWrapper from '../relayclient/HttpWrapper'
 import { GSNContractsDeployment } from '../common/GSNContractsDeployment'
+import { defaultEnvironment } from '../common/Environments'
+import { PenalizerConfiguration } from '../common/types/PenalizerConfiguration'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -56,6 +58,7 @@ interface DeployOptions {
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
+  penalizerConfiguration: PenalizerConfiguration
 }
 
 interface RegistrationResult {
@@ -301,8 +304,15 @@ export default class CommandsLogic {
       gasPrice: deployOptions.gasPrice ?? (1e9).toString()
     }
 
-    const sInstance = await this.getContractInstance(StakeManager, {}, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
-    const pInstance = await this.getContractInstance(Penalizer, {}, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const sInstance = await this.getContractInstance(StakeManager, {
+      arguments: [defaultEnvironment.maxUnstakeDelay]
+    }, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const pInstance = await this.getContractInstance(Penalizer, {
+      arguments: [
+        deployOptions.penalizerConfiguration.penalizeBlockDelay,
+        deployOptions.penalizerConfiguration.penalizeBlockExpiration
+      ]
+    }, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const rInstance = await this.getContractInstance(RelayHub, {
       arguments: [

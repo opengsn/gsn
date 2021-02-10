@@ -55,8 +55,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let forwarder: string
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Forwarder.new()
@@ -188,7 +188,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           from: senderAddress,
           nonce: senderNonce,
           value: '0',
-          gas: gasLimit
+          gas: gasLimit,
+          validUntil: '0'
         },
         relayData: {
           pctRelayFee,

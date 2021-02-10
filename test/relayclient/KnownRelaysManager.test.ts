@@ -20,6 +20,7 @@ import { LoggerInterface } from '../../src/common/LoggerInterface'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from '../../src/common/types/RelayRegisteredEventInfo'
 import { createClientLogger } from '../../src/relayclient/ClientWinstonLogger'
 import { registerForwarderForGsn } from '../../src/common/EIP712/ForwarderUtil'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -73,8 +74,8 @@ contract('KnownRelaysManager', function (
       workerRelayWorkersAdded = await web3.eth.personal.newAccount('password')
       workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
       workerNotActive = await web3.eth.personal.newAccount('password')
-      stakeManager = await StakeManager.new()
-      penalizer = await Penalizer.new()
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
         loggerConfiguration: { logLevel: 'error' },
@@ -187,8 +188,8 @@ contract('KnownRelaysManager 2', function (accounts) {
     let config: GSNConfig
 
     before(async function () {
-      stakeManager = await StakeManager.new()
-      penalizer = await Penalizer.new()
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090']
