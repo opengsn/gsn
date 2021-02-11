@@ -71,7 +71,7 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
       }
     })
 
-    it.only('should reject signature too long', async () => {
+    it('should reject signature too long', async () => {
       await expectRevert(validator.dummyRelayCall(0,
         {
           request: {
@@ -95,7 +95,7 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
           }
         },
         '0x' + '11'.repeat(66),
-        '0x', 0), 'invalid sig')
+        '0x', 0), 'invalid signature length')
     })
   })
 })
