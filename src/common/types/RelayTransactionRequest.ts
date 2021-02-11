@@ -24,7 +24,8 @@ export const RelayTransactionRequestShape = {
       data: ow.string,
       value: ow.string,
       nonce: ow.string,
-      gas: ow.string
+      gas: ow.string,
+      validUntil: ow.string
     },
     relayData: {
       gasPrice: ow.string,

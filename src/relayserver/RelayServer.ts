@@ -127,7 +127,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateInput (req: RelayTransactionRequest): void {
+  validateInput (req: RelayTransactionRequest, currentBlockNumber: number): void {
     // Check that the relayHub is the correct one
     if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
       throw new Error(
@@ -140,18 +140,21 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    // Check that the gasPrice is initialized & acceptable
     const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
-    if (this.minGasPrice > requestGasPrice) {
+    if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
-        `gasPrice too low: relayServer's gasPrice:${this.minGasPrice} request's gasPrice: ${requestGasPrice}`)
+        `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
     }
-    if (parseInt(this.config.maxGasPrice) < requestGasPrice) {
-      throw new Error(
-        `gasPrice too high: relayServer's gasPrice:${this.config.maxGasPrice} request's gasPrice: ${requestGasPrice}`)
-    }
+
     if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
       throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
+    }
+
+    // validate the validUntil is not too close
+    const expiredInBlocks = parseInt(req.relayRequest.request.validUntil) - currentBlockNumber
+    if (expiredInBlocks < this.config.requestMinValidBlocks) {
+      throw new Error(
+          `Request expired (or too close): expired in ${expiredInBlocks} blocks, we expect it to be valid for ${this.config.requestMinValidBlocks}`)
     }
   }
 
@@ -298,7 +301,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.logger.error('Alerted state: slowing down traffic')
       await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
     }
-    this.validateInput(req)
+    const currentBlock = await this.contractInteractor.getBlockNumber()
+    this.validateInput(req, currentBlock)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
 
@@ -317,7 +321,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
 
     const method = this.relayHubContract.contract.methods.relayCall(
       relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
-    const currentBlock = await this.contractInteractor.getBlockNumber()
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,
@@ -563,6 +566,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.minGasPrice === 0) {
       throw new Error('Could not get gasPrice from node')
     }
+    if (this.minGasPrice > parseInt(this.config.maxGasPrice)) {
+      throw new Error(`network gas price ${this.minGasPrice} is higher than max gas price ${this.config.maxGasPrice}`)
+    }
   }
 
   async _handleChanges (currentBlockNumber: number): Promise<PrefixedHexString[]> {
@@ -610,8 +616,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       (await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)) ||
       (await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER))
     if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
-      this.logger.debug(
-        `_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
+      // this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
       return false
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
@@ -725,6 +730,10 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   _isTrustedPaymaster (paymaster: string): boolean {
     return this.trustedPaymastersGasAndDataLimits.get(paymaster.toLowerCase()) != null
+  }
+
+  _isBlacklistedPaymaster (paymaster: string): boolean {
+    return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
   _isBlacklistedPaymaster (paymaster: string): boolean {

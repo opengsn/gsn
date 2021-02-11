@@ -31,6 +31,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? defaultEnvironment.relayHubConfiguration
+  const penalizerConfiguration = defaultEnvironment.penalizerConfiguration
   const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
 
@@ -46,6 +47,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
     from,
     gasPrice,
     relayHubConfiguration,
+    penalizerConfiguration,
     deployPaymaster: true,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,

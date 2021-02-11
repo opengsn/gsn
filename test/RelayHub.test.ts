@@ -55,8 +55,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let forwarder: string
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Forwarder.new()
@@ -188,7 +188,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           from: senderAddress,
           nonce: senderNonce,
           value: '0',
-          gas: gasLimit
+          gas: gasLimit,
+          validUntil: '0'
         },
         relayData: {
           pctRelayFee,
@@ -229,7 +230,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
       context('with manager stake unlocked', function () {
         beforeEach(async function () {
-          await stakeManager.stakeForAddress(relayManager, 1000, {
+          await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+          await stakeManager.stakeForRelayManager(relayManager, 1000, {
             value: ether('1'),
             from: relayOwner
           })
@@ -260,7 +262,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       let signatureWithPermissivePaymaster: string
 
       beforeEach(async function () {
-        await stakeManager.stakeForAddress(relayManager, 1000, {
+        await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+        await stakeManager.stakeForRelayManager(relayManager, 1000, {
           value: ether('2'),
           from: relayOwner
         })
@@ -308,7 +311,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               {
                 gas
               }),
-            'relay worker cannot be a smart contract')
+            'relay worker must be EOA')
         })
       })
       context('with view functions only', function () {
@@ -461,7 +464,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             gasPrice
           })
 
-          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
+          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
         })
         // This test is added due to a regression that almost slipped to production.
         it('relayCall executes the transaction with no parameters', async function () {
@@ -554,7 +557,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gasPrice,
               gas
             }),
-            'Not enough gas left for innerRelayCall to complete')
+            'no gas for innerRelayCall')
         })
 
         it('should not accept relay requests with gas price lower then user specified', async function () {

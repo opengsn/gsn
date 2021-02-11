@@ -39,8 +39,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    pre: 5473,
-    post: 1644
+    pre: 5429,
+    post: 1639
   }
 
   let relayHub: RelayHubInstance
@@ -60,8 +60,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     hubDataGasCostPerByte = (await relayHub.dataGasCostPerByte()).toNumber()
     await paymaster.setTrustedForwarder(forwarder)
@@ -74,7 +74,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       from: other
     })
 
-    await stakeManager.stakeForAddress(relayManager, unstakeDelay, {
+    await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+    await stakeManager.stakeForRelayManager(relayManager, unstakeDelay, {
       value: ether('2'),
       from: relayOwner
     })
@@ -89,7 +90,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         from: senderAddress,
         nonce: senderNonce.toString(),
         value: '0',
-        gas: gasLimit.toString()
+        gas: gasLimit.toString(),
+        validUntil: '0'
       },
       relayData: {
         baseRelayFee: baseFee.toString(),
@@ -305,7 +307,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               from: senderAddress,
               nonce: senderNonce,
               value: '0',
-              gas: gasLimit.toString()
+              gas: gasLimit.toString(),
+              validUntil: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -377,7 +380,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               from: senderAddress,
               nonce: senderNonce,
               value: '0',
-              gas: gasLimit.toString()
+              gas: gasLimit.toString(),
+	      validUntil: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -456,7 +460,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     from: senderAddress,
                     nonce: senderNonce,
                     value: '0',
-                    gas: gasLimit.toString()
+                  gas: gasLimit.toString(),
+                  validUntil: '0'
                   },
                   relayData: {
                     baseRelayFee,

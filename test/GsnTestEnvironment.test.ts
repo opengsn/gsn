@@ -76,7 +76,8 @@ contract('GsnTestEnvironment', function () {
       const txDetails = {
         from: sender,
         paymaster: testEnvironment.contractsDeployment.paymasterAddress,
-        forwarder: await sr.getTrustedForwarder()
+        forwarder: await sr.getTrustedForwarder(),
+        gas: 100000
       }
       const ret = await sr.emitMessage('hello', txDetails)
 

@@ -42,6 +42,7 @@ import { LoggerInterface } from '../../src/common/LoggerInterface'
 import { ether } from '@openzeppelin/test-helpers'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import ContractInteractor from '../../src/common/ContractInteractor'
+import { defaultEnvironment } from '../../src/common/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -97,7 +98,8 @@ contract('RelayClient', function (accounts) {
     const relayWorker = '0x'.padEnd(42, '2')
     const relayOwner = accounts[3]
     const relayManager = accounts[4]
-    await stakeManager.stakeForAddress(relayManager, 1000, {
+    await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+    await stakeManager.stakeForRelayManager(relayManager, 1000, {
       value: ether('2'),
       from: relayOwner
     })
@@ -109,8 +111,8 @@ contract('RelayClient', function (accounts) {
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
@@ -152,8 +154,8 @@ contract('RelayClient', function (accounts) {
     }
   })
 
-  after(async function () {
-    await stopRelay(relayProcess)
+  after(function () {
+    stopRelay(relayProcess)
   })
 
   describe('#_initInternal()', () => {
@@ -443,7 +445,8 @@ contract('RelayClient', function (accounts) {
     let optionsWithGas: GsnTransactionDetails
 
     before(async function () {
-      await stakeManager.stakeForAddress(relayManager, 7 * 24 * 3600, {
+      await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+      await stakeManager.stakeForRelayManager(relayManager, 7 * 24 * 3600, {
         from: relayOwner,
         value: (2e18).toString()
       })

@@ -11,7 +11,7 @@ import HttpClient from '../src/relayclient/HttpClient'
 import { defaultGsnConfig, GSNConfig } from '../src/relayclient/GSNConfigurator'
 import { defaultEnvironment } from '../src/common/Environments'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import { sleep } from '../src/common/Utils'
+import { isSameAddress, sleep } from '../src/common/Utils'
 import { RelayHubConfiguration } from '../src/common/types/RelayHubConfiguration'
 import { createServerLogger } from '../src/relayserver/ServerWinstonLogger'
 
@@ -37,11 +37,18 @@ export async function startRelay (
   fs.rmdirSync(serverWorkDir, { recursive: true })
   args.push('--workdir', serverWorkDir)
   args.push('--devMode')
-  args.push('--checkInterval', 10)
+  if (options.checkInterval) {
+    args.push('--checkInterval', options.checkInterval)
+  } else {
+    args.push('--checkInterval', 100)
+  }
   args.push('--logLevel', 'debug')
   args.push('--relayHubAddress', relayHubAddress)
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
+  args.push('--stakeManagerAddress', stakeManager.address)
+  args.push('--ownerAddress', options.relayOwner)
+
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
   }
@@ -120,7 +127,22 @@ export async function startRelay (
     value: ether('2')
   })
 
-  await stakeManager.stakeForAddress(relayManagerAddress, options.delay || 2000, {
+  // TODO: this entire function is a logical duplicate of 'CommandsLogic::registerRelay'
+  // now wait for server until it sets the owner on stake manager
+  let i = 0
+  while (true) {
+    await sleep(100)
+    const newStakeInfo = await stakeManager.getStakeInfo(relayManagerAddress)
+    if (isSameAddress(newStakeInfo.owner, options.relayOwner)) {
+      console.log('RelayServer successfully set its owner on the StakeManager')
+      break
+    }
+    if (i++ === 5) {
+      throw new Error('RelayServer failed to set its owner on the StakeManager')
+    }
+  }
+
+  await stakeManager.stakeForRelayManager(relayManagerAddress, options.delay || 2000, {
     from: options.relayOwner,
     value: options.stake || ether('1')
   })

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "./TestPaymasterEverythingAccepted.sol";
 
@@ -45,6 +45,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         expensiveGasLimits = val;
     }
 
+    // solhint-disable reason-string
+    // contains comments that are checked in tests
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,

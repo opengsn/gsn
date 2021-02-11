@@ -5,18 +5,32 @@
  */
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { PaymasterConfiguration } from './types/PaymasterConfiguration'
+import { PenalizerConfiguration } from './types/PenalizerConfiguration'
 
 interface Environment {
   readonly chainId: number
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
+  readonly penalizerConfiguration: PenalizerConfiguration
+  readonly maxUnstakeDelay: number
   readonly gtxdatanonzero: number
   readonly gtxdatazero: number
 }
 
-export const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 35901,
-  postOverhead: 15026,
+/**
+ * With about 6000 blocks per day, maximum unstake delay is defined at around 5 years for the mainnet.
+ * This is done to prevent mistakenly setting an unstake delay to millions of years.
+ */
+const defaultStakeManagerMaxUnstakeDelay: number = 10000000
+
+const defaultPenalizerConfiguration: PenalizerConfiguration = {
+  penalizeBlockDelay: 5,
+  penalizeBlockExpiration: 60000
+}
+
+const defaultRelayHubConfiguration: RelayHubConfiguration = {
+  gasOverhead: 33346,
+  postOverhead: 13302,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
@@ -40,6 +54,8 @@ export const environments: { [key: string]: Environment } = {
   istanbul: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    penalizerConfiguration: defaultPenalizerConfiguration,
+    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000,
     gtxdatanonzero: 16,
     gtxdatazero: 4
@@ -47,6 +63,8 @@ export const environments: { [key: string]: Environment } = {
   constantinople: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    penalizerConfiguration: defaultPenalizerConfiguration,
+    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000,
     gtxdatanonzero: 16,
     gtxdatazero: 4
@@ -54,6 +72,8 @@ export const environments: { [key: string]: Environment } = {
   ganacheLocal: {
     chainId: 1337,
     relayHubConfiguration: defaultRelayHubConfiguration,
+    penalizerConfiguration: defaultPenalizerConfiguration,
+    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
     mintxgascost: 21000,
     gtxdatanonzero: 16,
     gtxdatazero: 4
