@@ -534,8 +534,8 @@ contract('Forwarder', ([from]) => {
         const estim2 = await testfwd.callExecute.estimateGas(fwd.address, req1, domainSeparator, typeHash, '0x', sig).catch(e => e.message)
         console.log('estim without sendback: ', estim, 'estim with sendback=', estim2, 'diff=', estim2 - estim)
 
-        // note: not transfering value in TX.
-        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { gas: estim2 })
+        // deliberately use the estimation that didn't assume we're going to transfer. it should have enough slack
+        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { gas: estim })
         assert.equal(ret.logs[0].args.error, '')
         assert.equal(ret.logs[0].args.success, true)
 
