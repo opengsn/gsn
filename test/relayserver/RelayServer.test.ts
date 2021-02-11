@@ -114,6 +114,10 @@ contract('RelayServer', function (accounts) {
   })
 
   describe('validation', function () {
+    const blacklistedPaymaster = '0xdeadfaceffff'
+    before(async function () {
+      await env.newServerInstance({ blacklistedPaymasters: [blacklistedPaymaster] })
+    })
     describe('#validateInput()', function () {
       it('should fail to relay with wrong relay worker', async function () {
         const req = await env.createRelayHttpRequest()
@@ -126,16 +130,29 @@ contract('RelayServer', function (accounts) {
         }
       })
 
-      it('should fail to relay with unacceptable gasPrice', async function () {
-        const wrongGasPrice = '100'
+      it('should fail to relay with low gasPrice', async function () {
+        const wrongGasPrice = env.relayServer.minGasPrice - 1
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.relayData.gasPrice = wrongGasPrice
+        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
-            `Unacceptable gasPrice: relayServer's gasPrice:${env.relayServer.gasPrice} request's gasPrice: ${wrongGasPrice}`)
+            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
+        }
+      })
+
+      it('should fail to relay with high gasPrice', async function () {
+        const wrongGasPrice = parseInt(env.relayServer.config.maxGasPrice) + 1
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
+        try {
+          env.relayServer.validateInput(req, 0)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
         }
       })
 
@@ -163,10 +180,22 @@ contract('RelayServer', function (accounts) {
             'expired in 10 blocks')
         }
       })
+
+      it('should fail to relay with blacklisted paymaster', async function () {
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.paymaster = blacklistedPaymaster
+        try {
+          env.relayServer.validateInput(req, 0)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            `Paymaster ${blacklistedPaymaster} is blacklisted!`)
+        }
+      })
     })
 
     describe('#validateFees()', function () {
-      describe('with trusted forwarder', function () {
+      describe('with trusted paymaster', function () {
         before(async function () {
           await env.relayServer._initTrustedPaymasters([env.paymaster.address])
         })
@@ -175,7 +204,7 @@ contract('RelayServer', function (accounts) {
           await env.relayServer._initTrustedPaymasters([])
         })
 
-        it('#_itTrustedForwarder', function () {
+        it('#_isTrustedPaymaster', function () {
           assert.isFalse(env.relayServer._isTrustedPaymaster(accounts[1]), 'identify untrusted paymaster')
           assert.isTrue(env.relayServer._isTrustedPaymaster(env.paymaster.address), 'identify trusted paymaster')
         })
@@ -240,6 +269,27 @@ contract('RelayServer', function (accounts) {
             assert.include(e.message, 'Unacceptable relayMaxNonce:')
           }
         })
+      })
+    })
+
+    describe('#_refreshGasPrice()', function () {
+      it('should set min gas price to network average * gas price factor', async function () {
+        env.relayServer.minGasPrice = 0
+        await env.relayServer._refreshGasPrice()
+        const gasPrice = parseInt(await env.web3.eth.getGasPrice())
+        assert.equal(env.relayServer.minGasPrice, env.relayServer.config.gasPriceFactor * gasPrice)
+      })
+      it('should throw when min gas price is higher than max', async function () {
+        const originalMaxPrice = env.relayServer.config.maxGasPrice
+        env.relayServer.config.maxGasPrice = (env.relayServer.minGasPrice - 1).toString()
+        try {
+          await env.relayServer._refreshGasPrice()
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
+        } finally {
+          env.relayServer.config.maxGasPrice = originalMaxPrice
+        }
       })
     })
 
@@ -493,13 +543,15 @@ contract('RelayServer', function (accounts) {
       let latestBlock = await env.web3.eth.getBlock('latest')
       let receipts = await relayServer._worker(latestBlock.number)
       const receipts2 = await relayServer._worker(latestBlock.number + 1)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, false)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
+        false)
       assert.equal(receipts.length, 0, 'should not re-register if already registered')
       assert.equal(receipts2.length, 0, 'should not re-register if already registered')
       await evmMineMany(registrationBlockRate)
       latestBlock = await env.web3.eth.getBlock('latest')
       receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, true)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
+        true)
       await assertRelayAdded(receipts, relayServer, false)
     })
   })
