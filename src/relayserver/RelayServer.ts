@@ -736,10 +736,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
-  _isBlacklistedPaymaster (paymaster: string): boolean {
-    return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
-  }
-
   isReady (): boolean {
     if (this.lastSuccessfulRounds < this.config.successfulRoundsForReady) {
       return false

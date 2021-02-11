@@ -117,7 +117,7 @@ interface IRelayHub {
     /// If all conditions are met, the call will be relayed and the recipient charged.
     ///
     /// Arguments:
-    /// @param paymasterMaxAcceptanceBudget - max valid value for paymaster.getGasLimits().acceptanceBudget
+    /// @param maxRelayExposure - max valid value for paymaster.getGasLimits().acceptanceBudget + calldata gas cost
     /// @param relayRequest - all details of the requested relayed call
     /// @param signature - client's EIP-712 signature over the relayRequest struct
     /// @param approvalData: dapp-specific data forwarded to preRelayedCall.

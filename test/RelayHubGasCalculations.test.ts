@@ -39,7 +39,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    pre: 5429,
+    pre: 5451,
     post: 1639
   }
 
@@ -350,9 +350,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   describe('relayCall()\'s msg.data cost calculations', function () {
     enum RelayCallDynamicArg {
-      APPROVAL_DATA,
-      ENCODED_FUNCTION,
-      PAYMASTER_DATA
+      APPROVAL_DATA = 'approvalData',
+      ENCODED_FUNCTION = 'encodedFunction',
+      PAYMASTER_DATA = 'paymasterData'
     }
     const costsPerByte: number[] = [];
     [RelayCallDynamicArg.APPROVAL_DATA, RelayCallDynamicArg.ENCODED_FUNCTION, RelayCallDynamicArg.PAYMASTER_DATA].forEach(dynamicArg => {
@@ -381,7 +381,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               nonce: senderNonce,
               value: '0',
               gas: gasLimit.toString(),
-	      validUntil: '0'
+              validUntil: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -413,23 +413,23 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           // console.log('relayCall encodeABI len', relayCall.encodeABI().length / 2)
           // console.log('gasUsed is', receipt.gasUsed)
           // console.log('calculateCalldataCost is', calculateCalldataCost(relayCall.encodeABI()))
+          const slack = 2
           if (gassesUsed.length > 1) {
             const diff = gassesUsed[gassesUsed.length - 1] - gassesUsed[0]
             // console.log('diff per byte is', diff / dataLength)
             // console.log('diff is', diff)
             const costPerByte = diff / dataLength
             costsPerByte.push(costPerByte)
-            if (costPerByte > hubDataGasCostPerByte) {
-              assert.fail(`calculated data cost per byte (${costPerByte}) higher than hub's (${hubDataGasCostPerByte})`)
-            }
+            assert.isAtMost(costPerByte, hubDataGasCostPerByte - slack, `calculated data cost per byte (${costPerByte}) higher than hub's (${hubDataGasCostPerByte}) minus slack of ${slack}`)
           }
           await revert(id)
         })
       })
     })
     after('validate max gas cost per byte in relay hub', async function () {
+      // console.log('costs per byte', costsPerByte)
       const maxCostPerByte = Math.max(...costsPerByte)
-      assert.closeTo(hubDataGasCostPerByte, maxCostPerByte, 6)
+      assert.closeTo(hubDataGasCostPerByte, maxCostPerByte, 5)
     })
   })
 
@@ -460,8 +460,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     from: senderAddress,
                     nonce: senderNonce,
                     value: '0',
-                  gas: gasLimit.toString(),
-                  validUntil: '0'
+                    gas: gasLimit.toString(),
+                    validUntil: '0'
                   },
                   relayData: {
                     baseRelayFee,
