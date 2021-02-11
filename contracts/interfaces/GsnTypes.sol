@@ -11,9 +11,9 @@ interface GsnTypes {
         uint256 baseRelayFee;
         address relayWorker;
         address paymaster;
+        address forwarder;
         bytes paymasterData;
         uint256 clientId;
-        address forwarder;
     }
 
     //note: must start with the ForwardRequest to be an extension of the generic forwarder
