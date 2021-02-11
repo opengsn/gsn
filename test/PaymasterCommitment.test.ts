@@ -224,7 +224,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1042)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
       const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
@@ -250,7 +250,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1042)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
       const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
