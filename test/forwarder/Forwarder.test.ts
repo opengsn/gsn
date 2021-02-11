@@ -505,35 +505,46 @@ contract('Forwarder', ([from]) => {
         assert.equal(await web3.eth.getBalance(recipient.address), value.toString())
       })
 
-      it('should forward all funds left in forwarder to "from" address', async () => {
+      it.only('should forward all funds left in forwarder to "from" address', async () => {
         const senderPrivateKey = toBuffer(bytes32(2))
         const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
+        const bal = a => web3.eth.getBalance(a).then(e => (e / 1e18).toFixed(6))
+
         const value = ether('1')
         const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
+        const funcEst = await recipient.mustReceiveEth.estimateGas(value.toString(), { value })
 
-        // value = ether('0');
         const req1 = {
           to: recipient.address,
           data: func,
           from: senderAddress,
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
-          gas: 1e6,
+          gas: funcEst.toString(),
           validUntil: 0
         }
+        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
+        // first gas estimation, with only value for the TX
+        await web3.eth.sendTransaction({ from, to: fwd.address, value: value })
+        const estim = await testfwd.callExecute.estimateGas(fwd.address, req1, domainSeparator, typeHash, '0x', sig).catch(e => e.message)
         const extraFunds = ether('4')
         await web3.eth.sendTransaction({ from, to: fwd.address, value: extraFunds })
 
-        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+        console.log('fwd bal before=', await bal(fwd.address), 'sender=', await bal(senderAddress))
+
+        // 2nd estim after sending more eth into the forwarder (which will require transfer after calling the target function.
+        const estim2 = await testfwd.callExecute.estimateGas(fwd.address, req1, domainSeparator, typeHash, '0x', sig).catch(e => e.message)
+        console.log('estim without sendback: ', estim, 'estim with sendback=', estim2, 'diff=', estim2 - estim)
 
         // note: not transfering value in TX.
-        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
+        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { gas: estim2 })
         assert.equal(ret.logs[0].args.error, '')
         assert.equal(ret.logs[0].args.success, true)
 
-        assert.equal(await web3.eth.getBalance(senderAddress), extraFunds.sub(value).toString())
+        console.log('fwd bal after=', await bal(fwd.address), 'sender=', await bal(senderAddress))
+        assert.equal(await web3.eth.getBalance(senderAddress), extraFunds.add(value).toString())
       })
     })
   })

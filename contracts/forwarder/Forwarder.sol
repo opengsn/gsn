@@ -60,12 +60,16 @@ contract Forwarder is IForwarder {
 
         require(req.validUntil == 0 || req.validUntil > block.number, "FWD: request expired");
 
+        uint gasForTransfer = 0;
+        if ( req.value != 0 ) {
+            gasForTransfer = 40000; //buffer in case we need to move eth after the transaction.
+        }
         bytes memory callData = abi.encodePacked(req.data, req.from);
-        require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
+        require( gasleft()*63/64 + gasForTransfer >= req.gas, "FWD: insufficient gas" );
         // solhint-disable-next-line avoid-low-level-calls
         (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
-        if ( address(this).balance>0 ) {
-            //can't fail: req.from signed (off-chain) the request, so it must be an EOA...
+        if ( req.value != 0 && address(this).balance>0 ) {
+            // can't fail: req.from signed (off-chain) the request, so it must be an EOA...
             payable(req.from).transfer(address(this).balance);
         }
 
