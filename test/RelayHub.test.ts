@@ -422,6 +422,17 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           )
         })
 
+        it('should revert if encoded function contains extra bytes', async () => {
+          const encoded = await relayHubInstance.contract.methods.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', gas).encodeABI() as string
+          expectRevert(web3.eth.call({
+            data: encoded + '1234',
+            from: relayWorker,
+            to: relayHubInstance.address,
+            gas,
+            gasPrice
+          }), 'revert extra msg.data')
+        })
+
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
           const nonceBefore = await forwarderInstance.getNonce(senderAddress)
 
