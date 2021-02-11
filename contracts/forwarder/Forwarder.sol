@@ -58,10 +58,10 @@ contract Forwarder is IForwarder {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _verifyAndUpdateNonce(req);
 
-        bytes memory callData = abi.encodePacked(req.data, req.from);
-        require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
         require(req.validUntil == 0 || req.validUntil > block.number, "FWD: request expired");
 
+        bytes memory callData = abi.encodePacked(req.data, req.from);
+        require( gasleft()*63/64 >= req.gas, "FWD: insufficient gas" );
         // solhint-disable-next-line avoid-low-level-calls
         (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
         if ( address(this).balance>0 ) {

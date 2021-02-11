@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./utils/GsnUtils.sol";
 import "./utils/GsnEip712Library.sol";
+import "./utils/RelayHubValidator.sol";
 import "./interfaces/GsnTypes.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
@@ -186,7 +187,6 @@ contract RelayHub is IRelayHub {
     override
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
-        (signature);
         RelayCallData memory vars;
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
         require(msg.sender == tx.origin, "relay worker must be EOA");
@@ -202,6 +202,8 @@ contract RelayHub is IRelayHub {
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
              verifyGasAndDataLimits(maxRelayExposure, relayRequest, externalGasLimit);
+
+        RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
 
     {
 
