@@ -6,6 +6,8 @@ import {
 
 // @ts-ignore
 import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
+// @ts-ignore
+import ethWallet from 'ethereumjs-wallet'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
@@ -506,7 +508,7 @@ contract('Forwarder', ([from]) => {
       })
 
       it('should forward all funds left in forwarder to "from" address', async () => {
-        const senderPrivateKey = toBuffer(bytes32(2))
+        const senderPrivateKey = ethWallet.generate().privKey as Buffer
         const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
         const value = ether('1')

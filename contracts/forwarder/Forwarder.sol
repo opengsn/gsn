@@ -65,7 +65,7 @@ contract Forwarder is IForwarder {
             gasForTransfer = 40000; //buffer in case we need to move eth after the transaction.
         }
         bytes memory callData = abi.encodePacked(req.data, req.from);
-        require( gasleft()*63/64 + gasForTransfer >= req.gas, "FWD: insufficient gas" );
+        require(gasleft()*63/64 >= req.gas + gasForTransfer, "FWD: insufficient gas");
         // solhint-disable-next-line avoid-low-level-calls
         (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);
         if ( req.value != 0 && address(this).balance>0 ) {
