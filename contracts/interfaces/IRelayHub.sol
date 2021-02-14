@@ -117,7 +117,7 @@ interface IRelayHub {
     /// If all conditions are met, the call will be relayed and the recipient charged.
     ///
     /// Arguments:
-    /// @param paymasterMaxAcceptanceBudget - max valid value for paymaster.getGasLimits().acceptanceBudget
+    /// @param maxRelayExposure - max valid value for paymaster.getGasLimits().acceptanceBudget + calldata gas cost
     /// @param relayRequest - all details of the requested relayed call
     /// @param signature - client's EIP-712 signature over the relayRequest struct
     /// @param approvalData: dapp-specific data forwarded to preRelayedCall.
@@ -126,7 +126,7 @@ interface IRelayHub {
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
-        uint paymasterMaxAcceptanceBudget,
+        uint maxRelayExposure,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -168,6 +168,11 @@ interface IRelayHub {
 
     /// maximum number of worker accounts allowed per manager
     function maxWorkerCount() external view returns (uint256);
+
+    // relayCall()'s msg.data upper bound gas cost per byte
+    function dataGasCostPerByte() external view returns (uint256);
+
+    function calldataGasCost(uint256 length) external view returns (uint256);
 
     function workerToManager(address worker) external view returns(address);
 

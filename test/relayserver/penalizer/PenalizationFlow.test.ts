@@ -67,7 +67,7 @@ contract('PenalizationFlow', function (accounts) {
         relayManagerAddress,
         relayHubAddress: env.relayHub.address,
         minGasPrice: '0',
-        maxAcceptanceBudget: '999999999',
+        maxRelayExposure: '999999999',
         ready: true,
         version: gsnRuntimeVersion
       }))

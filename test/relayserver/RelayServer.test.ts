@@ -293,12 +293,12 @@ contract('RelayServer', function (accounts) {
       })
     })
 
-    describe('#validatePaymasterGasLimits()', function () {
+    describe('#validatePaymasterGasAndDataLimits()', function () {
       it('should fail to relay with invalid paymaster', async function () {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.paymaster = accounts[1]
         try {
-          await env.relayServer.validatePaymasterGasLimits(req)
+          await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e) {
           assert.include(e.message, `not a valid paymaster contract: ${accounts[1]}`)
@@ -310,7 +310,7 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         try {
           await env.paymaster.withdrawAll(accounts[0])
-          await env.relayServer.validatePaymasterGasLimits(req)
+          await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e) {
           assert.include(e.message, 'paymaster balance too low')
@@ -336,18 +336,18 @@ contract('RelayServer', function (accounts) {
         it('should reject a transaction from paymaster returning above configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(true)
           try {
-            await env.relayServer.validatePaymasterGasLimits(req)
+            await env.relayServer.validatePaymasterGasAndDataLimits(req)
             assert.fail()
           } catch (e) {
-            assert.include(e.message, 'paymaster acceptance budget too high')
+            assert.include(e.message, 'paymaster acceptance budget + msg.data gas cost too high')
           }
         })
 
         it('should accept a transaction from paymaster returning below configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
-          const gasLimits = await rejectingPaymaster.getGasLimits()
+          const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
           assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
-          await env.relayServer.validatePaymasterGasLimits(req)
+          await env.relayServer.validatePaymasterGasAndDataLimits(req)
         })
 
         it('should accept a transaction from trusted paymaster returning above configured max exposure', async function () {
@@ -355,9 +355,9 @@ contract('RelayServer', function (accounts) {
           const req = await env.createRelayHttpRequest()
           try {
             await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
-            const gasLimits = await rejectingPaymaster.getGasLimits()
+            const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
             assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
-            await env.relayServer.validatePaymasterGasLimits(req)
+            await env.relayServer.validatePaymasterGasAndDataLimits(req)
           } finally {
             await env.relayServer._initTrustedPaymasters([])
           }
@@ -370,7 +370,7 @@ contract('RelayServer', function (accounts) {
         const req = await env.createRelayHttpRequest()
         req.metadata.signature = INCORRECT_ECDSA_SIGNATURE
         try {
-          await env.relayServer.validateViewCallSucceeds(req, 150000, 2000000)
+          await env.relayServer.validateViewCallSucceeds(req, 200000, 2000000)
           assert.fail()
         } catch (e) {
           assert.include(e.message, 'Paymaster rejected in server: FWD: signature mismatch')

@@ -11,6 +11,7 @@ import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '../common/LoggerInterface'
 import { GasPriceFetcher } from '../relayclient/GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
+import { defaultEnvironment } from '../common/Environments'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -32,7 +33,7 @@ export interface ServerConfigParams {
   readyTimeout: number
   devMode: boolean
   registrationBlockRate: number
-  maxAcceptanceBudget: number
+  maxRelayExposure: number
   alertedBlockDelay: number
   minAlertedDelayMS: number
   maxAlertedDelayMS: number
@@ -84,7 +85,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   alertedBlockDelay: 0,
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
-  maxAcceptanceBudget: 2e5,
+  // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
+  maxRelayExposure: defaultEnvironment.paymasterConfiguration.acceptanceBudget + defaultEnvironment.relayHubConfiguration.dataGasCostPerByte * defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   stakeManagerAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
@@ -156,7 +158,7 @@ const ConfigParamsTypes = {
   hostOverride: 'string',
   userId: 'string',
   registrationBlockRate: 'number',
-  maxAcceptanceBudget: 'number',
+  maxRelayExposure: 'number',
   alertedBlockDelay: 'number',
 
   workerMinBalance: 'number',

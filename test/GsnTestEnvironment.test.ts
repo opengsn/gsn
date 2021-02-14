@@ -52,7 +52,7 @@ contract('GsnTestEnvironment', function () {
       assert.deepEqual([...ret.relayingErrors.values(), ...ret.pingErrors.values()], [])
       const events = await sr.contract.getPastEvents()
       assert.equal(events[0].event, 'SampleRecipientEmitted')
-      assert.equal(events[0].returnValues.realSender.toLocaleLowerCase(), sender.toLocaleLowerCase())
+      assert.equal(events[0].returnValues.realSender.toLowerCase(), sender.toLowerCase())
     })
   })
 

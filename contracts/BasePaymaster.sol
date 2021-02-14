@@ -28,23 +28,25 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     //overhead of forwarder verify+signature, plus hub overhead.
     uint256 constant public FORWARDER_HUB_OVERHEAD = 50000;
 
-    //These parameters are documented in IPaymaster.GasLimits
+    //These parameters are documented in IPaymaster.GasAndDataLimits
     uint256 constant public PRE_RELAYED_CALL_GAS_LIMIT = 100000;
     uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
     uint256 constant public PAYMASTER_ACCEPTANCE_BUDGET = PRE_RELAYED_CALL_GAS_LIMIT + FORWARDER_HUB_OVERHEAD;
+    uint256 constant public CALLDATA_SIZE_LIMIT = 10500;
 
-    function getGasLimits()
+    function getGasAndDataLimits()
     public
     override
     virtual
     view
     returns (
-        IPaymaster.GasLimits memory limits
+        IPaymaster.GasAndDataLimits memory limits
     ) {
-        return IPaymaster.GasLimits(
+        return IPaymaster.GasAndDataLimits(
             PAYMASTER_ACCEPTANCE_BUDGET,
             PRE_RELAYED_CALL_GAS_LIMIT,
-            POST_RELAYED_CALL_GAS_LIMIT
+            POST_RELAYED_CALL_GAS_LIMIT,
+            CALLDATA_SIZE_LIMIT
         );
     }
 

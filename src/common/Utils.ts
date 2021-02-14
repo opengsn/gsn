@@ -109,14 +109,16 @@ export async function getEip712Signature (
  */
 export function calculateTransactionMaxPossibleGas (
   {
-    gasLimits,
+    gasAndDataLimits,
     hubOverhead,
-    relayCallGasLimit
-  }: TransactionGasComponents): number {
+    relayCallGasLimit,
+    msgDataGasCost
+  }: TransactionGasCostComponents): number {
   return hubOverhead +
+    msgDataGasCost +
     parseInt(relayCallGasLimit) +
-    parseInt(gasLimits.preRelayedCallGasLimit) +
-    parseInt(gasLimits.postRelayedCallGasLimit)
+    parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
+    parseInt(gasAndDataLimits.postRelayedCallGasLimit)
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
@@ -204,16 +206,18 @@ export function isRegistrationValid (registerEvent: EventData | undefined, confi
  * @param calldataSize
  * @param gtxdatanonzero
  */
-interface TransactionGasComponents {
-  gasLimits: PaymasterGasLimits
+interface TransactionGasCostComponents {
+  gasAndDataLimits: PaymasterGasAndDataLimits
   hubOverhead: number
   relayCallGasLimit: string
+  msgDataGasCost: number
 }
 
-export interface PaymasterGasLimits {
+export interface PaymasterGasAndDataLimits {
   acceptanceBudget: string
   preRelayedCallGasLimit: string
   postRelayedCallGasLimit: string
+  calldataSizeLimit: string
 }
 
 interface Signature {

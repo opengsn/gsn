@@ -655,7 +655,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
         })
 
-        it('should fail a transaction if paymaster.getGasLimits is too expensive', async function () {
+        it('should fail a transaction if paymaster.getGasAndDataLimits is too expensive', async function () {
           await misbehavingPaymaster.setExpensiveGasLimits(true)
 
           await expectRevert(relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster,

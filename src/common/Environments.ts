@@ -4,6 +4,7 @@
  * TODO: see the differences between networks we want to support and make project structure multi-chain
  */
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
+import { PaymasterConfiguration } from './types/PaymasterConfiguration'
 import { PenalizerConfiguration } from './types/PenalizerConfiguration'
 
 interface Environment {
@@ -11,7 +12,10 @@ interface Environment {
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
   readonly penalizerConfiguration: PenalizerConfiguration
+  readonly paymasterConfiguration: PaymasterConfiguration
   readonly maxUnstakeDelay: number
+  readonly gtxdatanonzero: number
+  readonly gtxdatazero: number
 }
 
 /**
@@ -27,12 +31,24 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasOverhead: 33346,
-  postOverhead: 13302,
+  postOverhead: 13585,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
-  maximumRecipientDeposit: 2e18.toString()
+  maximumRecipientDeposit: 2e18.toString(),
+  dataGasCostPerByte: 16
+}
+
+// TODO add as constructor params to paymaster instead of constants
+const preRelayedCallGasLimit = 1e5
+const forwarderHubOverhead = 5e4
+const defaultPaymasterConfiguration: PaymasterConfiguration = {
+  forwarderHubOverhead: forwarderHubOverhead,
+  preRelayedCallGasLimit: preRelayedCallGasLimit,
+  postRelayedCallGasLimit: 11e4,
+  acceptanceBudget: preRelayedCallGasLimit + forwarderHubOverhead,
+  calldataSizeLimit: 10404
 }
 
 export const environments: { [key: string]: Environment } = {
@@ -40,22 +56,31 @@ export const environments: { [key: string]: Environment } = {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
     penalizerConfiguration: defaultPenalizerConfiguration,
+    paymasterConfiguration: defaultPaymasterConfiguration,
     maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-    mintxgascost: 21000
+    mintxgascost: 21000,
+    gtxdatanonzero: 16,
+    gtxdatazero: 4
   },
   constantinople: {
     chainId: 1,
     relayHubConfiguration: defaultRelayHubConfiguration,
     penalizerConfiguration: defaultPenalizerConfiguration,
+    paymasterConfiguration: defaultPaymasterConfiguration,
     maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-    mintxgascost: 21000
+    mintxgascost: 21000,
+    gtxdatanonzero: 16,
+    gtxdatazero: 4
   },
   ganacheLocal: {
     chainId: 1337,
     relayHubConfiguration: defaultRelayHubConfiguration,
     penalizerConfiguration: defaultPenalizerConfiguration,
+    paymasterConfiguration: defaultPaymasterConfiguration,
     maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-    mintxgascost: 21000
+    mintxgascost: 21000,
+    gtxdatanonzero: 16,
+    gtxdatazero: 4
   }
 }
 

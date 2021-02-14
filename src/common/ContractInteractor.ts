@@ -304,7 +304,7 @@ export default class ContractInteractor {
    * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
    */
   async validateRelayCall (
-    paymasterMaxAcceptanceBudget: number,
+    maxRelayExposure: number,
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
@@ -312,7 +312,7 @@ export default class ContractInteractor {
     try {
       const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest)
       const encodedRelayCall = relayHub.contract.methods.relayCall(
-        paymasterMaxAcceptanceBudget,
+        maxRelayExposure,
         relayRequest,
         signature,
         approvalData,
@@ -407,8 +407,8 @@ export default class ContractInteractor {
     return null
   }
 
-  encodeABI (paymasterMaxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
-    return this.relayCallMethod(paymasterMaxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+  encodeABI (maxRelayExposure: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
+    return this.relayCallMethod(maxRelayExposure, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
