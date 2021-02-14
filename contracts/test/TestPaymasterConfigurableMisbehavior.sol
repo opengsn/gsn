@@ -10,11 +10,12 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool public withdrawDuringPreRelayedCall;
     bool public returnInvalidErrorCode;
     bool public revertPostRelayCall;
-    bool public overspendAcceptGas;
+    bool public outOfGasPre;
     bool public revertPreRelayCall;
     bool public revertPreRelayCallOnEvenBlocks;
     bool public greedyAcceptanceBudget;
     bool public expensiveGasLimits;
+    bool public preHigherThanAcceptance;
 
     function setWithdrawDuringPostRelayedCall(bool val) public {
         withdrawDuringPostRelayedCall = val;
@@ -34,8 +35,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function setRevertPreRelayCallOnEvenBlocks(bool val) public {
         revertPreRelayCallOnEvenBlocks = val;
     }
-    function setOverspendAcceptGas(bool val) public {
-        overspendAcceptGas = val;
+    function setOutOfGasPre(bool val) public {
+        outOfGasPre = val;
     }
 
     function setGreedyAcceptanceBudget(bool val) public {
@@ -43,6 +44,9 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     }
     function setExpensiveGasLimits(bool val) public {
         expensiveGasLimits = val;
+    }
+    function setPreGasHigherThanAcceptance(bool val) public {
+        preHigherThanAcceptance = val;
     }
 
     // solhint-disable reason-string
@@ -58,7 +62,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     relayHubOnly
     returns (bytes memory, bool) {
         (signature, approvalData, maxPossibleGas);
-        if (overspendAcceptGas) {
+        if (outOfGasPre) {
             uint i = 0;
             while (true) {
                 i++;
@@ -123,6 +127,13 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         if (greedyAcceptanceBudget) {
             return IPaymaster.GasAndDataLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit,
             limits.calldataSizeLimit);
+        }
+        if (preHigherThanAcceptance) {
+            return IPaymaster.GasAndDataLimits(
+                limits.acceptanceBudget,
+                limits.preRelayedCallGasLimit + limits.acceptanceBudget + relayHub.calldataGasCost(limits.calldataSizeLimit),
+                limits.postRelayedCallGasLimit,
+                limits.calldataSizeLimit);
         }
         return limits;
     }
