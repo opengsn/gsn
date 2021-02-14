@@ -11,7 +11,7 @@ interface IForwarder {
         uint256 gas;
         uint256 nonce;
         bytes data;
-        uint64 validUntil;
+        uint256 validUntil;
     }
 
     event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);
