@@ -331,8 +331,16 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     });
 
     [false, true].forEach(overAcceptanceBudget => {
-      it(`paymaster should not pay for reverts in preRelayedCall (${overAcceptanceBudget ? 'over' : 'under'}  acceptance budget)`, async () => {
-        await paymasterContract.setPreGasHigherThanAcceptance(overAcceptanceBudget)
+      it(`paymaster should not pay for reverts in preRelayedCall (${overAcceptanceBudget ? 'over' : 'under'} acceptance budget)`, async () => {
+        if (overAcceptanceBudget) {
+          const limits = await paymasterContract.getGasAndDataLimits()
+          const dataGasCost = await relayHubInstance.calldataGasCost(limits.calldataSizeLimit)
+          await paymasterContract.setGasLimits(
+            limits.acceptanceBudget,
+            parseInt(limits.preRelayedCallGasLimit) + parseInt(limits.acceptanceBudget) + dataGasCost.toNumber(),
+            limits.postRelayedCallGasLimit
+          )
+        }
         await paymasterContract.setOutOfGasPre(true)
         const r = await makeRequest(web3, {
           request: {

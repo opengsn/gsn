@@ -15,7 +15,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool public revertPreRelayCallOnEvenBlocks;
     bool public greedyAcceptanceBudget;
     bool public expensiveGasLimits;
-    bool public preHigherThanAcceptance;
 
     function setWithdrawDuringPostRelayedCall(bool val) public {
         withdrawDuringPostRelayedCall = val;
@@ -44,9 +43,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     }
     function setExpensiveGasLimits(bool val) public {
         expensiveGasLimits = val;
-    }
-    function setPreGasHigherThanAcceptance(bool val) public {
-        preHigherThanAcceptance = val;
     }
 
     // solhint-disable reason-string
@@ -127,13 +123,6 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         if (greedyAcceptanceBudget) {
             return IPaymaster.GasAndDataLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit,
             limits.calldataSizeLimit);
-        }
-        if (preHigherThanAcceptance) {
-            return IPaymaster.GasAndDataLimits(
-                limits.acceptanceBudget,
-                limits.preRelayedCallGasLimit + limits.acceptanceBudget + relayHub.calldataGasCost(limits.calldataSizeLimit),
-                limits.postRelayedCallGasLimit,
-                limits.calldataSizeLimit);
         }
         return limits;
     }
