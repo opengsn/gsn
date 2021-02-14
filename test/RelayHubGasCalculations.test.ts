@@ -140,7 +140,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   })
 
   describe('#relayCall()', function () {
-    it.only('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'preRelayedCall\'',
+    it('should set correct gas limits and pass correct \'maxPossibleGas\' to the \'preRelayedCall\'',
       async function () {
         const transactionGasLimit = gasLimit.mul(new BN(3))
         const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit, {
