@@ -6,6 +6,8 @@ import {
 
 // @ts-ignore
 import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
+// @ts-ignore
+import ethWallet from 'ethereumjs-wallet'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
@@ -506,34 +508,40 @@ contract('Forwarder', ([from]) => {
       })
 
       it('should forward all funds left in forwarder to "from" address', async () => {
-        const senderPrivateKey = toBuffer(bytes32(2))
+        const senderPrivateKey = ethWallet.generate().privKey as Buffer
         const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
         const value = ether('1')
         const func = recipient.contract.methods.mustReceiveEth(value.toString()).encodeABI()
+        const funcEst = await recipient.mustReceiveEth.estimateGas(value.toString(), { value })
 
-        // value = ether('0');
         const req1 = {
           to: recipient.address,
           data: func,
           from: senderAddress,
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
-          gas: 1e6,
+          gas: funcEst.toString(),
           validUntil: 0
         }
+        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
+        // first gas estimation, with only value for the TX
+        await web3.eth.sendTransaction({ from, to: fwd.address, value: value })
+        const estim = await testfwd.callExecute.estimateGas(fwd.address, req1, domainSeparator, typeHash, '0x', sig).catch(e => e.message)
         const extraFunds = ether('4')
         await web3.eth.sendTransaction({ from, to: fwd.address, value: extraFunds })
 
-        const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
+        // 2nd estim after sending more eth into the forwarder (which will require transfer after calling the target function.
+        const estim2 = await testfwd.callExecute.estimateGas(fwd.address, req1, domainSeparator, typeHash, '0x', sig).catch(e => e.message)
+        console.log('estim without sendback: ', estim, 'estim with sendback=', estim2, 'diff=', estim2 - estim)
 
-        // note: not transfering value in TX.
-        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig)
+        // deliberately use the estimation that didn't assume we're going to transfer. it should have enough slack
+        const ret = await testfwd.callExecute(fwd.address, req1, domainSeparator, typeHash, '0x', sig, { gas: estim })
         assert.equal(ret.logs[0].args.error, '')
         assert.equal(ret.logs[0].args.success, true)
 
-        assert.equal(await web3.eth.getBalance(senderAddress), extraFunds.sub(value).toString())
+        assert.equal(await web3.eth.getBalance(senderAddress), extraFunds.toString())
       })
     })
   })
