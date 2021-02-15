@@ -39,8 +39,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    pre: 5452,
-    post: 1573
+    pre: 5431,
+    post: 1595
   }
 
   let relayHub: RelayHubInstance
@@ -354,6 +354,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       ENCODED_FUNCTION = 'encodedFunction',
       PAYMASTER_DATA = 'paymasterData'
     }
+
     const costsPerByte: number[] = [];
     [RelayCallDynamicArg.APPROVAL_DATA, RelayCallDynamicArg.ENCODED_FUNCTION, RelayCallDynamicArg.PAYMASTER_DATA].forEach(dynamicArg => {
       const gassesUsed: any[] = [];
