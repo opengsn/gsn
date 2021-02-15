@@ -70,32 +70,31 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
         assert.equal(ret, '0x')
       }
     })
-
-    it('should reject signature too long', async () => {
-      await expectRevert(validator.dummyRelayCall(0,
-        {
-          request: {
-            from: senderAddress,
-            to: target,
-            value: 0,
-            gas: 1,
-            nonce: 2,
-            data: '0x',
-            validUntil: 0
-          },
-          relayData: {
-            gasPrice: 0,
-            pctRelayFee: 1,
-            baseRelayFee: 2,
-            relayWorker,
-            paymaster: paymaster,
-            paymasterData: '0x',
-            clientId: 3,
-            forwarder
-          }
+  })
+  it('should reject signature too long', async () => {
+    await expectRevert(validator.dummyRelayCall(0,
+      {
+        request: {
+          from: senderAddress,
+          to: target,
+          value: 0,
+          gas: 1,
+          nonce: 2,
+          data: '0x',
+          validUntil: 0
         },
-        '0x' + '11'.repeat(66),
-        '0x', 0), 'invalid signature length')
-    })
+        relayData: {
+          gasPrice: 0,
+          pctRelayFee: 1,
+          baseRelayFee: 2,
+          relayWorker,
+          paymaster: paymaster,
+          paymasterData: '0x',
+          clientId: 3,
+          forwarder
+        }
+      },
+      '0x' + '11'.repeat(66),
+      '0x', 0), 'invalid signature length')
   })
 })
