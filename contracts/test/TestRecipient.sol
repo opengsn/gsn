@@ -38,14 +38,15 @@ contract TestRecipient is BaseRelayRecipient {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 msgValue, uint256 balance);
+    event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 msgValue, uint256 gasLeft, uint256 balance);
 
     function emitMessage(string memory message) public payable returns (string memory) {
+        uint256 gasLeft = gasleft();
         if (paymaster != address(0)) {
             withdrawAllBalance();
         }
 
-        emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin, msg.value, address(this).balance);
+        emit SampleRecipientEmitted(message, _msgSender(), msg.sender, tx.origin, msg.value, gasLeft, address(this).balance);
         return "emitMessage return value";
     }
 
@@ -57,7 +58,7 @@ contract TestRecipient is BaseRelayRecipient {
     function dontEmitMessage(string calldata message) public {}
 
     function emitMessageNoParams() public {
-        emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, 0, address(this).balance);
+        emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, 0, gasleft(), address(this).balance);
     }
 
     //return (or revert) with a string in the given length

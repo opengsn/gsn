@@ -1,7 +1,7 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
-import { calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
+import { calculateCalldataCost, calculateTransactionMaxPossibleGas, getEip712Signature } from '../src/common/Utils'
 import TypedRequestData from '../src/common/EIP712/TypedRequestData'
 import { defaultEnvironment } from '../src/common/Environments'
 import RelayRequest, { cloneRelayRequest } from '../src/common/EIP712/RelayRequest'
@@ -14,7 +14,7 @@ import {
   IForwarderInstance,
   PenalizerInstance
 } from '../types/truffle-contracts'
-import { calculateCalldataCost, deployHub, revert, snapshot } from './TestUtils'
+import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '../src/common/EIP712/ForwarderUtil'
 import { toBuffer } from 'ethereumjs-util'
 
@@ -151,14 +151,15 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         const { tx } = res
         const gasAndDataLimits = await paymaster.getGasAndDataLimits()
         const hubOverhead = (await relayHub.gasOverhead()).toNumber()
-        const msgDataLength = toBuffer(
-          relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()).length
-        const msgDataGasCost = hubDataGasCostPerByte * msgDataLength
+        const msgData: string = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()
+        const msgDataLength = toBuffer(msgData).length
+        const msgDataGasCostInsideTransaction = hubDataGasCostPerByte * msgDataLength
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasAndDataLimits: gasAndDataLimits,
           hubOverhead,
           relayCallGasLimit: gasLimit.toString(),
-          msgDataGasCost
+          msgData,
+          msgDataGasCostInsideTransaction
         })
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.

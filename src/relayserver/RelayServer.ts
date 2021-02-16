@@ -40,6 +40,18 @@ import { toBuffer } from 'ethereumjs-util'
 
 import Timeout = NodeJS.Timeout
 
+/**
+ * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
+ * the 63/64th rule is applied to gas limit.
+ * As we have to pass enough gas to a transaction to pass 'relayRequest.request.gas' to the recipient,
+ * and this check is at stack depth of 3, we have to oversupply gas to an outermost ('relayCall') transaction
+ * by approximately 1/(63/64)^3 times.
+ */
+const GAS_FACTOR = 1.1
+
+/**
+ * A constant oversupply of gas to each 'relayCall' transaction.
+ */
 const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
@@ -212,9 +224,10 @@ export class RelayServer extends EventEmitter {
 
     const dummyBlockGas = 12e6
     relayExposure = this.config.maxRelayExposure
-    const msgDataLength = toBuffer(this.relayHubContract.contract.methods.relayCall(
-      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()).length
-    const dataGasCost = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
+    const msgData = this.relayHubContract.contract.methods.relayCall(
+      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()
+    const msgDataLength = toBuffer(msgData).length
+    const msgDataGasCostInsideTransaction = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
     if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
@@ -232,26 +245,30 @@ export class RelayServer extends EventEmitter {
       const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
       // TODO remove, since it's redundant. This check is also done in relayCall() on-chain, so the server will fail
       // on view call if these requirements aren't met.
-      if (paymasterAcceptanceBudget + dataGasCost > relayExposure) {
+      if (paymasterAcceptanceBudget + msgDataGasCostInsideTransaction > relayExposure) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
-            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + dataGasCost} max allowed: ${this.config.maxRelayExposure}`)
+            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + msgDataGasCostInsideTransaction} max allowed: ${this.config.maxRelayExposure}`)
         }
         this.logger.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
-        relayExposure = paymasterAcceptanceBudget + dataGasCost
+        relayExposure = paymasterAcceptanceBudget + msgDataGasCostInsideTransaction
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      relayExposure = parseInt(gasAndDataLimits.acceptanceBudget) + dataGasCost
+      relayExposure = parseInt(gasAndDataLimits.acceptanceBudget) + msgDataGasCostInsideTransaction
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
-    const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
-      gasAndDataLimits: gasAndDataLimits,
+    // TODO: this is not a good way to calculate gas limit for relay call
+    const tmpMaxPossibleGas = calculateTransactionMaxPossibleGas({
+      gasAndDataLimits,
       hubOverhead,
       relayCallGasLimit: req.relayRequest.request.gas,
-      msgDataGasCost: dataGasCost
+      msgData,
+      msgDataGasCostInsideTransaction
     })
+    const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
+
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)

@@ -67,6 +67,9 @@ export async function startRelay (
   if (options.initialReputation) {
     args.push('--initialReputation', options.initialReputation)
   }
+  if (options.workerTargetBalance) {
+    args.push('--workerTargetBalance', options.workerTargetBalance)
+  }
   const runServerPath = path.resolve(__dirname, '../src/relayserver/runServer.ts')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
     [runServerPath, ...args])
@@ -124,7 +127,7 @@ export async function startRelay (
   await web3.eth.sendTransaction({
     to: relayManagerAddress,
     from: options.relayOwner,
-    value: ether('2')
+    value: options.value ?? ether('2')
   })
 
   // TODO: this entire function is a logical duplicate of 'CommandsLogic::registerRelay'
@@ -274,13 +277,6 @@ export async function deployHub (
 
 export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
   return Object.assign({}, defaultGsnConfig, partialConfig) as GSNConfig
-}
-
-export function calculateCalldataCost (calldata: string): number {
-  const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
-  let sum = 0
-  calldataBuf.forEach(ch => { sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero) })
-  return sum
 }
 
 /**

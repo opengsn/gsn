@@ -12,6 +12,7 @@ import { ServerConfigParams } from '../relayserver/ServerConfigParams'
 import TypedRequestData from './EIP712/TypedRequestData'
 import chalk from 'chalk'
 import { encode } from 'rlp'
+import { defaultEnvironment } from './Environments'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -104,6 +105,13 @@ export async function getEip712Signature (
   })
 }
 
+export function calculateCalldataCost (calldata: string): number {
+  const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
+  let sum = 0
+  calldataBuf.forEach(ch => { sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero) })
+  return sum
+}
+
 /**
  * @returns maximum possible gas consumption by this relayed call
  */
@@ -112,10 +120,12 @@ export function calculateTransactionMaxPossibleGas (
     gasAndDataLimits,
     hubOverhead,
     relayCallGasLimit,
-    msgDataGasCost
+    msgData,
+    msgDataGasCostInsideTransaction
   }: TransactionGasCostComponents): number {
   return hubOverhead +
-    msgDataGasCost +
+    msgDataGasCostInsideTransaction +
+    calculateCalldataCost(msgData) +
     parseInt(relayCallGasLimit) +
     parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
     parseInt(gasAndDataLimits.postRelayedCallGasLimit)
@@ -210,7 +220,8 @@ interface TransactionGasCostComponents {
   gasAndDataLimits: PaymasterGasAndDataLimits
   hubOverhead: number
   relayCallGasLimit: string
-  msgDataGasCost: number
+  msgData: string
+  msgDataGasCostInsideTransaction: number
 }
 
 export interface PaymasterGasAndDataLimits {
