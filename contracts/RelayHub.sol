@@ -304,7 +304,7 @@ contract RelayHub is IRelayHub {
         // If either pre or post reverts, the whole internal transaction will be reverted, reverting all side effects on
         // the recipient. The recipient will still be charged for the used gas by the relay.
 
-        // The recipient is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
+        // The paymaster is no allowed to withdraw balance from RelayHub during a relayed transaction. We check pre and
         // post state to ensure this doesn't happen.
         vars.balanceBefore = balances[relayRequest.relayData.paymaster];
 
