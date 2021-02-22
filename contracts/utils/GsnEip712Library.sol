@@ -47,18 +47,8 @@ library GsnEip712Library {
     internal
     pure
     returns (
-        IForwarder.ForwardRequest memory forwardRequest,
         bytes memory suffixData
     ) {
-        forwardRequest = IForwarder.ForwardRequest(
-            req.request.from,
-            req.request.to,
-            req.request.value,
-            req.request.gas,
-            req.request.nonce,
-            req.request.data,
-            req.request.validUntil
-        );
         suffixData = abi.encode(
             hashRelayData(req.relayData));
     }
@@ -77,10 +67,10 @@ library GsnEip712Library {
     }
 
     function verifySignature(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
-        (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        (bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 _domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         IForwarder forwarder = IForwarder(payable(relayRequest.relayData.forwarder));
-        forwarder.verify(forwardRequest, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
+        forwarder.verify(relayRequest.request, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature);
     }
 
     function verify(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal view {
@@ -89,12 +79,12 @@ library GsnEip712Library {
     }
 
     function execute(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature) internal returns (bool forwarderSuccess, bool callSuccess, bytes memory ret) {
-        (IForwarder.ForwardRequest memory forwardRequest, bytes memory suffixData) = splitRequest(relayRequest);
+        (bytes memory suffixData) = splitRequest(relayRequest);
         bytes32 _domainSeparator = domainSeparator(relayRequest.relayData.forwarder);
         /* solhint-disable-next-line avoid-low-level-calls */
         (forwarderSuccess, ret) = relayRequest.relayData.forwarder.call(
             abi.encodeWithSelector(IForwarder.execute.selector,
-            forwardRequest, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
+            relayRequest.request, _domainSeparator, RELAY_REQUEST_TYPEHASH, suffixData, signature
         ));
         if ( forwarderSuccess ) {
 
