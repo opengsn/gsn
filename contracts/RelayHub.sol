@@ -36,8 +36,8 @@ contract RelayHub is IRelayHub {
     IStakeManager immutable  override public stakeManager;
     address immutable override public penalizer;
 
-    uint256 public constant Gzero = 4;
-    uint256 public constant Gnonzero = 16;
+    uint256 public constant G_ZERO = 4;
+    uint256 public constant G_NONZERO = 16;
 
     // maps relay worker's address to its manager's address
     mapping(address => address) public override workerToManager;
@@ -144,7 +144,7 @@ contract RelayHub is IRelayHub {
         uint256 dataGasCost = calldataGasCost(msg.data.length);
         uint256 txDataCost = externalGasLimit - initialGasLeft - relayCallDataOverhead;
         uint256 txDataCostPerByte = txDataCost/msg.data.length;
-        require(txDataCostPerByte >= Gzero && txDataCostPerByte <= Gnonzero, "invalid externalGasLimit")
+        require(txDataCostPerByte >= G_ZERO && txDataCostPerByte <= G_NONZERO, "invalid externalGasLimit");
 
         require(maxRelayExposure >= gasAndDataLimits.acceptanceBudget.add(dataGasCost), "pm budget + dataGasCost too high");
 

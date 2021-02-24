@@ -164,10 +164,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         })
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
-        const ev = await paymaster.getPastEvents('SampleRecipientPreCallWithValues')
-        assert.isNotNull(ev, `missing event: SampleRecipientPreCallWithValues: ${res.logs.toString()}`)
-        assert.equal(ev[0].args.maxPossibleGas.toNumber(), maxPossibleGas,
-            `fixed:\n\t relayCallDataOverhead: ${defaultEnvironment.relayHubConfiguration.relayCallDataOverhead + (ev[0].args.maxPossibleGas.toNumber() - maxPossibleGas)},\n`)
+        const events = await paymaster.contract.getPastEvents('SampleRecipientPreCallWithValues')
+        assert.isNotNull(events, `missing event: SampleRecipientPreCallWithValues: ${res.logs.toString()}`)
+        const args = events[0].returnValues
+        assert.equal(args.maxPossibleGas, maxPossibleGas.toString(),
+            `fixed:\n\t relayCallDataOverhead: ${defaultEnvironment.relayHubConfiguration.relayCallDataOverhead + (args.maxPossibleGas - maxPossibleGas)},\n`)
 
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
           gasleft: (parseInt(gasAndDataLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),

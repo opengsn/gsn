@@ -213,7 +213,7 @@ export class RelayServer extends EventEmitter {
     const dummyBlockGas = 12e6
     relayExposure = this.config.maxRelayExposure
     const encodedFunction = this.relayHubContract.contract.methods.relayCall(
-        relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI();
+      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()
     const msgDataLength = toBuffer(encodedFunction).length
     // estimated cost of transfering the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc
     const dataGasCost = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
