@@ -179,7 +179,7 @@ options.forEach(params => {
                 console.log('error is ', e.message)
                 throw e
               }
-              const actual: BN = res.logs[0].args.gasLeft
+              const actual: BN = res.logs.find((e: any) => e.event === 'SampleRecipientEmitted').args.gasLeft
               assert.closeTo(actual.toNumber(), innerGasLimit, 1500)
               assert.equal('Method with no parameters', res.logs[0].args.message)
             })
