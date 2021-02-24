@@ -348,7 +348,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           const relayCallView =
             await relayHubInstance.contract.methods
               .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
-              .call({ from: relayWorker })
+              .call({ from: relayWorker, gas: 7e6 })
 
           assert.equal(relayCallView.paymasterAccepted, false)
 
