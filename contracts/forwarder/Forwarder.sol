@@ -77,11 +77,11 @@ contract Forwarder is IForwarder {
     }
 
 
-    function _verifyNonce(ForwardRequest memory req) internal view {
+    function _verifyNonce(ForwardRequest calldata req) internal view {
         require(nonces[req.from] == req.nonce, "FWD: nonce mismatch");
     }
 
-    function _verifyAndUpdateNonce(ForwardRequest memory req) internal {
+    function _verifyAndUpdateNonce(ForwardRequest calldata req) internal {
         require(nonces[req.from]++ == req.nonce, "FWD: nonce mismatch");
     }
 
@@ -125,8 +125,8 @@ contract Forwarder is IForwarder {
         ForwardRequest calldata req,
         bytes32 domainSeparator,
         bytes32 requestTypeHash,
-        bytes memory suffixData,
-        bytes memory sig)
+        bytes calldata suffixData,
+        bytes calldata sig)
     internal
     view
     {
@@ -142,24 +142,25 @@ contract Forwarder is IForwarder {
     function _getEncoded(
         ForwardRequest calldata req,
         bytes32 requestTypeHash,
-        bytes memory suffixData
+        bytes calldata suffixData
     )
     public
     pure
     returns (
         bytes memory
     ) {
+        // we use encodePacked since we append suffixData as-is, not as dynamic param.
+        // still, we must make sure all first params are encoded as abi.encode()
+        // would encode them - as 256-bit-wide params.
         return abi.encodePacked(
             requestTypeHash,
-            abi.encode(
-                req.from,
-                req.to,
-                req.value,
-                req.gas,
-                req.nonce,
-                keccak256(req.data),
-                req.validUntil
-            ),
+            uint256(uint160(req.from)),
+            uint256(uint160(req.to)),
+            req.value,
+            req.gas,
+            req.nonce,
+            keccak256(req.data),
+            req.validUntil,
             suffixData
         );
     }
