@@ -38,7 +38,7 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   minimumUnstakeDelay: 1000,
   maximumRecipientDeposit: 2e18.toString(),
   dataGasCostPerByte: 13,
-  relayCallDataOverhead: 22414
+  externalCallDataCostOverhead: 22414
 }
 
 // TODO add as constructor params to paymaster instead of constants

@@ -331,22 +331,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
 
         describe('check externalGasLimit', () => {
-          // note that actual above/below values depend on # of zero/nonzero bytes in current request.
-          // we make sure that relayer can't offset too much.
-
-          it('should verify externalGasLimit is not too low', async () => {
-            const gas = 2e6
-            const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-            relayRequest.request.data = '0xdeadbeef'
-
-            await expectRevert(
-              relayHubInstance.relayCall(10e6, relayRequest, '0x', '0x', gas - 3000, {
-                from: relayWorker,
-                gas: gas
-              }),
-              'invalid externalGasLimit')
-          })
-
           it('should verify externalGasLimit is not too high', async () => {
             const gas = 2e6
             const relayRequest = cloneRelayRequest(sharedRelayRequestData)

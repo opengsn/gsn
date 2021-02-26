@@ -218,7 +218,7 @@ export class RelayServer extends EventEmitter {
     // estimated cost of transfering the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc
     const dataGasCost = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
     // actual cost of putting the TX on-chain.
-    const txDataCost = calculateCalldataCost(encodedFunction)
+    const externalCallDataCost = calculateCalldataCost(encodedFunction)
     if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
@@ -255,7 +255,7 @@ export class RelayServer extends EventEmitter {
       hubOverhead,
       relayCallGasLimit: req.relayRequest.request.gas,
       msgDataGasCost: dataGasCost,
-      txDataCost
+      externalCallDataCost
     })
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)

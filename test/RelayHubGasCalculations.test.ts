@@ -154,13 +154,13 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         const encodedFunction = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()
         const msgDataLength = toBuffer(encodedFunction).length
         const msgDataGasCost = hubDataGasCostPerByte * msgDataLength
-        const txDataCost = calculateCalldataCost(encodedFunction)
+        const externalCallDataCost = calculateCalldataCost(encodedFunction)
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasAndDataLimits: gasAndDataLimits,
           hubOverhead,
           relayCallGasLimit: gasLimit.toString(),
           msgDataGasCost,
-          txDataCost
+          externalCallDataCost
         })
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
@@ -168,7 +168,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         assert.isNotNull(events, `missing event: SampleRecipientPreCallWithValues: ${res.logs.toString()}`)
         const args = events[0].returnValues
         assert.equal(args.maxPossibleGas, maxPossibleGas.toString(),
-            `fixed:\n\t relayCallDataOverhead: ${defaultEnvironment.relayHubConfiguration.relayCallDataOverhead + (args.maxPossibleGas - maxPossibleGas)},\n`)
+            `fixed:\n\t externalCallDataCostOverhead: ${defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead + (args.maxPossibleGas - maxPossibleGas)},\n`)
 
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
           gasleft: (parseInt(gasAndDataLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
