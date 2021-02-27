@@ -21,7 +21,7 @@ import { LoggerInterface } from '../common/LoggerInterface'
 import { defaultEnvironment } from '../common/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '../common/Version'
 import {
-  address2topic,
+  address2topic, calculateCalldataCost,
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
@@ -212,9 +212,13 @@ export class RelayServer extends EventEmitter {
 
     const dummyBlockGas = 12e6
     relayExposure = this.config.maxRelayExposure
-    const msgDataLength = toBuffer(this.relayHubContract.contract.methods.relayCall(
-      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()).length
+    const encodedFunction = this.relayHubContract.contract.methods.relayCall(
+      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()
+    const msgDataLength = toBuffer(encodedFunction).length
+    // estimated cost of transfering the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc
     const dataGasCost = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
+    // actual cost of putting the TX on-chain.
+    const externalCallDataCost = calculateCalldataCost(encodedFunction)
     if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
@@ -250,7 +254,8 @@ export class RelayServer extends EventEmitter {
       gasAndDataLimits: gasAndDataLimits,
       hubOverhead,
       relayCallGasLimit: req.relayRequest.request.gas,
-      msgDataGasCost: dataGasCost
+      msgDataGasCost: dataGasCost,
+      externalCallDataCost
     })
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)

@@ -330,6 +330,20 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
         })
 
+        describe('check externalGasLimit', () => {
+          it('should verify externalGasLimit is not too high', async () => {
+            const gas = 2e6
+            const relayRequest = cloneRelayRequest(sharedRelayRequestData)
+            relayRequest.request.data = '0xdeadbeef'
+            await expectRevert(
+              relayHubInstance.relayCall(10e6, relayRequest, '0x', '0x', gas + 10000, {
+                from: relayWorker,
+                gas: gas
+              }),
+              'invalid externalGasLimit')
+          })
+        })
+
         it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
           const relayCallView = await relayHubInstance.contract.methods.relayCall(
             10e6,
@@ -348,7 +362,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           const relayCallView =
             await relayHubInstance.contract.methods
               .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
-              .call({ from: relayWorker })
+              .call({ from: relayWorker, gas: 7e6 })
 
           assert.equal(relayCallView.paymasterAccepted, false)
 

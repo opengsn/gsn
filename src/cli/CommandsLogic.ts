@@ -325,7 +325,8 @@ export default class CommandsLogic {
         deployOptions.relayHubConfiguration.maximumRecipientDeposit,
         deployOptions.relayHubConfiguration.minimumUnstakeDelay,
         deployOptions.relayHubConfiguration.minimumStake,
-        deployOptions.relayHubConfiguration.dataGasCostPerByte]
+        deployOptions.relayHubConfiguration.dataGasCostPerByte,
+        deployOptions.relayHubConfiguration.externalCallDataCostOverhead]
     }, deployOptions.relayHubAddress, merge({}, options, { gas: 5e6 }), deployOptions.skipConfirmation)
 
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, Object.assign({}, options), deployOptions.skipConfirmation)

@@ -172,6 +172,9 @@ interface IRelayHub {
     // relayCall()'s msg.data upper bound gas cost per byte
     function dataGasCostPerByte() external view returns (uint256);
 
+    // relayCalls() minimal gas overhead when calculating cost of putting tx on chain.
+    function externalCallDataCostOverhead() external view returns (uint256);
+
     function calldataGasCost(uint256 length) external view returns (uint256);
 
     function workerToManager(address worker) external view returns(address);

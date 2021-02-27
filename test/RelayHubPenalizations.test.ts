@@ -442,7 +442,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
             from: other,
             value: ether('1')
           })
-          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gasLimit.add(new BN(2e6)), {
+          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gasLimit.add(new BN(1e6 - 1)), {
             from: relayWorker,
             gas: gasLimit.add(new BN(1e6)),
             gasPrice
