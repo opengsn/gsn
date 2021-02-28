@@ -154,15 +154,13 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         const msgData: string = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()
         const msgDataLength = toBuffer(msgData).length
         const msgDataGasCostInsideTransaction = hubDataGasCostPerByte * msgDataLength
-        let maxPossibleGas = calculateTransactionMaxPossibleGas({
+        const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasAndDataLimits: gasAndDataLimits,
           hubOverhead,
           relayCallGasLimit: gasLimit.toString(),
           msgData,
           msgDataGasCostInsideTransaction
         })
-        // TODO: this is a hotfix until OG-431 us addressed; calldata cost must be part of the 'maxPossibleGas'
-        maxPossibleGas -= calculateCalldataCost(msgData)
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
         const events = await paymaster.contract.getPastEvents('SampleRecipientPreCallWithValues')

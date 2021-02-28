@@ -128,14 +128,11 @@ export function calculateTransactionMaxPossibleGas (
     msgDataGasCostInsideTransaction
   }: TransactionGasCostComponents): number {
   return hubOverhead +
-      parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
-      parseInt(gasAndDataLimits.postRelayedCallGasLimit) +
-      parseInt(relayCallGasLimit) +
     msgDataGasCostInsideTransaction +
     calculateCalldataCost(msgData) +
     parseInt(relayCallGasLimit) +
     parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
-    parseInt(gasAndDataLimits.postRelayedCallGasLimit) +
+    parseInt(gasAndDataLimits.postRelayedCallGasLimit)
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
