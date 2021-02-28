@@ -21,7 +21,7 @@ import { LoggerInterface } from '../common/LoggerInterface'
 import { defaultEnvironment } from '../common/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '../common/Version'
 import {
-  address2topic,
+  address2topic, calculateCalldataCost,
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
@@ -268,7 +268,6 @@ export class RelayServer extends EventEmitter {
       msgDataGasCostInsideTransaction
     })
     const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
-
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)

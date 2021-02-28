@@ -1,10 +1,9 @@
 #!/bin/bash -e
 
 rm -rf ./dist/
-yarn truffle-compile
-yarn extract_abi
 yarn generate
 
+rm -rf src/cli/compiled/
 mkdir -p src/cli/compiled/
 
 CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"

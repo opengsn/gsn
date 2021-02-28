@@ -161,11 +161,15 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           msgData,
           msgDataGasCostInsideTransaction
         })
-
         // TODO: this is a hotfix until OG-431 us addressed; calldata cost must be part of the 'maxPossibleGas'
         maxPossibleGas -= calculateCalldataCost(msgData)
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
+        const events = await paymaster.contract.getPastEvents('SampleRecipientPreCallWithValues')
+        assert.isNotNull(events, `missing event: SampleRecipientPreCallWithValues: ${res.logs.toString()}`)
+        const args = events[0].returnValues
+        assert.equal(args.maxPossibleGas, maxPossibleGas.toString(),
+            `fixed:\n\t externalCallDataCostOverhead: ${defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead + (args.maxPossibleGas - maxPossibleGas)},\n`)
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
           gasleft: (parseInt(gasAndDataLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
           maxPossibleGas: maxPossibleGas.toString()

@@ -105,6 +105,9 @@ export async function getEip712Signature (
   })
 }
 
+/**
+ * @returns the actual cost of putting this transaction on chain.
+ */
 export function calculateCalldataCost (calldata: string): number {
   const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
   let sum = 0
@@ -114,6 +117,7 @@ export function calculateCalldataCost (calldata: string): number {
 
 /**
  * @returns maximum possible gas consumption by this relayed call
+ * (calculated on chain by RelayHub.verifyGasAndDataLimits)
  */
 export function calculateTransactionMaxPossibleGas (
   {
@@ -124,11 +128,14 @@ export function calculateTransactionMaxPossibleGas (
     msgDataGasCostInsideTransaction
   }: TransactionGasCostComponents): number {
   return hubOverhead +
+      parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
+      parseInt(gasAndDataLimits.postRelayedCallGasLimit) +
+      parseInt(relayCallGasLimit) +
     msgDataGasCostInsideTransaction +
     calculateCalldataCost(msgData) +
     parseInt(relayCallGasLimit) +
     parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
-    parseInt(gasAndDataLimits.postRelayedCallGasLimit)
+    parseInt(gasAndDataLimits.postRelayedCallGasLimit) +
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {

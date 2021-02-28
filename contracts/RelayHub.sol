@@ -32,8 +32,11 @@ contract RelayHub is IRelayHub {
     uint256 public immutable override gasReserve;
     uint256 public immutable override maxWorkerCount;
     uint256 public immutable override dataGasCostPerByte;
+    uint256 public immutable override externalCallDataCostOverhead;
     IStakeManager immutable  override public stakeManager;
     address immutable override public penalizer;
+
+    uint256 public constant G_NONZERO = 16;
 
     // maps relay worker's address to its manager's address
     mapping(address => address) public override workerToManager;
@@ -53,7 +56,8 @@ contract RelayHub is IRelayHub {
         uint256 _maximumRecipientDeposit,
         uint256 _minimumUnstakeDelay,
         uint256 _minimumStake,
-        uint256 _dataGasCostPerByte
+        uint256 _dataGasCostPerByte,
+        uint256 _externalCallDataCostOverhead
     ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
@@ -65,6 +69,7 @@ contract RelayHub is IRelayHub {
         minimumUnstakeDelay = _minimumUnstakeDelay;
         minimumStake =  _minimumStake;
         dataGasCostPerByte = _dataGasCostPerByte;
+        externalCallDataCostOverhead = _externalCallDataCostOverhead;
     }
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
@@ -126,7 +131,8 @@ contract RelayHub is IRelayHub {
     function verifyGasAndDataLimits(
         uint256 maxRelayExposure,
         GsnTypes.RelayRequest calldata relayRequest,
-        uint256 initialGas
+        uint256 initialGasLeft,
+        uint256 externalGasLimit
     )
     private
     view
@@ -135,6 +141,10 @@ contract RelayHub is IRelayHub {
             IPaymaster(relayRequest.relayData.paymaster).getGasAndDataLimits{gas:50000}();
         require(msg.data.length <= gasAndDataLimits.calldataSizeLimit, "msg.data exceeded limit" );
         uint256 dataGasCost = calldataGasCost(msg.data.length);
+        uint256 externalCallDataCost = externalGasLimit - initialGasLeft - externalCallDataCostOverhead;
+        uint256 txDataCostPerByte = externalCallDataCost/msg.data.length;
+        require(txDataCostPerByte <= G_NONZERO, "invalid externalGasLimit");
+
         require(maxRelayExposure >= gasAndDataLimits.acceptanceBudget.add(dataGasCost), "pm budget + dataGasCost too high");
 
         maxPossibleGas =
@@ -142,12 +152,13 @@ contract RelayHub is IRelayHub {
             gasAndDataLimits.preRelayedCallGasLimit).add(
             gasAndDataLimits.postRelayedCallGasLimit).add(
             relayRequest.request.gas).add(
-            dataGasCost);
+            dataGasCost).add(
+            externalCallDataCost);
 
         // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
         // run out of gas later in this function.
         require(
-            initialGas >= maxPossibleGas,
+            externalGasLimit >= maxPossibleGas,
             "no gas for innerRelayCall");
 
         uint256 maxPossibleCharge = calculateCharge(
@@ -164,6 +175,7 @@ contract RelayHub is IRelayHub {
     struct RelayCallData {
         bool success;
         bytes4 functionSelector;
+        uint256 initialGasLeft;
         bytes recipientContext;
         bytes relayedCallReturnValue;
         IPaymaster.GasAndDataLimits gasAndDataLimits;
@@ -188,6 +200,7 @@ contract RelayHub is IRelayHub {
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
         RelayCallData memory vars;
+        vars.initialGasLeft = gasleft();
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
         require(msg.sender == tx.origin, "relay worker must be EOA");
         vars.relayManager = workerToManager[msg.sender];
@@ -201,7 +214,7 @@ contract RelayHub is IRelayHub {
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
-             verifyGasAndDataLimits(maxRelayExposure, relayRequest, externalGasLimit);
+             verifyGasAndDataLimits(maxRelayExposure, relayRequest, vars.initialGasLeft, externalGasLimit);
 
         RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
 
