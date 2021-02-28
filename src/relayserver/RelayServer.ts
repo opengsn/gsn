@@ -21,7 +21,7 @@ import { LoggerInterface } from '../common/LoggerInterface'
 import { defaultEnvironment } from '../common/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '../common/Version'
 import {
-  address2topic, calculateCalldataCost,
+  address2topic,
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
