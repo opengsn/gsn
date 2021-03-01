@@ -15,6 +15,7 @@ import "@opengsn/contracts/src/test/TestPaymasterPreconfiguredApproval.sol";
 import "@opengsn/contracts/src/test/TestPaymasterStoreContext.sol";
 import "@opengsn/contracts/src/test/TestPaymasterVariableGasLimits.sol";
 import "@opengsn/contracts/src/test/TestRecipient.sol";
+import "@opengsn/contracts/src/test/TestRelayHubValidator.sol";
 import "@opengsn/contracts/src/test/TestRelayWorkerContract.sol";
 import "@opengsn/contracts/src/test/TestUtil.sol";
 

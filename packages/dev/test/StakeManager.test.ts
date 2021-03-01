@@ -4,7 +4,7 @@ import { evmMineMany } from './TestUtils'
 import BN from 'bn.js'
 
 import { StakeManagerInstance } from '../../../types/truffle-contracts'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 
@@ -107,9 +107,9 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
         'already owned'
       )
     })
-    it('should not allow anyone to stake before owner is set', async function () {
+    it('should not allow not owner to schedule unlock', async function () {
       await expectRevert(
-        stakeManager.unlockStake(nonOwner, { from: owner }),
+        stakeManager.unlockStake(relayManager, { from: nonOwner }),
         'not owner'
       )
     })

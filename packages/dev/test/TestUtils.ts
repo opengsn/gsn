@@ -258,7 +258,7 @@ export async function deployHub (
     ...defaultEnvironment.relayHubConfiguration,
     ...configOverride
   }
-  return await RelayHub.new(
+  const hub: RelayHubInstance = await RelayHub.new(
     stakeManager,
     penalizer,
     relayHubConfiguration.maxWorkerCount,
@@ -270,6 +270,7 @@ export async function deployHub (
     relayHubConfiguration.minimumStake,
     relayHubConfiguration.dataGasCostPerByte,
     relayHubConfiguration.externalCallDataCostOverhead)
+  return hub
 }
 
 export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {

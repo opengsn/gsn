@@ -20,7 +20,7 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

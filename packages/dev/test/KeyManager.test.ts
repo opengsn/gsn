@@ -1,7 +1,7 @@
 /* global */
 
 import fs from 'fs'
-import { KeyManager, KEYSTORE_FILENAME } from './KeyManager'
+import { KeyManager, KEYSTORE_FILENAME } from '@opengsn/relay/dist/KeyManager'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/key_manager'

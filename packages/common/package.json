@@ -1,6 +1,7 @@
 {
   "name": "@opengsn/common",
   "version": "2.1.0",
+  "license": "MIT",
   "main": "dist/Version",
   "scripts": {
     "tsc": "tsc",

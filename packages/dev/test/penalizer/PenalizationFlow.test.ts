@@ -16,7 +16,7 @@ import { constants } from '@opengsn/common/dist/Constants'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
-import { sleep } from "@opengsn/common/dist/Utils";
+import { sleep } from '@opengsn/common/dist/Utils'
 
 contract('PenalizationFlow', function (accounts) {
   const preferredRelays = ['http://www.my-preffered-relay.com']

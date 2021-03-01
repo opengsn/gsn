@@ -42,7 +42,7 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { ether } from '@openzeppelin/test-helpers'
 import BadContractInteractor from '../dummies/BadContractInteractor'
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -302,7 +302,7 @@ contract('RelayClient', function (accounts) {
       const { transaction, pingErrors, relayingErrors } = await relayClient.relayTransaction(optionsForceGas)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 0)
-      assert.equal(parseInt(transaction!.gasPrice.toString('hex'), 16), parseInt(forceGasPrice))
+      assert.equal(parseInt(transaction.gasPrice.toString('hex'), 16), parseInt(forceGasPrice))
     })
 
     it('should return errors encountered in ping', async function () {
@@ -496,7 +496,7 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
-      assert.equal(error!.message, `local view call to 'relayCall()' reverted: ${BadContractInteractor.message}`)
+      assert.equal(error.message, `local view call to 'relayCall()' reverted: ${BadContractInteractor.message}`)
     })
 
     it('should report relays that timeout to the Known Relays Manager', async function () {
@@ -554,7 +554,7 @@ contract('RelayClient', function (accounts) {
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
-      assert.equal(error!.message, 'Returned transaction did not pass validation')
+      assert.equal(error.message, 'Returned transaction did not pass validation')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
 

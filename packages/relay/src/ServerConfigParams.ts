@@ -11,7 +11,7 @@ import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 require('source-map-support').install({ errorFormatterForce: true })
 

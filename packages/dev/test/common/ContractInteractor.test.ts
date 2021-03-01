@@ -19,7 +19,7 @@ import { deployHub } from '../TestUtils'
 import VersionsManager from '@opengsn/common/dist/VersionsManager'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const { expect } = chai.use(chaiAsPromised)
 

@@ -28,7 +28,7 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import HttpWrapper from '@opengsn/common/dist/HttpWrapper'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { PenalizerConfiguration } from "@opengsn/common/dist/types/PenalizerConfiguration";
+import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -336,7 +336,7 @@ export default class CommandsLogic {
     }
 
     let pmInstance: Contract | undefined
-    if (deployOptions.deployPaymaster) {
+    if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
 

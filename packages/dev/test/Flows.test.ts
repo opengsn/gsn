@@ -16,7 +16,7 @@ import { deployHub, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -144,7 +144,7 @@ options.forEach(params => {
         assert.ok(ex == null, `should succeed sending gasless transaction through relay. got: ${ex?.toString()}`)
       } else {
         // eslint-disable-next-line @typescript-eslint/no-base-to-string,@typescript-eslint/restrict-template-expressions
-        assert.ok(ex!.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
+        assert.ok(ex.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
       }
     })
     it(params.title + 'running testRevert (should always fail)', async () => {

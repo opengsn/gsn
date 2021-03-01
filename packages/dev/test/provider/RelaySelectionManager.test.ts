@@ -15,7 +15,7 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/typ
 import { configureGSN, deployHub } from '../TestUtils'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -99,7 +99,7 @@ contract('RelaySelectionManager', function (accounts) {
           errors
         }))
       const nextRelay = await relaySelectionManager.selectNextRelay()
-      assert.equal(nextRelay!, winner)
+      assert.equal(nextRelay, winner)
     })
 
     describe('with preferred relay URL', function () {
@@ -155,10 +155,10 @@ contract('RelaySelectionManager', function (accounts) {
         }))
         stubGetRelaysSorted.returns(Promise.resolve([[urlInfo]]))
         const nextRelay = await relaySelectionManager.selectNextRelay()
-        assert.equal(nextRelay!.relayInfo.relayUrl, preferredRelayUrl)
-        assert.equal(nextRelay!.relayInfo.relayManager, relayManager)
-        assert.equal(nextRelay!.relayInfo.baseRelayFee, '666')
-        assert.equal(nextRelay!.relayInfo.pctRelayFee, '777')
+        assert.equal(nextRelay.relayInfo.relayUrl, preferredRelayUrl)
+        assert.equal(nextRelay.relayInfo.relayManager, relayManager)
+        assert.equal(nextRelay.relayInfo.baseRelayFee, '666')
+        assert.equal(nextRelay.relayInfo.pctRelayFee, '777')
       })
     })
 

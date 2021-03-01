@@ -19,7 +19,7 @@ import RelayData from '@opengsn/common/dist/EIP712/RelayData'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { toBuffer } from 'ethereumjs-util'
-import { defaultEnvironment } from "@opengsn/common/dist/Environments";
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -341,26 +341,26 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           )
         }
         await paymasterContract.setOutOfGasPre(true)
-      const r = await makeRequest(web3, {
-        request: {
+        const r = await makeRequest(web3, {
+          request: {
           // nonce: '4',
-          data: recipientContract.contract.methods.emitMessage('').encodeABI()
-        },
-        relayData: { paymaster }
+            data: recipientContract.contract.methods.emitMessage('').encodeABI()
+          },
+          relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+        }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
-        from: relayWorker,
-        gas: externalGasLimit,
-        gasPrice
+        const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+          from: relayWorker,
+          gas: externalGasLimit,
+          gasPrice
+        })
+
+        expectEvent(res, 'TransactionRejectedByPaymaster', { reason: null })
+
+        const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
+        assert.equal(paid, 0)
       })
-
-      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: null })
-
-      const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
-      assert.equal(paid, 0)
-    })
     })
 
     it('paymaster should not pay for Forwarder revert (under commitment gas)', async () => {

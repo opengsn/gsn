@@ -24,7 +24,6 @@ import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
 import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
-
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -151,7 +150,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
         gasPrice: 0
       }
       // commit to penalization and mine some blocks
-      const commitHash = web3.utils.keccak256(web3.utils.keccak256(penalizeMsgData) + defaultOptions.from!.slice(2).toLowerCase())
+      const commitHash = web3.utils.keccak256(web3.utils.keccak256(penalizeMsgData) + defaultOptions.from.slice(2).toLowerCase())
       await penalizer.commit(commitHash, defaultOptions)
       await evmMineMany(6)
       return methodInvoked
@@ -177,7 +176,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
         (resolve: any, reject: any) => methodInvoked.send(mergedOptions)
           .then(function (receipt: any) {
             resolve(receipt)
-      })
+          })
           .catch(function (reason: any) {
             reject(reason)
           })

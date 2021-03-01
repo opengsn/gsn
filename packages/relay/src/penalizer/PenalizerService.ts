@@ -21,8 +21,8 @@ import { TransactionManager } from '../TransactionManager'
 import { address2topic, getDataAndSignature } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { ServerConfigParams } from '../ServerConfigParams'
+import { constants } from '@opengsn/common/dist/Constants'
 import Timeout = NodeJS.Timeout
-import { constants } from "@opengsn/common/dist/Constants";
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(PayMasterABI)
@@ -121,6 +121,7 @@ export class PenalizerService {
       clearInterval(this.workerTask)
     }
   }
+
   async penalizeRepeatedNonce (req: AuditRequest): Promise<AuditResponse> {
     if (!this.initialized) {
       throw new Error('PenalizerService is not initialized')

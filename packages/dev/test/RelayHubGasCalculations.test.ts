@@ -455,83 +455,83 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             if (messageLength === 50000 && requestedFee !== 10) return
             it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`,
               async function () {
-              const beforeBalances = await getBalances()
-              const pctRelayFee = requestedFee.toString()
-              const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
-              const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
-              const baseRelayFee = '0'
-              const relayRequest: RelayRequest = {
-                request: {
-                  to: recipient.address,
-                  data: encodedFunction,
-                  from: senderAddress,
-                  nonce: senderNonce,
-                  value: '0',
+                const beforeBalances = await getBalances()
+                const pctRelayFee = requestedFee.toString()
+                const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
+                const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
+                const baseRelayFee = '0'
+                const relayRequest: RelayRequest = {
+                  request: {
+                    to: recipient.address,
+                    data: encodedFunction,
+                    from: senderAddress,
+                    nonce: senderNonce,
+                    value: '0',
                     gas: gasLimit.toString(),
                     validUntil: '0'
-                },
-                relayData: {
-                  baseRelayFee,
-                  pctRelayFee,
-                  gasPrice: gasPrice.toString(),
-                  relayWorker,
-                  forwarder,
-                  paymaster: paymaster.address,
-                  paymasterData,
-                  clientId
+                  },
+                  relayData: {
+                    baseRelayFee,
+                    pctRelayFee,
+                    gasPrice: gasPrice.toString(),
+                    relayWorker,
+                    forwarder,
+                    paymaster: paymaster.address,
+                    paymasterData,
+                    clientId
+                  }
                 }
-              }
-              const dataToSign = new TypedRequestData(
-                chainId,
-                forwarder,
-                relayRequest
-              )
-              const signature = await getEip712Signature(
-                web3,
-                dataToSign
-              )
-              const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', externalGasLimit, {
-                from: relayWorker,
-                gas: externalGasLimit,
-                gasPrice: gasPrice
-              })
+                const dataToSign = new TypedRequestData(
+                  chainId,
+                  forwarder,
+                  relayRequest
+                )
+                const signature = await getEip712Signature(
+                  web3,
+                  dataToSign
+                )
+                const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', externalGasLimit, {
+                  from: relayWorker,
+                  gas: externalGasLimit,
+                  gasPrice: gasPrice
+                })
 
-              const afterBalances = await getBalances()
+                const afterBalances = await getBalances()
                 assert.notEqual(beforeBalances.relayManagers.toString(), afterBalances.relayManagers.toString(),
                   'manager not compensated. transaction must have failed')
 
-              // how much we got compensated for this tx from the paymaster
-              const weiActualCharge = afterBalances.relayManagers.sub(beforeBalances.relayManagers)
+                // how much we got compensated for this tx from the paymaster
+                const weiActualCharge = afterBalances.relayManagers.sub(beforeBalances.relayManagers)
 
-              // how much gas we actually spent on this tx
-              const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
+                // how much gas we actually spent on this tx
+                const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
 
-              if (requestedFee === 0) {
-                logOverhead(weiActualCharge, workerWeiGasUsed)
-              }
+                if (requestedFee === 0) {
+                  logOverhead(weiActualCharge, workerWeiGasUsed)
+                }
 
-              // sanity: worker executed and paid this tx
-              assert.equal((gasPrice.muln(res.receipt.gasUsed)).toString(), workerWeiGasUsed.toString(), 'where else did the money go?')
+                // sanity: worker executed and paid this tx
+                assert.equal((gasPrice.muln(res.receipt.gasUsed)).toString(), workerWeiGasUsed.toString(), 'where else did the money go?')
 
-              const expectedCharge = Math.floor(workerWeiGasUsed.toNumber() * (100 + requestedFee) / 100) + parseInt(baseRelayFee)
-              assert.equal(weiActualCharge.toNumber(), expectedCharge,
-                'actual charge from paymaster higher than expected. diff= ' + ((weiActualCharge.toNumber() - expectedCharge) / gasPrice.toNumber()).toString())
+                const expectedCharge = Math.floor(workerWeiGasUsed.toNumber() * (100 + requestedFee) / 100) + parseInt(baseRelayFee)
+                assert.equal(weiActualCharge.toNumber(), expectedCharge,
+                  'actual charge from paymaster higher than expected. diff= ' + ((weiActualCharge.toNumber() - expectedCharge) / gasPrice.toNumber()).toString())
 
-              // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
-              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-              const expectedActualCharge = workerWeiGasUsed.mul(new BN(requestedFee).add(new BN(100))).div(new BN(100))
-              assert.equal(weiActualCharge.toNumber(), expectedActualCharge.toNumber(),
-                'unexpected over-paying by ' + (weiActualCharge.sub(expectedActualCharge)).toString())
-              // Check that relay did pay it's gas fee by himself.
-              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-              const expectedBalanceAfter = beforeBalances.relayWorkers.subn(res.receipt.gasUsed * gasPrice)
-              assert.equal(expectedBalanceAfter.cmp(afterBalances.relayWorkers), 0, 'relay did not pay the expected gas fees')
+                // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
+                // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
+                const expectedActualCharge = workerWeiGasUsed.mul(new BN(requestedFee).add(new BN(100))).div(new BN(100))
+                assert.equal(weiActualCharge.toNumber(), expectedActualCharge.toNumber(),
+                  'unexpected over-paying by ' + (weiActualCharge.sub(expectedActualCharge)).toString())
+                // Check that relay did pay it's gas fee by himself.
+                // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
+                const expectedBalanceAfter = beforeBalances.relayWorkers.subn(res.receipt.gasUsed * gasPrice)
+                assert.equal(expectedBalanceAfter.cmp(afterBalances.relayWorkers), 0, 'relay did not pay the expected gas fees')
 
-              // Check that relay's weiActualCharge is deducted from paymaster's stake.
-              // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-              const expectedPaymasterBalance = beforeBalances.paymasters.sub(weiActualCharge)
-              assert.equal(expectedPaymasterBalance.toString(), afterBalances.paymasters.toString())
-            })
+                // Check that relay's weiActualCharge is deducted from paymaster's stake.
+                // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
+                const expectedPaymasterBalance = beforeBalances.paymasters.sub(weiActualCharge)
+                assert.equal(expectedPaymasterBalance.toString(), afterBalances.paymasters.toString())
+              })
           })
       )
   })

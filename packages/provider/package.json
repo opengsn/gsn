@@ -1,6 +1,7 @@
 {
   "name": "@opengsn/provider",
   "version": "2.1.0",
+  "license": "MIT",
   "main": "dist/src/index",
   "scripts": {
     "tsc": "tsc",
