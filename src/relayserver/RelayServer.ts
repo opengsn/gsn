@@ -119,7 +119,7 @@ export class RelayServer extends EventEmitter {
       relayManagerAddress: this.managerAddress,
       relayHubAddress: this.relayHubContract?.address ?? '',
       minGasPrice: this.getMinGasPrice().toString(),
-      maxRelayExposure: this._getPaymasterMaxAcceptanceBudget(paymaster),
+      maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
       chainId: this.chainId.toString(),
       networkId: this.networkId.toString(),
       ready: this.isReady() ?? false,
@@ -204,16 +204,16 @@ export class RelayServer extends EventEmitter {
 
   async validatePaymasterGasAndDataLimits (req: RelayTransactionRequest): Promise<{
     maxPossibleGas: number
-    relayExposure: number
+    acceptanceBudget: number
   }> {
     const paymaster = req.relayRequest.relayData.paymaster
     let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymaster)
-    let relayExposure: number
+    let acceptanceBudget: number
 
     const dummyBlockGas = 12e6
-    relayExposure = this.config.maxRelayExposure
+    acceptanceBudget = this.config.maxAcceptanceBudget
     const encodedFunction = this.relayHubContract.contract.methods.relayCall(
-      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()
+      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()
     const msgDataLength = toBuffer(encodedFunction).length
     // estimated cost of transfering the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc
     const dataGasCost = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
@@ -236,17 +236,17 @@ export class RelayServer extends EventEmitter {
       const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
       // TODO remove, since it's redundant. This check is also done in relayCall() on-chain, so the server will fail
       // on view call if these requirements aren't met.
-      if (paymasterAcceptanceBudget + dataGasCost > relayExposure) {
+      if (paymasterAcceptanceBudget + dataGasCost > acceptanceBudget) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
-            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + dataGasCost} max allowed: ${this.config.maxRelayExposure}`)
+            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + dataGasCost} max allowed: ${this.config.maxAcceptanceBudget}`)
         }
         this.logger.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
-        relayExposure = paymasterAcceptanceBudget + dataGasCost
+        acceptanceBudget = paymasterAcceptanceBudget
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      relayExposure = parseInt(gasAndDataLimits.acceptanceBudget) + dataGasCost
+      acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
@@ -268,14 +268,14 @@ export class RelayServer extends EventEmitter {
     this.logger.debug(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
 
     return {
-      relayExposure: relayExposure,
+      acceptanceBudget: acceptanceBudget,
       maxPossibleGas
     }
   }
 
-  async validateViewCallSucceeds (req: RelayTransactionRequest, maxRelayExposure: number, maxPossibleGas: number): Promise<void> {
+  async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
     const method = this.relayHubContract.contract.methods.relayCall(
-      maxRelayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet =
@@ -287,7 +287,7 @@ export class RelayServer extends EventEmitter {
     } catch (e) {
       throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
-    this.logger.debug(`Result for view-only relay call (on pending blck):
+    this.logger.debug(`Result for view-only relay call (on pending block):
 paymasterAccepted  | ${viewRelayCallRet.paymasterAccepted ? chalk.green('true') : chalk.red('false')}
 returnValue        | ${viewRelayCallRet.returnValue}
 `)
@@ -315,8 +315,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
     }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
-    const { relayExposure, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
-    await this.validateViewCallSucceeds(req, relayExposure, maxPossibleGas)
+    const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
+    await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
 
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
@@ -325,7 +325,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
     const method = this.relayHubContract.contract.methods.relayCall(
-      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,
@@ -437,7 +437,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (limits != null) {
       return limits.acceptanceBudget
     } else {
-      return this.config.maxRelayExposure.toString()
+      // todo fix
+      return this.config.maxAcceptanceBudget.toString()
     }
   }
 

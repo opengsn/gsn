@@ -129,7 +129,7 @@ contract RelayHub is IRelayHub {
 }
 
     function verifyGasAndDataLimits(
-        uint256 maxRelayExposure,
+        uint256 maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         uint256 initialGasLeft,
         uint256 externalGasLimit
@@ -145,7 +145,7 @@ contract RelayHub is IRelayHub {
         uint256 txDataCostPerByte = externalCallDataCost/msg.data.length;
         require(txDataCostPerByte <= G_NONZERO, "invalid externalGasLimit");
 
-        require(maxRelayExposure >= gasAndDataLimits.acceptanceBudget.add(dataGasCost), "pm budget + dataGasCost too high");
+        require(maxAcceptanceBudget >= gasAndDataLimits.acceptanceBudget, "acceptance budget too high");
 
         maxPossibleGas =
             gasOverhead.add(
@@ -189,7 +189,7 @@ contract RelayHub is IRelayHub {
     }
 
     function relayCall(
-        uint maxRelayExposure,
+        uint maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -214,7 +214,7 @@ contract RelayHub is IRelayHub {
         require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
-             verifyGasAndDataLimits(maxRelayExposure, relayRequest, vars.initialGasLeft, externalGasLimit);
+             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft, externalGasLimit);
 
         RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
 
