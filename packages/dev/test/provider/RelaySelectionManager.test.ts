@@ -15,6 +15,7 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/typ
 import { configureGSN, deployHub } from '../TestUtils'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
+import { defaultEnvironment } from "@opengsn/common/dist/Environments";
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -43,7 +44,7 @@ contract('RelaySelectionManager', function (accounts) {
     relayManagerAddress: '',
     relayHubAddress: '',
     minGasPrice: '1',
-    maxAcceptanceBudget: 1e10.toString(),
+    maxRelayExposure: 1e10.toString(),
     ready: true,
     version: '1'
   }
@@ -112,8 +113,8 @@ contract('RelaySelectionManager', function (accounts) {
       before(async function () {
         const StakeManager = artifacts.require('StakeManager')
         const Penalizer = artifacts.require('Penalizer')
-        const stakeManager = await StakeManager.new()
-        const penalizer = await Penalizer.new()
+        const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+        const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
         relayHub = await deployHub(stakeManager.address, penalizer.address)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
@@ -138,7 +139,7 @@ contract('RelaySelectionManager', function (accounts) {
           relayManagerAddress: relayManager,
           relayHubAddress: relayManager,
           minGasPrice: '1',
-          maxAcceptanceBudget: 1e10.toString(),
+          maxRelayExposure: 1e10.toString(),
           ready: true,
           version: ''
         }

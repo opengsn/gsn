@@ -4,7 +4,9 @@ yarn run lerna-rm-dist
 npx lerna run --scope @opengsn/dev truffle-compile
 npx lerna run --scope @opengsn/dev generate
 
+rm -rf src/cli/compiled/
 mkdir -p ./packages/cli/src/compiled/
+
 CONTRACTS="RelayHub StakeManager Penalizer Forwarder VersionRegistry TestPaymasterEverythingAccepted"
 BUILDFOLDER=./packages/dev/build/contracts
 OUTFOLDER=./packages/cli/src/compiled

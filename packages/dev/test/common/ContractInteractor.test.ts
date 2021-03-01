@@ -19,6 +19,7 @@ import { deployHub } from '../TestUtils'
 import VersionsManager from '@opengsn/common/dist/VersionsManager'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { defaultEnvironment } from "@opengsn/common/dist/Environments";
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -37,8 +38,8 @@ contract('ContractInteractor', function (accounts) {
   let pm: TestPaymasterConfigurableMisbehaviorInstance
 
   before(async () => {
-    sm = await StakeManager.new()
-    pen = await Penalizer.new()
+    sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    pen = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     rh = await deployHub(sm.address, pen.address)
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
@@ -72,7 +73,8 @@ contract('ContractInteractor', function (accounts) {
           from: constants.ZERO_ADDRESS,
           nonce: '1',
           value: '0',
-          gas: '50000'
+          gas: '50000',
+          validUntil: '0'
         },
         relayData: {
           gasPrice: '1',
@@ -113,7 +115,8 @@ contract('ContractInteractor', function (accounts) {
           from: addr(2),
           nonce: '1',
           value: '0',
-          gas: '50000'
+          gas: '50000',
+          validUntil: '0'
         },
         relayData: {
           gasPrice: '1',

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.9;
+pragma solidity ^0.7.6;
 
 import "@opengsn/contracts/src/RelayHub.sol";
 import "@opengsn/contracts/src/StakeManager.sol";
@@ -33,7 +33,7 @@ contract Migrations {
     // solhint-disable-next-line var-name-mixedcase
     uint public last_completed_migration;
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 

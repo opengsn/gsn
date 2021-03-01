@@ -10,7 +10,7 @@ const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
 const Forwarder = artifacts.require('Forwarder')
 
-contract('BaseRelayRecipient', ([from]) => {
+contract('BaseRelayRecipient', ([from, sender]) => {
   let recipient: TestForwarderTargetInstance
   let fwd: ForwarderInstance
   before(async () => {
@@ -55,5 +55,18 @@ contract('BaseRelayRecipient', ([from]) => {
     const sender = '0x'.padEnd(42, '12')
     assert.equal(await callMsgData(fwd.address, extra + sender.slice(2)), encoded + extra,
       'should extract msg.data if called through trusted forwarder')
+  })
+
+  it('should extract msgSender and msgData in transaction', async () => {
+    // trust "from" as forwarder (using real forwarder requires signing
+    const recipient = await TestForwarderTarget.new(from)
+    const encoded = recipient.contract.methods.emitMessage('hello').encodeABI() as string
+    const encodedWithSender = encoded + sender.slice(2)
+    await web3.eth.sendTransaction({ from, to: recipient.address, data: encodedWithSender })
+    const events = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
+    const params = events[0].returnValues
+    assert.equal(params.realSender, sender)
+    assert.equal(params.msgSender, from)
+    assert.equal(params.realMsgData, encoded)
   })
 })

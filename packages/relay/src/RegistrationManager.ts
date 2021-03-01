@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
 import {
   address2topic,
@@ -20,8 +20,7 @@ import { ServerConfigParams } from './ServerConfigParams'
 import { TxStoreManager } from './TxStoreManager'
 import { ServerAction } from './StoredTransaction'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import {
+import ContractInteractor, {
   HubAuthorized,
   HubUnauthorized,
   OwnerSet,
@@ -30,9 +29,9 @@ import {
   StakeAdded,
   StakeUnlocked,
   StakeWithdrawn
-} from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { isRegistrationValid } from './Utils'
-import { constants } from '@opengsn/common/dist/Constants'
+} from '@opengsn/common/dist/ContractInteractor'
+import { isRegistrationValid } from "./Utils";
+import { constants } from "@opengsn/common/dist/Constants";
 
 const mintxgascost = defaultEnvironment.mintxgascost
 

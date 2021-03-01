@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -10,6 +10,7 @@ contract StakeManager is IStakeManager {
     using SafeMath for uint256;
 
     string public override versionSM = "2.0.0+opengsn.stakemanager.istakemanager";
+    uint256 public immutable override maxUnstakeDelay;
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
@@ -19,6 +20,10 @@ contract StakeManager is IStakeManager {
 
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
+
+    constructor(uint256 _maxUnstakeDelay) {
+        maxUnstakeDelay = _maxUnstakeDelay;
+    }
 
     function setRelayManagerOwner(address payable owner) external override {
         require(owner != address(0), "invalid owner");
@@ -32,6 +37,7 @@ contract StakeManager is IStakeManager {
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
     function stakeForRelayManager(address relayManager, uint256 unstakeDelay) external override payable ownerOnly(relayManager) {
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
+        require(unstakeDelay <= maxUnstakeDelay, "unstakeDelay too big");
         stakes[relayManager].stake += msg.value;
         stakes[relayManager].unstakeDelay = unstakeDelay;
         emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
@@ -40,8 +46,9 @@ contract StakeManager is IStakeManager {
     function unlockStake(address relayManager) external override ownerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawBlock == 0, "already pending");
-        info.withdrawBlock = block.number.add(info.unstakeDelay);
-        emit StakeUnlocked(relayManager, msg.sender, info.withdrawBlock);
+        uint withdrawBlock = block.number.add(info.unstakeDelay);
+        info.withdrawBlock = withdrawBlock;
+        emit StakeUnlocked(relayManager, msg.sender, withdrawBlock);
     }
 
     function withdrawStake(address relayManager) external override ownerOnly(relayManager) {

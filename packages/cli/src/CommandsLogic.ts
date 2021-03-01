@@ -27,6 +27,8 @@ import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUt
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import HttpWrapper from '@opengsn/common/dist/HttpWrapper'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { PenalizerConfiguration } from "@opengsn/common/dist/types/PenalizerConfiguration";
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -56,6 +58,7 @@ interface DeployOptions {
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
+  penalizerConfiguration: PenalizerConfiguration
 }
 
 interface RegistrationResult {
@@ -241,7 +244,6 @@ export default class CommandsLogic {
           }
         }
       }
-
       if (toBN(unstakeDelay).gte(toBN(options.unstakeDelay)) &&
         toBN(stake).gte(toBN(options.stake.toString()))
       ) {
@@ -302,8 +304,15 @@ export default class CommandsLogic {
       gasPrice: deployOptions.gasPrice ?? (1e9).toString()
     }
 
-    const sInstance = await this.getContractInstance(StakeManager, {}, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
-    const pInstance = await this.getContractInstance(Penalizer, {}, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const sInstance = await this.getContractInstance(StakeManager, {
+      arguments: [defaultEnvironment.maxUnstakeDelay]
+    }, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const pInstance = await this.getContractInstance(Penalizer, {
+      arguments: [
+        deployOptions.penalizerConfiguration.penalizeBlockDelay,
+        deployOptions.penalizerConfiguration.penalizeBlockExpiration
+      ]
+    }, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
     const rInstance = await this.getContractInstance(RelayHub, {
       arguments: [
@@ -315,7 +324,9 @@ export default class CommandsLogic {
         deployOptions.relayHubConfiguration.gasOverhead,
         deployOptions.relayHubConfiguration.maximumRecipientDeposit,
         deployOptions.relayHubConfiguration.minimumUnstakeDelay,
-        deployOptions.relayHubConfiguration.minimumStake]
+        deployOptions.relayHubConfiguration.minimumStake,
+        deployOptions.relayHubConfiguration.dataGasCostPerByte,
+        deployOptions.relayHubConfiguration.externalCallDataCostOverhead]
     }, deployOptions.relayHubAddress, merge({}, options, { gas: 5e6 }), deployOptions.skipConfirmation)
 
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, Object.assign({}, options), deployOptions.skipConfirmation)
@@ -325,7 +336,7 @@ export default class CommandsLogic {
     }
 
     let pmInstance: Contract | undefined
-    if (deployOptions.deployPaymaster === true) {
+    if (deployOptions.deployPaymaster) {
       pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
 

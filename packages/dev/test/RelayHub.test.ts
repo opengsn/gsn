@@ -55,8 +55,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let forwarder: string
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Forwarder.new()
@@ -188,7 +188,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           from: senderAddress,
           nonce: senderNonce,
           value: '0',
-          gas: gasLimit
+          gas: gasLimit,
+          validUntil: '0'
         },
         relayData: {
           pctRelayFee,
@@ -310,7 +311,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               {
                 gas
               }),
-            'relay worker cannot be a smart contract')
+            'relay worker must be EOA')
         })
       })
       context('with view functions only', function () {
@@ -327,6 +328,20 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
           relayRequestMisbehavingPaymaster = cloneRelayRequest(relayRequest)
           relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
+        })
+
+        describe('check externalGasLimit', () => {
+          it('should verify externalGasLimit is not too high', async () => {
+            const gas = 2e6
+            const relayRequest = cloneRelayRequest(sharedRelayRequestData)
+            relayRequest.request.data = '0xdeadbeef'
+            await expectRevert(
+              relayHubInstance.relayCall(10e6, relayRequest, '0x', '0x', gas + 10000, {
+                from: relayWorker,
+                gas: gas
+              }),
+              'invalid externalGasLimit')
+          })
         })
 
         it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
@@ -347,7 +362,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           const relayCallView =
             await relayHubInstance.contract.methods
               .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
-              .call({ from: relayWorker })
+              .call({ from: relayWorker, gas: 7e6 })
 
           assert.equal(relayCallView.paymasterAccepted, false)
 
@@ -421,6 +436,17 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           )
         })
 
+        it('should revert if encoded function contains extra bytes', async () => {
+          const encoded = await relayHubInstance.contract.methods.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', gas).encodeABI() as string
+          expectRevert(web3.eth.call({
+            data: encoded + '1234',
+            from: relayWorker,
+            to: relayHubInstance.address,
+            gas,
+            gasPrice
+          }), 'revert extra msg.data')
+        })
+
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {
           const nonceBefore = await forwarderInstance.getNonce(senderAddress)
 
@@ -463,7 +489,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             gasPrice
           })
 
-          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
+          await expectEvent(ret, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
         })
         // This test is added due to a regression that almost slipped to production.
         it('relayCall executes the transaction with no parameters', async function () {
@@ -556,7 +582,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               gasPrice,
               gas
             }),
-            'Not enough gas left for innerRelayCall to complete')
+            'no gas for innerRelayCall')
         })
 
         it('should not accept relay requests with gas price lower then user specified', async function () {
@@ -643,7 +669,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
         })
 
-        it('should fail a transaction if paymaster.getGasLimits is too expensive', async function () {
+        it('should fail a transaction if paymaster.getGasAndDataLimits is too expensive', async function () {
           await misbehavingPaymaster.setExpensiveGasLimits(true)
 
           await expectRevert(relayHubInstance.relayCall(10e6, relayRequestMisbehavingPaymaster,

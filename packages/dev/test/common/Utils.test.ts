@@ -76,7 +76,8 @@ contract('Utils', function (accounts) {
           from: senderAddress,
           nonce: senderNonce,
           value: '0',
-          gas: gasLimit
+          gas: gasLimit,
+          validUntil: '0'
         },
         relayData: {
           gasPrice,
@@ -99,8 +100,8 @@ contract('Utils', function (accounts) {
 
     it('#_getEncoded should extract data exactly as local encoded data', async () => {
       // @ts-ignore
-      const { forwardRequest, typeHash, suffixData } = await testUtil.splitRequest(relayRequest)
-      const getEncoded = await forwarderInstance._getEncoded(forwardRequest, typeHash, suffixData)
+      const { typeHash, suffixData } = await testUtil.splitRequest(relayRequest)
+      const getEncoded = await forwarderInstance._getEncoded(relayRequest.request, typeHash, suffixData)
       const dataToSign = new TypedRequestData(
         chainId,
         forwarder,

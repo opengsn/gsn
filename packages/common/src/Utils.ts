@@ -11,6 +11,7 @@ import { Address } from './types/Aliases'
 import TypedRequestData from './EIP712/TypedRequestData'
 import chalk from 'chalk'
 import { encode } from 'rlp'
+import { defaultEnvironment } from './Environments'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -101,18 +102,33 @@ export async function getEip712Signature (
 }
 
 /**
+ * @returns the actual cost of putting this transaction on chain.
+ */
+export function calculateCalldataCost (calldata: string): number {
+  const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
+  let sum = 0
+  calldataBuf.forEach(ch => { sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero) })
+  return sum
+}
+
+/**
  * @returns maximum possible gas consumption by this relayed call
+ * (calculated on chain by RelayHub.verifyGasAndDataLimits)
  */
 export function calculateTransactionMaxPossibleGas (
   {
-    gasLimits,
+    gasAndDataLimits,
     hubOverhead,
-    relayCallGasLimit
-  }: TransactionGasComponents): number {
+    relayCallGasLimit,
+    msgDataGasCost,
+    externalCallDataCost
+  }: TransactionGasCostComponents): number {
   return hubOverhead +
-    parseInt(relayCallGasLimit) +
-    parseInt(gasLimits.preRelayedCallGasLimit) +
-    parseInt(gasLimits.postRelayedCallGasLimit)
+      parseInt(gasAndDataLimits.preRelayedCallGasLimit) +
+      parseInt(gasAndDataLimits.postRelayedCallGasLimit) +
+      parseInt(relayCallGasLimit) +
+      msgDataGasCost +
+      externalCallDataCost
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
@@ -190,16 +206,19 @@ export function getLatestEventData (events: EventData[]): EventData | undefined 
  * @param calldataSize
  * @param gtxdatanonzero
  */
-interface TransactionGasComponents {
-  gasLimits: PaymasterGasLimits
+interface TransactionGasCostComponents {
+  gasAndDataLimits: PaymasterGasAndDataLimits
   hubOverhead: number
   relayCallGasLimit: string
+  msgDataGasCost: number
+  externalCallDataCost: number
 }
 
-export interface PaymasterGasLimits {
+export interface PaymasterGasAndDataLimits {
   acceptanceBudget: string
   preRelayedCallGasLimit: string
   postRelayedCallGasLimit: string
+  calldataSizeLimit: string
 }
 
 interface Signature {

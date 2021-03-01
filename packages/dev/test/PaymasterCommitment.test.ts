@@ -18,6 +18,8 @@ import ForwardRequest from '@opengsn/common/dist/EIP712/ForwardRequest'
 import RelayData from '@opengsn/common/dist/EIP712/RelayData'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { toBuffer } from 'ethereumjs-util'
+import { defaultEnvironment } from "@opengsn/common/dist/Environments";
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -33,8 +35,7 @@ interface PartialRelayRequest {
 
 // given partial request, fill it in from defaults, and return request and signature to send.
 // if nonce is not explicitly specified, read it from forwarder
-async function makeRequest (web3: Web3, req: PartialRelayRequest, defaultRequest: RelayRequest, chainId: number, forwarderInstance: ForwarderInstance):
-Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
+async function makeRequest (web3: Web3, req: PartialRelayRequest, defaultRequest: RelayRequest, chainId: number, forwarderInstance: ForwarderInstance): Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
   const filledRequest = {
     request: { ...defaultRequest.request, ...req.request },
     relayData: { ...defaultRequest.relayData, ...req.relayData }
@@ -62,7 +63,7 @@ Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
 // - PM always pay for non-reverted TXs (either high or low gas use)
 // - if preRelayedCall reverts: PM always pay (=as long as commitment>preRelayedCallGasLimit)
 // - standard forwarder reverts: PM always pay (since commitment > gas of (preRelayedCall,forwarder))
-// - nonstandard forwardeR: PM pays above commitment
+// - nonstandard forwarder: PM pays above commitment
 // - trusted recipient: PM pays above commitment.
 contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
@@ -92,8 +93,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   const pctRelayFee = '0'
 
   before(async function () {
-    stakeManager = await StakeManager.new()
-    penalizer = await Penalizer.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
 
     forwarderInstance = await Forwarder.new()
@@ -146,7 +147,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           from: senderAddress,
           nonce: senderNonce,
           value: '0',
-          gas: gasLimit
+          gas: gasLimit,
+          validUntil: '0'
         },
         relayData: {
           pctRelayFee,
@@ -190,10 +192,82 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       assert.closeTo(paid, gasUsed, 50)
     })
 
+    it('paymaster should not pay for requests exceeding msg.data size limit', async () => {
+      const r = await makeRequest(web3, {
+        request: {
+          // nonce: '4',
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
+        },
+        relayData: { paymaster }
+
+      }, sharedRelayRequestData, chainId, forwarderInstance)
+      const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit))
+      await expectRevert(
+        relayHubInstance.relayCall(10e6, r.req, r.sig, hugeApprovalData, externalGasLimit, {
+          from: relayWorker,
+          gas: externalGasLimit,
+          gasPrice
+        }), 'msg.data exceeded limit'
+      )
+    })
+
+    it('paymaster should not pay for requests with max msg.data size if it rejects in pre', async () => {
+      await paymasterContract.setRevertPreRelayCall(true)
+      const r = await makeRequest(web3, {
+        request: {
+          // nonce: '4',
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
+        },
+        relayData: { paymaster }
+
+      }, sharedRelayRequestData, chainId, forwarderInstance)
+
+      const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
+      const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
+      const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
+      assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
+        'relayCall() msg.data should be set to max size')
+      const txdetails: Truffle.TransactionDetails = {
+        from: relayWorker,
+        gas: externalGasLimit,
+        gasPrice
+      }
+      relayCallParams.push(txdetails)
+      const res = await relayHubInstance.relayCall(...relayCallParams)
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('You asked me to revert, remember?') })
+    })
+
+    it('paymaster should not pay for requests with max msg.data size if it accepts in pre but forwarder fails', async () => {
+      const r = await makeRequest(web3, {
+        request: {
+          nonce: '11141212',
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
+        },
+        relayData: { paymaster }
+
+      }, sharedRelayRequestData, chainId, forwarderInstance)
+
+      const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
+      const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
+      const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
+      assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
+        'relayCall() msg.data should be set to max size')
+      const txdetails: Truffle.TransactionDetails = {
+        from: relayWorker,
+        gas: externalGasLimit,
+        gasPrice
+      }
+      relayCallParams.push(txdetails)
+      const res = await relayHubInstance.relayCall(...relayCallParams)
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
+    })
     it('paymaster should not change its acceptanceBudget before transaction', async () => {
       // the protocol of the relay to perform a view function of relayCall(), and then
       // issue it on-chain.
-      // this test comes to verify the paymaster didn't chagne its acceptanceBalance between these
+      // this test comes to verify the paymaster didn't change its acceptanceBalance between these
       // calls to a higher value.
       // it is assumed that the relay already made the view function and validated the acceptanceBalance to
       // be small, and now making a 2nd call on-chain, but with the acceptanceBalance as parameter.
@@ -208,16 +282,19 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
-      const gasLimits = await paymasterContract.getGasLimits()
+      const gasLimits = await paymasterContract.getGasAndDataLimits()
+      const relayCall = toBuffer(relayHubInstance.contract.methods.relayCall(1, r.req, r.sig, '0x', externalGasLimit).encodeABI())
+      const dataGasCost = await relayHubInstance.calldataGasCost(relayCall.length)
+      const maxRelayExposure = parseInt(gasLimits.acceptanceBudget) + dataGasCost.toNumber()
       // fail if a bit lower
-      expectRevert(relayHubInstance.relayCall(parseInt(gasLimits.acceptanceBudget) - 1, r.req, r.sig, '0x', externalGasLimit, {
+      expectRevert(relayHubInstance.relayCall(maxRelayExposure - 1, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
-      }), 'unexpected high acceptanceBudget')
+      }), 'pm budget + dataGasCost too high')
 
       // but succeed if the value is OK
-      const res = await relayHubInstance.relayCall(parseInt(gasLimits.acceptanceBudget), r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(maxRelayExposure, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -250,11 +327,20 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const paymasterPaid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.closeTo(paymasterPaid, parseInt(gasUsed) + 15000, 50)
-    })
+    });
 
-    it('paymaster should not pay for OOG in preRelayedCall (under commitment gas)', async () => {
-      await paymasterContract.setOverspendAcceptGas(true)
-      // NOTE: as long as commitment>preRelayedCallGasLimit
+    [false, true].forEach(overAcceptanceBudget => {
+      it(`paymaster should not pay for reverts in preRelayedCall (${overAcceptanceBudget ? 'over' : 'under'} acceptance budget)`, async () => {
+        if (overAcceptanceBudget) {
+          const limits = await paymasterContract.getGasAndDataLimits()
+          const dataGasCost = await relayHubInstance.calldataGasCost(limits.calldataSizeLimit)
+          await paymasterContract.setGasLimits(
+            limits.acceptanceBudget,
+            parseInt(limits.preRelayedCallGasLimit) + parseInt(limits.acceptanceBudget) + dataGasCost.toNumber(),
+            limits.postRelayedCallGasLimit
+          )
+        }
+        await paymasterContract.setOutOfGasPre(true)
       const r = await makeRequest(web3, {
         request: {
           // nonce: '4',
@@ -275,6 +361,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.equal(paid, 0)
     })
+    })
 
     it('paymaster should not pay for Forwarder revert (under commitment gas)', async () => {
       // NOTE: as long as commitment > preRelayedCallGasLimit
@@ -293,7 +380,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         gasPrice
       })
 
-      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('nonce mismatch') })
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       assert.equal(paid, 0)

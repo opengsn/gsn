@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.10;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -8,7 +8,7 @@ import "./interfaces/GsnTypes.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
 import "./utils/GsnEip712Library.sol";
-import "./forwarder/Forwarder.sol";
+import "./forwarder/IForwarder.sol";
 
 /**
  * Abstract base class to be inherited by a concrete Paymaster
@@ -28,23 +28,25 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     //overhead of forwarder verify+signature, plus hub overhead.
     uint256 constant public FORWARDER_HUB_OVERHEAD = 50000;
 
-    //These parameters are documented in IPaymaster.GasLimits
+    //These parameters are documented in IPaymaster.GasAndDataLimits
     uint256 constant public PRE_RELAYED_CALL_GAS_LIMIT = 100000;
     uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
     uint256 constant public PAYMASTER_ACCEPTANCE_BUDGET = PRE_RELAYED_CALL_GAS_LIMIT + FORWARDER_HUB_OVERHEAD;
+    uint256 constant public CALLDATA_SIZE_LIMIT = 10500;
 
-    function getGasLimits()
+    function getGasAndDataLimits()
     public
     override
     virtual
     view
     returns (
-        IPaymaster.GasLimits memory limits
+        IPaymaster.GasAndDataLimits memory limits
     ) {
-        return IPaymaster.GasLimits(
+        return IPaymaster.GasAndDataLimits(
             PAYMASTER_ACCEPTANCE_BUDGET,
             PRE_RELAYED_CALL_GAS_LIMIT,
-            POST_RELAYED_CALL_GAS_LIMIT
+            POST_RELAYED_CALL_GAS_LIMIT,
+            CALLDATA_SIZE_LIMIT
         );
     }
 
@@ -62,7 +64,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
      * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
      */
     modifier relayHubOnly() {
-        require(msg.sender == getHubAddr(), "Function can only be called by RelayHub");
+        require(msg.sender == getHubAddr(), "can only be called by RelayHub");
         _;
     }
 

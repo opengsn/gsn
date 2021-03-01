@@ -6,7 +6,7 @@ export interface AuditRequest {
 }
 
 export interface AuditResponse {
-  penalizeTxHash?: PrefixedHexString
+  commitTxHash?: PrefixedHexString
   message?: string
 }
 

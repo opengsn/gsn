@@ -64,6 +64,7 @@ export class HttpServer {
   close (): void {
     console.log('Stopping relay worker...')
     this.relayService?.stop()
+    this.penalizerService?.stop()
   }
 
   async pingHandler (req: Request, res: Response): Promise<void> {
@@ -110,12 +111,12 @@ export class HttpServer {
       let message = ''
       let penalizeResponse = await this.penalizerService.penalizeRepeatedNonce(req.body)
       message += penalizeResponse.message ?? ''
-      if (penalizeResponse.penalizeTxHash == null) {
+      if (penalizeResponse.commitTxHash == null) {
         penalizeResponse = await this.penalizerService.penalizeIllegalTransaction(req.body)
         message += penalizeResponse.message ?? ''
       }
       res.send({
-        penalizeTxHash: penalizeResponse.penalizeTxHash,
+        commitTxHash: penalizeResponse.commitTxHash,
         message
       })
     } catch (e) {

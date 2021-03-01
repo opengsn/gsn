@@ -44,6 +44,7 @@ import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -109,8 +110,8 @@ export class ServerTestEnvironment {
    * different provider from the contract interactor itself.
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
-    this.stakeManager = await StakeManager.new()
-    this.penalizer = await Penalizer.new()
+    this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
@@ -149,7 +150,6 @@ export class ServerTestEnvironment {
   async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
     this.newServerInstanceNoFunding(config, serverWorkdirs)
     await this.fundServer()
-
     await this.relayServer.init()
     // initialize server - gas price, stake, owner, etc, whatever
     let latestBlock = await this.web3.eth.getBlock('latest')
@@ -198,7 +198,7 @@ export class ServerTestEnvironment {
       ownerAddress: this.relayOwner,
       stakeManagerAddress: this.stakeManager.address,
       relayHubAddress: this.relayHub.address,
-      checkInterval: 10
+      checkInterval: 100
     }
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)

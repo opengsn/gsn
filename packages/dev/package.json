@@ -8,6 +8,7 @@
     "extract_abi": "../../scripts/extract_abi.js",
     "lint": "eslint -f unix .",
     "test": "lerna run tsc && truffle --compile-all --network npmtest test",
+    "test1": "truffle --network npmtest test",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "dependencies": {
