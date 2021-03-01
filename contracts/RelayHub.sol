@@ -146,6 +146,7 @@ contract RelayHub is IRelayHub {
         require(txDataCostPerByte <= G_NONZERO, "invalid externalGasLimit");
 
         require(maxAcceptanceBudget >= gasAndDataLimits.acceptanceBudget, "acceptance budget too high");
+        require(gasAndDataLimits.acceptanceBudget >= gasAndDataLimits.preRelayedCallGasLimit, "acceptance budget too low");
 
         maxPossibleGas =
             gasOverhead.add(
