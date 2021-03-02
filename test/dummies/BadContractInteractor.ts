@@ -14,7 +14,7 @@ export default class BadContractInteractor extends ContractInteractor {
     this.failValidateARC = failValidateARC
   }
 
-  async validateRelayCall (maxRelayExposure: number, relayRequest: RelayRequest, signature: string, approvalData: string): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+  async validateRelayCall (maxAcceptanceBudget: number, relayRequest: RelayRequest, signature: string, approvalData: string): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     if (this.failValidateARC) {
       return {
         paymasterAccepted: false,
