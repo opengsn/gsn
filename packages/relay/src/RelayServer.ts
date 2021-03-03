@@ -19,11 +19,11 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import {
-  address2topic,
+  address2topic, calculateCalldataCost,
   calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
-  PaymasterGasLimits,
+  PaymasterGasAndDataLimits,
   randomInRange,
   sleep
 } from '@opengsn/common/dist/Utils'
@@ -34,6 +34,7 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { toBuffer } from 'ethereumjs-util'
 
 import Timeout = NodeJS.Timeout
 
@@ -47,7 +48,7 @@ export class RelayServer extends EventEmitter {
   lastSuccessfulRounds = Number.MAX_SAFE_INTEGER
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
-  gasPrice: number = 0
+  minGasPrice: number = 0
   _workerSemaphoreOn = false
   alerted = false
   alertedBlock: number = 0
@@ -68,7 +69,7 @@ export class RelayServer extends EventEmitter {
   networkId!: number
   relayHubContract!: IRelayHubInstance
 
-  trustedPaymastersGasLimits: Map<String | undefined, PaymasterGasLimits> = new Map<String | undefined, PaymasterGasLimits>()
+  trustedPaymastersGasAndDataLimits: Map<String | undefined, PaymasterGasAndDataLimits> = new Map<String | undefined, PaymasterGasAndDataLimits>()
 
   workerBalanceRequired: AmountRequired
 
@@ -101,7 +102,7 @@ export class RelayServer extends EventEmitter {
   }
 
   getMinGasPrice (): number {
-    return this.gasPrice
+    return this.minGasPrice
   }
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
@@ -116,7 +117,7 @@ export class RelayServer extends EventEmitter {
       relayManagerAddress: this.managerAddress,
       relayHubAddress: this.relayHubContract?.address ?? '',
       minGasPrice: this.getMinGasPrice().toString(),
-      maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
+      maxRelayExposure: this._getPaymasterMaxAcceptanceBudget(paymaster),
       chainId: this.chainId.toString(),
       networkId: this.networkId.toString(),
       ready: this.isReady() ?? false,
@@ -124,7 +125,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateInput (req: RelayTransactionRequest): void {
+  validateInput (req: RelayTransactionRequest, currentBlockNumber: number): void {
     // Check that the relayHub is the correct one
     if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
       throw new Error(
@@ -137,10 +138,21 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    // Check that the gasPrice is initialized & acceptable
-    if (this.gasPrice > parseInt(req.relayRequest.relayData.gasPrice)) {
+    const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
+    if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
-        `Unacceptable gasPrice: relayServer's gasPrice:${this.gasPrice} request's gasPrice: ${req.relayRequest.relayData.gasPrice}`)
+        `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
+    }
+
+    if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
+      throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
+    }
+
+    // validate the validUntil is not too close
+    const expiredInBlocks = parseInt(req.relayRequest.request.validUntil) - currentBlockNumber
+    if (expiredInBlocks < this.config.requestMinValidBlocks) {
+      throw new Error(
+          `Request expired (or too close): expired in ${expiredInBlocks} blocks, we expect it to be valid for ${this.config.requestMinValidBlocks}`)
     }
   }
 
@@ -151,10 +163,12 @@ export class RelayServer extends EventEmitter {
     }
     // Check that the fee is acceptable
     if (parseInt(req.relayRequest.relayData.pctRelayFee) < this.config.pctRelayFee) {
-      throw new Error(`Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
+      throw new Error(
+        `Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
     }
     if (toBN(req.relayRequest.relayData.baseRelayFee).lt(toBN(this.config.baseRelayFee))) {
-      throw new Error(`Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
+      throw new Error(
+        `Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
     }
   }
 
@@ -186,17 +200,27 @@ export class RelayServer extends EventEmitter {
     throw new Error(`Refusing to serve transactions for paymaster at ${paymaster}: ${message}`)
   }
 
-  async validatePaymasterGasLimits (req: RelayTransactionRequest): Promise<{
+  async validatePaymasterGasAndDataLimits (req: RelayTransactionRequest): Promise<{
     maxPossibleGas: number
-    acceptanceBudget: number
+    relayExposure: number
   }> {
     const paymaster = req.relayRequest.relayData.paymaster
-    let gasLimits = this.trustedPaymastersGasLimits.get(paymaster)
-    let acceptanceBudget: number
-    if (gasLimits == null) {
+    let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymaster)
+    let relayExposure: number
+
+    const dummyBlockGas = 12e6
+    relayExposure = this.config.maxRelayExposure
+    const encodedFunction = this.relayHubContract.contract.methods.relayCall(
+      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, dummyBlockGas).encodeABI()
+    const msgDataLength = toBuffer(encodedFunction).length
+    // estimated cost of transfering the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc
+    const dataGasCost = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
+    // actual cost of putting the TX on-chain.
+    const externalCallDataCost = calculateCalldataCost(encodedFunction)
+    if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
-        gasLimits = await paymasterContract.getGasLimits()
+        gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       } catch (e) {
         const error = e as Error
         let message = `unknown paymaster error: ${error.message}`
@@ -207,27 +231,30 @@ export class RelayServer extends EventEmitter {
         }
         throw new Error(message)
       }
-      acceptanceBudget = this.config.maxAcceptanceBudget
-      const paymasterAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
-      if (paymasterAcceptanceBudget > acceptanceBudget) {
+      const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
+      // TODO remove, since it's redundant. This check is also done in relayCall() on-chain, so the server will fail
+      // on view call if these requirements aren't met.
+      if (paymasterAcceptanceBudget + dataGasCost > relayExposure) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
-            `paymaster acceptance budget too high. given: ${paymasterAcceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
+            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + dataGasCost} max allowed: ${this.config.maxRelayExposure}`)
         }
         this.logger.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
-        acceptanceBudget = paymasterAcceptanceBudget
+        relayExposure = paymasterAcceptanceBudget + dataGasCost
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      acceptanceBudget = parseInt(gasLimits.acceptanceBudget)
+      relayExposure = parseInt(gasAndDataLimits.acceptanceBudget) + dataGasCost
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
-    const maxPossibleGas = GAS_RESERVE + calculateTransactionMaxPossibleGas({
-      gasLimits,
+    const maxPossibleGas = Math.floor(GAS_RESERVE + calculateTransactionMaxPossibleGas({
+      gasAndDataLimits: gasAndDataLimits,
       hubOverhead,
-      relayCallGasLimit: req.relayRequest.request.gas
-    })
+      relayCallGasLimit: req.relayRequest.request.gas,
+      msgDataGasCost: dataGasCost,
+      externalCallDataCost
+    }) * 1.1)
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)
@@ -239,14 +266,14 @@ export class RelayServer extends EventEmitter {
     this.logger.debug(`Estimated max charge of relayed tx: ${maxCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGas}`)
 
     return {
-      acceptanceBudget,
+      relayExposure: relayExposure,
       maxPossibleGas
     }
   }
 
-  async validateViewCallSucceeds (req: RelayTransactionRequest, acceptanceBudget: number, maxPossibleGas: number): Promise<void> {
+  async validateViewCallSucceeds (req: RelayTransactionRequest, maxRelayExposure: number, maxPossibleGas: number): Promise<void> {
     const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      maxRelayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet =
@@ -277,7 +304,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.logger.error('Alerted state: slowing down traffic')
       await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
     }
-    this.validateInput(req)
+    const currentBlock = await this.contractInteractor.getBlockNumber()
+    this.validateInput(req, currentBlock)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
 
@@ -285,8 +313,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
     }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
-    const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasLimits(req)
-    await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
+    const { relayExposure, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
+    await this.validateViewCallSucceeds(req, relayExposure, maxPossibleGas)
 
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
@@ -295,8 +323,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
     const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
-    const currentBlock = await this.contractInteractor.getBlockNumber()
+      relayExposure, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,
@@ -384,7 +411,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   /***
    * initialize data from trusted paymasters.
    * "Trusted" paymasters means that:
-   * - we trust their code not to alter the gas limits (getGasLimits returns constants)
+   * - we trust their code not to alter the gas limits (getGasAndDataLimits returns constants)
    * - we trust preRelayedCall to be consistent: off-chain call and on-chain calls should either both succeed
    *    or both revert.
    * - given that, we agree to give the requested acceptanceBudget (since breaking one of the above two "invariants"
@@ -393,22 +420,22 @@ returnValue        | ${viewRelayCallRet.returnValue}
    * @param paymasters list of trusted paymaster addresses
    */
   async _initTrustedPaymasters (paymasters: string[] = []): Promise<void> {
-    this.trustedPaymastersGasLimits.clear()
+    this.trustedPaymastersGasAndDataLimits.clear()
     for (const paymasterAddress of paymasters) {
       const paymaster = await this.contractInteractor._createPaymaster(paymasterAddress)
-      const gasLimits = await paymaster.getGasLimits().catch((e: Error) => {
+      const gasAndDataLimits = await paymaster.getGasAndDataLimits().catch((e: Error) => {
         throw new Error(`not a valid paymaster address in trustedPaymasters list: ${paymasterAddress}: ${e.message}`)
       })
-      this.trustedPaymastersGasLimits.set(paymasterAddress.toLowerCase(), gasLimits)
+      this.trustedPaymastersGasAndDataLimits.set(paymasterAddress.toLowerCase(), gasAndDataLimits)
     }
   }
 
   _getPaymasterMaxAcceptanceBudget (paymaster?: string): IntString {
-    const limits = this.trustedPaymastersGasLimits.get(paymaster?.toLocaleLowerCase())
+    const limits = this.trustedPaymastersGasAndDataLimits.get(paymaster?.toLowerCase())
     if (limits != null) {
       return limits.acceptanceBudget
     } else {
-      return this.config.maxAcceptanceBudget.toString()
+      return this.config.maxRelayExposure.toString()
     }
   }
 
@@ -538,9 +565,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _refreshGasPrice (): Promise<void> {
     const gasPriceString = await this.gasPriceFetcher.getGasPrice()
-    this.gasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
-    if (this.gasPrice === 0) {
+    this.minGasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
+    if (this.minGasPrice === 0) {
       throw new Error('Could not get gasPrice from node')
+    }
+    if (this.minGasPrice > parseInt(this.config.maxGasPrice)) {
+      throw new Error(`network gas price ${this.minGasPrice} is higher than max gas price ${this.config.maxGasPrice}`)
     }
   }
 
@@ -549,7 +579,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
     const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
-    transactionHashes = transactionHashes.concat(await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber, shouldRegisterAgain))
+    transactionHashes = transactionHashes.concat(
+      await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber,
+        shouldRegisterAgain))
     await this.transactionManager.removeConfirmedTransactions(currentBlockNumber)
     await this._boostStuckPendingTransactions(currentBlockNumber)
     this.lastScannedBlock = currentBlockNumber
@@ -587,13 +619,14 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       (await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)) ||
       (await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER))
     if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
-      this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
+      // this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
       return false
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
     const registrationExpired = currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
     if (!registrationExpired) {
-      this.logger.debug(`_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+      this.logger.debug(
+        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
     }
     return registrationExpired
   }
@@ -699,7 +732,11 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {
-    return this.trustedPaymastersGasLimits.get(paymaster.toLocaleLowerCase()) != null
+    return this.trustedPaymastersGasAndDataLimits.get(paymaster.toLowerCase()) != null
+  }
+
+  _isBlacklistedPaymaster (paymaster: string): boolean {
+    return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
   isReady (): boolean {

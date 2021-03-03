@@ -11,6 +11,7 @@ import { createServerLogger } from './ServerWinstonLogger'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -32,11 +33,12 @@ export interface ServerConfigParams {
   readyTimeout: number
   devMode: boolean
   registrationBlockRate: number
-  maxAcceptanceBudget: number
+  maxRelayExposure: number
   alertedBlockDelay: number
   minAlertedDelayMS: number
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
+  blacklistedPaymasters: Address[]
   gasPriceFactor: number
   gasPriceOracleUrl: string
   gasPriceOraclePath: string
@@ -59,6 +61,7 @@ export interface ServerConfigParams {
   retryGasPriceFactor: number
   maxGasPrice: string
   defaultGasLimit: number
+  requestMinValidBlocks: number
 
   runPenalizer: boolean
   runPaymasterReputations: boolean
@@ -82,10 +85,12 @@ const serverDefaultConfiguration: ServerConfigParams = {
   alertedBlockDelay: 0,
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
-  maxAcceptanceBudget: 2e5,
+  // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
+  maxRelayExposure: defaultEnvironment.paymasterConfiguration.acceptanceBudget + defaultEnvironment.relayHubConfiguration.dataGasCostPerByte * defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   stakeManagerAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
+  blacklistedPaymasters: [],
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -119,6 +124,8 @@ const serverDefaultConfiguration: ServerConfigParams = {
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
   maxGasPrice: 100e9.toString(),
+
+  requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true
 }
 
@@ -151,7 +158,7 @@ const ConfigParamsTypes = {
   hostOverride: 'string',
   userId: 'string',
   registrationBlockRate: 'number',
-  maxAcceptanceBudget: 'number',
+  maxRelayExposure: 'number',
   alertedBlockDelay: 'number',
 
   workerMinBalance: 'number',
@@ -160,8 +167,10 @@ const ConfigParamsTypes = {
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
   defaultGasLimit: 'number',
+  requestMinValidBlocks: 'number',
 
   trustedPaymasters: 'list',
+  blacklistedPaymasters: 'list',
 
   runPenalizer: 'boolean',
 

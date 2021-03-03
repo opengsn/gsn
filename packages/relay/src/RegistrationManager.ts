@@ -20,7 +20,7 @@ import { ServerConfigParams } from './ServerConfigParams'
 import { TxStoreManager } from './TxStoreManager'
 import { ServerAction } from './StoredTransaction'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+
 import {
   HubAuthorized,
   HubUnauthorized,
@@ -31,6 +31,8 @@ import {
   StakeUnlocked,
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
+
+import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
 import { isRegistrationValid } from './Utils'
 import { constants } from '@opengsn/common/dist/Constants'
 

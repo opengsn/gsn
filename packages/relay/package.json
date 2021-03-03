@@ -1,6 +1,7 @@
 {
   "name": "@opengsn/relay",
   "version": "2.1.0",
+  "license": "MIT",
   "main": "dist/src/runServer",
   "scripts": {
     "tsc": "tsc",

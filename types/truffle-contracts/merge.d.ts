@@ -16,9 +16,6 @@ declare global {
         name: "GsnEip712Library"
       ): TruffleContracts.GsnEip712LibraryContract;
       require(name: "IForwarder"): TruffleContracts.IForwarderContract;
-      require(
-        name: "IKnowForwarderAddress"
-      ): TruffleContracts.IKnowForwarderAddressContract;
       require(name: "IPaymaster"): TruffleContracts.IPaymasterContract;
       require(name: "IPenalizer"): TruffleContracts.IPenalizerContract;
       require(name: "IRelayHub"): TruffleContracts.IRelayHubContract;
@@ -61,10 +58,12 @@ declare global {
       ): TruffleContracts.TestPaymasterVariableGasLimitsContract;
       require(name: "TestRecipient"): TruffleContracts.TestRecipientContract;
       require(
+        name: "TestRelayHubValidator"
+      ): TruffleContracts.TestRelayHubValidatorContract;
+      require(
         name: "TestRelayWorkerContract"
       ): TruffleContracts.TestRelayWorkerContractContract;
       require(name: "TestUtil"): TruffleContracts.TestUtilContract;
-      require(name: "TestVersions"): TruffleContracts.TestVersionsContract;
       require(
         name: "VersionRegistry"
       ): TruffleContracts.VersionRegistryContract;

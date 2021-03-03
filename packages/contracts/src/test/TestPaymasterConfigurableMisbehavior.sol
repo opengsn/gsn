@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "./TestPaymasterEverythingAccepted.sol";
 
@@ -10,7 +10,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool public withdrawDuringPreRelayedCall;
     bool public returnInvalidErrorCode;
     bool public revertPostRelayCall;
-    bool public overspendAcceptGas;
+    bool public outOfGasPre;
     bool public revertPreRelayCall;
     bool public revertPreRelayCallOnEvenBlocks;
     bool public greedyAcceptanceBudget;
@@ -34,8 +34,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function setRevertPreRelayCallOnEvenBlocks(bool val) public {
         revertPreRelayCallOnEvenBlocks = val;
     }
-    function setOverspendAcceptGas(bool val) public {
-        overspendAcceptGas = val;
+    function setOutOfGasPre(bool val) public {
+        outOfGasPre = val;
     }
 
     function setGreedyAcceptanceBudget(bool val) public {
@@ -45,6 +45,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         expensiveGasLimits = val;
     }
 
+    // solhint-disable reason-string
+    // contains comments that are checked in tests
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -56,7 +58,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     relayHubOnly
     returns (bytes memory, bool) {
         (signature, approvalData, maxPossibleGas);
-        if (overspendAcceptGas) {
+        if (outOfGasPre) {
             uint i = 0;
             while (true) {
                 i++;
@@ -105,11 +107,11 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         return balance;
     }
 
-    IPaymaster.GasLimits private limits = super.getGasLimits();
+    IPaymaster.GasAndDataLimits private limits = super.getGasAndDataLimits();
 
-    function getGasLimits()
+    function getGasAndDataLimits()
     public override view
-    returns (IPaymaster.GasLimits memory) {
+    returns (IPaymaster.GasAndDataLimits memory) {
 
         if (expensiveGasLimits) {
             uint sum;
@@ -119,7 +121,8 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
             }
         }
         if (greedyAcceptanceBudget) {
-            return IPaymaster.GasLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit);
+            return IPaymaster.GasAndDataLimits(limits.acceptanceBudget * 9, limits.preRelayedCallGasLimit, limits.postRelayedCallGasLimit,
+            limits.calldataSizeLimit);
         }
         return limits;
     }
@@ -127,10 +130,11 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     bool private trustRecipientRevert;
 
     function setGasLimits(uint acceptanceBudget, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
-        limits = IPaymaster.GasLimits(
+        limits = IPaymaster.GasAndDataLimits(
             acceptanceBudget,
             preRelayedCallGasLimit,
-            postRelayedCallGasLimit
+            postRelayedCallGasLimit,
+            limits.calldataSizeLimit
         );
     }
 

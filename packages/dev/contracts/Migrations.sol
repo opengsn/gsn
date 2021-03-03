@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.9;
+pragma solidity ^0.7.6;
 
 import "@opengsn/contracts/src/RelayHub.sol";
 import "@opengsn/contracts/src/StakeManager.sol";
@@ -15,6 +15,7 @@ import "@opengsn/contracts/src/test/TestPaymasterPreconfiguredApproval.sol";
 import "@opengsn/contracts/src/test/TestPaymasterStoreContext.sol";
 import "@opengsn/contracts/src/test/TestPaymasterVariableGasLimits.sol";
 import "@opengsn/contracts/src/test/TestRecipient.sol";
+import "@opengsn/contracts/src/test/TestRelayHubValidator.sol";
 import "@opengsn/contracts/src/test/TestRelayWorkerContract.sol";
 import "@opengsn/contracts/src/test/TestUtil.sol";
 
@@ -33,7 +34,7 @@ contract Migrations {
     // solhint-disable-next-line var-name-mixedcase
     uint public last_completed_migration;
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 

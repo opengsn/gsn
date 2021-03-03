@@ -16,6 +16,7 @@ import { deployHub, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const TestRecipient = artifacts.require('tests/TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
@@ -53,8 +54,8 @@ options.forEach(params => {
       gasless = await web3.eth.personal.newAccount('password')
       await web3.eth.personal.unlockAccount(gasless, 'password', 0)
 
-      sm = await StakeManager.new()
-      const p = await Penalizer.new()
+      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       rhub = await deployHub(sm.address, p.address)
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
@@ -143,7 +144,7 @@ options.forEach(params => {
         assert.ok(ex == null, `should succeed sending gasless transaction through relay. got: ${ex?.toString()}`)
       } else {
         // eslint-disable-next-line @typescript-eslint/no-base-to-string,@typescript-eslint/restrict-template-expressions
-        assert.ok(ex!.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
+        assert.ok(ex.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
       }
     })
     it(params.title + 'running testRevert (should always fail)', async () => {

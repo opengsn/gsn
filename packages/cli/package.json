@@ -1,6 +1,7 @@
 {
   "name": "@opengsn/cli",
   "version": "2.1.0",
+  "license": "MIT",
   "main": "dist/commands/gsn",
   "scripts": {
     "tsc": "tsc",

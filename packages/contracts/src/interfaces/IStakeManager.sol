@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -100,6 +100,8 @@ interface IStakeManager {
     function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external;
 
     function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo);
+
+    function maxUnstakeDelay() external view returns (uint256);
 
     function versionSM() external view returns (string memory);
 }

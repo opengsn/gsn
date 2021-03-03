@@ -5,6 +5,7 @@ import { deployHub, evmMine, startRelay, stopRelay } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { HttpProvider } from 'web3-core'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -18,8 +19,8 @@ contract('ReputationFlow', function (accounts) {
   let testRecipient: TestRecipientInstance
 
   before(async function () {
-    const stakeManager = await StakeManager.new()
-    const penalizer = await Penalizer.new()
+    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     const relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     testRecipient = await TestRecipient.new(forwarderInstance.address)
@@ -44,7 +45,7 @@ contract('ReputationFlow', function (accounts) {
 
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       initialReputation: 10,
-      checkInterval: 10,
+      checkInterval: 100,
       stake: 1e18,
       relayOwner: accounts[1],
       ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
@@ -59,7 +60,7 @@ contract('ReputationFlow', function (accounts) {
     it('should stop serving the paymaster after specified number of on-chain rejected transactions', async function () {
       for (let i = 0; i < 20; i++) {
         try {
-          await testRecipient.emitMessage('Hello there!')
+          await testRecipient.emitMessage('Hello there!', { gas: 100000 })
         } catch (e) {
           if (e.message.includes('Transaction has been reverted by the EVM') === true) {
             continue

@@ -1,21 +1,20 @@
 /* solhint-disable avoid-tx-origin */
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
+pragma solidity ^0.7.5;
 
 import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
-import "../interfaces/IKnowForwarderAddress.sol";
 
-contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
+contract TestRecipient is BaseRelayRecipient {
 
     string public override versionRecipient = "2.0.0+opengsn.test.irelayrecipient";
 
-    constructor(address forwarder) public {
+    constructor(address forwarder) {
         setTrustedForwarder(forwarder);
     }
 
-    function getTrustedForwarder() public override view returns(address) {
+    function getTrustedForwarder() public view returns(address) {
         return trustedForwarder;
     }
 
@@ -55,7 +54,7 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function dontEmitMessage(string memory message) public {}
+    function dontEmitMessage(string calldata message) public {}
 
     function emitMessageNoParams() public {
         emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, 0, address(this).balance);
@@ -77,6 +76,7 @@ contract TestRecipient is BaseRelayRecipient, IKnowForwarderAddress {
     //function with no return value (also test revert with no msg.
     function checkNoReturnValues(bool doRevert) public view {
         (this);
+        /* solhint-disable reason-string*/
         require(!doRevert);
     }
 

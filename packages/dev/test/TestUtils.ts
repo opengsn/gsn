@@ -37,14 +37,17 @@ export async function startRelay (
   fs.rmdirSync(serverWorkDir, { recursive: true })
   args.push('--workdir', serverWorkDir)
   args.push('--devMode')
-  args.push('--checkInterval', 10)
+  if (options.checkInterval) {
+    args.push('--checkInterval', options.checkInterval)
+  } else {
+    args.push('--checkInterval', 100)
+  }
   args.push('--logLevel', 'debug')
   args.push('--relayHubAddress', relayHubAddress)
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--stakeManagerAddress', stakeManager.address)
   args.push('--ownerAddress', options.relayOwner)
-
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
   }
@@ -255,7 +258,7 @@ export async function deployHub (
     ...defaultEnvironment.relayHubConfiguration,
     ...configOverride
   }
-  return await RelayHub.new(
+  const hub: RelayHubInstance = await RelayHub.new(
     stakeManager,
     penalizer,
     relayHubConfiguration.maxWorkerCount,
@@ -264,7 +267,10 @@ export async function deployHub (
     relayHubConfiguration.gasOverhead,
     relayHubConfiguration.maximumRecipientDeposit,
     relayHubConfiguration.minimumUnstakeDelay,
-    relayHubConfiguration.minimumStake)
+    relayHubConfiguration.minimumStake,
+    relayHubConfiguration.dataGasCostPerByte,
+    relayHubConfiguration.externalCallDataCostOverhead)
+  return hub
 }
 
 export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {

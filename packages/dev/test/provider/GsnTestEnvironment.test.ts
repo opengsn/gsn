@@ -52,7 +52,7 @@ contract('GsnTestEnvironment', function () {
       assert.deepEqual([...ret.relayingErrors.values(), ...ret.pingErrors.values()], [])
       const events = await sr.contract.getPastEvents()
       assert.equal(events[0].event, 'SampleRecipientEmitted')
-      assert.equal(events[0].returnValues.realSender.toLocaleLowerCase(), sender.toLocaleLowerCase())
+      assert.equal(events[0].returnValues.realSender.toLowerCase(), sender.toLowerCase())
     })
   })
 
@@ -76,7 +76,8 @@ contract('GsnTestEnvironment', function () {
       const txDetails = {
         from: sender,
         paymaster: testEnvironment.contractsDeployment.paymasterAddress,
-        forwarder: await sr.getTrustedForwarder()
+        forwarder: await sr.getTrustedForwarder(),
+        gas: 100000
       }
       const ret = await sr.emitMessage('hello', txDetails)
 

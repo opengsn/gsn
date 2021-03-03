@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.6.2;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.5;
+pragma abicoder v2;
 
 import "../interfaces/GsnTypes.sol";
 import "../utils/GsnEip712Library.sol";
@@ -59,11 +59,10 @@ contract TestUtil {
     external
     pure
     returns (
-        IForwarder.ForwardRequest memory forwardRequest,
         bytes32 typeHash,
         bytes memory suffixData
     ) {
-        (forwardRequest, suffixData) = GsnEip712Library.splitRequest(relayRequest);
+        (suffixData) = GsnEip712Library.splitRequest(relayRequest);
         typeHash = GsnEip712Library.RELAY_REQUEST_TYPEHASH;
     }
 
