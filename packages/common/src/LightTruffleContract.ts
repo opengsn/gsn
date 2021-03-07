@@ -2,9 +2,29 @@ import Web3 from 'web3'
 import { AbiItem, AbiOutput, toBN } from 'web3-utils'
 import { Web3ProviderBaseInterface } from './types/Aliases'
 
+function getComponent (key: string, components: AbiOutput[]): AbiOutput | undefined {
+  // @ts-ignore
+  const component = components[key]
+  if (component != null) {
+    return component
+  }
+  return components.find(it => it.name === key)
+}
+
 function retypeItem (abiOutput: AbiOutput, ret: any): any {
   if (abiOutput.type.includes('int')) {
     return toBN(ret)
+  } else if (abiOutput.type.includes('tuple') && abiOutput.components != null) {
+    const keys = Object.keys(ret)
+    const newRet: any = {}
+    for (let i = 0; i < keys.length; i++) {
+      const component = getComponent(keys[i], abiOutput.components)
+      if (component == null) {
+        continue
+      }
+      newRet[keys[i]] = retypeItem(component, ret[keys[i]])
+    }
+    return newRet
   } else {
     return ret
   }
@@ -15,7 +35,6 @@ function retype (outputs?: AbiOutput[], ret?: any): any {
   if (outputs?.length === 1) {
     return retypeItem(outputs[0], ret)
   } else {
-    // seems like structure return values in truffle are left as strings,
     return ret
   }
 }

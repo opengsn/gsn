@@ -18,9 +18,9 @@ import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
-const TestRecipient = artifacts.require('tests/TestRecipient')
-const TestPaymasterEverythingAccepted = artifacts.require('tests/TestPaymasterEverythingAccepted')
-const TestPaymasterPreconfiguredApproval = artifacts.require('tests/TestPaymasterPreconfiguredApproval')
+const TestRecipient = artifacts.require('TestRecipient')
+const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const TestPaymasterPreconfiguredApproval = artifacts.require('TestPaymasterPreconfiguredApproval')
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -110,6 +110,7 @@ options.forEach(params => {
         // NOTE: in real application its enough to set the provider in web3.
         // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
         // so changing the global one is not enough...
+        // @ts-ignore
         TestRecipient.web3.setProvider(relayProvider)
       })
     }
@@ -172,6 +173,7 @@ options.forEach(params => {
               config: relayClientConfig,
               overrideDependencies: { asyncApprovalData }
             }).init()
+          // @ts-ignore
           TestRecipient.web3.setProvider(relayProvider)
         }
 
@@ -179,6 +181,7 @@ options.forEach(params => {
           try {
             await approvalPaymaster.setExpectedApprovalData('0x414243', {
               from: accounts[0],
+              // @ts-ignore
               useGSN: false
             })
 
@@ -186,6 +189,7 @@ options.forEach(params => {
 
             await sr.emitMessage('xxx', {
               from: gasless,
+              // @ts-ignore
               paymaster: approvalPaymaster.address
             })
           } catch (e) {
@@ -194,6 +198,7 @@ options.forEach(params => {
           } finally {
             await approvalPaymaster.setExpectedApprovalData('0x', {
               from: accounts[0],
+              // @ts-ignore
               useGSN: false
             })
           }
@@ -204,6 +209,7 @@ options.forEach(params => {
           await asyncShouldThrow(async () => {
             await sr.emitMessage('xxx', {
               from: gasless,
+              // @ts-ignore
               paymaster: approvalPaymaster.address
             })
           }, 'approval-exception')
@@ -221,6 +227,7 @@ options.forEach(params => {
 
               await sr.emitMessage('xxx', {
                 from: gasless,
+                // @ts-ignore
                 paymaster: approvalPaymaster.address
               })
             }, 'unexpected approvalData: \'\' instead of')
