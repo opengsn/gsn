@@ -231,7 +231,7 @@ export class RelayServer extends EventEmitter {
         }
         throw new Error(message)
       }
-      const paymasterAcceptanceBudget = gasAndDataLimits.acceptanceBudget.toNumber()
+      const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
       // TODO remove, since it's redundant. This check is also done in relayCall() on-chain, so the server will fail
       // on view call if these requirements aren't met.
       if (paymasterAcceptanceBudget + dataGasCost > relayExposure) {
@@ -244,7 +244,7 @@ export class RelayServer extends EventEmitter {
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      relayExposure = gasAndDataLimits.acceptanceBudget.toNumber() + dataGasCost
+      relayExposure = parseInt(gasAndDataLimits.acceptanceBudget.toString()) + dataGasCost
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()

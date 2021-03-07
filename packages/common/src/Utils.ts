@@ -124,8 +124,8 @@ export function calculateTransactionMaxPossibleGas (
     externalCallDataCost
   }: TransactionGasCostComponents): number {
   return hubOverhead +
-      gasAndDataLimits.preRelayedCallGasLimit.toNumber() +
-      gasAndDataLimits.postRelayedCallGasLimit.toNumber() +
+      parseInt(gasAndDataLimits.preRelayedCallGasLimit.toString()) +
+      parseInt(gasAndDataLimits.postRelayedCallGasLimit.toString()) +
       parseInt(relayCallGasLimit) +
       msgDataGasCost +
       externalCallDataCost

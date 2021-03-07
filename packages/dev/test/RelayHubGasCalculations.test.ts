@@ -171,11 +171,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         assert.equal(args.maxPossibleGas, maxPossibleGas.toString(),
             `fixed:\n\t externalCallDataCostOverhead: ${defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead + (args.maxPossibleGas - maxPossibleGas)},\n`)
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
-          gasleft: (gasAndDataLimits.preRelayedCallGasLimit.toNumber() - magicNumbers.pre).toString(),
+          gasleft: (parseInt(gasAndDataLimits.preRelayedCallGasLimit.toString()) - magicNumbers.pre).toString(),
           maxPossibleGas: maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPostCallWithValues', {
-          gasleft: (gasAndDataLimits.postRelayedCallGasLimit.toNumber() - magicNumbers.post).toString()
+          gasleft: (parseInt(gasAndDataLimits.postRelayedCallGasLimit.toString()) - magicNumbers.post).toString()
         })
       })
 
