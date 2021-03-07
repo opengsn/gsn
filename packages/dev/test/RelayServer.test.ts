@@ -352,7 +352,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         it('should accept a transaction from paymaster returning below configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
           const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-          assert.equal(gasLimits.acceptanceBudget.toNumber(), paymasterExpectedAcceptanceBudget)
+          assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget)
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
         })
 
@@ -362,7 +362,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
             const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-            assert.equal(gasLimits.acceptanceBudget.toNumber(), paymasterExpectedAcceptanceBudget * 9)
+            assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget * 9)
             await env.relayServer.validatePaymasterGasAndDataLimits(req)
           } finally {
             await env.relayServer._initTrustedPaymasters([])
