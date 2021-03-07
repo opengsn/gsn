@@ -155,7 +155,7 @@ export class CommandLineStatisticsPresenter {
     }
     const table2 = new Table()
     const relayHubEarningsBalance = this.ethValueStr(relayServerInfo.relayHubEarningsBalance)
-    const totalDepositedStake = this.ethValueStr(relayServerInfo.stakeInfo.stake)
+    const totalDepositedStake = this.ethValueStr(relayServerInfo.stakeInfo.stake.toString())
     table2.push(['RelayHub earnings ', relayHubEarningsBalance])
     table2.push(['Deposited Stake', totalDepositedStake])
     return table.toString() + '\n' + table2.toString()

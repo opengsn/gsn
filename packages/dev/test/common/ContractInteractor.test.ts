@@ -6,7 +6,7 @@ import {
   RelayHubInstance,
   StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance
-} from '../../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'

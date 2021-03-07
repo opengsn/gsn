@@ -31,7 +31,7 @@ import {
   IRelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
 import GsnTransactionDetails from './types/GsnTransactionDetails'
@@ -41,11 +41,9 @@ import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from 'ethereumjs-common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import {
-  RelayServerRegistered,
   RelayWorkersAdded,
   StakeInfo,
-  TransactionRejectedByPaymaster,
-  TransactionRelayed
+  ActiveManagerEvents
 } from './types/GSNContractsDataTypes'
 import TransactionDetails = Truffle.TransactionDetails
 
@@ -54,8 +52,6 @@ require('source-map-support').install({ errorFormatterForce: true })
 type EventName = string
 
 export const CommitAdded: EventName = 'CommitAdded'
-
-const ActiveManagerEvents = [RelayServerRegistered, RelayWorkersAdded, TransactionRelayed, TransactionRejectedByPaymaster]
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
@@ -492,9 +488,9 @@ export default class ContractInteractor {
   }
 
   async getStakeInfo (managerAddress: Address): Promise<{
-    stake: string
-    unstakeDelay: string
-    withdrawBlock: string
+    stake: BN
+    unstakeDelay: BN
+    withdrawBlock: BN
     owner: string
   }> {
     const stakeManager = await this.stakeManagerInstance

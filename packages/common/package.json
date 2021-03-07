@@ -9,6 +9,7 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "dependencies": {
+    "@opengsn/contracts": "2.1.0",
     "@types/eth-sig-util": "^2.1.0",
     "@types/web3": "1.2.2",
     "@types/semver": "^7.3.4",

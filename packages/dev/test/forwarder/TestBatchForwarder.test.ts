@@ -12,11 +12,11 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance,
   BatchForwarderInstance
-} from '../../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason } from '../TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
-const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted.sol')
+const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const BatchForwarder = artifacts.require('BatchForwarder')
@@ -111,7 +111,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
 
       // console.log(getLogs(ret))
       const relayed = ret.logs.find(log => log.event === 'TransactionRelayed')
-      assert.equal(relayed!.args.status, 0)
+      // @ts-ignore
+      assert.equal(relayed.args.status, 0)
 
       // @ts-ignore
       const logs = await recipient.getPastEvents({ fromBlock: 1 })

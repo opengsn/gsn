@@ -16,7 +16,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientContract,
   TestRecipientInstance
-} from '../../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { deployHub, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'

@@ -6,7 +6,7 @@ import {
   RelayHubInstance,
   StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub } from './TestUtils'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.5;
+pragma solidity ^0.7.6;
 // solhint-disable not-rely-on-time
 
 import "../interfaces/IVersionRegistry.sol";

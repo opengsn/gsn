@@ -44,7 +44,8 @@ contract('PenalizerService', function (accounts) {
       txByNonceService
     }
 
-    const serverConfigParams = await resolveServerConfig({
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const serverConfigParams: ServerConfigParams = await resolveServerConfig({
       url: '',
       workdir: '',
       etherscanApiUrl: 'etherscanApiUrl',
@@ -92,6 +93,7 @@ contract('PenalizerService', function (accounts) {
     it('should commit and penalize for a repeated nonce transaction', async function () {
       assert.equal(penalizerService.scheduledPenalizations.length, 0, 'should start with empty penalization schedule')
       const ret = await penalizerService.penalizeRepeatedNonce(auditRequest)
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       assert.equal(ret.message, undefined, `penalization failed whit message: ${ret.message}`)
       assert.notEqual(ret.commitTxHash, undefined, 'notice that penalization failed but error message is not given')
       assert.equal(penalizerService.scheduledPenalizations.length, 1, 'should save the penalization for after commitment is ready')
@@ -100,6 +102,7 @@ contract('PenalizerService', function (accounts) {
       assert.equal(penalizerService.scheduledPenalizations[0].readyBlockNumber, undefined, 'should not know when is commitment mined before intervalHandler')
 
       let penalizedTransactions = await penalizerService.intervalHandler()
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       assert.equal(penalizerService.scheduledPenalizations[0].readyBlockNumber, currentBlock + 5, 'should set the ready block once mined')
       assert.equal(penalizedTransactions.length, 0, 'penalized something before commitment delay')
       await evmMineMany(5)
@@ -133,6 +136,7 @@ contract('PenalizerService', function (accounts) {
     // TODO: duplicated test for different type of penalization - run in a loop if more types are added!
     it('should penalize for an illegal transaction', async function () {
       const ret = await penalizerService.penalizeIllegalTransaction(auditRequest)
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       assert.equal(ret.message, undefined, `penalization failed with message: ${ret.message}`)
       assert.notEqual(ret.commitTxHash, undefined, 'notice that penalization failed but error message is not given')
 

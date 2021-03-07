@@ -3,6 +3,8 @@
   "license": "MIT",
   "version": "2.1.0",
   "scripts": {
+    "truffle-compile": "truffle compile --compile-all",
+    "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 './build/contracts/*.json'",
     "lint": "solhint -f unix \"src/**/*.sol\" --max-warnings 0"
   },
   "dependencies": {

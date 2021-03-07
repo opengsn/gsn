@@ -5,7 +5,7 @@ import path from 'path'
 
 import { ether } from '@openzeppelin/test-helpers'
 
-import { IStakeManagerInstance, RelayHubInstance } from '../../../types/truffle-contracts'
+import { IStakeManagerInstance, RelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 import HttpWrapper from '@opengsn/common/dist/HttpWrapper'
 import HttpClient from '@opengsn/common/dist/HttpClient'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'

@@ -9,7 +9,7 @@ import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import {
   VersionRegistryInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { string32 } from '@opengsn/common/dist/VersionRegistry'
 
 require('source-map-support').install({ errorFormatterForce: true })

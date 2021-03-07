@@ -15,7 +15,7 @@ import {
   ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 

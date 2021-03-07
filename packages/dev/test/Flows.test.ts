@@ -11,7 +11,7 @@ import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
   TestRecipientInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'

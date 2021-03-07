@@ -2,7 +2,7 @@ import { GsnTestEnvironment, TestEnvironment } from '../../src/GsnTestEnvironmen
 import { HttpProvider } from 'web3-core'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { TestRecipientInstance } from '../../../../types/truffle-contracts'
+import { TestRecipientInstance } from '@opengsn/contracts/types/truffle-contracts'
 
 const TestRecipient = artifacts.require('TestRecipient')
 

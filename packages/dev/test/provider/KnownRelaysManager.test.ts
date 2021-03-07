@@ -12,7 +12,7 @@ import {
   StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance
-} from '../../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { configureGSN, deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 

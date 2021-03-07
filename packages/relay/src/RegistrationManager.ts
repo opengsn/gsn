@@ -301,7 +301,7 @@ export class RegistrationManager {
 
   async refreshStake (): Promise<void> {
     const stakeInfo = await this.contractInteractor.getStakeInfo(this.managerAddress)
-    const stake = toBN(stakeInfo.stake)
+    const stake = stakeInfo.stake
     this._isOwnerSetOnStakeManager = stakeInfo.owner !== constants.ZERO_ADDRESS
     if (this._isOwnerSetOnStakeManager && !isSameAddress(stakeInfo.owner, this.config.ownerAddress)) {
       throw new Error(`This Relay Manager has set owner to already! On-chain: ${stakeInfo.owner}, in config: ${this.config.ownerAddress}`)
@@ -311,7 +311,7 @@ export class RegistrationManager {
     }
 
     // a locked stake does not have the 'withdrawBlock' field set
-    this.isStakeLocked = stakeInfo.withdrawBlock === '0'
+    this.isStakeLocked = stakeInfo.withdrawBlock.toString() === '0'
     this.stakeRequired.currentValue = stake
 
     // first time getting stake, setting owner

@@ -13,6 +13,7 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "dependencies": {
+    "@opengsn/contracts": "^2.1.0",
     "@opengsn/provider": "^2.1.0",
     "@opengsn/relay": "^2.1.0",
     "@opengsn/cli": "^2.1.0"

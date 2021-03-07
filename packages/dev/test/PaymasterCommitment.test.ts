@@ -12,7 +12,7 @@ import {
   TestRecipientInstance,
   ForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import ForwardRequest from '@opengsn/common/dist/EIP712/ForwardRequest'
 import RelayData from '@opengsn/common/dist/EIP712/RelayData'
