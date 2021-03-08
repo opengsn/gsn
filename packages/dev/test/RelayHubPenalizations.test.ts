@@ -1,16 +1,18 @@
 /* eslint-disable @typescript-eslint/require-await */
 // This rule seems to be flickering and buggy - does not understand async arrow functions correctly
-import { balance, ether, expectRevert, send } from '@openzeppelin/test-helpers'
+import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
 import { Transaction } from 'ethereumjs-tx'
+import { Transaction as NewTransaction, AccessListEIP2930Transaction } from '@ethereumjs/tx'
+import Common from '@ethereumjs/common'
 import { TransactionOptions } from 'ethereumjs-tx/dist/types'
 import { encode } from 'rlp'
 import { expect } from 'chai'
-import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
+import { privateToAddress, unpadBuffer, toBuffer, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { getEip712Signature } from '@opengsn/common/dist/Utils'
+import { getEip712Signature, removeHexPrefix, signatureRSV2Hex } from '@opengsn/common/dist/Utils'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import {
@@ -34,8 +36,8 @@ const Forwarder = artifacts.require('Forwarder')
 const paymasterData = '0x'
 const clientId = '0'
 
-contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, committer, nonCommitter,
-  sender, other, relayManager, thirdRelayWorker, reporterRelayManager]) { // eslint-disable-line no-unused-vars
+contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommitter,
+  sender, other, relayManager, reporterRelayManager]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
 
   let stakeManager: StakeManagerInstance
@@ -46,6 +48,30 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
   let transactionOptions: TransactionOptions
 
   let forwarder: string
+  const relayWorkerPrivateKey = Buffer.from('6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c', 'hex')
+  const relayWorker = privateToAddress(relayWorkerPrivateKey).toString('hex')
+  const anotherRelayWorkerPrivateKey = Buffer.from('a453611d9419d0e56f499079478fd72c37b251a94bfde4d19872c44cf65386e3', 'hex')
+  const anotherRelayWorker = privateToAddress(anotherRelayWorkerPrivateKey).toString('hex')
+
+  const encodedCallArgs = {
+    sender,
+    recipient: '0x1820b744B33945482C17Dc37218C01D858EBc714',
+    data: '0x1234',
+    baseFee: 1000,
+    fee: 10,
+    gasPrice: 50,
+    gasLimit: 1e6,
+    nonce: 0,
+    paymaster: ''
+  }
+
+  const relayCallArgs = {
+    gasPrice: 50,
+    gasLimit: 1e6,
+    nonce: 0,
+    value: 0,
+    privateKey: relayWorkerPrivateKey
+  }
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
@@ -58,6 +84,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
     await registerForwarderForGsn(forwarderInstance)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
+    encodedCallArgs.paymaster = paymaster.address
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
     await stakeManager.stakeForRelayManager(relayManager, 1000, {
       from: relayOwner,
@@ -132,6 +159,110 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
   describe('penalizations', function () {
     const stake = ether('1')
 
+    describe('TransactionType1 penalization', function () {
+      let relayRequest: RelayRequest
+      let encodedCall: string
+      let common: Common
+      let legacyTx: NewTransaction
+      let eip2930Transaction: AccessListEIP2930Transaction
+      let describeSnapshotId: string
+      before(async function () {
+        common = new Common({ chain: 'mainnet', hardfork: 'berlin' })
+        // TODO: 'encodedCallArgs' is no longer needed. just keep the RelayRequest in test
+        relayRequest =
+          {
+            request: {
+              to: encodedCallArgs.recipient,
+              data: encodedCallArgs.data,
+              from: encodedCallArgs.sender,
+              nonce: encodedCallArgs.nonce.toString(),
+              value: '0',
+              gas: encodedCallArgs.gasLimit.toString(),
+              validUntil: '0'
+            },
+            relayData: {
+              baseRelayFee: encodedCallArgs.baseFee.toString(),
+              pctRelayFee: encodedCallArgs.fee.toString(),
+              gasPrice: encodedCallArgs.gasPrice.toString(),
+              relayWorker: relayWorker,
+              forwarder,
+              paymaster: encodedCallArgs.paymaster,
+              paymasterData,
+              clientId
+            }
+          }
+        encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x', 1e6).encodeABI()
+
+        legacyTx = new NewTransaction({
+          nonce: relayCallArgs.nonce,
+          gasLimit: relayCallArgs.gasLimit,
+          gasPrice: relayCallArgs.gasPrice,
+          to: relayHub.address,
+          value: relayCallArgs.value,
+          data: encodedCall
+        }, { common })
+
+        eip2930Transaction = AccessListEIP2930Transaction.fromTxData(legacyTx, { common })
+      })
+
+      beforeEach(async function () {
+        describeSnapshotId = (await snapshot()).result
+      })
+      afterEach(async function () {
+        await revert(describeSnapshotId)
+      })
+
+      describe('#decodeTransaction', function () {
+        it('should decode new TransactionType1 tx', async function () {
+          const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
+          const penalizableTxData = `0x01${encode(input).toString('hex')}`
+          const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
+          validateDecodedTx(decodedTx, eip2930Transaction)
+        })
+        it('should decode legacy tx', async function () {
+          const input = [bnToRlp(legacyTx.nonce), bnToRlp(legacyTx.gasPrice), bnToRlp(legacyTx.gasLimit), legacyTx.to!.toBuffer(), bnToRlp(legacyTx.value), legacyTx.data]
+          const penalizableTxData = `0x${encode(input).toString('hex')}`
+          const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
+          validateDecodedTx(decodedTx, legacyTx)
+        })
+      })
+
+      it('should penalize new TransactionType1 tx', async function () {
+        const signedTx = eip2930Transaction.sign(relayCallArgs.privateKey)
+        const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
+        const penalizableTxData = `0x01${encode(input).toString('hex')}`
+
+        const newV = (signedTx.v!.toNumber() + 27)
+        const penalizableTxSignature = signatureRSV2Hex(signedTx.r!, signedTx.s!, newV)
+
+        const request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x').encodeABI()
+
+        // eslint-disable-next-line
+        const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
+        await penalizer.commit(commitHash, { from: committer })
+        await evmMineMany(10)
+        const res = await penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer })
+        expectEvent(res, 'StakePenalized', { relayManager: relayManager, beneficiary: committer, reward: stake.divn(2) })
+      });
+
+      // legacy tx first byte is in [0xc0, 0xfe]
+      ['bf', 'ff'].forEach(byteToSign => {
+        it('should penalize any non legacy tx format signed bytes', async function () {
+          const bufferToSign = Buffer.from(byteToSign, 'hex')
+          const msgHash = keccak256(bufferToSign)
+          const sig = ecsign(msgHash, relayWorkerPrivateKey)
+          const penalizableTxSignature = signatureRSV2Hex(sig.r, sig.s, sig.v)
+          const request = penalizer.contract.methods.penalizeIllegalTransaction(bufferToSign, penalizableTxSignature, relayHub.address, '0x').encodeABI()
+          // eslint-disable-next-line
+          const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
+          await penalizer.commit(commitHash, { from: committer })
+          await evmMineMany(10)
+          const res = await penalizer.penalizeIllegalTransaction(bufferToHex(bufferToSign), penalizableTxSignature, relayHub.address, '0x', { from: committer })
+          expectEvent(res, 'StakePenalized', { relayManager: relayManager, beneficiary: committer, reward: stake.divn(2) })
+        })
+      })
+    })
+
     before('register reporter as relayer', async function () {
       await stakeManager.setRelayManagerOwner(relayOwner, { from: reporterRelayManager })
       await stakeManager.stakeForRelayManager(reporterRelayManager, 1000, {
@@ -205,7 +336,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
       let penalizableTxData: string
       let penalizableTxSignature: string
       before(async function () {
-        const { transactionHash } = await send.ether(thirdRelayWorker, other, ether('0.5'));
+        const { transactionHash } = await send.ether(anotherRelayWorker, other, ether('0.5'));
         ({
           data: penalizableTxData,
           signature: penalizableTxSignature
@@ -294,30 +425,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
     })
 
     describe('penalizable behaviors', function () {
-      const encodedCallArgs = {
-        sender,
-        recipient: '0x1820b744B33945482C17Dc37218C01D858EBc714',
-        data: '0x1234',
-        baseFee: 1000,
-        fee: 10,
-        gasPrice: 50,
-        gasLimit: 1000000,
-        nonce: 0,
-        paymaster: ''
-      }
-
-      const relayCallArgs = {
-        gasPrice: 50,
-        gasLimit: 1000000,
-        nonce: 0,
-        privateKey: '6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c' // relay's private key
-      }
-
       before(function () {
         // @ts-ignore
-        expect('0x' + privateToAddress('0x' + relayCallArgs.privateKey).toString('hex')).to.equal(relayWorker.toLowerCase())
-        // TODO: I don't want to refactor everything here, but this value is not available before 'before' is run :-(
-        encodedCallArgs.paymaster = paymaster.address
+        expect(privateToAddress(relayCallArgs.privateKey).toString('hex')).to.equal(relayWorker.toLowerCase())
       })
 
       beforeEach('staking for relay', async function () {
@@ -391,7 +501,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
           const txDataSigA = getDataAndSignature(encodeRelayCallEIP155(encodedCallArgs, relayCallArgs), chainId)
           const txDataSigB = getDataAndSignature(encodeRelayCallEIP155(
             encodedCallArgs,
-            Object.assign({}, relayCallArgs, { privateKey: '0123456789012345678901234567890123456789012345678901234567890123' })
+            Object.assign({}, relayCallArgs, { privateKey: Buffer.from('0123456789012345678901234567890123456789012345678901234567890123', 'hex') })
           ), chainId)
 
           const method = await commitPenalizationAndReturnMethod(
@@ -518,7 +628,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
 
         beforeEach(async function () {
           // Relays are not allowed to transfer Ether
-          const { transactionHash } = await send.ether(thirdRelayWorker, other, ether('0.5'));
+          const { transactionHash } = await send.ether(anotherRelayWorker, other, ether('0.5'));
           ({
             data: penalizableTxData,
             signature: penalizableTxSignature
@@ -548,7 +658,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
 
           before(async function () {
             await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
-            await relayHub.addRelayWorkers([thirdRelayWorker], { from: relayManager })
+            await relayHub.addRelayWorkers([anotherRelayWorker], { from: relayManager })
           })
 
           it('relay can be penalized', async function () {
@@ -564,8 +674,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
     })
 
     function encodeRelayCallEIP155 (encodedCallArgs: any, relayCallArgs: any): Transaction {
-      const privateKey = Buffer.from(relayCallArgs.privateKey, 'hex')
-      const relayWorker = privateToAddress(privateKey).toString('hex')
+      const relayWorker = privateToAddress(relayCallArgs.privateKey).toString('hex')
       // TODO: 'encodedCallArgs' is no longer needed. just keep the RelayRequest in test
       const relayRequest: RelayRequest =
         {
@@ -600,7 +709,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
         data: encodedCall
       }, transactionOptions)
 
-      transaction.sign(Buffer.from(relayCallArgs.privateKey, 'hex'))
+      transaction.sign(relayCallArgs.privateKey)
       return transaction
     }
 
@@ -634,8 +743,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
       if (chainId) {
         input.push(
           toBuffer(chainId),
-          stripZeros(toBuffer(0)),
-          stripZeros(toBuffer(0))
+          unpadBuffer(toBuffer(0)),
+          unpadBuffer(toBuffer(0))
         )
       }
       let v = parseInt(tx.v.toString('hex'), 16)
@@ -643,12 +752,20 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
         v -= chainId * 2 + 8
       }
       const data = `0x${encode(input).toString('hex')}`
-      const signature = `0x${'00'.repeat(32 - tx.r.length) + tx.r.toString('hex')}${'00'.repeat(
-        32 - tx.s.length) + tx.s.toString('hex')}${v.toString(16)}`
+      const signature = signatureRSV2Hex(tx.r, tx.s, v)
       return {
         data,
         signature
       }
+    }
+
+    function validateDecodedTx (decodedTx: { nonce: string, gasPrice: string, gasLimit: string, to: string, value: string, data: string}, originalTx: AccessListEIP2930Transaction | NewTransaction): void {
+      assert.equal(decodedTx.nonce, originalTx.nonce.toString())
+      assert.equal(decodedTx.gasPrice, originalTx.gasPrice.toString())
+      assert.equal(decodedTx.gasLimit, originalTx.gasLimit.toString())
+      assert.equal(removeHexPrefix(decodedTx.data), originalTx.data.toString('hex'))
+      assert.equal(decodedTx.to.toLowerCase(), originalTx.to!.toString().toLowerCase())
+      assert.equal(decodedTx.value, originalTx.value.toString())
     }
   })
 })

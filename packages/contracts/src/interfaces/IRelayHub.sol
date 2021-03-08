@@ -6,6 +6,29 @@ import "../utils/GsnTypes.sol";
 import "./IStakeManager.sol";
 
 interface IRelayHub {
+    struct RelayHubConfig {
+        // maximum number of worker accounts allowed per manager
+        uint256 maxWorkerCount;
+        // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
+        uint256 gasReserve;
+        // Gas overhead to calculate gasUseWithoutPost
+        uint256 postOverhead;
+        // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
+        // Assume that relay has non-zero balance (costs 15'000 more otherwise).
+        uint256 gasOverhead;
+        // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
+        uint256 maximumRecipientDeposit;
+        // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
+        uint256 minimumUnstakeDelay;
+        // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
+        uint256 minimumStake;
+        // relayCall()'s msg.data upper bound gas cost per byte
+        uint256 dataGasCostPerByte;
+        // relayCalls() minimal gas overhead when calculating cost of putting tx on chain.
+        uint256 externalCallDataCostOverhead;
+    }
+
+    event RelayHubConfigured(RelayHubConfig config);
 
     /// Emitted when a relay server registers or updates its details
     /// Looking at these events lets a client discover relay servers
@@ -13,7 +36,8 @@ interface IRelayHub {
         address indexed relayManager,
         uint256 baseRelayFee,
         uint256 pctRelayFee,
-        string relayUrl);
+        string relayUrl
+    );
 
     /// Emitted when relays are added by a relayManager
     event RelayWorkersAdded(
@@ -47,7 +71,8 @@ interface IRelayHub {
         address relayWorker,
         bytes4 selector,
         uint256 innerGasUsed,
-        bytes reason);
+        bytes reason
+    );
 
     /// Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be
     /// indicated in the status field.
@@ -61,12 +86,15 @@ interface IRelayHub {
         address paymaster,
         bytes4 selector,
         RelayCallStatus status,
-        uint256 charge);
+        uint256 charge
+    );
 
     event TransactionResult(
         RelayCallStatus status,
         bytes returnValue
     );
+
+    event HubDeprecated(uint256 fromBlock);
 
     /// Reason error codes for the TransactionRelayed event
     /// @param OK - the transaction was successfully relayed and execution successful - never included in the event
@@ -137,6 +165,12 @@ interface IRelayHub {
 
     function penalize(address relayWorker, address payable beneficiary) external;
 
+    function setConfiguration(RelayHubConfig memory _config) external;
+
+    // Deprecate hub (reverting relayCall()) from block number 'fromBlock'
+    // Can only be called by owner
+    function deprecateHub(uint256 fromBlock) external;
+
     /// The fee is expressed as a base fee in wei plus percentage on actual charge.
     /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
     /// charged for 1.4 times the spent amount.
@@ -144,36 +178,8 @@ interface IRelayHub {
 
     /* getters */
 
-    /// Returns the stake manager of this RelayHub.
-    function stakeManager() external view returns(IStakeManager);
-    function penalizer() external view returns(address);
-
-    /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.
-    function balanceOf(address target) external view returns (uint256);
-
-    /// Minimum stake a relay can have. An attack to the network will never cost less than half this value.
-    function minimumStake() external view returns (uint256);
-
-    /// Minimum unstake delay blocks of a relay manager's stake on the StakeManager
-    function minimumUnstakeDelay() external view returns (uint256);
-
-    /// Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
-    function maximumRecipientDeposit() external view returns (uint256);
-
-    /// Gas overhead to calculate gasUseWithoutPost
-    function postOverhead() external view returns (uint256);
-
-    /// Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions
-    function gasReserve() external view returns (uint256);
-
-    /// maximum number of worker accounts allowed per manager
-    function maxWorkerCount() external view returns (uint256);
-
-    // relayCall()'s msg.data upper bound gas cost per byte
-    function dataGasCostPerByte() external view returns (uint256);
-
-    // relayCalls() minimal gas overhead when calculating cost of putting tx on chain.
-    function externalCallDataCostOverhead() external view returns (uint256);
+    /// Returns the whole hub configuration
+    function getConfiguration() external view returns (RelayHubConfig memory config);
 
     function calldataGasCost(uint256 length) external view returns (uint256);
 
@@ -181,13 +187,22 @@ interface IRelayHub {
 
     function workerCount(address manager) external view returns(uint256);
 
+    /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.
+    function balanceOf(address target) external view returns (uint256);
+
+    function stakeManager() external view returns (IStakeManager);
+
+    function penalizer() external view returns (address);
+
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
     /// @return true if stake size and delay satisfy all requirements
     function isRelayManagerStaked(address relayManager) external view returns(bool);
 
-    /// Gas cost of all relayCall() instructions after actual 'calculateCharge()'
-    /// Assume that relay has non-zero balance (costs 15'000 more otherwise).
-    function gasOverhead() external view returns (uint256);
+    // Checks hubs' deprecation status
+    function isDeprecated() external view returns (bool);
+
+    // Returns the block number from which the hub no longer allows relaying calls.
+    function deprecationBlock() external view returns (uint256);
 
     /// @return a SemVer-compliant version of the hub contract
     function versionHub() external view returns (string memory);

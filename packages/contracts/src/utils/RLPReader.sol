@@ -22,15 +22,25 @@ library RLPReader {
     using RLPReader for uint;
     using RLPReader for RLPReader.RLPItem;
 
-    // helper function to decode rlp encoded  ethereum transaction
+    // helper function to decode rlp encoded legacy ethereum transaction
     /*
-    * @param rawTransaction RLP encoded ethereum transaction
+    * @param rawTransaction RLP encoded legacy ethereum transaction rlp([nonce, gasPrice, gasLimit, to, value, data]))
     * @return tuple (nonce,gasPrice,gasLimit,to,value,data)
     */
 
-    function decodeTransaction(bytes memory rawTransaction) internal pure returns (uint, uint, uint, address, uint, bytes memory){
+    function decodeLegacyTransaction(bytes calldata rawTransaction) internal pure returns (uint, uint, uint, address, uint, bytes memory){
         RLPReader.RLPItem[] memory values = rawTransaction.toRlpItem().toList(); // must convert to an rlpItem first!
         return (values[0].toUint(), values[1].toUint(), values[2].toUint(), values[3].toAddress(), values[4].toUint(), values[5].toBytes());
+    }
+
+    /*
+    * @param rawTransaction format: 0x01 || rlp([chainId, nonce, gasPrice, gasLimit, to, value, data, access_list]))
+    * @return tuple (nonce,gasPrice,gasLimit,to,value,data)
+    */
+    function decodeTransactionType1(bytes calldata rawTransaction) internal pure returns (uint, uint, uint, address, uint, bytes memory){
+        bytes memory payload = rawTransaction[1:rawTransaction.length];
+        RLPReader.RLPItem[] memory values = payload.toRlpItem().toList(); // must convert to an rlpItem first!
+        return (values[1].toUint(), values[2].toUint(), values[3].toUint(), values[4].toAddress(), values[5].toUint(), values[6].toBytes());
     }
 
     /*

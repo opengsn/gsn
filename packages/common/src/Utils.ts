@@ -4,7 +4,7 @@ import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
 import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
-import { bufferToHex, bufferToInt, ecrecover, pubToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
+import { bufferToHex, bufferToInt, ecrecover, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
 
 import { Address } from './types/Aliases'
 
@@ -27,6 +27,10 @@ export function padTo64 (hex: string): string {
     hex = (zeroPad + hex).slice(-64)
   }
   return hex
+}
+
+export function signatureRSV2Hex (r: BN | Buffer, s: BN | Buffer, v: number): string {
+  return '0x' + padTo64(r.toString('hex')) + padTo64(s.toString('hex')) + v.toString(16)
 }
 
 export function event2topic (contract: any, names: string[]): any {
@@ -235,8 +239,8 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   const input = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]
   input.push(
     toBuffer(chainId),
-    stripZeros(toBuffer(0)),
-    stripZeros(toBuffer(0))
+    unpadBuffer(toBuffer(0)),
+    unpadBuffer(toBuffer(0))
   )
   let vInt = bufferToInt(tx.v)
   if (vInt > 28) {

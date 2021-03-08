@@ -1,13 +1,13 @@
 import { IntString } from './Aliases'
 
 export interface RelayHubConfiguration {
-  gasOverhead: number
-  postOverhead: number
-  gasReserve: number
   maxWorkerCount: number
+  gasReserve: number
+  postOverhead: number
+  gasOverhead: number
+  maximumRecipientDeposit: IntString
   minimumUnstakeDelay: number
   minimumStake: IntString
-  maximumRecipientDeposit: IntString
   dataGasCostPerByte: number
   externalCallDataCostOverhead: number
 }

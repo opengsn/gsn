@@ -19,7 +19,7 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { AuditRequest, AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
-import { address2topic, getDataAndSignature } from '@opengsn/common/dist/Utils'
+import { address2topic, getDataAndSignature, removeHexPrefix } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { ServerConfigParams } from '../ServerConfigParams'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -198,8 +198,8 @@ export class PenalizerService {
 
   calculateCommitHash (method: any): PrefixedHexString {
     const msgData: string = method.encodeABI()
-    const msgDataHash = `0x${ethUtils.keccak256(msgData).toString('hex')}`
-    return `0x${ethUtils.keccak256(msgDataHash + this.managerAddress.slice(2).toLowerCase()).toString('hex')}`
+    const msgDataHash = `0x${ethUtils.keccak256(Buffer.from(removeHexPrefix(msgData), 'hex')).toString('hex')}`
+    return `0x${ethUtils.keccak256(Buffer.from(removeHexPrefix(msgDataHash + this.managerAddress.slice(2).toLowerCase()), 'hex')).toString('hex')}`
   }
 
   async intervalHandler (): Promise<PrefixedHexString[]> {
