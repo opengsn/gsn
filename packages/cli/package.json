@@ -6,8 +6,12 @@
   "scripts": {
     "tsc": "tsc",
     "lint": "eslint -f unix .",
-    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
+    "chmod-commands": "chmod a+rx ./dist/commands/*.js",
+    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/cli/compiled"
   },
+  "files": [
+    "dist/*"
+  ],
   "dependencies": {
     "@opengsn/common": "2.1.0",
     "@truffle/hdwallet-provider": "1.0.34",

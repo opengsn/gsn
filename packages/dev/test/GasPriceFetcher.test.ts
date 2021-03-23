@@ -2,7 +2,7 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { HttpProvider } from 'web3-core'
 
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 
 import { Server } from 'net'

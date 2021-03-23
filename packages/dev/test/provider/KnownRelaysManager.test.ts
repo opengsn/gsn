@@ -4,7 +4,7 @@ import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
 import { KnownRelaysManager, DefaultRelayScore } from '@opengsn/provider/dist/KnownRelaysManager'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   PenalizerInstance,

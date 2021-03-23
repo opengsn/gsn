@@ -4,11 +4,13 @@ import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai from 'chai'
 
-import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
-import TypedRequestData, {
+import {
+  TypedRequestData,
   getDomainSeparatorHash,
-  GsnDomainSeparatorType, GsnRequestType
+  GsnDomainSeparatorType,
+  GsnRequestType
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@opengsn/contracts/types/truffle-contracts'

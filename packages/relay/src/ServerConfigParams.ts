@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import parseArgs from 'minimist'
 
 import { VersionRegistry } from '@opengsn/common/dist/VersionRegistry'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { constants } from '@opengsn/common/dist/Constants'
 import { Address, NpmLogLevel } from '@opengsn/common/dist/types/Aliases'
 import { KeyManager } from './KeyManager'
@@ -12,8 +12,6 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-
-require('source-map-support').install({ errorFormatterForce: true })
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {

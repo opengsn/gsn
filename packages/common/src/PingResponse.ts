@@ -1,6 +1,6 @@
 import { Address, IntString } from './types/Aliases'
 
-export default interface PingResponse {
+export interface PingResponse {
   relayWorkerAddress: Address
   relayManagerAddress: Address
   relayHubAddress: Address

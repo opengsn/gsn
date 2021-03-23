@@ -1,7 +1,7 @@
 import { Address, IntString } from './Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-export default interface GsnTransactionDetails {
+export interface GsnTransactionDetails {
   // Added by the Web3 call stack:
   readonly from: Address
   readonly data: PrefixedHexString

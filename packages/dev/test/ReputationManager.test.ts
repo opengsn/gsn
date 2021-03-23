@@ -7,10 +7,8 @@ import {
   ReputationManagerConfiguration
 } from '@opengsn/relay/dist/ReputationManager'
 import { evmMineMany } from './TestUtils'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpProvider } from 'web3-core'
-
-require('source-map-support').install({ errorFormatterForce: true })
 
 /**
  * Attention: these tests are often order and timestamp-dependent! Use debugger with caution.

@@ -1,11 +1,9 @@
 import { Address } from '../types/Aliases'
-import RelayRequest from './RelayRequest'
+import { RelayRequest } from './RelayRequest'
 import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types, TypedDataUtils } from 'eth-sig-util'
 
 import { bufferToHex } from 'ethereumjs-util'
 import { PrefixedHexString } from 'ethereumjs-tx'
-
-require('source-map-support').install({ errorFormatterForce: true })
 
 const EIP712DomainType = [
   { name: 'name', type: 'string' },
@@ -66,7 +64,7 @@ export function getDomainSeparatorHash (verifier: Address, chainId: number): Pre
   return bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', getDomainSeparator(verifier, chainId), { EIP712Domain: EIP712DomainType }))
 }
 
-export default class TypedRequestData implements EIP712TypedData {
+export class TypedRequestData implements EIP712TypedData {
   readonly types: Types
   readonly domain: EIP712Domain
   readonly primaryType: string

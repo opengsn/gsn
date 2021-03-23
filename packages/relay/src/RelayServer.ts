@@ -6,14 +6,14 @@ import { toBN, toHex } from 'web3-utils'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 
-import PingResponse from '@opengsn/common/dist/PingResponse'
-import VersionsManager from '@opengsn/common/dist/VersionsManager'
+import { PingResponse } from '@opengsn/common/dist/PingResponse'
+import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
 import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'

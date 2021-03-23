@@ -2,8 +2,8 @@ import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
-import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
-import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 import {
   RelayHubInstance,
@@ -14,8 +14,8 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { PrefixedHexString } from 'ethereumjs-tx'
-import ForwardRequest from '@opengsn/common/dist/EIP712/ForwardRequest'
-import RelayData from '@opengsn/common/dist/EIP712/RelayData'
+import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
+import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { toBuffer } from 'ethereumjs-util'

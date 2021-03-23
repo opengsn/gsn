@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./interfaces/GsnTypes.sol";
+import "./utils/GsnTypes.sol";
 import "./interfaces/IPaymaster.sol";
 import "./interfaces/IRelayHub.sol";
 import "./utils/GsnEip712Library.sol";

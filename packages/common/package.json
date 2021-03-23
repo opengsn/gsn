@@ -2,12 +2,15 @@
   "name": "@opengsn/common",
   "version": "2.1.0",
   "license": "MIT",
-  "main": "dist/Version",
+  "main": "dist/index.js",
   "scripts": {
     "tsc": "tsc",
     "lint": "eslint -f unix .",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
+  "files": [
+    "dist/*"
+  ],
   "dependencies": {
     "@opengsn/contracts": "2.1.0",
     "@types/eth-sig-util": "^2.1.0",
@@ -19,6 +22,8 @@
     "ethereumjs-tx": "^2.1.2",
     "ethereumjs-util": "^6.2.1",
     "ow": "^0.17.0",
+    "chalk": "^4.1.0",
+    "rlp": "^2.2.6",
     "semver": "^7.3.2",
     "web3-core": "1.2.6",
     "web3-core-helpers": "1.2.6",

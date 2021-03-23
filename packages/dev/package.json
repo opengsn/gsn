@@ -5,8 +5,6 @@
   "scripts": {
     "tsc": "tsc",
     "truffle-compile": "truffle compile",
-    "generate": "rm -rf ./build/contracts && yarn truffle-compile && yarn extract_abi",
-    "extract_abi": "../../scripts/extract_abi.js",
     "lint": "eslint -f unix .",
     "test": "lerna run tsc && truffle --compile-all --network npmtest test",
     "truffle-test": "truffle test --compile-all ",

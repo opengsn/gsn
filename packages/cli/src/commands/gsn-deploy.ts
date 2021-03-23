@@ -1,5 +1,5 @@
 import commander from 'commander'
-import CommandsLogic from '../CommandsLogic'
+import { CommandsLogic } from '../CommandsLogic'
 import {
   getMnemonic,
   getNetworkUrl,

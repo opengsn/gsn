@@ -1,10 +1,14 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
-import { calculateCalldataCost, calculateTransactionMaxPossibleGas, getEip712Signature } from '@opengsn/common/dist/Utils'
-import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  calculateCalldataCost,
+  calculateTransactionMaxPossibleGas,
+  getEip712Signature
+} from '@opengsn/common/dist/Utils'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import RelayRequest, { cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 
 import {
   RelayHubInstance,

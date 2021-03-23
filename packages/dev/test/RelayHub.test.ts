@@ -3,9 +3,9 @@ import BN from 'bn.js'
 import chai from 'chai'
 
 import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import RelayRequest, { cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 import {
   RelayHubInstance,

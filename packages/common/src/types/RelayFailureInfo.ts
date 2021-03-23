@@ -1,4 +1,4 @@
-export default interface RelayFailureInfo {
+export interface RelayFailureInfo {
   lastErrorTime: number
   relayManager: string
   relayUrl: string

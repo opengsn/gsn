@@ -2,7 +2,7 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "../interfaces/GsnTypes.sol";
+import "../utils/GsnTypes.sol";
 import "../utils/GsnEip712Library.sol";
 import "../utils/GsnUtils.sol";
 

@@ -2,21 +2,27 @@
   "name": "@opengsn/provider",
   "version": "2.1.0",
   "license": "MIT",
-  "main": "dist/src/index",
+  "main": "dist/index.js",
   "scripts": {
     "tsc": "tsc",
     "lint": "eslint -f unix .",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
+  "files": [
+    "dist/*"
+  ],
   "dependencies": {
     "@opengsn/common": "^2.1.0",
     "@types/body-parser": "^1.19.0",
     "@types/eth-sig-util": "^2.1.0",
     "@types/express-serve-static-core": "^4.17.18",
+    "abi-decoder": "^2.4.0",
+    "body-parser": "^1.19.0",
     "eth-sig-util": "2.5.2",
     "ethereumjs-tx": "^2.1.2",
     "ethereumjs-util": "^6.2.1",
+    "ethereumjs-wallet": "^0.6.5",
     "loglevel": "^1.7.1",
-    "body-parser": "^1.19.0"
+    "winston": "^3.3.3"
   }
 }

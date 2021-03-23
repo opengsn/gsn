@@ -1,8 +1,8 @@
 /* global contract artifacts before it */
 
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
-import RelayRequest, { cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
 

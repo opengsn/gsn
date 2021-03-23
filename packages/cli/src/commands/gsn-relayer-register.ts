@@ -1,6 +1,6 @@
 import { ether } from '@opengsn/common/dist/Utils'
 
-import CommandsLogic, { RegisterOptions } from '../CommandsLogic'
+import { CommandsLogic, RegisterOptions } from '../CommandsLogic'
 import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
 import { toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'

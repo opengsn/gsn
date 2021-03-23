@@ -3,12 +3,12 @@ import { bufferToHex } from 'ethereumjs-util'
 
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 
-export default class RelayedTransactionValidator {
+export class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
   private readonly config: GSNConfig
   private readonly logger: LoggerInterface

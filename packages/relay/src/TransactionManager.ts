@@ -5,7 +5,7 @@ import { Mutex } from 'async-mutex'
 import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
 
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 
 import { TxStoreManager } from './TxStoreManager'
 import { KeyManager } from './KeyManager'

@@ -1,13 +1,13 @@
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-import PingResponse from './PingResponse'
+import { PingResponse } from './PingResponse'
 import { LoggerInterface } from './LoggerInterface'
 
-import HttpWrapper from './HttpWrapper'
+import { HttpWrapper } from './HttpWrapper'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { AuditRequest, AuditResponse } from './types/AuditRequest'
 
-export default class HttpClient {
+export class HttpClient {
   private readonly httpWrapper: HttpWrapper
   private readonly logger: LoggerInterface
 

@@ -3,7 +3,7 @@ import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import BN from 'bn.js'
 
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { RegistrationManager } from '@opengsn/relay/dist/RegistrationManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'

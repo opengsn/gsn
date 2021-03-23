@@ -1,7 +1,7 @@
 import { addresses2topics } from '@opengsn/common/dist/Utils'
 
-import GsnTransactionDetails from '@opengsn/common/dist/types/GsnTransactionDetails'
-import RelayFailureInfo from '@opengsn/common/dist/types/RelayFailureInfo'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { RelayFailureInfo } from '@opengsn/common/dist/types/RelayFailureInfo'
 import { Address, AsyncScoreCalculator, RelayFilter } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 
@@ -16,7 +16,7 @@ import {
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { EventData } from 'web3-eth-contract'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true

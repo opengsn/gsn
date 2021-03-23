@@ -1,7 +1,7 @@
 import { Transaction } from 'ethereumjs-tx'
 
 import { BlockExplorerInterface, TransactionData } from '@opengsn/relay/dist/penalizer/BlockExplorerInterface'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { TransactionDataCache } from '@opengsn/relay/dist/penalizer/TransactionDataCache'

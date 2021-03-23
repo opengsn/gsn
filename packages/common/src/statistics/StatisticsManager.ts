@@ -1,7 +1,7 @@
 import { EventData } from 'web3-eth-contract'
 
-import ContractInteractor from '../ContractInteractor'
-import HttpClient from '../HttpClient'
+import { ContractInteractor } from '../ContractInteractor'
+import { HttpClient } from '../HttpClient'
 import { Address, EventName, IntString, ObjectMap, SemVerString } from '../types/Aliases'
 import { eventsComparator, isSameAddress } from '../Utils'
 
@@ -49,7 +49,7 @@ import {
 import { gsnRuntimeVersion } from '../Version'
 import { LoggerInterface } from '../LoggerInterface'
 
-export default class StatisticsManager {
+export class StatisticsManager {
   private readonly contractInteractor: ContractInteractor
   private readonly httpClient: HttpClient
   private readonly logger: LoggerInterface

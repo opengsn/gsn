@@ -1,7 +1,7 @@
-import RelayData from './RelayData'
-import ForwardRequest from './ForwardRequest'
+import { RelayData } from './RelayData'
+import { ForwardRequest } from './ForwardRequest'
 
-export default interface RelayRequest {
+export interface RelayRequest {
   request: ForwardRequest
   relayData: RelayData
 }

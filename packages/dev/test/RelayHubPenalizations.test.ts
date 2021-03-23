@@ -9,9 +9,9 @@ import { encode } from 'rlp'
 import { expect } from 'chai'
 import { privateToAddress, stripZeros, toBuffer } from 'ethereumjs-util'
 
-import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
-import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import {
   PenalizerInstance,

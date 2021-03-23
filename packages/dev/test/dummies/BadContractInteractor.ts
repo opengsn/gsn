@@ -1,9 +1,9 @@
 import { TransactionReceipt } from 'web3-core'
 
-import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
-import ContractInteractor, { ConstructorParams } from '@opengsn/common/dist/ContractInteractor'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { ContractInteractor, ConstructorParams } from '@opengsn/common/dist/ContractInteractor'
 
-export default class BadContractInteractor extends ContractInteractor {
+export class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'
   static readonly wrongNonceMessage = 'the tx doesn\'t have the correct nonce'
 

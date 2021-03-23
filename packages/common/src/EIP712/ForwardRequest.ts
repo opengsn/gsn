@@ -1,7 +1,7 @@
 import { Address, IntString } from '../types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-export default interface ForwardRequest {
+export interface ForwardRequest {
   from: Address
   to: Address
   data: PrefixedHexString

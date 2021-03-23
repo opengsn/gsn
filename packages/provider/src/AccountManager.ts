@@ -4,13 +4,11 @@ import Web3 from 'web3'
 import sigUtil from 'eth-sig-util'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
-import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
-
-require('source-map-support').install({ errorFormatterForce: true })
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString
@@ -23,7 +21,7 @@ function toAddress (privateKey: PrefixedHexString): Address {
   return `0x${wallet.getAddress().toString('hex')}`
 }
 
-export default class AccountManager {
+export class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
