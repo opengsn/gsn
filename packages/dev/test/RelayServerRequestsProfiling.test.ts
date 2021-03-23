@@ -1,6 +1,6 @@
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { evmMine, evmMineMany } from './TestUtils'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
