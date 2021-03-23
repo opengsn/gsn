@@ -47,7 +47,6 @@
     "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-testrpc",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "postinstall": "patch-package",
-    "postpack": "./scripts/postpack",
     "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
     "extract_abi": "./scripts/extract_abi.js",
     "lerna-typechain-generate": "lerna run typechain-generate",
@@ -56,7 +55,7 @@
     "lerna-lint": "lerna run lint",
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "lerna run test --stream --no-prefix",
-    "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test-with-testrpcr",
+    "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test-with-testrpcr'",
     "verdaccio-start": "verdaccio --config verdaccio.yaml",
     "verdaccio-clean": "rm -rf verdaccio",
     "verdaccio-clean-opengsn": "rm -rf verdaccio/@opengsn"
