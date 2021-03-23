@@ -48,7 +48,7 @@
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "postinstall": "patch-package",
     "postpack": "./scripts/postpack",
-    "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn lerna-tsc && yarn lerna-chmod-commands && yarn extract_abi",
+    "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
     "extract_abi": "./scripts/extract_abi.js",
     "lerna-typechain-generate": "lerna run typechain-generate",
     "lerna-chmod-commands": "lerna run chmod-commands",
