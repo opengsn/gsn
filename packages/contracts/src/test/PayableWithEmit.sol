@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.5;
+pragma solidity ^0.7.6;
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 //make sure that "payable" function that uses _msgSender() still works

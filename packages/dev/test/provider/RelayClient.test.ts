@@ -16,7 +16,7 @@ import {
   StakeManagerInstance,
   TestRecipientInstance,
   TestPaymasterEverythingAcceptedInstance
-} from '../../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 
 import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from '@opengsn/provider/dist/RelayClient'

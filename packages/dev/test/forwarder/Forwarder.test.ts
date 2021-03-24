@@ -2,7 +2,7 @@ import {
   ForwarderInstance,
   TestForwarderInstance,
   TestForwarderTargetInstance
-} from '../../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 
 // @ts-ignore
 import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'

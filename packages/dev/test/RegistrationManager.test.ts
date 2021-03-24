@@ -1,6 +1,7 @@
 import Web3 from 'web3'
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
+import BN from 'bn.js'
 
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
@@ -237,7 +238,7 @@ contract('RegistrationManager', function (accounts) {
         // assert.equal(newServer.config.withdrawBlock?.toString(), '0')
         const latestBlock = await env.web3.eth.getBlock('latest')
         const receipts = await newServer._worker(latestBlock.number)
-        const totalTxCosts = await getTotalTxCosts(receipts, gasPrice)
+        const totalTxCosts: BN = await getTotalTxCosts(receipts, gasPrice)
         const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(newServer.registrationManager.ownerAddress!))
         assert.equal(
           ownerBalanceAfter.sub(
@@ -382,7 +383,7 @@ contract('RegistrationManager', function (accounts) {
 
         const managerHubBalanceBefore = await env.relayHub.balanceOf(newServer.managerAddress)
         const managerBalanceBefore = await newServer.getManagerBalance()
-        const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
+        const workerBalanceBefore: BN = await newServer.getWorkerBalance(workerIndex)
         assert.isTrue(managerHubBalanceBefore.gtn(0))
         assert.isTrue(managerBalanceBefore.gtn(0))
         assert.isTrue(workerBalanceBefore.gtn(0))
@@ -394,7 +395,7 @@ contract('RegistrationManager', function (accounts) {
         assert.isFalse(newServer.registrationManager.isHubAuthorized, 'Hub should not be authorized in server')
         const gasPrice = await env.web3.eth.getGasPrice()
         // TODO: these two hard-coded indexes are dependent on the order of operations in 'withdrawAllFunds'
-        const workerEthTxCost = await getTotalTxCosts([receipts[1]], gasPrice)
+        const workerEthTxCost: BN = await getTotalTxCosts([receipts[1]], gasPrice)
         const managerHubSendTxCost = await getTotalTxCosts([receipts[0]], gasPrice)
         const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(relayOwner))
         const managerHubBalanceAfter = await env.relayHub.balanceOf(newServer.managerAddress)

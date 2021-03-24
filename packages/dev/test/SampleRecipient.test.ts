@@ -2,7 +2,7 @@ import {
   ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { deployHub } from './TestUtils'

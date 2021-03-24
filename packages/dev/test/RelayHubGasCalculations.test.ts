@@ -13,7 +13,7 @@ import {
   StakeManagerInstance,
   IForwarderInstance,
   PenalizerInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { toBuffer } from 'ethereumjs-util'
@@ -165,16 +165,17 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.
         const events = await paymaster.contract.getPastEvents('SampleRecipientPreCallWithValues')
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         assert.isNotNull(events, `missing event: SampleRecipientPreCallWithValues: ${res.logs.toString()}`)
         const args = events[0].returnValues
         assert.equal(args.maxPossibleGas, maxPossibleGas.toString(),
             `fixed:\n\t externalCallDataCostOverhead: ${defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead + (args.maxPossibleGas - maxPossibleGas)},\n`)
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPreCallWithValues', {
-          gasleft: (parseInt(gasAndDataLimits.preRelayedCallGasLimit) - magicNumbers.pre).toString(),
+          gasleft: (parseInt(gasAndDataLimits.preRelayedCallGasLimit.toString()) - magicNumbers.pre).toString(),
           maxPossibleGas: maxPossibleGas.toString()
         })
         await expectEvent.inTransaction(tx, TestPaymasterVariableGasLimits, 'SampleRecipientPostCallWithValues', {
-          gasleft: (parseInt(gasAndDataLimits.postRelayedCallGasLimit) - magicNumbers.post).toString()
+          gasleft: (parseInt(gasAndDataLimits.postRelayedCallGasLimit.toString()) - magicNumbers.post).toString()
         })
       })
 
@@ -248,6 +249,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       })
 
       assert.equal('TransactionRejectedByPaymaster', res.logs[0].event)
+      // @ts-ignore
       assert.equal(res.logs[0].args.reason, null)
     })
   })

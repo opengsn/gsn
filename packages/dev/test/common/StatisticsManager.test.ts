@@ -4,7 +4,7 @@ import StatisticsManager from '@opengsn/common/dist/statistics/StatisticsManager
 import HttpClient from '@opengsn/common/dist/HttpClient'
 import HttpWrapper from '@opengsn/common/dist/HttpWrapper'
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
-import { TestPaymasterConfigurableMisbehaviorInstance } from '../../../../types/truffle-contracts'
+import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { evmMine } from '../TestUtils'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')

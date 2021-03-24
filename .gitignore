@@ -30,3 +30,7 @@ artifacts
 tsconfig.tsbuildinfo
 /packages/dev/json-input.json
 yarn-error.log
+/lerna-debug.log
+/packages/contracts/build/
+/packages/contracts/json-input.json
+/packages/contracts/types/truffle-contracts/

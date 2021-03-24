@@ -1,5 +1,5 @@
 import { GsnDomainSeparatorType, GsnRequestType } from './TypedRequestData'
-import { IForwarderInstance } from '../../../../types/truffle-contracts'
+import { IForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { Contract } from 'web3-eth-contract'
 
 // register a forwarder for use with GSN: the request-type and domain separator we're using.

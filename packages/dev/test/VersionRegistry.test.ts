@@ -1,6 +1,6 @@
 import {
   VersionRegistryInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import { increaseTime } from './TestUtils'
 import { VersionRegistry, string32 } from '@opengsn/common/dist/VersionRegistry'

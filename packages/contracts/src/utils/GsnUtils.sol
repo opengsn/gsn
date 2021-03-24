@@ -1,6 +1,6 @@
 /* solhint-disable no-inline-assembly */
 // SPDX-License-Identifier:MIT
-pragma solidity >=0.7.5;
+pragma solidity >=0.7.6;
 
 import "../utils/MinLibBytes.sol";
 

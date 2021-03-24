@@ -1,4 +1,5 @@
 import { Address, EventName, IntString } from './Aliases'
+import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
 // Empty interface used on purpose to mark various Event Infos in collections, used in StatisticsManager.
@@ -115,8 +116,8 @@ export interface HubUnauthorizedEventInfo extends GNSContractsEvent {
 }
 
 export interface StakeInfo {
-  stake: IntString
-  unstakeDelay: IntString
-  withdrawBlock: IntString
+  stake: BN
+  unstakeDelay: BN
+  withdrawBlock: BN
   owner: Address
 }

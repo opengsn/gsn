@@ -1,7 +1,7 @@
 import {
   ForwarderInstance,
   TestForwarderTargetInstance
-} from '../../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import { toHex } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
@@ -10,7 +10,7 @@ const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
 const Forwarder = artifacts.require('Forwarder')
 
-contract('BaseRelayRecipient', ([from, sender]) => {
+contract('BaseRelayRecipient', ([from, sender]: string[]) => {
   let recipient: TestForwarderTargetInstance
   let fwd: ForwarderInstance
   before(async () => {
@@ -61,7 +61,7 @@ contract('BaseRelayRecipient', ([from, sender]) => {
     // trust "from" as forwarder (using real forwarder requires signing
     const recipient = await TestForwarderTarget.new(from)
     const encoded = recipient.contract.methods.emitMessage('hello').encodeABI() as string
-    const encodedWithSender = encoded + sender.slice(2)
+    const encodedWithSender = `${encoded}${sender.slice(2)}`
     await web3.eth.sendTransaction({ from, to: recipient.address, data: encodedWithSender })
     const events = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
     const params = events[0].returnValues

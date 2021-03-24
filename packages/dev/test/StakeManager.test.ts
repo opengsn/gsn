@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { evmMineMany } from './TestUtils'
 import BN from 'bn.js'
 
-import { StakeManagerInstance } from '../../../types/truffle-contracts'
+import { StakeManagerInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const StakeManager = artifacts.require('StakeManager')

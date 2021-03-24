@@ -244,14 +244,14 @@ export default class CommandsLogic {
           }
         }
       }
-      if (toBN(unstakeDelay).gte(toBN(options.unstakeDelay)) &&
-        toBN(stake).gte(toBN(options.stake.toString()))
+      if (unstakeDelay.gte(toBN(options.unstakeDelay)) &&
+        stake.gte(toBN(options.stake.toString()))
       ) {
         console.log('Relayer already staked')
       } else {
-        const stakeValue = toBN(options.stake.toString()).sub(toBN(stake))
+        const stakeValue = toBN(options.stake.toString()).sub(stake)
         console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} eth`,
-          stake === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
+          stake.toString() === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
 
         const stakeTx = await stakeManager
           .stakeForRelayManager(relayAddress, options.unstakeDelay.toString(), {

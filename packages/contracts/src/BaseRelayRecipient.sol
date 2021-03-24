@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:MIT
 // solhint-disable no-inline-assembly
-pragma solidity >=0.7.5;
+pragma solidity >=0.7.6;
 
 import "./interfaces/IRelayRecipient.sol";
 

@@ -13,7 +13,7 @@ import {
   IRelayRecipientInstance,
   IStakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance
-} from '../../../types/truffle-contracts'
+} from '@opengsn/contracts/types/truffle-contracts'
 import {
   assertRelayAdded,
   getTemporaryWorkdirs,

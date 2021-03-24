@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
-import { IRelayHubInstance } from '../../../types/truffle-contracts'
+import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
 import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
 import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
@@ -231,7 +231,7 @@ export class RelayServer extends EventEmitter {
         }
         throw new Error(message)
       }
-      const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
+      const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
       // TODO remove, since it's redundant. This check is also done in relayCall() on-chain, so the server will fail
       // on view call if these requirements aren't met.
       if (paymasterAcceptanceBudget + dataGasCost > relayExposure) {
@@ -244,7 +244,7 @@ export class RelayServer extends EventEmitter {
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      relayExposure = parseInt(gasAndDataLimits.acceptanceBudget) + dataGasCost
+      relayExposure = parseInt(gasAndDataLimits.acceptanceBudget.toString()) + dataGasCost
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
@@ -433,7 +433,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   _getPaymasterMaxAcceptanceBudget (paymaster?: string): IntString {
     const limits = this.trustedPaymastersGasAndDataLimits.get(paymaster?.toLowerCase())
     if (limits != null) {
-      return limits.acceptanceBudget
+      return limits.acceptanceBudget.toString()
     } else {
       return this.config.maxRelayExposure.toString()
     }

@@ -11,7 +11,7 @@ import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { SendTransactionDetails, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
-import { TestPaymasterConfigurableMisbehaviorInstance } from '../../../types/truffle-contracts'
+import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { sleep } from '@opengsn/common/dist/Utils'
 
@@ -26,7 +26,7 @@ const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract('RelayServer', function (accounts) {
+contract('RelayServer', function (accounts: Truffle.Accounts) {
   const alertedBlockDelay = 0
   const baseRelayFee = '12'
 
@@ -126,6 +126,7 @@ contract('RelayServer', function (accounts) {
           env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message, `Wrong worker address: ${accounts[1]}`)
         }
       })
@@ -139,6 +140,7 @@ contract('RelayServer', function (accounts) {
           assert.fail()
         } catch (e) {
           assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
         }
       })
@@ -152,6 +154,7 @@ contract('RelayServer', function (accounts) {
           assert.fail()
         } catch (e) {
           assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
         }
       })
@@ -165,6 +168,7 @@ contract('RelayServer', function (accounts) {
           assert.fail()
         } catch (e) {
           assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `Wrong hub address.\nRelay server's hub address: ${env.relayServer.config.relayHubAddress}, request's hub address: ${wrongHubAddress}\n`)
         }
       })
@@ -286,6 +290,7 @@ contract('RelayServer', function (accounts) {
           await env.relayServer._refreshGasPrice()
           assert.fail()
         } catch (e) {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message, `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
         } finally {
           env.relayServer.config.maxGasPrice = originalMaxPrice
@@ -301,6 +306,7 @@ contract('RelayServer', function (accounts) {
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e) {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message, `not a valid paymaster contract: ${accounts[1]}`)
         }
       })
@@ -346,7 +352,7 @@ contract('RelayServer', function (accounts) {
         it('should accept a transaction from paymaster returning below configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
           const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-          assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
+          assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget)
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
         })
 
@@ -356,7 +362,7 @@ contract('RelayServer', function (accounts) {
           try {
             await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
             const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-            assert.equal(parseInt(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
+            assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget * 9)
             await env.relayServer.validatePaymasterGasAndDataLimits(req)
           } finally {
             await env.relayServer._initTrustedPaymasters([])
@@ -476,6 +482,7 @@ contract('RelayServer', function (accounts) {
       assert.isTrue(managerHubBalanceAfter.eqn(0), 'manager hub balance should be zero')
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
       const managerEthBalanceAfter = await relayServer.getManagerBalance()
       assert.isTrue(managerEthBalanceAfter.eq(managerEthBalanceBefore.add(managerHubBalanceBefore).sub(refill).sub(totalTxCosts)),
@@ -497,6 +504,7 @@ contract('RelayServer', function (accounts) {
       await relayServer.replenishServer(workerIndex, 0)
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
     })
 
@@ -655,6 +663,7 @@ contract('RelayServer', function (accounts) {
       }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/return-await
         return (await _sendTransactionOrig.call(server.transactionManager, ...arguments))
       }
       const req = await env.createRelayHttpRequest({ paymaster: rejectingPaymaster.address })
