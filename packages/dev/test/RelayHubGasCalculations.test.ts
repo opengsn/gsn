@@ -1,26 +1,25 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
 
+import { deployHub, revert, snapshot } from './TestUtils'
+import { toBuffer } from 'ethereumjs-util'
 import {
   calculateCalldataCost,
   calculateTransactionMaxPossibleGas,
+  defaultEnvironment,
   getEip712Signature
-} from '@opengsn/common/dist/Utils'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-
+} from '@opengsn/common'
 import {
-  RelayHubInstance,
-  TestRecipientInstance,
-  TestPaymasterVariableGasLimitsInstance,
-  StakeManagerInstance,
   IForwarderInstance,
-  PenalizerInstance
-} from '@opengsn/contracts/types/truffle-contracts'
-import { deployHub, revert, snapshot } from './TestUtils'
+  PenalizerInstance,
+  RelayHubInstance,
+  StakeManagerInstance,
+  TestPaymasterVariableGasLimitsInstance,
+  TestRecipientInstance
+} from '@opengsn/contracts'
+import { cloneRelayRequest, RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { toBuffer } from 'ethereumjs-util'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -253,7 +252,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       })
 
       assert.equal('TransactionRejectedByPaymaster', res.logs[0].event)
-      // @ts-ignore
       assert.equal(res.logs[0].args.reason, null)
     })
   })
@@ -446,6 +444,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       assert.closeTo(hubDataGasCostPerByte, maxCostPerByte, 5)
     })
   })
+
   describe('check calculation does not break for different fees', function () {
     before(async function () {
       await relayHub.depositFor(relayOwner, { value: (1).toString() })

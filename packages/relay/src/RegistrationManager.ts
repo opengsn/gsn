@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
 import {
   address2topic,
@@ -35,6 +35,12 @@ import {
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { isRegistrationValid } from './Utils'
 import { constants } from '@opengsn/common/dist/Constants'
+
+export interface RelayServerRegistryInfo {
+  baseRelayFee: IntString
+  pctRelayFee: number
+  url: string
+}
 
 const mintxgascost = defaultEnvironment.mintxgascost
 

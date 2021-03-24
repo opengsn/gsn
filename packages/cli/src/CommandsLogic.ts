@@ -334,13 +334,16 @@ export class CommandsLogic {
     }
 
     let pmInstance: Contract | undefined
+    let paymasterVersion = ''
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
+      paymasterVersion = await pmInstance.methods.versionPaymaster()
     }
 
     await registerForwarderForGsn(fInstance, options)
 
     this.deployment = {
+      paymasterVersion,
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
       penalizerAddress: pInstance.options.address,

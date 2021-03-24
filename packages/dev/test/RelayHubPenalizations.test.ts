@@ -150,8 +150,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
         gasPrice: 0
       }
       // commit to penalization and mine some blocks
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      const commitHash = web3.utils.keccak256(`${web3.utils.keccak256(penalizeMsgData)}${defaultOptions.from.slice(2).toLowerCase()}`)
+      const commitHash = web3.utils.keccak256(web3.utils.keccak256(penalizeMsgData) + defaultOptions.from.slice(2).toLowerCase())
       await penalizer.commit(commitHash, defaultOptions)
       await evmMineMany(6)
       return methodInvoked
@@ -212,8 +211,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
         } = await getDataAndSignatureFromHash(transactionHash, chainId))
         request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x').encodeABI()
 
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        const commitHash = web3.utils.keccak256(`${web3.utils.keccak256(request)}${committer.slice(2)}`)
+        const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
         await penalizer.commit(commitHash, { from: committer })
       })
       it('should fail to penalize too soon after commit', async () => {
@@ -236,8 +234,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, relayWorker, commit
       it('should fail to penalize with incorrect randomValue', async () => {
         const id = (await snapshot()).result
         request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0xcafef00d').encodeABI()
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        const commitHash = web3.utils.keccak256(`${web3.utils.keccak256(request)}${committer.slice(2)}`)
+        const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
         await penalizer.commit(commitHash, { from: committer })
         await evmMineMany(10)
         await expectRevert(

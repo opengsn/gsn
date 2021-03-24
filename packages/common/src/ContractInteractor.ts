@@ -41,15 +41,27 @@ import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from 'ethereumjs-common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import {
-  RelayWorkersAdded,
-  StakeInfo,
-  ActiveManagerEvents
+  StakeInfo
 } from './types/GSNContractsDataTypes'
 import TransactionDetails = Truffle.TransactionDetails
 
 type EventName = string
 
 export const CommitAdded: EventName = 'CommitAdded'
+export const RelayServerRegistered: EventName = 'RelayServerRegistered'
+export const RelayWorkersAdded: EventName = 'RelayWorkersAdded'
+export const TransactionRelayed: EventName = 'TransactionRelayed'
+export const TransactionRejectedByPaymaster: EventName = 'TransactionRejectedByPaymaster'
+
+const ActiveManagerEvents = [RelayServerRegistered, RelayWorkersAdded, TransactionRelayed, TransactionRejectedByPaymaster]
+
+export const HubAuthorized: EventName = 'HubAuthorized'
+export const HubUnauthorized: EventName = 'HubUnauthorized'
+export const StakeAdded: EventName = 'StakeAdded'
+export const StakeUnlocked: EventName = 'StakeUnlocked'
+export const StakeWithdrawn: EventName = 'StakeWithdrawn'
+export const StakePenalized: EventName = 'StakePenalized'
+export const OwnerSet: EventName = 'OwnerSet'
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface

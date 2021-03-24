@@ -172,7 +172,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
             `Wrong hub address.\nRelay server's hub address: ${env.relayServer.config.relayHubAddress}, request's hub address: ${wrongHubAddress}\n`)
         }
       })
-
       it('should fail to relay request too close to expiration', async function () {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.request.validUntil = '1010'

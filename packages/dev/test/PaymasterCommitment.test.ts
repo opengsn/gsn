@@ -3,23 +3,22 @@ import BN from 'bn.js'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
-import {
-  RelayHubInstance,
-  PenalizerInstance,
-  StakeManagerInstance,
-  TestRecipientInstance,
-  ForwarderInstance,
-  TestPaymasterConfigurableMisbehaviorInstance
-} from '@opengsn/contracts/types/truffle-contracts'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
+import {
+  ForwarderInstance,
+  PenalizerInstance,
+  RelayHubInstance,
+  StakeManagerInstance, TestPaymasterConfigurableMisbehaviorInstance,
+  TestRecipientInstance
+} from '@opengsn/contracts'
+import { PrefixedHexString } from 'ethereumjs-tx'
+import { defaultEnvironment } from '@opengsn/common'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { toBuffer } from 'ethereumjs-util'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -202,7 +201,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit))
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit.toString()))
       await expectRevert(
         relayHubInstance.relayCall(10e6, r.req, r.sig, hugeApprovalData, externalGasLimit, {
           from: relayWorker,
@@ -224,10 +223,10 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit.toString()) - 1030)
       const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
-      assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
+      assert.equal(gasAndDataLimits.calldataSizeLimit.toString(), toBuffer(method.encodeABI()).length.toString(),
         'relayCall() msg.data should be set to max size')
       const txdetails: Truffle.TransactionDetails = {
         from: relayWorker,
@@ -250,10 +249,10 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit.toString()) - 1030)
       const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
-      assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
+      assert.equal(gasAndDataLimits.calldataSizeLimit.toString(), toBuffer(method.encodeABI()).length.toString(),
         'relayCall() msg.data should be set to max size')
       const txdetails: Truffle.TransactionDetails = {
         from: relayWorker,
@@ -264,6 +263,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const res = await relayHubInstance.relayCall(...relayCallParams)
       expectEvent(res, 'TransactionRejectedByPaymaster', { reason: encodeRevertReason('FWD: nonce mismatch') })
     })
+
     it('paymaster should not change its acceptanceBudget before transaction', async () => {
       // the protocol of the relay to perform a view function of relayCall(), and then
       // issue it on-chain.
@@ -285,7 +285,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const gasLimits = await paymasterContract.getGasAndDataLimits()
       const relayCall = toBuffer(relayHubInstance.contract.methods.relayCall(1, r.req, r.sig, '0x', externalGasLimit).encodeABI())
       const dataGasCost = await relayHubInstance.calldataGasCost(relayCall.length)
-      const maxRelayExposure = parseInt(gasLimits.acceptanceBudget) + dataGasCost.toNumber()
+      const maxRelayExposure = parseInt(gasLimits.acceptanceBudget.toString()) + dataGasCost.toNumber()
       // fail if a bit lower
       expectRevert(relayHubInstance.relayCall(maxRelayExposure - 1, r.req, r.sig, '0x', externalGasLimit, {
         from: relayWorker,
@@ -336,7 +336,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           const dataGasCost = await relayHubInstance.calldataGasCost(limits.calldataSizeLimit)
           await paymasterContract.setGasLimits(
             limits.acceptanceBudget,
-            parseInt(limits.preRelayedCallGasLimit) + parseInt(limits.acceptanceBudget) + dataGasCost.toNumber(),
+            parseInt(limits.preRelayedCallGasLimit.toString()) + parseInt(limits.acceptanceBudget.toString()) + dataGasCost.toNumber(),
             limits.postRelayedCallGasLimit
           )
         }
