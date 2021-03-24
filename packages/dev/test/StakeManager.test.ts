@@ -80,33 +80,6 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
 
     testStakeNotValid()
 
-    it('should not allow anyone to stake before owner is set', async function () {
-      await expectRevert(
-        stakeManager.stakeForRelayManager(relayManager, initialUnstakeDelay, {
-          value: initialStake,
-          from: owner
-        }),
-        'not owner'
-      )
-    })
-
-    it('should allow manager to set its owner', async function () {
-      const { logs } = await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
-      expectEvent.inLogs(logs, 'OwnerSet', {
-        relayManager,
-        owner
-      })
-    })
-
-    it('should not allow manager to change its owner', async function () {
-      await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
-      await expectRevert(
-        stakeManager.setRelayManagerOwner(owner, {
-          from: relayManager
-        }),
-        'already owned'
-      )
-    })
     it('should not allow not owner to schedule unlock', async function () {
       await expectRevert(
         stakeManager.unlockStake(relayManager, { from: nonOwner }),
