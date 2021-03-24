@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/dev",
-  "version": "2.1.1",
+  "version": "2.1.2-alpha.0",
   "license": "MIT",
   "main": "dist/GsnTestEnvironment.js",
   "files": [
@@ -16,10 +16,10 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "dependencies": {
-    "@opengsn/cli": "^2.1.1",
-    "@opengsn/contracts": "^2.1.1",
-    "@opengsn/provider": "^2.1.1",
-    "@opengsn/relay": "^2.1.1"
+    "@opengsn/cli": "^2.1.2-alpha.0",
+    "@opengsn/contracts": "^2.1.2-alpha.0",
+    "@opengsn/provider": "^2.1.2-alpha.0",
+    "@opengsn/relay": "^2.1.2-alpha.0"
   },
   "devDependencies": {
     "@types/chai-as-promised": "^7.1.3",
