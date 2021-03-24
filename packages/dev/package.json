@@ -16,10 +16,10 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "dependencies": {
-    "@opengsn/cli": "^2.1.2-alpha.0",
-    "@opengsn/contracts": "^2.1.2-alpha.0",
-    "@opengsn/provider": "^2.1.2-alpha.0",
-    "@opengsn/relay": "^2.1.2-alpha.0"
+    "@opengsn/cli": "2.1.0",
+    "@opengsn/contracts": "2.1.0",
+    "@opengsn/provider": "2.1.0",
+    "@opengsn/relay": "2.1.0"
   },
   "devDependencies": {
     "@types/chai-as-promised": "^7.1.3",
