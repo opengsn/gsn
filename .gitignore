@@ -35,3 +35,4 @@ yarn-error.log
 /packages/contracts/json-input.json
 /packages/contracts/types/truffle-contracts/
 /verdaccio/
+/.yarnrc
