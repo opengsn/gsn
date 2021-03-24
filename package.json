@@ -42,7 +42,7 @@
   "bin": {
     "gsn": "dist/src/cli/commands/gsn.js"
   },
-  "prepublish": "npm run prepare",
+  "prepublish": "yarn prepare",
   "scripts": {
     "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-testrpc",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
@@ -50,6 +50,7 @@
     "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
     "extract_abi": "./scripts/extract_abi.js",
     "lerna-typechain-generate": "lerna run typechain-generate",
+    "lerna-publish": "lerna publish",
     "lerna-chmod-commands": "lerna run chmod-commands",
     "lerna-tsc": "lerna run tsc",
     "lerna-lint": "lerna run lint",

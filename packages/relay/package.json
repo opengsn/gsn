@@ -2,7 +2,10 @@
   "name": "@opengsn/relay",
   "version": "2.1.0",
   "license": "MIT",
-  "main": "dist/src/runServer",
+  "main": "dist/runServer.js",
+  "files": [
+    "dist/*"
+  ],
   "scripts": {
     "tsc": "tsc",
     "lint": "eslint -f unix .",

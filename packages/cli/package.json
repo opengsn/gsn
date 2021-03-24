@@ -2,7 +2,7 @@
   "name": "@opengsn/cli",
   "version": "2.1.0",
   "license": "MIT",
-  "main": "dist/commands/gsn",
+  "main": "dist/commands/gsn.js",
   "scripts": {
     "tsc": "tsc",
     "lint": "eslint -f unix .",
