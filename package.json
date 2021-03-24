@@ -51,6 +51,7 @@
     "extract_abi": "./scripts/extract_abi.js",
     "lerna-typechain-generate": "lerna run typechain-generate",
     "lerna-publish": "lerna publish",
+    "lerna-publish-force-no-git": "lerna publish --no-push --no-git-tag-version --force-publish",
     "lerna-chmod-commands": "lerna run chmod-commands",
     "lerna-tsc": "lerna run tsc",
     "lerna-lint": "lerna run lint",

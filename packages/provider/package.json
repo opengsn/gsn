@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/provider",
-  "version": "2.1.2-alpha.0",
+  "version": "2.1.0",
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
