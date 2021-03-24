@@ -1,5 +1,5 @@
 import { ether } from '@opengsn/common/dist/Utils'
-import CommandsLogic from '../CommandsLogic'
+import { CommandsLogic } from '../CommandsLogic'
 import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 

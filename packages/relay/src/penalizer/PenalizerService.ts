@@ -10,9 +10,9 @@ import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 
-import ContractInteractor, { CommitAdded } from '@opengsn/common/dist/ContractInteractor'
-import VersionsManager from '@opengsn/common/dist/VersionsManager'
-import replaceErrors from '@opengsn/common/dist/ErrorReplacerJSON'
+import { ContractInteractor, CommitAdded } from '@opengsn/common/dist/ContractInteractor'
+import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
+import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 import { BlockExplorerInterface } from './BlockExplorerInterface'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { AuditRequest, AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
@@ -75,6 +75,7 @@ interface DelayedPenalization {
   commitHash: PrefixedHexString
   methodArgs: PrefixedHexString[]
 }
+
 export class PenalizerService {
   private workerTask?: Timeout
 

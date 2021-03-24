@@ -1,10 +1,10 @@
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 
-import AccountManager from './AccountManager'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import HttpClient from '@opengsn/common/dist/HttpClient'
+import { AccountManager } from './AccountManager'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { KnownRelaysManager } from './KnownRelaysManager'
-import RelayedTransactionValidator from './RelayedTransactionValidator'
+import { RelayedTransactionValidator } from './RelayedTransactionValidator'
 import {
   Address,
   AsyncDataCallback,

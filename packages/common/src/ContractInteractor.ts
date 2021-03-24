@@ -11,7 +11,7 @@ import {
 } from 'web3-core'
 
 import abi from 'web3-eth-abi'
-import RelayRequest from './EIP712/RelayRequest'
+import { RelayRequest } from './EIP712/RelayRequest'
 import paymasterAbi from './interfaces/IPaymaster.json'
 import relayHubAbi from './interfaces/IRelayHub.json'
 import forwarderAbi from './interfaces/IForwarder.json'
@@ -19,8 +19,8 @@ import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
 import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
 
-import VersionsManager from './VersionsManager'
-import replaceErrors from './ErrorReplacerJSON'
+import { VersionsManager } from './VersionsManager'
+import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
 import { address2topic, decodeRevertReason, event2topic } from './Utils'
 import {
@@ -34,7 +34,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
-import GsnTransactionDetails from './types/GsnTransactionDetails'
+import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from './LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
@@ -47,8 +47,6 @@ import {
 } from './types/GSNContractsDataTypes'
 import TransactionDetails = Truffle.TransactionDetails
 
-require('source-map-support').install({ errorFormatterForce: true })
-
 type EventName = string
 
 export const CommitAdded: EventName = 'CommitAdded'
@@ -60,7 +58,7 @@ export interface ConstructorParams {
   deployment?: GSNContractsDeployment
 }
 
-export default class ContractInteractor {
+export class ContractInteractor {
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
   private readonly IForwarderContract: Contract<IForwarderInstance>

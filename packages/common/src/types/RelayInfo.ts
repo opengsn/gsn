@@ -1,4 +1,4 @@
-import PingResponse from '../PingResponse'
+import { PingResponse } from '../PingResponse'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from './GSNContractsDataTypes'
 
 // Well, I still don't like it

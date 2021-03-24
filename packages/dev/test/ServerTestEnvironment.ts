@@ -19,9 +19,9 @@ import {
   getTemporaryWorkdirs,
   ServerWorkdirs
 } from './ServerTestUtils'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import GsnTransactionDetails from '@opengsn/common/dist/types/GsnTransactionDetails'
-import PingResponse from '@opengsn/common/dist/PingResponse'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'

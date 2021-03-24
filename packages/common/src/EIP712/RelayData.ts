@@ -1,7 +1,7 @@
 import { Address, IntString } from '../types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-export default interface RelayData {
+export interface RelayData {
   gasPrice: IntString
   pctRelayFee: IntString
   baseRelayFee: IntString

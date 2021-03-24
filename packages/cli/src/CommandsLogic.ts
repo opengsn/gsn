@@ -18,19 +18,17 @@ import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import VersionRegistryAbi from './compiled/VersionRegistry.json'
 import { Address } from '@opengsn/common/dist/types/Aliases'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
-import HttpClient from '@opengsn/common/dist/HttpClient'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { string32 } from '@opengsn/common/dist/VersionRegistry'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import HttpWrapper from '@opengsn/common/dist/HttpWrapper'
+import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
-
-require('source-map-support').install({ errorFormatterForce: true })
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -67,7 +65,7 @@ interface RegistrationResult {
   error?: string
 }
 
-export default class CommandsLogic {
+export class CommandsLogic {
   private readonly contractInteractor: ContractInteractor
   private readonly httpClient: HttpClient
   private readonly web3: Web3

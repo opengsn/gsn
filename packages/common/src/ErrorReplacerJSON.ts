@@ -1,4 +1,4 @@
-export default function replaceErrors (key: string, value: { [key: string]: any }): any {
+export function replaceErrors (key: string, value: { [key: string]: any }): any {
   if (value instanceof Map) {
     return {
       dataType: 'Map',

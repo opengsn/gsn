@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./utils/GsnUtils.sol";
 import "./utils/GsnEip712Library.sol";
 import "./utils/RelayHubValidator.sol";
-import "./interfaces/GsnTypes.sol";
+import "./utils/GsnTypes.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
 import "./forwarder/IForwarder.sol";

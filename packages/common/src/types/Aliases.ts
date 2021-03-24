@@ -1,9 +1,9 @@
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-import PingResponse from '../PingResponse'
-import RelayRequest from '../EIP712/RelayRequest'
-import GsnTransactionDetails from './GsnTransactionDetails'
-import RelayFailureInfo from './RelayFailureInfo'
+import { PingResponse } from '../PingResponse'
+import { RelayRequest } from '../EIP712/RelayRequest'
+import { GsnTransactionDetails } from './GsnTransactionDetails'
+import { RelayFailureInfo } from './RelayFailureInfo'
 import { RelayRegisteredEventInfo } from './GSNContractsDataTypes'
 import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'

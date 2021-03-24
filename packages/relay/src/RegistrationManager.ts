@@ -32,7 +32,7 @@ import {
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { isRegistrationValid } from './Utils'
 import { constants } from '@opengsn/common/dist/Constants'
 

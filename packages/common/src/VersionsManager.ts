@@ -1,6 +1,6 @@
 import semver from 'semver'
 
-export default class VersionsManager {
+export class VersionsManager {
   readonly requiredVersionRange: string
 
   /**

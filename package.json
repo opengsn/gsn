@@ -42,18 +42,25 @@
   "bin": {
     "gsn": "dist/src/cli/commands/gsn.js"
   },
-  "prepublish": "npm run prepare",
+  "prepublish": "yarn prepare",
   "scripts": {
-    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test",
+    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-testrpc",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 100000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "postinstall": "patch-package",
-    "postpack": "./scripts/postpack",
-    "prepare": "yarn lerna-typechain-generate && ./scripts/prepublish",
-    "lerna-typechain-generate": "npx lerna run typechain-generate",
-    "lerna-tsc": "npx lerna run tsc",
-    "lerna-lint": "npx lerna run lint",
-    "lerna-rm-dist": "npx lerna run rm-dist",
-    "lerna-run-test": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'npx lerna run test --stream --no-prefix'"
+    "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
+    "extract_abi": "./scripts/extract_abi.js",
+    "lerna-typechain-generate": "lerna run typechain-generate",
+    "lerna-publish": "lerna publish",
+    "lerna-publish-force-no-git": "lerna publish --no-push --no-git-tag-version --force-publish",
+    "lerna-chmod-commands": "lerna run chmod-commands",
+    "lerna-tsc": "lerna run tsc",
+    "lerna-lint": "lerna run lint",
+    "lerna-rm-dist": "lerna run rm-dist",
+    "lerna-run-test": "lerna run test --stream --no-prefix",
+    "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test'",
+    "verdaccio-start": "verdaccio --config verdaccio.yaml",
+    "verdaccio-clean": "rm -rf verdaccio",
+    "verdaccio-clean-opengsn": "rm -rf verdaccio/@opengsn"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "0.5.5",
@@ -79,6 +86,7 @@
     "ts-node": "8.6.2",
     "typechain": "^4.0.3",
     "typescript": "3.8.3",
+    "verdaccio": "^4.12.0",
     "web3": "1.2.6",
     "web3-core": "1.2.6",
     "web3-core-helpers": "1.2.6",

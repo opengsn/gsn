@@ -1,7 +1,7 @@
 import net from 'net'
 import { ether } from '@opengsn/common/dist/Utils'
 
-import CommandsLogic, { RegisterOptions } from '@opengsn/cli/dist/CommandsLogic'
+import { CommandsLogic, RegisterOptions } from '@opengsn/cli/dist/CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 
 import { getNetworkUrl, loadDeployment, supportedNetworks } from '@opengsn/cli/dist/utils'
@@ -11,7 +11,7 @@ import { HttpServer } from '@opengsn/relay/dist/HttpServer'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import Web3 from 'web3'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'

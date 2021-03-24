@@ -7,7 +7,7 @@ import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 
-import GsnTransactionDetails from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from './RelayClient'

@@ -3,7 +3,7 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 const LOGMAXLEN = 120
 const DEFAULT_TIMEOUT = 15000
 
-export default class HttpWrapper {
+export class HttpWrapper {
   private readonly provider: AxiosInstance
   private readonly logreq: boolean
 
@@ -41,5 +41,3 @@ export default class HttpWrapper {
     return response.data
   }
 }
-
-module.exports = HttpWrapper

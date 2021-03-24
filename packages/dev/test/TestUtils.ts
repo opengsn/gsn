@@ -6,8 +6,8 @@ import path from 'path'
 import { ether } from '@openzeppelin/test-helpers'
 
 import { IStakeManagerInstance, RelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
-import HttpWrapper from '@opengsn/common/dist/HttpWrapper'
-import HttpClient from '@opengsn/common/dist/HttpClient'
+import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
+import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PrefixedHexString } from 'ethereumjs-tx'
@@ -112,7 +112,7 @@ export async function startRelay (
       console.log('startRelay getaddr error', e)
     }
     console.log('sleep before cont.')
-    await module.exports.sleep(1000)
+    await sleep(1000)
   }
   assert.ok(res, 'can\'t ping server')
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -180,7 +180,7 @@ export async function increaseTime (time: number): Promise<void> {
       id: Date.now()
     }, (err: Error | null) => {
       if (err) return reject(err)
-      module.exports.evmMine()
+      evmMine()
         .then((r: any) => resolve(r))
         .catch((e: Error) => reject(e))
     })

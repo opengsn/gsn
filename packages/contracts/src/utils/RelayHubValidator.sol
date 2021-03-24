@@ -2,7 +2,8 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "../interfaces/GsnTypes.sol";
+import "../utils/GsnTypes.sol";
+
 library RelayHubValidator {
 
     // validate that encoded relayCall is properly packed without any extra bytes

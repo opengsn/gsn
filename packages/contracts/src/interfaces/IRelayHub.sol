@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
-import "./GsnTypes.sol";
+import "../utils/GsnTypes.sol";
 import "./IStakeManager.sol";
 
 interface IRelayHub {

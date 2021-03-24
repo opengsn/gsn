@@ -6,7 +6,7 @@ import {
   StakeAddedEventInfo, StakeInfo, StakePenalizedEventInfo,
   StakeUnlockedEventInfo, StakeWithdrawnEventInfo, TransactionRejectedByPaymasterEventInfo, TransactionRelayedEventInfo
 } from './GSNContractsDataTypes'
-import PingResponse from '../PingResponse'
+import { PingResponse } from '../PingResponse'
 import { GSNContractsDeployment } from '../GSNContractsDeployment'
 import { EventData } from 'web3-eth-contract'
 

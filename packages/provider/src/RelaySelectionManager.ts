@@ -1,12 +1,12 @@
-import replaceErrors from '@opengsn/common/dist/ErrorReplacerJSON'
+import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 
-import GsnTransactionDetails from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { PingFilter } from '@opengsn/common/dist/types/Aliases'
 import { isInfoFromEvent, RelayInfoUrl } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
-import HttpClient from '@opengsn/common/dist/HttpClient'
+import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { GSNConfig } from './GSNConfigurator'
 import { KnownRelaysManager } from './KnownRelaysManager'
 
@@ -15,7 +15,7 @@ interface RaceResult {
   errors: Map<string, Error>
 }
 
-export default class RelaySelectionManager {
+export class RelaySelectionManager {
   private readonly knownRelaysManager: KnownRelaysManager
   private readonly httpClient: HttpClient
   private readonly config: GSNConfig

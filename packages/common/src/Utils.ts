@@ -8,7 +8,7 @@ import { bufferToHex, bufferToInt, ecrecover, pubToAddress, stripZeros, toBuffer
 
 import { Address } from './types/Aliases'
 
-import TypedRequestData from './EIP712/TypedRequestData'
+import { TypedRequestData } from './EIP712/TypedRequestData'
 import chalk from 'chalk'
 import { encode } from 'rlp'
 import { defaultEnvironment } from './Environments'

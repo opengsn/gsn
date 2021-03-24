@@ -5,7 +5,7 @@ import { HttpServer } from './HttpServer'
 import { RelayServer } from './RelayServer'
 import { KeyManager } from './KeyManager'
 import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
-import ContractInteractor from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import {
   parseServerConfig,
   resolveReputationManagerConfig,

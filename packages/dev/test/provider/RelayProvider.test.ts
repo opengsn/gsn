@@ -20,11 +20,11 @@ import {
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { deployHub, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
-import BadRelayClient from '../dummies/BadRelayClient'
+import { BadRelayClient } from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
-import RelayRequest from '@opengsn/common/dist/EIP712/RelayRequest'
-import TypedRequestData from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)

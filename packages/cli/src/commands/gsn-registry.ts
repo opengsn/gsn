@@ -1,4 +1,4 @@
-import CommandsLogic from '../CommandsLogic'
+import { CommandsLogic } from '../CommandsLogic'
 import DateFormatter from 'date-format'
 import {
   getMnemonic,

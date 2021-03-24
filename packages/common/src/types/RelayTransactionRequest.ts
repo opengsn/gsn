@@ -2,7 +2,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import ow from 'ow'
 
 import { Address } from './Aliases'
-import RelayRequest from '../EIP712/RelayRequest'
+import { RelayRequest } from '../EIP712/RelayRequest'
 
 export interface RelayMetadata {
   approvalData: PrefixedHexString
