@@ -154,16 +154,15 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         const { tx } = res
         const gasAndDataLimits = await paymaster.getGasAndDataLimits()
         const hubOverhead = (await relayHub.gasOverhead()).toNumber()
-        const encodedFunction = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()
-        const msgDataLength = toBuffer(encodedFunction).length
-        const msgDataGasCost = hubDataGasCostPerByte * msgDataLength
-        const externalCallDataCost = calculateCalldataCost(encodedFunction)
+        const msgData: string = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()
+        const msgDataLength = toBuffer(msgData).length
+        const msgDataGasCostInsideTransaction = hubDataGasCostPerByte * msgDataLength
         const maxPossibleGas = calculateTransactionMaxPossibleGas({
           gasAndDataLimits: gasAndDataLimits,
           hubOverhead,
           relayCallGasLimit: gasLimit.toString(),
-          msgDataGasCost,
-          externalCallDataCost
+          msgData,
+          msgDataGasCostInsideTransaction
         })
 
         // Magic numbers seem to be gas spent on calldata. I don't know of a way to calculate them conveniently.

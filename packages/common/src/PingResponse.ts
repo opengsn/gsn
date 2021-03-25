@@ -5,7 +5,7 @@ export interface PingResponse {
   relayManagerAddress: Address
   relayHubAddress: Address
   minGasPrice: IntString
-  maxRelayExposure: IntString
+  maxAcceptanceBudget: IntString
   networkId?: IntString
   chainId?: IntString
   ready: boolean

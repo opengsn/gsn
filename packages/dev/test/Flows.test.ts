@@ -17,6 +17,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { ether } from '@openzeppelin/test-helpers'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -68,6 +69,8 @@ options.forEach(params => {
           ethereumNodeUrl: web3.currentProvider.host,
           gasPriceFactor,
           initialReputation: 100,
+          workerTargetBalance: ether('5'),
+          value: ether('10'),
           relaylog: process.env.relaylog
         })
         console.log('relay started')
@@ -92,7 +95,10 @@ options.forEach(params => {
 
     if (params.relay) {
       before(params.title + 'enable relay', async function () {
+        // deposit 5 ether, above 'maximumRecipientDeposit'
+        for (let i = 0; i < 5; i++) {
         await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
+        }
 
         relayClientConfig = {
           loggerConfiguration: { logLevel: 'error' },
@@ -157,6 +163,28 @@ options.forEach(params => {
     if (params.relay) {
       let approvalPaymaster: TestPaymasterPreconfiguredApprovalInstance
       let relayProvider: RelayProvider
+      /**
+       * RelayServer has to oversupply gas in order to pass over all the 'remaining gas' checks and give enough gas
+       * to the recipient. We are setting 10M as a block gas limit, so cannot go much higher than 9M gas here.
+       */
+      describe('with different gas limits', function () {
+        [1e4, 1e5, 1e6, 1e7]
+          .forEach(innerGasLimit =>
+            it(`should calculate valid external tx gas limit for a transaction with inner call gas limit of  ${innerGasLimit.toString()}`, async function () {
+              const gas = innerGasLimit
+              let res: any
+              try {
+                res = await sr.emitMessageNoParams({ from, gas })
+              } catch (e) {
+                console.log('error is ', e.message)
+                throw e
+              }
+              const actual: BN = res.logs.find((e: any) => e.event === 'SampleRecipientEmitted').args.gasLeft
+              assert.closeTo(actual.toNumber(), innerGasLimit, 1500)
+              assert.equal('Method with no parameters', res.logs[0].args.message)
+            })
+          )
+      })
 
       describe('request with approvaldata', () => {
         before(async function () {
