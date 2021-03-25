@@ -258,17 +258,19 @@ export class RelayServer extends EventEmitter {
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget)
+      acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
     }
 
     const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
-    const maxPossibleGas = Math.floor(GAS_RESERVE + calculateTransactionMaxPossibleGas({
-      gasAndDataLimits: gasAndDataLimits,
+    // TODO: this is not a good way to calculate gas limit for relay call
+    const tmpMaxPossibleGas = calculateTransactionMaxPossibleGas({
+      gasAndDataLimits,
       hubOverhead,
       relayCallGasLimit: req.relayRequest.request.gas,
       msgData,
       msgDataGasCostInsideTransaction
-    }) * 1.1)
+    })
+    const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)

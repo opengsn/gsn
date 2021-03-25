@@ -97,7 +97,7 @@ options.forEach(params => {
       before(params.title + 'enable relay', async function () {
         // deposit 5 ether, above 'maximumRecipientDeposit'
         for (let i = 0; i < 5; i++) {
-        await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
+          await rhub.depositFor(paymaster.address, { value: (1e18).toString() })
         }
 
         relayClientConfig = {

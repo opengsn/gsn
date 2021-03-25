@@ -328,12 +328,12 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     })
 
     it('paymaster should not have preRelayedCall gas limit > acceptance budget', async () => {
-          const limits = await paymasterContract.getGasAndDataLimits()
-          await paymasterContract.setGasLimits(
-            limits.acceptanceBudget,
-            parseInt(limits.preRelayedCallGasLimit.toString()) + parseInt(limits.acceptanceBudget.toString()) + dataGasCost.toNumber(),
-            limits.postRelayedCallGasLimit
-          )
+      const limits = await paymasterContract.getGasAndDataLimits()
+      await paymasterContract.setGasLimits(
+        limits.acceptanceBudget,
+        parseInt(limits.preRelayedCallGasLimit) + parseInt(limits.acceptanceBudget),
+        limits.postRelayedCallGasLimit
+      )
       const r = await makeRequest(web3, {
         request: {
           // nonce: '4',
@@ -351,27 +351,27 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     })
 
     it('paymaster should not pay for reverts in preRelayedCall under acceptance budget', async () => {
-        await paymasterContract.setOutOfGasPre(true)
-        const r = await makeRequest(web3, {
-          request: {
-            // nonce: '4',
-            data: recipientContract.contract.methods.emitMessage('').encodeABI()
-          },
-          relayData: { paymaster }
+      await paymasterContract.setOutOfGasPre(true)
+      const r = await makeRequest(web3, {
+        request: {
+          // nonce: '4',
+          data: recipientContract.contract.methods.emitMessage('').encodeABI()
+        },
+        relayData: { paymaster }
 
-        }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance)
 
-        const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
-          from: relayWorker,
-          gas: externalGasLimit,
-          gasPrice
-        })
-
-        expectEvent(res, 'TransactionRejectedByPaymaster', { reason: null })
-
-        const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
-        assert.equal(paid, 0)
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+        from: relayWorker,
+        gas: externalGasLimit,
+        gasPrice
       })
+
+      expectEvent(res, 'TransactionRejectedByPaymaster', { reason: null })
+
+      const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
+      assert.equal(paid, 0)
+    })
 
     it('paymaster should not pay for Forwarder revert (under commitment gas)', async () => {
       // NOTE: as long as commitment > preRelayedCallGasLimit
