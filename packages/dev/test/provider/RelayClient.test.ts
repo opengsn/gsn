@@ -246,8 +246,8 @@ contract('RelayClient', function (accounts) {
 
       // validate we've got the "SampleRecipientEmitted" event
       // TODO: use OZ test helpers
-      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256)') ?? ''
-      assert(res.logs.find(log => log.topics.includes(topic)))
+      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
+      assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
 
       const destination: string = validTransaction.to.toString('hex')
       assert.equal(`0x${destination}`, relayHub.address.toString().toLowerCase())
@@ -461,7 +461,7 @@ contract('RelayClient', function (accounts) {
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
         minGasPrice: '',
-        maxRelayExposure: 1e10.toString(),
+        maxAcceptanceBudget: 1e10.toString(),
         ready: true,
         version: ''
       }

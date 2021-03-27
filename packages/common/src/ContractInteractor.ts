@@ -51,6 +51,8 @@ type EventName = string
 
 export const CommitAdded: EventName = 'CommitAdded'
 
+export const OwnerSet: EventName = 'OwnerSet'
+
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
   logger: LoggerInterface
@@ -292,7 +294,7 @@ export class ContractInteractor {
    * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
    */
   async validateRelayCall (
-    maxRelayExposure: number,
+    maxAcceptanceBudget: number,
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
@@ -300,7 +302,7 @@ export class ContractInteractor {
     try {
       const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest)
       const encodedRelayCall = relayHub.contract.methods.relayCall(
-        maxRelayExposure,
+        maxAcceptanceBudget,
         relayRequest,
         signature,
         approvalData,
@@ -395,8 +397,8 @@ export class ContractInteractor {
     return null
   }
 
-  encodeABI (maxRelayExposure: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
-    return this.relayCallMethod(maxRelayExposure, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+  encodeABI (maxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
+    return this.relayCallMethod(maxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {

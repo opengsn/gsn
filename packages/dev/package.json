@@ -11,6 +11,7 @@
     "truffle-compile": "truffle compile",
     "lint": "eslint -f unix .",
     "test": "lerna run tsc && truffle --compile-all --network npmtest test",
+    "run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 10000000 --defaultBalanceEther 1000 --deterministic 'truffle --network npmtest test'",
     "truffle-test": "truffle test --compile-all ",
     "test1": "truffle --network npmtest test",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
