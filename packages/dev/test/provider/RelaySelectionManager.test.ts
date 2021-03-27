@@ -44,7 +44,7 @@ contract('RelaySelectionManager', function (accounts) {
     relayManagerAddress: '',
     relayHubAddress: '',
     minGasPrice: '1',
-    maxRelayExposure: 1e10.toString(),
+    maxAcceptanceBudget: 1e10.toString(),
     ready: true,
     version: '1'
   }
