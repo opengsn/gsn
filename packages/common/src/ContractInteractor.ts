@@ -33,7 +33,7 @@ import {
   IStakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { Address, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
+import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
 import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from './LightTruffleContract'
@@ -46,12 +46,6 @@ import {
   ActiveManagerEvents
 } from './types/GSNContractsDataTypes'
 import TransactionDetails = Truffle.TransactionDetails
-
-type EventName = string
-
-export const CommitAdded: EventName = 'CommitAdded'
-
-export const OwnerSet: EventName = 'OwnerSet'
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface

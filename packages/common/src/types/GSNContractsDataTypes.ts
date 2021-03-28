@@ -6,6 +6,9 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GNSContractsEvent {}
 
+/** IPenalizer.sol */
+export const CommitAdded: EventName = 'CommitAdded'
+
 /** IRelayHub.sol */
 
 export const RelayServerRegistered: EventName = 'RelayServerRegistered'
