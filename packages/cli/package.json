@@ -10,7 +10,8 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/cli/compiled"
   },
   "files": [
-    "dist/*"
+    "dist/*",
+    "README.md"
   ],
   "dependencies": {
     "@opengsn/common": "2.1.0",
