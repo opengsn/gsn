@@ -27,7 +27,7 @@ export class RelayedTransactionValidator {
    */
   validateRelayResponse (
     request: RelayTransactionRequest,
-    maxRelayExposure: number,
+    maxAcceptanceBudget: number,
     returnedTx: PrefixedHexString
   ): boolean {
     const transaction = new Transaction(returnedTx, this.contractInteractor.getRawTxOptions())
@@ -46,7 +46,7 @@ export class RelayedTransactionValidator {
     const signer = bufferToHex(transaction.getSenderAddress())
 
     const externalGasLimit = bufferToHex(transaction.gasLimit)
-    const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxRelayExposure, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
+    const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
     if (relayHubAddress == null) {

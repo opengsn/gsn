@@ -33,7 +33,7 @@ import {
   IStakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { Address, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
+import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
 import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from './LightTruffleContract'
@@ -46,10 +46,6 @@ import {
   ActiveManagerEvents
 } from './types/GSNContractsDataTypes'
 import TransactionDetails = Truffle.TransactionDetails
-
-type EventName = string
-
-export const CommitAdded: EventName = 'CommitAdded'
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
@@ -292,7 +288,7 @@ export class ContractInteractor {
    * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
    */
   async validateRelayCall (
-    maxRelayExposure: number,
+    maxAcceptanceBudget: number,
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
     approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
@@ -300,7 +296,7 @@ export class ContractInteractor {
     try {
       const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest)
       const encodedRelayCall = relayHub.contract.methods.relayCall(
-        maxRelayExposure,
+        maxAcceptanceBudget,
         relayRequest,
         signature,
         approvalData,
@@ -395,8 +391,8 @@ export class ContractInteractor {
     return null
   }
 
-  encodeABI (maxRelayExposure: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
-    return this.relayCallMethod(maxRelayExposure, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+  encodeABI (maxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
+    return this.relayCallMethod(maxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {

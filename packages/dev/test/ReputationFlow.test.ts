@@ -1,6 +1,6 @@
 import { ChildProcessWithoutNullStreams } from 'child_process'
 
-import { TestPaymasterConfigurableMisbehaviorInstance, TestRecipientInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { TestPaymasterConfigurableMisbehaviorInstance, TestRecipientInstance } from '@opengsn/contracts'
 import { deployHub, evmMine, startRelay, stopRelay } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { HttpProvider } from 'web3-core'

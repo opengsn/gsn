@@ -31,7 +31,7 @@ export interface ServerConfigParams {
   readyTimeout: number
   devMode: boolean
   registrationBlockRate: number
-  maxRelayExposure: number
+  maxAcceptanceBudget: number
   alertedBlockDelay: number
   minAlertedDelayMS: number
   maxAlertedDelayMS: number
@@ -84,7 +84,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
-  maxRelayExposure: defaultEnvironment.paymasterConfiguration.acceptanceBudget + defaultEnvironment.relayHubConfiguration.dataGasCostPerByte * defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
+  maxAcceptanceBudget: defaultEnvironment.paymasterConfiguration.acceptanceBudget + defaultEnvironment.relayHubConfiguration.dataGasCostPerByte * defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   stakeManagerAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
@@ -156,7 +156,7 @@ const ConfigParamsTypes = {
   hostOverride: 'string',
   userId: 'string',
   registrationBlockRate: 'number',
-  maxRelayExposure: 'number',
+  maxAcceptanceBudget: 'number',
   alertedBlockDelay: 'number',
 
   workerMinBalance: 'number',
