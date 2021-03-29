@@ -9,13 +9,13 @@ module.exports = {
   ],
   target: 'node',
   entry: {
-    gsn: '../../dist/src/cli/commands/gsn.js',
-    'gsn-deploy': '../../dist/src/cli/commands/gsn-deploy.js',
-    'gsn-relayer-register': '../../dist/src/cli/commands/gsn-relayer-register.js',
-    'gsn-paymaster-balacne': '../../dist/src/cli/commands/gsn-paymaster-balance.js',
-    'gsn-paymaster-fund': '../../dist/src/cli/commands/gsn-paymaster-fund.js',
-    'gsn-registry': '../../dist/src/cli/commands/gsn-registry.js',
-    'gsn-status': '../../dist/src/cli/commands/gsn-status.js'
+    gsn: '../../packages/cli/dist/commands/gsn.js',
+    'gsn-deploy': '../../packages/cli/dist/commands/gsn-deploy.js',
+    'gsn-relayer-register': '../../packages/cli/dist/commands/gsn-relayer-register.js',
+    'gsn-paymaster-balacne': '../../packages/cli/dist/commands/gsn-paymaster-balance.js',
+    'gsn-paymaster-fund': '../../packages/cli/dist/commands/gsn-paymaster-fund.js',
+    'gsn-registry': '../../packages/cli/dist/commands/gsn-registry.js',
+    'gsn-status': '../../packages/cli/dist/commands/gsn-status.js'
   },
   // should save 18Mb on each entry - but entries fail to run...
   // optimization: {

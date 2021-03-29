@@ -1,7 +1,7 @@
 #!/bin/bash -e
 cd `cd \`dirname $0\`;pwd`
 
-test -z "$VERSION" && VERSION=`perl -ne "print \\$1 if /gsnRuntimeVersion.*=.*'(.*?)'/" ../../src/common/Version.ts`
+test -z "$VERSION" && VERSION=`perl -ne "print \\$1 if /gsnRuntimeVersion.*=.*'(.*?)'/" ../../packages//common/src/Version.ts`
 echo version=$VERSION
 
 IMAGE=opengsn/relaydc
