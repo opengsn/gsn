@@ -48,7 +48,7 @@ export function getNetworkUrl (network: string, env: { [key: string]: string | u
 }
 
 export function getMnemonic (mnemonicFile: string): string | undefined {
-  if (mnemonicFile == null) {
+  if (mnemonicFile == null || mnemonicFile === '') {
     return
   }
   console.log('Using mnemonic from file ' + mnemonicFile)
