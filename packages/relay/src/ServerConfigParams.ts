@@ -162,6 +162,7 @@ const ConfigParamsTypes = {
   workerMinBalance: 'number',
   workerTargetBalance: 'number',
   managerMinBalance: 'number',
+  managerMinStake: 'string',
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
   defaultGasLimit: 'number',
@@ -176,8 +177,19 @@ const ConfigParamsTypes = {
   etherscanApiKey: 'string',
 
   // TODO: does not belong here
-  initialReputation: 'number'
+  initialReputation: 'number',
 
+  requiredVersionRange: 'string',
+  retryGasPriceFactor: 'number',
+  runPaymasterReputations: 'boolean',
+  successfulRoundsForReady: 'number',
+  refreshStateTimeoutBlocks: 'number',
+  pendingTransactionTimeoutBlocks: 'number',
+  minAlertedDelayMS: 'number',
+  maxAlertedDelayMS: 'number',
+  maxGasPrice: 'string',
+
+  confirmationsNeeded: 'number'
 } as any
 
 // by default: no waiting period - use VersionRegistry entries immediately.
