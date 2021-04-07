@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/common",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
@@ -13,8 +13,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@opengsn/contracts": "2.1.0",
     "@types/eth-sig-util": "^2.1.0",
+    "@opengsn/contracts": "2.2.0",
     "@types/semver": "^7.3.4",
     "@types/web3": "1.2.2",
     "axios": "^0.21.1",

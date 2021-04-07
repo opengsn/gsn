@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/cli",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "MIT",
   "main": "dist/commands/gsn.js",
   "scripts": {
@@ -14,7 +14,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@opengsn/common": "2.1.0",
+    "@opengsn/common": "2.2.0",
     "@truffle/hdwallet-provider": "1.0.34",
     "@types/asciichart": "^1.5.4",
     "@types/clear": "^0.1.1",
@@ -30,10 +30,10 @@
     "commander": "^6.1.0",
     "console-read-write": "^0.1.1",
     "date-format": "^3.0.0",
-    "ethereumjs-tx": "^2.1.2",
+    "ethereumjs-tx": "^2.2.0",
     "lodash": "^4.17.20",
     "moment": "^2.29.1",
-    "terminal-link": "^2.1.1",
+    "terminal-link": "^2.2.0",
     "web3-provider-engine": "14.1.0",
     "winston": "^3.3.3"
   },
