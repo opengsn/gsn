@@ -146,7 +146,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-h, --hub <address>', 'address of the hub contract (default: the address from build/gsn/RelayHub.json if exists)')
         break
       case 'm':
-        commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\' (default: "mnemonic")', 'mnemonic')
+        commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\'')
         break
       case 'g':
         commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')
