@@ -21,6 +21,7 @@ import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './pe
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
+import { gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
 
 function error (err: string): never {
   console.error(err)
@@ -70,6 +71,7 @@ async function run (): Promise<void> {
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
     logger,
+    versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: { relayHubAddress: config.relayHubAddress }
   })
   await contractInteractor.init()
