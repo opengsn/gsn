@@ -10,7 +10,7 @@
       "**ts-node**"
     ]
   },
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Open Gas Stations Network",
   "name": "@opengsn/gsn",
   "license": "MIT",
