@@ -4,7 +4,8 @@
   "license": "MIT",
   "main": "dist/runServer.js",
   "files": [
-    "dist/*"
+    "dist/*",
+    "README.md"
   ],
   "scripts": {
     "tsc": "tsc",

@@ -4,7 +4,8 @@
   "license": "MIT",
   "main": "dist/GsnTestEnvironment.js",
   "files": [
-    "dist/*"
+    "dist/*",
+    "README.md"
   ],
   "scripts": {
     "tsc": "tsc",
