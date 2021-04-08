@@ -54,7 +54,7 @@ contract('ContractInteractor', function (accounts) {
     return '0x'.padEnd(42, `${n}`)
   }
 
-  context( '#init', ()=>{
+  context('#init', () => {
     it('should initialize StakeManager, Penalizer on init', async () => {
       const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
       const contractInteractor = new ContractInteractor({
@@ -68,7 +68,7 @@ contract('ContractInteractor', function (accounts) {
       await contractInteractor.init()
       expect(contractInteractor.stakeManagerAddress()).to.eq(sm.address)
       expect(contractInteractor.penalizerAddress()).to.eq(pen.address)
-    });
+    })
   })
 
   context('#validateRelayCall', () => {

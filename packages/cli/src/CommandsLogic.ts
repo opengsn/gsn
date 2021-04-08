@@ -261,7 +261,7 @@ export class CommandsLogic {
         transactions.push(stakeTx.tx)
       }
 
-      if (await stakeManager.isRelayManagerStaked(relayAddress,relayHubAddress,0,0)) {
+      if (await stakeManager.isRelayManagerStaked(relayAddress, relayHubAddress, 0, 0)) {
         console.log('Relayer already authorized')
       } else {
         console.log('Authorizing relayer for hub')
