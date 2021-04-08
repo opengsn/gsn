@@ -74,7 +74,7 @@ async function run (): Promise<void> {
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: { relayHubAddress: config.relayHubAddress }
   })
-  await contractInteractor.init(true)
+  await contractInteractor.init()
   const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
 
   let reputationManager: ReputationManager | undefined

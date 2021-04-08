@@ -261,8 +261,7 @@ export class CommandsLogic {
         transactions.push(stakeTx.tx)
       }
 
-      // TODO: this is an incorrect check. Rewrite is needed (OG-404)
-      if (isSameAddress(owner, options.from)) {
+      if (await stakeManager.isRelayManagerStaked(relayAddress,relayHubAddress,0,0)) {
         console.log('Relayer already authorized')
       } else {
         console.log('Authorizing relayer for hub')

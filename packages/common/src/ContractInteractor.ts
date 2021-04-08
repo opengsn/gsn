@@ -134,12 +134,12 @@ export class ContractInteractor {
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
 
-  async init (useServerContracts=false): Promise<ContractInteractor> {
+  async init (): Promise<ContractInteractor> {
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
     }
     await this._resolveDeployment()
-    await this._initializeContracts(useServerContracts)
+    await this._initializeContracts()
     await this._validateCompatibility()
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
@@ -210,7 +210,7 @@ export class ContractInteractor {
     }
   }
 
-  async _initializeContracts (useServerContracts=false): Promise<void> {
+  async _initializeContracts (): Promise<void> {
     if (this.relayHubInstance == null && this.deployment.relayHubAddress != null) {
       this.relayHubInstance = await this._createRelayHub(this.deployment.relayHubAddress)
     }
@@ -220,15 +220,13 @@ export class ContractInteractor {
     if (this.deployment.forwarderAddress != null) {
       this.forwarderInstance = await this._createForwarder(this.deployment.forwarderAddress)
     }
-    if (useServerContracts) {
-      if (this.deployment.stakeManagerAddress != null) {
-        this.stakeManagerInstance = await this._createStakeManager(this.deployment.stakeManagerAddress)
-      } else {
-        this.stakeManagerInstance = await this._createStakeManager(await this.relayHubInstance.stakeManager())
-      }
-      if (this.deployment.penalizerAddress != null) {
-        this.penalizerInstance = await this._createPenalizer(this.deployment.penalizerAddress)
-      }
+    if (this.deployment.stakeManagerAddress != null) {
+      this.stakeManagerInstance = await this._createStakeManager(this.deployment.stakeManagerAddress)
+    } else {
+      this.stakeManagerInstance = await this._createStakeManager(await this.relayHubInstance.stakeManager())
+    }
+    if (this.deployment.penalizerAddress != null) {
+      this.penalizerInstance = await this._createPenalizer(this.deployment.penalizerAddress)
     }
   }
 
