@@ -104,7 +104,8 @@ export class RelayServer extends EventEmitter {
     }
     this.printServerAddresses()
     this.logger.warn(`RelayServer version', ${gsnRuntimeVersion}`)
-    this.logger.info(`Using server configuration:\n ${JSON.stringify(this.config)}`)
+    this.logger.info(`Using server configuration:\n ${JSON.stringify(this.config,null,4)}`)
+    this.logger.info(`Resolved deployment: ${JSON.stringify(this.contractInteractor.getDeployment(),null,4)}`)
   }
 
   printServerAddresses (): void {

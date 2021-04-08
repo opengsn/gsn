@@ -54,6 +54,36 @@ contract('ContractInteractor', function (accounts) {
     return '0x'.padEnd(42, `${n}`)
   }
 
+  context( '#init', ()=>{
+    it('should initialize StakeManager, Penalizer on init from server', async () => {
+      const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
+      const contractInteractor = new ContractInteractor({
+        provider: web3.currentProvider as HttpProvider,
+        versionManager,
+        logger,
+        deployment: { paymasterAddress: pm.address }
+      })
+      console.log('deployment=', (contractInteractor as any).deployment)
+
+      await contractInteractor.init(true)
+      expect(contractInteractor.stakeManagerAddress()).to.eq(sm.address)
+      expect(contractInteractor.penalizerAddress()).to.eq(pen.address)
+    });
+
+    it('should not initialize StakeManager, Penalizer on init from client', async () => {
+      const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
+      const contractInteractor = await new ContractInteractor({
+        provider: web3.currentProvider as HttpProvider,
+        versionManager,
+        logger,
+        deployment: { paymasterAddress: pm.address }
+      }).init()
+
+      expect(contractInteractor.penalizerInstance).to.be.undefined
+      expect(()=>contractInteractor.stakeManagerAddress()).to.throw()
+    });
+  })
+
   context('#validateRelayCall', () => {
     const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     it('should return relayCall revert reason', async () => {
