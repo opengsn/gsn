@@ -17,6 +17,8 @@ import {
   StoredTransactionMetadata
 } from './StoredTransaction'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { isSameAddress } from '@opengsn/common/dist/Utils'
+import { constants } from '@opengsn/common/dist/Constants'
 import { GasPriceFetcher } from './GasPriceFetcher'
 
 export interface SignedTransactionDetails {
@@ -115,6 +117,11 @@ data         | 0x${transaction.data.toString('hex')}
     const encodedCall = method?.encodeABI() ?? '0x'
     const _gasPrice = parseInt(gasPrice ?? await this.gasPriceFetcher.getGasPrice())
     const releaseMutex = await this.nonceMutex.acquire()
+    if (isSameAddress(destination, constants.ZERO_ADDRESS)) {
+      const msg = `Preventing to send transaction with action id ${serverAction} to address(0)! Validate your configuration!`
+      this.logger.error(msg)
+      throw new Error(msg)
+    }
     let signedTx
     let storedTx: StoredTransaction
     try {
