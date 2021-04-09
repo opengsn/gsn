@@ -1,1 +1,1 @@
-require('../../../relay/src/runServer')
+require('@opengsn/relay/dist/runServer')
