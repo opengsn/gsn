@@ -1,7 +1,7 @@
 {
   "name": "@opengsn/contracts",
   "license": "MIT",
-  "version": "2.2.0",
+  "version": "2.2.0-alpha.1",
   "main": "types/truffle-contracts/index.d.ts",
   "scripts": {
     "truffle-compile": "truffle compile --compile-all",
