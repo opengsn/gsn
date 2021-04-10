@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/dev",
-  "version": "2.2.0",
+  "version": "2.2.0-alpha.1",
   "license": "MIT",
   "main": "dist/GsnTestEnvironment.js",
   "files": [
@@ -20,12 +20,13 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "dependencies": {
-    "@opengsn/cli": "2.2.0",
-    "@opengsn/contracts": "2.2.0",
-    "@opengsn/provider": "2.2.0",
-    "@opengsn/relay": "2.2.0"
+    "@opengsn/cli": "^2.2.0-alpha.1",
+    "@opengsn/contracts": "^2.2.0-alpha.1",
+    "@opengsn/provider": "^2.2.0-alpha.1",
+    "@opengsn/relay": "^2.2.0-alpha.1"
   },
   "devDependencies": {
+    "@ethereumjs/tx": "^3.1.1",
     "@types/chai-as-promised": "^7.1.3",
     "@types/eth-sig-util": "^2.1.0",
     "@types/sinon": "^9.0.10",
@@ -35,7 +36,6 @@
     "chai-as-promised": "^7.1.1",
     "eth-sig-util": "2.5.2",
     "ethereumjs-tx": "^2.1.2",
-    "@ethereumjs/tx": "^3.1.1",
     "ethereumjs-util": "^7.0.10",
     "sinon": "^9.2.3",
     "sinon-chai": "^3.5.0",

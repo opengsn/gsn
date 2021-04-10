@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/provider",
-  "version": "2.2.0",
+  "version": "2.2.0-alpha.1",
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
@@ -16,7 +16,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@opengsn/common": "2.2.0",
+    "@opengsn/common": "^2.2.0-alpha.1",
     "@types/body-parser": "^1.19.0",
     "@types/eth-sig-util": "^2.1.0",
     "@types/express-serve-static-core": "^4.17.18",
