@@ -12,6 +12,9 @@
     "dist/*",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@opengsn/contracts": "2.2.0",
     "@types/bn.js": "^5.1.0",

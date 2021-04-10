@@ -12,6 +12,9 @@
     "lint": "eslint -f unix .",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@types/cors": "^2.8.7",
     "@opengsn/common": "2.2.0",
