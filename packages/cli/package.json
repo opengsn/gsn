@@ -13,6 +13,9 @@
     "dist/*",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@opengsn/common": "2.2.0",
     "@truffle/hdwallet-provider": "1.0.34",

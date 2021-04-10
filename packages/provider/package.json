@@ -12,6 +12,9 @@
     "dist/*",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@opengsn/common": "2.2.0",
     "@types/body-parser": "^1.19.0",
