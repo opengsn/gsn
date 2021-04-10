@@ -374,21 +374,15 @@ export class StatisticsManager {
   }
 
   async getRelayHubConstructorParams (): Promise<RelayHubConstructorParams> {
-    const maxWorkerCount = (await this.contractInteractor.relayHubInstance.maxWorkerCount()).toString()
-    const gasReserve = (await this.contractInteractor.relayHubInstance.gasReserve()).toString()
-    const postOverhead = (await this.contractInteractor.relayHubInstance.postOverhead()).toString()
-    const gasOverhead = (await this.contractInteractor.relayHubInstance.gasOverhead()).toString()
-    const maximumRecipientDeposit = (await this.contractInteractor.relayHubInstance.maximumRecipientDeposit()).toString()
-    const minimumUnstakeDelay = (await this.contractInteractor.relayHubInstance.minimumUnstakeDelay()).toString()
-    const minimumStake = (await this.contractInteractor.relayHubInstance.minimumStake()).toString()
+    const hubConfig = await this.contractInteractor.relayHubInstance.getConfiguration()
     return {
-      maxWorkerCount,
-      gasReserve,
-      postOverhead,
-      gasOverhead,
-      maximumRecipientDeposit,
-      minimumUnstakeDelay,
-      minimumStake
+      maxWorkerCount: hubConfig.maxWorkerCount.toString(),
+      gasReserve: hubConfig.gasReserve.toString(),
+      postOverhead: hubConfig.postOverhead.toString(),
+      gasOverhead: hubConfig.gasOverhead.toString(),
+      maximumRecipientDeposit: hubConfig.maximumRecipientDeposit.toString(),
+      minimumUnstakeDelay: hubConfig.minimumUnstakeDelay.toString(),
+      minimumStake: hubConfig.minimumStake.toString()
     }
   }
 }

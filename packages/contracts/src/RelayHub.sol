@@ -9,6 +9,7 @@ pragma abicoder v2;
 
 import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./utils/GsnUtils.sol";
 import "./utils/GsnEip712Library.sol";
@@ -19,22 +20,24 @@ import "./interfaces/IPaymaster.sol";
 import "./forwarder/IForwarder.sol";
 import "./interfaces/IStakeManager.sol";
 
-contract RelayHub is IRelayHub {
+contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
 
     string public override versionHub = "2.2.0+opengsn.hub.irelayhub";
 
-    uint256 public immutable override minimumStake;
-    uint256 public immutable override minimumUnstakeDelay;
-    uint256 public immutable override maximumRecipientDeposit;
-    uint256 public immutable override gasOverhead;
-    uint256 public immutable override postOverhead;
-    uint256 public immutable override gasReserve;
-    uint256 public immutable override maxWorkerCount;
-    uint256 public immutable override dataGasCostPerByte;
-    uint256 public immutable override externalCallDataCostOverhead;
-    IStakeManager immutable  override public stakeManager;
+    IStakeManager immutable override public stakeManager;
     address immutable override public penalizer;
+
+    RelayHubConfig private config;
+
+    function getConfiguration() public override view returns (RelayHubConfig memory) {
+        return config;
+    }
+
+    function setConfiguration(RelayHubConfig memory _config) public override onlyOwner {
+        config = _config;
+        emit RelayHubConfigured(config);
+    }
 
     uint256 public constant G_NONZERO = 16;
 
@@ -45,6 +48,8 @@ contract RelayHub is IRelayHub {
     mapping(address => uint256) public override workerCount;
 
     mapping(address => uint256) private balances;
+
+    uint256 public override deprecationBlock = type(uint).max;
 
     constructor (
         IStakeManager _stakeManager,
@@ -61,15 +66,17 @@ contract RelayHub is IRelayHub {
     ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
-        maxWorkerCount = _maxWorkerCount;
-        gasReserve = _gasReserve;
-        postOverhead = _postOverhead;
-        gasOverhead = _gasOverhead;
-        maximumRecipientDeposit = _maximumRecipientDeposit;
-        minimumUnstakeDelay = _minimumUnstakeDelay;
-        minimumStake =  _minimumStake;
-        dataGasCostPerByte = _dataGasCostPerByte;
-        externalCallDataCostOverhead = _externalCallDataCostOverhead;
+        setConfiguration(RelayHubConfig(
+            _maxWorkerCount,
+            _gasReserve,
+            _postOverhead,
+            _gasOverhead,
+            _maximumRecipientDeposit,
+            _minimumUnstakeDelay,
+            _minimumStake,
+            _dataGasCostPerByte,
+            _externalCallDataCostOverhead
+        ));
     }
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
@@ -86,7 +93,7 @@ contract RelayHub is IRelayHub {
         address relayManager = msg.sender;
         uint256 newWorkerCount = workerCount[relayManager] + newRelayWorkers.length;
         workerCount[relayManager] = newWorkerCount;
-        require(newWorkerCount <= maxWorkerCount, "too many workers");
+        require(newWorkerCount <= config.maxWorkerCount, "too many workers");
 
         require(
             isRelayManagerStaked(relayManager),
@@ -103,7 +110,7 @@ contract RelayHub is IRelayHub {
 
     function depositFor(address target) public override payable {
         uint256 amount = msg.value;
-        require(amount <= maximumRecipientDeposit, "deposit too big");
+        require(amount <= config.maximumRecipientDeposit, "deposit too big");
 
         balances[target] = balances[target].add(amount);
 
@@ -125,7 +132,7 @@ contract RelayHub is IRelayHub {
     }
 
     function calldataGasCost(uint256 length) public override view returns (uint256) {
-        return dataGasCostPerByte.mul(length);
+        return config.dataGasCostPerByte.mul(length);
 }
 
     function verifyGasAndDataLimits(
@@ -141,7 +148,7 @@ contract RelayHub is IRelayHub {
             IPaymaster(relayRequest.relayData.paymaster).getGasAndDataLimits{gas:50000}();
         require(msg.data.length <= gasAndDataLimits.calldataSizeLimit, "msg.data exceeded limit" );
         uint256 dataGasCost = calldataGasCost(msg.data.length);
-        uint256 externalCallDataCost = externalGasLimit - initialGasLeft - externalCallDataCostOverhead;
+        uint256 externalCallDataCost = externalGasLimit - initialGasLeft - config.externalCallDataCostOverhead;
         uint256 txDataCostPerByte = externalCallDataCost/msg.data.length;
         require(txDataCostPerByte <= G_NONZERO, "invalid externalGasLimit");
 
@@ -149,7 +156,7 @@ contract RelayHub is IRelayHub {
         require(gasAndDataLimits.acceptanceBudget >= gasAndDataLimits.preRelayedCallGasLimit, "acceptance budget too low");
 
         maxPossibleGas =
-            gasOverhead.add(
+            config.gasOverhead.add(
             gasAndDataLimits.preRelayedCallGasLimit).add(
             gasAndDataLimits.postRelayedCallGasLimit).add(
             relayRequest.request.gas).add(
@@ -202,6 +209,7 @@ contract RelayHub is IRelayHub {
     {
         RelayCallData memory vars;
         vars.initialGasLeft = gasleft();
+        require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
         require(msg.sender == tx.origin, "relay worker must be EOA");
         vars.relayManager = workerToManager[msg.sender];
@@ -223,10 +231,10 @@ contract RelayHub is IRelayHub {
 
         //How much gas to pass down to innerRelayCall. must be lower than the default 63/64
         // actually, min(gasleft*63/64, gasleft-GAS_RESERVE) might be enough.
-        uint256 innerGasLimit = gasleft()*63/64-gasReserve;
+        uint256 innerGasLimit = gasleft()*63/64- config.gasReserve;
         vars.gasBeforeInner = gasleft();
 
-        uint256 _tmpInitialGas = innerGasLimit + externalGasLimit + gasOverhead + postOverhead;
+        uint256 _tmpInitialGas = innerGasLimit + externalGasLimit + config.gasOverhead + config.postOverhead;
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
@@ -267,7 +275,7 @@ contract RelayHub is IRelayHub {
             }
         }
         // We now perform the actual charge calculation, based on the measured gas used
-        uint256 gasUsed = (externalGasLimit - gasleft()) + gasOverhead;
+        uint256 gasUsed = (externalGasLimit - gasleft()) + config.gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
@@ -399,7 +407,17 @@ contract RelayHub is IRelayHub {
     }
 
     function isRelayManagerStaked(address relayManager) public override view returns (bool) {
-        return stakeManager.isRelayManagerStaked(relayManager, address(this), minimumStake, minimumUnstakeDelay);
+        return stakeManager.isRelayManagerStaked(relayManager, address(this), config.minimumStake, config.minimumUnstakeDelay);
+    }
+
+    function deprecateHub(uint256 fromBlock) public override onlyOwner {
+        require(deprecationBlock > block.number, "Already deprecated");
+        deprecationBlock = fromBlock;
+        emit HubDeprecated(fromBlock);
+    }
+
+    function isDeprecated() public override view returns (bool) {
+        return block.number >= deprecationBlock;
     }
 
     modifier penalizerOnly () {
