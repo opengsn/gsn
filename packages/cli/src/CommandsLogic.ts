@@ -179,7 +179,10 @@ export class CommandsLogic {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
       const response = await this.httpClient.getPingResponse(options.relayUrl)
-        .catch(() => { throw new Error('could contact not relayer, is it running?') })
+        .catch((error: any) => {
+          console.error(error)
+          throw new Error('could contact not relayer, is it running?')
+        })
       if (response.ready) {
         return {
           success: false,
@@ -258,7 +261,8 @@ export class CommandsLogic {
             gas: 1e6,
             gasPrice: options.gasPrice
           })
-        transactions.push(stakeTx.tx)
+        // @ts-ignore
+        transactions.push(stakeTx.transactionHash)
       }
 
       // TODO: this is an incorrect check. Rewrite is needed (OG-404)
@@ -272,7 +276,8 @@ export class CommandsLogic {
             gas: 1e6,
             gasPrice: options.gasPrice
           })
-        transactions.push(authorizeTx.tx)
+        // @ts-ignore
+        transactions.push(authorizeTx.transactionHash)
       }
 
       await this.waitForRelay(options.relayUrl)
