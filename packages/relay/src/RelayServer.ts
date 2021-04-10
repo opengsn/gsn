@@ -260,7 +260,8 @@ export class RelayServer extends EventEmitter {
       acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
     }
 
-    const hubOverhead = (await this.relayHubContract.gasOverhead()).toNumber()
+    const hubConfig = await this.relayHubContract.getConfiguration()
+    const hubOverhead = parseInt(hubConfig.gasOverhead.toString())
     // TODO: this is not a good way to calculate gas limit for relay call
     const tmpMaxPossibleGas = calculateTransactionMaxPossibleGas({
       gasAndDataLimits,

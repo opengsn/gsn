@@ -26,13 +26,31 @@ contract Penalizer is IPenalizer {
         penalizeBlockExpiration = _penalizeBlockExpiration;
     }
 
-    function decodeTransaction(bytes memory rawTransaction) private pure returns (Transaction memory transaction) {
-        (transaction.nonce,
-        transaction.gasPrice,
-        transaction.gasLimit,
-        transaction.to,
-        transaction.value,
-        transaction.data) = RLPReader.decodeTransaction(rawTransaction);
+    function isTransactionType1(bytes calldata rawTransaction) public pure returns (bool) {
+        return (uint8(rawTransaction[0]) == 1);
+    }
+
+    function isTransactionTypeValid(bytes calldata rawTransaction) public pure returns(bool) {
+        uint8 transactionTypeByte = uint8(rawTransaction[0]);
+        return (transactionTypeByte >= 0xc0 && transactionTypeByte <= 0xfe);
+    }
+
+    function decodeTransaction(bytes calldata rawTransaction) public pure returns (Transaction memory transaction) {
+        if (isTransactionType1(rawTransaction)) {
+            (transaction.nonce,
+            transaction.gasPrice,
+            transaction.gasLimit,
+            transaction.to,
+            transaction.value,
+            transaction.data) = RLPReader.decodeTransactionType1(rawTransaction);
+        } else {
+            (transaction.nonce,
+            transaction.gasPrice,
+            transaction.gasLimit,
+            transaction.to,
+            transaction.value,
+            transaction.data) = RLPReader.decodeLegacyTransaction(rawTransaction);
+        }
         return transaction;
     }
 
@@ -62,10 +80,10 @@ contract Penalizer is IPenalizer {
     }
 
     function penalizeRepeatedNonce(
-        bytes memory unsignedTx1,
-        bytes memory signature1,
-        bytes memory unsignedTx2,
-        bytes memory signature2,
+        bytes calldata unsignedTx1,
+        bytes calldata signature1,
+        bytes calldata unsignedTx2,
+        bytes calldata signature2,
         IRelayHub hub,
         uint256 randomValue
     )
@@ -77,10 +95,10 @@ contract Penalizer is IPenalizer {
     }
 
     function _penalizeRepeatedNonce(
-        bytes memory unsignedTx1,
-        bytes memory signature1,
-        bytes memory unsignedTx2,
-        bytes memory signature2,
+        bytes calldata unsignedTx1,
+        bytes calldata signature1,
+        bytes calldata unsignedTx2,
+        bytes calldata signature2,
         IRelayHub hub
     )
     private
@@ -121,8 +139,8 @@ contract Penalizer is IPenalizer {
     }
 
     function penalizeIllegalTransaction(
-        bytes memory unsignedTx,
-        bytes memory signature,
+        bytes calldata unsignedTx,
+        bytes calldata signature,
         IRelayHub hub,
         uint256 randomValue
     )
@@ -134,24 +152,25 @@ contract Penalizer is IPenalizer {
     }
 
     function _penalizeIllegalTransaction(
-        bytes memory unsignedTx,
-        bytes memory signature,
+        bytes calldata unsignedTx,
+        bytes calldata signature,
         IRelayHub hub
     )
     private
     {
-        Transaction memory decodedTx = decodeTransaction(unsignedTx);
-        if (decodedTx.to == address(hub)) {
-            bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
-            bool isWrongMethodCall = selector != IRelayHub.relayCall.selector;
-            bool isGasLimitWrong = GsnUtils.getParam(decodedTx.data, 4) != decodedTx.gasLimit;
-            require(
-                isWrongMethodCall || isGasLimitWrong,
-                "Legal relay transaction");
+        if (isTransactionTypeValid(unsignedTx)) {
+            Transaction memory decodedTx = decodeTransaction(unsignedTx);
+            if (decodedTx.to == address(hub)) {
+                bytes4 selector = GsnUtils.getMethodSig(decodedTx.data);
+                bool isWrongMethodCall = selector != IRelayHub.relayCall.selector;
+                bool isGasLimitWrong = GsnUtils.getParam(decodedTx.data, 4) != decodedTx.gasLimit;
+                require(
+                    isWrongMethodCall || isGasLimitWrong,
+                    "Legal relay transaction");
+            }
         }
         address relay = keccak256(unsignedTx).recover(signature);
         require(relay != address(0), "ecrecover failed");
-
         penalize(relay, hub);
     }
 

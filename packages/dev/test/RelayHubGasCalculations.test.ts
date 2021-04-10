@@ -67,7 +67,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
-    hubDataGasCostPerByte = (await relayHub.dataGasCostPerByte()).toNumber()
+    const hubConfig = await relayHub.getConfiguration()
+    hubDataGasCostPerByte = parseInt(hubConfig.dataGasCostPerByte)
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
@@ -154,7 +155,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         })
         const { tx } = res
         const gasAndDataLimits = await paymaster.getGasAndDataLimits()
-        const hubOverhead = (await relayHub.gasOverhead()).toNumber()
+        const hubConfig = await relayHub.getConfiguration()
+        const hubOverhead = parseInt(hubConfig.gasOverhead)
         const msgData: string = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()
         const msgDataLength = toBuffer(msgData).length
         const msgDataGasCostInsideTransaction = hubDataGasCostPerByte * msgDataLength
