@@ -24,7 +24,6 @@ export interface ServerConfigParams {
   versionRegistryDelayPeriod?: number
   relayHubId?: string
   relayHubAddress: string
-  stakeManagerAddress: string
   ethereumNodeUrl: string
   workdir: string
   checkInterval: number
@@ -86,7 +85,6 @@ const serverDefaultConfiguration: ServerConfigParams = {
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
   maxAcceptanceBudget: defaultEnvironment.paymasterConfiguration.acceptanceBudget + defaultEnvironment.relayHubConfiguration.dataGasCostPerByte * defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
-  stakeManagerAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   blacklistedPaymasters: [],
   gasPriceFactor: 1,
@@ -128,7 +126,6 @@ const serverDefaultConfiguration: ServerConfigParams = {
 }
 
 const ConfigParamsTypes = {
-  stakeManagerAddress: 'string',
   ownerAddress: 'string',
   config: 'string',
   baseRelayFee: 'number',

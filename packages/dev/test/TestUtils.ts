@@ -46,7 +46,6 @@ export async function startRelay (
   args.push('--relayHubAddress', relayHubAddress)
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
-  args.push('--stakeManagerAddress', stakeManager.address)
   args.push('--ownerAddress', options.relayOwner)
 
   if (options.ethereumNodeUrl) {

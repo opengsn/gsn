@@ -170,7 +170,6 @@ class GsnTestEnvironmentClass {
       devMode: true,
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,
-      stakeManagerAddress: deploymentResult.stakeManagerAddress,
       ownerAddress: from,
       gasPriceFactor: 1,
       baseRelayFee: '0',
