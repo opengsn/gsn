@@ -12,7 +12,7 @@ describe('cli-utils', () => {
       assert.equal(getNetworkUrl('kovan', { INFURA_ID: '<id>' }), 'https://kovan.infura.io/v3/<id>')
     })
     it('should reject invalid url', function () {
-      assert.equal(getNetworkUrl('asdasdas'), null)
+      expect(() => getNetworkUrl('asdasdas', {})).to.throw('network asdasdas is not supported')
     })
   })
 })
