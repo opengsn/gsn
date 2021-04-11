@@ -36,3 +36,4 @@ yarn-error.log
 /packages/contracts/types/truffle-contracts/
 /verdaccio/
 /.yarnrc
+/build/gsn
