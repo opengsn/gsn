@@ -35,7 +35,11 @@ export function getNetworkUrl (network: string, env: { [key: string]: string | u
   const net = networks.get(network)
   if (net == null) {
     const match = network.match(/^(https?:\/\/.*)/) ?? []
-    return match[0]
+    const firstMatch = match[0]
+    if (firstMatch == null) {
+      throw new Error(`network ${network} is not supported`)
+    }
+    return firstMatch
   }
 
   if (net.includes('$INFURA_ID')) {
