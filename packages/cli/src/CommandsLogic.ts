@@ -367,7 +367,6 @@ export class CommandsLogic {
         .deploy(constructorArgs)
       options.gas = await sendMethod.estimateGas()
       const maxCost = new BN(options.gasPrice).muln(options.gas)
-      const oneEther = ether('1')
       console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
