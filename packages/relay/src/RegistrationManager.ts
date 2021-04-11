@@ -515,15 +515,16 @@ TxHash    | ${decodedEvent.transactionHash}
   async setOwnerInStakeManager (currentBlock: number): Promise<PrefixedHexString> {
     const setRelayManagerMethod = await this.contractInteractor.getSetRelayManagerMethod(this.config.ownerAddress)
     const gasLimit = await this.transactionManager.attemptEstimateGas('SetRelayManager', setRelayManagerMethod, this.managerAddress)
+    const stakeManagerAddress = this.contractInteractor.stakeManagerAddress()
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
       gasLimit,
       serverAction: ServerAction.SET_OWNER,
       method: setRelayManagerMethod,
-      destination: this.config.stakeManagerAddress,
+      destination: stakeManagerAddress,
       creationBlockNumber: currentBlock
     }
-    this.logger.info(`setting relay owner ${this.config.ownerAddress} at StakeManager ${this.config.stakeManagerAddress}`)
+    this.logger.info(`setting relay owner ${this.config.ownerAddress} at StakeManager ${stakeManagerAddress}`)
     const { transactionHash } = await this.transactionManager.sendTransaction(details)
     return transactionHash
   }
