@@ -36,7 +36,7 @@ export function getNetworkUrl (network: string, env: { [key: string]: string | u
   if (net == null) {
     const match = network.match(/^(https?:\/\/.*)/) ?? []
     const firstMatch = match[0]
-    if (firstMatch == null){
+    if (firstMatch == null) {
       throw new Error(`network ${network} is not supported`)
     }
     return firstMatch
