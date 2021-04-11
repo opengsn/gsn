@@ -32,8 +32,8 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
   const logger = createCommandsLogger(commander.loglevel)
   const logic = await new CommandsLogic(host, logger, {}, mnemonic).init()
   const registerOptions: RegisterOptions = {
-    sleepMs: commander.sleep,
-    sleepCount: commander.sleepCount,
+    sleepMs: parseInt(commander.sleep),
+    sleepCount: parseInt(commander.sleepCount),
     from: commander.from ?? await logic.findWealthyAccount(),
     stake: ether(commander.stake),
     funds: ether(commander.funds),

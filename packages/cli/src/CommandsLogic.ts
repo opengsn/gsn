@@ -234,6 +234,7 @@ export class CommandsLogic {
       if (owner === constants.ZERO_ADDRESS) {
         let i = 0
         while (true) {
+          console.debug(`Waiting ${options.sleepMs}ms ${i}/${options.sleepCount} for relayer to set ${options.from} as owner`)
           await sleep(options.sleepMs)
           const newStakeInfo = await stakeManager.getStakeInfo(relayAddress)
           if (newStakeInfo.owner !== constants.ZERO_ADDRESS && isSameAddress(newStakeInfo.owner, options.from)) {
@@ -265,8 +266,7 @@ export class CommandsLogic {
         transactions.push(stakeTx.transactionHash)
       }
 
-      // TODO: this is an incorrect check. Rewrite is needed (OG-404)
-      if (isSameAddress(owner, options.from)) {
+      if (await stakeManager.isRelayManagerStaked(relayAddress, relayHubAddress, 0, 0)) {
         console.log('Relayer already authorized')
       } else {
         console.log('Authorizing relayer for hub')
