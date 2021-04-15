@@ -380,7 +380,7 @@ export class CommandsLogic {
       if (!skipConfirmation) {
         await this.confirm()
       }
-      const deployPromise = sendMethod.send(merge(options, { gas: 5e6 }))
+      const deployPromise = sendMethod.send(Object.assign({}, options))
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       deployPromise.on('transactionHash', function (hash) {
         console.log(`Transaction broadcast: ${hash}`)
