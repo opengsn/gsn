@@ -6,7 +6,6 @@ import Web3 from 'web3'
 import { Contract, SendOptions } from 'web3-eth-contract'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { fromWei, toBN } from 'web3-utils'
-import { merge } from 'lodash'
 import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
@@ -350,7 +349,7 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
-    if (deployOptions.registerForwarderForGsn) {
+    if (deployOptions.registerForwarderForGsn ?? false) {
       await registerForwarderForGsn(fInstance, options)
     }
 
