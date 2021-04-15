@@ -7,6 +7,7 @@ import { Contract, SendOptions } from 'web3-eth-contract'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { fromWei, toBN } from 'web3-utils'
 import { merge } from 'lodash'
+import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 
@@ -22,7 +23,6 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { string32 } from '@opengsn/common/dist/VersionRegistry'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -46,6 +46,8 @@ export interface RegisterOptions {
 interface DeployOptions {
   from: Address
   gasPrice: string
+  gasLimit: number
+  registerForwarderForGsn?: boolean
   deployPaymaster?: boolean
   forwarderAddress?: string
   relayHubAddress?: string
@@ -57,6 +59,15 @@ interface DeployOptions {
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
   penalizerConfiguration: PenalizerConfiguration
+}
+
+/**
+ * Must verify these parameters are passed to deploy script
+ */
+const DeployOptionsPartialShape = {
+  from: ow.string,
+  gasPrice: ow.string,
+  gasLimit: ow.number
 }
 
 interface RegistrationResult {
@@ -300,11 +311,12 @@ export class CommandsLogic {
   }
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<GSNContractsDeployment> {
+    ow(deployOptions, ow.object.partialShape(DeployOptionsPartialShape))
     const options: Required<SendOptions> = {
       from: deployOptions.from,
-      gas: 0, // gas limit will be filled in at deployment
+      gas: deployOptions.gasLimit,
       value: 0,
-      gasPrice: deployOptions.gasPrice ?? (1e9).toString()
+      gasPrice: deployOptions.gasPrice
     }
 
     const sInstance = await this.getContractInstance(StakeManager, {
@@ -330,20 +342,17 @@ export class CommandsLogic {
         deployOptions.relayHubConfiguration.minimumStake,
         deployOptions.relayHubConfiguration.dataGasCostPerByte,
         deployOptions.relayHubConfiguration.externalCallDataCostOverhead]
-    }, deployOptions.relayHubAddress, merge({}, options, { gas: 5e6 }), deployOptions.skipConfirmation)
+    }, deployOptions.relayHubAddress, Object.assign({}, options), deployOptions.skipConfirmation)
 
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, Object.assign({}, options), deployOptions.skipConfirmation)
-    if (deployOptions.registryHubId != null) {
-      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ from: deployOptions.from })
-      console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
-    }
 
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
-
-    await registerForwarderForGsn(fInstance, options)
+    if (deployOptions.registerForwarderForGsn) {
+      await registerForwarderForGsn(fInstance, options)
+    }
 
     this.deployment = {
       relayHubAddress: rInstance.options.address,
@@ -365,9 +374,9 @@ export class CommandsLogic {
       const sendMethod = this
         .contract(json)
         .deploy(constructorArgs)
-      options.gas = await sendMethod.estimateGas()
+      const estimatedGasCost = await sendMethod.estimateGas()
       const maxCost = new BN(options.gasPrice).muln(options.gas)
-      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} and maximum cost of ~ ${fromWei(maxCost)} ETH`)
+      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice, 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
       }

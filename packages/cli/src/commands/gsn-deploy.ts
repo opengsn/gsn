@@ -22,6 +22,8 @@ gsnCommander(['n', 'f', 'm', 'g'])
   .option('--registryHubId <string>', 'save the address of the relayHub to the registry, with this hub-id')
   .option('--yes, --skipConfirmation', 'skip con')
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
+  .option('-l, --gasLimit <number>', 'gas limit to give to all transactions', '5000000')
+  .option('--registerForwarderForGsn', 'whether to register GSN EIP-712 transaction type on a Forwarder', false)
   .parse(process.argv);
 
 (async () => {
@@ -42,14 +44,17 @@ gsnCommander(['n', 'f', 'm', 'g'])
   }
 
   const gasPrice = toWei(commander.gasPrice, 'gwei').toString() ?? await getGasPrice()
+  const gasLimit = parseInt(commander.gasLimit)
 
   const deploymentResult = await logic.deployGsnContracts({
     from,
     gasPrice,
+    gasLimit,
     relayHubConfiguration,
     penalizerConfiguration,
     deployPaymaster: true,
     verbose: true,
+    registerForwarderForGsn: commander.registerForwarderForGsn,
     skipConfirmation: commander.skipConfirmation,
     forwarderAddress: commander.forwarder,
     stakeManagerAddress: commander.stakeManager,
