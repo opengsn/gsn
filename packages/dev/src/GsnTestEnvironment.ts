@@ -51,7 +51,6 @@ class GsnTestEnvironmentClass {
       from,
       gasPrice: '1',
       gasLimit: 5000000,
-      registerForwarderForGsn: true,
       deployPaymaster: true,
       skipConfirmation: true,
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
