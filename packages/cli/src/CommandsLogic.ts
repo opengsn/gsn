@@ -22,6 +22,7 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
+import { string32 } from '@opengsn/common/dist/VersionRegistry'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -344,6 +345,10 @@ export class CommandsLogic {
     }, deployOptions.relayHubAddress, Object.assign({}, options), deployOptions.skipConfirmation)
 
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    if (deployOptions.registryHubId != null) {
+      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ from: deployOptions.from })
+      console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
+    }
 
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
