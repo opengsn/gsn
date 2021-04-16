@@ -23,7 +23,6 @@ gsnCommander(['n', 'f', 'm', 'g'])
   .option('--yes, --skipConfirmation', 'skip con')
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .option('-l, --gasLimit <number>', 'gas limit to give to all transactions', '5000000')
-  .option('--registerForwarderForGsn', 'whether to register GSN EIP-712 transaction type on a Forwarder', false)
   .parse(process.argv);
 
 (async () => {
@@ -54,7 +53,6 @@ gsnCommander(['n', 'f', 'm', 'g'])
     penalizerConfiguration,
     deployPaymaster: true,
     verbose: true,
-    registerForwarderForGsn: commander.registerForwarderForGsn,
     skipConfirmation: commander.skipConfirmation,
     forwarderAddress: commander.forwarder,
     stakeManagerAddress: commander.stakeManager,

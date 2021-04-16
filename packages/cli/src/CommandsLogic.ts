@@ -47,7 +47,6 @@ interface DeployOptions {
   from: Address
   gasPrice: string
   gasLimit: number
-  registerForwarderForGsn?: boolean
   deployPaymaster?: boolean
   forwarderAddress?: string
   relayHubAddress?: string
@@ -354,9 +353,7 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
-    if (deployOptions.registerForwarderForGsn ?? false) {
-      await registerForwarderForGsn(fInstance, options)
-    }
+    await registerForwarderForGsn(fInstance, options)
 
     this.deployment = {
       relayHubAddress: rInstance.options.address,
