@@ -50,6 +50,7 @@ class GsnTestEnvironmentClass {
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
       gasPrice: '1',
+      gasLimit: 5000000,
       deployPaymaster: true,
       skipConfirmation: true,
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
