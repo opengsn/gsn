@@ -21,6 +21,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
   .option('--registry <address>', 'versionRegistry')
   .option('--registryHubId <string>', 'save the address of the relayHub to the registry, with this hub-id')
   .option('--yes, --skipConfirmation', 'skip con')
+  .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .option('-l, --gasLimit <number>', 'gas limit to give to all transactions', '5000000')
   .parse(process.argv);
@@ -51,7 +52,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
     gasLimit,
     relayHubConfiguration,
     penalizerConfiguration,
-    deployPaymaster: true,
+    deployPaymaster: commander.testPaymaster,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,
     forwarderAddress: commander.forwarder,

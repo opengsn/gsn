@@ -320,14 +320,14 @@ export class CommandsLogic {
 
     const sInstance = await this.getContractInstance(StakeManager, {
       arguments: [defaultEnvironment.maxUnstakeDelay]
-    }, deployOptions.stakeManagerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    }, deployOptions.stakeManagerAddress, { ...options }, deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {
       arguments: [
         deployOptions.penalizerConfiguration.penalizeBlockDelay,
         deployOptions.penalizerConfiguration.penalizeBlockExpiration
       ]
-    }, deployOptions.penalizerAddress, Object.assign({}, options), deployOptions.skipConfirmation)
-    const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    }, deployOptions.penalizerAddress, { ...options }, deployOptions.skipConfirmation)
+    const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, { ...options }, deployOptions.skipConfirmation)
     const rInstance = await this.getContractInstance(RelayHub, {
       arguments: [
         sInstance.options.address,
@@ -341,17 +341,17 @@ export class CommandsLogic {
         deployOptions.relayHubConfiguration.minimumStake,
         deployOptions.relayHubConfiguration.dataGasCostPerByte,
         deployOptions.relayHubConfiguration.externalCallDataCostOverhead]
-    }, deployOptions.relayHubAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
 
-    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, Object.assign({}, options), deployOptions.skipConfirmation)
+    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, { ...options }, deployOptions.skipConfirmation)
     if (deployOptions.registryHubId != null) {
-      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ from: deployOptions.from })
+      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ ...options })
       console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
     }
 
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
-      pmInstance = await this.deployPaymaster(Object.assign({}, options), rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
+      pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
     await registerForwarderForGsn(fInstance, options)
 
@@ -381,7 +381,7 @@ export class CommandsLogic {
       if (!skipConfirmation) {
         await this.confirm()
       }
-      const deployPromise = sendMethod.send(Object.assign({}, options))
+      const deployPromise = sendMethod.send({ ...options })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       deployPromise.on('transactionHash', function (hash) {
         console.log(`Transaction broadcast: ${hash}`)
@@ -396,7 +396,7 @@ export class CommandsLogic {
   }
 
   async deployPaymaster (options: Required<SendOptions>, hub: Address, from: string, fInstance: Contract, skipConfirmation: boolean | undefined): Promise<Contract> {
-    const pmInstance = await this.getContractInstance(Paymaster, {}, undefined, Object.assign({}, options), skipConfirmation)
+    const pmInstance = await this.getContractInstance(Paymaster, {}, undefined, { ...options }, skipConfirmation)
     await pmInstance.methods.setRelayHub(hub).send(options)
     await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send(options)
     return pmInstance
