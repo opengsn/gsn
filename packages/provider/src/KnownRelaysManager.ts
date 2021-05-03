@@ -44,6 +44,8 @@ export class KnownRelaysManager {
   private readonly scoreCalculator: AsyncScoreCalculator
 
   private latestScannedBlock: number = 0
+  cachedLatestEvents: EventData[] = []
+
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
   public relayLookupWindowParts: number
@@ -72,8 +74,12 @@ export class KnownRelaysManager {
       return []
     }
     const topics = addresses2topics(Array.from(relayManagers))
-    const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub(topics, { fromBlock: 1 }, [RelayServerRegistered])
-    const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock: 1 })
+
+    // don't read from block 1: read "RelayServerRegistered" only in the lookup window (which should be cached)
+    const relayServerRegisteredEvents = await this._getLatestRelayHubEvents([RelayServerRegistered], relayManagers)
+    // we care only about exit events after the above relay events.
+    const fromBlock = relayServerRegisteredEvents[0]?.blockNumber ?? 'latest'
+    const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock })
 
     this.logger.info(`== fetchRelaysAdded: found ${relayServerRegisteredEvents.length} unique RelayAdded events`)
 
@@ -143,11 +149,39 @@ export class KnownRelaysManager {
     return relayEventParts.flat()
   }
 
-  async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
+  async _getLatestRelayHubEvents (eventNames?: string[], managers?: Set<Address>): Promise<EventData[]> {
     const toBlock = await this.contractInteractor.getBlockNumber()
-    const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayEvents: any[] = await this.getPastEventsForHub(fromBlock, toBlock)
+    let relayEvents: EventData[]
+    if (toBlock - this.latestScannedBlock < 10) {
+      // re-use the same cached events for ~2 minutes.
+      relayEvents = this.cachedLatestEvents
+    } else {
+      const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
+
+      relayEvents = await this.getPastEventsForHub(fromBlock, toBlock)
+      this.cachedLatestEvents = relayEvents
+      this.latestScannedBlock = toBlock
+    }
+
+    if (eventNames != null) {
+      const nameSet = new Set(eventNames)
+      relayEvents = relayEvents.filter(event => nameSet.has(event.event))
+    }
+
+    if (managers != null) {
+      const lowercaseSet = new Set(Array.from(managers).map(x => x.toLowerCase()))
+      relayEvents = relayEvents.filter(event => lowercaseSet?.has(event.returnValues.relayManager.toLowerCase()))
+    }
+    const mapRelayEvent = (e: any): any => ({ e: e.event, m: e.returnValues.relayManager })
+    console.log('== _cached', this.cachedLatestEvents.map(mapRelayEvent))
+
+    console.log('_getLatestRelayHubEvents', 'events=', eventNames, 'mgrs=', managers, 'ret=', relayEvents.map(mapRelayEvent))
+    return relayEvents
+  }
+
+  async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
+    const relayEvents = await this._getLatestRelayHubEvents()
 
     this.logger.info(`fetchRelaysAdded: found ${relayEvents.length} events`)
     const foundRelayManagers: Set<Address> = new Set()
@@ -160,7 +194,6 @@ export class KnownRelaysManager {
     })
 
     this.logger.info(`fetchRelaysAdded: found unique relays: ${JSON.stringify(Array.from(foundRelayManagers.values()))}`)
-    this.latestScannedBlock = toBlock
     return foundRelayManagers
   }
 
