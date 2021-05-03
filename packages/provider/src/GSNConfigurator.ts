@@ -71,6 +71,7 @@ export interface GSNConfig {
   paymasterAddress?: Address
   clientId: IntString
   auditorsCount: number
+  maxViewableGasLimit?: number
 }
 
 export interface GSNDependencies {
