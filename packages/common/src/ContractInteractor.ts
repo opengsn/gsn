@@ -291,10 +291,11 @@ export class ContractInteractor {
     maxAcceptanceBudget: number,
     relayRequest: RelayRequest,
     signature: PrefixedHexString,
-    approvalData: PrefixedHexString): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+    approvalData: PrefixedHexString,
+    maxViewableGasLimit?: number): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     const relayHub = this.relayHubInstance
     try {
-      const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest)
+      const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest, maxViewableGasLimit)
       const encodedRelayCall = relayHub.contract.methods.relayCall(
         maxAcceptanceBudget,
         relayRequest,
@@ -356,8 +357,8 @@ export class ContractInteractor {
     }
   }
 
-  async getMaxViewableGasLimit (relayRequest: RelayRequest): Promise<BN> {
-    const blockGasLimit = toBN(await this._getBlockGasLimit())
+  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit?: number): Promise<BN> {
+    const blockGasLimit = toBN(maxViewableGasLimit ?? await this._getBlockGasLimit())
     const workerBalance = toBN(await this.getBalance(relayRequest.relayData.relayWorker))
     const workerGasLimit = workerBalance.div(toBN(
       relayRequest.relayData.gasPrice === '0' ? 1 : relayRequest.relayData.gasPrice))
