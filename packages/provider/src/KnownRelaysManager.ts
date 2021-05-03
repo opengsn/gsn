@@ -71,9 +71,12 @@ export class KnownRelaysManager {
     if (relayManagers.size === 0) {
       return []
     }
+    const toBlock = await this.contractInteractor.getBlockNumber()
+    const fromBlock = Math.max(0, toBlock - this.config.relayRegistrationLookupBlocks)
+
     const topics = addresses2topics(Array.from(relayManagers))
-    const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub(topics, { fromBlock: 1 }, [RelayServerRegistered])
-    const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock: 1 })
+    const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub(topics, { fromBlock }, [RelayServerRegistered])
+    const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock })
 
     this.logger.info(`== fetchRelaysAdded: found ${relayServerRegisteredEvents.length} unique RelayAdded events`)
 
