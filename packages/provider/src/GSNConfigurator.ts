@@ -28,6 +28,7 @@ export const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
   relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
   relayLookupWindowParts: 1,
+  relayRegistrationLookupBlocks: Number.MAX_SAFE_INTEGER,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -57,6 +58,8 @@ export interface GSNConfig {
   preferredRelays: string[]
   relayLookupWindowBlocks: number
   relayLookupWindowParts: number
+  relayRegistrationLookupBlocks: number
+
   methodSuffix: string
   jsonStringifyRequest: boolean
   requiredVersionRange?: string
