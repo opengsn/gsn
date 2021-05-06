@@ -23,8 +23,9 @@ contract('RelayServerRequestsProfiling', function (accounts) {
     logger = createServerLogger('error', '', '')
     provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
+      const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
-        provider, logger, deployment
+        maxPageSize, provider, logger, deployment
       })
       await contractInteractor.init()
       return contractInteractor

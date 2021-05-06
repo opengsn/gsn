@@ -151,7 +151,7 @@ options.forEach(params => {
         assert.ok(ex == null, `should succeed sending gasless transaction through relay. got: ${ex?.toString()}`)
       } else {
         // eslint-disable-next-line @typescript-eslint/no-base-to-string,@typescript-eslint/restrict-template-expressions
-        assert.ok(ex.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
+        assert.ok(ex!.toString().indexOf('funds') > 0, `Expected Error with 'funds'. got: ${ex?.toString()}`)
       }
     })
     it(params.title + 'running testRevert (should always fail)', async () => {
@@ -218,6 +218,7 @@ options.forEach(params => {
 
             await sr.emitMessage('xxx', {
               from: gasless,
+              // @ts-ignore - it seems we still allow passing paymaster as a tx parameter
               paymaster: approvalPaymaster.address,
               gas: 1e6
             })

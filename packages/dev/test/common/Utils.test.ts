@@ -17,6 +17,7 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { PrefixedHexString } from 'ethereumjs-tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
+import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -59,7 +60,7 @@ contract('Utils', function (accounts) {
 
       const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
-      const { domainSeparator } = res1.logs[0].args
+      const { domainSeparator } = (res1.logs[0].args as DomainRegistered['args'])
 
       // sanity check: our locally-calculated domain-separator is the same as on-chain registered domain-separator
       assert.equal(domainSeparator, getDomainSeparatorHash(forwarder, chainId))
@@ -69,7 +70,7 @@ contract('Utils', function (accounts) {
         GsnRequestType.typeSuffix
       )
 
-      const typeName = res.logs[0].args.typeStr
+      const typeName = (res.logs[0].args as RequestTypeRegistered['args']).typeStr
 
       relayRequest = {
         request: {
@@ -119,14 +120,14 @@ contract('Utils', function (accounts) {
 
       const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
-      const { domainSeparator } = res1.logs[0].args
+      const { domainSeparator } = (res1.logs[0].args as DomainRegistered['args'])
       assert.equal(domainSeparator, await testUtil.libDomainSeparator(forwarder))
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
         GsnRequestType.typeSuffix
       )
-      const { typeStr, typeHash } = res.logs[0].args
+      const { typeStr, typeHash } = res.logs[0].args as RequestTypeRegistered['args']
 
       assert.equal(typeStr, await testUtil.libRelayRequestType())
       assert.equal(typeHash, await testUtil.libRelayRequestTypeHash())

@@ -372,6 +372,9 @@ returnValue        | ${viewRelayCallRet.returnValue}
     return this.contractInteractor.getBlock('latest')
       .then(
         block => {
+          if (block.number < this.config.coldRestartLogsFromBlock) {
+            throw new Error(`Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${block.number}`)
+          }
           if (block.number > this.lastScannedBlock) {
             return this._workerSemaphore.bind(this)(block.number)
           }
@@ -670,8 +673,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async getAllHubEventsSinceLastScan (): Promise<EventData[]> {
     const topics = [address2topic(this.managerAddress)]
+    const fromBlock = Math.max(this.lastScannedBlock + 1, this.config.coldRestartLogsFromBlock)
     const options = {
-      fromBlock: this.lastScannedBlock + 1,
+      fromBlock,
       toBlock: 'latest'
     }
     const events = await this.contractInteractor.getPastEventsForHub(topics, options)
@@ -715,7 +719,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _queryLatestActiveEvent (): Promise<EventData | undefined> {
     const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
-      fromBlock: 1
+      fromBlock: this.config.coldRestartLogsFromBlock
     })
     return getLatestEventData(events)
   }

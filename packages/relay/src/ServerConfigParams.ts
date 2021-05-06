@@ -29,6 +29,7 @@ export interface ServerConfigParams {
   checkInterval: number
   readyTimeout: number
   devMode: boolean
+  // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
   maxAcceptanceBudget: number
   alertedBlockDelay: number
@@ -64,6 +65,11 @@ export interface ServerConfigParams {
   runPaymasterReputations: boolean
 
   requiredVersionRange?: string
+
+  // when server starts, it will look for relevant Relay Hub, Stake Manager events starting at this block
+  coldRestartLogsFromBlock: number
+  // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
+  pastEventsQueryMaxPageSize: number
 }
 
 export interface ServerDependencies {
@@ -122,7 +128,9 @@ const serverDefaultConfiguration: ServerConfigParams = {
   maxGasPrice: 100e9.toString(),
 
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
-  runPaymasterReputations: true
+  runPaymasterReputations: true,
+  coldRestartLogsFromBlock: 1,
+  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER
 }
 
 const ConfigParamsTypes = {
@@ -273,6 +281,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
   const contractInteractor = new ContractInteractor({
+    maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     provider: web3provider,
     logger,
     deployment: { relayHubAddress: config.relayHubAddress }

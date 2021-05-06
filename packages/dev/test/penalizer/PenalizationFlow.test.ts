@@ -63,6 +63,7 @@ contract('PenalizationFlow', function (accounts) {
     sinon
       .stub(httpClient, 'getPingResponse')
       .returns(Promise.resolve({
+        ownerAddress: accounts[0],
         relayWorkerAddress,
         relayManagerAddress,
         relayHubAddress: env.relayHub.address,

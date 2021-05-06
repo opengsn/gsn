@@ -47,8 +47,10 @@ contract('ReputationManager', function () {
     reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
     await reputationStoreManager.clearAll()
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
+    const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
       provider: web3.currentProvider as HttpProvider,
+      maxPageSize,
       logger
     })
   })

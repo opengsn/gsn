@@ -71,6 +71,7 @@ async function run (): Promise<void> {
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
     logger,
+    maxPageSize: config.pastEventsQueryMaxPageSize,
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: { relayHubAddress: config.relayHubAddress }
   })

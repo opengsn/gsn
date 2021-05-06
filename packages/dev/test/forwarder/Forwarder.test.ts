@@ -11,6 +11,7 @@ import ethWallet from 'ethereumjs-wallet'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
+import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
 require('source-map-support').install({ errorFormatterForce: true })
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
@@ -81,7 +82,7 @@ contract('Forwarder', ([from]) => {
 
     it('should accept extension field', async () => {
       const ret = await fwd.registerRequestType('test2', 'bool extra)')
-      const { typeStr, typeHash } = ret.logs[0].args
+      const { typeStr, typeHash } = (ret.logs[0].args as RequestTypeRegistered['args'])
       assert.equal(typeStr, `test2(${GENERIC_PARAMS},bool extra)`)
       assert.equal(typeHash, keccak256(typeStr))
     })
@@ -111,7 +112,7 @@ contract('Forwarder', ([from]) => {
       const typehash = TypedDataUtils.hashType('EIP712Domain', data.types)
       const ret = await fwd.registerDomainSeparator('domainName', 'domainVer')
 
-      const { domainSeparator, domainValue } = ret.logs[0].args
+      const { domainSeparator, domainValue } = (ret.logs[0].args as DomainRegistered['args'])
       assert.equal(domainValue, web3.eth.abi.encodeParameters(['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
         [typehash, keccak256('domainName'), keccak256('domainVer'), data.domain.chainId, fwd.address]))
       assert.equal(domainSeparator, localDomainSeparator)
@@ -128,8 +129,9 @@ contract('Forwarder', ([from]) => {
     })
     it('should return true after registration', async () => {
       const res = await fwd.registerRequestType('test4', 'bool extra)')
-      assert.equal(res.logs[0].args.typeStr, fullType)
-      assert.equal(res.logs[0].args.typeHash, hash)
+      const args = res.logs[0].args as RequestTypeRegistered['args']
+      assert.equal(args.typeStr, fullType)
+      assert.equal(args.typeHash, hash)
       assert.equal(true, await fwd.typeHashes(hash))
     })
   })
@@ -265,7 +267,7 @@ contract('Forwarder', ([from]) => {
         const typeSuffix = 'ExtraData extra)ExtraData(address extraAddr)'
 
         const { logs } = await fwd.registerRequestType(typeName, typeSuffix)
-        const { typeHash } = logs[0].args
+        const { typeHash } = (logs[0].args as RequestTypeRegistered['args'])
         const sig = signTypedData(senderPrivateKey, { data: extendedData })
 
         // same calculation of domainSeparator as with base (no-extension)
@@ -322,7 +324,7 @@ contract('Forwarder', ([from]) => {
       domainSeparator = bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types))
 
       // validate registration matches local definition
-      assert.equal(domainSeparator, ret.logs[0].args.domainSeparator)
+      assert.equal(domainSeparator, (ret.logs[0].args as DomainRegistered['args']).domainSeparator)
     })
 
     it('should call function', async () => {
@@ -347,6 +349,7 @@ contract('Forwarder', ([from]) => {
       // @ts-ignore
       const logs = await recipient.getPastEvents('TestForwarderMessage')
       assert.equal(logs.length, 1, 'TestRecipient should emit')
+      // @ts-ignore - weird
       assert.equal(logs[0].args.realSender, senderAddress, 'TestRecipient should "see" real sender of meta-tx')
       assert.equal('1', (await fwd.getNonce(senderAddress)).toString(), 'execute should increment nonce')
     })

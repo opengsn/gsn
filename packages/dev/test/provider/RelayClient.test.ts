@@ -302,6 +302,7 @@ contract('RelayClient', function (accounts) {
       const { transaction, pingErrors, relayingErrors } = await relayClient.relayTransaction(optionsForceGas)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 0)
+      // @ts-ignore
       assert.equal(parseInt(transaction.gasPrice.toString('hex'), 16), parseInt(forceGasPrice))
     })
 
@@ -457,6 +458,7 @@ contract('RelayClient', function (accounts) {
       await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
+        ownerAddress: relayOwner,
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
@@ -481,9 +483,11 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return error if view call to \'relayCall()\' fails', async function () {
+      const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
         provider: web3.currentProvider as HttpProvider,
         logger,
+        maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }
       }, true)
       await badContractInteractor.init()
@@ -496,6 +500,7 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
+      // @ts-ignore
       assert.equal(error.message, `local view call to 'relayCall()' reverted: ${BadContractInteractor.message}`)
     })
 
@@ -531,9 +536,11 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should return error if transaction returned by a relay does not pass validation', async function () {
+      const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
         provider: web3.currentProvider as HttpProvider,
         logger,
+        maxPageSize,
         deployment: { relayHubAddress: relayHub.address }
       }).init()
       const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0x123')
@@ -554,6 +561,7 @@ contract('RelayClient', function (accounts) {
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
+      // @ts-ignore
       assert.equal(error.message, 'Returned transaction did not pass validation')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
@@ -587,9 +595,11 @@ contract('RelayClient', function (accounts) {
   describe('#_broadcastRawTx()', function () {
     // TODO: TBD: there has to be other behavior then that. Maybe query the transaction with the nonce somehow?
     it('should return \'wrongNonce\' if broadcast fails with nonce error', async function () {
+      const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
         provider: underlyingProvider,
         logger,
+        maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }
       }, true)
       const transaction = new Transaction('0x')

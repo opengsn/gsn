@@ -27,8 +27,8 @@ export const defaultLoggerConfiguration: LoggerConfiguration = {
 export const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
   relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
-  relayLookupWindowParts: 1,
   relayRegistrationLookupBlocks: Number.MAX_SAFE_INTEGER,
+  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -56,9 +56,13 @@ export interface LoggerConfiguration {
  */
 export interface GSNConfig {
   preferredRelays: string[]
+  // number of blocks back the relay will be considered 'active'
   relayLookupWindowBlocks: number
-  relayLookupWindowParts: number
+  // in case access to older logs is restricted, limit number of blocks the client will look for registration info
+  // must match Relay Server's "registrationBlockRate" to be able to discover relay consistently
   relayRegistrationLookupBlocks: number
+  // in case querying large block ranges is restricted, set limit and use pagination
+  pastEventsQueryMaxPageSize: number
 
   methodSuffix: string
   jsonStringifyRequest: boolean

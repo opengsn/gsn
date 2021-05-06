@@ -24,8 +24,10 @@ contract('Network Simulation for Relay Server', function (accounts) {
   before(async function () {
     logger = createClientLogger({ logLevel: 'error' })
     provider = new NetworkSimulatingProvider(web3.currentProvider as HttpProvider)
+    const maxPageSize = Number.MAX_SAFE_INTEGER
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const contractInteractor = new ContractInteractor({
+        maxPageSize,
         provider,
         logger,
         deployment

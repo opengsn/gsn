@@ -68,6 +68,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const hubConfig = await relayHub.getConfiguration()
+    // @ts-ignore
     hubDataGasCostPerByte = parseInt(hubConfig.dataGasCostPerByte)
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
@@ -156,6 +157,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         const { tx } = res
         const gasAndDataLimits = await paymaster.getGasAndDataLimits()
         const hubConfig = await relayHub.getConfiguration()
+        // @ts-ignore
         const hubOverhead = parseInt(hubConfig.gasOverhead)
         const msgData: string = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, '0x', transactionGasLimit.toNumber()).encodeABI()
         const msgDataLength = toBuffer(msgData).length

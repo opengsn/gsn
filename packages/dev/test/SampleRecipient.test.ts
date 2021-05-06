@@ -8,6 +8,7 @@ import { PrefixedHexString } from 'ethereumjs-tx'
 import { deployHub } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { TestForwarderMessage } from '@opengsn/contracts/types/truffle-contracts/TestForwarderTarget'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -34,7 +35,7 @@ contract('SampleRecipient', function (accounts) {
   it('should emit message with msgSender and realSender', async function () {
     const result = await sample.emitMessage(message)
     const log = result.logs[0]
-    const args = log.args
+    const args = log.args as TestForwarderMessage['args']
     assert.equal('SampleRecipientEmitted', log.event)
     assert.equal(args.message, message)
     assert.equal(accounts[0], args.msgSender)

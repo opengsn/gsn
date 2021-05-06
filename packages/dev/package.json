@@ -4,7 +4,7 @@
   "license": "MIT",
   "main": "dist/GsnTestEnvironment.js",
   "files": [
-    "dist/*",
+    "dist/src/*",
     "README.md"
   ],
   "publishConfig": {

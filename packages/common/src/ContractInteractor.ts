@@ -52,6 +52,7 @@ export interface ConstructorParams {
   logger: LoggerInterface
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
+  maxPageSize: number
 }
 
 export class ContractInteractor {
@@ -75,6 +76,7 @@ export class ContractInteractor {
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
+  private readonly maxPageSize: number
 
   private rawTxOptions?: TransactionOptions
   chainId!: number
@@ -84,11 +86,13 @@ export class ContractInteractor {
 
   constructor (
     {
+      maxPageSize,
       provider,
       versionManager,
       logger,
       deployment = {}
     }: ConstructorParams) {
+    this.maxPageSize = maxPageSize
     this.logger = logger
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.web3 = new Web3(provider as any)
@@ -397,16 +401,85 @@ export class ContractInteractor {
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
-    return await this._getPastEvents(this.relayHubInstance.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(this.relayHubInstance.contract, names, extraTopics, options)
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const stakeManager = await this.stakeManagerInstance
-    return await this._getPastEvents(stakeManager.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(stakeManager.contract, names, extraTopics, options)
   }
 
   async getPastEventsForPenalizer (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    return await this._getPastEvents(this.penalizerInstance.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
+  }
+
+  async getPagesForBlockWindow (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): Promise<number> {
+    // save 'getBlockNumber' roundtrip for a known max value
+    if (this.maxPageSize === Number.MAX_SAFE_INTEGER) {
+      return 1
+    }
+    if (toBlock === 'latest' || toBlock == null) {
+      toBlock = await this.getBlockNumber()
+    }
+    // noinspection SuspiciousTypeOfGuard - known false positive
+    if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
+      throw new Error('ContractInteractor:getPartsForBlockWindow: only number supported for block range when using pagination')
+    }
+    const rangeSize = toBlock - fromBlock + 1
+    const pagesForBlockWindow = Math.max(Math.ceil(rangeSize / this.maxPageSize), 1)
+    this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForBlockWindow} smaller paginated requests!`)
+    return pagesForBlockWindow
+  }
+
+  splitRange (fromBlock: BlockNumber, toBlock: BlockNumber, parts: number): Array<{ fromBlock: BlockNumber, toBlock: BlockNumber }> {
+    if (parts === 1) {
+      return [{ fromBlock, toBlock }]
+    }
+    // noinspection SuspiciousTypeOfGuard - known false positive
+    if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`ContractInteractor:splitRange: only number supported for block range when using pagination, ${fromBlock} ${toBlock} ${parts}`)
+    }
+    const rangeSize = toBlock - fromBlock + 1
+    const splitSize = Math.ceil(rangeSize / parts)
+
+    const ret: Array<{ fromBlock: number, toBlock: number }> = []
+    for (let b = fromBlock; b <= toBlock; b += splitSize) {
+      ret.push({ fromBlock: b, toBlock: Math.min(toBlock, b + splitSize - 1) })
+    }
+    return ret
+  }
+
+  /**
+   * Splits requested range into pages to avoid fetching too many blocks at once.
+   * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
+   */
+  async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    let pagesCurrent: number = await this.getPagesForBlockWindow(options.fromBlock, options.toBlock)
+
+    let relayEventParts: any[]
+    while (true) {
+      const rangeParts = this.splitRange(options.fromBlock ?? 'genesis', options.toBlock ?? 'latest', pagesCurrent)
+      try {
+        // eslint-disable-next-line
+        const getPastEventsPromises = rangeParts.map(({ fromBlock, toBlock }): Promise<any> =>
+          this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock })))
+        relayEventParts = await Promise.all(getPastEventsPromises)
+        break
+      } catch (e) {
+        // dynamically adjust query size fo some RPC providers
+        if (e.toString().match(/query returned more than/) != null) {
+          this.logger.warn('Received "query returned more than X events" error from server, will try to split the request into smaller chunks')
+          if (pagesCurrent > 16) {
+            throw new Error(`Too many events after splitting by ${pagesCurrent}`)
+          }
+          pagesCurrent *= 4
+        } else {
+          throw e
+        }
+      }
+    }
+    return relayEventParts.flat()
   }
 
   async _getPastEvents (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {

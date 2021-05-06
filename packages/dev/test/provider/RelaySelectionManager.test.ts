@@ -9,7 +9,7 @@ import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { RelaySelectionManager } from '@opengsn/provider/dist/RelaySelectionManager'
 import { EmptyFilter, KnownRelaysManager } from '@opengsn/provider/dist/KnownRelaysManager'
 import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
-import { PartialRelayInfo } from '@opengsn/common/dist/types/RelayInfo'
+import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { PingFilter } from '@opengsn/common/dist/types/Aliases'
 import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { configureGSN, deployHub } from '../TestUtils'
@@ -39,7 +39,8 @@ contract('RelaySelectionManager', function (accounts) {
     baseRelayFee: '1',
     pctRelayFee: '1'
   }
-  const pingResponse = {
+  const pingResponse: PingResponse = {
+    ownerAddress: '',
     relayWorkerAddress: '',
     relayManagerAddress: '',
     relayHubAddress: '',
@@ -67,8 +68,10 @@ contract('RelaySelectionManager', function (accounts) {
     let stubGetNextSlice: SinonStub
 
     before(async function () {
+      const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = await new ContractInteractor({
         provider: web3.currentProvider as HttpProvider,
+        maxPageSize,
         logger
       }).init()
       httpClient = new HttpClient(new HttpWrapper(), this.logger)
@@ -139,7 +142,8 @@ contract('RelaySelectionManager', function (accounts) {
           relayManagerAddress: relayManager,
           relayHubAddress: relayManager,
           minGasPrice: '1',
-          maxRelayExposure: 1e10.toString(),
+          ownerAddress: accounts[0],
+          maxAcceptanceBudget: 1e10.toString(),
           ready: true,
           version: ''
         }
@@ -154,7 +158,7 @@ contract('RelaySelectionManager', function (accounts) {
           errors
         }))
         stubGetRelaysSorted.returns(Promise.resolve([[urlInfo]]))
-        const nextRelay = await relaySelectionManager.selectNextRelay()
+        const nextRelay: RelayInfo = (await relaySelectionManager.selectNextRelay())!
         assert.equal(nextRelay.relayInfo.relayUrl, preferredRelayUrl)
         assert.equal(nextRelay.relayInfo.relayManager, relayManager)
         assert.equal(nextRelay.relayInfo.baseRelayFee, '666')
