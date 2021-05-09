@@ -125,7 +125,7 @@ context('#ServerConfigParams', () => {
 
     it('should fail on invalid relayhub address', async () => {
       const config = { relayHubAddress: '123' }
-      await expectRevert(resolveServerConfig(config, provider), 'invalid param: "relayHubAddress" is not a valid address: 123')
+      await expectRevert(resolveServerConfig(config, provider), 'Provided address "123" is invalid, the capitalization checksum test failed, or its an indrect IBAN address which can\'t be converted')
     })
 
     it('should fail on no-contract relayhub address', async () => {

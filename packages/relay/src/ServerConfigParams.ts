@@ -284,8 +284,12 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     provider: web3provider,
     logger,
-    deployment: { relayHubAddress: config.relayHubAddress }
+    deployment: {
+      relayHubAddress: config.relayHubAddress,
+      versionRegistryAddress: config.versionRegistryAddress
+    }
   })
+  await contractInteractor._initializeContracts()
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')

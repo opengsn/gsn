@@ -145,6 +145,7 @@ export class ContractInteractor {
     this.IForwarderContract.setProvider(this.provider, undefined)
     this.IPenalizer.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
+    this.IVersionRegistry.setProvider(this.provider, undefined)
 
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
