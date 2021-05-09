@@ -442,12 +442,12 @@ export class ContractInteractor {
     }
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
-      throw new Error('ContractInteractor:getPartsForBlockWindow: only number supported for block range when using pagination')
+      throw new Error('ContractInteractor:getLogsPagesForRange: only number supported for block range when using pagination')
     }
     const rangeSize = toBlock - fromBlock + 1
-    const pagesForBlockWindow = Math.max(Math.ceil(rangeSize / this.maxPageSize), 1)
-    this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForBlockWindow} smaller paginated requests!`)
-    return pagesForBlockWindow
+    const pagesForRange = Math.max(Math.ceil(rangeSize / this.maxPageSize), 1)
+    this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForRange} smaller paginated requests!`)
+    return pagesForRange
   }
 
   splitRange (fromBlock: BlockNumber, toBlock: BlockNumber, parts: number): Array<{ fromBlock: BlockNumber, toBlock: BlockNumber }> {
