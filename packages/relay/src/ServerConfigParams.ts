@@ -296,7 +296,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
       error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }
 
-    const versionRegistry = new VersionRegistry(web3provider, config.versionRegistryAddress)
+    const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
     const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
     contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
 
@@ -309,6 +309,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
   }
 
+  if (config.relayHubAddress == null) {
+    error('relayHubAddress is still null')
+  }
   if (!await contractInteractor.isContractDeployed(config.relayHubAddress)) {
     error(`RelayHub: no contract at address ${config.relayHubAddress}`)
   }

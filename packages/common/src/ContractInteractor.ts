@@ -18,6 +18,7 @@ import forwarderAbi from './interfaces/IForwarder.json'
 import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
 import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
+import versionRegistryAbi from './interfaces/IVersionRegistry.json'
 
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
@@ -30,7 +31,8 @@ import {
   IPenalizerInstance,
   IRelayHubInstance,
   IRelayRecipientInstance,
-  IStakeManagerInstance
+  IStakeManagerInstance,
+  IVersionRegistryInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
@@ -45,6 +47,8 @@ import {
   StakeInfo,
   ActiveManagerEvents
 } from './types/GSNContractsDataTypes'
+import { string32 } from './VersionRegistry'
+
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -62,12 +66,14 @@ export class ContractInteractor {
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IPenalizer: Contract<IPenalizerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
+  private readonly IVersionRegistry: Contract<IVersionRegistryInstance>
 
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
+  versionRegistry!: IVersionRegistryInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
   private readonly relayCallMethod: any
 
@@ -127,6 +133,11 @@ export class ContractInteractor {
     this.IRelayRecipient = TruffleContract({
       contractName: 'IRelayRecipient',
       abi: gsnRecipientAbi
+    })
+    // @ts-ignore
+    this.IVersionRegistry = TruffleContract({
+      contractName: 'IVersionRegistry',
+      abi: versionRegistryAbi
     })
     this.IStakeManager.setProvider(this.provider, undefined)
     this.IRelayHubContract.setProvider(this.provider, undefined)
@@ -230,6 +241,9 @@ export class ContractInteractor {
     if (this.deployment.penalizerAddress != null) {
       this.penalizerInstance = await this._createPenalizer(this.deployment.penalizerAddress)
     }
+    if (this.deployment.versionRegistryAddress != null) {
+      this.versionRegistry = await this._createVersionRegistry(this.deployment.versionRegistryAddress)
+    }
   }
 
   // must use these options when creating Transaction object
@@ -266,6 +280,10 @@ export class ContractInteractor {
 
   async _createPenalizer (address: Address): Promise<IPenalizerInstance> {
     return await this.IPenalizer.at(address)
+  }
+
+  async _createVersionRegistry (address: Address): Promise<IVersionRegistryInstance> {
+    return await this.IVersionRegistry.at(address)
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {
@@ -413,13 +431,14 @@ export class ContractInteractor {
     return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
   }
 
-  async getPagesForBlockWindow (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): Promise<number> {
+  async getPastEventsForVersionRegistry (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    return await this._getPastEventsPaginated(this.versionRegistry.contract, names, extraTopics, options)
+  }
+
+  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): number {
     // save 'getBlockNumber' roundtrip for a known max value
     if (this.maxPageSize === Number.MAX_SAFE_INTEGER) {
       return 1
-    }
-    if (toBlock === 'latest' || toBlock == null) {
-      toBlock = await this.getBlockNumber()
     }
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
@@ -455,11 +474,19 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    let pagesCurrent: number = await this.getPagesForBlockWindow(options.fromBlock, options.toBlock)
+    if (options.toBlock == null) {
+      // this is to avoid '!' for TypeScript
+      options.toBlock = 'latest'
+    }
+    // save 'getBlockNumber' roundtrip for a known max value (must match check in getLogsPagesForRange)
+    if (this.maxPageSize !== Number.MAX_SAFE_INTEGER && options.toBlock === 'latest') {
+      options.toBlock = await this.getBlockNumber()
+    }
+    let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
 
     let relayEventParts: any[]
     while (true) {
-      const rangeParts = this.splitRange(options.fromBlock ?? 'genesis', options.toBlock ?? 'latest', pagesCurrent)
+      const rangeParts = await this.splitRange(options.fromBlock ?? 1, options.toBlock, pagesCurrent)
       try {
         // eslint-disable-next-line
         const getPastEventsPromises = rangeParts.map(({ fromBlock, toBlock }): Promise<any> =>
@@ -710,6 +737,16 @@ export class ContractInteractor {
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
     return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
+  }
+
+  /* Version Registry methods */
+
+  async addVersionInVersionRegistry (id: string, version: string, value: string, transactionDetails: TransactionDetails): Promise<void> {
+    await this.versionRegistry.addVersion(string32(id), string32(version), value, transactionDetails)
+  }
+
+  async cancelVersionInVersionRegistry (id: string, version: string, cancelReason: string, transactionDetails: TransactionDetails): Promise<void> {
+    await this.versionRegistry.cancelVersion(string32(id), string32(version), cancelReason, transactionDetails)
   }
 }
 
