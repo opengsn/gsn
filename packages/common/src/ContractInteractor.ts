@@ -47,7 +47,6 @@ import {
   StakeInfo,
   ActiveManagerEvents
 } from './types/GSNContractsDataTypes'
-import { string32 } from './VersionRegistry'
 
 import TransactionDetails = Truffle.TransactionDetails
 
@@ -743,11 +742,11 @@ export class ContractInteractor {
   /* Version Registry methods */
 
   async addVersionInVersionRegistry (id: string, version: string, value: string, transactionDetails: TransactionDetails): Promise<void> {
-    await this.versionRegistry.addVersion(string32(id), string32(version), value, transactionDetails)
+    await this.versionRegistry.addVersion(id, version, value, transactionDetails)
   }
 
   async cancelVersionInVersionRegistry (id: string, version: string, cancelReason: string, transactionDetails: TransactionDetails): Promise<void> {
-    await this.versionRegistry.cancelVersion(string32(id), string32(version), cancelReason, transactionDetails)
+    await this.versionRegistry.cancelVersion(id, version, cancelReason, transactionDetails)
   }
 }
 
