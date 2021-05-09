@@ -31,6 +31,7 @@ contract('VersionRegistry', ([account]) => {
       versionRegistryAddress: registryContract.address
     }
     contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+    await contractInteractor.init()
     jsRegistry = new VersionRegistry(1, contractInteractor)
     await jsRegistry.addVersion('id', 'ver', 'value', { from: account })
     await jsRegistry.addVersion('another', 'ver', 'anothervalue', { from: account })
