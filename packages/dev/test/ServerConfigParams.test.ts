@@ -3,7 +3,8 @@ import {
   filterMembers,
   filterType,
   parseServerConfig,
-  resolveServerConfig
+  resolveServerConfig,
+  serverDefaultConfiguration
 } from '@opengsn/relay/dist/ServerConfigParams'
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
@@ -115,6 +116,15 @@ context('#ServerConfigParams', () => {
       assert.deepEqual(
         parseServerConfig(['--config', tmpConfigfile, '--port', '111'], { baseRelayFee: 222 }),
         { baseRelayFee: 222, config: tmpConfigfile, pctRelayFee: 123, port: 111 })
+    })
+
+    it('should accept all known params in config file', async function () {
+      fs.writeFileSync(tmpConfigfile, JSON.stringify(serverDefaultConfiguration))
+      try {
+        parseServerConfig(['--config', tmpConfigfile], {})
+      } catch (e) {
+        assert.fail(e)
+      }
     })
   })
   context('#resolveServerConfig', () => {

@@ -24,15 +24,15 @@ services:
     restart: always
     ports: [ '8080:80' ] #bypass https-portal
     # add line for each relay
-    command: 
-      - gsn1 
+    command:
+      - gsn1
 #ADD-SERVER: add new server name above this line
 
 ####-BEGIN-TEMPLATE. duplicate for more instances. update "gsn1" for unique name
 #### make sure to add instance name to the router command above
 
   gsn1:
-    image: opengsn/jsrelay:2.2.0
+    image: opengsn/jsrelay:2.2.0-paginated
     restart: on-failure
 
     # $ROOT - mapped by calling script to data folder

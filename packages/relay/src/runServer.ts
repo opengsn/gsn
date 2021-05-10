@@ -36,15 +36,37 @@ async function run (): Promise<void> {
   let runPaymasterReputations: boolean
   console.log('Starting GSN Relay Server process...\n')
   try {
+    console.log('Before parsing...\n')
     const conf = await parseServerConfig(process.argv.slice(2), process.env)
     if (conf.ethereumNodeUrl == null) {
       error('missing ethereumNodeUrl')
     }
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
+    // TEMP: logging provider..
+    /*
+        const orig = web3provider
+        web3provider = {
+          send (r: any, cb: any) {
+            const now = Date.now()
+            console.log('>>> ', r, new Error('from here').stack)
+            // eslint-disable-next-line
+            if (r && r.params && r.params[0] && r.params[0].fromBlock == 1) {
+              console.log('=== big wait!')
+            }
+            orig.send(r, (err, res) => {
+              console.log('<<<', Date.now() - now, err, res)
+              cb(err, res)
+            })
+          }
+        }
+    */
+    console.log('Before resolve server config...\n')
     config = await resolveServerConfig(conf, web3provider) as ServerConfigParams
+    console.log('after resolve server config...\n')
     runPenalizer = config.runPenalizer
     reputationManagerConfig = resolveReputationManagerConfig(conf)
     runPaymasterReputations = config.runPaymasterReputations
+    console.log('after resolve rep mgr config...\n')
   } catch (e) {
     error(e.message)
   }
@@ -63,11 +85,13 @@ async function run (): Promise<void> {
       fs.unlinkSync(`${workdir}/${TX_PAGES_FILENAME}`)
     }
   }
-
+  console.log('Before server logger...\n')
   const logger = createServerLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
+  console.log('After server logger...\n')
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir }, logger)
+  console.log('Before interactor...\n')
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
     logger,
@@ -75,14 +99,17 @@ async function run (): Promise<void> {
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: { relayHubAddress: config.relayHubAddress }
   })
+  console.log('after interactor constructor...\n')
   await contractInteractor.init()
+  console.log('after interactor init...\n')
   const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
-
+  console.log('after gasPriceFetcher...\n')
   let reputationManager: ReputationManager | undefined
   if (runPaymasterReputations) {
     const reputationStoreManager = new ReputationStoreManager({ workdir, inMemory: true }, logger)
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
   }
+  console.log('After rep mgr constructor...\n')
 
   const dependencies: ServerDependencies = {
     logger,
@@ -107,10 +134,14 @@ async function run (): Promise<void> {
       txByNonceService
     }
     penalizerService = new PenalizerService(penalizerParams, logger, config)
+    console.log('after penalizer constructor...\n')
     await penalizerService.init()
   }
+  console.log('Before relay server constructor...\n')
   const relay = new RelayServer(config, transactionManager, dependencies)
+  console.log('After relay server constructor...\n')
   await relay.init()
+  console.log('After relay server init...\n')
   const httpServer = new HttpServer(config.port, logger, relay, penalizerService)
   httpServer.start()
 }

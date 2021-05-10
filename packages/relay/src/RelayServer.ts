@@ -53,7 +53,7 @@ const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
-  lastScannedBlock = 0
+  lastScannedBlock: number
   lastRefreshBlock = 0
   ready = false
   lastSuccessfulRounds = Number.MAX_SAFE_INTEGER
@@ -87,6 +87,7 @@ export class RelayServer extends EventEmitter {
   constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
+    this.lastScannedBlock = config.coldRestartLogsFromBlock ?? 0
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
@@ -461,16 +462,20 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   async init (): Promise<void> {
+    this.logger.info('server init start')
     if (this.initialized) {
       throw new Error('_init was already called')
     }
 
     await this.transactionManager._init()
+    this.logger.info('After tx mgr init')
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
+    this.logger.info('After initTrustedPM')
     this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
     const code = await this.contractInteractor.getCode(relayHubAddress)
+    this.logger.info('After getCode')
     if (code.length < 10) {
       this.fatal(`No RelayHub deployed at address ${relayHubAddress}.`)
     }
@@ -673,9 +678,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async getAllHubEventsSinceLastScan (): Promise<EventData[]> {
     const topics = [address2topic(this.managerAddress)]
-    const fromBlock = Math.max(this.lastScannedBlock + 1, this.config.coldRestartLogsFromBlock)
     const options = {
-      fromBlock,
+      fromBlock: this.lastScannedBlock + 1,
       toBlock: 'latest'
     }
     const events = await this.contractInteractor.getPastEventsForHub(topics, options)

@@ -239,7 +239,7 @@ export class RegistrationManager {
     const topics = address2topic(this.managerAddress)
     const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
-        fromBlock: 1
+        fromBlock: this.config.coldRestartLogsFromBlock
       },
       [RelayServerRegistered])
     return getLatestEventData(registerEvents)
@@ -461,7 +461,7 @@ export class RegistrationManager {
   async _queryLatestWorkerAddedEvent (): Promise<EventData | undefined> {
     const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
       {
-        fromBlock: 1
+        fromBlock: this.config.coldRestartLogsFromBlock
       },
       [RelayWorkersAdded])
     return getLatestEventData(workersAddedEvents)
