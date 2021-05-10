@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/contracts",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "version": "2.2.0-alpha.1",
   "main": "types/truffle-contracts/index.d.ts",
   "scripts": {
