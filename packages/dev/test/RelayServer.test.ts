@@ -535,32 +535,66 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('server keepalive re-registration', function () {
     const registrationBlockRate = 100
+    const activityBlockRate = registrationBlockRate / 2
     const refreshStateTimeoutBlocks = 1
     let relayServer: RelayServer
+    let latestBlockNumber: number
+    let receipts: string[]
 
-    before(async function () {
+    async function checkRegistration (shouldRegister: boolean): Promise<void> {
+      latestBlockNumber = await env.web3.eth.getBlockNumber()
+      receipts = await relayServer._worker(latestBlockNumber)
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
+        shouldRegister)
+      if (shouldRegister) {
+        await assertRelayAdded(receipts, relayServer, false)
+        latestBlockNumber = await env.web3.eth.getBlockNumber()
+        receipts = await relayServer._worker(latestBlockNumber)
+        expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
+          false)
+      }
+      assert.equal(receipts.length, 0, 'should not re-register if already registered')
+    }
+
+    beforeEach(async function () {
+      id = (await snapshot()).result
       await env.newServerInstance({
         registrationBlockRate,
+        activityBlockRate,
         refreshStateTimeoutBlocks
       })
       relayServer = env.relayServer
       sinon.spy(relayServer.registrationManager, 'handlePastEvents')
+
+      await checkRegistration(false)
+      await evmMineMany(registrationBlockRate)
+      await checkRegistration(true)
     })
 
-    it('should re-register server only if registrationBlockRate passed from any tx', async function () {
-      let latestBlock = await env.web3.eth.getBlock('latest')
-      let receipts = await relayServer._worker(latestBlock.number)
-      const receipts2 = await relayServer._worker(latestBlock.number + 1)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
-        false)
-      assert.equal(receipts.length, 0, 'should not re-register if already registered')
-      assert.equal(receipts2.length, 0, 'should not re-register if already registered')
+    afterEach(async function () {
+      await revert(id)
+    })
+
+    it('should re-register server if registrationBlockRate passed from register tx regardless of other txs', async function () {
+      // When no other tx happened
       await evmMineMany(registrationBlockRate)
-      latestBlock = await env.web3.eth.getBlock('latest')
-      receipts = await relayServer._worker(latestBlock.number)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
-        true)
-      await assertRelayAdded(receipts, relayServer, false)
+      await checkRegistration(true)
+      // When relayed call txs were sent inside the registrationBlockRate window, but no register tx,
+      // server should still re-register
+      for (let i = 1; i < registrationBlockRate - 1; i++) {
+        const req = await env.createRelayHttpRequest()
+        await relayServer.createRelayTransaction(req)
+        await checkRegistration(false)
+      }
+      await evmMine()
+      await checkRegistration(true)
+    })
+
+    it('should re-register server if activityBlockRate passed from any tx', async function () {
+      await evmMineMany(activityBlockRate - 1)
+      await checkRegistration(false)
+      await evmMine()
+      await checkRegistration(true)
     })
   })
 

@@ -121,15 +121,32 @@ export class RegistrationManager {
 
   async init (): Promise<void> {
     if (this.lastWorkerAddedTransaction == null) {
-      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
+      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent(this.config.coldRestartLogsFromBlock)
     }
 
     if (this.lastMinedRegisterTransaction == null) {
-      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
+      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent(this.config.coldRestartLogsFromBlock)
     }
     await this.refreshBalance()
     await this.refreshStake()
     this.isInitialized = true
+  }
+
+  async updateLatestRegistrationTxsBlockNumber (hubEventsSinceLastScan: EventData[]): Promise<void> {
+    for (const eventData of hubEventsSinceLastScan) {
+      switch (eventData.event) {
+        case RelayServerRegistered:
+          if (this.lastMinedRegisterTransaction == null || isSecondEventLater(this.lastMinedRegisterTransaction, eventData)) {
+            this.lastMinedRegisterTransaction = eventData
+          }
+          break
+        case RelayWorkersAdded:
+          if (this.lastWorkerAddedTransaction == null || isSecondEventLater(this.lastWorkerAddedTransaction, eventData)) {
+            this.lastWorkerAddedTransaction = eventData
+          }
+          break
+      }
+    }
   }
 
   async handlePastEvents (hubEventsSinceLastScan: EventData[], lastScannedBlock: number, currentBlock: number, forceRegistration: boolean): Promise<PrefixedHexString[]> {
@@ -193,20 +210,7 @@ export class RegistrationManager {
       }
     }
 
-    for (const eventData of hubEventsSinceLastScan) {
-      switch (eventData.event) {
-        case RelayServerRegistered:
-          if (this.lastMinedRegisterTransaction == null || isSecondEventLater(this.lastMinedRegisterTransaction, eventData)) {
-            this.lastMinedRegisterTransaction = eventData
-          }
-          break
-        case RelayWorkersAdded:
-          if (this.lastWorkerAddedTransaction == null || isSecondEventLater(this.lastWorkerAddedTransaction, eventData)) {
-            this.lastWorkerAddedTransaction = eventData
-          }
-          break
-      }
-    }
+    await this.updateLatestRegistrationTxsBlockNumber(hubEventsSinceLastScan)
 
     // handle HubUnauthorized only after the due time
     for (const eventData of this._extractDuePendingEvents(currentBlock)) {
@@ -235,11 +239,11 @@ export class RegistrationManager {
     return isRegistrationValid(this.lastMinedRegisterTransaction, this.config, this.managerAddress)
   }
 
-  async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
+  async _queryLatestRegistrationEvent (fromBlock: number): Promise<EventData | undefined> {
     const topics = address2topic(this.managerAddress)
     const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
-        fromBlock: this.config.coldRestartLogsFromBlock
+        fromBlock
       },
       [RelayServerRegistered])
     return getLatestEventData(registerEvents)
@@ -458,10 +462,10 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  async _queryLatestWorkerAddedEvent (): Promise<EventData | undefined> {
+  async _queryLatestWorkerAddedEvent (fromBlock: number): Promise<EventData | undefined> {
     const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
       {
-        fromBlock: this.config.coldRestartLogsFromBlock
+        fromBlock
       },
       [RelayWorkersAdded])
     return getLatestEventData(workersAddedEvents)

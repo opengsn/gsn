@@ -31,6 +31,8 @@ export interface ServerConfigParams {
   devMode: boolean
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
+  // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
+  activityBlockRate: number
   maxAcceptanceBudget: number
   alertedBlockDelay: number
   minAlertedDelayMS: number
@@ -97,6 +99,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
   registrationBlockRate: 0,
+  activityBlockRate: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
@@ -161,6 +164,7 @@ const ConfigParamsTypes = {
   hostOverride: 'string',
   userId: 'string',
   registrationBlockRate: 'number',
+  activityBlockRate: 'number',
   maxAcceptanceBudget: 'number',
   alertedBlockDelay: 'number',
 

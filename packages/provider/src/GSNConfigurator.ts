@@ -57,6 +57,7 @@ export interface LoggerConfiguration {
 export interface GSNConfig {
   preferredRelays: string[]
   // number of blocks back the relay will be considered 'active'
+  // must match Relay Server's "activityBlockRate" to be able to discover relay consistently
   relayLookupWindowBlocks: number
   // in case access to older logs is restricted, limit number of blocks the client will look for registration info
   // must match Relay Server's "registrationBlockRate" to be able to discover relay consistently
