@@ -299,7 +299,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     }
   })
   await contractInteractor._initializeContracts()
-    console.log('after ContractInteractor')
+  console.log('after ContractInteractor')
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')

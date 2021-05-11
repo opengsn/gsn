@@ -7,7 +7,7 @@ import { toBN, toHex } from 'web3-utils'
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { RelayServerRegistered, TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
+import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
@@ -19,7 +19,8 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import {
-  address2topic, calculateTransactionMaxPossibleGas,
+  address2topic,
+  calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
   PaymasterGasAndDataLimits,
@@ -34,7 +35,6 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { toBuffer } from 'ethereumjs-util'
-
 import Timeout = NodeJS.Timeout
 
 /**
