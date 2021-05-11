@@ -121,18 +121,18 @@ export class RegistrationManager {
 
   async init (): Promise<void> {
     if (this.lastWorkerAddedTransaction == null) {
-      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent(this.config.coldRestartLogsFromBlock)
+      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
     }
 
     if (this.lastMinedRegisterTransaction == null) {
-      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent(this.config.coldRestartLogsFromBlock)
+      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
     await this.refreshBalance()
     await this.refreshStake()
     this.isInitialized = true
   }
 
-  async updateLatestRegistrationTxsBlockNumber (hubEventsSinceLastScan: EventData[]): Promise<void> {
+  async updateLatestRegistrationTxs (hubEventsSinceLastScan: EventData[]): Promise<void> {
     for (const eventData of hubEventsSinceLastScan) {
       switch (eventData.event) {
         case RelayServerRegistered:
@@ -210,7 +210,7 @@ export class RegistrationManager {
       }
     }
 
-    await this.updateLatestRegistrationTxsBlockNumber(hubEventsSinceLastScan)
+    await this.updateLatestRegistrationTxs(hubEventsSinceLastScan)
 
     // handle HubUnauthorized only after the due time
     for (const eventData of this._extractDuePendingEvents(currentBlock)) {
@@ -239,11 +239,11 @@ export class RegistrationManager {
     return isRegistrationValid(this.lastMinedRegisterTransaction, this.config, this.managerAddress)
   }
 
-  async _queryLatestRegistrationEvent (fromBlock: number): Promise<EventData | undefined> {
+  async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
     const topics = address2topic(this.managerAddress)
     const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
-        fromBlock
+        fromBlock: this.config.coldRestartLogsFromBlock
       },
       [RelayServerRegistered])
     return getLatestEventData(registerEvents)
@@ -462,10 +462,10 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  async _queryLatestWorkerAddedEvent (fromBlock: number): Promise<EventData | undefined> {
+  async _queryLatestWorkerAddedEvent (): Promise<EventData | undefined> {
     const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
       {
-        fromBlock
+        fromBlock: this.config.coldRestartLogsFromBlock
       },
       [RelayWorkersAdded])
     return getLatestEventData(workersAddedEvents)

@@ -463,20 +463,17 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   async init (): Promise<void> {
-    this.logger.info('server init start')
+    this.logger.debug('server init start')
     if (this.initialized) {
       throw new Error('_init was already called')
     }
 
     await this.transactionManager._init()
-    this.logger.info('After tx mgr init')
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
-    this.logger.info('After initTrustedPM')
     this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
     const code = await this.contractInteractor.getCode(relayHubAddress)
-    this.logger.info('After getCode')
     if (code.length < 10) {
       this.fatal(`No RelayHub deployed at address ${relayHubAddress}.`)
     }
@@ -605,7 +602,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
-    await this.registrationManager.updateLatestRegistrationTxsBlockNumber(hubEventsSinceLastScan)
+    await this.registrationManager.updateLatestRegistrationTxs(hubEventsSinceLastScan)
     const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber,

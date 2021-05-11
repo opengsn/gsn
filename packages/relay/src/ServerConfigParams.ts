@@ -286,9 +286,7 @@ export function parseServerConfig (args: string[], env: any): any {
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
-  console.log('before createServerLogger')
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
-  console.log('after createServerLogger')
   const contractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     provider: web3provider,
@@ -299,7 +297,6 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     }
   })
   await contractInteractor._initializeContracts()
-  console.log('after ContractInteractor')
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
@@ -309,13 +306,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
       error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }
-    console.log('after isContractDeployed')
     const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
-    console.log('after VersionRegistry')
     const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
-    console.log('after getVersion')
     contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
-    console.log('after validateAddress')
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value
   } else {

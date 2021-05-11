@@ -150,7 +150,7 @@ export class ContractInteractor {
   }
 
   async init (): Promise<ContractInteractor> {
-    this.logger.info('interactor init start')
+    this.logger.debug('interactor init start')
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
     }
@@ -438,7 +438,6 @@ export class ContractInteractor {
 
   getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): number {
     // save 'getBlockNumber' roundtrip for a known max value
-    this.logger.info('getPagesForBlockWindow start')
     if (this.maxPageSize === Number.MAX_SAFE_INTEGER) {
       return 1
     }
@@ -476,7 +475,7 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    this.logger.info(`_getPastEventsPaginated start, fromBlock: ${options.fromBlock?.toString()}, toBlock: ${options.toBlock?.toString()}`)
+    this.logger.debug(`_getPastEventsPaginated start, fromBlock: ${options.fromBlock?.toString()}, toBlock: ${options.toBlock?.toString()}`)
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -486,20 +485,15 @@ export class ContractInteractor {
       options.toBlock = await this.getBlockNumber()
     }
     let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
-    this.logger.info('_getPastEventsPaginated after getLogsPagesForRange')
     const relayEventParts: EventData[][] = []
     while (true) {
       const rangeParts = await this.splitRange(options.fromBlock ?? 1, options.toBlock, pagesCurrent)
-      this.logger.info('_getPastEventsPaginated after splitRange')
       try {
         // eslint-disable-next-line
         for (const { fromBlock, toBlock } of rangeParts) {
-          relayEventParts.push(await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock })))
+          const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
+          relayEventParts.push(pastEvents)
         }
-        // const getPastEventsPromises = rangeParts.map(({ fromBlock, toBlock }): Promise<any> =>
-        //   this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock })))
-        // relayEventParts = await Promise.all(getPastEventsPromises)
-        this.logger.info('_getPastEventsPaginated after _getPastEvents')
         break
       } catch (e) {
         // dynamically adjust query size fo some RPC providers
@@ -514,7 +508,6 @@ export class ContractInteractor {
         }
       }
     }
-    this.logger.info('_getPastEventsPaginated end')
     return relayEventParts.flat()
   }
 
