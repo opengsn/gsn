@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/dev",
-  "version": "2.2.0-alpha.1",
+  "version": "2.2.0",
   "license": "GPL-3.0-only",
   "main": "dist/GsnTestEnvironment.js",
   "files": [
@@ -20,10 +20,10 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "dependencies": {
-    "@opengsn/cli": "^2.2.0-alpha.1",
-    "@opengsn/contracts": "^2.2.0-alpha.1",
-    "@opengsn/provider": "^2.2.0-alpha.1",
-    "@opengsn/relay": "^2.2.0-alpha.1"
+    "@opengsn/cli": "^2.2.0",
+    "@opengsn/contracts": "^2.2.0",
+    "@opengsn/provider": "^2.2.0",
+    "@opengsn/relay": "^2.2.0"
   },
   "devDependencies": {
     "@ethereumjs/tx": "^3.1.1",
