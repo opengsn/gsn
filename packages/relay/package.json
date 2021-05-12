@@ -1,7 +1,7 @@
 {
   "name": "@opengsn/relay",
   "version": "2.2.0-alpha.1",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "main": "dist/runServer.js",
   "files": [
     "dist/*",

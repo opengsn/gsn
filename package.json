@@ -13,7 +13,6 @@
   "version": "2.2.0",
   "description": "Open Gas Stations Network",
   "name": "@opengsn/gsn",
-  "license": "MIT",
   "engines": {
     "node": ">=11.0.0"
   },
