@@ -376,11 +376,14 @@ export class ContractInteractor {
   // decode revert from rpc response.
   //
   _decodeRevertFromResponse (err?: { message?: string, data?: any }, res?: { error?: any, result?: string }): string | null {
-    const matchGanache = res?.error?.message?.match(/: revert (.*)/)
+    let matchGanache = err?.data?.message?.toString().match(/: revert(?:ed)? (.*)/)
+    if (matchGanache == null) {
+      matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
+    }
     if (matchGanache != null) {
       return matchGanache[1]
     }
-    const m = err?.data?.match(/(0x08c379a0\S*)/)
+    const m = err?.data?.toString().match(/(0x08c379a0\S*)/)
     if (m != null) {
       return decodeRevertReason(m[1])
     }
