@@ -150,6 +150,7 @@ export class ContractInteractor {
   }
 
   async init (): Promise<ContractInteractor> {
+    this.logger.debug('interactor init start')
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
     }
@@ -474,6 +475,7 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    this.logger.debug(`_getPastEventsPaginated start, fromBlock: ${options.fromBlock?.toString()}, toBlock: ${options.toBlock?.toString()}`)
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -483,15 +485,15 @@ export class ContractInteractor {
       options.toBlock = await this.getBlockNumber()
     }
     let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
-
-    let relayEventParts: any[]
+    const relayEventParts: EventData[][] = []
     while (true) {
       const rangeParts = await this.splitRange(options.fromBlock ?? 1, options.toBlock, pagesCurrent)
       try {
         // eslint-disable-next-line
-        const getPastEventsPromises = rangeParts.map(({ fromBlock, toBlock }): Promise<any> =>
-          this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock })))
-        relayEventParts = await Promise.all(getPastEventsPromises)
+        for (const { fromBlock, toBlock } of rangeParts) {
+          const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
+          relayEventParts.push(pastEvents)
+        }
         break
       } catch (e) {
         // dynamically adjust query size fo some RPC providers

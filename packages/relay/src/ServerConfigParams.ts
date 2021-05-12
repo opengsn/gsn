@@ -31,6 +31,8 @@ export interface ServerConfigParams {
   devMode: boolean
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
+  // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
+  activityBlockRate: number
   maxAcceptanceBudget: number
   alertedBlockDelay: number
   minAlertedDelayMS: number
@@ -83,7 +85,7 @@ export interface ServerDependencies {
   logger: LoggerInterface
 }
 
-const serverDefaultConfiguration: ServerConfigParams = {
+export const serverDefaultConfiguration: ServerConfigParams = {
   ownerAddress: constants.ZERO_ADDRESS,
   alertedBlockDelay: 0,
   minAlertedDelayMS: 0,
@@ -97,6 +99,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
   registrationBlockRate: 0,
+  activityBlockRate: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
@@ -161,6 +164,7 @@ const ConfigParamsTypes = {
   hostOverride: 'string',
   userId: 'string',
   registrationBlockRate: 'number',
+  activityBlockRate: 'number',
   maxAcceptanceBudget: 'number',
   alertedBlockDelay: 'number',
 
@@ -193,7 +197,8 @@ const ConfigParamsTypes = {
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
-
+  coldRestartLogsFromBlock: 'number',
+  pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number'
 } as any
 
@@ -266,11 +271,13 @@ export function parseServerConfig (args: string[], env: any): any {
   delete argv._
   let configFile = {}
   const configFileName = argv.config as string
+  console.log('Using config file', configFileName)
   if (configFileName != null) {
     if (!fs.existsSync(configFileName)) {
       error(`unable to read config file "${configFileName}"`)
     }
     configFile = JSON.parse(fs.readFileSync(configFileName, 'utf8'))
+    console.log('Initial configuration:', configFile)
   }
   const config = { ...configFile, ...argv }
   return entriesToObj(Object.entries(config).map(explicitType))
@@ -299,11 +306,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
       error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }
-
     const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
     const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
     contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
-
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value
   } else {
