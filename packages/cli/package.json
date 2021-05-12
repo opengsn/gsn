@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/cli",
-  "version": "2.2.0-alpha.1",
+  "version": "2.2.0",
   "license": "GPL-3.0-only",
   "main": "dist/commands/gsn.js",
   "scripts": {
