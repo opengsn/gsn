@@ -446,7 +446,7 @@ export class ContractInteractor {
     }
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
-      throw new Error('ContractInteractor:getLogsPagesForRange: only number supported for block range when using pagination')
+      throw new Error(`ContractInteractor:getLogsPagesForRange: [${fromBlock.toString()}..${toBlock?.toString()}]: only numbers supported when using pagination`)
     }
     const rangeSize = toBlock - fromBlock + 1
     const pagesForRange = Math.max(Math.ceil(rangeSize / this.maxPageSize), 1)
