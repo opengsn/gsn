@@ -3,7 +3,8 @@ import {
   filterMembers,
   filterType,
   parseServerConfig,
-  resolveServerConfig
+  resolveServerConfig,
+  serverDefaultConfiguration
 } from '@opengsn/relay/dist/ServerConfigParams'
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
@@ -116,6 +117,15 @@ context('#ServerConfigParams', () => {
         parseServerConfig(['--config', tmpConfigfile, '--port', '111'], { baseRelayFee: 222 }),
         { baseRelayFee: 222, config: tmpConfigfile, pctRelayFee: 123, port: 111 })
     })
+
+    it('should accept all known params in config file', async function () {
+      fs.writeFileSync(tmpConfigfile, JSON.stringify(serverDefaultConfiguration))
+      try {
+        parseServerConfig(['--config', tmpConfigfile], {})
+      } catch (e) {
+        assert.fail(e)
+      }
+    })
   })
   context('#resolveServerConfig', () => {
     const provider = web3.currentProvider
@@ -125,7 +135,7 @@ context('#ServerConfigParams', () => {
 
     it('should fail on invalid relayhub address', async () => {
       const config = { relayHubAddress: '123' }
-      await expectRevert(resolveServerConfig(config, provider), 'invalid param: "relayHubAddress" is not a valid address: 123')
+      await expectRevert(resolveServerConfig(config, provider), 'Provided address "123" is invalid, the capitalization checksum test failed, or its an indrect IBAN address which can\'t be converted')
     })
 
     it('should fail on no-contract relayhub address', async () => {

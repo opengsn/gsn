@@ -93,7 +93,7 @@ contract('RelayProvider', function (accounts) {
   let paymasterInstance: TestPaymasterEverythingAcceptedInstance
   let paymaster: Address
   let relayProcess: ChildProcessWithoutNullStreams
-  let relayProvider: provider
+  let relayProvider: any
   let forwarderAddress: Address
 
   before(async function () {
@@ -147,6 +147,7 @@ contract('RelayProvider', function (accounts) {
     it('should relay transparently', async function () {
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
+        // @ts-ignore
         forceGasPrice: '0x51f4d5c00',
         // TODO: for some reason estimated values are crazy high!
         gas: '100000',
@@ -173,6 +174,7 @@ contract('RelayProvider', function (accounts) {
       })
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
+        // @ts-ignore
         forceGasPrice: '0x51f4d5c00',
         value,
         gas: '100000',
@@ -204,6 +206,7 @@ contract('RelayProvider', function (accounts) {
       await testRecipient.emitMessage('hello again', {
         from: gasLess,
         gas: '100000',
+        // @ts-ignore
         paymaster
       })
       const log: any = await eventPromise
@@ -216,6 +219,7 @@ contract('RelayProvider', function (accounts) {
     it('should fail if transaction failed', async () => {
       await expectRevert(testRecipient.testRevert({
         from: gasLess,
+        // @ts-ignore
         paymaster
       }), 'always fail')
     })
@@ -455,6 +459,7 @@ contract('RelayProvider', function (accounts) {
     it('should deploy a contract without GSN on calling .new with useGSN: false', async function () {
       const testRecipient = await TestRecipient.new(forwarderAddress, {
         from: accounts[0],
+        // @ts-ignore
         useGSN: false
       })
       const receipt = await web3.eth.getTransactionReceipt(testRecipient.transactionHash)

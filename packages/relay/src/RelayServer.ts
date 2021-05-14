@@ -19,7 +19,8 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import {
-  address2topic, calculateTransactionMaxPossibleGas,
+  address2topic,
+  calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
   PaymasterGasAndDataLimits,
@@ -34,7 +35,6 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { toBuffer } from 'ethereumjs-util'
-
 import Timeout = NodeJS.Timeout
 
 /**
@@ -53,7 +53,7 @@ const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
-  lastScannedBlock = 0
+  lastScannedBlock: number
   lastRefreshBlock = 0
   ready = false
   lastSuccessfulRounds = Number.MAX_SAFE_INTEGER
@@ -87,6 +87,7 @@ export class RelayServer extends EventEmitter {
   constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
+    this.lastScannedBlock = config.coldRestartLogsFromBlock ?? 0
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
@@ -164,7 +165,7 @@ export class RelayServer extends EventEmitter {
     const expiredInBlocks = parseInt(req.relayRequest.request.validUntil) - currentBlockNumber
     if (expiredInBlocks < this.config.requestMinValidBlocks) {
       throw new Error(
-          `Request expired (or too close): expired in ${expiredInBlocks} blocks, we expect it to be valid for ${this.config.requestMinValidBlocks}`)
+        `Request expired (or too close): expired in ${expiredInBlocks} blocks, we expect it to be valid for ${this.config.requestMinValidBlocks}`)
     }
   }
 
@@ -372,6 +373,10 @@ returnValue        | ${viewRelayCallRet.returnValue}
     return this.contractInteractor.getBlock('latest')
       .then(
         block => {
+          if (block.number < this.config.coldRestartLogsFromBlock) {
+            throw new Error(
+              `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${block.number}`)
+          }
           if (block.number > this.lastScannedBlock) {
             return this._workerSemaphore.bind(this)(block.number)
           }
@@ -458,6 +463,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   async init (): Promise<void> {
+    this.logger.debug('server init start')
     if (this.initialized) {
       throw new Error('_init was already called')
     }
@@ -596,6 +602,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
+    await this.registrationManager.updateLatestRegistrationTxs(hubEventsSinceLastScan)
     const shouldRegisterAgain = await this._shouldRegisterAgain(currentBlockNumber, hubEventsSinceLastScan)
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber,
@@ -633,20 +640,32 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _shouldRegisterAgain (currentBlock: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
-    const isPendingActivityTransaction =
-      (await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)) ||
-      (await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER))
-    if (this.config.registrationBlockRate === 0 || isPendingActivityTransaction) {
+    if (this.config.registrationBlockRate === 0 && this.config.activityBlockRate === 0) {
       // this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
       return false
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
-    const registrationExpired = currentBlock - latestTxBlockNumber >= this.config.registrationBlockRate
+    const latestRegisterTxBlockNumber = this._getLatestRegisterTxBlockNumber()
+    const isPendingRegistration = await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER)
+    const isPendingActivity = isPendingRegistration || await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)
+    const registrationExpired =
+      this.config.registrationBlockRate !== 0 &&
+      (currentBlock - latestRegisterTxBlockNumber >= this.config.registrationBlockRate) &&
+      !isPendingRegistration
+    const activityExpired =
+      this.config.activityBlockRate !== 0 &&
+      (currentBlock - latestTxBlockNumber >= this.config.activityBlockRate) &&
+      !isPendingActivity
+    const shouldRegister = registrationExpired || activityExpired
     if (!registrationExpired) {
       this.logger.debug(
-        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
+        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestRegisterTxBlockNumber} registrationBlockRate=${this.config.registrationBlockRate}`)
     }
-    return registrationExpired
+    if (!activityExpired) {
+      this.logger.debug(
+        `_shouldRegisterAgain activityExpired=${activityExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestTxBlockNumber} activityBlockRate=${this.config.activityBlockRate}`)
+    }
+    return shouldRegister
   }
 
   _shouldRefreshState (currentBlock: number): boolean {
@@ -701,6 +720,10 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return this.lastMinedActiveTransaction?.blockNumber ?? -1
   }
 
+  _getLatestRegisterTxBlockNumber (): number {
+    return this.registrationManager.lastMinedRegisterTransaction?.blockNumber ?? -1
+  }
+
   async _updateLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<void> {
     const latestTransactionSinceLastScan = getLatestEventData(eventsSinceLastScan)
     if (latestTransactionSinceLastScan != null) {
@@ -715,7 +738,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _queryLatestActiveEvent (): Promise<EventData | undefined> {
     const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
-      fromBlock: 1
+      fromBlock: this.config.coldRestartLogsFromBlock
     })
     return getLatestEventData(events)
   }

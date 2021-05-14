@@ -37,3 +37,4 @@ yarn-error.log
 /verdaccio/
 /.yarnrc
 /build/gsn
+/gsn.iml

@@ -97,7 +97,8 @@ export class CommandsLogic {
       provider = new HDWalletProvider(mnemonic, provider) as unknown as HttpProvider
     }
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
-    this.contractInteractor = new ContractInteractor({ provider, logger, deployment })
+    const maxPageSize = Number.MAX_SAFE_INTEGER
+    this.contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
     this.deployment = deployment
     this.web3 = new Web3(provider)
   }

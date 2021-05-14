@@ -101,7 +101,6 @@ contract('RegistrationManager', function (accounts) {
     it('should start again after restarting process', async () => {
       const params: Partial<ServerConfigParams> = {
         relayHubAddress: env.relayHub.address,
-        stakeManagerAddress: env.stakeManager.address,
         ownerAddress: env.relayOwner,
         url: LocalhostOne,
         baseRelayFee: '0',
@@ -115,9 +114,11 @@ contract('RegistrationManager', function (accounts) {
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
       const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
       const serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
+      const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
         provider: serverWeb3provider,
         logger,
+        maxPageSize,
         deployment: { paymasterAddress: env.paymaster.address }
       })
       await contractInteractor.init()

@@ -202,6 +202,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance)
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
+      // @ts-ignore
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit))
       await expectRevert(
         relayHubInstance.relayCall(10e6, r.req, r.sig, hugeApprovalData, externalGasLimit, {
@@ -224,9 +225,11 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
+      // @ts-ignore
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
       const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
+      // @ts-ignore
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
         'relayCall() msg.data should be set to max size')
       const txdetails: Truffle.TransactionDetails = {
@@ -250,9 +253,11 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
+      // @ts-ignore
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
       const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
+      // @ts-ignore
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
         'relayCall() msg.data should be set to max size')
       const txdetails: Truffle.TransactionDetails = {
@@ -284,6 +289,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       }, sharedRelayRequestData, chainId, forwarderInstance)
 
       const gasLimits = await paymasterContract.getGasAndDataLimits()
+      // @ts-ignore
       const maxAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
       // fail if a bit lower
       expectRevert(relayHubInstance.relayCall(maxAcceptanceBudget - 1, r.req, r.sig, '0x', externalGasLimit, {
@@ -332,6 +338,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       const limits = await paymasterContract.getGasAndDataLimits()
       await paymasterContract.setGasLimits(
         limits.acceptanceBudget,
+        // @ts-ignore
         parseInt(limits.preRelayedCallGasLimit) + parseInt(limits.acceptanceBudget),
         limits.postRelayedCallGasLimit
       )

@@ -112,6 +112,7 @@ export class ServerTestEnvironment {
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    // @ts-ignore - IRelayHub and RelayHub types are similar enough for tests to work
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
@@ -130,9 +131,11 @@ export class ServerTestEnvironment {
     }
     if (contractFactory == null) {
       const logger = createServerLogger('error', '', '')
+      const maxPageSize = Number.MAX_SAFE_INTEGER
       this.contractInteractor = new ContractInteractor({
         provider: this.provider,
         logger,
+        maxPageSize,
         deployment: { paymasterAddress: this.paymaster.address }
       })
       await this.contractInteractor.init()
@@ -196,7 +199,6 @@ export class ServerTestEnvironment {
     const shared: Partial<ServerConfigParams> = {
       runPaymasterReputations: false,
       ownerAddress: this.relayOwner,
-      stakeManagerAddress: this.stakeManager.address,
       relayHubAddress: this.relayHub.address,
       checkInterval: 100
     }

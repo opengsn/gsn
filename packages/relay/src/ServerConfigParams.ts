@@ -29,7 +29,10 @@ export interface ServerConfigParams {
   checkInterval: number
   readyTimeout: number
   devMode: boolean
+  // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
+  // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
+  activityBlockRate: number
   maxAcceptanceBudget: number
   alertedBlockDelay: number
   minAlertedDelayMS: number
@@ -64,6 +67,11 @@ export interface ServerConfigParams {
   runPaymasterReputations: boolean
 
   requiredVersionRange?: string
+
+  // when server starts, it will look for relevant Relay Hub, Stake Manager events starting at this block
+  coldRestartLogsFromBlock: number
+  // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
+  pastEventsQueryMaxPageSize: number
 }
 
 export interface ServerDependencies {
@@ -77,7 +85,7 @@ export interface ServerDependencies {
   logger: LoggerInterface
 }
 
-const serverDefaultConfiguration: ServerConfigParams = {
+export const serverDefaultConfiguration: ServerConfigParams = {
   ownerAddress: constants.ZERO_ADDRESS,
   alertedBlockDelay: 0,
   minAlertedDelayMS: 0,
@@ -91,6 +99,7 @@ const serverDefaultConfiguration: ServerConfigParams = {
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
   registrationBlockRate: 0,
+  activityBlockRate: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
@@ -122,7 +131,9 @@ const serverDefaultConfiguration: ServerConfigParams = {
   maxGasPrice: 100e9.toString(),
 
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
-  runPaymasterReputations: true
+  runPaymasterReputations: true,
+  coldRestartLogsFromBlock: 1,
+  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER
 }
 
 const ConfigParamsTypes = {
@@ -153,6 +164,7 @@ const ConfigParamsTypes = {
   hostOverride: 'string',
   userId: 'string',
   registrationBlockRate: 'number',
+  activityBlockRate: 'number',
   maxAcceptanceBudget: 'number',
   alertedBlockDelay: 'number',
 
@@ -185,7 +197,8 @@ const ConfigParamsTypes = {
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
-
+  coldRestartLogsFromBlock: 'number',
+  pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number'
 } as any
 
@@ -258,11 +271,13 @@ export function parseServerConfig (args: string[], env: any): any {
   delete argv._
   let configFile = {}
   const configFileName = argv.config as string
+  console.log('Using config file', configFileName)
   if (configFileName != null) {
     if (!fs.existsSync(configFileName)) {
       error(`unable to read config file "${configFileName}"`)
     }
     configFile = JSON.parse(fs.readFileSync(configFileName, 'utf8'))
+    console.log('Initial configuration:', configFile)
   }
   const config = { ...configFile, ...argv }
   return entriesToObj(Object.entries(config).map(explicitType))
@@ -273,10 +288,15 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
   const contractInteractor = new ContractInteractor({
+    maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     provider: web3provider,
     logger,
-    deployment: { relayHubAddress: config.relayHubAddress }
+    deployment: {
+      relayHubAddress: config.relayHubAddress,
+      versionRegistryAddress: config.versionRegistryAddress
+    }
   })
+  await contractInteractor._initializeContracts()
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
@@ -286,11 +306,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
       error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }
-
-    const versionRegistry = new VersionRegistry(web3provider, config.versionRegistryAddress)
+    const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
     const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
     contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
-
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value
   } else {
@@ -300,6 +318,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
   }
 
+  if (config.relayHubAddress == null) {
+    error('relayHubAddress is still null')
+  }
   if (!await contractInteractor.isContractDeployed(config.relayHubAddress)) {
     error(`RelayHub: no contract at address ${config.relayHubAddress}`)
   }

@@ -217,12 +217,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
           const penalizableTxData = `0x01${encode(input).toString('hex')}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
+          // @ts-ignore
           validateDecodedTx(decodedTx, eip2930Transaction)
         })
         it('should decode legacy tx', async function () {
           const input = [bnToRlp(legacyTx.nonce), bnToRlp(legacyTx.gasPrice), bnToRlp(legacyTx.gasLimit), legacyTx.to!.toBuffer(), bnToRlp(legacyTx.value), legacyTx.data]
           const penalizableTxData = `0x${encode(input).toString('hex')}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
+          // @ts-ignore
           validateDecodedTx(decodedTx, legacyTx)
         })
       })
@@ -282,6 +284,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       }
       // commit to penalization and mine some blocks
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      // @ts-ignore
       const commitHash = web3.utils.keccak256(`${web3.utils.keccak256(penalizeMsgData)}${defaultOptions.from.slice(2).toLowerCase()}`)
       await penalizer.commit(commitHash, defaultOptions)
       await evmMineMany(6)

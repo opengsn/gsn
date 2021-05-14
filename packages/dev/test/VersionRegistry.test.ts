@@ -6,6 +6,9 @@ import { increaseTime } from './TestUtils'
 import { VersionRegistry, string32 } from '@opengsn/common/dist/VersionRegistry'
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
+import { ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { HttpProvider } from 'web3-core'
+import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -16,28 +19,38 @@ contract('VersionRegistry', ([account]) => {
   let now: number
   let registryContract: VersionRegistryInstance
   let jsRegistry: VersionRegistry
+  const logger = createServerLogger('error', '', '')
+  const provider = web3.currentProvider as HttpProvider
 
+  let deployment: GSNContractsDeployment
+  let contractInteractor: ContractInteractor
+  const maxPageSize = Number.MAX_SAFE_INTEGER
   before('create registry', async () => {
     registryContract = await VersionRegistryContract.new()
-    jsRegistry = new VersionRegistry(web3.currentProvider, registryContract.address, { from: account })
-    await jsRegistry.addVersion('id', 'ver', 'value')
-    await jsRegistry.addVersion('another', 'ver', 'anothervalue')
+    deployment = {
+      versionRegistryAddress: registryContract.address
+    }
+    contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+    await contractInteractor.init()
+    jsRegistry = new VersionRegistry(1, contractInteractor)
+    await jsRegistry.addVersion('id', 'ver', 'value', { from: account })
+    await jsRegistry.addVersion('another', 'ver', 'anothervalue', { from: account })
   })
   context('contract param validations', () => {
     it('should fail to add without id', async () => {
-      await expectRevert(registryContract.addVersion(string32(''), string32(''), 'value'), 'missing id')
+      await expectRevert(registryContract.addVersion(string32(''), string32(''), 'value', { from: account }), 'missing id')
     })
     it('should fail to add without version', async () => {
-      await expectRevert(registryContract.addVersion(string32('id'), string32(''), 'value'), 'missing version')
+      await expectRevert(registryContract.addVersion(string32('id'), string32(''), 'value', { from: account }), 'missing version')
     })
   })
   context('javascript param validations', () => {
     it('should reject adding the same version again', async () => {
-      await expect(jsRegistry.addVersion('id', 'ver', 'changevalue'))
+      await expect(jsRegistry.addVersion('id', 'ver', 'changevalue', { from: account }))
         .to.eventually.be.rejectedWith('version already exists')
     })
     it('should rejecting canceling non-existent version', async () => {
-      await expect(jsRegistry.cancelVersion('nosuchid', 'ver', 'changevalue'))
+      await expect(jsRegistry.cancelVersion('nosuchid', 'ver', 'changevalue', { from: account }))
         .to.eventually.be.rejectedWith('version does not exist')
     })
   })
@@ -55,9 +68,9 @@ contract('VersionRegistry', ([account]) => {
   context('with more versions', () => {
     before(async () => {
       await increaseTime(100)
-      await jsRegistry.addVersion('id', 'ver2', 'value2')
+      await jsRegistry.addVersion('id', 'ver2', 'value2', { from: account })
       await increaseTime(100)
-      await jsRegistry.addVersion('id', 'ver3', 'value3')
+      await jsRegistry.addVersion('id', 'ver3', 'value3', { from: account })
       await increaseTime(100)
 
       // at this point:

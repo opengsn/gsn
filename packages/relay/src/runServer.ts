@@ -36,13 +36,16 @@ async function run (): Promise<void> {
   let runPaymasterReputations: boolean
   console.log('Starting GSN Relay Server process...\n')
   try {
+    console.log('Parsing server config...\n')
     const conf = await parseServerConfig(process.argv.slice(2), process.env)
     if (conf.ethereumNodeUrl == null) {
       error('missing ethereumNodeUrl')
     }
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
+    console.log('Resolving server config ...\n')
     config = await resolveServerConfig(conf, web3provider) as ServerConfigParams
     runPenalizer = config.runPenalizer
+    console.log('Resolving reputation manager config...\n')
     reputationManagerConfig = resolveReputationManagerConfig(conf)
     runPaymasterReputations = config.runPaymasterReputations
   } catch (e) {
@@ -63,22 +66,27 @@ async function run (): Promise<void> {
       fs.unlinkSync(`${workdir}/${TX_PAGES_FILENAME}`)
     }
   }
-
+  console.log('Creating server logger...\n')
   const logger = createServerLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
+  console.log('Creating managers...\n')
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
   const txStoreManager = new TxStoreManager({ workdir }, logger)
+  console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
     logger,
+    maxPageSize: config.pastEventsQueryMaxPageSize,
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: { relayHubAddress: config.relayHubAddress }
   })
+  console.log('Initializing interactor...\n')
   await contractInteractor.init()
+  console.log('Creating gasPrice fetcher...\n')
   const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
-
   let reputationManager: ReputationManager | undefined
   if (runPaymasterReputations) {
+    console.log('Running paymaster reputation: creating reputation manager ...\n')
     const reputationStoreManager = new ReputationStoreManager({ workdir, inMemory: true }, logger)
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
   }
@@ -92,24 +100,31 @@ async function run (): Promise<void> {
     contractInteractor,
     gasPriceFetcher
   }
-
+  console.log('Creating Transaction Manager...\n')
   const transactionManager: TransactionManager = new TransactionManager(dependencies, config)
 
   let penalizerService: PenalizerService | undefined
   if (runPenalizer) {
+    console.log('Running Penalizer: creating transaction data cache...\n')
     const transactionDataCache: TransactionDataCache = new TransactionDataCache(logger, config.workdir)
 
+    console.log('Running Penalizer: creating etherscan cached service...\n')
     const txByNonceService = new EtherscanCachedService(config.etherscanApiUrl, config.etherscanApiKey, logger, transactionDataCache)
     const penalizerParams: PenalizerDependencies = {
       transactionManager,
       contractInteractor,
       txByNonceService
     }
+    console.log('Running Penalizer: creating penalizer service...\n')
     penalizerService = new PenalizerService(penalizerParams, logger, config)
+    console.log('Running Penalizer: initializing penalizer service...\n')
     await penalizerService.init()
   }
+  console.log('Creating relay server...\n')
   const relay = new RelayServer(config, transactionManager, dependencies)
+  console.log('Initializing penalizer service...\n')
   await relay.init()
+  console.log('Creating http server...\n')
   const httpServer = new HttpServer(config.port, logger, relay, penalizerService)
   httpServer.start()
 }

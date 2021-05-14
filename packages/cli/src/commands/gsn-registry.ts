@@ -7,8 +7,10 @@ import {
   gsnCommander
 } from '../utils'
 import { VersionInfo, VersionRegistry } from '@opengsn/common/dist/VersionRegistry'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { GSNContractsDeployment } from '@opengsn/common'
 
 function error (s: string): never {
   console.error(s)
@@ -60,7 +62,12 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
   const provider = (logic as any).web3.currentProvider
   const versionRegistryAddress = getRegistryAddress(commander.registry) ?? error('must specify --registry')
   console.log('Using registry at address: ', versionRegistryAddress)
-  const versionRegistry = new VersionRegistry(provider, versionRegistryAddress)
+  const deployment: GSNContractsDeployment = {
+    versionRegistryAddress
+  }
+  const maxPageSize = Number.MAX_SAFE_INTEGER
+  const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+  const versionRegistry = new VersionRegistry(1, contractInteractor)
   if (!await versionRegistry.isValid()) {
     error(`Not a valid registry address: ${versionRegistryAddress}`)
   }
