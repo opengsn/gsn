@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/cli",
-  "version": "2.2.0-alpha.1",
+  "version": "2.2.1",
   "license": "GPL-3.0-only",
   "main": "dist/commands/gsn.js",
   "scripts": {
@@ -17,7 +17,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@opengsn/common": "^2.2.0-alpha.1",
+    "@opengsn/common": "^2.2.1",
     "@truffle/hdwallet-provider": "1.0.34",
     "@types/asciichart": "^1.5.4",
     "@types/clear": "^0.1.1",
