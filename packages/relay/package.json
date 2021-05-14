@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/relay",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "license": "GPL-3.0-only",
   "main": "dist/runServer.js",
   "files": [
@@ -16,7 +16,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@opengsn/common": "^2.2.1",
+    "@opengsn/common": "^2.2.2",
     "@types/cors": "^2.8.7",
     "@types/express": "^4.17.8",
     "@types/minimist": "^1.2.0",
