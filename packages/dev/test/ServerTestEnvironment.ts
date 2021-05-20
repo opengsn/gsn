@@ -160,7 +160,7 @@ export class ServerTestEnvironment {
     // This run should call 'setOwner'
     await this.relayServer._worker(latestBlock.number)
     latestBlock = await this.web3.eth.getBlock('latest')
-    await this.stakeAndAuthorizeHub(unstakeDelay)
+    await this.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
 
     // This run should call 'registerRelayServer' and 'addWorkers'
     const receipts = await this.relayServer._worker(latestBlock.number)
@@ -184,11 +184,11 @@ export class ServerTestEnvironment {
     })
   }
 
-  async stakeAndAuthorizeHub (unstakeDelay: number): Promise<void> {
+  async stakeAndAuthorizeHub (stake: BN, unstakeDelay: number): Promise<void> {
     // Now owner can do its operations
     await this.stakeManager.stakeForRelayManager(this.relayServer.managerAddress, unstakeDelay, {
       from: this.relayOwner,
-      value: ether('1')
+      value: stake
     })
     await this.stakeManager.authorizeHubByOwner(this.relayServer.managerAddress, this.relayHub.address, {
       from: this.relayOwner

@@ -613,6 +613,14 @@ export class ContractInteractor {
     return await this.stakeManagerInstance.getStakeInfo(address)
   }
 
+  async isRelayManagerStakedOnHub (relayManager: Address): Promise<boolean> {
+    return await this.relayHubInstance.isRelayManagerStaked(relayManager)
+  }
+
+  async isRelayManagerStakedOnSM (relayManager: Address, minAmount: number, minUnstakeDelay: number): Promise<boolean> {
+    return await this.stakeManagerInstance.isRelayManagerStaked(relayManager, this.relayHubInstance.address, minAmount, minUnstakeDelay)
+  }
+
   async initDeployment (deployment: GSNContractsDeployment): Promise<void> {
     this.deployment = deployment
     await this._initializeContracts()
