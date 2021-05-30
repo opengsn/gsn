@@ -450,7 +450,6 @@ export class ContractInteractor {
     }
     const rangeSize = toBlock - fromBlock + 1
     const pagesForRange = Math.max(Math.ceil(rangeSize / this.maxPageSize), 1)
-    this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForRange} smaller paginated requests!`)
     return pagesForRange
   }
 
@@ -478,7 +477,6 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    this.logger.debug(`_getPastEventsPaginated start, fromBlock: ${options.fromBlock?.toString()}, toBlock: ${options.toBlock?.toString()}`)
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
