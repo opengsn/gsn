@@ -3,6 +3,9 @@
   "version": "2.2.1",
   "license": "GPL-3.0-only",
   "main": "dist/commands/gsn.js",
+  "bin": {
+    "gsn": "dist/commands/gsn.js"
+  },
   "scripts": {
     "tsc": "tsc",
     "lint": "eslint -f unix .",
