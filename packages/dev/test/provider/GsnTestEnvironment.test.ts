@@ -1,4 +1,4 @@
-import { GsnTestEnvironment, TestEnvironment } from '../../src/GsnTestEnvironment'
+import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { HttpProvider } from 'web3-core'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'

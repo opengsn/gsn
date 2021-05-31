@@ -2,7 +2,7 @@
   "name": "@opengsn/dev",
   "version": "2.2.1",
   "license": "GPL-3.0-only",
-  "main": "dist/GsnTestEnvironment.js",
+  "main": "dist/index.js",
   "files": [
     "dist/src/*",
     "README.md"
