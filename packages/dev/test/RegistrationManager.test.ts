@@ -19,8 +19,16 @@ import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
+import { ether } from '@opengsn/common/dist'
+import sinon from 'sinon'
+import chai from 'chai'
+import sinonChai from 'sinon-chai'
+import chaiAsPromised from 'chai-as-promised'
 
 const { oneEther } = constants
+
+const { expect } = chai.use(chaiAsPromised)
+chai.use(sinonChai)
 
 const workerIndex = 0
 
@@ -459,7 +467,7 @@ contract('RegistrationManager', function (accounts) {
         const latestBlock = await env.web3.eth.getBlock('latest')
         await newServer._worker(latestBlock.number)
         // stake and authorize after '_worker' - so the relay only sets owner
-        await env.stakeAndAuthorizeHub(unstakeDelay)
+        await env.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
         // TODO: this is horrible!!!
         newServer.registrationManager.isStakeLocked = true
         newServer.registrationManager.isHubAuthorized = true
@@ -486,6 +494,45 @@ contract('RegistrationManager', function (accounts) {
         assert.equal(allStoredTransactions[0].serverAction, ServerAction.SET_OWNER)
         assert.equal(allStoredTransactions[1].serverAction, ServerAction.ADD_WORKER)
         assert.equal(allStoredTransactions[2].serverAction, ServerAction.REGISTER_SERVER)
+      })
+    })
+    describe('RelayHub/StakeManager misconfiguration', function () {
+      const errorMessage = 'Relay manager is staked on StakeManager but not on RelayHub.\n' +
+        'Minimum stake/minimum unstake delay misconfigured?'
+      beforeEach(async function () {
+        id = (await snapshot()).result
+        // await env.newServerInstance({}, undefined, unstakeDelay)
+        env.newServerInstanceNoFunding({})
+        await env.relayServer.init()
+        newServer = env.relayServer
+        sinon.spy(newServer.logger, 'error')
+        await env.fundServer()
+        const latestBlock = await env.web3.eth.getBlock('latest')
+        await newServer._worker(latestBlock.number)
+        newServer.registrationManager.isStakeLocked = true
+        newServer.registrationManager.isHubAuthorized = true
+        newServer.registrationManager.stakeRequired.requiredValue = toBN(0)
+        newServer.registrationManager.balanceRequired.requiredValue = toBN(0)
+      })
+
+      afterEach(async function () {
+        await revert(id)
+      })
+
+      it('should not attempt registration if unstake delay is too low on hub', async function () {
+        await env.stakeAndAuthorizeHub(ether('1'), unstakeDelay - 1)
+        await newServer.registrationManager.refreshStake()
+        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        assert.equal(receipts.length, 0)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage)
+      })
+
+      it('should not attempt registration if stake amount is too low on hub', async function () {
+        await env.stakeAndAuthorizeHub(ether('0.1'), unstakeDelay)
+        await newServer.registrationManager.refreshStake()
+        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        assert.equal(receipts.length, 0)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage)
       })
     })
   })

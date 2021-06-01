@@ -345,11 +345,17 @@ export class RegistrationManager {
 
   // TODO: extract worker registration sub-flow
   async attemptRegistration (currentBlock: number): Promise<PrefixedHexString[]> {
+    const isStakedOnHub = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
+    if (!isStakedOnHub && this.ownerAddress != null) {
+      this.logger.error('Relay manager is staked on StakeManager but not on RelayHub.\n' +
+        'Minimum stake/minimum unstake delay misconfigured?')
+    }
     const allPrerequisitesOk =
       this.isHubAuthorized &&
       this.isStakeLocked &&
       this.stakeRequired.isSatisfied &&
-      this.balanceRequired.isSatisfied
+      this.balanceRequired.isSatisfied &&
+      isStakedOnHub
     if (!allPrerequisitesOk) {
       this.logger.debug('will not actually attempt registration - prerequisites not satisfied')
       return []
