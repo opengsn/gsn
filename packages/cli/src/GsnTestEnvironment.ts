@@ -1,10 +1,10 @@
 import net from 'net'
 import { ether } from '@opengsn/common/dist/Utils'
 
-import { CommandsLogic, RegisterOptions } from '@opengsn/cli/dist/CommandsLogic'
+import { CommandsLogic, RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 
-import { getNetworkUrl, loadDeployment, supportedNetworks } from '@opengsn/cli/dist/utils'
+import { getNetworkUrl, loadDeployment, supportedNetworks } from './utils'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { HttpServer } from '@opengsn/relay/dist/HttpServer'

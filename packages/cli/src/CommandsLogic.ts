@@ -262,6 +262,13 @@ export class CommandsLogic {
       ) {
         console.log('Relayer already staked')
       } else {
+        const config = await relayHub.getConfiguration()
+        if (config.minimumStake.gt(toBN(options.stake.toString()))) {
+          throw new Error(`Given minimum stake ${options.stake.toString()} too low for the given hub ${config.minimumStake.toString()}`)
+        }
+        if (config.minimumUnstakeDelay.gt(toBN(options.unstakeDelay))) {
+          throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
+        }
         const stakeValue = toBN(options.stake.toString()).sub(stake)
         console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} eth`,
           stake.toString() === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
