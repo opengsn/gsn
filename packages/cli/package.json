@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@opengsn/common": "^2.2.1",
+    "@opengsn/provider": "^2.2.1",
+    "@opengsn/relay": "^2.2.1",
     "@truffle/hdwallet-provider": "1.0.34",
     "@types/asciichart": "^1.5.4",
     "@types/clear": "^0.1.1",
