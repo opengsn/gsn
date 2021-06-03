@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/common",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "scripts": {
@@ -16,7 +16,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@opengsn/contracts": "^2.2.1",
+    "@opengsn/contracts": "^2.2.2",
     "@types/bn.js": "^5.1.0",
     "@types/eth-sig-util": "^2.1.0",
     "@types/semver": "^7.3.4",

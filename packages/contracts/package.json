@@ -1,7 +1,7 @@
 {
   "name": "@opengsn/contracts",
   "license": "GPL-3.0-only",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "main": "types/truffle-contracts/index.d.ts",
   "scripts": {
     "truffle-compile": "truffle compile --compile-all",
