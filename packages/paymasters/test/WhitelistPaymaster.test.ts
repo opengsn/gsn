@@ -15,7 +15,7 @@ contract('WhitelistPaymaster', ([from, another]) => {
   let s1: SampleRecipientInstance
   let gsnConfig: Partial<GSNConfig>
   before(async function () {
-    const host = (web3.currentProvider as HttpProvider).host;
+    const host = (web3.currentProvider as HttpProvider).host
     const {
       contractsDeployment: {
         relayHubAddress,
