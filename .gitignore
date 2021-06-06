@@ -38,3 +38,7 @@ yarn-error.log
 /.yarnrc
 /build/gsn
 /gsn.iml
+/packages/paymasters/types/
+/packages/paymasters/build/
+/packages/paymasters/dist/
+/packages/paymasters/json-input.json
