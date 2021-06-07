@@ -40,8 +40,8 @@ contract ProxyIdentity is IERC725, BaseRelayRecipient, Initializable {
     }
 
     function changeOwner(address)
-        view
         external
+        view
         override
         onlyOwner
     {
@@ -53,8 +53,8 @@ contract ProxyIdentity is IERC725, BaseRelayRecipient, Initializable {
     }
 
     function setData(bytes32, bytes calldata)
-    view
     external
+    view
     override
     onlyOwner
     {
