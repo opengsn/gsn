@@ -34,6 +34,8 @@ contract WhitelistPaymaster is AcceptEverythingPaymaster {
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (relayRequest, signature, approvalData, maxPossibleGas);
+        require(approvalData.length == 0, "invalid approval data length");
+        require(relayRequest.relayData.paymasterData.length == 0, "invalid paymaster data length");
 
         if ( useSenderWhitelist ) {
             require( senderWhitelist[relayRequest.request.from], "sender not whitelisted");

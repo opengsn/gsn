@@ -116,6 +116,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
   let uniswap: TestUniswapInstance
   let forwarder: IForwarderInstance
   let proxyFactory: ProxyFactoryInstance
+  let paymasterData: any
 
   async function assertDeployed (address: Address, deployed: boolean): Promise<void> {
     const code = await web3.eth.getCode(address)
@@ -159,7 +160,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     await forwarder.registerRequestType(GsnRequestType.typeName, GsnRequestType.typeSuffix)
     await forwarder.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
     await paymaster.setTrustedForwarder(forwarder.address)
-
+    paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)
     relayRequest = {
       request: {
         from: senderAddress,
@@ -174,7 +175,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         ...gasData,
         relayWorker,
         paymaster: paymaster.address,
-        paymasterData: '0x',
+        paymasterData,
         clientId: '2',
         forwarder: forwarder.address
       }
@@ -425,6 +426,11 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       encodedCall = counter.contract.methods.increment().encodeABI()
       const relayProvider = await RelayProvider.newProvider({
         provider: web3.currentProvider as HttpProvider,
+        overrideDependencies: {
+          asyncPaymasterData: async () => {
+            return paymasterData
+          }
+        },
         config: gsnConfig
       }).init()
       proxy.setProvider(relayProvider)

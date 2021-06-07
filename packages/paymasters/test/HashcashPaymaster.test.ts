@@ -64,7 +64,7 @@ contract('HashcashPaymaster', ([from]) => {
     await p.init()
     // @ts-ignore
     SampleRecipient.web3.setProvider(p)
-    await expectRevert(s.something(), 'no hash in approvalData')
+    await expectRevert(s.something(), 'invalid approval data length')
   })
 
   it('should fail with no wrong hash', async () => {

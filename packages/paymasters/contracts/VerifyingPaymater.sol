@@ -37,7 +37,8 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (signature, maxPossibleGas);
 
-        require(approvalData.length == 65, "invalid approvalData signature");
+        require(approvalData.length == 65, "invalid approval data length");
+        require(relayRequest.relayData.paymasterData.length == 0, "invalid paymaster data length");
 
         bytes32 requestHash = getRequestHash(relayRequest);
         require(signer == ECDSA.recover(requestHash, approvalData), "wrong approvalData signature");

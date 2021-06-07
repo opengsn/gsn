@@ -117,12 +117,12 @@ contract('VerifyingPaymaster', ([from]) => {
 
     it('should fail without approval data', async () => {
       mockApprovalFunc = async () => '0x'
-      await expectRevert(s.something(), 'invalid approvalData signature')
+      await expectRevert(s.something(), 'invalid approval data length')
     })
 
     it('should fail with invalid approval data', async () => {
       mockApprovalFunc = async () => '0xdeadface'
-      await expectRevert(s.something(), 'invalid approvalData signature')
+      await expectRevert(s.something(), 'invalid approval data length')
     })
 
     it('should fail with wrong in signature approval data', async () => {

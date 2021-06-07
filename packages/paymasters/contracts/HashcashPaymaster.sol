@@ -36,10 +36,11 @@ contract HashcashPaymaster is AcceptEverythingPaymaster {
     virtual
     relayHubOnly
     returns (bytes memory, bool revertOnRecipientRevert) {
+        (maxPossibleGas, signature);
 
-        (relayRequest, approvalData, maxPossibleGas, signature);
+        require(approvalData.length == 64, "invalid approval data length");
+        require(relayRequest.relayData.paymasterData.length == 0, "invalid paymaster data length");
 
-        require(approvalData.length == 64, "no hash in approvalData");
         (bytes32 hash, uint256 hashNonce) = abi.decode(approvalData, (bytes32, uint256));
         bytes32 calcHash = keccak256(abi.encode(
                 relayRequest.request.from,
