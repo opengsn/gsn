@@ -160,7 +160,9 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     await forwarder.registerRequestType(GsnRequestType.typeName, GsnRequestType.typeSuffix)
     await forwarder.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
     await paymaster.setTrustedForwarder(forwarder.address)
+
     paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)
+
     relayRequest = {
       request: {
         from: senderAddress,

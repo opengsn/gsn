@@ -1,10 +1,10 @@
 {
   "extends": "../../tsconfig.packages.json",
   "include": [
-    "../paymasters/src/**/*.ts",
-    "../paymasters/test/**/*.ts",
+    "./src/**/*.ts",
+    "./test/**/*.ts",
     "./types/truffle-contracts/index.d.ts",
-    "../paymasters/types/truffle-contracts/types.d.ts"
+    "./types/truffle-contracts/types.d.ts"
   ],
   "compilerOptions": {
     "outDir": "dist"

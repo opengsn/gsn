@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/paymasters",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "version": "2.2.2",
   "scripts": {
     "truffle-compile": "truffle compile --compile-all",
@@ -29,17 +29,16 @@
     "@opengsn/common": "^2.2.2",
     "@opengsn/provider": "^2.2.2",
     "@opengsn/contracts": "^2.2.2",
-    "@typechain/truffle-v5": "^4.0.1",
     "ethereumjs-util": "^6.1.0"
   },
   "devDependencies": {
     "solhint": "^3.3.2",
+    "@typechain/truffle-v5": "^4.0.1",
     "@types/chai": "^4.2.12",
     "@types/mocha": "^8.2.0",
     "@types/web3": "1.2.2",
     "@types/ethereumjs-util": "^6.1.0",
-    "ethereumjs-tx": "2.1.2",
-    "solidity-string-utils": "^0.0.4"
+    "ethereumjs-tx": "2.1.2"
   },
   "peerDependencies": {
     "@types/bn.js": "^5.1.0",
