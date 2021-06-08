@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.packages.json",
+  "include": [
+    "truffle.js",
+    "coverage-prov.js",
+    "../paymasters/test/**/*.ts"
+  ]
+}

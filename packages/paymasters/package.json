@@ -1,0 +1,51 @@
+{
+  "name": "@opengsn/paymasters",
+  "license": "GPL-3.0-only",
+  "version": "2.2.2",
+  "scripts": {
+    "truffle-compile": "truffle compile --compile-all",
+    "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 './build/contracts/**/*.json'",
+    "tsc": "tsc",
+    "lint": "yarn run lint:js && yarn run lint:sol",
+    "lint:js": "eslint -f unix .",
+    "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
+    "test": "yarn tsc && yarn truffle-test-compile-all",
+    "truffle-test-compile-all": "truffle test --compile-all --network npmtest",
+    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
+  },
+  "files": [
+    "src/*",
+    "types/*",
+    "contracts/*",
+    "build/contracts/*",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.4.0-solc-0.7",
+    "@opengsn/dev": "^2.2.2",
+    "@opengsn/common": "^2.2.2",
+    "@opengsn/provider": "^2.2.2",
+    "@opengsn/contracts": "^2.2.2",
+    "ethereumjs-util": "^6.1.0"
+  },
+  "devDependencies": {
+    "solhint": "^3.3.2",
+    "@typechain/truffle-v5": "^4.0.1",
+    "@types/chai": "^4.2.12",
+    "@types/mocha": "^8.2.0",
+    "@types/web3": "1.2.2",
+    "@types/ethereumjs-util": "^6.1.0",
+    "ethereumjs-tx": "2.1.2"
+  },
+  "peerDependencies": {
+    "@types/bn.js": "^5.1.0",
+    "bn.js": "^5.2.0",
+    "web3": "^1.2.6",
+    "web3-core": "^1.2.6",
+    "web3-eth-contract": "^1.2.6",
+    "web3-utils": "^1.2.6"
+  }
+}

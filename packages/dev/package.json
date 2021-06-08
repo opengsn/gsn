@@ -17,7 +17,7 @@
     "test": "lerna run tsc && truffle --compile-all --network npmtest test",
     "truffle-test": "truffle test --compile-all ",
     "test1": "truffle --network npmtest test",
-    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
+    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {
     "@opengsn/cli": "^2.2.2",
