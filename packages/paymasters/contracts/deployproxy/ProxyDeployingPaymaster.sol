@@ -36,8 +36,8 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
     returns (bytes memory, bool revertOnRecipientRevert) {
         (signature);
 
-        require(approvalData.length == 0, "invalid approval data length");
-        require(relayRequest.relayData.paymasterData.length == 32, "invalid paymaster data length");
+        require(approvalData.length == 0, "approvalData: invalid length");
+        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
 
         (IERC20 token, IUniswap uniswap) = _getToken(relayRequest.relayData.paymasterData);
         (address payer, uint256 tokenPrecharge) = _calculatePreCharge(token, uniswap, relayRequest, maxPossibleGas);

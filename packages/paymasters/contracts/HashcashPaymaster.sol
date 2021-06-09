@@ -38,8 +38,8 @@ contract HashcashPaymaster is AcceptEverythingPaymaster {
     returns (bytes memory, bool revertOnRecipientRevert) {
         (maxPossibleGas, signature);
 
-        require(approvalData.length == 64, "invalid approval data length");
-        require(relayRequest.relayData.paymasterData.length == 0, "invalid paymaster data length");
+        require(approvalData.length == 64, "approvalData: invalid length for hash and nonce");
+        require(relayRequest.relayData.paymasterData.length == 0, "paymasterData: invalid length");
 
         (bytes32 hash, uint256 hashNonce) = abi.decode(approvalData, (bytes32, uint256));
         bytes32 calcHash = keccak256(abi.encode(
