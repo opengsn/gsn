@@ -37,6 +37,7 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (signature, maxPossibleGas);
 
+        // solhint-disable-next-line reason-string
         require(approvalData.length == 65, "approvalData: invalid length for signature");
         require(relayRequest.relayData.paymasterData.length == 0, "paymasterData: invalid length");
 

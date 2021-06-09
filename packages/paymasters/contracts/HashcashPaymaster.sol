@@ -38,6 +38,7 @@ contract HashcashPaymaster is AcceptEverythingPaymaster {
     returns (bytes memory, bool revertOnRecipientRevert) {
         (maxPossibleGas, signature);
 
+        // solhint-disable-next-line reason-string
         require(approvalData.length == 64, "approvalData: invalid length for hash and nonce");
         require(relayRequest.relayData.paymasterData.length == 0, "paymasterData: invalid length");
 
