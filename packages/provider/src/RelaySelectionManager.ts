@@ -3,7 +3,7 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { PingFilter } from '@opengsn/common/dist/types/Aliases'
+import { Address, PingFilter } from '@opengsn/common/dist/types/Aliases'
 import { isInfoFromEvent, RelayInfoUrl } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
@@ -41,12 +41,12 @@ export class RelaySelectionManager {
    * Ping those relays that were not pinged yet, and remove both the returned relay or relays re from {@link remainingRelays}
    * @returns the first relay to respond to a ping message. Note: will never return the same relay twice.
    */
-  async selectNextRelay (): Promise<RelayInfo | undefined> {
+  async selectNextRelay (paymaster?: Address): Promise<RelayInfo | undefined> {
     while (true) {
       const slice = this._getNextSlice()
       let relayInfo: RelayInfo | undefined
       if (slice.length > 0) {
-        relayInfo = await this._nextRelayInternal(slice)
+        relayInfo = await this._nextRelayInternal(slice, paymaster)
         if (relayInfo == null) {
           continue
         }
@@ -55,9 +55,9 @@ export class RelaySelectionManager {
     }
   }
 
-  async _nextRelayInternal (relays: RelayInfoUrl[]): Promise<RelayInfo | undefined> {
+  async _nextRelayInternal (relays: RelayInfoUrl[], paymaster?: Address): Promise<RelayInfo | undefined> {
     this.logger.info('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
-    const raceResult = await this._raceToSuccess(relays)
+    const raceResult = await this._raceToSuccess(relays, paymaster)
     this.logger.info(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
     this._handleRaceResults(raceResult)
     if (raceResult.winner != null) {
@@ -111,9 +111,9 @@ export class RelaySelectionManager {
   /**
    * @returns JSON response from the relay server, but adds the requested URL to it :'-(
    */
-  async _getRelayAddressPing (relayInfo: RelayInfoUrl): Promise<PartialRelayInfo> {
+  async _getRelayAddressPing (relayInfo: RelayInfoUrl, paymaster?: Address): Promise<PartialRelayInfo> {
     this.logger.info(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
-    const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, this.gsnTransactionDetails.paymaster)
+    const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, paymaster)
 
     if (!pingResponse.ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
@@ -130,11 +130,11 @@ export class RelaySelectionManager {
    * Accepts an array of promises.
    * Resolves once any promise resolves, ignores the rest. Exceptions returned separately.
    */
-  async _raceToSuccess (relays: RelayInfoUrl[]): Promise<RaceResult> {
+  async _raceToSuccess (relays: RelayInfoUrl[], paymaster?: Address): Promise<RaceResult> {
     const errors: Map<string, Error> = new Map<string, Error>()
     return await new Promise((resolve) => {
       relays.forEach((relay: RelayInfoUrl) => {
-        this._getRelayAddressPing(relay)
+        this._getRelayAddressPing(relay, paymaster)
           .then((winner: PartialRelayInfo) => {
             resolve({
               winner,

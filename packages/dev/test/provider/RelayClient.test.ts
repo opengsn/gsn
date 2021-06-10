@@ -147,8 +147,6 @@ contract('RelayClient', function (accounts) {
       from,
       to,
       data,
-      forwarder: forwarderAddress,
-      paymaster: paymaster.address,
       paymasterData: '0x',
       clientId: '1'
     }
@@ -541,7 +539,7 @@ contract('RelayClient', function (accounts) {
         provider: web3.currentProvider as HttpProvider,
         logger,
         maxPageSize,
-        deployment: { relayHubAddress: relayHub.address }
+        deployment: { paymasterAddress: paymaster.address }
       }).init()
       const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0x123')
       const badTransactionValidator = new BadRelayedTransactionValidator(logger, true, contractInteractor, configureGSN(gsnConfig))

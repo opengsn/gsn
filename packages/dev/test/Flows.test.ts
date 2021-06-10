@@ -193,6 +193,14 @@ options.forEach(params => {
           await approvalPaymaster.setRelayHub(rhub.address)
           await approvalPaymaster.setTrustedForwarder(await sr.getTrustedForwarder())
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
+          relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address } }
+          const relayProvider = await RelayProvider.newProvider(
+            {
+              provider: web3.currentProvider as HttpProvider,
+              config: relayClientConfig
+            }).init()
+          // @ts-ignore
+          TestRecipient.web3.setProvider(relayProvider)
         })
 
         const setRecipientProvider = async function (asyncApprovalData: AsyncDataCallback): Promise<void> {
@@ -256,9 +264,7 @@ options.forEach(params => {
               await setRecipientProvider(async () => '0x')
 
               await sr.emitMessage('xxx', {
-                from: gasless,
-                // @ts-ignore
-                paymaster: approvalPaymaster.address
+                from: gasless
               })
             }, 'unexpected approvalData: \'\' instead of')
           } catch (e) {
