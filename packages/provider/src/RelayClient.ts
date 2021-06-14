@@ -202,9 +202,11 @@ export class RelayClient {
     }
     const relayingErrors = new Map<string, Error>()
     const auditPromises: Array<Promise<AuditResponse>> = []
+    const paymaster = this.dependencies.contractInteractor.getDeployment().paymasterAddress
+
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
-      const activeRelay = await relaySelectionManager.selectNextRelay()
+      const activeRelay = await relaySelectionManager.selectNextRelay(paymaster)
       if (activeRelay != null) {
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
@@ -303,8 +305,8 @@ export class RelayClient {
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayTransactionRequest> {
     const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress
-    const forwarder = gsnTransactionDetails.forwarder ?? this.dependencies.contractInteractor.getDeployment().forwarderAddress
-    const paymaster = gsnTransactionDetails.paymaster ?? this.dependencies.contractInteractor.getDeployment().paymasterAddress
+    const forwarder = this.dependencies.contractInteractor.getDeployment().forwarderAddress
+    const paymaster = this.dependencies.contractInteractor.getDeployment().paymasterAddress
     if (relayHubAddress == null || paymaster == null || forwarder == null) {
       throw new Error('Contract addresses are not initialized!')
     }
