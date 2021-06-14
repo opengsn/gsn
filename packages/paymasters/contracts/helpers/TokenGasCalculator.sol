@@ -29,7 +29,7 @@ contract TokenGasCalculator is RelayHub {
         uint256 _minimumUnstakeDelay,
         uint256 _minimumStake,
         uint256 _dataGasCostPerByte,
-        uint256 _externalCallDataCostOverhead) public RelayHub(_stakeManager,
+        uint256 _externalCallDataCostOverhead) RelayHub(_stakeManager,
         _penalizer,
         _maxWorkerCount,
         _gasReserve,

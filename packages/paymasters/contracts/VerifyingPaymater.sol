@@ -37,10 +37,12 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (signature, maxPossibleGas);
 
-        require(approvalData.length == 65, "invalid approvalData signature");
+        // solhint-disable-next-line reason-string
+        require(approvalData.length == 65, "approvalData: invalid length for signature");
+        require(relayRequest.relayData.paymasterData.length == 0, "paymasterData: invalid length");
 
         bytes32 requestHash = getRequestHash(relayRequest);
-        require(signer == ECDSA.recover(requestHash, approvalData), "wrong approvalData signature");
+        require(signer == ECDSA.recover(requestHash, approvalData), "approvalData: wrong signature");
 
         return ("", false);
     }
