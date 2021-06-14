@@ -34,7 +34,12 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
     override
     virtual
     returns (bytes memory, bool revertOnRecipientRevert) {
-        (relayRequest, signature, approvalData, maxPossibleGas);
+        (signature);
+
+        require(approvalData.length == 0, "approvalData: invalid length");
+        // solhint-disable-next-line reason-string
+        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
+
         (IERC20 token, IUniswap uniswap) = _getToken(relayRequest.relayData.paymasterData);
         (address payer, uint256 tokenPrecharge) = _calculatePreCharge(token, uniswap, relayRequest, maxPossibleGas);
         if (!payer.isContract()) {

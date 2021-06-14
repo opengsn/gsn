@@ -13,7 +13,7 @@ contract TestUniswap is IUniswap {
     uint public rateMult;
     uint public rateDiv;
 
-    constructor(uint _rateMult, uint _rateDiv) public payable {
+    constructor(uint _rateMult, uint _rateDiv) payable {
         token = new TestToken();
         rateMult = _rateMult;
         rateDiv = _rateDiv;
