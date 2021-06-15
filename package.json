@@ -61,9 +61,10 @@
     "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 12000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test'",
     "lerna-run-test-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test'",
     "lerna-run-test-only-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-only'",
-    "verdaccio-start": "verdaccio --config verdaccio.yaml",
-    "verdaccio-clean": "rm -rf verdaccio",
-    "verdaccio-clean-opengsn": "rm -rf verdaccio/@opengsn"
+    "verdaccio-start": "yarn verdaccio-clean && yarn verdaccio-run",
+    "verdaccio-publish": "lerna publish --no-git-tag-version --no-push --registry http://localhost:4873",
+    "verdaccio-run": "verdaccio --config verdaccio/verdaccio.yaml",
+    "verdaccio-clean": "rm -rf verdaccio/db"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "0.5.5",
