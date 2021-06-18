@@ -4,11 +4,7 @@ import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
-import {
-  BlockNumber,
-  Transaction,
-  TransactionReceipt
-} from 'web3-core'
+import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
 
 import abi from 'web3-eth-abi'
 import { RelayRequest } from './EIP712/RelayRequest'
@@ -42,12 +38,8 @@ import { Contract, TruffleContract } from './LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from 'ethereumjs-common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
-import {
-  RelayWorkersAdded,
-  StakeInfo,
-  ActiveManagerEvents
-} from './types/GSNContractsDataTypes'
-
+import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
+import { sleep } from './Utils.js'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -82,6 +74,7 @@ export class ContractInteractor {
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
   private readonly maxPageSize: number
+  private lastBlockNumber: number
 
   private rawTxOptions?: TransactionOptions
   chainId!: number
@@ -103,6 +96,7 @@ export class ContractInteractor {
     this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
+    this.lastBlockNumber = 0
     // @ts-ignore
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
@@ -524,6 +518,7 @@ export class ContractInteractor {
                 this.logger.error('Too many attempts. throwing ')
                 throw e
               }
+              await sleep(500)
             }
           }
         }
@@ -560,7 +555,12 @@ export class ContractInteractor {
   }
 
   async getBlockNumber (): Promise<number> {
-    return await this.web3.eth.getBlockNumber()
+    let blockNumber = -1
+    while (blockNumber < this.lastBlockNumber) {
+      blockNumber = await this.web3.eth.getBlockNumber()
+    }
+    this.lastBlockNumber = blockNumber
+    return blockNumber
   }
 
   async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
