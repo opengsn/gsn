@@ -11438,11 +11438,6 @@ solhint@^3.3.2:
   optionalDependencies:
     prettier "^1.14.3"
 
-solidity-string-utils@^0.0.4:
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/solidity-string-utils/-/solidity-string-utils-0.0.4.tgz#3a09950908e7389097c36ab4c377a6b14a4539ee"
-  integrity sha512-bX66hgagUDPa2tosYkhkH+o4Pd1rTm68uxE/twRYr6yxqKghCeMbGvlDdR5GBK4J4XTIjL9fO0DGVi3Xj6nrIw==
-
 sort-keys@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/sort-keys/-/sort-keys-2.0.0.tgz#658535584861ec97d730d6cf41822e1f56684128"

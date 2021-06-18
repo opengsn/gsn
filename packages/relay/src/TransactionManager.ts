@@ -165,7 +165,7 @@ data         | 0x${transaction.data.toString('hex')}
     await this.txStoreManager.putTx(storedTx, true)
   }
 
-  async updateTransactionWithAttempt (txToSign: Transaction, tx: StoredTransaction, currentBlock: number): Promise<StoredTransaction> {
+  async updateTransactionWithAttempt (txToUpdate: Transaction, tx: StoredTransaction, currentBlock: number): Promise<StoredTransaction> {
     const metadata: StoredTransactionMetadata = {
       attempts: tx.attempts + 1,
       boostBlockNumber: currentBlock,
@@ -174,7 +174,7 @@ data         | 0x${transaction.data.toString('hex')}
       creationBlockNumber: tx.creationBlockNumber,
       minedBlockNumber: tx.minedBlockNumber
     }
-    const storedTx = createStoredTransaction(txToSign, metadata)
+    const storedTx = createStoredTransaction(txToUpdate, metadata)
     await this.txStoreManager.putTx(storedTx, true)
     return storedTx
   }
@@ -194,7 +194,6 @@ data         | 0x${transaction.data.toString('hex')}
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
     const signedTx = keyManager.signTransaction(tx.from, txToSign)
     const storedTx = await this.updateTransactionWithAttempt(txToSign, tx, currentBlock)
-
     this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.gasPrice, isMaxGasPriceReached)
     this.printSendTransactionLog(txToSign, tx.from)
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
@@ -238,7 +237,18 @@ data         | 0x${transaction.data.toString('hex')}
     }
     this.logger.debug(`Total of ${sortedTxs.length} transactions are not confirmed yet, checking...`)
     // Get nonce at confirmationsNeeded blocks ago
+    const nonces = new Map<string, number>()
     for (const transaction of sortedTxs) {
+      const nonce = nonces.get(transaction.from) ?? await this.contractInteractor.getTransactionCount(transaction.from, blockNumber - this.config.confirmationsNeeded)
+      nonces.set(transaction.from, nonce)
+      if (transaction.nonce < nonce) {
+        this.logger.debug(`removing all transaction up to nonce ${nonce} sent by ${transaction.from}`)
+        await this.txStoreManager.removeTxsUntilNonce(
+          transaction.from,
+          nonce
+        )
+        continue
+      }
       const shouldRecheck = transaction.minedBlockNumber == null || blockNumber - transaction.minedBlockNumber >= this.config.confirmationsNeeded
       if (shouldRecheck) {
         const receipt = await this.contractInteractor.getTransaction(transaction.txId)
@@ -273,7 +283,7 @@ data         | 0x${transaction.data.toString('hex')}
 
   /**
    * This methods uses the oldest pending transaction for reference. If it was not mined in a reasonable time,
-   * it is boosted all consequent transactions with gas price lower then that are boosted as well.
+   * it is boosted. All consequent transactions with gas price lower then that are boosted as well.
    */
   async boostUnderpricedPendingTransactionsForSigner (signer: string, currentBlockHeight: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const boostedTransactions = new Map<PrefixedHexString, SignedTransactionDetails>()
@@ -300,7 +310,7 @@ data         | 0x${transaction.data.toString('hex')}
 
     // Calculate new gas price as a % increase over the previous one
     const { newGasPrice, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.gasPrice)
-    const underpricedTransactions = sortedTxs.filter(it => it.gasPrice < newGasPrice)
+    const underpricedTransactions = sortedTxs.filter(it => it.gasPrice <= newGasPrice)
     for (const transaction of underpricedTransactions) {
       const boostedTransactionDetails = await this.resendTransaction(transaction, currentBlockHeight, newGasPrice, isMaxGasPriceReached)
       boostedTransactions.set(transaction.txId, boostedTransactionDetails)

@@ -488,6 +488,12 @@ export class ContractInteractor {
     if (this.maxPageSize !== Number.MAX_SAFE_INTEGER && options.toBlock === 'latest') {
       options.toBlock = await this.getBlockNumber()
     }
+    if (options.fromBlock != null && options.fromBlock > options.toBlock) {
+      const message = `fromBlock(${options.fromBlock.toString()}) >  
+              toBlock(${options.toBlock.toString()})`
+      this.logger.error(message)
+      throw new Error(message)
+    }
     let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
     const relayEventParts: EventData[][] = []
     while (true) {
@@ -495,8 +501,31 @@ export class ContractInteractor {
       try {
         // eslint-disable-next-line
         for (const { fromBlock, toBlock } of rangeParts) {
-          const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
-          relayEventParts.push(pastEvents)
+          // this.logger.debug('Getting events from block ' + fromBlock.toString() + ' to ' + toBlock.toString())
+          let attempts = 0
+          while (true) {
+            try {
+              const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
+              relayEventParts.push(pastEvents)
+              break
+            } catch (e) {
+              /* eslint-disable */
+              this.logger.error(`error in getPastEvents. 
+              fromBlock: ${fromBlock.toString()} 
+              toBlock: ${toBlock.toString()} 
+              attempts: ${attempts.toString()}
+              names: ${names.toString()}
+              extraTopics: ${extraTopics.toString()}
+              options: ${JSON.stringify(options)}
+              \n${e.toString()}`)
+              /* eslint-enable */
+              attempts++
+              if (attempts >= 5) {
+                this.logger.error('Too many attempts. throwing ')
+                throw e
+              }
+            }
+          }
         }
         break
       } catch (e) {
@@ -596,6 +625,10 @@ export class ContractInteractor {
   }> {
     const stakeManager = await this.stakeManagerInstance
     return await stakeManager.getStakeInfo(managerAddress)
+  }
+
+  async workerToManager (worker: Address): Promise<string> {
+    return await this.relayHubInstance.workerToManager(worker)
   }
 
   /**

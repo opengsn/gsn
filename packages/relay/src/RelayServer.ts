@@ -612,6 +612,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     this.lastScannedBlock = currentBlockNumber
     const isRegistered = await this.registrationManager.isRegistered()
     if (!isRegistered) {
+      this.logger.debug('Not registered yet')
       this.setReadyState(false)
       return transactionHashes
     }
@@ -620,6 +621,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlockNumber))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
+      this.logger.debug('Worker balance too low')
       this.setReadyState(false)
       return transactionHashes
     }
