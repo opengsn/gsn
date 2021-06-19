@@ -24,15 +24,6 @@ contract('PenalizerService', function (accounts) {
 
   beforeEach(async function () {
     id = (await snapshot()).result
-  })
-
-  afterEach(async function () {
-    await revert(id)
-    await penalizerService.transactionManager.txStoreManager.clearAll()
-    penalizerService.transactionManager._initNonces()
-  })
-
-  before(async function () {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init()
     await env.newServerInstance()
@@ -60,10 +51,16 @@ contract('PenalizerService', function (accounts) {
     await env.web3.eth.personal.unlockAccount(relayWorker, '', 1e6)
   })
 
+  afterEach(async function () {
+    await revert(id)
+    await penalizerService.transactionManager.txStoreManager.clearAll()
+    penalizerService.transactionManager._initNonces()
+  })
+
   describe('penalizeRepeatedNonce', function () {
     let auditRequest: AuditRequest
 
-    before(async function () {
+    beforeEach(async function () {
       const rawTxOptions = env.relayServer.contractInteractor.getRawTxOptions()
       const nonce = await web3.eth.getTransactionCount(relayWorker)
       const txToMine = new Transaction({
@@ -119,7 +116,7 @@ contract('PenalizerService', function (accounts) {
   describe('penalizeIllegalTransaction', function () {
     let auditRequest: AuditRequest
 
-    before(async function () {
+    beforeEach(async function () {
       const rawTxOptions = env.relayServer.contractInteractor.getRawTxOptions()
       const penalizableTx = new Transaction({
         nonce: toBN(0),
