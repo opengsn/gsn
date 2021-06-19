@@ -556,8 +556,14 @@ export class ContractInteractor {
 
   async getBlockNumber (): Promise<number> {
     let blockNumber = -1
-    while (blockNumber < this.lastBlockNumber) {
+    let attempts = 0
+    while (blockNumber < this.lastBlockNumber && attempts <= 100) {
       blockNumber = await this.web3.eth.getBlockNumber()
+      await sleep(100)
+      attempts++
+    }
+    if (blockNumber < this.lastBlockNumber) {
+      throw new Error(`couldn't retrieve latest blockNumber from node. last block: ${this.lastBlockNumber}, got block: ${blockNumber}`)
     }
     this.lastBlockNumber = blockNumber
     return blockNumber
