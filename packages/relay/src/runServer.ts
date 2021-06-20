@@ -50,6 +50,10 @@ async function run (): Promise<void> {
     //     const now = Date.now()
     //     console.log('>>> ', r)
     //     // eslint-disable-next-line
+    //     if (r && r.params && r.params[0] && r.params[0].topics) {
+    //       console.log('>>> ', r.params[0].topics)
+    //     }
+    //     // eslint-disable-next-line
     //     if (r && r.params && r.params[0] && r.params[0].fromBlock == 1 ) {
     //       console.log('=== big wait!')
     //     }

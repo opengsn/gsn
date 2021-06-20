@@ -478,11 +478,17 @@ export class ContractInteractor {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
     }
+    if (options.fromBlock == null) {
+      options.fromBlock = 1
+    }
     // save 'getBlockNumber' roundtrip for a known max value (must match check in getLogsPagesForRange)
     if (this.maxPageSize !== Number.MAX_SAFE_INTEGER && options.toBlock === 'latest') {
       options.toBlock = await this.getBlockNumber()
+      if (options.fromBlock > options.toBlock) {
+        options.toBlock = options.fromBlock
+      }
     }
-    if (options.fromBlock != null && options.fromBlock > options.toBlock) {
+    if (options.fromBlock > options.toBlock) {
       const message = `fromBlock(${options.fromBlock.toString()}) >  
               toBlock(${options.toBlock.toString()})`
       this.logger.error(message)
@@ -491,7 +497,7 @@ export class ContractInteractor {
     let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
     const relayEventParts: EventData[][] = []
     while (true) {
-      const rangeParts = await this.splitRange(options.fromBlock ?? 1, options.toBlock, pagesCurrent)
+      const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
       try {
         // eslint-disable-next-line
         for (const { fromBlock, toBlock } of rangeParts) {
@@ -514,11 +520,11 @@ export class ContractInteractor {
               \n${e.toString()}`)
               /* eslint-enable */
               attempts++
-              if (attempts >= 5) {
+              if (attempts >= 100) {
                 this.logger.error('Too many attempts. throwing ')
                 throw e
               }
-              await sleep(500)
+              await sleep(300)
             }
           }
         }
