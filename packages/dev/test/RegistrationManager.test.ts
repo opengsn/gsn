@@ -241,14 +241,14 @@ contract('RegistrationManager', function (accounts) {
         managerBalanceBefore: BN,
         workerBalanceBefore: BN): Promise<void> {
         const gasPrice = await env.web3.eth.getGasPrice()
-        const ownerBalanceBefore = toBN(await env.web3.eth.getBalance(newServer.registrationManager.ownerAddress!))
-        assert.equal(newServer.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
+        const ownerBalanceBefore = toBN(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
+        assert.equal(server.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
         // TODO: assert on withdrawal block?
-        // assert.equal(newServer.config.withdrawBlock?.toString(), '0')
+        // assert.equal(server.config.withdrawBlock?.toString(), '0')
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const receipts = await newServer._worker(latestBlock.number)
+        const receipts = await server._worker(latestBlock.number)
         const totalTxCosts: BN = await getTotalTxCosts(receipts, gasPrice)
-        const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(newServer.registrationManager.ownerAddress!))
+        const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
         assert.equal(
           ownerBalanceAfter.sub(
             ownerBalanceBefore).toString(),
@@ -257,14 +257,14 @@ contract('RegistrationManager', function (accounts) {
           `ownerBalanceAfter(${ownerBalanceAfter.toString()}) - ownerBalanceBefore(${ownerBalanceBefore.toString()}) !=
          managerHubBalanceBefore(${managerHubBalanceBefore.toString()}) + managerBalanceBefore(${managerBalanceBefore.toString()}) + workerBalanceBefore(${workerBalanceBefore.toString()})
          - totalTxCosts(${totalTxCosts.toString()})`)
-        const managerHubBalanceAfter = await env.relayHub.balanceOf(newServer.managerAddress)
-        const managerBalanceAfter = await newServer.getManagerBalance()
-        const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
+        const managerHubBalanceAfter = await env.relayHub.balanceOf(server.managerAddress)
+        const managerBalanceAfter = await server.getManagerBalance()
+        const workerBalanceAfter = await server.getWorkerBalance(workerIndex)
         assert.isTrue(managerHubBalanceAfter.eqn(0))
         assert.isTrue(managerBalanceAfter.eqn(0))
         assert.isTrue(workerBalanceAfter.eqn(0))
         // TODO
-        // assert.isTrue(newServer.withdrawBlock?.gtn(0))
+        // assert.isTrue(server.withdrawBlock?.gtn(0))
       }
 
       let newServer: RelayServer

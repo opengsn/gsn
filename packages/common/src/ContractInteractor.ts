@@ -451,6 +451,9 @@ export class ContractInteractor {
     }
     const rangeSize = toBlock - fromBlock + 1
     const pagesForRange = Math.max(Math.ceil(rangeSize / this.maxPageSize), 1)
+    if (pagesForRange > 1) {
+      this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForRange} smaller paginated requests!`)
+    }
     return pagesForRange
   }
 
