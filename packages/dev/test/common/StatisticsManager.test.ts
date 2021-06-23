@@ -51,7 +51,8 @@ contract('StatisticsManager', function (accounts) {
       await evmMine()
     }
     await misbehavingPaymaster.setRevertPreRelayCallOnEvenBlocks(true)
-    await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest({ paymaster: misbehavingPaymaster.address }))
+
+    await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest({}, { paymasterAddress: misbehavingPaymaster.address }))
 
     const httpClient = new HttpClient(new HttpWrapper(), env.relayServer.logger)
     statusLogic = new StatisticsManager(env.contractInteractor, httpClient, env.relayServer.logger)

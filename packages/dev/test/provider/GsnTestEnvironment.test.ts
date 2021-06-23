@@ -45,7 +45,6 @@ contract('GsnTestEnvironment', function () {
       const ret = await relayClient.relayTransaction({
         from: sender,
         to: sr.address,
-        forwarder: await sr.getTrustedForwarder(),
         gas: '0x' + 1e6.toString(16),
         data: sr.contract.methods.emitMessage('hello').encodeABI()
       })

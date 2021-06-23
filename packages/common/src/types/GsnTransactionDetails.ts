@@ -15,10 +15,6 @@ export interface GsnTransactionDetails {
   gas?: PrefixedHexString
   gasPrice?: PrefixedHexString
 
-  // Required parameters for GSN, but assigned later
-  readonly forwarder?: Address
-  readonly paymaster?: Address
-
   readonly paymasterData?: PrefixedHexString
   readonly clientId?: IntString
 
