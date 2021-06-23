@@ -96,7 +96,6 @@ contract('PenalizationFlow', function (accounts) {
       from: accounts[0],
       to: env.recipient.address,
       data: env.recipient.contract.methods.emitMessage('hello world').encodeABI(),
-      forwarder: env.forwarder.address,
       paymasterData: '0x',
       clientId: '1'
     }

@@ -116,6 +116,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
     // @ts-ignore
     await token.approve(uniswap.address, MAX_INTEGER)
 
+    const paymasterData = web3.eth.abi.encodeParameter('address', nonUniswap)
+
     relayRequest = {
       relayData: {
         relayWorker: relay,
@@ -124,7 +126,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         pctRelayFee: '1',
         baseRelayFee: '0',
         gasPrice: await web3.eth.getGasPrice(),
-        paymasterData: '0x',
+        paymasterData,
         clientId: '1'
       },
       request: {
@@ -175,13 +177,14 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       })
 
       it('should reject if not enough balance', async () => {
-        assert.match(await revertReason(testHub.callPreRC(relayRequest, signature, '0x', 1e6)), /ERC20: transfer amount exceeds balance/)
+        const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
+        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /ERC20: transfer amount exceeds balance/)
       })
 
       it('should reject if unknown paymasterData', async () => {
         const req = mergeData(relayRequest, { paymasterData: '0x1234' })
         const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
-        assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), 'invalid uniswap in paymasterData -- Reason given: invalid uniswap in paymasterData.')
+        assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), 'paymasterData: invalid length for Uniswap v1 exchange address -- Reason given: paymasterData: invalid length for Uniswap v1 exchange address.')
       })
 
       it('should reject if unsupported uniswap in paymasterData', async () => {
@@ -198,7 +201,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       })
 
       it('should reject if no token approval', async () => {
-        assert.include(await revertReason(testHub.callPreRC(relayRequest, signature, '0x', 1e6)), transferErc20Error)
+        const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
+        assert.include(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), transferErc20Error)
       })
 
       context('with token approved for paymaster', function () {
@@ -206,7 +210,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
           await recipient.execute(token.address, token.contract.methods.approve(paymaster.address, MAX_INTEGER.toString()).encodeABI())
         })
 
-        it('callPreRC should succeed and return default token/uniswap', async () => {
+        // deliberately removing this functionality as a bit redundant - just pass the token at all times
+        it.skip('callPreRC should succeed and return default token/uniswap', async () => {
           const ret: any = await testHub.callPreRC.call(relayRequest, signature, '0x', 1e6)
           const decoded = web3.eth.abi.decodeParameters(['address', 'address', 'address', 'address'], ret.context)
           assert.equal(decoded[2], token.address)
@@ -245,7 +250,9 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         )
       )
       const gas = 5000000
-      const relayCall: any = await hub.relayCall.call(1e06, relayRequest, wrongSignature, '0x', gas, {
+
+      const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
+      const relayCall: any = await hub.relayCall.call(1e06, req, wrongSignature, '0x', gas, {
         from: relay,
         gas
       })
@@ -263,6 +270,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       _relayRequest.relayData.gasPrice = '1'
       _relayRequest.relayData.pctRelayFee = '0'
       _relayRequest.relayData.baseRelayFee = '0'
+      _relayRequest.relayData.paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)
 
       // note that by default, ganache is buggy: getChainId returns 1337 but on-chain "chainid" returns 1.
       // only if we pass it "--chainId 1337" the above 2 return the same value...

@@ -2,6 +2,7 @@
 import abiDecoder from 'abi-decoder'
 import Web3 from 'web3'
 import crypto from 'crypto'
+import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
 import { toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
@@ -14,11 +15,7 @@ import {
   IStakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import {
-  assertRelayAdded,
-  getTemporaryWorkdirs,
-  ServerWorkdirs
-} from './ServerTestUtils'
+import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
@@ -223,7 +220,10 @@ export class ServerTestEnvironment {
     })
   }
 
-  async createRelayHttpRequest (overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<RelayTransactionRequest> {
+  async createRelayHttpRequest (
+    overrideDetails: Partial<GsnTransactionDetails> = {},
+    overrideDeployment: GSNContractsDeployment = {}
+  ): Promise<RelayTransactionRequest> {
     const pingResponse = {
       relayHubAddress: this.relayHub.address,
       relayWorkerAddress: this.relayServer.workerAddress
@@ -242,12 +242,22 @@ export class ServerTestEnvironment {
       from: this.gasLess,
       to: this.recipient.address,
       data: this.encodedFunction,
-      forwarder: this.forwarder.address,
       gas: toHex(1000000),
       gasPrice: toHex(20000000000)
     }
 
-    return await this.relayClient._prepareRelayHttpRequest(relayInfo, Object.assign({}, gsnTransactionDetails, overrideDetails))
+    const mergedDeployment = Object.assign({}, this.relayClient.dependencies.contractInteractor.getDeployment(), overrideDeployment)
+    const sandbox = sinon.createSandbox()
+    try {
+      sandbox.stub(this.relayClient.dependencies.contractInteractor, 'getDeployment').returns(mergedDeployment)
+      const mergedTransactionDetail = Object.assign({}, gsnTransactionDetails, overrideDetails)
+      // do not 'return await' here as it will defer executing the 'finally' block and enable re-stubbing
+      // (will crash on 'let x = [createRelayHttpRequest(), createRelayHttpRequest()]')
+      // eslint-disable-next-line @typescript-eslint/return-await
+      return this.relayClient._prepareRelayHttpRequest(relayInfo, mergedTransactionDetail)
+    } finally {
+      sandbox.restore()
+    }
   }
 
   async relayTransaction (assertRelayed = true, overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<{
