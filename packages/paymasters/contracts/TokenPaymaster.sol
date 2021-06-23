@@ -65,12 +65,6 @@ contract TokenPaymaster is BasePaymaster {
     }
 
     function _getToken(bytes memory paymasterData) internal view returns (IERC20 token, IUniswap uniswap) {
-        //if no specific token specified, assume the first in the list.
-        if ( paymasterData.length==0 ) {
-            return (tokens[0], uniswaps[0]);
-        }
-
-        require(paymasterData.length==32, "invalid uniswap in paymasterData");
         uniswap = abi.decode(paymasterData, (IUniswap));
         require(supportedUniswaps[uniswap], "unsupported token uniswap");
         token = IERC20(uniswap.tokenAddress());
@@ -102,7 +96,12 @@ contract TokenPaymaster is BasePaymaster {
     virtual
     relayHubOnly
     returns (bytes memory context, bool revertOnRecipientRevert) {
-        (relayRequest, signature, approvalData, maxPossibleGas);
+        (signature);
+
+        require(approvalData.length == 0, "approvalData: invalid length");
+        // solhint-disable-next-line reason-string
+        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
+
         (IERC20 token, IUniswap uniswap) = _getToken(relayRequest.relayData.paymasterData);
         (address payer, uint256 tokenPrecharge) = _calculatePreCharge(token, uniswap, relayRequest, maxPossibleGas);
         token.transferFrom(payer, address(this), tokenPrecharge);

@@ -700,7 +700,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         // eslint-disable-next-line @typescript-eslint/return-await
         return (await _sendTransactionOrig.call(server.transactionManager, ...arguments))
       }
-      const req = await env.createRelayHttpRequest({ paymaster: rejectingPaymaster.address })
+      const req = await env.createRelayHttpRequest({}, { paymasterAddress: rejectingPaymaster.address })
       await env.relayServer.createRelayTransaction(req)
       // await relayTransaction(relayTransactionParams2, options2, { paymaster: rejectingPaymaster.address }, false)
       const currentBlock = await env.web3.eth.getBlock('latest')

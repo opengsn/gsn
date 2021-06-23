@@ -169,6 +169,7 @@ export class ContractInteractor {
     if (this.deployment.paymasterAddress != null) {
       await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
     } else if (this.deployment.relayHubAddress != null) {
+      // TODO: this branch shouldn't exist as it's only used by the Server and can lead to broken Client configuration
       await this._resolveDeploymentFromRelayHub(this.deployment.relayHubAddress)
     } else {
       this.logger.info(`Contract interactor cannot resolve a full deployment from the following input: ${JSON.stringify(this.deployment)}`)
