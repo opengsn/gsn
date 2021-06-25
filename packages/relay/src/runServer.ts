@@ -28,6 +28,8 @@ function error (err: string): never {
   process.exit(1)
 }
 
+const DEBUG_PROVIDER = true
+
 async function run (): Promise<void> {
   let config: ServerConfigParams
   let web3provider
@@ -42,27 +44,28 @@ async function run (): Promise<void> {
       error('missing ethereumNodeUrl')
     }
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
-    // TEMP: logging provider..
-    // const orig = web3provider
-    // web3provider = {
-    //   // @ts-ignore
-    //   send (r, cb) {
-    //     const now = Date.now()
-    //     console.log('>>> ', r)
-    //     // eslint-disable-next-line
-    //     if (r && r.params && r.params[0] && r.params[0].topics) {
-    //       console.log('>>> ', r.params[0].topics)
-    //     }
-    //     // eslint-disable-next-line
-    //     if (r && r.params && r.params[0] && r.params[0].fromBlock == 1 ) {
-    //       console.log('=== big wait!')
-    //     }
-    //     orig.send(r, (err, res) => {
-    //       console.log('<<<', Date.now() - now, err, res)
-    //       cb(err, res)
-    //     })
-    //   }
-    // }
+    if (DEBUG_PROVIDER) {
+      const orig = web3provider
+      web3provider = {
+        // @ts-ignore
+        send (r, cb) {
+          const now = Date.now()
+          console.log('>>> ', r)
+          // eslint-disable-next-line
+          if (r && r.params && r.params[0] && r.params[0].topics) {
+            console.log('>>> ', r.params[0].topics)
+          }
+          // eslint-disable-next-line
+          if (r && r.params && r.params[0] && r.params[0].fromBlock == 1 ) {
+            console.log('=== big wait!')
+          }
+          orig.send(r, (err, res) => {
+            console.log('<<<', Date.now() - now, err, res)
+            cb(err, res)
+          })
+        }
+      }
+    }
     console.log('Resolving server config ...\n')
     config = await resolveServerConfig(conf, web3provider) as ServerConfigParams
     runPenalizer = config.runPenalizer
