@@ -305,6 +305,10 @@ export class RegistrationManager {
 
   async refreshStake (): Promise<void> {
     const stakeInfo = await this.contractInteractor.getStakeInfo(this.managerAddress)
+    const isStakedOnHub = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
+    if (isStakedOnHub) {
+      this.isHubAuthorized = true
+    }
     const stake = stakeInfo.stake
     this._isOwnerSetOnStakeManager = stakeInfo.owner !== constants.ZERO_ADDRESS
     if (this._isOwnerSetOnStakeManager && !isSameAddress(stakeInfo.owner, this.config.ownerAddress)) {
@@ -477,7 +481,11 @@ export class RegistrationManager {
     return getLatestEventData(workersAddedEvents)
   }
 
-  _isWorkerValid (): boolean {
+  async _isWorkerValid (): Promise<boolean> {
+    const managerFromHub = await this.contractInteractor.workerToManager(this.workerAddress)
+    if (managerFromHub.toLowerCase() === this.managerAddress.toLowerCase()) {
+      return true
+    }
     // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
     return this.lastWorkerAddedTransaction != null && this.lastWorkerAddedTransaction.returnValues.newRelayWorkers
       .map((a: string) => a.toLowerCase()).includes(this.workerAddress.toLowerCase())

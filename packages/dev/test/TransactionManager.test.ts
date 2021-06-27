@@ -92,7 +92,7 @@ contract('TransactionManager', function (accounts) {
     let parsedTxHash: PrefixedHexString
     let latestBlock: number
 
-    before(async function () {
+    beforeEach(async function () {
       await relayServer.transactionManager.txStoreManager.clearAll()
       relayServer.transactionManager._initNonces()
       const { signedTx } = await env.relayTransaction()
@@ -104,6 +104,30 @@ contract('TransactionManager', function (accounts) {
       await relayServer.transactionManager.removeConfirmedTransactions(latestBlock)
       let storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions[0].txId, parsedTxHash)
+      await evmMineMany(confirmationsNeeded)
+      const newLatestBlock = await env.web3.eth.getBlock('latest')
+      await relayServer.transactionManager.removeConfirmedTransactions(newLatestBlock.number)
+      storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      assert.deepEqual([], storedTransactions)
+    })
+
+    it('should remove stale boosted unconfirmed transactions', async function () {
+      await relayServer.transactionManager.removeConfirmedTransactions(latestBlock)
+      let storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      const oldTransaction = storedTransactions[0]
+      assert.equal(storedTransactions.length, 1)
+      assert.equal(oldTransaction.txId, parsedTxHash)
+      // Forcing the manager to store a boosted transaction
+      // Ganache is on auto-mine, so the server will throw after broadcasting on nonce error, after storing the boosted tx.
+      try {
+        await relayServer.transactionManager.resendTransaction(
+          oldTransaction, latestBlock, oldTransaction.gasPrice * 2, false)
+      } catch (e) {
+        assert.include(e.message, 'the tx doesn\'t have the correct nonce. account has nonce')
+      }
+      storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      assert.equal(storedTransactions.length, 1)
+      assert.notEqual(storedTransactions[0].txId, parsedTxHash)
       await evmMineMany(confirmationsNeeded)
       const newLatestBlock = await env.web3.eth.getBlock('latest')
       await relayServer.transactionManager.removeConfirmedTransactions(newLatestBlock.number)

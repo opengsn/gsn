@@ -34,7 +34,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   let globalId: string
   let env: ServerTestEnvironment
 
-  before(async function () {
+  beforeEach(async function () {
     globalId = (await snapshot()).result
     const relayClientConfig: Partial<GSNConfig> = {
       preferredRelays: [LocalhostOne],
@@ -51,7 +51,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     await env.clearServerStorage()
   })
 
-  after(async function () {
+  afterEach(async function () {
     await revert(globalId)
     await env.clearServerStorage()
   })
@@ -79,7 +79,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('#isReady after exception', () => {
     let relayServer: RelayServer
-    before(async () => {
+    beforeEach(async () => {
       relayServer = env.relayServer
       // force "ready
       assert.equal(relayServer.isReady(), true)
@@ -115,7 +115,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('validation', function () {
     const blacklistedPaymaster = '0xdeadfaceffff'
-    before(async function () {
+    beforeEach(async function () {
       await env.newServerInstance({ blacklistedPaymasters: [blacklistedPaymaster] })
     })
     describe('#validateInput()', function () {
@@ -200,11 +200,11 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     describe('#validateFees()', function () {
       describe('with trusted paymaster', function () {
-        before(async function () {
+        beforeEach(async function () {
           await env.relayServer._initTrustedPaymasters([env.paymaster.address])
         })
 
-        after(async function () {
+        afterEach(async function () {
           await env.relayServer._initTrustedPaymasters([])
         })
 
@@ -246,7 +246,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
 
       describe('#validateMaxNonce()', function () {
-        before(async function () {
+        beforeEach(async function () {
           // this is a new worker account - create transaction
           await evmMineMany(1)
           const latestBlock = (await env.web3.eth.getBlock('latest')).number
@@ -330,7 +330,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
         let req: RelayTransactionRequest
 
-        before(async function () {
+        beforeEach(async function () {
           rejectingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
           await rejectingPaymaster.setTrustedForwarder(env.forwarder.address)
           await rejectingPaymaster.setRelayHub(env.relayHub.address)
@@ -386,7 +386,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   })
 
   describe('#createRelayTransaction()', function () {
-    before(async function () {
+    beforeEach(async function () {
       await env.relayServer.txStoreManager.clearAll()
     })
 
@@ -409,7 +409,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     const txCost = toBN(defaultEnvironment.mintxgascost * parseInt(gasPrice))
 
     // TODO: not needed, worker is not funded at this point!
-    before('deplete worker balance', async function () {
+    beforeEach('deplete worker balance', async function () {
       relayServer = env.relayServer
       beforeDescribeId = (await snapshot()).result
       await relayServer.transactionManager.sendTransaction({
@@ -426,7 +426,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         'worker balance should be lower than min balance')
     })
 
-    after(async function () {
+    afterEach(async function () {
       await revert(beforeDescribeId)
     })
 
@@ -633,7 +633,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   describe('Function testing', function () {
     let relayServer: RelayServer
 
-    before(function () {
+    beforeEach(function () {
       relayServer = env.relayServer
     })
     it('_workerSemaphore', async function () {

@@ -4,11 +4,7 @@ import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
-import {
-  BlockNumber,
-  Transaction,
-  TransactionReceipt
-} from 'web3-core'
+import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
 
 import abi from 'web3-eth-abi'
 import { RelayRequest } from './EIP712/RelayRequest'
@@ -42,12 +38,8 @@ import { Contract, TruffleContract } from './LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from 'ethereumjs-common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
-import {
-  RelayWorkersAdded,
-  StakeInfo,
-  ActiveManagerEvents
-} from './types/GSNContractsDataTypes'
-
+import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
+import { sleep } from './Utils.js'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -82,6 +74,7 @@ export class ContractInteractor {
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
   private readonly maxPageSize: number
+  private lastBlockNumber: number
 
   private rawTxOptions?: TransactionOptions
   chainId!: number
@@ -103,6 +96,7 @@ export class ContractInteractor {
     this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
+    this.lastBlockNumber = 0
     // @ts-ignore
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
@@ -485,19 +479,55 @@ export class ContractInteractor {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
     }
+    if (options.fromBlock == null) {
+      options.fromBlock = 1
+    }
     // save 'getBlockNumber' roundtrip for a known max value (must match check in getLogsPagesForRange)
     if (this.maxPageSize !== Number.MAX_SAFE_INTEGER && options.toBlock === 'latest') {
       options.toBlock = await this.getBlockNumber()
+      if (options.fromBlock > options.toBlock) {
+        options.toBlock = options.fromBlock
+      }
+    }
+    if (options.fromBlock > options.toBlock) {
+      const message = `fromBlock(${options.fromBlock.toString()}) >  
+              toBlock(${options.toBlock.toString()})`
+      this.logger.error(message)
+      throw new Error(message)
     }
     let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
     const relayEventParts: EventData[][] = []
     while (true) {
-      const rangeParts = await this.splitRange(options.fromBlock ?? 1, options.toBlock, pagesCurrent)
+      const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
       try {
         // eslint-disable-next-line
         for (const { fromBlock, toBlock } of rangeParts) {
-          const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
-          relayEventParts.push(pastEvents)
+          // this.logger.debug('Getting events from block ' + fromBlock.toString() + ' to ' + toBlock.toString())
+          let attempts = 0
+          while (true) {
+            try {
+              const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
+              relayEventParts.push(pastEvents)
+              break
+            } catch (e) {
+              /* eslint-disable */
+              this.logger.error(`error in getPastEvents. 
+              fromBlock: ${fromBlock.toString()} 
+              toBlock: ${toBlock.toString()} 
+              attempts: ${attempts.toString()}
+              names: ${names.toString()}
+              extraTopics: ${extraTopics.toString()}
+              options: ${JSON.stringify(options)}
+              \n${e.toString()}`)
+              /* eslint-enable */
+              attempts++
+              if (attempts >= 100) {
+                this.logger.error('Too many attempts. throwing ')
+                throw e
+              }
+              await sleep(300)
+            }
+          }
         }
         break
       } catch (e) {
@@ -532,7 +562,18 @@ export class ContractInteractor {
   }
 
   async getBlockNumber (): Promise<number> {
-    return await this.web3.eth.getBlockNumber()
+    let blockNumber = -1
+    let attempts = 0
+    while (blockNumber < this.lastBlockNumber && attempts <= 100) {
+      blockNumber = await this.web3.eth.getBlockNumber()
+      await sleep(100)
+      attempts++
+    }
+    if (blockNumber < this.lastBlockNumber) {
+      throw new Error(`couldn't retrieve latest blockNumber from node. last block: ${this.lastBlockNumber}, got block: ${blockNumber}`)
+    }
+    this.lastBlockNumber = blockNumber
+    return blockNumber
   }
 
   async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
@@ -597,6 +638,10 @@ export class ContractInteractor {
   }> {
     const stakeManager = await this.stakeManagerInstance
     return await stakeManager.getStakeInfo(managerAddress)
+  }
+
+  async workerToManager (worker: Address): Promise<string> {
+    return await this.relayHubInstance.workerToManager(worker)
   }
 
   /**

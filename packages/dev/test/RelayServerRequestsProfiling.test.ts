@@ -10,7 +10,7 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
-  const callsPerStateRefresh = 9
+  const callsPerStateRefresh = 10
   const callsPerBlock = 0
   const callsPerTransaction = 13
 
