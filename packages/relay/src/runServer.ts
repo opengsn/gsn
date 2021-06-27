@@ -28,8 +28,6 @@ function error (err: string): never {
   process.exit(1)
 }
 
-const DEBUG_PROVIDER = true
-
 async function run (): Promise<void> {
   let config: ServerConfigParams
   let web3provider
@@ -43,8 +41,9 @@ async function run (): Promise<void> {
     if (conf.ethereumNodeUrl == null) {
       error('missing ethereumNodeUrl')
     }
+    const loggingProvider: boolean = conf.loggingProvider ?? false
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
-    if (DEBUG_PROVIDER) {
+    if (loggingProvider) {
       const orig = web3provider
       web3provider = {
         // @ts-ignore
