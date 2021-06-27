@@ -29,6 +29,7 @@ export interface ServerConfigParams {
   checkInterval: number
   readyTimeout: number
   devMode: boolean
+  loggingProvider: boolean
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
   // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
@@ -109,6 +110,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
+  loggingProvider: false,
   runPenalizer: true,
   logLevel: 'debug',
   loggerUrl: '',
@@ -155,6 +157,7 @@ const ConfigParamsTypes = {
   checkInterval: 'number',
   readyTimeout: 'number',
   devMode: 'boolean',
+  loggingProvider: 'boolean',
   logLevel: 'string',
 
   loggerUrl: 'string',
