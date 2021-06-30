@@ -12,7 +12,7 @@ import "@opengsn/contracts/src/BasePaymaster.sol";
 contract AcceptEverythingPaymaster is BasePaymaster {
 
     function versionPaymaster() external view override virtual returns (string memory){
-        return "2.2.0+opengsn.accepteverything.ipaymaster";
+        return "2.2.3+opengsn.accepteverything.ipaymaster";
     }
 
     function preRelayedCall(

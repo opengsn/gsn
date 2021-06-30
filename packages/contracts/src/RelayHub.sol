@@ -23,7 +23,7 @@ import "./interfaces/IStakeManager.sol";
 contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
 
-    string public override versionHub = "2.2.0+opengsn.hub.irelayhub";
+    string public override versionHub = "2.2.3+opengsn.hub.irelayhub";
 
     IStakeManager immutable override public stakeManager;
     address immutable override public penalizer;
