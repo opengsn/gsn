@@ -23,7 +23,7 @@ import "./interfaces/IStakeManager.sol";
 contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
 
-    string public override versionHub = "2.2.0+opengsn.hub.irelayhub";
+    string public override versionHub = "2.2.3+opengsn.hub.irelayhub";
 
     IStakeManager immutable override public stakeManager;
     address immutable override public penalizer;
@@ -429,11 +429,8 @@ contract RelayHub is IRelayHub, Ownable {
         address relayManager = workerToManager[relayWorker];
         // The worker must be controlled by a manager with a locked stake
         require(relayManager != address(0), "Unknown relay worker");
-        require(
-            isRelayManagerStaked(relayManager),
-            "relay manager not staked"
-        );
         IStakeManager.StakeInfo memory stakeInfo = stakeManager.getStakeInfo(relayManager);
+        require(stakeInfo.stake > 0, "relay manager not staked");
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }
 }

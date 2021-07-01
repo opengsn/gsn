@@ -25,6 +25,7 @@ import {
 import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
 import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -562,6 +563,33 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             penalizer.contract.methods.penalizeIllegalTransaction, relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address)
 
           await expectPenalization(method)
+        })
+
+        it('should penalize even after the relayer unlocked stake', async function () {
+          const id = (await snapshot()).result
+          const { gasPrice, gasLimit, relayRequest, signature } = await prepareRelayCall()
+          await relayHub.depositFor(paymaster.address, {
+            from: other,
+            value: ether('1')
+          })
+          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gasLimit.add(new BN(1e6 - 1)), {
+            from: relayWorker,
+            gas: gasLimit.add(new BN(1e6)),
+            gasPrice
+          })
+
+          const res = await stakeManager.unlockStake(relayManager, { from: relayOwner })
+          expectEvent(res, StakeUnlocked, {
+            relayManager,
+            owner: relayOwner
+          })
+          const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx, chainId)
+
+          const method = await commitPenalizationAndReturnMethod(
+            penalizer.contract.methods.penalizeIllegalTransaction, relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address)
+
+          await expectPenalization(method)
+          await revert(id)
         })
 
         it('does not penalize legal relay transactions', async function () {

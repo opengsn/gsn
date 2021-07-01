@@ -22,7 +22,7 @@ contract TokenPaymaster is BasePaymaster {
     using SafeMath for uint256;
 
     function versionPaymaster() external override virtual view returns (string memory){
-        return "2.2.0+opengsn.token.ipaymaster";
+        return "2.2.3+opengsn.token.ipaymaster";
     }
 
 
