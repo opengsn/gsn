@@ -14,6 +14,7 @@ import {
   PingFilter,
   RelayFilter
 } from '@opengsn/common/dist/types/Aliases'
+import { gsnRequiredVersion } from '@opengsn/common/dist'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -37,7 +38,7 @@ export const defaultGsnConfig: GSNConfig = {
   sliceSize: 3,
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
   methodSuffix: '',
-  requiredVersionRange: '2.2.0',
+  requiredVersionRange: gsnRequiredVersion,
   jsonStringifyRequest: false,
   auditorsCount: 1,
   clientId: '1'
