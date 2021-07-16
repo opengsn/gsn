@@ -15,7 +15,8 @@ export const networks = new Map<string, string>([
   ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
   ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
   ['goerli', 'https://goerli.infura.io/v3/' + cliInfuraId],
-  ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId]
+  ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId],
+  ['mumbai', 'https://polygon-mumbai.infura.io/v3' + cliInfuraId]
 ])
 
 export const networksBlockExplorers = new Map<string, string>([
@@ -24,7 +25,9 @@ export const networksBlockExplorers = new Map<string, string>([
   ['rinkeby', 'https://rinkeby.etherscan.io/'],
   ['kovan', 'https://kovan.etherscan.io/'],
   ['goerli', 'https://goerli.etherscan.io/'],
-  ['mainnet', 'https://etherscan.io/']
+  ['mainnet', 'https://etherscan.io/'],
+  ['mumbai', 'https://explorer-mumbai.maticvigil.com/']
+
 ])
 
 export function supportedNetworks (): string[] {
