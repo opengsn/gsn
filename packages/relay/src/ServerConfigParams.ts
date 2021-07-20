@@ -329,6 +329,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   }
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
+  if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
   return { ...serverDefaultConfiguration, ...config }
 }
 
