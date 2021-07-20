@@ -40,7 +40,8 @@ contract('PenalizerService', function (accounts) {
       url: '',
       workdir: '',
       etherscanApiUrl: 'etherscanApiUrl',
-      relayHubAddress: env.relayHub.address
+      relayHubAddress: env.relayHub.address,
+      ownerAddress: env.relayServer.config.ownerAddress
     }, web3.currentProvider) as ServerConfigParams
     penalizerService = new PenalizerService(penalizerParams, logger, serverConfigParams)
     await penalizerService.init(false)
