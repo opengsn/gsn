@@ -15,7 +15,7 @@ const HashcashPaymaster = artifacts.require('HashcashPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')
 const IRelayHub = artifacts.require('IRelayHub')
 
-contract('HashcashPaymaster', ([from]) => {
+contract.only('HashcashPaymaster', ([from]) => {
   let pm: HashcashPaymasterInstance
   let s: SampleRecipientInstance
   let gsnConfig: Partial<GSNConfig>
@@ -102,7 +102,7 @@ contract('HashcashPaymaster', ([from]) => {
   })
 
   it('should succeed with proper difficulty', async function () {
-    this.timeout(35000)
+    this.timeout(60000)
 
     const input: GSNUnresolvedConstructorInput = {
       provider: web3.currentProvider as HttpProvider,
