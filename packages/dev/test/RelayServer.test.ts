@@ -132,18 +132,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(env.relayServer.readinessInfo.currentStateTimestamp, env.relayServer.readinessInfo.runningSince)
       assert.equal(env.relayServer.readinessInfo.totalReadyTime, 0)
       assert.equal(env.relayServer.readinessInfo.totalNotReadyTime, 0)
-      assert.deepEqual(env.relayServer.readinessInfo.readyTimeIntervals, [])
-      assert.deepEqual(env.relayServer.readinessInfo.notReadyTimeIntervals, [])
 
       const statsResponse = env.relayServer.statsHandler()
       assert.equal(statsResponse.runningSince, env.relayServer.readinessInfo.runningSince)
       assert.equal(statsResponse.currentStateTimestamp, env.relayServer.readinessInfo.currentStateTimestamp)
       assert.equal(statsResponse.totalUptime, statsResponse.totalReadyTime + statsResponse.totalNotReadyTime)
       assert.isTrue(statsResponse.totalUptime > 0)
-      assert.equal(statsResponse.readyTimeIntervals.length, 0)
-      assert.equal(statsResponse.notReadyTimeIntervals.length, 1)
-      assert.equal(statsResponse.notReadyTimeIntervals[0][0], statsResponse.runningSince)
-      assert.isTrue(statsResponse.notReadyTimeIntervals[0][1] > statsResponse.runningSince)
+      assert.equal(statsResponse.totalReadinessChanges, 0)
     })
 
     it('should keep readiness info when setting to not ready', async function () {
@@ -161,10 +156,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.isTrue(statsResponse.totalUptime >= time)
       assert.isTrue(statsResponse.totalNotReadyTime >= time)
       assert.isTrue(statsResponse.totalReadyTime < time)
-      assert.equal(statsResponse.readyTimeIntervals.length, 0)
-      assert.equal(statsResponse.notReadyTimeIntervals.length, 1)
-      assert.equal(statsResponse.notReadyTimeIntervals[0][0], statsResponse.runningSince)
-      assert.isTrue(statsResponse.notReadyTimeIntervals[0][1] >= statsResponse.notReadyTimeIntervals[0][0] + time)
+      assert.equal(statsResponse.totalReadinessChanges, 0)
       console.log(statsResponse)
     })
 
@@ -175,9 +167,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         env.relayServer.readinessInfo.totalReadyTime + env.relayServer.readinessInfo.totalNotReadyTime)
       assert.closeTo(env.relayServer.readinessInfo.totalNotReadyTime, 0, 1000)
       // Only one interval, and it's from first uptime until last state change
-      assert.equal(env.relayServer.readinessInfo.notReadyTimeIntervals.length, 1)
-      assert.equal(env.relayServer.readinessInfo.notReadyTimeIntervals[0][0], env.relayServer.readinessInfo.runningSince)
-      assert.equal(env.relayServer.readinessInfo.notReadyTimeIntervals[0][1], env.relayServer.readinessInfo.currentStateTimestamp)
+      assert.equal(env.relayServer.readinessInfo.totalReadinessChanges, 1)
 
       console.log(env.relayServer.readinessInfo)
       const statsResponse = env.relayServer.statsHandler()
@@ -187,9 +177,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.isTrue(statsResponse.totalUptime >= time)
       assert.isTrue(statsResponse.totalReadyTime >= time)
       assert.isTrue(statsResponse.totalNotReadyTime < time)
-      assert.equal(statsResponse.readyTimeIntervals.length, 1)
-      assert.equal(statsResponse.readyTimeIntervals[0][0], statsResponse.currentStateTimestamp)
-      assert.isTrue(statsResponse.readyTimeIntervals[0][1] >= statsResponse.readyTimeIntervals[0][0] + time)
+      assert.equal(statsResponse.totalReadinessChanges, 1)
       console.log(statsResponse)
     })
 
@@ -206,13 +194,16 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       clock.tick(time)
       env.relayServer.setReadyState(false)
       assert.equal(env.relayServer.readinessInfo.totalReadyTime, time * 2)
-      assert.equal(env.relayServer.readinessInfo.readyTimeIntervals.length, 2)
-      assert.equal(env.relayServer.readinessInfo.notReadyTimeIntervals.length, 2)
+      assert.equal(env.relayServer.readinessInfo.totalReadinessChanges, 4)
       assert.equal(env.relayServer.readinessInfo.currentStateTimestamp - env.relayServer.readinessInfo.runningSince,
         env.relayServer.readinessInfo.totalReadyTime + env.relayServer.readinessInfo.totalNotReadyTime)
 
       console.log(env.relayServer.readinessInfo)
       const statsResponse = env.relayServer.statsHandler()
+      assert.equal(statsResponse.totalReadinessChanges, 4)
+      assert.isTrue(statsResponse.totalUptime >= 5 * time)
+      assert.equal(statsResponse.totalReadyTime, time * 2)
+      assert.isTrue(statsResponse.totalNotReadyTime >= 3 * time)
       console.log(statsResponse)
     })
   })

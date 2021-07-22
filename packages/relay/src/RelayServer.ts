@@ -57,8 +57,7 @@ interface ReadinessInfo {
 
   totalReadyTime: number
   totalNotReadyTime: number
-  readyTimeIntervals: number[][]
-  notReadyTimeIntervals: number[][]
+  totalReadinessChanges: number
 }
 
 interface StatsResponse extends ReadinessInfo {
@@ -124,8 +123,7 @@ export class RelayServer extends EventEmitter {
       currentStateTimestamp: now,
       totalReadyTime: 0,
       totalNotReadyTime: 0,
-      readyTimeIntervals: [],
-      notReadyTimeIntervals: []
+      totalReadinessChanges: 0,
     }
     this.printServerAddresses()
     this.logger.warn(`RelayServer version', ${gsnRuntimeVersion}`)
@@ -167,12 +165,8 @@ export class RelayServer extends EventEmitter {
     const statsResponse: StatsResponse = {...this.readinessInfo, totalUptime: now - this.readinessInfo.runningSince}
     if (this.isReady()) {
       statsResponse.totalReadyTime = this.readinessInfo.totalReadyTime + now - this.readinessInfo.currentStateTimestamp
-      statsResponse.readyTimeIntervals = [...this.readinessInfo.readyTimeIntervals]
-      statsResponse.readyTimeIntervals.push([this.readinessInfo.currentStateTimestamp, now])
     } else {
       statsResponse.totalNotReadyTime = this.readinessInfo.totalNotReadyTime + now - this.readinessInfo.currentStateTimestamp
-      statsResponse.notReadyTimeIntervals = [...this.readinessInfo.notReadyTimeIntervals]
-      statsResponse.notReadyTimeIntervals.push([this.readinessInfo.currentStateTimestamp, now])
     }
     return statsResponse
   }
@@ -839,13 +833,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
           this.logger.warn(chalk.greenBright('Relayer state: READY'))
         }
         this.readinessInfo.totalNotReadyTime += now - this.readinessInfo.currentStateTimestamp
-        this.readinessInfo.notReadyTimeIntervals.push( [this.readinessInfo.currentStateTimestamp, now])
       } else {
         this.readinessInfo.totalReadyTime += now - this.readinessInfo.currentStateTimestamp
-        this.readinessInfo.readyTimeIntervals.push( [this.readinessInfo.currentStateTimestamp, now])
         this.logger.warn(chalk.redBright('Relayer state: NOT-READY'))
       }
       this.readinessInfo.currentStateTimestamp = now
+      this.readinessInfo.totalReadinessChanges++
     }
     this.ready = isReady
   }
