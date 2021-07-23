@@ -35,8 +35,8 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { toBuffer } from 'ethereumjs-util'
-import Timeout = NodeJS.Timeout
 import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
+import Timeout = NodeJS.Timeout
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -111,7 +111,7 @@ export class RelayServer extends EventEmitter {
       currentStateTimestamp: now,
       totalReadyTime: 0,
       totalNotReadyTime: 0,
-      totalReadinessChanges: 0,
+      totalReadinessChanges: 0
     }
     this.printServerAddresses()
     this.logger.warn(`RelayServer version', ${gsnRuntimeVersion}`)
@@ -148,9 +148,9 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  statsHandler(): StatsResponse {
+  statsHandler (): StatsResponse {
     const now = Date.now()
-    const statsResponse: StatsResponse = {...this.readinessInfo, totalUptime: now - this.readinessInfo.runningSince}
+    const statsResponse: StatsResponse = { ...this.readinessInfo, totalUptime: now - this.readinessInfo.runningSince }
     if (this.isReady()) {
       statsResponse.totalReadyTime = this.readinessInfo.totalReadyTime + now - this.readinessInfo.currentStateTimestamp
     } else {

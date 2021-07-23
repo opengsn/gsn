@@ -3,7 +3,7 @@
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import chai from 'chai'
-import sinon, { SinonFakeTimers } from 'sinon'
+import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 
@@ -783,14 +783,15 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     async function attackTheServer (server: RelayServer): Promise<void> {
       const _sendTransactionOrig = server.transactionManager.sendTransaction
-      server.transactionManager.sendTransaction = async function ({
-                                                                    signer,
-                                                                    method,
-                                                                    destination,
-                                                                    value = '0x',
-                                                                    gasLimit,
-                                                                    gasPrice
-                                                                  }: SendTransactionDetails): Promise<SignedTransactionDetails> {
+      server.transactionManager.sendTransaction = async function (
+        {
+          signer,
+          method,
+          destination,
+          value = '0x',
+          gasLimit,
+          gasPrice
+        }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore
         // eslint-disable-next-line @typescript-eslint/return-await
