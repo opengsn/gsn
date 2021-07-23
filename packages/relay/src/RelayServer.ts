@@ -36,6 +36,7 @@ import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { toBuffer } from 'ethereumjs-util'
 import Timeout = NodeJS.Timeout
+import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -50,19 +51,6 @@ const GAS_FACTOR = 1.1
  * A constant oversupply of gas to each 'relayCall' transaction.
  */
 const GAS_RESERVE = 100000
-
-interface ReadinessInfo {
-  runningSince: number
-  currentStateTimestamp: number
-
-  totalReadyTime: number
-  totalNotReadyTime: number
-  totalReadinessChanges: number
-}
-
-interface StatsResponse extends ReadinessInfo {
-  totalUptime: number
-}
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
