@@ -9,9 +9,12 @@ import {
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import {
+  RelayHubInstance,
   VersionRegistryInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { string32 } from '@opengsn/common/dist/VersionRegistry'
+import { constants } from '@opengsn/common/dist'
+import { deployHub } from './TestUtils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 const VersionRegistryContract = artifacts.require('VersionRegistry')
@@ -135,12 +138,14 @@ context('#ServerConfigParams', () => {
 
     it('should fail on invalid relayhub address', async () => {
       const config = { relayHubAddress: '123' }
-      await expectRevert(resolveServerConfig(config, provider), 'Provided address "123" is invalid, the capitalization checksum test failed, or its an indrect IBAN address which can\'t be converted')
+      await expectRevert(resolveServerConfig(config, provider),
+        'Provided address "123" is invalid, the capitalization checksum test failed, or its an indrect IBAN address which can\'t be converted')
     })
 
     it('should fail on no-contract relayhub address', async () => {
       const config = { relayHubAddress: addr(1) }
-      await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x1111111111111111111111111111111111111111')
+      await expectRevert(resolveServerConfig(config, provider),
+        'RelayHub: no contract at address 0x1111111111111111111111111111111111111111')
     })
 
     it('should fail on missing hubid for VersionRegistry', async () => {
@@ -150,7 +155,8 @@ context('#ServerConfigParams', () => {
 
     it('should fail on no-contract VersionRegistry address', async () => {
       const config = { versionRegistryAddress: addr(1), relayHubId: 'hubid' }
-      await expectRevert(resolveServerConfig(config, provider), 'Invalid param versionRegistryAddress: no contract at address 0x1111111111111111111111111111111111111111')
+      await expectRevert(resolveServerConfig(config, provider),
+        'Invalid param versionRegistryAddress: no contract at address 0x1111111111111111111111111111111111111111')
     })
 
     contract('with VersionRegistry', () => {
@@ -165,12 +171,56 @@ context('#ServerConfigParams', () => {
 
       it('should fail on invalid hub address in oracle', async () => {
         const config = { versionRegistryAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
-        await expectRevert(resolveServerConfig(config, provider), 'Invalid param relayHubId hub-invalidaddr @ 1.0: not an address: garbagevalue')
+        await expectRevert(resolveServerConfig(config, provider),
+          'Invalid param relayHubId hub-invalidaddr @ 1.0: not an address: garbagevalue')
       })
 
       it('should fail on no contract at hub address in oracle', async () => {
         const config = { versionRegistryAddress: oracle.address, relayHubId: 'hub-nocontract' }
-        await expectRevert(resolveServerConfig(config, provider), 'RelayHub: no contract at address 0x2222222222222222222222222222222222222222')
+        await expectRevert(resolveServerConfig(config, provider),
+          'RelayHub: no contract at address 0x2222222222222222222222222222222222222222')
+      })
+    })
+
+    contract('Mandatory parameters', () => {
+      let hub: RelayHubInstance
+      before(async () => {
+        hub = await deployHub(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
+      })
+
+      it('should fail on missing url', async () => {
+        const config = { relayHubAddress: hub.address }
+        await expectRevert(resolveServerConfig(config, provider), 'missing param: url')
+      })
+
+      it('should fail on missing workdir', async () => {
+        const config = { relayHubAddress: hub.address, url: 'fake.url.com' }
+        await expectRevert(resolveServerConfig(config, provider), 'missing param: workdir')
+      })
+
+      it('should fail on missing owner address', async () => {
+        const config = { relayHubAddress: hub.address, url: 'fake.url.com', workdir: '/path/to/somewhere/' }
+        await expectRevert(resolveServerConfig(config, provider), 'missing param: ownerAddress')
+      })
+
+      it('should fail on zero owner address', async () => {
+        const config = {
+          relayHubAddress: hub.address,
+          url: 'fake.url.com',
+          workdir: '/path/to/somewhere/',
+          ownerAddress: constants.ZERO_ADDRESS
+        }
+        await expectRevert(resolveServerConfig(config, provider), 'missing param: ownerAddress')
+      })
+
+      it('should succeed on valid config', async () => {
+        const config = {
+          relayHubAddress: hub.address,
+          url: 'fake.url.com',
+          workdir: '/path/to/somewhere/',
+          ownerAddress: '0x1111111111111111111111111111111111111111'
+        }
+        await resolveServerConfig(config, provider)
       })
     })
   })
