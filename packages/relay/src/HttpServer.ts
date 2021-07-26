@@ -53,18 +53,18 @@ export class HttpServer {
 
   start (): void {
     this.serverInstance = this.app.listen(this.port, () => {
-      console.log('Listening on port', this.port)
+      this.logger.info('Listening on port', this.port)
       this.relayService?.start()
     })
   }
 
   stop (): void {
     this.serverInstance?.close()
-    console.log('Http server stopped.\nShutting down relay...')
+    this.logger.info('Http server stopped.\nShutting down relay...')
   }
 
   close (): void {
-    console.log('Stopping relay worker...')
+    this.logger.info('Stopping relay worker...')
     this.relayService?.stop()
     this.penalizerService?.stop()
   }
@@ -81,7 +81,7 @@ export class HttpServer {
     try {
       const pingResponse = await this.relayService.pingHandler(paymaster)
       res.send(pingResponse)
-      console.log(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
+      this.logger.info(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
     } catch (e) {
       const message: string = e.message
       res.send({ message })
@@ -96,7 +96,7 @@ export class HttpServer {
     try {
       const statsResponse = this.relayService.statsHandler()
       res.send(statsResponse)
-      console.log('stats sent.')
+      this.logger.info('stats sent.')
     } catch (e) {
       const message: string = e.message
       res.send({ message })

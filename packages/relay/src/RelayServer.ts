@@ -149,6 +149,7 @@ export class RelayServer extends EventEmitter {
   }
 
   statsHandler (): StatsResponse {
+    // First updating latest saved state up to the time of this 'stats' http request, since it might not be up to date.
     const now = Date.now()
     const statsResponse: StatsResponse = { ...this.readinessInfo, totalUptime: now - this.readinessInfo.runningSince }
     if (this.isReady()) {
