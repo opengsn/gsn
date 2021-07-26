@@ -53,7 +53,7 @@ export class HttpServer {
 
   start (): void {
     this.serverInstance = this.app.listen(this.port, () => {
-      this.logger.info('Listening on port', this.port)
+      this.logger.info(`Listening on port ${this.port}`)
       this.relayService?.start()
     })
   }
