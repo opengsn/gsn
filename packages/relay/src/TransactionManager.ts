@@ -85,8 +85,11 @@ created at   | block #${creationBlockNumber}
   }
 
   printSendTransactionLog (transaction: Transaction, from: Address): void {
-    const valueString = transaction.value.length === 0 ? '0' : parseInt('0x' + transaction.value.toString('hex')).toString()
-    const nonceString = transaction.nonce.length === 0 ? '0' : parseInt('0x' + transaction.nonce.toString('hex'))
+    if (transaction.to == null) {
+      throw new Error('transaction.to must be defined')
+    }
+    const valueString = transaction.value.toString()
+    const nonceString = transaction.nonce.toString()
     const gasPriceString = parseInt('0x' + transaction.gasPrice.toString('hex'))
 
     const valueHumanReadable: string = new EthVal(valueString).toEth().toFixed(4)
@@ -94,7 +97,7 @@ created at   | block #${creationBlockNumber}
     this.logger.info(`Broadcasting transaction:
 hash         | 0x${transaction.hash().toString('hex')}
 from         | ${from}
-to           | 0x${transaction.to.toString('hex')}
+to           | ${transaction.to.toString()}
 value        | ${valueString} (${valueHumanReadable} eth)
 nonce        | ${nonceString}
 gasPrice     | ${gasPriceString} (${gasPriceHumanReadable} gwei)

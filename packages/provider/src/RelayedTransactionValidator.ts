@@ -31,21 +31,26 @@ export class RelayedTransactionValidator {
     returnedTx: PrefixedHexString
   ): boolean {
     const transaction = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
-
+    if (transaction.to == null) {
+      throw new Error('transaction.to must be defined')
+    }
+    if (transaction.s == null || transaction.r == null || transaction.v == null) {
+      throw new Error('tx signature must be defined')
+    }
     this.logger.info(`returnedTx:
-    v:        ${bufferToHex(transaction.v!.toBuffer())}
-    r:        ${bufferToHex(transaction.r!.toBuffer())}
-    s:        ${bufferToHex(transaction.s!.toBuffer())}
-    to:       ${transaction.to!.toString()}
+    v:        ${bufferToHex(transaction.v.toBuffer())}
+    r:        ${bufferToHex(transaction.r.toBuffer())}
+    s:        ${bufferToHex(transaction.s.toBuffer())}
+    to:       ${transaction.to.toString()}
     data:     ${bufferToHex(transaction.data)}
-    gasLimit: ${bufferToHex(transaction.gasLimit!.toBuffer())}
-    gasPrice: ${bufferToHex(transaction.gasPrice!.toBuffer())}
-    value:    ${bufferToHex(transaction.value!.toBuffer())}
+    gasLimit: ${bufferToHex(transaction.gasLimit.toBuffer())}
+    gasPrice: ${bufferToHex(transaction.gasPrice.toBuffer())}
+    value:    ${bufferToHex(transaction.value.toBuffer())}
     `)
 
     const signer = bufferToHex(transaction.getSenderAddress().toBuffer())
 
-    const externalGasLimit = bufferToHex(transaction.gasLimit!.toBuffer())
+    const externalGasLimit = bufferToHex(transaction.gasLimit.toBuffer())
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
@@ -54,7 +59,7 @@ export class RelayedTransactionValidator {
     }
 
     if (
-      isSameAddress(bufferToHex(transaction.to!.toBuffer()), relayHubAddress) &&
+      isSameAddress(bufferToHex(transaction.to.toBuffer()), relayHubAddress) &&
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
@@ -72,7 +77,7 @@ export class RelayedTransactionValidator {
       return true
     } else {
       console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)
-      console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to!.toBuffer()), signer)
+      console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to.toBuffer()), signer)
       return false
     }
   }

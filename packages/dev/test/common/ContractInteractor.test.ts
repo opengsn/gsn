@@ -13,7 +13,7 @@ import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { PrefixedHexString } from 'ethereumjs-util'
-import Transaction from '@ethereumjs/tx/dist/transaction'
+import { Transaction } from '@ethereumjs/tx'
 import { constants } from '@opengsn/common/dist/Constants'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -152,7 +152,7 @@ contract('ContractInteractor', function (accounts) {
     before(async function () {
       contractInteractor = new ContractInteractor({ provider, logger, maxPageSize })
       const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
-      const transaction = new Transaction({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
+      const transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
       transaction.sign(Buffer.from('46e6ef4a356fa3fa3929bf4b59e6b3eb9d0521ea660fd2879c67bd501002ac2b', 'hex'))
       sampleTransactionData = '0x' + transaction.serialize().toString('hex')
       sampleTransactionHash = '0x' + transaction.hash().toString('hex')

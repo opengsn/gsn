@@ -5,7 +5,6 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { TransactionDataCache } from '@opengsn/relay/dist/penalizer/TransactionDataCache'
-import * as ethUtils from 'ethereumjs-util'
 
 export class MockTxByNonceService implements BlockExplorerInterface {
   transactionDataCache: TransactionDataCache
@@ -24,7 +23,7 @@ export class MockTxByNonceService implements BlockExplorerInterface {
     const txData: TransactionData = {
       from,
       hash: '0x' + tx.hash().toString('hex'),
-      nonce: ethUtils.bufferToInt(tx.nonce).toString(),
+      nonce: tx.nonce.toString(),
       to: '',
       gas: '',
       gasPrice: '',

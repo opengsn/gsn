@@ -1,4 +1,4 @@
-import Transaction from '@ethereumjs/tx/dist/transaction'
+import { Transaction } from '@ethereumjs/tx'
 import Web3 from 'web3'
 import axios from 'axios'
 import chai from 'chai'
@@ -8,7 +8,7 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import {
   RelayHubInstance,
@@ -247,7 +247,7 @@ contract('RelayClient', function (accounts) {
       const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
       assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
 
-      const destination: string = validTransaction.to.toString('hex')
+      const destination: string = validTransaction.to!.toString()
       assert.equal(`0x${destination}`, relayHub.address.toString().toLowerCase())
     })
 
@@ -600,7 +600,7 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }
       }, true)
-      const transaction = new Transaction('0x')
+      const transaction = Transaction.fromSerializedTx(toBuffer('0x'))
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,

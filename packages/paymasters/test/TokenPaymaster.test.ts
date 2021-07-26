@@ -9,8 +9,6 @@ import {
 import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { defaultEnvironment, decodeRevertReason, getEip712Signature } from '@opengsn/common'
 
-import { PrefixedHexString } from 'ethereumjs-util'
-
 import {
   TestProxyInstance,
   TestTokenInstance,
@@ -29,7 +27,7 @@ import {
 import Web3 from 'web3'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { deployHub } from './ProxyDeployingPaymaster.test'
-import { MAX_INTEGER } from 'ethereumjs-util'
+import { PrefixedHexString, MAX_INTEGER } from 'ethereumjs-util'
 
 import 'source-map-support/register'
 

@@ -4,7 +4,7 @@ import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
 import { Transaction, TxOptions } from '@ethereumjs/tx'
-import { PrefixedHexString, bufferToHex, bufferToInt, ecrecover, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
+import { PrefixedHexString, bufferToHex, ecrecover, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
 
 import { Address } from './types/Aliases'
 
@@ -236,21 +236,24 @@ export function boolString (bool: boolean): string {
 }
 
 export function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
-  const input: List = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to!.toBuffer(), tx.value, tx.data]
+  if (tx.to == null) {
+    throw new Error('tx.to must be defined')
+  }
+  if (tx.s == null || tx.r == null || tx.v == null) {
+    throw new Error('tx signature must be defined')
+  }
+  const input: List = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to.toBuffer(), tx.value, tx.data]
   input.push(
     toBuffer(chainId),
     unpadBuffer(toBuffer(0)),
     unpadBuffer(toBuffer(0))
   )
-  let vInt = tx.v!.toNumber()
+  let vInt = tx.v.toNumber()
   if (vInt > 28) {
     vInt -= chainId * 2 + 8
   }
   const data = `0x${encode(input).toString('hex')}`
-  const r = tx.r!.toString('hex').padStart(64, '0')
-  const s = tx.s!.toString('hex').padStart(64, '0')
-  const v = vInt.toString(16).padStart(2, '0')
-  const signature = `0x${r}${s}${v}`
+  const signature = signatureRSV2Hex(tx.r, tx.s, vInt)
   return {
     data,
     signature

@@ -3,7 +3,7 @@ import abiDecoder from 'abi-decoder'
 import crypto from 'crypto'
 import { Transaction as EthereumJsTransaction, TxOptions, TxData } from '@ethereumjs/tx'
 import { Transaction as Web3CoreTransaction } from 'web3-core'
-import { bufferToHex, bufferToInt, isZeroAddress, PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { bufferToHex, isZeroAddress, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import * as ethUtils from 'ethereumjs-util'
 
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
