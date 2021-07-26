@@ -12,7 +12,7 @@ import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 
 import { constants, expectEvent } from '@openzeppelin/test-helpers'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { HttpProvider } from 'web3-core'
 import { registerAsRelayServer, revertReason } from './TestUtils'
 import {

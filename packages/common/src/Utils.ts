@@ -3,14 +3,14 @@ import abi from 'web3-eth-abi'
 import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
-import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
-import { bufferToHex, bufferToInt, ecrecover, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
+import { Transaction, TxOptions } from '@ethereumjs/tx'
+import { PrefixedHexString, bufferToHex, bufferToInt, ecrecover, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
 
 import { Address } from './types/Aliases'
 
 import { TypedRequestData } from './EIP712/TypedRequestData'
 import chalk from 'chalk'
-import { encode } from 'rlp'
+import { encode, List } from 'rlp'
 import { defaultEnvironment } from './Environments'
 
 export function removeHexPrefix (hex: string): string {
@@ -236,19 +236,19 @@ export function boolString (bool: boolean): string {
 }
 
 export function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
-  const input = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]
+  const input: List = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to!.toBuffer(), tx.value, tx.data]
   input.push(
     toBuffer(chainId),
     unpadBuffer(toBuffer(0)),
     unpadBuffer(toBuffer(0))
   )
-  let vInt = bufferToInt(tx.v)
+  let vInt = tx.v!.toNumber()
   if (vInt > 28) {
     vInt -= chainId * 2 + 8
   }
   const data = `0x${encode(input).toString('hex')}`
-  const r = tx.r.toString('hex').padStart(64, '0')
-  const s = tx.s.toString('hex').padStart(64, '0')
+  const r = tx.r!.toString('hex').padStart(64, '0')
+  const s = tx.s!.toString('hex').padStart(64, '0')
   const v = vInt.toString(16).padStart(2, '0')
   const signature = `0x${r}${s}${v}`
   return {
@@ -257,6 +257,6 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   }
 }
 
-export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TransactionOptions): PrefixedHexString {
-  return bufferToHex(new Transaction(signedTransaction, transactionOptions).hash())
+export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
+  return bufferToHex(Transaction.fromSerializedTx(toBuffer(signedTransaction), transactionOptions).hash())
 }

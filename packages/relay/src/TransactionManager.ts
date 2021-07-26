@@ -2,7 +2,8 @@
 import EthVal from 'ethval'
 import chalk from 'chalk'
 import { Mutex } from 'async-mutex'
-import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
+import { Transaction, TxOptions } from '@ethereumjs/tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -48,7 +49,7 @@ export class TransactionManager {
   logger: LoggerInterface
   gasPriceFetcher: GasPriceFetcher
 
-  rawTxOptions!: TransactionOptions
+  rawTxOptions!: TxOptions
 
   constructor (dependencies: ServerDependencies, config: ServerConfigParams) {
     this.contractInteractor = dependencies.contractInteractor

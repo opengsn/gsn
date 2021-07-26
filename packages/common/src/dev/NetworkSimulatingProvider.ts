@@ -1,4 +1,4 @@
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import web3Utils from 'web3-utils'
 

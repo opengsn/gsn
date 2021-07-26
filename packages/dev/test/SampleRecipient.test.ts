@@ -4,7 +4,7 @@ import {
   TestRecipientInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import BN from 'bn.js'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { deployHub } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'

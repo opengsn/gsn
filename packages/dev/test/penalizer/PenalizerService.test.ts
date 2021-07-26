@@ -1,5 +1,5 @@
 import { HttpProvider } from 'web3-core'
-import { Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 

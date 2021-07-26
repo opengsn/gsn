@@ -1,4 +1,5 @@
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import * as ethUtils from 'ethereumjs-util'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 

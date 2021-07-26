@@ -3,10 +3,10 @@
 import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
-import { Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
 import { Transaction as NewTransaction, AccessListEIP2930Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
-import { TransactionOptions } from 'ethereumjs-tx/dist/types'
+import { TxOptions } from '@ethereumjs/tx/dist/types'
 import { encode } from 'rlp'
 import { expect } from 'chai'
 import { privateToAddress, unpadBuffer, toBuffer, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
@@ -46,7 +46,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
-  let transactionOptions: TransactionOptions
+  let transactionOptions: TxOptions
 
   let forwarder: string
   const relayWorkerPrivateKey = Buffer.from('6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c', 'hex')

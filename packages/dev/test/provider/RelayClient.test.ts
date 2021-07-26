@@ -1,4 +1,4 @@
-import Transaction from 'ethereumjs-tx/dist/transaction'
+import Transaction from '@ethereumjs/tx/dist/transaction'
 import Web3 from 'web3'
 import axios from 'axios'
 import chai from 'chai'
@@ -8,7 +8,7 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import {
   RelayHubInstance,
@@ -238,7 +238,7 @@ contract('RelayClient', function (accounts) {
         assert.fail(`validTransaction is null: ${JSON.stringify(relayingResult, replaceErrors)}`)
         return
       }
-      const validTransactionHash: string = validTransaction.hash(true).toString('hex')
+      const validTransactionHash: string = validTransaction.hash().toString('hex')
       const txHash = `0x${validTransactionHash}`
       const res = await web3.eth.getTransactionReceipt(txHash)
 

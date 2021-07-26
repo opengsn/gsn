@@ -6,7 +6,8 @@ import HDKey, { EthereumHDKey } from 'ethereumjs-wallet/hdkey'
 import fs from 'fs'
 import ow from 'ow'
 import { toHex } from 'web3-utils'
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
+import { Transaction } from '@ethereumjs/tx'
 
 export const KEYSTORE_FILENAME = 'keystore'
 

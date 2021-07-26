@@ -1,4 +1,5 @@
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import Mutex from 'async-mutex/lib/Mutex'
 import * as ethUtils from 'ethereumjs-util'
 
@@ -96,7 +97,7 @@ contract('TransactionManager', function (accounts) {
       await relayServer.transactionManager.txStoreManager.clearAll()
       relayServer.transactionManager._initNonces()
       const { signedTx } = await env.relayTransaction()
-      parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx, relayServer.transactionManager.rawTxOptions)).hash())
+      parsedTxHash = ethUtils.bufferToHex((Transaction.fromSerializedTx(toBuffer(signedTx), relayServer.transactionManager.rawTxOptions)).hash())
       latestBlock = (await env.web3.eth.getBlock('latest')).number
     })
 

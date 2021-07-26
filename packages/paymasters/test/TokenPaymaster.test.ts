@@ -9,7 +9,7 @@ import {
 import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { defaultEnvironment, decodeRevertReason, getEip712Signature } from '@opengsn/common'
 
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import {
   TestProxyInstance,
