@@ -8,7 +8,7 @@ import Common from '@ethereumjs/common'
 import { TxOptions } from '@ethereumjs/tx/dist/types'
 import { encode } from 'rlp'
 import { expect } from 'chai'
-import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex, toBuffer } from 'ethereumjs-util'
+import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { getEip712Signature, removeHexPrefix, signatureRSV2Hex } from '@opengsn/common/dist/Utils'

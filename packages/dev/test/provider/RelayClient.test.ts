@@ -248,7 +248,7 @@ contract('RelayClient', function (accounts) {
       assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
 
       const destination: string = validTransaction.to!.toString()
-      assert.equal(`0x${destination}`, relayHub.address.toString().toLowerCase())
+      assert.equal(destination, relayHub.address.toString().toLowerCase())
     })
 
     it('should skip timed-out server', async function () {
@@ -541,7 +541,7 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
       }).init()
-      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0x123')
+      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0xc6808080808080')
       const badTransactionValidator = new BadRelayedTransactionValidator(logger, true, contractInteractor, configureGSN(gsnConfig))
       const relayClient =
         new RelayClient({
@@ -600,7 +600,7 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }
       }, true)
-      const transaction = Transaction.fromSerializedTx(toBuffer('0x'))
+      const transaction = Transaction.fromSerializedTx(toBuffer('0xc6808080808080'))
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,

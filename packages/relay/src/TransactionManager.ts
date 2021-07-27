@@ -9,7 +9,7 @@ import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 
 import { TxStoreManager } from './TxStoreManager'
-import { KeyManager } from './KeyManager'
+import { KeyManager, SignedTransaction } from './KeyManager'
 import { ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import {
   createStoredTransaction,
@@ -126,7 +126,7 @@ data         | 0x${transaction.data.toString('hex')}
       this.logger.error(msg)
       throw new Error(msg)
     }
-    let signedTx
+    let signedTransaction: SignedTransaction
     let storedTx: StoredTransaction
     try {
       const nonce = await this.pollNonce(signer)
@@ -140,27 +140,28 @@ data         | 0x${transaction.data.toString('hex')}
       }, this.rawTxOptions)
       // TODO omg! do not do this!
       const keyManager = this.managerKeyManager.isSigner(signer) ? this.managerKeyManager : this.workersKeyManager
-      signedTx = keyManager.signTransaction(signer, txToSign)
+      signedTransaction = keyManager.signTransaction(signer, txToSign)
       const metadata: StoredTransactionMetadata = {
         from: signer,
         attempts: 1,
         serverAction,
         creationBlockNumber
       }
-      storedTx = createStoredTransaction(txToSign, metadata)
+      // console.log('wtf is signedTransaction', signedTransaction, txToSign)
+      storedTx = createStoredTransaction(signedTransaction.signedEthJsTx, metadata)
       this.nonces[signer]++
       await this.txStoreManager.putTx(storedTx, false)
-      this.printSendTransactionLog(txToSign, signer)
+      this.printSendTransactionLog(signedTransaction.signedEthJsTx, signer)
     } finally {
       releaseMutex()
     }
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
     if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
     return {
       transactionHash,
-      signedTx
+      signedTx: signedTransaction.rawTx
     }
   }
 
@@ -196,19 +197,19 @@ data         | 0x${transaction.data.toString('hex')}
       this.rawTxOptions)
 
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
-    const signedTx = keyManager.signTransaction(tx.from, txToSign)
-    const storedTx = await this.updateTransactionWithAttempt(txToSign, tx, currentBlock)
+    const signedTransaction = keyManager.signTransaction(tx.from, txToSign)
+    const storedTx = await this.updateTransactionWithAttempt(signedTransaction.signedEthJsTx, tx, currentBlock)
     this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.gasPrice, isMaxGasPriceReached)
-    this.printSendTransactionLog(txToSign, tx.from)
+    this.printSendTransactionLog(signedTransaction.signedEthJsTx, tx.from)
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
     if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
     return {
       transactionHash,
-      signedTx
+      signedTx: signedTransaction.rawTx
     }
   }
 

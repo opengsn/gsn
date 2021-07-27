@@ -11,7 +11,6 @@ import {
   pubToAddress,
   toBuffer,
   unpadBuffer,
-  keccak256,
   bnToUnpaddedBuffer
 } from 'ethereumjs-util'
 

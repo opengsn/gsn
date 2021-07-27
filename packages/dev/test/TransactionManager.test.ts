@@ -7,6 +7,7 @@ import { evmMineMany } from './TestUtils'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
+import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
 
 contract('TransactionManager', function (accounts) {
   const confirmationsNeeded = 12
@@ -23,7 +24,7 @@ contract('TransactionManager', function (accounts) {
   describe('nonce counter asynchronous access protection', function () {
     let _pollNonceOrig: (signer: string) => Promise<number>
     let nonceMutexOrig: Mutex
-    let signTransactionOrig: (signer: string, tx: Transaction) => PrefixedHexString
+    let signTransactionOrig: (signer: string, tx: Transaction) => SignedTransaction
     before(function () {
       _pollNonceOrig = relayServer.transactionManager.pollNonce
       relayServer.transactionManager.pollNonce = async function (signer) {
