@@ -6,6 +6,7 @@
       <w>buidler</w>
       <w>calldata</w>
       <w>calldatagascost</w>
+      <w>chainlink</w>
       <w>dapp</w>
       <w>dapps</w>
       <w>deauthorization</w>
@@ -58,6 +59,7 @@
       <w>penalizer</w>
       <w>penalizetxcache</w>
       <w>penalizetxpages</w>
+      <w>permittable</w>
       <w>privkey</w>
       <w>rebalancing</w>
       <w>registree</w>

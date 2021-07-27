@@ -23,6 +23,14 @@ jobs: # a collection of steps
           name: test
           command: yarn test | tee /tmp/test-results.log
 
+      - run: # run ganache mainnet fork
+          name: ganache-fork-mainnet-background
+          command: yarn ganache-fork-mainnet-background
+
+      - run: # run tests with fork
+          name: test-fork
+          command: yarn test-fork | tee /tmp/test-results.log
+
 #coverage is broken (doesn't cover all contracts). disabled for now..
 #      - restore_cache: # special cache for coverage test
 #          key: last-coverage

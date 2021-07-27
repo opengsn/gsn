@@ -12,7 +12,7 @@ contract SampleRecipient is BaseRelayRecipient {
     event Sender( address _msgSenderFunc, address sender );
 
     function setForwarder(address forwarder) public {
-        trustedForwarder = forwarder;
+        setTrustedForwarder(forwarder);
     }
     function something() public {
         emit Sender( _msgSender(), msg.sender );

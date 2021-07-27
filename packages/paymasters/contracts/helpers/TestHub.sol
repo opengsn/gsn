@@ -7,10 +7,12 @@ import "@opengsn/contracts/src/interfaces/IPaymaster.sol";
 
 import "@opengsn/contracts/src/RelayHub.sol";
 
+import "./AllEvents.sol";
+
 /**
  * This mock relay hub contract is only used to test the paymaster's 'pre-' and 'postRelayedCall' in isolation.
  */
-contract TestHub is RelayHub {
+contract TestHub is RelayHub, AllEvents {
 
     constructor(
         IStakeManager _stakeManager,

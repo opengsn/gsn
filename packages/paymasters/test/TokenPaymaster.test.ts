@@ -1,41 +1,34 @@
-/* global contract artifacts before it */
-
-import { constants } from '@openzeppelin/test-helpers'
 import {
   TypedRequestData,
   GsnDomainSeparatorType,
   GsnRequestType
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { defaultEnvironment, decodeRevertReason, getEip712Signature } from '@opengsn/common'
-
-import { PrefixedHexString } from 'ethereumjs-tx'
-
 import {
+  TestHubInstance,
   TestProxyInstance,
   TestTokenInstance,
   TestUniswapInstance,
-  TokenPaymasterInstance,
-  TestHubInstance
+  TokenPaymasterInstance
 } from '@opengsn/paymasters/types/truffle-contracts'
-import { registerAsRelayServer, revertReason } from './TestUtils'
-import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import {
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import Web3 from 'web3'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
-import { deployHub } from './ProxyDeployingPaymaster.test'
+import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { calculatePostGas, deployTestHub, mergeRelayRequest, registerAsRelayServer, revertReason } from './TestUtils'
+import { defaultEnvironment, decodeRevertReason, getEip712Signature } from '@opengsn/common'
+
+import Web3 from 'web3'
 import { MAX_INTEGER } from 'ethereumjs-util'
+import { PrefixedHexString } from 'ethereumjs-tx'
+import { toWei } from 'web3-utils'
 
-import 'source-map-support/register'
+import { deployHub } from './ProxyDeployingPaymaster.test'
 
-const TestHub = artifacts.require('TestHub')
 const TokenPaymaster = artifacts.require('TokenPaymaster')
-const TokenGasCalculator = artifacts.require('TokenGasCalculator')
 const TestUniswap = artifacts.require('TestUniswap')
 const TestToken = artifacts.require('TestToken')
 const Forwarder = artifacts.require('Forwarder')
@@ -44,13 +37,6 @@ const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
 
 export const transferErc20Error = 'ERC20: transfer amount exceeds allowance -- Reason given: ERC20: transfer amount exceeds allowance.'
-
-function mergeData (req: RelayRequest, override: Partial<RelayData>): RelayRequest {
-  return {
-    request: req.request,
-    relayData: { ...req.relayData, ...override }
-  }
-}
 
 // TODO: this test recreates GSN manually. Use GSN tools to do it instead.
 contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
@@ -65,31 +51,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
   let relayRequest: RelayRequest
   let signature: PrefixedHexString
 
-  async function calculatePostGas (paymaster: TokenPaymasterInstance): Promise<void> {
-    const uniswap = await paymaster.uniswaps(0)
-    const testpaymaster = await TokenPaymaster.new([uniswap], { gas: 1e7 })
-    const calc = await TokenGasCalculator.new(
-      constants.ZERO_ADDRESS,
-      constants.ZERO_ADDRESS,
-      defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-      defaultEnvironment.relayHubConfiguration.gasReserve,
-      defaultEnvironment.relayHubConfiguration.postOverhead,
-      defaultEnvironment.relayHubConfiguration.gasOverhead,
-      defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-      defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-      defaultEnvironment.relayHubConfiguration.minimumStake,
-      defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-      defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
-      { gas: 10000000 })
-    await testpaymaster.transferOwnership(calc.address)
-    // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
-    await token.mint(1e18.toString())
-    await token.transfer(calc.address, 1e18.toString())
-    const gasUsedByPost = await calc.calculatePostGas.call(testpaymaster.address)
-    console.log('post calculator:', gasUsedByPost.toString())
-    await paymaster.setPostGasUsage(gasUsedByPost)
-  }
-
   before(async () => {
     // exchange rate 2 tokens per eth.
     uniswap = await TestUniswap.new(2, 1, {
@@ -102,7 +63,13 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
     token = await TestToken.at(await uniswap.tokenAddress())
 
     paymaster = await TokenPaymaster.new([uniswap.address], { gas: 1e7 })
-    await calculatePostGas(paymaster)
+    const context = web3.eth.abi.encodeParameters(
+      ['address', 'uint256', 'address', 'address'],
+      [from, 500, token.address, uniswap.address]
+    )
+    await token.mint(toWei('1', 'ether'))
+    const gasUsedByPost = await calculatePostGas(token, paymaster, from, context)
+    await paymaster.setPostGasUsage(gasUsedByPost)
     await paymaster.setRelayHub(hub.address)
 
     console.log('paymaster post with precharge=', (await paymaster.gasUsedByPost()).toString())
@@ -160,35 +127,23 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
     let testHub: TestHubInstance
     context('revert reasons', function () {
       before(async function () {
-        testHub = await TestHub.new(
-          constants.ZERO_ADDRESS,
-          constants.ZERO_ADDRESS,
-          defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-          defaultEnvironment.relayHubConfiguration.gasReserve,
-          defaultEnvironment.relayHubConfiguration.postOverhead,
-          defaultEnvironment.relayHubConfiguration.gasOverhead,
-          defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-          defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-          defaultEnvironment.relayHubConfiguration.minimumStake,
-          defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-          defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
-          { gas: 10000000 })
+        testHub = await deployTestHub() as TestHubInstance
         await paymaster.setRelayHub(testHub.address)
       })
 
       it('should reject if not enough balance', async () => {
-        const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
+        const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
         assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /ERC20: transfer amount exceeds balance/)
       })
 
       it('should reject if unknown paymasterData', async () => {
-        const req = mergeData(relayRequest, { paymasterData: '0x1234' })
+        const req = mergeRelayRequest(relayRequest, { paymasterData: '0x1234' })
         const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
         assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), 'paymasterData: invalid length for Uniswap v1 exchange address -- Reason given: paymasterData: invalid length for Uniswap v1 exchange address.')
       })
 
       it('should reject if unsupported uniswap in paymasterData', async () => {
-        const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', nonUniswap) })
+        const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', nonUniswap) })
         const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
         assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), 'unsupported token uniswap -- Reason given: unsupported token uniswap.')
       })
@@ -201,7 +156,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       })
 
       it('should reject if no token approval', async () => {
-        const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
+        const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
         assert.include(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), transferErc20Error)
       })
 
@@ -219,7 +174,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         })
 
         it('callPreRC should succeed with specific token/uniswap', async () => {
-          const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
+          const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
           const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
           const ret: any = await testHub.callPreRC.call(req, signature, '0x', 1e6)
           const decoded = web3.eth.abi.decodeParameters(['address', 'address', 'address', 'address'], ret.context) as any
@@ -251,7 +206,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       )
       const gas = 5000000
 
-      const req = mergeData(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
+      const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
       const relayCall: any = await hub.relayCall.call(1e06, req, wrongSignature, '0x', gas, {
         from: relay,
         gas

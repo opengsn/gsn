@@ -14,14 +14,6 @@ contract TestRecipient is BaseRelayRecipient {
         setTrustedForwarder(forwarder);
     }
 
-    function getTrustedForwarder() public view returns(address) {
-        return trustedForwarder;
-    }
-
-    function setTrustedForwarder(address forwarder) internal {
-        trustedForwarder = forwarder;
-    }
-
     event Reverting(string message);
 
     function testRevert() public {

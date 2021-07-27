@@ -54,7 +54,7 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
 
     function deployProxy(address owner) public returns (ProxyIdentity) {
         ProxyIdentity proxy = proxyFactory.deployProxy(owner);
-        proxy.initialize(address(trustedForwarder), tokens);
+        proxy.initialize(address(trustedForwarder()), tokens);
         return proxy;
     }
 
