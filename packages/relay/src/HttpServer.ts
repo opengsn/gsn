@@ -34,6 +34,10 @@ export class HttpServer {
       // used to work before workspaces, needs research
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.get('/getaddr', this.pingHandler.bind(this))
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      this.app.post('/stats', this.statsHandler.bind(this))
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      this.app.get('/stats', this.statsHandler.bind(this))
       // used to work before workspaces, needs research
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.post('/relay', this.relayHandler.bind(this))
@@ -49,18 +53,18 @@ export class HttpServer {
 
   start (): void {
     this.serverInstance = this.app.listen(this.port, () => {
-      console.log('Listening on port', this.port)
+      this.logger.info(`Listening on port ${this.port}`)
       this.relayService?.start()
     })
   }
 
   stop (): void {
     this.serverInstance?.close()
-    console.log('Http server stopped.\nShutting down relay...')
+    this.logger.info('Http server stopped.\nShutting down relay...')
   }
 
   close (): void {
-    console.log('Stopping relay worker...')
+    this.logger.info('Stopping relay worker...')
     this.relayService?.stop()
     this.penalizerService?.stop()
   }
@@ -77,11 +81,26 @@ export class HttpServer {
     try {
       const pingResponse = await this.relayService.pingHandler(paymaster)
       res.send(pingResponse)
-      console.log(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
+      this.logger.info(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
     } catch (e) {
       const message: string = e.message
       res.send({ message })
       this.logger.error(`ping handler rejected: ${message}`)
+    }
+  }
+
+  statsHandler (req: Request, res: Response): void {
+    if (this.relayService == null) {
+      throw new Error('RelayServer not initialized')
+    }
+    try {
+      const statsResponse = this.relayService.statsHandler()
+      res.send(statsResponse)
+      this.logger.info('stats sent.')
+    } catch (e) {
+      const message: string = e.message
+      res.send({ message })
+      this.logger.error(`stats handler rejected: ${message}`)
     }
   }
 

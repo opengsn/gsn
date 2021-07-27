@@ -154,7 +154,6 @@ export class ServerTestEnvironment {
     // initialize server - gas price, stake, owner, etc, whatever
     let latestBlock = await this.web3.eth.getBlock('latest')
 
-    // This run should call 'setOwner'
     await this.relayServer._worker(latestBlock.number)
     latestBlock = await this.web3.eth.getBlock('latest')
     await this.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
