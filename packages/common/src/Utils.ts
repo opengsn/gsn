@@ -262,12 +262,6 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   }
   const data = `0x${encode(input).toString('hex')}`
   const signature = signatureRSV2Hex(tx.r, tx.s, vInt)
-  // console.log('wtf is input', input)
-  // console.log('wtf is data', data)
-  // console.log('wtf is tx1.getMessageToSign(true)', tx.getMessageToSign(true))
-  // console.log('wtf is encode(tx.getMessageToSign(false))', bufferToHex(encode(tx.getMessageToSign(false))))
-  // console.log('wtf is tx1.getMessageToSign(false)', tx.getMessageToSign(false))
-  // console.log('wtf is hash(data)', keccak256(toBuffer(data)))
   return {
     data,
     signature

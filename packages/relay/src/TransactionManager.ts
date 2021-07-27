@@ -147,7 +147,6 @@ data         | 0x${transaction.data.toString('hex')}
         serverAction,
         creationBlockNumber
       }
-      // console.log('wtf is signedTransaction', signedTransaction, txToSign)
       storedTx = createStoredTransaction(signedTransaction.signedEthJsTx, metadata)
       this.nonces[signer]++
       await this.txStoreManager.putTx(storedTx, false)
