@@ -4,7 +4,16 @@ import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
 import { Transaction, TxOptions } from '@ethereumjs/tx'
-import { PrefixedHexString, bufferToHex, ecrecover, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
+import {
+  PrefixedHexString,
+  bufferToHex,
+  ecrecover,
+  pubToAddress,
+  toBuffer,
+  unpadBuffer,
+  keccak256,
+  bnToUnpaddedBuffer
+} from 'ethereumjs-util'
 
 import { Address } from './types/Aliases'
 
@@ -30,7 +39,7 @@ export function padTo64 (hex: string): string {
 }
 
 export function signatureRSV2Hex (r: BN | Buffer, s: BN | Buffer, v: number): string {
-  return '0x' + padTo64(r.toString('hex')) + padTo64(s.toString('hex')) + v.toString(16)
+  return '0x' + padTo64(r.toString('hex')) + padTo64(s.toString('hex')) + v.toString(16).padStart(2, '0')
 }
 
 export function event2topic (contract: any, names: string[]): any {
@@ -242,7 +251,7 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   if (tx.s == null || tx.r == null || tx.v == null) {
     throw new Error('tx signature must be defined')
   }
-  const input: List = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to.toBuffer(), tx.value, tx.data]
+  const input: List = [bnToUnpaddedBuffer(tx.nonce), bnToUnpaddedBuffer(tx.gasPrice), bnToUnpaddedBuffer(tx.gasLimit), tx.to.toBuffer(), bnToUnpaddedBuffer(tx.value), tx.data]
   input.push(
     toBuffer(chainId),
     unpadBuffer(toBuffer(0)),
@@ -254,6 +263,12 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
   }
   const data = `0x${encode(input).toString('hex')}`
   const signature = signatureRSV2Hex(tx.r, tx.s, vInt)
+  // console.log('wtf is input', input)
+  // console.log('wtf is data', data)
+  // console.log('wtf is tx1.getMessageToSign(true)', tx.getMessageToSign(true))
+  // console.log('wtf is encode(tx.getMessageToSign(false))', bufferToHex(encode(tx.getMessageToSign(false))))
+  // console.log('wtf is tx1.getMessageToSign(false)', tx.getMessageToSign(false))
+  // console.log('wtf is hash(data)', keccak256(toBuffer(data)))
   return {
     data,
     signature

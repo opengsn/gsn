@@ -8,7 +8,7 @@ import Common from '@ethereumjs/common'
 import { TxOptions } from '@ethereumjs/tx/dist/types'
 import { encode } from 'rlp'
 import { expect } from 'chai'
-import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
+import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex, toBuffer } from 'ethereumjs-util'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { getEip712Signature, removeHexPrefix, signatureRSV2Hex } from '@opengsn/common/dist/Utils'
@@ -731,7 +731,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         }
       const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
 
-      const transaction = new Transaction({
+      const transaction = Transaction.fromTxData({
         nonce: relayCallArgs.nonce,
         gasLimit: relayCallArgs.gasLimit,
         gasPrice: relayCallArgs.gasPrice,
@@ -740,8 +740,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         data: encodedCall
       }, transactionOptions)
 
-      transaction.sign(relayCallArgs.privateKey)
-      return transaction
+      const signedTx = transaction.sign(relayCallArgs.privateKey)
+      return signedTx
     }
 
     async function getDataAndSignatureFromHash (txHash: string, chainId: number): Promise<{ data: string, signature: string }> {

@@ -33,7 +33,7 @@ chai.use(sinonChai)
 const workerIndex = 0
 
 const unstakeDelay = 50
-contract('RegistrationManager', function (accounts) {
+contract.only('RegistrationManager', function (accounts) {
   const relayOwner = accounts[4]
   const anotherRelayer = accounts[5]
 

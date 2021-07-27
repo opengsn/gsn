@@ -152,13 +152,13 @@ contract('ContractInteractor', function (accounts) {
     before(async function () {
       contractInteractor = new ContractInteractor({ provider, logger, maxPageSize })
       const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
-      const transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
-      transaction.sign(Buffer.from('46e6ef4a356fa3fa3929bf4b59e6b3eb9d0521ea660fd2879c67bd501002ac2b', 'hex'))
+      let transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
+      transaction = transaction.sign(Buffer.from('46e6ef4a356fa3fa3929bf4b59e6b3eb9d0521ea660fd2879c67bd501002ac2b', 'hex'))
       sampleTransactionData = '0x' + transaction.serialize().toString('hex')
       sampleTransactionHash = '0x' + transaction.hash().toString('hex')
     })
 
-    it('should sent the transaction to the blockchain directly', async function () {
+    it('should send the transaction to the blockchain directly', async function () {
       const txHash = await contractInteractor.broadcastTransaction(sampleTransactionData)
       assert.equal(txHash, sampleTransactionHash)
       assert.equal(provider.methodsCount.size, 1)
