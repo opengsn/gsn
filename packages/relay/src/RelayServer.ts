@@ -35,6 +35,7 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { toBuffer } from 'ethereumjs-util'
+import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 import Timeout = NodeJS.Timeout
 
 /**
@@ -71,6 +72,7 @@ export class RelayServer extends EventEmitter {
   config: ServerConfigParams
   transactionManager: TransactionManager
   txStoreManager: TxStoreManager
+  readinessInfo: ReadinessInfo
 
   lastMinedActiveTransaction?: EventData
 
@@ -102,6 +104,14 @@ export class RelayServer extends EventEmitter {
         throw new Error('ReputationManager is not initialized')
       }
       this.reputationManager = dependencies.reputationManager
+    }
+    const now = Date.now()
+    this.readinessInfo = {
+      runningSince: now,
+      currentStateTimestamp: now,
+      totalReadyTime: 0,
+      totalNotReadyTime: 0,
+      totalReadinessChanges: 0
     }
     this.printServerAddresses()
     this.logger.warn(`RelayServer version', ${gsnRuntimeVersion}`)
@@ -136,6 +146,18 @@ export class RelayServer extends EventEmitter {
       ready: this.isReady() ?? false,
       version: gsnRuntimeVersion
     }
+  }
+
+  statsHandler (): StatsResponse {
+    // First updating latest saved state up to the time of this 'stats' http request, since it might not be up to date.
+    const now = Date.now()
+    const statsResponse: StatsResponse = { ...this.readinessInfo, totalUptime: now - this.readinessInfo.runningSince }
+    if (this.isReady()) {
+      statsResponse.totalReadyTime = this.readinessInfo.totalReadyTime + now - this.readinessInfo.currentStateTimestamp
+    } else {
+      statsResponse.totalNotReadyTime = this.readinessInfo.totalNotReadyTime + now - this.readinessInfo.currentStateTimestamp
+    }
+    return statsResponse
   }
 
   validateInput (req: RelayTransactionRequest, currentBlockNumber: number): void {
@@ -791,6 +813,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   setReadyState (isReady: boolean): void {
     if (this.isReady() !== isReady) {
+      const now = Date.now()
       if (isReady) {
         if (this.lastSuccessfulRounds < this.config.successfulRoundsForReady) {
           const roundsUntilReady = this.config.successfulRoundsForReady - this.lastSuccessfulRounds
@@ -798,9 +821,13 @@ latestBlock timestamp   | ${latestBlock.timestamp}
         } else {
           this.logger.warn(chalk.greenBright('Relayer state: READY'))
         }
+        this.readinessInfo.totalNotReadyTime += now - this.readinessInfo.currentStateTimestamp
       } else {
+        this.readinessInfo.totalReadyTime += now - this.readinessInfo.currentStateTimestamp
         this.logger.warn(chalk.redBright('Relayer state: NOT-READY'))
       }
+      this.readinessInfo.currentStateTimestamp = now
+      this.readinessInfo.totalReadinessChanges++
     }
     this.ready = isReady
   }
