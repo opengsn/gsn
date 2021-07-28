@@ -29,7 +29,7 @@ jobs: # a collection of steps
 
       - run: # run tests with fork
           name: test-fork
-          command: yarn test-fork | tee /tmp/test-results.log
+          command: yarn lerna-run-test-fork | tee /tmp/test-results.log
 
 #coverage is broken (doesn't cover all contracts). disabled for now..
 #      - restore_cache: # special cache for coverage test
