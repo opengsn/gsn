@@ -1,4 +1,5 @@
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import Mutex from 'async-mutex/lib/Mutex'
 import * as ethUtils from 'ethereumjs-util'
 
@@ -6,6 +7,7 @@ import { evmMineMany } from './TestUtils'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
+import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
 
 contract('TransactionManager', function (accounts) {
   const confirmationsNeeded = 12
@@ -22,7 +24,7 @@ contract('TransactionManager', function (accounts) {
   describe('nonce counter asynchronous access protection', function () {
     let _pollNonceOrig: (signer: string) => Promise<number>
     let nonceMutexOrig: Mutex
-    let signTransactionOrig: (signer: string, tx: Transaction) => PrefixedHexString
+    let signTransactionOrig: (signer: string, tx: Transaction) => SignedTransaction
     before(function () {
       _pollNonceOrig = relayServer.transactionManager.pollNonce
       relayServer.transactionManager.pollNonce = async function (signer) {
@@ -96,7 +98,7 @@ contract('TransactionManager', function (accounts) {
       await relayServer.transactionManager.txStoreManager.clearAll()
       relayServer.transactionManager._initNonces()
       const { signedTx } = await env.relayTransaction()
-      parsedTxHash = ethUtils.bufferToHex((new Transaction(signedTx, relayServer.transactionManager.rawTxOptions)).hash())
+      parsedTxHash = ethUtils.bufferToHex((Transaction.fromSerializedTx(toBuffer(signedTx), relayServer.transactionManager.rawTxOptions)).hash())
       latestBlock = (await env.web3.eth.getBlock('latest')).number
     })
 

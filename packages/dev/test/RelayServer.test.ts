@@ -19,7 +19,7 @@ import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } fro
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)

@@ -2,7 +2,8 @@ import BN from 'bn.js'
 import Web3 from 'web3'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
-import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
+import { TxOptions } from '@ethereumjs/tx'
 import { toBN, toHex } from 'web3-utils'
 import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
 
@@ -36,7 +37,7 @@ import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from './LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
-import Common from 'ethereumjs-common'
+import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
@@ -76,7 +77,7 @@ export class ContractInteractor {
   private readonly maxPageSize: number
   private lastBlockNumber: number
 
-  private rawTxOptions?: TransactionOptions
+  private rawTxOptions?: TxOptions
   chainId!: number
   private networkId?: number
   private networkType?: string
@@ -243,7 +244,7 @@ export class ContractInteractor {
   }
 
   // must use these options when creating Transaction object
-  getRawTxOptions (): TransactionOptions {
+  getRawTxOptions (): TxOptions {
     if (this.rawTxOptions == null) {
       throw new Error('_init not called')
     }
@@ -818,7 +819,7 @@ export class ContractInteractor {
  * @param chain
  * @return {{common: Common}}
  */
-export function getRawTxOptions (chainId: number, networkId: number, chain?: string): TransactionOptions {
+export function getRawTxOptions (chainId: number, networkId: number, chain?: string): TxOptions {
   if (chain == null || chain === 'main' || chain === 'private') {
     chain = 'mainnet'
   }

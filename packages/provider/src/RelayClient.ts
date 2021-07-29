@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
-import { bufferToHex } from 'ethereumjs-util'
+import { Transaction } from '@ethereumjs/tx'
+import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
@@ -142,7 +142,7 @@ export class RelayClient {
    */
   async _broadcastRawTx (transaction: Transaction): Promise<{ hasReceipt: boolean, broadcastError?: Error, wrongNonce?: boolean }> {
     const rawTx = '0x' + transaction.serialize().toString('hex')
-    const txHash = '0x' + transaction.hash(true).toString('hex')
+    const txHash = '0x' + transaction.hash().toString('hex')
     this.logger.info(`Broadcasting raw transaction signed by relay. TxHash: ${txHash}`)
     try {
       if (await this._isAlreadySubmitted(txHash)) {
@@ -268,11 +268,11 @@ export class RelayClient {
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
       hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
-      transaction = new Transaction(hexTransaction, this.dependencies.contractInteractor.getRawTxOptions())
+      transaction = Transaction.fromSerializedTx(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
       auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
         .then((penalizeResponse) => {
           if (penalizeResponse.commitTxHash != null) {
-            const txHash = bufferToHex(transaction.hash(true))
+            const txHash = bufferToHex(transaction.hash())
             this.logger.error(`The transaction with id: ${txHash} was penalized! Penalization commitment tx id: ${penalizeResponse.commitTxHash}`)
           }
           return penalizeResponse

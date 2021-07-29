@@ -1,4 +1,4 @@
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import { PingResponse } from '../PingResponse'
 import { RelayRequest } from '../EIP712/RelayRequest'

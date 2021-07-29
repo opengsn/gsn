@@ -1,5 +1,5 @@
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { ecsign, keccak256, toRpcSig } from 'ethereumjs-util'
+import { ecsign, keccak256, toRpcSig, PrefixedHexString } from 'ethereumjs-util'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import { PrefixedHexString } from 'ethereumjs-tx'

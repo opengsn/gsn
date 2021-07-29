@@ -1,7 +1,7 @@
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
 import { ether } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 
@@ -86,7 +86,7 @@ contract('PenalizationFlow', function (accounts) {
 
     sinon
       .stub(httpClient, 'relayTransaction')
-      .returns(Promise.resolve(signedTxToPenalize))
+      .returns(Promise.resolve(signedTxToPenalize.rawTx))
 
     const overrideDependencies: Partial<GSNDependencies> = {
       httpClient
