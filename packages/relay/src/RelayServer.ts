@@ -1,7 +1,6 @@
 import chalk from 'chalk'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
-import { PrefixedHexString } from 'ethereumjs-tx'
 import { toBN, toHex } from 'web3-utils'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
@@ -34,7 +33,7 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { toBuffer } from 'ethereumjs-util'
+import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 import Timeout = NodeJS.Timeout
 

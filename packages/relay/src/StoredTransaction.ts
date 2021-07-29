@@ -1,4 +1,5 @@
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import * as ethUtils from 'ethereumjs-util'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 
@@ -45,12 +46,15 @@ export type StoredTransaction = StoredTransactionSerialized & StoredTransactionM
  * @param metadata
  */
 export function createStoredTransaction (tx: Transaction, metadata: StoredTransactionMetadata): StoredTransaction {
+  if (tx.to == null) {
+    throw new Error('tx.to must be defined')
+  }
   const details: StoredTransactionSerialized = {
-    to: ethUtils.bufferToHex(tx.to),
-    gas: ethUtils.bufferToInt(tx.gasLimit),
-    gasPrice: ethUtils.bufferToInt(tx.gasPrice),
+    to: ethUtils.bufferToHex(tx.to.toBuffer()),
+    gas: ethUtils.bufferToInt(tx.gasLimit.toBuffer()),
+    gasPrice: ethUtils.bufferToInt(tx.gasPrice.toBuffer()),
     data: ethUtils.bufferToHex(tx.data),
-    nonce: ethUtils.bufferToInt(tx.nonce),
+    nonce: ethUtils.bufferToInt(tx.nonce.toBuffer()),
     txId: ethUtils.bufferToHex(tx.hash())
   }
   return Object.assign({}, details, metadata)

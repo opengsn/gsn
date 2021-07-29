@@ -1,4 +1,4 @@
-import Transaction from 'ethereumjs-tx/dist/transaction'
+import { Transaction } from '@ethereumjs/tx'
 import Web3 from 'web3'
 import axios from 'axios'
 import chai from 'chai'
@@ -8,7 +8,7 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import {
   RelayHubInstance,
@@ -238,7 +238,7 @@ contract('RelayClient', function (accounts) {
         assert.fail(`validTransaction is null: ${JSON.stringify(relayingResult, replaceErrors)}`)
         return
       }
-      const validTransactionHash: string = validTransaction.hash(true).toString('hex')
+      const validTransactionHash: string = validTransaction.hash().toString('hex')
       const txHash = `0x${validTransactionHash}`
       const res = await web3.eth.getTransactionReceipt(txHash)
 
@@ -247,8 +247,8 @@ contract('RelayClient', function (accounts) {
       const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
       assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
 
-      const destination: string = validTransaction.to.toString('hex')
-      assert.equal(`0x${destination}`, relayHub.address.toString().toLowerCase())
+      const destination: string = validTransaction.to!.toString()
+      assert.equal(destination, relayHub.address.toString().toLowerCase())
     })
 
     it('should skip timed-out server', async function () {
@@ -541,7 +541,7 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
       }).init()
-      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0x123')
+      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0xc6808080808080')
       const badTransactionValidator = new BadRelayedTransactionValidator(logger, true, contractInteractor, configureGSN(gsnConfig))
       const relayClient =
         new RelayClient({
@@ -600,7 +600,7 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }
       }, true)
-      const transaction = new Transaction('0x')
+      const transaction = Transaction.fromSerializedTx(toBuffer('0xc6808080808080'))
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,

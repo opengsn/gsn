@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
 import { Address } from '@opengsn/common/dist/types/Aliases'

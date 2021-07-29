@@ -22,8 +22,8 @@
     "@types/minimist": "^1.2.0",
     "@types/nedb": "^1.8.11",
     "async-mutex": "^0.2.4",
-    "ethereumjs-tx": "^2.1.2",
-    "ethereumjs-util": "^6.2.1",
+    "@ethereumjs/tx": "^3.2.0",
+    "ethereumjs-util": "^7.1.0",
     "nedb-async": "^0.1.3"
   }
 }

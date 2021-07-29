@@ -1,6 +1,6 @@
 import AsyncNedb from 'nedb-async'
 import ow from 'ow'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { isSameAddress } from '@opengsn/common/dist/Utils'

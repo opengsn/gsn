@@ -29,7 +29,7 @@
     "@opengsn/common": "^2.2.2",
     "@opengsn/provider": "^2.2.2",
     "@opengsn/contracts": "^2.2.2",
-    "ethereumjs-util": "^6.1.0"
+    "ethereumjs-util": "^7.1.0"
   },
   "devDependencies": {
     "solhint": "^3.3.2",
@@ -38,7 +38,7 @@
     "@types/mocha": "^8.2.0",
     "@types/web3": "1.2.2",
     "@types/ethereumjs-util": "^6.1.0",
-    "ethereumjs-tx": "2.1.2"
+    "@ethereumjs/tx": "^3.2.0"
   },
   "peerDependencies": {
     "@types/bn.js": "^5.1.0",

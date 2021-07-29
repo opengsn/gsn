@@ -1,5 +1,5 @@
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
-import { bufferToHex } from 'ethereumjs-util'
+import { Transaction } from '@ethereumjs/tx'
+import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 
@@ -30,22 +30,27 @@ export class RelayedTransactionValidator {
     maxAcceptanceBudget: number,
     returnedTx: PrefixedHexString
   ): boolean {
-    const transaction = new Transaction(returnedTx, this.contractInteractor.getRawTxOptions())
-
+    const transaction = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
+    if (transaction.to == null) {
+      throw new Error('transaction.to must be defined')
+    }
+    if (transaction.s == null || transaction.r == null || transaction.v == null) {
+      throw new Error('tx signature must be defined')
+    }
     this.logger.info(`returnedTx:
-    v:        ${bufferToHex(transaction.v)}
-    r:        ${bufferToHex(transaction.r)}
-    s:        ${bufferToHex(transaction.s)}
-    to:       ${bufferToHex(transaction.to)}
+    v:        ${bufferToHex(transaction.v.toBuffer())}
+    r:        ${bufferToHex(transaction.r.toBuffer())}
+    s:        ${bufferToHex(transaction.s.toBuffer())}
+    to:       ${transaction.to.toString()}
     data:     ${bufferToHex(transaction.data)}
-    gasLimit: ${bufferToHex(transaction.gasLimit)}
-    gasPrice: ${bufferToHex(transaction.gasPrice)}
-    value:    ${bufferToHex(transaction.value)}
+    gasLimit: ${bufferToHex(transaction.gasLimit.toBuffer())}
+    gasPrice: ${bufferToHex(transaction.gasPrice.toBuffer())}
+    value:    ${bufferToHex(transaction.value.toBuffer())}
     `)
 
-    const signer = bufferToHex(transaction.getSenderAddress())
+    const signer = bufferToHex(transaction.getSenderAddress().toBuffer())
 
-    const externalGasLimit = bufferToHex(transaction.gasLimit)
+    const externalGasLimit = bufferToHex(transaction.gasLimit.toBuffer())
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
@@ -54,14 +59,13 @@ export class RelayedTransactionValidator {
     }
 
     if (
-      isSameAddress(bufferToHex(transaction.to), relayHubAddress) &&
+      isSameAddress(bufferToHex(transaction.to.toBuffer()), relayHubAddress) &&
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
       this.logger.info('validateRelayResponse - valid transaction response')
 
-      // TODO: the relayServer encoder returns zero-length buffer for nonce=0.`
-      const receivedNonce = transaction.nonce.length === 0 ? 0 : transaction.nonce.readUIntBE(0, transaction.nonce.byteLength)
+      const receivedNonce = transaction.nonce.toNumber()
       if (receivedNonce > request.metadata.relayMaxNonce) {
         // TODO: need to validate that client retries the same request and doesn't double-spend.
         // Note that this transaction is totally valid from the EVM's point of view
@@ -73,7 +77,7 @@ export class RelayedTransactionValidator {
       return true
     } else {
       console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)
-      console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to), signer)
+      console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to.toBuffer()), signer)
       return false
     }
   }

@@ -1,6 +1,5 @@
 // accessor class for the on-chain version registry
-import { PrefixedHexString } from 'ethereumjs-tx'
-import { bufferToHex } from 'ethereumjs-util'
+import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 
 import { ContractInteractor } from './ContractInteractor'
 import TransactionDetails = Truffle.TransactionDetails
