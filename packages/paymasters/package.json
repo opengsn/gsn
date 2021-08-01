@@ -13,8 +13,10 @@
     "truffle-test-compile-all": "truffle test --compile-all --network npmtest",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
+  "main": "dist/src/index.js",
   "files": [
     "src/*",
+    "dist/src/*",
     "types/*",
     "contracts/*",
     "build/contracts/*",
