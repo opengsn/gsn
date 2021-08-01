@@ -27,6 +27,15 @@ jobs: # a collection of steps
           name: ganache-fork-mainnet-background
           command: yarn ganache-fork-mainnet-background
 
+      # https://discuss.circleci.com/t/run-http-server-in-background-during-tests/3177
+      # wait for the server to start responding. We expect Bad Request 400 once it starts listening.
+      # so override the shell and have the last command be the : { null } command to force exit code 0.
+      - run:
+          name: await-ganache-fork
+          shell: /bin/sh
+          command: |
+            wget --post-data="{\"method\": \"eth_blockNumber\"}" --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:8544/
+            :
       - run: # run tests with fork
           name: test-fork
           command: yarn lerna-run-test-fork | tee /tmp/test-results.log
