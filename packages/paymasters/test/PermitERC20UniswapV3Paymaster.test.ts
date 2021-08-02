@@ -1,10 +1,11 @@
 import BN from 'bn.js'
 import { toWei } from 'web3-utils'
 import {
-  DAIPermitInterfaceInstance,
   IChainlinkOracleInstance,
   IQuoterInstance,
   PermitERC20UniswapV3PaymasterInstance,
+  PermitInterfaceDAIInstance,
+  PermitInterfaceEIP2612Instance,
   SampleRecipientInstance,
   TestHubInstance
 } from '../types/truffle-contracts'
@@ -12,39 +13,47 @@ import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { ForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { constants } from '@opengsn/common'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
-import { signAndEncodeDaiPermit } from '../src/PermitPaymasterUtils'
+import {
+  CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
+  DAI_CONTRACT_ADDRESS,
+  GSN_FORWARDER_CONTRACT_ADDRESS,
+  PERMIT_SIGNATURE_DAI,
+  PERMIT_SIGNATURE_EIP2612, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
+  SWAP_ROUTER_CONTRACT_ADDRESS,
+  UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
+  UNISWAP_V3_QUOTER_CONTRACT_ADDRESS,
+  UNI_CONTRACT_ADDRESS,
+  WETH9_CONTRACT_ADDRESS,
+  getDaiDomainSeparator,
+  getUniDomainSeparator,
+  signAndEncodeDaiPermit,
+  signAndEncodeEIP2612Permit
+} from '../src/PermitPaymasterUtils'
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
+import { EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
-const DAIPermitInterface = artifacts.require('DAIPermitInterface')
-const IQuoter = artifacts.require('IQuoter')
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
+const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
+const PermitInterfaceDAI = artifacts.require('PermitInterfaceDAI')
 const IChainlinkOracle = artifacts.require('IChainlinkOracle')
 const SampleRecipient = artifacts.require('SampleRecipient')
 const Forwarder = artifacts.require('Forwarder')
+const IQuoter = artifacts.require('IQuoter')
 
-// TODO: move useful stuff to utils
-// as we are using forked mainnet, we will need to impersonate an account with a lot of DAI
-const MAJOR_DAI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
+// as we are using forked mainnet, we will need to impersonate an account with a lot of DAI & UNI
+const MAJOR_DAI_AND_UNI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
 
-const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
-const WETH9 = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
-const QUOTER = '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6'
-const SWAP_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
-const GSN_FORWARDER = '0xAa3E82b4c4093b4bA13Cb5714382C99ADBf750cA'
-const DAI_WETH_POOL = '0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8'
-const CHAINLINK_USD_ETH_FEED = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419'
-
-const MAX_POSSIBLE_GAS = 1e6
-const GAS_PRICE = '1000000000' // 1 wei
-const POOL_FEE = 3000
 const GAS_USED_BY_POST = 199009
+const MAX_POSSIBLE_GAS = 1e6
 const PERMIT_DATA_LENGTH = 0
-const PERMIT_SIGNATURE = 'permit(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)'
+const POOL_FEE = 3000
+
 const TOKEN_PRE_CHARGE = toWei('1', 'ether')
+const GAS_PRICE = '1000000000' // 1 wei
 
 async function detectMainnet (): Promise<boolean> {
-  const code = await web3.eth.getCode(DAI)
+  const code = await web3.eth.getCode(DAI_CONTRACT_ADDRESS)
   return code !== '0x'
 }
 
@@ -57,7 +66,7 @@ async function skipWithoutFork (test: any): Promise<void> {
 
 contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay]) {
   let permitPaymaster: PermitERC20UniswapV3PaymasterInstance
-  let permittableToken: DAIPermitInterfaceInstance
+  let daiPermittableToken: PermitInterfaceDAIInstance
   let chainlinkOracle: IChainlinkOracleInstance
   let sampleRecipient: SampleRecipientInstance
   let testRelayHub: TestHubInstance
@@ -74,29 +83,29 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     }
     sampleRecipient = await SampleRecipient.new()
     forwarder = await Forwarder.new({ gas: 1e7 })
-    quoter = await IQuoter.at(QUOTER)
-    permittableToken = await DAIPermitInterface.at(DAI)
-    chainlinkOracle = await IChainlinkOracle.at(CHAINLINK_USD_ETH_FEED)
+    quoter = await IQuoter.at(UNISWAP_V3_QUOTER_CONTRACT_ADDRESS)
+    daiPermittableToken = await PermitInterfaceDAI.at(DAI_CONTRACT_ADDRESS)
+    chainlinkOracle = await IChainlinkOracle.at(CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS)
     testRelayHub = await deployTestHub() as TestHubInstance
-    // in case the MAJOR_DAI_HOLDER account does not have ETH on actual mainnet
+    // in case the MAJOR_DAI_AND_UNI_HOLDER account does not have ETH on actual mainnet
     await web3.eth.sendTransaction({
       from: account0,
-      to: MAJOR_DAI_HOLDER,
+      to: MAJOR_DAI_AND_UNI_HOLDER,
       value: 1e18
     })
     // we cannot sign on behalf of an impersonated account - transfer DAI to an account we control
-    await permittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_HOLDER })
+    await daiPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
     permitPaymaster = await PermitERC20UniswapV3Paymaster.new(
-      WETH9,
-      DAI,
+      WETH9_CONTRACT_ADDRESS,
+      DAI_CONTRACT_ADDRESS,
       testRelayHub.address,
-      SWAP_ROUTER,
-      CHAINLINK_USD_ETH_FEED,
-      GSN_FORWARDER,
+      SWAP_ROUTER_CONTRACT_ADDRESS,
+      CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
+      GSN_FORWARDER_CONTRACT_ADDRESS,
       POOL_FEE,
       GAS_USED_BY_POST,
       PERMIT_DATA_LENGTH,
-      PERMIT_SIGNATURE
+      PERMIT_SIGNATURE_DAI
     )
     relayRequest = {
       relayData: {
@@ -175,18 +184,20 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /paymasterData: must be encoded permit method/)
+          ), /paymasterData: wrong method sig/)
       })
 
       it('should revert if permit call reverts', async function () {
         await skipWithoutFork(this)
         const incorrectNonce = 777
+        const domainSeparator = getDaiDomainSeparator()
         const encodedCallToPermit = await signAndEncodeDaiPermit(
           account0,
           permitPaymaster.address,
-          permittableToken.address,
+          daiPermittableToken.address,
           constants.MAX_UINT256.toString(),
           web3,
+          domainSeparator,
           incorrectNonce,
           true
         )
@@ -206,9 +217,9 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
 
       it('should revert if token transferFrom reverts', async function () {
         await skipWithoutFork(this)
-        await permittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account1 })
+        await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account1 })
         const modifiedRequest = mergeRelayRequest(relayRequest, {}, { from: account1 })
-        const balance = await permittableToken.balanceOf(account1)
+        const balance = await daiPermittableToken.balanceOf(account1)
         assert.equal(balance.toString(), '0')
         assert.match(
           await revertReason(
@@ -223,17 +234,17 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     })
 
     context('with paymasterData', function () {
-      it('should execute permit method on a target token', async function () {
+      it('should execute permit method on a target DAI token', async function () {
         await skipWithoutFork(this)
-        const approvalBefore = await permittableToken.allowance(account0, permitPaymaster.address)
+        const approvalBefore = await daiPermittableToken.allowance(account0, permitPaymaster.address)
         assert.equal(approvalBefore.toString(), '0', 'unexpected approval')
-        const accountBalanceBefore = await permittableToken.balanceOf(account0)
-        const spenderBalanceBefore = await permittableToken.balanceOf(permitPaymaster.address)
+        const accountBalanceBefore = await daiPermittableToken.balanceOf(account0)
+        const spenderBalanceBefore = await daiPermittableToken.balanceOf(permitPaymaster.address)
         assert.equal(spenderBalanceBefore.toString(), '0', 'unexpected balance')
         const encodedCallToPermit = await signAndEncodeDaiPermit(
           account0,
           permitPaymaster.address,
-          permittableToken.address,
+          daiPermittableToken.address,
           constants.MAX_UINT256.toString(),
           web3
         )
@@ -247,11 +258,11 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
           MAX_POSSIBLE_GAS
         )
 
-        const paymasterBalanceAfter = await permittableToken.balanceOf(permitPaymaster.address)
+        const paymasterBalanceAfter = await daiPermittableToken.balanceOf(permitPaymaster.address)
         // it is dependant on actual cost of ether on uniswap, but pre-charge below 10¢ will be unfortunate
         assert.isAbove(parseInt(paymasterBalanceAfter.toString()), 1e17, 'unexpected balance (real-world price dependant)')
 
-        const accountBalanceAfter = await permittableToken.balanceOf(account0)
+        const accountBalanceAfter = await daiPermittableToken.balanceOf(account0)
         const accountDifference = accountBalanceBefore.sub(accountBalanceAfter)
         // must have charged from this account
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
@@ -261,8 +272,58 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         assert.equal(accountDifference.toString(), expectedCharge.toString(), 'unexpected charge')
 
-        const approvalAfter = await permittableToken.allowance(account0, permitPaymaster.address)
+        const approvalAfter = await daiPermittableToken.allowance(account0, permitPaymaster.address)
         assert.equal(approvalAfter.toString(), constants.MAX_UINT256.toString(), 'insufficient approval')
+      })
+
+      context('with EIP2612-compatible Paymaster', function () {
+        let eip2612PermittableToken: PermitInterfaceEIP2612Instance
+        let permitEIP2612Paymaster: PermitERC20UniswapV3PaymasterInstance
+        before(async function () {
+          eip2612PermittableToken = await PermitInterfaceEIP2612.at(UNI_CONTRACT_ADDRESS)
+          await eip2612PermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
+          permitEIP2612Paymaster = await PermitERC20UniswapV3Paymaster.new(
+            WETH9_CONTRACT_ADDRESS,
+            UNI_CONTRACT_ADDRESS,
+            testRelayHub.address,
+            SWAP_ROUTER_CONTRACT_ADDRESS,
+            CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
+            GSN_FORWARDER_CONTRACT_ADDRESS,
+            POOL_FEE,
+            GAS_USED_BY_POST,
+            PERMIT_DATA_LENGTH,
+            PERMIT_SIGNATURE_EIP2612
+          )
+        })
+        it('should execute permit method on a target EIP2612 token', async function () {
+          await skipWithoutFork(this)
+          const approvalBefore = await eip2612PermittableToken.allowance(account0, permitPaymaster.address)
+          assert.equal(approvalBefore.toString(), '0', 'unexpected approval')
+          const encodedCallToPermit = await signAndEncodeEIP2612Permit(
+            account0,
+            permitEIP2612Paymaster.address,
+            eip2612PermittableToken.address,
+            constants.MAX_UINT256.toString(),
+            constants.MAX_UINT256.toString(),
+            web3,
+            getUniDomainSeparator(),
+            EIP712DomainTypeWithoutVersion
+          )
+          const modifiedRequest = mergeRelayRequest(relayRequest, {
+            paymaster: permitEIP2612Paymaster.address,
+            paymasterData: encodedCallToPermit
+          })
+          await testRelayHub.callPreRC(
+            modifiedRequest,
+            '0x',
+            '0x',
+            MAX_POSSIBLE_GAS
+          )
+
+          // note that Uni allowance is stored as uint96
+          const approvalAfter = await eip2612PermittableToken.allowance(account0, permitEIP2612Paymaster.address)
+          assert.equal(approvalAfter.toString(), constants.MAX_UINT96.toString(), 'insufficient approval')
+        })
       })
     })
   })
@@ -286,8 +347,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         if (!await detectMainnet()) {
           return
         }
-        await permittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
-        await permittableToken.transfer(permitPaymaster.address, TOKEN_PRE_CHARGE, { from: account0 })
+        await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
+        await daiPermittableToken.transfer(permitPaymaster.address, TOKEN_PRE_CHARGE, { from: account0 })
       })
 
       it('should transfer excess tokens back to sender and deposit traded tokens into RelayHub as Ether', async function () {
@@ -297,8 +358,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
 
         const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(GAS_PRICE)
         const expectedDaiTokenCharge = await quoter.contract.methods.quoteExactOutputSingle(
-          DAI,
-          WETH9,
+          DAI_CONTRACT_ADDRESS,
+          WETH9_CONTRACT_ADDRESS,
           POOL_FEE,
           ethActualCharge,
           0).call()
@@ -307,39 +368,39 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         const expectedRefund = new BN(TOKEN_PRE_CHARGE).sub(new BN(expectedDaiTokenCharge))
 
         // check correct tokens are transferred
-        assert.equal(res.logs[0].address.toLowerCase(), WETH9.toLowerCase())
-        assert.equal(res.logs[1].address.toLowerCase(), DAI.toLowerCase())
-        assert.equal(res.logs[6].address.toLowerCase(), DAI.toLowerCase())
+        assert.equal(res.logs[0].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase())
+        assert.equal(res.logs[1].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase())
+        assert.equal(res.logs[6].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase())
 
         // swap(0): transfer WETH from Pool to Router
         expectEvent(res, 'Transfer', {
-          from: DAI_WETH_POOL,
-          to: SWAP_ROUTER,
+          from: UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
+          to: SWAP_ROUTER_CONTRACT_ADDRESS,
           value: ethActualCharge.toString()
         })
 
         // swap(1): transfer DAI from Paymaster to Pool
         expectEvent(res, 'Transfer', {
           from: permitPaymaster.address,
-          to: DAI_WETH_POOL,
+          to: UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
           value: expectedDaiTokenCharge.toString()
         })
 
         // swap(2): execute swap; note that WETH remains in a SwapRouter so it unwraps it for us
         expectEvent(res, 'Swap', {
-          sender: SWAP_ROUTER,
-          recipient: SWAP_ROUTER
+          sender: SWAP_ROUTER_CONTRACT_ADDRESS,
+          recipient: SWAP_ROUTER_CONTRACT_ADDRESS
         })
 
         // swap(3): SwapRouter unwraps ETH and sends it into Paymaster
         expectEvent(res, 'Withdrawal', {
-          src: SWAP_ROUTER,
+          src: SWAP_ROUTER_CONTRACT_ADDRESS,
           wad: ethActualCharge.toString()
         })
 
         // swap(4): Paymaster receives ETH
         expectEvent(res, 'Received', {
-          sender: SWAP_ROUTER,
+          sender: SWAP_ROUTER_CONTRACT_ADDRESS,
           eth: ethActualCharge.toString()
         })
 
@@ -375,19 +436,19 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     it('calculate', async function () {
       await skipWithoutFork(this)
       const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(
-        WETH9,
-        DAI,
+        WETH9_CONTRACT_ADDRESS,
+        DAI_CONTRACT_ADDRESS,
         testRelayHub.address,
-        SWAP_ROUTER,
-        CHAINLINK_USD_ETH_FEED,
-        GSN_FORWARDER,
+        SWAP_ROUTER_CONTRACT_ADDRESS,
+        CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
+        GSN_FORWARDER_CONTRACT_ADDRESS,
         POOL_FEE,
         0, // do not set 'gasUsedByPost'
         PERMIT_DATA_LENGTH,
-        PERMIT_SIGNATURE
+        PERMIT_SIGNATURE_DAI
       )
       const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, 500])
-      const postGasUse = await calculatePostGas(permittableToken, permitPaymasterZeroGUBP, account0, context)
+      const postGasUse = await calculatePostGas(daiPermittableToken, permitPaymasterZeroGUBP, account0, context)
       assert.closeTo(postGasUse.toNumber(), GAS_USED_BY_POST, 1000)
     })
   })

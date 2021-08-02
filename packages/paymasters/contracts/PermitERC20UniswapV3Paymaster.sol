@@ -16,7 +16,7 @@ import "@opengsn/contracts/src/utils/GsnUtils.sol";
 import "./interfaces/IChainlinkOracle.sol";
 
 import "./helpers/UniswapV3Helper.sol";
-import "./helpers/DAIPermitInterface.sol";
+import "./helpers/PermitInterfaceDAI.sol";
 
 /**
  * A paymaster allowing addresses holding ERC20 tokens with 'permit' functionality
