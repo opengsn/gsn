@@ -5,14 +5,14 @@ import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types, TypedDa
 import { bufferToHex } from 'ethereumjs-util'
 import { PrefixedHexString } from 'ethereumjs-tx'
 
-export const EIP712DomainType: EIP712TypeProperty[]  = [
+export const EIP712DomainType: EIP712TypeProperty[] = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
   { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }
 ]
 
-export const EIP712DomainTypeWithoutVersion: EIP712TypeProperty[]  = [
+export const EIP712DomainTypeWithoutVersion: EIP712TypeProperty[] = [
   { name: 'name', type: 'string' },
   { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }

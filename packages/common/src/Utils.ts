@@ -33,7 +33,7 @@ export function signatureRSV2Hex (r: BN | Buffer, s: BN | Buffer, v: number): st
   return '0x' + padTo64(r.toString('hex')) + padTo64(s.toString('hex')) + v.toString(16)
 }
 
-export function hex2signatureRSV (signature: PrefixedHexString): { r: string; s: string; v: number } {
+export function hex2signatureRSV (signature: PrefixedHexString): { r: string, s: string, v: number } {
   const r: string = signature.slice(0, 66)
   const s: string = '0x' + signature.slice(66, 130)
   const v: number = Number('0x' + signature.slice(130, 132))
