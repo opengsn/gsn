@@ -280,6 +280,9 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         let eip2612PermittableToken: PermitInterfaceEIP2612Instance
         let permitEIP2612Paymaster: PermitERC20UniswapV3PaymasterInstance
         before(async function () {
+          if (!await detectMainnet()) {
+            return
+          }
           eip2612PermittableToken = await PermitInterfaceEIP2612.at(UNI_CONTRACT_ADDRESS)
           await eip2612PermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
           permitEIP2612Paymaster = await PermitERC20UniswapV3Paymaster.new(
