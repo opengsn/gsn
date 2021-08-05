@@ -10,6 +10,7 @@ jobs: # a collection of steps
 
       - restore_cache: # special step to restore the dependency cache
           key: dependency-cache-{{ checksum "package.json" }}-yarn2
+
       - run:
           name: yarn-install
           command: yarn
@@ -19,13 +20,14 @@ jobs: # a collection of steps
           paths:
             - ./node_modules
 
-#      - run: # run tests
-#          name: test
-#          command: yarn test | tee /tmp/test-results.log
+      - run: # run tests
+          name: test
+          command: yarn test | tee /tmp/test-results.log
 
       - run: # run ganache mainnet fork
-          name: ganache-fork-mainnet-background
-          command: yarn ganache-fork-mainnet-background
+          name: ganache-fork-mainnet
+          command: yarn ganache-fork-mainnet
+          background: true
 
       # https://discuss.circleci.com/t/run-http-server-in-background-during-tests/3177
       # wait for the server to start responding. We expect Bad Request 400 once it starts listening.
@@ -36,9 +38,14 @@ jobs: # a collection of steps
           command: |
             wget --post-data="{\"method\": \"eth_blockNumber\"}" --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:8544/
             :
+
       - run: # run tests with fork
           name: test-fork
           command: yarn lerna-run-test-fork | tee /tmp/test-results.log
+
+      - run:
+          name: cat-ganache-fork-log
+          command: cat ganache-fork.log
 
 #coverage is broken (doesn't cover all contracts). disabled for now..
 #      - restore_cache: # special cache for coverage test
