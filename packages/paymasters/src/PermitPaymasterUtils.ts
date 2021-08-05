@@ -1,5 +1,5 @@
 import Web3 from 'web3'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { getEip712Signature, hex2signatureRSV, TruffleContract } from '@opengsn/common'
 import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types } from 'eth-sig-util'
 

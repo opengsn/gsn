@@ -1,4 +1,4 @@
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { constants } from '@openzeppelin/test-helpers'
 import { toWei } from 'web3-utils'
 
