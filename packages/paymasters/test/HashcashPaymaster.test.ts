@@ -102,7 +102,7 @@ contract('HashcashPaymaster', ([from]) => {
   })
 
   it('should succeed with proper difficulty', async function () {
-    this.timeout(35000)
+    this.timeout(60000)
 
     const input: GSNUnresolvedConstructorInput = {
       provider: web3.currentProvider as HttpProvider,

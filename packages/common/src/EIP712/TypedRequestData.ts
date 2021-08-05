@@ -2,8 +2,7 @@ import { Address } from '../types/Aliases'
 import { RelayRequest } from './RelayRequest'
 import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types, TypedDataUtils } from 'eth-sig-util'
 
-import { bufferToHex } from 'ethereumjs-util'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 
 export const EIP712DomainType: EIP712TypeProperty[] = [
   { name: 'name', type: 'string' },

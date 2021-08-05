@@ -4,7 +4,7 @@ import Table from 'cli-table'
 import colors from 'colors'
 import moment from 'moment'
 import terminalLink from 'terminal-link'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import * as asciichart from 'asciichart'
 
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'

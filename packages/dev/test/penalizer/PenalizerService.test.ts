@@ -1,5 +1,5 @@
 import { HttpProvider } from 'web3-core'
-import { Transaction } from 'ethereumjs-tx'
+import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 
@@ -40,7 +40,8 @@ contract('PenalizerService', function (accounts) {
       url: '',
       workdir: '',
       etherscanApiUrl: 'etherscanApiUrl',
-      relayHubAddress: env.relayHub.address
+      relayHubAddress: env.relayHub.address,
+      ownerAddress: env.relayServer.config.ownerAddress
     }, web3.currentProvider) as ServerConfigParams
     penalizerService = new PenalizerService(penalizerParams, logger, serverConfigParams)
     await penalizerService.init(false)
@@ -82,9 +83,9 @@ contract('PenalizerService', function (accounts) {
 
       const signedTxToMine = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, txToMine)
       const signedTxToPenalize = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, penalizableTx)
-      await env.relayServer.transactionManager.contractInteractor.sendSignedTransaction(signedTxToMine)
-      await txByNonceService.setTransactionByNonce(txToMine, relayWorker)
-      auditRequest = { signedTx: signedTxToPenalize }
+      await env.relayServer.transactionManager.contractInteractor.sendSignedTransaction(signedTxToMine.rawTx)
+      await txByNonceService.setTransactionByNonce(signedTxToMine.signedEthJsTx, relayWorker)
+      auditRequest = { signedTx: signedTxToPenalize.rawTx }
     })
 
     it('should commit and penalize for a repeated nonce transaction', async function () {
@@ -127,7 +128,7 @@ contract('PenalizerService', function (accounts) {
         data: '0x1234'
       }, rawTxOptions)
       const signedTxToPenalize = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, penalizableTx)
-      auditRequest = { signedTx: signedTxToPenalize }
+      auditRequest = { signedTx: signedTxToPenalize.rawTx }
     })
 
     // TODO: duplicated test for different type of penalization - run in a loop if more types are added!

@@ -20,7 +20,7 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
@@ -154,7 +154,6 @@ export class ServerTestEnvironment {
     // initialize server - gas price, stake, owner, etc, whatever
     let latestBlock = await this.web3.eth.getBlock('latest')
 
-    // This run should call 'setOwner'
     await this.relayServer._worker(latestBlock.number)
     latestBlock = await this.web3.eth.getBlock('latest')
     await this.stakeAndAuthorizeHub(ether('1'), unstakeDelay)

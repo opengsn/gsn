@@ -3,6 +3,7 @@ import {
   GsnDomainSeparatorType,
   GsnRequestType
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
+
 import {
   TestHubInstance,
   TestProxyInstance,
@@ -22,9 +23,8 @@ import { calculatePostGas, deployTestHub, mergeRelayRequest, registerAsRelayServ
 import { defaultEnvironment, decodeRevertReason, getEip712Signature } from '@opengsn/common'
 
 import Web3 from 'web3'
-import { MAX_INTEGER } from 'ethereumjs-util'
-import { PrefixedHexString } from 'ethereumjs-tx'
 import { toWei } from 'web3-utils'
+import { PrefixedHexString, MAX_INTEGER } from 'ethereumjs-util'
 
 import { deployHub } from './ProxyDeployingPaymaster.test'
 

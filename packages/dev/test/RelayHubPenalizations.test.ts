@@ -3,13 +3,12 @@
 import { balance, ether, expectEvent, expectRevert, send } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
-import { Transaction } from 'ethereumjs-tx'
-import { Transaction as NewTransaction, AccessListEIP2930Transaction } from '@ethereumjs/tx'
+import { Transaction, AccessListEIP2930Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
-import { TransactionOptions } from 'ethereumjs-tx/dist/types'
+import { TxOptions } from '@ethereumjs/tx/dist/types'
 import { encode } from 'rlp'
 import { expect } from 'chai'
-import { privateToAddress, unpadBuffer, toBuffer, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
+import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { getEip712Signature, removeHexPrefix, signatureRSV2Hex } from '@opengsn/common/dist/Utils'
@@ -26,6 +25,7 @@ import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
 import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
+import { getDataAndSignature } from '@opengsn/common/dist'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -46,7 +46,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
-  let transactionOptions: TransactionOptions
+  let transactionOptions: TxOptions
 
   let forwarder: string
   const relayWorkerPrivateKey = Buffer.from('6370fd033278c143179d81c5526140625662b8daa446c22ee2d73db3707e620c', 'hex')
@@ -164,7 +164,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       let relayRequest: RelayRequest
       let encodedCall: string
       let common: Common
-      let legacyTx: NewTransaction
+      let legacyTx: Transaction
       let eip2930Transaction: AccessListEIP2930Transaction
       let describeSnapshotId: string
       before(async function () {
@@ -194,7 +194,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           }
         encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x', 1e6).encodeABI()
 
-        legacyTx = new NewTransaction({
+        legacyTx = new Transaction({
           nonce: relayCallArgs.nonce,
           gasLimit: relayCallArgs.gasLimit,
           gasPrice: relayCallArgs.gasPrice,
@@ -731,7 +731,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         }
       const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
 
-      const transaction = new Transaction({
+      const transaction = Transaction.fromTxData({
         nonce: relayCallArgs.nonce,
         gasLimit: relayCallArgs.gasLimit,
         gasPrice: relayCallArgs.gasPrice,
@@ -740,8 +740,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         data: encodedCall
       }, transactionOptions)
 
-      transaction.sign(relayCallArgs.privateKey)
-      return transaction
+      const signedTx = transaction.sign(relayCallArgs.privateKey)
+      return signedTx
     }
 
     async function getDataAndSignatureFromHash (txHash: string, chainId: number): Promise<{ data: string, signature: string }> {
@@ -768,29 +768,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       return getDataAndSignature(tx, chainId)
     }
 
-    function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
-      const input = [tx.nonce, tx.gasPrice, tx.gasLimit, tx.to, tx.value, tx.data]
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      if (chainId) {
-        input.push(
-          toBuffer(chainId),
-          unpadBuffer(toBuffer(0)),
-          unpadBuffer(toBuffer(0))
-        )
-      }
-      let v = parseInt(tx.v.toString('hex'), 16)
-      if (v > 28) {
-        v -= chainId * 2 + 8
-      }
-      const data = `0x${encode(input).toString('hex')}`
-      const signature = signatureRSV2Hex(tx.r, tx.s, v)
-      return {
-        data,
-        signature
-      }
-    }
-
-    function validateDecodedTx (decodedTx: { nonce: string, gasPrice: string, gasLimit: string, to: string, value: string, data: string}, originalTx: AccessListEIP2930Transaction | NewTransaction): void {
+    function validateDecodedTx (decodedTx: { nonce: string, gasPrice: string, gasLimit: string, to: string, value: string, data: string}, originalTx: AccessListEIP2930Transaction | Transaction): void {
       assert.equal(decodedTx.nonce, originalTx.nonce.toString())
       assert.equal(decodedTx.gasPrice, originalTx.gasPrice.toString())
       assert.equal(decodedTx.gasLimit, originalTx.gasLimit.toString())

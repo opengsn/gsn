@@ -2,7 +2,7 @@
 import ethWallet from 'ethereumjs-wallet'
 import Web3 from 'web3'
 import sigUtil from 'eth-sig-util'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'

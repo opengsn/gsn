@@ -13,12 +13,11 @@ import {
   ForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { PrefixedHexString } from 'ethereumjs-tx'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { toBuffer } from 'ethereumjs-util'
+import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const StakeManager = artifacts.require('StakeManager')

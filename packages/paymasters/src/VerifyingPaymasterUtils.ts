@@ -1,8 +1,10 @@
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { ecsign, keccak256, toRpcSig } from 'ethereumjs-util'
+import { ecsign, keccak256, toRpcSig, PrefixedHexString } from 'ethereumjs-util'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import abiCoder, { AbiCoder } from 'web3-eth-abi'
+
+const abi: AbiCoder = abiCoder as any
 
 /**
  * sign a relay request, so that VerifyingPaymaster will accept it.
@@ -22,13 +24,13 @@ export function getRequestHash (relayRequest: RelayRequest): Buffer {
 }
 
 export function packForwardRequest (req: ForwardRequest): string {
-  return web3.eth.abi.encodeParameters(
+  return abi.encodeParameters(
     ['address', 'address', 'uint256', 'uint256', 'uint256', 'bytes'],
     [req.from, req.to, req.value, req.gas, req.nonce, req.data])
 }
 
 export function packRelayData (data: RelayData): string {
-  return web3.eth.abi.encodeParameters(
+  return abi.encodeParameters(
     ['uint256', 'uint256', 'uint256', 'address', 'address', 'bytes', 'uint256'],
     [data.gasPrice, data.pctRelayFee, data.baseRelayFee, data.relayWorker, data.paymaster, data.paymasterData, data.clientId])
 }

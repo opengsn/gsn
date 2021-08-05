@@ -1,5 +1,6 @@
 import { HttpProvider } from 'web3-core'
-import { PrefixedHexString, TransactionOptions } from 'ethereumjs-tx'
+import { TxOptions } from '@ethereumjs/tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -82,7 +83,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
     const originalTxHashes: string[] = []
     const overrideParamsPerTx = new Map<PrefixedHexString, Partial<GsnTransactionDetails>>()
 
-    let rawTxOptions: TransactionOptions
+    let rawTxOptions: TxOptions
 
     before(async function () {
       await env.relayServer.txStoreManager.clearAll()

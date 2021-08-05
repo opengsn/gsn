@@ -2,13 +2,14 @@
 import EthVal from 'ethval'
 import chalk from 'chalk'
 import { Mutex } from 'async-mutex'
-import { PrefixedHexString, Transaction, TransactionOptions } from 'ethereumjs-tx'
+import { Transaction, TxOptions } from '@ethereumjs/tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 
 import { TxStoreManager } from './TxStoreManager'
-import { KeyManager } from './KeyManager'
+import { KeyManager, SignedTransaction } from './KeyManager'
 import { ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import {
   createStoredTransaction,
@@ -48,7 +49,7 @@ export class TransactionManager {
   logger: LoggerInterface
   gasPriceFetcher: GasPriceFetcher
 
-  rawTxOptions!: TransactionOptions
+  rawTxOptions!: TxOptions
 
   constructor (dependencies: ServerDependencies, config: ServerConfigParams) {
     this.contractInteractor = dependencies.contractInteractor
@@ -84,8 +85,11 @@ created at   | block #${creationBlockNumber}
   }
 
   printSendTransactionLog (transaction: Transaction, from: Address): void {
-    const valueString = transaction.value.length === 0 ? '0' : parseInt('0x' + transaction.value.toString('hex')).toString()
-    const nonceString = transaction.nonce.length === 0 ? '0' : parseInt('0x' + transaction.nonce.toString('hex'))
+    if (transaction.to == null) {
+      throw new Error('transaction.to must be defined')
+    }
+    const valueString = transaction.value.toString()
+    const nonceString = transaction.nonce.toString()
     const gasPriceString = parseInt('0x' + transaction.gasPrice.toString('hex'))
 
     const valueHumanReadable: string = new EthVal(valueString).toEth().toFixed(4)
@@ -93,7 +97,7 @@ created at   | block #${creationBlockNumber}
     this.logger.info(`Broadcasting transaction:
 hash         | 0x${transaction.hash().toString('hex')}
 from         | ${from}
-to           | 0x${transaction.to.toString('hex')}
+to           | ${transaction.to.toString()}
 value        | ${valueString} (${valueHumanReadable} eth)
 nonce        | ${nonceString}
 gasPrice     | ${gasPriceString} (${gasPriceHumanReadable} gwei)
@@ -122,7 +126,7 @@ data         | 0x${transaction.data.toString('hex')}
       this.logger.error(msg)
       throw new Error(msg)
     }
-    let signedTx
+    let signedTransaction: SignedTransaction
     let storedTx: StoredTransaction
     try {
       const nonce = await this.pollNonce(signer)
@@ -136,27 +140,27 @@ data         | 0x${transaction.data.toString('hex')}
       }, this.rawTxOptions)
       // TODO omg! do not do this!
       const keyManager = this.managerKeyManager.isSigner(signer) ? this.managerKeyManager : this.workersKeyManager
-      signedTx = keyManager.signTransaction(signer, txToSign)
+      signedTransaction = keyManager.signTransaction(signer, txToSign)
       const metadata: StoredTransactionMetadata = {
         from: signer,
         attempts: 1,
         serverAction,
         creationBlockNumber
       }
-      storedTx = createStoredTransaction(txToSign, metadata)
+      storedTx = createStoredTransaction(signedTransaction.signedEthJsTx, metadata)
       this.nonces[signer]++
       await this.txStoreManager.putTx(storedTx, false)
-      this.printSendTransactionLog(txToSign, signer)
+      this.printSendTransactionLog(signedTransaction.signedEthJsTx, signer)
     } finally {
       releaseMutex()
     }
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
     if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
     return {
       transactionHash,
-      signedTx
+      signedTx: signedTransaction.rawTx
     }
   }
 
@@ -192,19 +196,19 @@ data         | 0x${transaction.data.toString('hex')}
       this.rawTxOptions)
 
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
-    const signedTx = keyManager.signTransaction(tx.from, txToSign)
-    const storedTx = await this.updateTransactionWithAttempt(txToSign, tx, currentBlock)
+    const signedTransaction = keyManager.signTransaction(tx.from, txToSign)
+    const storedTx = await this.updateTransactionWithAttempt(signedTransaction.signedEthJsTx, tx, currentBlock)
     this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.gasPrice, isMaxGasPriceReached)
-    this.printSendTransactionLog(txToSign, tx.from)
+    this.printSendTransactionLog(signedTransaction.signedEthJsTx, tx.from)
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
     if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
       throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
     }
     return {
       transactionHash,
-      signedTx
+      signedTx: signedTransaction.rawTx
     }
   }
 

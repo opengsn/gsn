@@ -1,5 +1,5 @@
 import ow from 'ow'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 export interface AuditRequest {
   signedTx: PrefixedHexString

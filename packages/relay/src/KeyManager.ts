@@ -6,10 +6,15 @@ import HDKey, { EthereumHDKey } from 'ethereumjs-wallet/hdkey'
 import fs from 'fs'
 import ow from 'ow'
 import { toHex } from 'web3-utils'
-import { PrefixedHexString, Transaction } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
+import { Transaction } from '@ethereumjs/tx'
 
 export const KEYSTORE_FILENAME = 'keystore'
 
+export interface SignedTransaction {
+  rawTx: PrefixedHexString
+  signedEthJsTx: Transaction
+}
 export class KeyManager {
   private readonly hdkey: EthereumHDKey
   private _privateKeys: Record<PrefixedHexString, Buffer> = {}
@@ -81,15 +86,15 @@ export class KeyManager {
     return this._privateKeys[signer] != null
   }
 
-  signTransaction (signer: string, tx: Transaction): PrefixedHexString {
+  signTransaction (signer: string, tx: Transaction): SignedTransaction {
     ow(signer, ow.string)
     const privateKey = this._privateKeys[signer]
     if (privateKey === undefined) {
       throw new Error(`Can't sign: signer=${signer} is not managed`)
     }
-
-    tx.sign(privateKey)
-    const rawTx = '0x' + tx.serialize().toString('hex')
-    return rawTx
+    const signedEthJsTx = tx.sign(privateKey)
+    signedEthJsTx.raw()
+    const rawTx = '0x' + signedEthJsTx.serialize().toString('hex')
+    return { rawTx, signedEthJsTx }
   }
 }

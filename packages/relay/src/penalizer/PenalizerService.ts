@@ -1,9 +1,9 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import crypto from 'crypto'
-import { PrefixedHexString, Transaction as EthereumJsTransaction, TransactionOptions, TxData } from 'ethereumjs-tx'
+import { Transaction as EthereumJsTransaction, TxOptions, TxData } from '@ethereumjs/tx'
 import { Transaction as Web3CoreTransaction } from 'web3-core'
-import { bufferToHex, bufferToInt, isZeroAddress } from 'ethereumjs-util'
+import { bufferToHex, isZeroAddress, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import * as ethUtils from 'ethereumjs-util'
 
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
@@ -41,7 +41,7 @@ export interface PenalizerDependencies {
   txByNonceService: BlockExplorerInterface
 }
 
-function createWeb3Transaction (transaction: Web3CoreTransaction, rawTxOptions: TransactionOptions): EthereumJsTransaction {
+function createWeb3Transaction (transaction: Web3CoreTransaction, rawTxOptions: TxOptions): EthereumJsTransaction {
   const gasPrice = '0x' + BigInt(transaction.gasPrice).toString(16)
   const value = '0x' + BigInt(transaction.value).toString(16)
   const txData: TxData = {
@@ -136,7 +136,7 @@ export class PenalizerService {
     this.logger.info(`Validating tx ${req.signedTx}`)
     // deserialize the tx
     const rawTxOptions = this.contractInteractor.getRawTxOptions()
-    const requestTx = new EthereumJsTransaction(req.signedTx, rawTxOptions)
+    const requestTx = EthereumJsTransaction.fromSerializedTx(toBuffer(req.signedTx), rawTxOptions)
     const validationResult = await this.validateTransaction(requestTx)
     if (!validationResult.valid) {
       return {
@@ -151,13 +151,13 @@ export class PenalizerService {
       }
     }
 
-    const relayWorker = bufferToHex(requestTx.getSenderAddress())
+    const relayWorker = bufferToHex(requestTx.getSenderAddress().toBuffer())
     // read the relay worker's nonce from blockchain
     const currentNonce = await this.contractInteractor.getTransactionCount(relayWorker, 'pending')
     // if tx nonce > current nonce, publish tx and await
     // otherwise, get mined tx with same nonce. if equals (up to different gasPrice) to received tx, return.
     // Otherwise, penalize.
-    const transactionNonce = bufferToInt(requestTx.nonce)
+    const transactionNonce = requestTx.nonce.toNumber()
     if (transactionNonce > currentNonce) {
       // TODO: store it, and see how sender behaves later...
       //  also, if we have already stored some transaction for this sender, check if these two are in nonce conflict.
@@ -257,7 +257,7 @@ export class PenalizerService {
 
   async penalizeIllegalTransaction (req: AuditRequest): Promise<AuditResponse> {
     const rawTxOptions = this.contractInteractor.getRawTxOptions()
-    const requestTx = new EthereumJsTransaction(req.signedTx, rawTxOptions)
+    const requestTx = EthereumJsTransaction.fromSerializedTx(toBuffer(req.signedTx), rawTxOptions)
     const validationResult = await this.validateTransaction(requestTx)
     if (!validationResult.valid) {
       return {
@@ -335,14 +335,14 @@ export class PenalizerService {
   }
 
   async validateTransaction (requestTx: EthereumJsTransaction): Promise<{ valid: boolean, error?: string }> {
-    const txHash = requestTx.hash(true).toString('hex')
+    const txHash = requestTx.hash().toString('hex')
     if (!requestTx.verifySignature()) {
       return {
         valid: false,
         error: INVALID_SIGNATURE
       }
     }
-    const relayWorker = bufferToHex(requestTx.getSenderAddress())
+    const relayWorker = bufferToHex(requestTx.getSenderAddress().toBuffer())
     const relayManager = await this.contractInteractor.relayHubInstance.workerToManager(relayWorker)
     if (isZeroAddress(relayManager)) {
       return {
@@ -362,7 +362,7 @@ export class PenalizerService {
   }
 
   async isTransactionMined (requestTx: EthereumJsTransaction): Promise<boolean> {
-    const txFromNode = await this.contractInteractor.getTransaction(bufferToHex(requestTx.hash(true)))
+    const txFromNode = await this.contractInteractor.getTransaction(bufferToHex(requestTx.hash()))
     return txFromNode != null
   }
 

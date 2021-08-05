@@ -19,7 +19,7 @@ import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } fro
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
-import { PrefixedHexString } from 'ethereumjs-tx'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
@@ -110,6 +110,101 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await evmMineMany(1)
       await relayServer.intervalHandler()
       assert.equal(relayServer.isReady(), true)
+    })
+  })
+
+  describe('readiness info', function () {
+    let clock: sinon.SinonFakeTimers
+    const time = 10000
+    beforeEach(async function () {
+      await env.newServerInstanceNoFunding()
+      await env.fundServer()
+      await env.relayServer.init()
+      clock = sinon.useFakeTimers(Date.now())
+    })
+    afterEach(function () {
+      clock.restore()
+    })
+
+    it('should set readiness info in constructor', async function () {
+      const now = Date.now()
+      assert.closeTo(env.relayServer.readinessInfo.runningSince, now, 3000)
+      assert.equal(env.relayServer.readinessInfo.currentStateTimestamp, env.relayServer.readinessInfo.runningSince)
+      assert.equal(env.relayServer.readinessInfo.totalReadyTime, 0)
+      assert.equal(env.relayServer.readinessInfo.totalNotReadyTime, 0)
+
+      const statsResponse = env.relayServer.statsHandler()
+      assert.equal(statsResponse.runningSince, env.relayServer.readinessInfo.runningSince)
+      assert.equal(statsResponse.currentStateTimestamp, env.relayServer.readinessInfo.currentStateTimestamp)
+      assert.equal(statsResponse.totalUptime, statsResponse.totalReadyTime + statsResponse.totalNotReadyTime)
+      assert.isTrue(statsResponse.totalUptime > 0)
+      assert.equal(statsResponse.totalReadinessChanges, 0)
+    })
+
+    it('should keep readiness info when setting to not ready', async function () {
+      env.relayServer.setReadyState(false)
+      clock.tick(time)
+      assert.equal(env.relayServer.readinessInfo.totalReadyTime, 0)
+      assert.equal(env.relayServer.readinessInfo.currentStateTimestamp - env.relayServer.readinessInfo.runningSince,
+        env.relayServer.readinessInfo.totalReadyTime + env.relayServer.readinessInfo.totalNotReadyTime)
+
+      console.log(env.relayServer.readinessInfo)
+      const statsResponse = env.relayServer.statsHandler()
+      assert.equal(statsResponse.runningSince, env.relayServer.readinessInfo.runningSince)
+      assert.equal(statsResponse.currentStateTimestamp, env.relayServer.readinessInfo.currentStateTimestamp)
+      assert.equal(statsResponse.totalUptime, statsResponse.totalReadyTime + statsResponse.totalNotReadyTime)
+      assert.isTrue(statsResponse.totalUptime >= time)
+      assert.isTrue(statsResponse.totalNotReadyTime >= time)
+      assert.isTrue(statsResponse.totalReadyTime < time)
+      assert.equal(statsResponse.totalReadinessChanges, 0)
+      console.log(statsResponse)
+    })
+
+    it('should keep readiness info when setting to ready', async function () {
+      env.relayServer.setReadyState(true)
+      clock.tick(time)
+      assert.equal(env.relayServer.readinessInfo.currentStateTimestamp - env.relayServer.readinessInfo.runningSince,
+        env.relayServer.readinessInfo.totalReadyTime + env.relayServer.readinessInfo.totalNotReadyTime)
+      assert.closeTo(env.relayServer.readinessInfo.totalNotReadyTime, 0, 1000)
+      // Only one interval, and it's from first uptime until last state change
+      assert.equal(env.relayServer.readinessInfo.totalReadinessChanges, 1)
+
+      console.log(env.relayServer.readinessInfo)
+      const statsResponse = env.relayServer.statsHandler()
+      assert.equal(statsResponse.runningSince, env.relayServer.readinessInfo.runningSince)
+      assert.equal(statsResponse.currentStateTimestamp, env.relayServer.readinessInfo.currentStateTimestamp)
+      assert.equal(statsResponse.totalUptime, statsResponse.totalReadyTime + statsResponse.totalNotReadyTime)
+      assert.isTrue(statsResponse.totalUptime >= time)
+      assert.isTrue(statsResponse.totalReadyTime >= time)
+      assert.isTrue(statsResponse.totalNotReadyTime < time)
+      assert.equal(statsResponse.totalReadinessChanges, 1)
+      console.log(statsResponse)
+    })
+
+    it('should keep readiness info when setting new readiness states', async function () {
+      env.relayServer.setReadyState(false)
+      clock.tick(time)
+      env.relayServer.setReadyState(false)
+      clock.tick(time)
+      env.relayServer.setReadyState(true)
+      clock.tick(time)
+      env.relayServer.setReadyState(false)
+      clock.tick(time)
+      env.relayServer.setReadyState(true)
+      clock.tick(time)
+      env.relayServer.setReadyState(false)
+      assert.equal(env.relayServer.readinessInfo.totalReadyTime, time * 2)
+      assert.equal(env.relayServer.readinessInfo.totalReadinessChanges, 4)
+      assert.equal(env.relayServer.readinessInfo.currentStateTimestamp - env.relayServer.readinessInfo.runningSince,
+        env.relayServer.readinessInfo.totalReadyTime + env.relayServer.readinessInfo.totalNotReadyTime)
+
+      console.log(env.relayServer.readinessInfo)
+      const statsResponse = env.relayServer.statsHandler()
+      assert.equal(statsResponse.totalReadinessChanges, 4)
+      assert.isTrue(statsResponse.totalUptime >= 5 * time)
+      assert.equal(statsResponse.totalReadyTime, time * 2)
+      assert.isTrue(statsResponse.totalNotReadyTime >= 3 * time)
+      console.log(statsResponse)
     })
   })
 
@@ -291,7 +386,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.fail()
         } catch (e) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          assert.include(e.message, `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
+          assert.include(e.message,
+            `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
         } finally {
           env.relayServer.config.maxGasPrice = originalMaxPrice
         }
@@ -687,14 +783,15 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     async function attackTheServer (server: RelayServer): Promise<void> {
       const _sendTransactionOrig = server.transactionManager.sendTransaction
-      server.transactionManager.sendTransaction = async function ({
-        signer,
-        method,
-        destination,
-        value = '0x',
-        gasLimit,
-        gasPrice
-      }: SendTransactionDetails): Promise<SignedTransactionDetails> {
+      server.transactionManager.sendTransaction = async function (
+        {
+          signer,
+          method,
+          destination,
+          value = '0x',
+          gasLimit,
+          gasPrice
+        }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore
         // eslint-disable-next-line @typescript-eslint/return-await
