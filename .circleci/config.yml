@@ -43,10 +43,6 @@ jobs: # a collection of steps
           name: test-fork
           command: yarn lerna-run-test-fork | tee /tmp/test-results.log
 
-      - run:
-          name: cat-ganache-fork-log
-          command: cat ganache-fork.log
-
 #coverage is broken (doesn't cover all contracts). disabled for now..
 #      - restore_cache: # special cache for coverage test
 #          key: last-coverage
