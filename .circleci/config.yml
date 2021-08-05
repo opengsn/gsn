@@ -19,9 +19,9 @@ jobs: # a collection of steps
           paths:
             - ./node_modules
 
-      - run: # run tests
-          name: test
-          command: yarn test | tee /tmp/test-results.log
+#      - run: # run tests
+#          name: test
+#          command: yarn test | tee /tmp/test-results.log
 
       - run: # run ganache mainnet fork
           name: ganache-fork-mainnet-background
