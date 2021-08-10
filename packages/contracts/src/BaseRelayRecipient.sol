@@ -42,9 +42,8 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
      * return the msg.data of this call.
      * if the call came through our trusted forwarder, then the real sender was appended as the last 20 bytes
      * of the msg.data - so this method will strip those 20 bytes off.
-     * otherwise, return `msg.data`
-     * should be used in the contract instead of msg.data, where the difference matters (e.g. when explicitly
-     * signing or hashing the
+     * otherwise (if the call was made directly and not through the forwarder), return `msg.data`
+     * should be used in the contract instead of msg.data, where this difference matters.
      */
     function _msgData() internal override virtual view returns (bytes memory ret) {
         if (msg.data.length >= 20 && isTrustedForwarder(msg.sender)) {
