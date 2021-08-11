@@ -1306,6 +1306,13 @@
   dependencies:
     "@octokit/openapi-types" "^6.0.0"
 
+"@opengsn/contracts@^2.2.2":
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/@opengsn/contracts/-/contracts-2.2.2.tgz#65e6310347d896fee9f10df6323fbe29a9d91802"
+  integrity sha512-GnV6Z5ZoWkVhd+rWbC30SpoX45fPndp1bcLV3t5QE2lRBFOjNk0guD/2i2k/RzbJiiFj9RvScufecC8N+0Rhvg==
+  dependencies:
+    "@openzeppelin/contracts" "^3.4.0-solc-0.7"
+
 "@openzeppelin/contract-loader@^0.4.0":
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contract-loader/-/contract-loader-0.4.0.tgz#c28c05d09df94c634d968ed175b5777dfc675872"
