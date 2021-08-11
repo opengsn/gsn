@@ -25,7 +25,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
      * otherwise, return `msg.sender`.
      * should be used in the contract anywhere instead of msg.sender
      */
-    function _msgSender() internal override virtual view returns (address payable ret) {
+    function _msgSender() internal override virtual view returns (address ret) {
         if (msg.data.length >= 20 && isTrustedForwarder(msg.sender)) {
             // At this point we know that the sender is a trusted forwarder,
             // so we trust that the last bytes of msg.data are the verified sender address.
@@ -34,7 +34,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
                 ret := shr(96,calldataload(sub(calldatasize(),20)))
             }
         } else {
-            return msg.sender;
+            ret = msg.sender;
         }
     }
 

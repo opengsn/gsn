@@ -61,8 +61,8 @@ contract TokenGasCalculator is RelayHub {
         IUniswap uniswap = paymaster.uniswaps(0);
         require(token.balanceOf(address(this)) >= 1000, "calc: must have some tokens");
         require(paymaster.owner() == address(this), "calc: must be owner of paymaster");
-        token.approve(paymasterAddress, uint(-1));
-        token.approve(msg.sender, uint(-1));
+        token.approve(paymasterAddress, type(uint).max);
+        token.approve(msg.sender, type(uint).max);
         // emulate a "precharge"
         token.transfer(paymasterAddress, 500);
 

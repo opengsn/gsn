@@ -167,7 +167,7 @@ library RLPReader {
     function toAddress(RLPItem memory item) internal pure returns (address) {
         // 1 byte for the length prefix according to RLP spec
         require(item.len <= 21, "Invalid RLPItem. Addresses are encoded in 20 bytes or less");
-        return address(toUint(item));
+        return address(uint160(toUint(item)));
     }
 
     function toUint(RLPItem memory item) internal pure returns (uint) {

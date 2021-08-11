@@ -1306,13 +1306,6 @@
   dependencies:
     "@octokit/openapi-types" "^6.0.0"
 
-"@opengsn/contracts@^2.2.2":
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/@opengsn/contracts/-/contracts-2.2.2.tgz#65e6310347d896fee9f10df6323fbe29a9d91802"
-  integrity sha512-GnV6Z5ZoWkVhd+rWbC30SpoX45fPndp1bcLV3t5QE2lRBFOjNk0guD/2i2k/RzbJiiFj9RvScufecC8N+0Rhvg==
-  dependencies:
-    "@openzeppelin/contracts" "^3.4.0-solc-0.7"
-
 "@openzeppelin/contract-loader@^0.4.0":
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contract-loader/-/contract-loader-0.4.0.tgz#c28c05d09df94c634d968ed175b5777dfc675872"
@@ -1322,10 +1315,10 @@
     fs-extra "^8.1.0"
     try-require "^1.2.1"
 
-"@openzeppelin/contracts@^3.4.0-solc-0.7":
-  version "3.4.1"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.4.1.tgz#03c891fec7f93be0ae44ed74e57a122a38732ce7"
-  integrity sha512-cUriqMauq1ylzP2TxePNdPqkwI7Le3Annh4K9rrpvKfSBB/bdW+Iu1ihBaTIABTAAJ85LmKL5SSPPL9ry8d1gQ==
+"@openzeppelin/contracts@^4.2.0":
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.2.0.tgz#260d921d99356e48013d9d760caaa6cea35dc642"
+  integrity sha512-LD4NnkKpHHSMo5z9MvFsG4g1xxZUDqV3A3Futu3nvyfs4wPwXxqOgMaxOoa2PeyGL2VNeSlbxT54enbQzGcgJQ==
 
 "@openzeppelin/test-helpers@0.5.5":
   version "0.5.5"

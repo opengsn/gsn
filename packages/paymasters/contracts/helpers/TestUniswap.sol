@@ -34,7 +34,7 @@ contract TestUniswap is IUniswap {
         require(address(this).balance > ethBought, "not enough liquidity");
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
-        msg.sender.transfer(ethBought);
+        payable(msg.sender).transfer(ethBought);
         return tokensToSell;
     }
 

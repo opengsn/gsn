@@ -101,7 +101,7 @@ library GsnEip712Library {
         MinLibBytes.truncateInPlace(data, MAX_RETURN_SIZE);
     }
 
-    function domainSeparator(address forwarder) internal pure returns (bytes32) {
+    function domainSeparator(address forwarder) internal view returns (bytes32) {
         return hashDomain(EIP712Domain({
             name : "GSN Relayed Transaction",
             version : "2",
@@ -110,7 +110,7 @@ library GsnEip712Library {
             }));
     }
 
-    function getChainID() internal pure returns (uint256 id) {
+    function getChainID() internal view returns (uint256 id) {
         /* solhint-disable no-inline-assembly */
         assembly {
             id := chainid()

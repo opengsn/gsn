@@ -23,7 +23,7 @@ contract TestForwarder {
         return string(ret);
     }
 
-    function getChainId() public pure returns (uint256 id){
+    function getChainId() public view returns (uint256 id){
         /* solhint-disable-next-line no-inline-assembly */
         assembly { id := chainid() }
     }

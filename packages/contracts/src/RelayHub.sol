@@ -122,7 +122,7 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function withdraw(uint256 amount, address payable dest) public override {
-        address payable account = msg.sender;
+        address payable account = payable(msg.sender);
         require(balances[account] >= amount, "insufficient funds");
 
         balances[account] = balances[account].sub(amount);

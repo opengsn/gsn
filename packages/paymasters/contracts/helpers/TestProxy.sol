@@ -30,7 +30,7 @@ contract TestProxy is BaseRelayRecipient, Ownable  {
         require(success, string(ret));
     }
 
-    function _msgSender() internal override(Context, BaseRelayRecipient) view returns (address payable) {
+    function _msgSender() internal override(Context, BaseRelayRecipient) view returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 

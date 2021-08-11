@@ -175,6 +175,6 @@ contract Penalizer is IPenalizer {
     }
 
     function penalize(address relayWorker, IRelayHub hub) private {
-        hub.penalize(relayWorker, msg.sender);
+        hub.penalize(relayWorker, payable(msg.sender));
     }
 }
