@@ -4,11 +4,11 @@
 /* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "./utils/MinLibBytes.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./utils/GsnUtils.sol";
@@ -25,8 +25,8 @@ contract RelayHub is IRelayHub, Ownable {
 
     string public override versionHub = "2.2.3+opengsn.hub.irelayhub";
 
-    IStakeManager immutable override public stakeManager;
-    address immutable override public penalizer;
+    IStakeManager public immutable override stakeManager;
+    address public immutable override penalizer;
 
     RelayHubConfig private config;
 

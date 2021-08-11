@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 //make sure that "payable" function that uses _msgSender() still works
