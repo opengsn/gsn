@@ -57,7 +57,7 @@
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "lerna run test --stream --no-prefix",
     "lerna-run-test1": "lerna run test1 --stream",
-    "lerna-run-test-with-testrpc": "rm -f node_modules/.bin/ganache-cli ; run-with-testrpc --testrpc-cmd='./scripts/hardhat-node' --port 8544 'yarn lerna-run-test'",
+    "lerna-run-test-with-testrpc": "rm -f node_modules/.bin/ganache-cli ; run-with-testrpc --testrpc-cmd './scripts/hardhat-node' --port 8544 'yarn lerna-run-test'",
     "lerna-run-test-with-hardhat1": "run-with-testrpc --testrpc-cmd='./scripts/hardhat-node' --port 8544 'yarn lerna-run-test1'",
     "verdaccio-start": "verdaccio --config verdaccio.yaml",
     "verdaccio-clean": "rm -rf verdaccio",
