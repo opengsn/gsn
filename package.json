@@ -56,7 +56,10 @@
     "lerna-lint": "lerna run lint",
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "lerna run test --stream --no-prefix",
+    "lerna-run-test1": "lerna run test1 --stream",
     "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 12000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test'",
+    "lerna-run-test-with-hardhat": "run-with-testrpc --testrpc-cmd='./hhnode' --port 8544 'yarn lerna-run-test'",
+    "lerna-run-test-with-hardhat1": "run-with-testrpc --testrpc-cmd='./hhnode' --port 8544 'yarn lerna-run-test1'",
     "verdaccio-start": "verdaccio --config verdaccio.yaml",
     "verdaccio-clean": "rm -rf verdaccio",
     "verdaccio-clean-opengsn": "rm -rf verdaccio/@opengsn"

@@ -95,12 +95,14 @@ export async function getEip712Signature (
       // @ts-ignore
       method = web3.currentProvider.send
     }
-    method.bind(web3.currentProvider)({
+    methodSuffix='_v4'
+    let paramBlock = {
       method: 'eth_signTypedData' + methodSuffix,
       params: [senderAddress, dataToSign],
-      from: senderAddress,
+      jsonrpc: '2.0',
       id: Date.now()
-    }, (error: Error | string | null, result?: JsonRpcResponse) => {
+    };
+    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null, result?: JsonRpcResponse) => {
       if (result?.error != null) {
         error = result.error
       }
