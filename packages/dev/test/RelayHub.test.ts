@@ -86,7 +86,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       const { logs } = await relayHubInstance.depositFor(paymaster, {
         from: sender,
         value: amount,
-        gasPrice: 0
+        gasPrice: 10
       })
       expectEvent.inLogs(logs, 'Deposited', {
         paymaster,
@@ -112,7 +112,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         relayHubInstance.depositFor(target, {
           from: other,
           value: ether('3'),
-          gasPrice: 0
+          gasPrice: 10
         }),
         'deposit too big'
       )
@@ -122,17 +122,17 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
-        gasPrice: 0
+        gasPrice: 10
       })
       await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
-        gasPrice: 0
+        gasPrice: 10
       })
       await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
-        gasPrice: 0
+        gasPrice: 10
       })
 
       expect(await relayHubInstance.balanceOf(target)).to.be.bignumber.equals(ether('3'))
@@ -215,7 +215,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         await relayHubInstance.depositFor(paymaster, {
           from: other,
           value: ether('1'),
-          gasPrice: 0
+          gasPrice: 10
         })
       })
 

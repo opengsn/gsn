@@ -1,0 +1,7 @@
+#!/bin/bash
+#start hardhat-node in a way that "run-with-testrpc" will work
+# (it looks up for "Listening on" string, to determine when the node is up)
+#todo: better trap and do it on process exit, instead of on next run..
+pkill -9 -f 'hardhat.node'
+npx hardhat node $*|sed -l -e 's/Started HTTP and WebSocket/Listening on/'
+

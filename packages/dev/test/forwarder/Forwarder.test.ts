@@ -375,7 +375,7 @@ contract('Forwarder', ([from]) => {
       const outerGasEstimate = await testfwd.callExecute.estimateGas(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig)
 
       // should fail if too little gas
-      await expectRevert(testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate - 1 }), 'insufficient gas')
+      await expectRevert(testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate - 1000 }), 'insufficient gas')
 
       // and succeed with exact amount
       await testfwd.callExecute(fwd.address, req1, bufferToHex(domainSeparator), typeHash, '0x', sig, { gas: outerGasEstimate })
