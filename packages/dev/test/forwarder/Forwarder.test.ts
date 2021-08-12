@@ -48,7 +48,7 @@ const ForwardRequestType = [
   { name: 'validUntil', type: 'uint256' }
 ]
 
-contract('Forwarder', ([from]) => {
+contract.only('Forwarder', ([from]) => {
   const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil'
   // our generic params has 7 bytes32 values
   const countParams = ForwardRequestType.length

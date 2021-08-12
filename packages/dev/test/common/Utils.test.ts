@@ -26,7 +26,7 @@ const TestUtil = artifacts.require('TestUtil')
 const Forwarder = artifacts.require('Forwarder')
 const TestRecipient = artifacts.require('TestRecipient')
 
-contract('Utils', function (accounts) {
+contract.only('Utils', function (accounts) {
   describe('#getEip712Signature()', function () {
     // ganache always reports chainId as '1'
     let chainId: number

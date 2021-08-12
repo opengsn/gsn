@@ -39,7 +39,7 @@ const options = [
 ]
 
 options.forEach(params => {
-  contract(params.title + 'Flow', function (accounts) {
+  contract.only(params.title + 'Flow', function (accounts) {
     let from: Address
     let sr: TestRecipientInstance
     let paymaster: TestPaymasterEverythingAcceptedInstance
