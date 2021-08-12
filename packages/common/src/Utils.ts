@@ -1,9 +1,9 @@
 import BN from 'bn.js'
 import abi from 'web3-eth-abi'
-import web3Utils, {toWei} from 'web3-utils'
-import {EventData} from 'web3-eth-contract'
-import {JsonRpcResponse} from 'web3-core-helpers'
-import {Transaction, TxOptions} from '@ethereumjs/tx'
+import web3Utils, { toWei } from 'web3-utils'
+import { EventData } from 'web3-eth-contract'
+import { JsonRpcResponse } from 'web3-core-helpers'
+import { Transaction, TxOptions } from '@ethereumjs/tx'
 import {
   PrefixedHexString,
   bufferToHex,
@@ -14,14 +14,14 @@ import {
   bnToUnpaddedBuffer
 } from 'ethereumjs-util'
 
-import {Address} from './types/Aliases'
+import { Address } from './types/Aliases'
 
-import {TypedRequestData} from './EIP712/TypedRequestData'
+import { TypedRequestData } from './EIP712/TypedRequestData'
 import chalk from 'chalk'
-import {encode, List} from 'rlp'
-import {defaultEnvironment} from './Environments'
+import { encode, List } from 'rlp'
+import { defaultEnvironment } from './Environments'
 
-export function removeHexPrefix(hex: string): string {
+export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
     throw new Error('Cannot remove hex prefix')
   }
@@ -30,42 +30,38 @@ export function removeHexPrefix(hex: string): string {
 
 const zeroPad = '0000000000000000000000000000000000000000000000000000000000000000'
 
-export function padTo64(hex: string): string {
+export function padTo64 (hex: string): string {
   if (hex.length < 64) {
     hex = (zeroPad + hex).slice(-64)
   }
   return hex
 }
 
-export function signatureRSV2Hex(r: BN | Buffer, s: BN | Buffer, v: number): string {
+export function signatureRSV2Hex (r: BN | Buffer, s: BN | Buffer, v: number): string {
   return '0x' + padTo64(r.toString('hex')) + padTo64(s.toString('hex')) + v.toString(16).padStart(2, '0')
 }
 
-export function event2topic(contract: any, names: string[]): any {
+export function event2topic (contract: any, names: string[]): any {
   // for testing: don't crash on mockup..
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!contract.options || !contract.options.jsonInterface) {
-    return names
-  }
+  if (!contract.options || !contract.options.jsonInterface) { return names }
   return contract.options.jsonInterface
     .filter((e: any) => names.includes(e.name))
     // @ts-ignore
     .map(abi.encodeEventSignature)
 }
 
-export function addresses2topics(addresses: string[]): string[] {
+export function addresses2topics (addresses: string[]): string[] {
   return addresses.map(address2topic)
 }
 
-export function address2topic(address: string): string {
+export function address2topic (address: string): string {
   return '0x' + '0'.repeat(24) + address.toLowerCase().slice(2)
 }
 
 // extract revert reason from a revert bytes array.
-export function decodeRevertReason(revertBytes: PrefixedHexString, throwOnError = false): string | null {
-  if (revertBytes == null) {
-    return null
-  }
+export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string | null {
+  if (revertBytes == null) { return null }
   if (!revertBytes.startsWith('0x08c379a0')) {
     if (throwOnError) {
       throw new Error('invalid revert bytes: ' + revertBytes)
@@ -76,7 +72,7 @@ export function decodeRevertReason(revertBytes: PrefixedHexString, throwOnError 
   return abi.decodeParameter('string', '0x' + revertBytes.slice(10)) as any
 }
 
-export async function getEip712Signature(
+export async function getEip712Signature (
   web3: Web3,
   typedRequestData: TypedRequestData,
   methodSuffix = '',
@@ -100,7 +96,7 @@ export async function getEip712Signature(
       method = web3.currentProvider.send
     }
     methodSuffix = '_v4'
-    let paramBlock = {
+    const paramBlock = {
       method: 'eth_signTypedData' + methodSuffix,
       params: [senderAddress, dataToSign],
       jsonrpc: '2.0',
@@ -122,12 +118,10 @@ export async function getEip712Signature(
 /**
  * @returns the actual cost of putting this transaction on chain.
  */
-export function calculateCalldataCost(calldata: string): number {
+export function calculateCalldataCost (calldata: string): number {
   const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
   let sum = 0
-  calldataBuf.forEach(ch => {
-    sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero)
-  })
+  calldataBuf.forEach(ch => { sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero) })
   return sum
 }
 
@@ -135,7 +129,7 @@ export function calculateCalldataCost(calldata: string): number {
  * @returns maximum possible gas consumption by this relayed call
  * (calculated on chain by RelayHub.verifyGasAndDataLimits)
  */
-export function calculateTransactionMaxPossibleGas(
+export function calculateTransactionMaxPossibleGas (
   {
     gasAndDataLimits,
     hubOverhead,
@@ -151,7 +145,7 @@ export function calculateTransactionMaxPossibleGas(
     parseInt(gasAndDataLimits.postRelayedCallGasLimit.toString())
 }
 
-export function getEcRecoverMeta(message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
+export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
   if (typeof signature === 'string') {
     const r = parseHexString(signature.substr(2, 65))
     const s = parseHexString(signature.substr(66, 65))
@@ -173,7 +167,7 @@ export function getEcRecoverMeta(message: PrefixedHexString, signature: string |
   return bufferToHex(pubToAddress(recoveredPubKey))
 }
 
-export function parseHexString(str: string): number[] {
+export function parseHexString (str: string): number[] {
   const result = []
   while (str.length >= 2) {
     result.push(parseInt(str.substring(0, 2), 16))
@@ -184,34 +178,34 @@ export function parseHexString(str: string): number[] {
   return result
 }
 
-export function isSameAddress(address1: Address, address2: Address): boolean {
+export function isSameAddress (address1: Address, address2: Address): boolean {
   return address1.toLowerCase() === address2.toLowerCase()
 }
 
-export async function sleep(ms: number): Promise<void> {
+export async function sleep (ms: number): Promise<void> {
   return await new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export function ether(n: string): BN {
+export function ether (n: string): BN {
   return new BN(toWei(n, 'ether'))
 }
 
-export function randomInRange(min: number, max: number): number {
+export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
 
-export function eventsComparator(a: EventData, b: EventData): number {
+export function eventsComparator (a: EventData, b: EventData): number {
   if (a.blockNumber === b.blockNumber) {
     return b.transactionIndex - a.transactionIndex
   }
   return b.blockNumber - a.blockNumber
 }
 
-export function isSecondEventLater(a: EventData, b: EventData): boolean {
+export function isSecondEventLater (a: EventData, b: EventData): boolean {
   return eventsComparator(a, b) > 0
 }
 
-export function getLatestEventData(events: EventData[]): EventData | undefined {
+export function getLatestEventData (events: EventData[]): EventData | undefined {
   if (events.length === 0) {
     return
   }
@@ -247,11 +241,11 @@ interface Signature {
   s: number[]
 }
 
-export function boolString(bool: boolean): string {
+export function boolString (bool: boolean): string {
   return bool ? chalk.green('good'.padEnd(14)) : chalk.red('wrong'.padEnd(14))
 }
 
-export function getDataAndSignature(tx: Transaction, chainId: number): { data: string, signature: string } {
+export function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
   if (tx.to == null) {
     throw new Error('tx.to must be defined')
   }
@@ -276,6 +270,6 @@ export function getDataAndSignature(tx: Transaction, chainId: number): { data: s
   }
 }
 
-export function signedTransactionToHash(signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
+export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
   return bufferToHex(Transaction.fromSerializedTx(toBuffer(signedTransaction), transactionOptions).hash())
 }
