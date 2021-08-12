@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -11,13 +11,13 @@ contract  ProxyFactory {
     event ProxyDeployed(address proxyAddress);
 
     function calculateAddress(address owner) public view returns (address){
-        return address(uint256(keccak256(
+        return address(uint160(uint256(keccak256(
                 abi.encodePacked(
                     uint8(0xff),
                     address(this),
                     bytes32(0),
                     keccak256(abi.encodePacked(type(ProxyIdentity).creationCode, abi.encode(owner)))
-                ))));
+                )))));
     }
 
     function deployProxy(address owner) external returns (ProxyIdentity) {
