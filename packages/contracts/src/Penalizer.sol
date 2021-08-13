@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./utils/RLPReader.sol";
 import "./utils/GsnUtils.sol";
@@ -175,6 +175,6 @@ contract Penalizer is IPenalizer {
     }
 
     function penalize(address relayWorker, IRelayHub hub) private {
-        hub.penalize(relayWorker, msg.sender);
+        hub.penalize(relayWorker, payable(msg.sender));
     }
 }

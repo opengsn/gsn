@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./interfaces/IStakeManager.sol";
 
@@ -58,7 +58,7 @@ contract StakeManager is IStakeManager {
         uint256 amount = info.stake;
         info.stake = 0;
         info.withdrawBlock = 0;
-        msg.sender.transfer(amount);
+        payable(msg.sender).transfer(amount);
         emit StakeWithdrawn(relayManager, msg.sender, amount);
     }
 
@@ -83,7 +83,7 @@ contract StakeManager is IStakeManager {
     }
 
     function _authorizeHub(address relayManager, address relayHub) internal {
-        authorizedHubs[relayManager][relayHub].removalBlock = uint(-1);
+        authorizedHubs[relayManager][relayHub].removalBlock = type(uint).max;
         emit HubAuthorized(relayManager, relayHub);
     }
 
@@ -97,7 +97,7 @@ contract StakeManager is IStakeManager {
 
     function _unauthorizeHub(address relayManager, address relayHub) internal {
         RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
-        require(hubInfo.removalBlock == uint(-1), "hub not authorized");
+        require(hubInfo.removalBlock == type(uint).max, "hub not authorized");
         uint256 removalBlock = block.number.add(stakes[relayManager].unstakeDelay);
         hubInfo.removalBlock = removalBlock;
         emit HubUnauthorized(relayManager, relayHub, removalBlock);
@@ -112,7 +112,7 @@ contract StakeManager is IStakeManager {
         bool isAmountSufficient = info.stake >= minAmount;
         bool isDelaySufficient = info.unstakeDelay >= minUnstakeDelay;
         bool isStakeLocked = info.withdrawBlock == 0;
-        bool isHubAuthorized = authorizedHubs[relayManager][relayHub].removalBlock == uint(-1);
+        bool isHubAuthorized = authorizedHubs[relayManager][relayHub].removalBlock == type(uint).max;
         return
         isAmountSufficient &&
         isDelaySufficient &&
@@ -137,7 +137,7 @@ contract StakeManager is IStakeManager {
         uint256 reward = SafeMath.sub(amount, toBurn);
 
         // Ether is burned and transferred
-        address(0).transfer(toBurn);
+        payable(address(0)).transfer(toBurn);
         beneficiary.transfer(reward);
         emit StakePenalized(relayManager, beneficiary, reward);
     }

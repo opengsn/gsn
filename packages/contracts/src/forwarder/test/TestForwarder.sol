@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "../Forwarder.sol";
@@ -23,7 +23,7 @@ contract TestForwarder {
         return string(ret);
     }
 
-    function getChainId() public pure returns (uint256 id){
+    function getChainId() public view returns (uint256 id){
         /* solhint-disable-next-line no-inline-assembly */
         assembly { id := chainid() }
     }

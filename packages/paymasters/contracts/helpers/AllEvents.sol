@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.7;
 
 /**
  * In order to help the Truffle tests to decode events in the transactions' results,

@@ -481,7 +481,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           const method = await commitPenalizationAndReturnMethod(
             penalizer.contract.methods.penalizeRepeatedNonce, txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address)
           await expectRevert(
-            method.send({ from: reporterRelayManager }),
+            method.send({ from: reporterRelayManager, gas: 5e5 }),
             'tx is equal'
           )
         })
@@ -496,7 +496,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           const method = await commitPenalizationAndReturnMethod(
             penalizer.contract.methods.penalizeRepeatedNonce, txDataSigA.data, txDataSigA.signature, txDataSigB.data, txDataSigB.signature, relayHub.address)
           await expectRevert(
-            method.send({ from: reporterRelayManager }),
+            method.send({ from: reporterRelayManager, gas: 5e5 }),
             'Different nonce'
           )
         })

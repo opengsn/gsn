@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IUniswap.sol";
@@ -34,7 +34,7 @@ contract TestUniswap is IUniswap {
         require(address(this).balance > ethBought, "not enough liquidity");
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
-        msg.sender.transfer(ethBought);
+        payable(msg.sender).transfer(ethBought);
         return tokensToSell;
     }
 

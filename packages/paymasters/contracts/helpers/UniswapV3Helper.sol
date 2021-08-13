@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.7;
 pragma experimental ABIEncoderV2;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -22,7 +22,7 @@ library UniswapV3Helper {
             // solhint-disable-next-line not-rely-on-time
             block.timestamp, //deadline
             amountOut,
-            uint256(-1),
+            type(uint256).max,
             0
         );
 

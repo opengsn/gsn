@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -30,7 +30,7 @@ contract TestProxy is BaseRelayRecipient, Ownable  {
         require(success, string(ret));
     }
 
-    function _msgSender() internal override(Context, BaseRelayRecipient) view returns (address payable) {
+    function _msgSender() internal override(Context, BaseRelayRecipient) view returns (address) {
         return BaseRelayRecipient._msgSender();
     }
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.7;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -54,7 +54,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         BaseRelayRecipient.setTrustedForwarder(_forwarder);
     }
 
-    function _msgSender() internal view override(Context, BaseRelayRecipient) returns (address payable sender) {
+    function _msgSender() internal view override(Context, BaseRelayRecipient) returns (address sender) {
         sender = BaseRelayRecipient._msgSender();
     }
 
@@ -87,7 +87,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         setPostGasUsage(_gasUsedByPost);
         setTrustedForwarder(_trustedForwarder);
         // allow uniswap to transfer from paymaster balance
-        token.approve(address(uniswap), uint256(-1));
+        token.approve(address(uniswap), type(uint256).max);
     }
 
     /**
