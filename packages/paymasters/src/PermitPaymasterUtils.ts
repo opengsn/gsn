@@ -1,6 +1,6 @@
 import Web3 from 'web3'
-import { PrefixedHexString } from 'ethereumjs-util'
-import { getEip712Signature, hex2signatureRSV, TruffleContract } from '@opengsn/common'
+import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
+import { getEip712Signature, TruffleContract } from '@opengsn/common'
 import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types } from 'eth-sig-util'
 
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
@@ -160,7 +160,7 @@ export async function signAndEncodeDaiPermit (
     web3,
     dataToSign
   )
-  const { r, s, v } = hex2signatureRSV(signature)
+  const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
   if (!skipValidation) {
     await daiInstance.contract.methods.permit(holder, spender, nonce, expiry, true, v, r, s).estimateGas()
@@ -210,7 +210,7 @@ export async function signAndEncodeEIP2612Permit (
     web3,
     dataToSign
   )
-  const { r, s, v } = hex2signatureRSV(signature)
+  const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
   if (!skipValidation) {
     await eip2612TokenInstance.contract.methods.permit(owner, spender, value, deadline, v, r, s).estimateGas()

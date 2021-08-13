@@ -18,7 +18,8 @@ import {
   DAI_CONTRACT_ADDRESS,
   GSN_FORWARDER_CONTRACT_ADDRESS,
   PERMIT_SIGNATURE_DAI,
-  PERMIT_SIGNATURE_EIP2612, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
+  PERMIT_SIGNATURE_EIP2612,
+  CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
   SWAP_ROUTER_CONTRACT_ADDRESS,
   UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
   UNISWAP_V3_QUOTER_CONTRACT_ADDRESS,
@@ -79,7 +80,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
 
   before(async function () {
     if (!await detectMainnet()) {
-      return
+      this.skip()
     }
     sampleRecipient = await SampleRecipient.new()
     forwarder = await Forwarder.new({ gas: 1e7 })
@@ -167,7 +168,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /readBytes4: data too short/)
+          ), /paymastaData: must contain permit/)
       })
 
       it('should revert if paymasterData is not an encoded call to permit method', async function () {
@@ -281,7 +282,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         let permitEIP2612Paymaster: PermitERC20UniswapV3PaymasterInstance
         before(async function () {
           if (!await detectMainnet()) {
-            return
+            this.skip()
           }
           eip2612PermittableToken = await PermitInterfaceEIP2612.at(UNI_CONTRACT_ADDRESS)
           await eip2612PermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
@@ -348,7 +349,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     context('success flow', function () {
       before(async function () {
         if (!await detectMainnet()) {
-          return
+          this.skip()
         }
         await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
         await daiPermittableToken.transfer(permitPaymaster.address, TOKEN_PRE_CHARGE, { from: account0 })

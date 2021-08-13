@@ -126,6 +126,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         (signature);
         require(approvalData.length == 0, "approvalData: invalid length");
         if (relayRequest.relayData.paymasterData.length != 0) {
+            require(relayRequest.relayData.paymasterData.length >= 4, 'paymastaData: must contain permit');
             require(
                 permitMethodSignature == GsnUtils.getMethodSig(relayRequest.relayData.paymasterData),
                 "paymasterData: wrong method sig");
