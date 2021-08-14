@@ -32,9 +32,12 @@ export async function startRelay (
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 
-  const serverWorkDir = '/home/circleci/project/gsn/test/server'
+  const serverWorkDir = '/tmp/gsn/test/server'
 
-  fs.rmdirSync(serverWorkDir, { recursive: true })
+  fs.rmSync(serverWorkDir, {
+    recursive: true,
+    force: true
+  })
   args.push('--workdir', serverWorkDir)
   args.push('--devMode')
   if (options.checkInterval) {

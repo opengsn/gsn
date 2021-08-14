@@ -5,7 +5,7 @@ import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relay/dist/TxStoreMan
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
-const workdir = '/home/circleci/project/gsn/test/txstore_manager'
+const workdir = '/tmp/gsn/test/txstore_manager'
 const txStoreFilePath = `${workdir}/${TXSTORE_FILENAME}`
 
 function cleanFolder (): void {
@@ -13,7 +13,10 @@ function cleanFolder (): void {
     fs.unlinkSync(txStoreFilePath)
   }
   if (fs.existsSync(workdir)) {
-    fs.rmdirSync(workdir)
+    fs.rmSync(workdir, {
+      recursive: true,
+      force: true
+    })
   }
 }
 

@@ -4,7 +4,7 @@ import fs from 'fs'
 import { KeyManager, KEYSTORE_FILENAME } from '@opengsn/relay/dist/KeyManager'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
-const workdir = '/home/circleci/project/gsn/test/key_manager'
+const workdir = '/tmp/gsn/test/key_manager'
 const keyStoreFilePath = workdir + '/' + KEYSTORE_FILENAME
 
 function cleanFolder (): void {
@@ -12,7 +12,10 @@ function cleanFolder (): void {
     fs.unlinkSync(keyStoreFilePath)
   }
   if (fs.existsSync(workdir)) {
-    fs.rmdirSync(workdir)
+    fs.rmSync(workdir, {
+      recursive: true,
+      force: true
+    })
   }
 }
 
