@@ -32,7 +32,7 @@ export async function startRelay (
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 
-  const serverWorkDir = '/tmp/gsn/test/server'
+  const serverWorkDir = '/home/circleci/project/gsn/test/server'
 
   fs.rmdirSync(serverWorkDir, { recursive: true })
   args.push('--workdir', serverWorkDir)

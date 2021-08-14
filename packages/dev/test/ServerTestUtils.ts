@@ -67,7 +67,7 @@ export interface ServerWorkdirs {
 }
 
 export function getTemporaryWorkdirs (): ServerWorkdirs {
-  const workdir = '/tmp/gsn/test/relayserver/defunct' + Date.now().toString()
+  const workdir = '/home/circleci/project/gsn/test/relayserver/defunct' + Date.now().toString()
   const managerWorkdir = workdir + '/manager'
   const workersWorkdir = workdir + '/workers'
 
