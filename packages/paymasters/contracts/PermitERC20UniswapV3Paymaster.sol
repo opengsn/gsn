@@ -65,7 +65,6 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
     constructor(
         IERC20 _weth,
         IERC20 _token,
-//        IQuoter _quoter,
         IRelayHub _relayHub,
         ISwapRouter _uniswap,
         IChainlinkOracle _priceFeed,
@@ -77,7 +76,6 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
     ) {
         weth = _weth;
         token = _token;
-//        quoter = _quoter;
         uniswap = _uniswap;
         priceFeed = _priceFeed;
         uniswapPoolFee = _uniswapPoolFee;
@@ -126,7 +124,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         (signature);
         require(approvalData.length == 0, "approvalData: invalid length");
         if (relayRequest.relayData.paymasterData.length != 0) {
-            require(relayRequest.relayData.paymasterData.length >= 4, 'paymastaData: must contain permit');
+            require(relayRequest.relayData.paymasterData.length >= 4, "paymastaData: missing method sig");
             require(
                 permitMethodSignature == GsnUtils.getMethodSig(relayRequest.relayData.paymasterData),
                 "paymasterData: wrong method sig");
