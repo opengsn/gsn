@@ -5,9 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@opengsn/contracts/src/RelayHub.sol";
-
-import "../TokenPaymaster.sol";
-
+import "@opengsn/contracts/src/BasePaymaster.sol";
 
 /**
  * Calculate the postRelayedCall gas usage for a TokenPaymaster.
@@ -55,28 +53,16 @@ contract TokenGasCalculator is RelayHub {
      * the above can be ran on a "forked" network, so that it will have the real token, uniswap instances,
      * but still leave no side-effect on the network.
      */
-    function calculatePostGas(TokenPaymaster paymaster) public returns (uint gasUsedByPost) {
-        address paymasterAddress = address(paymaster);
-        IERC20 token = paymaster.tokens(0);
-        IUniswap uniswap = paymaster.uniswaps(0);
-        require(token.balanceOf(address(this)) >= 1000, "calc: must have some tokens");
-        require(paymaster.owner() == address(this), "calc: must be owner of paymaster");
-        token.approve(paymasterAddress, type(uint).max);
-        token.approve(msg.sender, type(uint).max);
-        // emulate a "precharge"
-        token.transfer(paymasterAddress, 500);
-
-        paymaster.setRelayHub(IRelayHub(address(this)));
-
+    function calculatePostGas(
+        BasePaymaster paymaster,
+        bytes memory ctx1
+    ) public returns (uint gasUsedByPost) {
         GsnTypes.RelayData memory relayData = GsnTypes.RelayData(1, 0, 0, address(0), address(0), address(0), "", 0);
 
-        bytes memory ctx1 = abi.encode(this, uint(500),token,uniswap);
         //with precharge
         uint gas0 = gasleft();
         paymaster.postRelayedCall(ctx1, true, 100, relayData);
         uint gas1 = gasleft();
-
-        token.transferFrom(paymasterAddress, address(this), token.balanceOf(paymasterAddress));
         gasUsedByPost = gas0 - gas1;
         emit GasUsed(gasUsedByPost);
     }

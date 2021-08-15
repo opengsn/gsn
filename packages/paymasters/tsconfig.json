@@ -3,6 +3,7 @@
   "include": [
     "./src/**/*.ts",
     "./test/**/*.ts",
+    "./build/contracts/*.json",
     "./types/truffle-contracts/index.d.ts",
     "./types/truffle-contracts/types.d.ts"
   ],

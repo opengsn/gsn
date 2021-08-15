@@ -191,7 +191,7 @@ options.forEach(params => {
         before(async function () {
           approvalPaymaster = await TestPaymasterPreconfiguredApproval.new()
           await approvalPaymaster.setRelayHub(rhub.address)
-          await approvalPaymaster.setTrustedForwarder(await sr.getTrustedForwarder())
+          await approvalPaymaster.setTrustedForwarder(await sr.trustedForwarder())
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
           relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address } }
           const relayProvider = await RelayProvider.newProvider(

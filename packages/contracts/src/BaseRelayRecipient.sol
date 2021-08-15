@@ -13,10 +13,18 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
     /*
      * Forwarder singleton we accept calls from
      */
-    address public trustedForwarder;
+    address private _trustedForwarder;
 
-    function isTrustedForwarder(address forwarder) public override view returns(bool) {
-        return forwarder == trustedForwarder;
+    function trustedForwarder() public virtual view returns (address){
+        return _trustedForwarder;
+    }
+
+    function setTrustedForwarder(address _forwarder) virtual public {
+        _trustedForwarder = _forwarder;
+    }
+
+    function isTrustedForwarder(address forwarder) public virtual override view returns(bool) {
+        return forwarder == _trustedForwarder;
     }
 
     /**
