@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "@opengsn/contracts/src/BasePaymaster.sol";
 import "@opengsn/contracts/src/forwarder/IForwarder.sol";
-import "@openzeppelin/contracts/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * a sample paymaster that requires an external signature on the request.

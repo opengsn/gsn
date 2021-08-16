@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 interface IERC725 {
     event DataChanged(bytes32 indexed key, bytes indexed value);

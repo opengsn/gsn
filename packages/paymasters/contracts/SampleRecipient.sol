@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
@@ -12,7 +12,7 @@ contract SampleRecipient is BaseRelayRecipient {
     event Sender( address _msgSenderFunc, address sender );
 
     function setForwarder(address forwarder) public {
-        trustedForwarder = forwarder;
+        setTrustedForwarder(forwarder);
     }
     function something() public {
         emit Sender( _msgSender(), msg.sender );

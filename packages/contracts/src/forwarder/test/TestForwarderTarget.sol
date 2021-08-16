@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 import "../../BaseRelayRecipient.sol";
 
@@ -8,7 +8,7 @@ contract TestForwarderTarget is BaseRelayRecipient {
     string public override versionRecipient = "2.2.3+opengsn.test.recipient";
 
     constructor(address forwarder) {
-        trustedForwarder = forwarder;
+        setTrustedForwarder(forwarder);
     }
 
     // solhint-disable-next-line no-empty-blocks

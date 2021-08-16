@@ -1,11 +1,11 @@
 /* solhint-disable no-inline-assembly */
 // SPDX-License-Identifier:MIT
 
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/proxy/Initializable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
 import "../interfaces/IERC725.sol";
@@ -28,9 +28,9 @@ contract ProxyIdentity is IERC725, BaseRelayRecipient, Initializable {
     }
 
     function initialize(address _trustedForwarder, IERC20[] calldata tokens) external initializer {
-        trustedForwarder = _trustedForwarder;
+        setTrustedForwarder(_trustedForwarder);
         for (uint256 i =0; i < tokens.length; i++){
-            tokens[i].approve(address(msg.sender), uint(-1));
+            tokens[i].approve(address(msg.sender), type(uint).max);
         }
     }
 

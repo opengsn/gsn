@@ -30,15 +30,15 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 33135,
-  postOverhead: 15066,
+  gasOverhead: 33407,
+  postOverhead: 15178,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
   maximumRecipientDeposit: 2e18.toString(),
   dataGasCostPerByte: 13,
-  externalCallDataCostOverhead: 22414
+  externalCallDataCostOverhead: 22402
 }
 
 // TODO add as constructor params to paymaster instead of constants
