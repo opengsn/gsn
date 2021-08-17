@@ -28,7 +28,7 @@ contract ProxyIdentity is IERC725, BaseRelayRecipient, Initializable {
     }
 
     function initialize(address _trustedForwarder, IERC20[] calldata tokens) external initializer {
-        setTrustedForwarder(_trustedForwarder);
+        _setTrustedForwarder(_trustedForwarder);
         for (uint256 i =0; i < tokens.length; i++){
             tokens[i].approve(address(msg.sender), type(uint).max);
         }

@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: MIT
 // solhint-disable no-inline-assembly
-pragma solidity >=0.7.6;
+pragma solidity >=0.6.0;
 
 import "./interfaces/IRelayRecipient.sol";
 
@@ -19,7 +19,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
         return _trustedForwarder;
     }
 
-    function setTrustedForwarder(address _forwarder) virtual public {
+    function _setTrustedForwarder(address _forwarder) internal {
         _trustedForwarder = _forwarder;
     }
 
@@ -54,7 +54,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
      * should be used in the contract instead of msg.data, where the difference matters (e.g. when explicitly
      * signing or hashing the
      */
-    function _msgData() internal override virtual view returns (bytes memory ret) {
+    function _msgData() internal override virtual view returns (bytes calldata ret) {
         if (msg.data.length >= 20 && isTrustedForwarder(msg.sender)) {
             return msg.data[0:msg.data.length-20];
         } else {
