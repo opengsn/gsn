@@ -16,7 +16,7 @@ contract BatchForwarder is Forwarder, BaseRelayRecipient {
 
     constructor() {
         //needed for sendBatch
-        setTrustedForwarder(address(this));
+        _setTrustedForwarder(address(this));
     }
 
     function sendBatch(address[] calldata targets, bytes[] calldata encodedFunctions) external {

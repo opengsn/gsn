@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.7.6;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.6.0;
 
 /**
  * a contract must implement this interface in order to support relayed transaction.
@@ -30,7 +30,7 @@ abstract contract IRelayRecipient {
      * otherwise (if the call was made directly and not through the forwarder), return `msg.data`
      * should be used in the contract instead of msg.data, where this difference matters.
      */
-    function _msgData() internal virtual view returns (bytes memory);
+    function _msgData() internal virtual view returns (bytes calldata);
 
     function versionRecipient() external virtual view returns (string memory);
 }
