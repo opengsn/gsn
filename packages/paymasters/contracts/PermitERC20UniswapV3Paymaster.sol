@@ -46,7 +46,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         return "2.2.3+opengsn.permit-erc20-uniswap-v3.irelayrecipient";
     }
 
-    function trustedForwarder() override(BasePaymaster, BaseRelayRecipient) public view returns (address forwarder){
+    function trustedForwarder() override(AbstractPaymaster, BaseRelayRecipient) public view returns (address forwarder){
         forwarder = BaseRelayRecipient.trustedForwarder();
     }
 
