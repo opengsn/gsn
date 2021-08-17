@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.0;
-pragma abicoder v2;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.6.9;
+pragma experimental ABIEncoderV2;
 
 import "../utils/GsnTypes.sol";
 import "../interfaces/IRelayRecipient.sol";

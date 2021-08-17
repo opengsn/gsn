@@ -1,8 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.7.6;
-pragma abicoder v2;
-
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.6.9;
+pragma experimental ABIEncoderV2;
 
 interface IStakeManager {
 
