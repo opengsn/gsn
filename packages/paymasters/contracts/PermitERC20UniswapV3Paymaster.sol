@@ -50,8 +50,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         forwarder = BaseRelayRecipient.trustedForwarder();
     }
 
-    function setTrustedForwarder(address _forwarder) override(BasePaymaster, BaseRelayRecipient) public onlyOwner {
-        BaseRelayRecipient.setTrustedForwarder(_forwarder);
+    function setTrustedForwarder(address _forwarder) public override onlyOwner {
+        _setTrustedForwarder(_forwarder);
     }
 
     function _msgSender() internal view override(Context, BaseRelayRecipient) returns (address sender) {
