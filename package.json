@@ -43,7 +43,7 @@
   },
   "prepublish": "yarn prepare",
   "scripts": {
-    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-testrpc",
+    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-hardhat",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 120000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "postinstall": "patch-package",
     "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
