@@ -18,6 +18,7 @@ import { Address } from './types/Aliases'
 
 import chalk from 'chalk'
 import { encode, List } from 'rlp'
+import { EIP712TypedData } from 'eth-sig-util'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {

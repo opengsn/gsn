@@ -51,23 +51,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
   let relayRequest: RelayRequest
   let signature: PrefixedHexString
 
-  async function calculatePostGas (paymaster: TokenPaymasterInstance): Promise<void> {
-    const uniswap = await paymaster.uniswaps(0)
-    const testpaymaster = await TokenPaymaster.new([uniswap], { gas: 1e7 })
-    const calc = await TokenGasCalculator.new(
-      constants.ZERO_ADDRESS,
-      constants.ZERO_ADDRESS,
-      defaultEnvironment.relayHubConfiguration,
-      { gas: 10000000 })
-    await testpaymaster.transferOwnership(calc.address)
-    // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
-    await token.mint(1e18.toString())
-    await token.transfer(calc.address, 1e18.toString())
-    const gasUsedByPost = await calc.calculatePostGas.call(testpaymaster.address)
-    console.log('post calculator:', gasUsedByPost.toString())
-    await paymaster.setPostGasUsage(gasUsedByPost)
-  }
-
   before(async () => {
     // exchange rate 2 tokens per eth.
     uniswap = await TestUniswap.new(2, 1, {

@@ -40,15 +40,7 @@ export async function deployTestHub (calculator: boolean = false): Promise<Truff
   return await contract.new(
     constants.ZERO_ADDRESS,
     constants.ZERO_ADDRESS,
-    defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-    defaultEnvironment.relayHubConfiguration.gasReserve,
-    defaultEnvironment.relayHubConfiguration.postOverhead,
-    defaultEnvironment.relayHubConfiguration.gasOverhead,
-    defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-    defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-    defaultEnvironment.relayHubConfiguration.minimumStake,
-    defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-    defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
+    defaultEnvironment.relayHubConfiguration,
     { gas: 10000000 })
 }
 
