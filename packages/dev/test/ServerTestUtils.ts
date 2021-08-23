@@ -56,7 +56,8 @@ export async function assertRelayAdded (transactionHashes: PrefixedHexString[], 
 
 export async function getTotalTxCosts (transactionHashes: PrefixedHexString[], gasPrice: string): Promise<BN> {
   const receipts = await resolveAllReceipts(transactionHashes)
-  return receipts.map(r => toBN(r.gasUsed).mul(toBN(gasPrice))).reduce(
+  // @ts-ignore
+  return receipts.map(r => toBN(r.gasUsed).mul(toBN(r.effectiveGasPrice))).reduce(
     (previous, current) => previous.add(current), toBN(0))
 }
 
