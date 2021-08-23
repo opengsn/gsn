@@ -173,7 +173,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   describe('relayCall', function () {
     const baseRelayFee = '10000'
     const pctRelayFee = '10'
-    const gasPrice = 1e9
+    const gasPrice = 1e9.toString()
     const gasLimit = '1000000'
     const senderNonce = '0'
     let sharedRelayRequestData: RelayRequest

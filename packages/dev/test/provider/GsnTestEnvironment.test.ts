@@ -3,6 +3,7 @@ import { HttpProvider } from 'web3-core'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { TestRecipientInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { toChecksumAddress } from 'ethereumjs-util'
 
 const TestRecipient = artifacts.require('TestRecipient')
 
@@ -31,10 +32,10 @@ contract('GsnTestEnvironment', function () {
     let testEnvironment: TestEnvironment
     let relayClient: RelayClient
     before(async () => {
-      sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
       relayClient = testEnvironment.relayProvider.relayClient
       sr = await TestRecipient.new(testEnvironment.contractsDeployment.forwarderAddress!)
+      sender = toChecksumAddress(relayClient.newAccount().address)
     })
 
     after(async () => {
@@ -60,10 +61,9 @@ contract('GsnTestEnvironment', function () {
     let sender: string
     let testEnvironment: TestEnvironment
     before(async function () {
-      sender = await web3.eth.personal.newAccount('password')
       testEnvironment = await GsnTestEnvironment.startGsn(host)
       sr = await TestRecipient.new(testEnvironment.contractsDeployment.forwarderAddress!)
-
+      sender = toChecksumAddress(testEnvironment.relayProvider.newAccount().address)
       // @ts-ignore
       TestRecipient.web3.setProvider(testEnvironment.relayProvider)
     })

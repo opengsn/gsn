@@ -47,9 +47,6 @@ contract('PenalizerService', function (accounts) {
     await penalizerService.init(false)
 
     relayWorker = env.relayServer.transactionManager.workersKeyManager.getAddress(0)
-    // @ts-ignore
-    await env.web3.eth.personal.importRawKey(bufferToHex(env.relayServer.transactionManager.workersKeyManager._privateKeys[relayWorker]), '')
-    await env.web3.eth.personal.unlockAccount(relayWorker, '', 1e6)
   })
 
   afterEach(async function () {

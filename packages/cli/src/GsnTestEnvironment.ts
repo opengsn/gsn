@@ -49,7 +49,7 @@ class GsnTestEnvironmentClass {
     const from = await commandsLogic.findWealthyAccount()
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
-      gasPrice: '1',
+      gasPrice: 1e9.toString(),
       gasLimit: 5000000,
       deployPaymaster: true,
       skipConfirmation: true,
@@ -75,7 +75,7 @@ class GsnTestEnvironmentClass {
       stake: ether('1'),
       funds: ether('1'),
       relayUrl: relayUrl,
-      gasPrice: '1e9',
+      gasPrice: 1e9.toString(),
       unstakeDelay: '2000'
     }
     const registrationResult = await commandsLogic.registerRelay(registerOptions)
