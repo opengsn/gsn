@@ -37,7 +37,7 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   dataGasCostPerByte: 13,
   maxGasCostPerCalldataByte: 16,
   baseRelayFeeBidMode: false,
-  externalCallDataCostOverhead: 22414
+  externalCallDataCostOverhead: 22392
 }
 
 // TODO add as constructor params to paymaster instead of constants
@@ -79,14 +79,16 @@ const ganacheLocal: Environment = {
 const arbitrumRelayHubConfigurationOverride: Partial<RelayHubConfiguration> = {
   maxGasCostPerCalldataByte: 0,
 }
+
 const arbitrumRelayHubConfiguration: RelayHubConfiguration =
   Object.assign({},
     defaultRelayHubConfiguration,
     arbitrumRelayHubConfigurationOverride)
 
 const arbitrumPenalizerConfigurationOverride: Partial<PenalizerConfiguration> = {
-  penalizeExternalGasLimit: false,
+  penalizeExternalGasLimit: false
 }
+
 const arbitrumPenalizerConfiguration: PenalizerConfiguration =
   Object.assign({},
     defaultPenalizerConfiguration,

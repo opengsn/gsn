@@ -456,6 +456,7 @@ contract('RelayClient', function (accounts) {
       await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
+        baseRelayFeeBidMode: false,
         ownerAddress: relayOwner,
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,

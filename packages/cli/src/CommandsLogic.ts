@@ -333,7 +333,8 @@ export class CommandsLogic {
     const pInstance = await this.getContractInstance(Penalizer, {
       arguments: [
         deployOptions.penalizerConfiguration.penalizeBlockDelay,
-        deployOptions.penalizerConfiguration.penalizeBlockExpiration
+        deployOptions.penalizerConfiguration.penalizeBlockExpiration,
+        deployOptions.penalizerConfiguration.penalizeExternalGasLimit
       ]
     }, deployOptions.penalizerAddress, { ...options }, deployOptions.skipConfirmation)
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, { ...options }, deployOptions.skipConfirmation)
@@ -341,15 +342,8 @@ export class CommandsLogic {
       arguments: [
         sInstance.options.address,
         pInstance.options.address,
-        deployOptions.relayHubConfiguration.maxWorkerCount,
-        deployOptions.relayHubConfiguration.gasReserve,
-        deployOptions.relayHubConfiguration.postOverhead,
-        deployOptions.relayHubConfiguration.gasOverhead,
-        deployOptions.relayHubConfiguration.maximumRecipientDeposit,
-        deployOptions.relayHubConfiguration.minimumUnstakeDelay,
-        deployOptions.relayHubConfiguration.minimumStake,
-        deployOptions.relayHubConfiguration.dataGasCostPerByte,
-        deployOptions.relayHubConfiguration.externalCallDataCostOverhead]
+        deployOptions.relayHubConfiguration
+      ]
     }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
 
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, { ...options }, deployOptions.skipConfirmation)

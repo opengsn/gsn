@@ -8,8 +8,9 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { Server } from 'net'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
-import express = require('express')
 import { defaultEnvironment } from '@opengsn/common'
+import express = require('express')
+
 const { expect } = chai.use(chaiAsPromised)
 
 context('GasPriceFetcher', function () {

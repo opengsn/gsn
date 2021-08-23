@@ -15,11 +15,10 @@ import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
 import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { Environment } from '@opengsn/common/dist/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import {
   address2topic,
-  calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
   PaymasterGasAndDataLimits,
@@ -33,7 +32,7 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
+import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 import Timeout = NodeJS.Timeout
 
@@ -85,13 +84,19 @@ export class RelayServer extends EventEmitter {
 
   workerBalanceRequired: AmountRequired
 
-  constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
+  environment: Environment
+
+  constructor (
+    config: Partial<ServerConfigParams>,
+    transactionManager: TransactionManager,
+    dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
     this.lastScannedBlock = config.coldRestartLogsFromBlock ?? 0
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
+    this.environment = this.contractInteractor.environment
     this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.txStoreManager = dependencies.txStoreManager
     this.transactionManager = transactionManager
@@ -134,6 +139,7 @@ export class RelayServer extends EventEmitter {
       }
     }
     return {
+      baseRelayFeeBidMode: this.config.baseRelayFeeBidMode,
       relayWorkerAddress: this.workerAddress,
       relayManagerAddress: this.managerAddress,
       relayHubAddress: this.relayHubContract?.address ?? '',
@@ -283,15 +289,11 @@ export class RelayServer extends EventEmitter {
       acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
     }
 
-    const hubConfig = await this.relayHubContract.getConfiguration()
-    const hubOverhead = parseInt(hubConfig.gasOverhead.toString())
     // TODO: this is not a good way to calculate gas limit for relay call
-    const tmpMaxPossibleGas = calculateTransactionMaxPossibleGas({
-      gasAndDataLimits,
-      hubOverhead,
-      relayCallGasLimit: req.relayRequest.request.gas,
+    const tmpMaxPossibleGas = this.contractInteractor.calculateTransactionMaxPossibleGas({
       msgData,
-      msgDataGasCostInsideTransaction
+      gasAndDataLimits,
+      relayCallGasLimit: req.relayRequest.request.gas
     })
     const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
     const maxCharge =
@@ -575,7 +577,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
           destination: this.workerAddress,
           value: toHex(refill),
           creationBlockNumber: currentBlock,
-          gasLimit: defaultEnvironment.mintxgascost
+          gasLimit: this.environment.mintxgascost
         }
         const { transactionHash } = await this.transactionManager.sendTransaction(details)
         transactionHashes.push(transactionHash)

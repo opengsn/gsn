@@ -51,7 +51,13 @@ export class RelayedTransactionValidator {
     const signer = bufferToHex(transaction.getSenderAddress().toBuffer())
 
     const externalGasLimit = bufferToHex(transaction.gasLimit.toBuffer())
-    const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
+    const relayRequestAbiEncode = this.contractInteractor.encodeABI({
+      maxAcceptanceBudget,
+      relayRequest: request.relayRequest,
+      signature: request.metadata.signature,
+      approvalData: request.metadata.approvalData,
+      externalGasLimit
+    })
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
     if (relayHubAddress == null) {

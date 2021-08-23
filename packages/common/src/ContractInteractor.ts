@@ -2,7 +2,7 @@ import BN from 'bn.js'
 import Web3 from 'web3'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
 import { toBN, toHex } from 'web3-utils'
 import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
@@ -48,6 +48,10 @@ import { GSNContractsDeployment } from './GSNContractsDeployment'
 import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './Environments'
+import { RelayHubConfiguration } from './types/RelayHubConfiguration'
+import { RelayInfo } from './types/RelayInfo'
+import { constants } from './Constants'
+
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -70,6 +74,8 @@ export class ContractInteractor {
 
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
+  relayHubConfiguration!: RelayHubConfiguration
+  paymasterGasAndDataLimits?: PaymasterGasAndDataLimits
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
@@ -163,6 +169,9 @@ export class ContractInteractor {
     await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility()
+    if (this.relayHubInstance != null) {
+      this.relayHubConfiguration = await this.relayHubInstance.getConfiguration()
+    }
     const chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
@@ -180,6 +189,7 @@ export class ContractInteractor {
 
     if (this.deployment.paymasterAddress != null) {
       await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
+      this.paymasterGasAndDataLimits = await this.paymasterInstance.getGasAndDataLimits()
     } else if (this.deployment.relayHubAddress != null) {
       // TODO: this branch shouldn't exist as it's only used by the Server and can lead to broken Client configuration
       await this._resolveDeploymentFromRelayHub(this.deployment.relayHubAddress)
@@ -326,13 +336,13 @@ export class ContractInteractor {
     const relayHub = this.relayHubInstance
     try {
       const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest, maxViewableGasLimit)
-      const encodedRelayCall = relayHub.contract.methods.relayCall(
+      const encodedRelayCall = this.encodeABI({
         maxAcceptanceBudget,
         relayRequest,
         signature,
         approvalData,
         externalGasLimit
-      ).encodeABI()
+      })
       const res: string = await new Promise((resolve, reject) => {
         // @ts-ignore
         this.web3.currentProvider.send({
@@ -425,8 +435,16 @@ export class ContractInteractor {
     return null
   }
 
-  encodeABI (maxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
-    return this.relayCallMethod(maxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+  encodeABI (
+    _: {
+      maxAcceptanceBudget: BN | number
+      relayRequest: RelayRequest
+      signature: PrefixedHexString
+      approvalData: PrefixedHexString
+      externalGasLimit: BN | IntString
+    }
+  ): PrefixedHexString {
+    return this.relayCallMethod(_.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData, _.externalGasLimit).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
@@ -693,6 +711,11 @@ export class ContractInteractor {
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
   async getGasPrice (): Promise<IntString> {
     const gasPriceFromNode = await this.web3.eth.getGasPrice()
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    if (!this.environment.getGasPriceFactor) {
+      this.logger.warn('Environment not set')
+      return gasPriceFromNode
+    }
     const gasPriceActual =
       new BN(gasPriceFromNode)
         .muln(this.environment.getGasPriceFactor)

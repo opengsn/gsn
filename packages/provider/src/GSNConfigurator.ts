@@ -14,8 +14,8 @@ import {
   PingFilter,
   RelayFilter
 } from '@opengsn/common/dist/types/Aliases'
-import { gsnRequiredVersion } from '@opengsn/common/dist'
-import { defaultEnvironment, Environment } from '@opengsn/common'
+import { gsnRequiredVersion } from '@opengsn/common/dist/Version'
+import { defaultEnvironment, Environment } from '@opengsn/common/dist/Environments'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3

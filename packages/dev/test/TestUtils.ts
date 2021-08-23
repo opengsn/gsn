@@ -14,6 +14,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { Environment, EnvironmentsKeys } from '@opengsn/common'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -47,6 +48,7 @@ export async function startRelay (
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
+  args.push('--environmentName', EnvironmentsKeys.ganacheLocal)
 
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
@@ -68,6 +70,9 @@ export async function startRelay (
   }
   if (options.workerTargetBalance) {
     args.push('--workerTargetBalance', options.workerTargetBalance)
+  }
+  if (options.baseRelayFeeBidMode) {
+    args.push('--baseRelayFeeBidMode', options.baseRelayFeeBidMode)
   }
   const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
@@ -256,9 +261,10 @@ export function encodeRevertReason (reason: string): PrefixedHexString {
 export async function deployHub (
   stakeManager: string,
   penalizer: string,
-  configOverride: Partial<RelayHubConfiguration> = {}): Promise<RelayHubInstance> {
+  configOverride: Partial<RelayHubConfiguration> = {},
+  environment: Environment = defaultEnvironment): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
-    ...defaultEnvironment.relayHubConfiguration,
+    ...environment.relayHubConfiguration,
     ...configOverride
   }
   const hub: RelayHubInstance = await RelayHub.new(

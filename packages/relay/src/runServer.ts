@@ -21,7 +21,7 @@ import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './pe
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
-import { gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
+import { Environment, gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
 
 function error (err: string): never {
   console.error(err)
@@ -30,6 +30,7 @@ function error (err: string): never {
 
 async function run (): Promise<void> {
   let config: ServerConfigParams
+  let environment: Environment
   let web3provider
   let runPenalizer: boolean
   let reputationManagerConfig: Partial<ReputationManagerConfiguration>
@@ -65,8 +66,8 @@ async function run (): Promise<void> {
         }
       }
     }
-    console.log('Resolving server config ...\n')
-    config = await resolveServerConfig(conf, web3provider) as ServerConfigParams
+    console.log('Resolving server config ...\n');
+    ({ config, environment } = await resolveServerConfig(conf, web3provider))
     runPenalizer = config.runPenalizer
     console.log('Resolving reputation manager config...\n')
     reputationManagerConfig = resolveReputationManagerConfig(conf)
@@ -99,6 +100,7 @@ async function run (): Promise<void> {
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
     logger,
+    environment,
     maxPageSize: config.pastEventsQueryMaxPageSize,
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: { relayHubAddress: config.relayHubAddress }

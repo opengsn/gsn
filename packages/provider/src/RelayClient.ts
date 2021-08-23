@@ -489,6 +489,7 @@ export function _dumpRelayingResult (relayingResult: RelayingResult): string {
     str += `Ping errors (${relayingResult.pingErrors.size}):`
     Array.from(relayingResult.pingErrors.keys()).forEach(e => {
       const err = relayingResult.pingErrors.get(e)
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const error = err?.message ?? err?.toString() ?? ''
       str += `\n${e} => ${error}\n`
     })
@@ -497,6 +498,7 @@ export function _dumpRelayingResult (relayingResult: RelayingResult): string {
     str += `Relaying errors (${relayingResult.relayingErrors.size}):\n`
     Array.from(relayingResult.relayingErrors.keys()).forEach(e => {
       const err = relayingResult.relayingErrors.get(e)
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const error = err?.message ?? err?.toString() ?? ''
       str += `${e} => ${error}`
     })
