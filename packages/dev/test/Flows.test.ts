@@ -18,7 +18,7 @@ import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { ether } from '@opengsn/common'
-import { toChecksumAddress } from 'ethereumjs-util'
+import { toBN } from 'web3-utils'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -46,11 +46,19 @@ options.forEach(params => {
     let paymaster: TestPaymasterEverythingAcceptedInstance
     let rhub: RelayHubInstance
     let sm: StakeManagerInstance
-    let gasless: Address
+    const gasless = '0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199'
+    const gaslessPrivateKey = '0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e'
     let relayproc: ChildProcessWithoutNullStreams
     let relayClientConfig: Partial<GSNConfig>
 
     before(async () => {
+      const gasPrice = toBN(1e9)
+      const txCost = toBN(defaultEnvironment.mintxgascost).mul(gasPrice)
+      let balance = toBN(await web3.eth.getBalance(gasless))
+      await web3.eth.sendTransaction({ from: gasless, to: accounts[0], value: balance.sub(txCost), gasPrice, gas: defaultEnvironment.mintxgascost })
+      balance = toBN(await web3.eth.getBalance(gasless))
+      assert.isTrue(balance.eqn(0))
+
       const gasPriceFactor = 1.2
 
       sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
@@ -72,9 +80,6 @@ options.forEach(params => {
           relaylog: process.env.relaylog
         })
         console.log('relay started')
-        from = gasless
-      } else {
-        from = accounts[0]
       }
 
       const forwarder = await Forwarder.new()
@@ -117,7 +122,7 @@ options.forEach(params => {
         // @ts-ignore
         TestRecipient.web3.setProvider(relayProvider)
 
-        gasless = toChecksumAddress(relayProvider.newAccount().address)
+        relayProvider.addAccount(gaslessPrivateKey)
         from = gasless
       })
     } else {
