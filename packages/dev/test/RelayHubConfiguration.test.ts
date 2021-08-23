@@ -32,7 +32,7 @@ contract('RelayHub Configuration',
     const chainId = defaultEnvironment.chainId
     const baseRelayFee = new BN('300')
     const pctRelayFee = new BN('10')
-    const gasPrice = new BN('10')
+    const gasPrice = new BN(1e9)
     const gasLimit = new BN('1000000')
     const externalGasLimit = 5e6.toString()
     const paymasterData = '0x'
