@@ -65,7 +65,7 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
       const encodedWithSuffix = `${encoded}${suffix}`
       const ret: any = await web3.eth.call({ data: encodedWithSuffix, to: validator.address }).catch(e => e.message)
       if (suffix.length > 0) {
-        assert.include(ret, 'revert extra msg.data bytes')
+        assert.include(ret, 'extra msg.data bytes')
       } else {
         assert.equal(ret, '0x')
       }
