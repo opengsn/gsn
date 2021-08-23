@@ -3,7 +3,7 @@
 * Taken from https://github.com/hamdiallam/Solidity-RLP
 */
 /* solhint-disable */
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 library RLPReader {
 
@@ -167,7 +167,7 @@ library RLPReader {
     function toAddress(RLPItem memory item) internal pure returns (address) {
         // 1 byte for the length prefix according to RLP spec
         require(item.len <= 21, "Invalid RLPItem. Addresses are encoded in 20 bytes or less");
-        return address(toUint(item));
+        return address(uint160(toUint(item)));
     }
 
     function toUint(RLPItem memory item) internal pure returns (uint) {
@@ -199,20 +199,26 @@ library RLPReader {
     * @param len Amount of memory to copy from the source
     */
     function copy(uint src, uint dest, uint len) internal pure {
+        if (len == 0) return;
+
         // copy as many word sizes as possible
         for (; len >= WORD_SIZE; len -= WORD_SIZE) {
             assembly {
                 mstore(dest, mload(src))
             }
+
             src += WORD_SIZE;
             dest += WORD_SIZE;
         }
-        // left over bytes. Mask is used to remove unwanted bytes from the word
-        uint mask = 256 ** (WORD_SIZE - len) - 1;
-        assembly {
-            let srcpart := and(mload(src), not(mask)) // zero out src
-            let destpart := and(mload(dest), mask) // retrieve the bytes
-            mstore(dest, or(destpart, srcpart))
+
+        if (len > 0) {
+            // left over bytes. Mask is used to remove unwanted bytes from the word
+            uint mask = 256 ** (WORD_SIZE - len) - 1;
+            assembly {
+                let srcpart := and(mload(src), not(mask)) // zero out src
+                let destpart := and(mload(dest), mask) // retrieve the bytes
+                mstore(dest, or(destpart, srcpart))
+            }
         }
     }
 }

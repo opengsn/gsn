@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.5;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "../utils/GsnTypes.sol";
@@ -34,6 +34,6 @@ library RelayHubValidator {
     // size (in bytes) of the given "bytes" parameter. size include the length (32-byte word),
     // and actual data size, rounded up to full 32-byte words
     function dynamicParamSize(bytes calldata buf) internal pure returns (uint) {
-        return 32 + ((buf.length + 31) & uint(~31));
+        return 32 + ((buf.length + 31) & (type(uint).max - 31));
     }
 }

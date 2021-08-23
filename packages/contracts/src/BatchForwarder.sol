@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "./forwarder/Forwarder.sol";
@@ -16,7 +16,7 @@ contract BatchForwarder is Forwarder, BaseRelayRecipient {
 
     constructor() {
         //needed for sendBatch
-        trustedForwarder = address(this);
+        _setTrustedForwarder(address(this));
     }
 
     function sendBatch(address[] calldata targets, bytes[] calldata encodedFunctions) external {

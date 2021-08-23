@@ -19,7 +19,7 @@ import "./forwarder/IForwarder.sol";
 abstract contract BasePaymaster is IPaymaster, Ownable {
 
     IRelayHub internal relayHub;
-    IForwarder public override trustedForwarder;
+    address private _trustedForwarder;
 
     function getHubAddr() public override view returns (address) {
         return address(relayHub);
@@ -56,7 +56,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     public
     view
     {
-        require(address(trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        require(address(_trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
         GsnEip712Library.verifyForwarderTrusted(relayRequest);
     }
 
@@ -72,9 +72,14 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
         relayHub = hub;
     }
 
-    function setTrustedForwarder(IForwarder forwarder) public onlyOwner {
-        trustedForwarder = forwarder;
+    function setTrustedForwarder(address forwarder) public virtual onlyOwner {
+        _trustedForwarder = forwarder;
     }
+
+    function trustedForwarder() public virtual view override returns (address){
+        return _trustedForwarder;
+    }
+
 
     /// check current deposit on relay hub.
     function getRelayHubDeposit()

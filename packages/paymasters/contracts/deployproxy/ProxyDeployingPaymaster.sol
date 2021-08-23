@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -47,14 +47,14 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
         }
         token.transferFrom(payer, address(this), tokenPrecharge);
         //solhint-disable-next-line
-        uniswap.tokenToEthSwapOutput(relayRequest.request.value, uint256(-1), block.timestamp+60*15);
+        uniswap.tokenToEthSwapOutput(relayRequest.request.value, type(uint).max, block.timestamp+60*15);
         payable(relayRequest.relayData.forwarder).transfer(relayRequest.request.value);
         return (abi.encode(payer, relayRequest.request.from, tokenPrecharge, relayRequest.request.value, relayRequest.relayData.forwarder, token, uniswap), false);
     }
 
     function deployProxy(address owner) public returns (ProxyIdentity) {
         ProxyIdentity proxy = proxyFactory.deployProxy(owner);
-        proxy.initialize(address(trustedForwarder), tokens);
+        proxy.initialize(address(trustedForwarder()), tokens);
         return proxy;
     }
 

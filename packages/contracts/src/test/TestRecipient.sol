@@ -1,6 +1,6 @@
 /* solhint-disable avoid-tx-origin */
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 import "../utils/GsnUtils.sol";
 import "../BaseRelayRecipient.sol";
@@ -11,15 +11,7 @@ contract TestRecipient is BaseRelayRecipient {
     string public override versionRecipient = "2.2.3+opengsn.test.irelayrecipient";
 
     constructor(address forwarder) {
-        setTrustedForwarder(forwarder);
-    }
-
-    function getTrustedForwarder() public view returns(address) {
-        return trustedForwarder;
-    }
-
-    function setTrustedForwarder(address forwarder) internal {
-        trustedForwarder = forwarder;
+        _setTrustedForwarder(forwarder);
     }
 
     event Reverting(string message);

@@ -16,7 +16,6 @@ import {
 
 import { Address } from './types/Aliases'
 
-import { TypedRequestData } from './EIP712/TypedRequestData'
 import chalk from 'chalk'
 import { encode, List } from 'rlp'
 
@@ -73,12 +72,12 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
 
 export async function getEip712Signature (
   web3: Web3,
-  typedRequestData: TypedRequestData,
+  typedRequestData: EIP712TypedData,
   methodSuffix = '',
   jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
   const senderAddress = typedRequestData.message.from
-  let dataToSign: TypedRequestData | string
+  let dataToSign: EIP712TypedData | string
   if (jsonStringifyRequest) {
     dataToSign = JSON.stringify(typedRequestData)
   } else {

@@ -3,13 +3,14 @@ jobs: # a collection of steps
   build: # runs not using Workflows must have a `build` job as entry point
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: circleci/node:13.11.0
+      - image: cimg/node:16.6.2
 
     steps: # a collection of executable commands
       - checkout # special step to check out source code to working directory
 
       - restore_cache: # special step to restore the dependency cache
           key: dependency-cache-{{ checksum "package.json" }}-yarn2
+
       - run:
           name: yarn-install
           command: yarn
@@ -18,10 +19,30 @@ jobs: # a collection of steps
           key: dependency-cache-{{ checksum "package.json" }}-yarn2
           paths:
             - ./node_modules
+            - ./packages/*/node_modules
 
       - run: # run tests
           name: test
           command: yarn test | tee /tmp/test-results.log
+
+      - run: # run ganache mainnet fork
+          name: ganache-fork-mainnet
+          command: yarn ganache-fork-mainnet
+          background: true
+
+      # https://discuss.circleci.com/t/run-http-server-in-background-during-tests/3177
+      # wait for the server to start responding. We expect Bad Request 400 once it starts listening.
+      # so override the shell and have the last command be the : { null } command to force exit code 0.
+      - run:
+          name: await-ganache-fork
+          shell: /bin/sh
+          command: |
+            wget --post-data="{\"method\": \"eth_blockNumber\"}" --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:8544/
+            :
+
+      - run: # run tests with fork
+          name: test-fork
+          command: yarn lerna-run-test-fork | tee /tmp/test-results.log
 
 #coverage is broken (doesn't cover all contracts). disabled for now..
 #      - restore_cache: # special cache for coverage test

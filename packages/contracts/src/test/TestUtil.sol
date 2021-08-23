@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "../utils/GsnTypes.sol";
@@ -66,11 +66,11 @@ contract TestUtil {
         typeHash = GsnEip712Library.RELAY_REQUEST_TYPEHASH;
     }
 
-    function libDomainSeparator(address forwarder) public pure returns (bytes32) {
+    function libDomainSeparator(address forwarder) public view returns (bytes32) {
         return GsnEip712Library.domainSeparator(forwarder);
     }
 
-    function libGetChainID() public pure returns (uint256) {
+    function libGetChainID() public view returns (uint256) {
         return GsnEip712Library.getChainID();
     }
 }

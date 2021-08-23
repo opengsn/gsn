@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:MIT
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@opengsn/contracts/src/forwarder/IForwarder.sol";
@@ -39,7 +39,7 @@ contract TokenPaymaster is BasePaymaster {
         for (uint256 i = 0; i < _uniswaps.length; i++){
             supportedUniswaps[_uniswaps[i]] = true;
             tokens.push(IERC20(_uniswaps[i].tokenAddress()));
-            tokens[i].approve(address(_uniswaps[i]), uint(-1));
+            tokens[i].approve(address(_uniswaps[i]), type(uint).max);
         }
     }
 
@@ -149,7 +149,7 @@ contract TokenPaymaster is BasePaymaster {
 
     function _depositProceedsToHub(uint256 ethActualCharge, IUniswap uniswap) private {
         //solhint-disable-next-line
-        uniswap.tokenToEthSwapOutput(ethActualCharge, uint(-1), block.timestamp+60*15);
+        uniswap.tokenToEthSwapOutput(ethActualCharge, type(uint).max, block.timestamp+60*15);
         relayHub.depositFor{value:ethActualCharge}(address(this));
     }
 

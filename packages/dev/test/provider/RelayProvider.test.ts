@@ -45,7 +45,7 @@ const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' } 
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
-  const testRecipientForwarderAddress = await testRecipient.getTrustedForwarder()
+  const testRecipientForwarderAddress = await testRecipient.trustedForwarder()
   const testRecipientForwarder = await IForwarder.at(testRecipientForwarderAddress)
   const senderNonce = (await testRecipientForwarder.getNonce(account)).toString()
   const relayRequest: RelayRequest = {

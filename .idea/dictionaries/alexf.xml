@@ -7,6 +7,7 @@
       <w>buidler</w>
       <w>calldata</w>
       <w>calldatagascost</w>
+      <w>chainlink</w>
       <w>dapp</w>
       <w>dapps</w>
       <w>deauthorization</w>
@@ -60,6 +61,7 @@
       <w>penalizer</w>
       <w>penalizetxcache</w>
       <w>penalizetxpages</w>
+      <w>permittable</w>
       <w>privkey</w>
       <w>rebalancing</w>
       <w>registree</w>
@@ -73,6 +75,7 @@
       <w>solc</w>
       <w>solhint</w>
       <w>spdx</w>
+      <w>stablecoins</w>
       <w>stakemanager</w>
       <w>startblock</w>
       <w>subprovider</w>
@@ -84,6 +87,7 @@
       <w>typehash</w>
       <w>unauthorize</w>
       <w>uniswap</w>
+      <w>uniswap's</w>
       <w>unstake</w>
       <w>unstaked</w>
       <w>verdaccio</w>

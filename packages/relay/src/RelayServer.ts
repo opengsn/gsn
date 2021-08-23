@@ -393,6 +393,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       }, this.config.readyTimeout)
     }
 
+    // eslint-disable-next-line @typescript-eslint/return-await
     return this.contractInteractor.getBlock('latest')
       .then(
         block => {
