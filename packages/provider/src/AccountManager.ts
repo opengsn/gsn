@@ -107,8 +107,8 @@ export class AccountManager {
     return await getEip712Signature(
       this.web3,
       signedData,
-      this.config.methodSuffix ?? '',
-      this.config.jsonStringifyRequest ?? false
+      this.config.methodSuffix,
+      this.config.jsonStringifyRequest
     )
   }
 

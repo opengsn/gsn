@@ -14,6 +14,7 @@ import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from './RelayClient'
 import { GSNConfig } from './GSNConfigurator'
 import { Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+import { decodeRevertReason } from '@opengsn/common/dist'
 
 abiDecoder.addABI(relayHubAbi)
 

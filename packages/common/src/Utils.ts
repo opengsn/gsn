@@ -75,7 +75,7 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
 export async function getEip712Signature (
   web3: Web3,
   typedRequestData: TypedRequestData,
-  methodSuffix = '',
+  methodSuffix = '_v4',
   jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
   const senderAddress = typedRequestData.message.from
@@ -95,13 +95,12 @@ export async function getEip712Signature (
       // @ts-ignore
       method = web3.currentProvider.send
     }
-    methodSuffix='_v4'
-    let paramBlock = {
+    const paramBlock = {
       method: 'eth_signTypedData' + methodSuffix,
       params: [senderAddress, dataToSign],
       jsonrpc: '2.0',
       id: Date.now()
-    };
+    }
     method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null, result?: JsonRpcResponse) => {
       if (result?.error != null) {
         error = result.error
