@@ -20,7 +20,13 @@ import versionRegistryAbi from './interfaces/IVersionRegistry.json'
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
-import { address2topic, decodeRevertReason, event2topic } from './Utils'
+import {
+  address2topic,
+  calculateCalldataBytesZeroNonzero,
+  decodeRevertReason,
+  event2topic,
+  PaymasterGasAndDataLimits
+} from './Utils'
 import {
   BaseRelayRecipientInstance,
   IForwarderInstance,
@@ -41,6 +47,7 @@ import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
+import { Environment } from './Environments'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -49,6 +56,7 @@ export interface ConstructorParams {
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
   maxPageSize: number
+  environment: Environment
 }
 
 export class ContractInteractor {
@@ -82,6 +90,7 @@ export class ContractInteractor {
   private networkId?: number
   private networkType?: string
   private paymasterVersion?: SemVerString
+  readonly environment: Environment
 
   constructor (
     {
@@ -89,6 +98,7 @@ export class ContractInteractor {
       provider,
       versionManager,
       logger,
+      environment,
       deployment = {}
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
@@ -98,6 +108,7 @@ export class ContractInteractor {
     this.deployment = deployment
     this.provider = provider
     this.lastBlockNumber = 0
+    this.environment = environment
     // @ts-ignore
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
@@ -586,9 +597,106 @@ export class ContractInteractor {
     return await this.web3.eth.estimateGas(gsnTransactionDetails)
   }
 
+  async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
+    const originalGasEstimation = await this.web3.eth.estimateGas(gsnTransactionDetails)
+    const calldataGasCost = this.calculateCalldataCost(gsnTransactionDetails.data)
+    const adjustedEstimation = originalGasEstimation - calldataGasCost
+    this.logger.info(`estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
+    if (adjustedEstimation < 0) {
+      throw new Error('estimateGasWithoutCalldata: calldataGasCost exceeded originalGasEstimation\n' +
+        'your Environment configuration and Ethereum node you are connected to are not compatible')
+    }
+    return adjustedEstimation
+  }
+
+  /**
+   * Without knowing the actual size of the 'bytes' parameters, calculate the maximum possible transaction cost
+   * based on configurable max sizes of these parameters
+   */
+  estimateMaxPossibleGas (_: {
+    relayRequest: RelayRequest
+    relayInfo: RelayInfo
+    maxPaymasterDataLength: number
+    maxApprovalDataLength: number
+  }): number {
+    // NOTE: it is safe to put fake data here because it will be overridden with real value later
+    _.relayRequest.relayData.paymasterData = '0x' + 'ff'.repeat(_.maxPaymasterDataLength)
+    const msgDataFake = this.encodeABI({
+      maxAcceptanceBudget: constants.MAX_UINT256,
+      relayRequest: _.relayRequest,
+      signature: '0x' + 'ff'.repeat(65),
+      approvalData: '0x' + 'ff'.repeat(_.maxApprovalDataLength),
+      externalGasLimit: '0'
+    })
+
+    if (this.paymasterGasAndDataLimits == null) {
+      throw new Error('PaymasterGasAndDataLimits value not initialized')
+    }
+    return this.calculateTransactionMaxPossibleGas({
+      gasAndDataLimits: this.paymasterGasAndDataLimits,
+      msgData: msgDataFake,
+      relayCallGasLimit: _.relayRequest.request.gas
+    })
+  }
+
+  calculateTotalBaseRelayFeeBid (_: {
+    gasUsage: number
+    gasPrice: string
+    gasReserve: number
+    gasFactor: number
+    pctRelayFee: IntString
+    baseRelayFee: IntString
+  }): IntString {
+    const maxPossibleGas = _.gasReserve + Math.floor(_.gasUsage * _.gasFactor)
+    const maxPossibleTxCost = new BN(_.gasPrice).muln(maxPossibleGas)
+    const eventualAgreedTransactionEthPrice =
+      maxPossibleTxCost
+        .mul(new BN(_.pctRelayFee).addn(100)).divn(100)
+        .add(new BN(_.baseRelayFee))
+    this.logger.debug(
+      `estimateArbitrumTransactionCost: applied pctRelayFee(${_.pctRelayFee})\n` +
+      `to estimated max possible tx cost(${maxPossibleTxCost.toString()})\n` +
+      `added requested baseRelayFee(${_.baseRelayFee})\n` +
+      `signing transaction that pays to the relay: ${eventualAgreedTransactionEthPrice.toString()}`
+    )
+    return eventualAgreedTransactionEthPrice.toString()
+  }
+
+  /**
+   * @returns maximum possible gas consumption by this relayed call
+   * (calculated on chain by RelayHub.verifyGasAndDataLimits)
+   */
+  calculateTransactionMaxPossibleGas (
+    _: {
+      msgData: PrefixedHexString
+      gasAndDataLimits: PaymasterGasAndDataLimits
+      relayCallGasLimit: string
+    }): number {
+    const msgDataGasCostInsideTransaction =
+      new BN(this.relayHubConfiguration.dataGasCostPerByte)
+        .muln(toBuffer(_.msgData).length)
+        .toNumber()
+    return parseInt(this.relayHubConfiguration.gasOverhead.toString()) +
+      msgDataGasCostInsideTransaction +
+      this.calculateCalldataCost(_.msgData) +
+      parseInt(_.relayCallGasLimit) +
+      parseInt(_.gasAndDataLimits.preRelayedCallGasLimit.toString()) +
+      parseInt(_.gasAndDataLimits.postRelayedCallGasLimit.toString())
+  }
+
+  calculateCalldataCost (msgData: string): number {
+    const { calldataZeroBytes, calldataNonzeroBytes } = calculateCalldataBytesZeroNonzero(msgData)
+    return calldataZeroBytes * this.environment.gtxdatazero +
+      calldataNonzeroBytes * this.environment.gtxdatanonzero
+  }
+
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
-  async getGasPrice (): Promise<string> {
-    return await this.web3.eth.getGasPrice()
+  async getGasPrice (): Promise<IntString> {
+    const gasPriceFromNode = await this.web3.eth.getGasPrice()
+    const gasPriceActual =
+      new BN(gasPriceFromNode)
+        .muln(this.environment.getGasPriceFactor)
+    return gasPriceActual.toString()
   }
 
   async getTransactionCount (address: string, defaultBlock?: BlockNumber): Promise<number> {

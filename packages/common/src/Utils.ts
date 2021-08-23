@@ -19,7 +19,6 @@ import { Address } from './types/Aliases'
 import { TypedRequestData } from './EIP712/TypedRequestData'
 import chalk from 'chalk'
 import { encode, List } from 'rlp'
-import { defaultEnvironment } from './Environments'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -114,33 +113,19 @@ export async function getEip712Signature (
 }
 
 /**
- * @returns the actual cost of putting this transaction on chain.
+ * @param calldata the hex string of data to be sent to the blockchain
+ * @returns { calldataZeroBytes, calldataNonzeroBytes } - number of zero and nonzero bytes in the given calldata input
  */
-export function calculateCalldataCost (calldata: string): number {
+export function calculateCalldataBytesZeroNonzero (
+  calldata: PrefixedHexString
+): { calldataZeroBytes: number, calldataNonzeroBytes: number } {
   const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
-  let sum = 0
-  calldataBuf.forEach(ch => { sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero) })
-  return sum
-}
-
-/**
- * @returns maximum possible gas consumption by this relayed call
- * (calculated on chain by RelayHub.verifyGasAndDataLimits)
- */
-export function calculateTransactionMaxPossibleGas (
-  {
-    gasAndDataLimits,
-    hubOverhead,
-    relayCallGasLimit,
-    msgData,
-    msgDataGasCostInsideTransaction
-  }: TransactionGasCostComponents): number {
-  return hubOverhead +
-    msgDataGasCostInsideTransaction +
-    calculateCalldataCost(msgData) +
-    parseInt(relayCallGasLimit) +
-    parseInt(gasAndDataLimits.preRelayedCallGasLimit.toString()) +
-    parseInt(gasAndDataLimits.postRelayedCallGasLimit.toString())
+  let calldataZeroBytes = 0
+  let calldataNonzeroBytes = 0
+  calldataBuf.forEach(ch => {
+    ch === 0 ? calldataZeroBytes++ : calldataNonzeroBytes++
+  })
+  return { calldataZeroBytes, calldataNonzeroBytes }
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
@@ -209,21 +194,6 @@ export function getLatestEventData (events: EventData[]): EventData | undefined 
   }
   const eventDataSorted = events.sort(eventsComparator)
   return eventDataSorted[0]
-}
-
-/**
- * @param gasLimits
- * @param hubOverhead
- * @param relayCallGasLimit
- * @param calldataSize
- * @param gtxdatanonzero
- */
-interface TransactionGasCostComponents {
-  gasAndDataLimits: PaymasterGasAndDataLimits
-  hubOverhead: number
-  relayCallGasLimit: string
-  msgData: string
-  msgDataGasCostInsideTransaction: number
 }
 
 export interface PaymasterGasAndDataLimits {
