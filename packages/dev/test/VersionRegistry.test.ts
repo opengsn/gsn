@@ -6,7 +6,7 @@ import { increaseTime } from './TestUtils'
 import { VersionRegistry, string32 } from '@opengsn/common/dist/VersionRegistry'
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { ContractInteractor, defaultEnvironment, GSNContractsDeployment } from '@opengsn/common'
 import { HttpProvider } from 'web3-core'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 
@@ -30,7 +30,7 @@ contract('VersionRegistry', ([account]) => {
     deployment = {
       versionRegistryAddress: registryContract.address
     }
-    contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+    contractInteractor = new ContractInteractor({ environment: defaultEnvironment, provider, logger, deployment, maxPageSize })
     await contractInteractor.init()
     jsRegistry = new VersionRegistry(1, contractInteractor)
     await jsRegistry.addVersion('id', 'ver', 'value', { from: account })

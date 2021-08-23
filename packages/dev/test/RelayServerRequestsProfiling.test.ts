@@ -7,6 +7,7 @@ import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { defaultEnvironment } from '@opengsn/common'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
@@ -25,7 +26,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
-        maxPageSize, provider, logger, deployment
+        environment: defaultEnvironment, maxPageSize, provider, logger, deployment
       })
       await contractInteractor.init()
       return contractInteractor

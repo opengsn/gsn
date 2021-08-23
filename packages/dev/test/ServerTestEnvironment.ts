@@ -130,6 +130,7 @@ export class ServerTestEnvironment {
       const logger = createServerLogger('error', '', '')
       const maxPageSize = Number.MAX_SAFE_INTEGER
       this.contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         provider: this.provider,
         logger,
         maxPageSize,

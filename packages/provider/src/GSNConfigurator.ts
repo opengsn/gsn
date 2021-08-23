@@ -15,6 +15,7 @@ import {
   RelayFilter
 } from '@opengsn/common/dist/types/Aliases'
 import { gsnRequiredVersion } from '@opengsn/common/dist'
+import { defaultEnvironment, Environment } from '@opengsn/common'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -41,7 +42,8 @@ export const defaultGsnConfig: GSNConfig = {
   requiredVersionRange: gsnRequiredVersion,
   jsonStringifyRequest: false,
   auditorsCount: 1,
-  clientId: '1'
+  clientId: '1',
+  environment: defaultEnvironment
 }
 
 export interface LoggerConfiguration {
@@ -81,6 +83,7 @@ export interface GSNConfig {
   clientId: IntString
   auditorsCount: number
   maxViewableGasLimit?: number
+  environment: Environment
 }
 
 export interface GSNDependencies {

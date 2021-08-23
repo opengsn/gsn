@@ -24,6 +24,7 @@ import sinon from 'sinon'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
+import { defaultEnvironment } from '@opengsn/common'
 
 const { oneEther } = constants
 
@@ -124,6 +125,7 @@ contract('RegistrationManager', function (accounts) {
       const serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         provider: serverWeb3provider,
         logger,
         maxPageSize,

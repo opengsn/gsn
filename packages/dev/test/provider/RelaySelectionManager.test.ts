@@ -70,6 +70,7 @@ contract('RelaySelectionManager', function (accounts) {
     before(async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = await new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         maxPageSize,
         logger

@@ -453,6 +453,7 @@ export class RelayClient {
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
+        environment: this.config.environment,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)

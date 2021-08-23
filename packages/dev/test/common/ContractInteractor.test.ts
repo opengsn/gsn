@@ -30,6 +30,8 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 
+const environment = defaultEnvironment
+
 contract('ContractInteractor', function (accounts) {
   const provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
   const logger = createClientLogger({ logLevel: 'error' })
@@ -63,6 +65,7 @@ contract('ContractInteractor', function (accounts) {
     it('should return relayCall revert reason', async () => {
       const contractInteractor = new ContractInteractor(
         {
+          environment,
           provider: web3.currentProvider as HttpProvider,
           versionManager,
           logger,
@@ -106,6 +109,7 @@ contract('ContractInteractor', function (accounts) {
       await rh.depositFor(pm.address, { value: 1e18.toString() })
       await pm.setRevertPreRelayCall(true)
       const contractInteractor = new ContractInteractor({
+        environment,
         provider: web3.currentProvider as HttpProvider,
         versionManager,
         logger,
@@ -150,7 +154,7 @@ contract('ContractInteractor', function (accounts) {
     let sampleTransactionData: PrefixedHexString
 
     before(async function () {
-      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize })
+      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
       const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
       let transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
       transaction = transaction.sign(Buffer.from('46e6ef4a356fa3fa3929bf4b59e6b3eb9d0521ea660fd2879c67bd501002ac2b', 'hex'))
@@ -171,7 +175,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: pm.address
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await contractInteractor._resolveDeployment()
       const deploymentOut = contractInteractor.getDeployment()
       assert.equal(deploymentOut.paymasterAddress, pm.address)
@@ -185,7 +189,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: constants.ZERO_ADDRESS
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -194,7 +198,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: sm.address
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -204,14 +208,21 @@ contract('ContractInteractor', function (accounts) {
         paymasterAddress: pm.address
       }
       const versionManager = new VersionsManager('1.0.0', '1.0.0-old-client')
-      const contractInteractor = new ContractInteractor({ provider, logger, versionManager, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        versionManager,
+        deployment,
+        maxPageSize,
+        environment
+      })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith(/Provided.*version.*does not satisfy the requirement/)
     })
   })
 
   describe('#splitRange', () => {
-    const contractInteractor = new ContractInteractor({ provider, logger, maxPageSize })
+    const contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
     it('split 1', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 6, 1),
         [{ fromBlock: 1, toBlock: 6 }])
@@ -246,7 +257,7 @@ contract('ContractInteractor', function (accounts) {
     let contractInteractor: ContractInteractor
     before(async function () {
       const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
-      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await contractInteractor.init()
       provider.reset()
     })

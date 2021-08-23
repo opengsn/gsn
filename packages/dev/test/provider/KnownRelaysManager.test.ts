@@ -86,6 +86,7 @@ contract('KnownRelaysManager', function (
       logger = createClientLogger(config.loggerConfiguration)
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         maxPageSize,
         logger,
@@ -177,6 +178,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     logger = createClientLogger({ logLevel: 'error' })
     const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
+      environment: defaultEnvironment,
       provider: web3.currentProvider as HttpProvider,
       maxPageSize,
       logger
@@ -209,6 +211,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       })
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         logger,
         maxPageSize,
