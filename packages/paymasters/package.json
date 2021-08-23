@@ -10,6 +10,7 @@
     "lint:js": "eslint -f unix .",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "test": "yarn tsc && yarn truffle-test-compile-all",
+    "test1": "truffle test --network npmtest",
     "truffle-test-compile-all": "truffle test --compile-all --network npmtest",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
