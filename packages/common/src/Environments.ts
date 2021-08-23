@@ -37,7 +37,7 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   dataGasCostPerByte: 13,
   maxGasCostPerCalldataByte: 16,
   baseRelayFeeBidMode: false,
-  externalCallDataCostOverhead: 22402
+  externalCallDataCostOverhead: 22380
 }
 
 // TODO add as constructor params to paymaster instead of constants
