@@ -69,15 +69,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
     const calc = await TokenGasCalculator.new(
       constants.ZERO_ADDRESS,
       constants.ZERO_ADDRESS,
-      defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-      defaultEnvironment.relayHubConfiguration.gasReserve,
-      defaultEnvironment.relayHubConfiguration.postOverhead,
-      defaultEnvironment.relayHubConfiguration.gasOverhead,
-      defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-      defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-      defaultEnvironment.relayHubConfiguration.minimumStake,
-      defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-      defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
+      defaultEnvironment.relayHubConfiguration,
       { gas: 10000000 })
     await testpaymaster.transferOwnership(calc.address)
     // put some tokens in paymaster so it can calculate postRelayedCall gas usage:
@@ -95,7 +87,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       gas: 10000000
     })
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
     hub = await deployHub(stakeManager.address, penalizer.address)
     token = await TestToken.at(await uniswap.tokenAddress())
 
@@ -161,15 +153,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         testHub = await TestHub.new(
           constants.ZERO_ADDRESS,
           constants.ZERO_ADDRESS,
-          defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-          defaultEnvironment.relayHubConfiguration.gasReserve,
-          defaultEnvironment.relayHubConfiguration.postOverhead,
-          defaultEnvironment.relayHubConfiguration.gasOverhead,
-          defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-          defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-          defaultEnvironment.relayHubConfiguration.minimumStake,
-          defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-          defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
+          defaultEnvironment.relayHubConfiguration,
           { gas: 10000000 })
         await paymaster.setRelayHub(testHub.address)
       })

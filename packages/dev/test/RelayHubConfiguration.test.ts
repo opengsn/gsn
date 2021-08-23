@@ -60,8 +60,10 @@ contract('RelayHub Configuration',
       recipient = await TestRecipient.new(forwarder)
       paymaster = await TestPaymasterEverythingAccepted.new()
       stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-      penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
-        defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+      penalizer = await Penalizer.new(
+        defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
+        defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration,
+        true)
       relayHub = await deployHub(stakeManager.address, penalizer.address)
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
@@ -243,7 +245,9 @@ contract('RelayHub Configuration',
             minimumUnstakeDelay: 0xef.toString(),
             maximumRecipientDeposit: 0xef.toString(),
             dataGasCostPerByte: 0xef.toString(),
-            externalCallDataCostOverhead: 0xef.toString()
+            externalCallDataCostOverhead: 0xef.toString(),
+            maxGasCostPerCalldataByte: 0xef.toString(),
+            baseRelayFeeBidMode: false
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.

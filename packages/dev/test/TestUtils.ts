@@ -264,15 +264,7 @@ export async function deployHub (
   const hub: RelayHubInstance = await RelayHub.new(
     stakeManager,
     penalizer,
-    relayHubConfiguration.maxWorkerCount,
-    relayHubConfiguration.gasReserve,
-    relayHubConfiguration.postOverhead,
-    relayHubConfiguration.gasOverhead,
-    relayHubConfiguration.maximumRecipientDeposit,
-    relayHubConfiguration.minimumUnstakeDelay,
-    relayHubConfiguration.minimumStake,
-    relayHubConfiguration.dataGasCostPerByte,
-    relayHubConfiguration.externalCallDataCostOverhead)
+    relayHubConfiguration)
   return hub
 }
 

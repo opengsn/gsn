@@ -108,7 +108,7 @@ export class ServerTestEnvironment {
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
     this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
     // @ts-ignore - IRelayHub and RelayHub types are similar enough for tests to work
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
     this.forwarder = await Forwarder.new()

@@ -38,6 +38,8 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   minimumUnstakeDelay: 1000,
   maximumRecipientDeposit: 2e18.toString(),
   dataGasCostPerByte: 13,
+  maxGasCostPerCalldataByte: 16,
+  baseRelayFeeBidMode: false,
   externalCallDataCostOverhead: 22414
 }
 

@@ -118,7 +118,7 @@ contract('RelaySelectionManager', function (accounts) {
         const StakeManager = artifacts.require('StakeManager')
         const Penalizer = artifacts.require('Penalizer')
         const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-        const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+        const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
         relayHub = await deployHub(stakeManager.address, penalizer.address)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')

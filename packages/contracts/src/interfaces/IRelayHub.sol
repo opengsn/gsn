@@ -26,6 +26,10 @@ interface IRelayHub {
         uint256 dataGasCostPerByte;
         // relayCalls() minimal gas overhead when calculating cost of putting tx on chain.
         uint256 externalCallDataCostOverhead;
+        // maximum cost of sending a calldata byte, prevents Relays from malicious claim of enormous external gas limit
+        uint256 maxGasCostPerCalldataByte;
+        // if set to true, requested gas price will be forced to be 0, making gas used calculation redundant
+        bool baseRelayFeeBidMode;
     }
 
     event RelayHubConfigured(RelayHubConfig config);

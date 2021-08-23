@@ -34,7 +34,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     const paymasterDeposit = 1e18.toString()
 
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
     hub = await deployHub(stakeManager.address, penalizer.address)
     const relayHub = hub
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })

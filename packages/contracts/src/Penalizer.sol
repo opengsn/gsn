@@ -17,13 +17,16 @@ contract Penalizer is IPenalizer {
 
     uint256 public immutable override penalizeBlockDelay;
     uint256 public immutable override penalizeBlockExpiration;
+    bool public immutable penalizeExternalGasLimit;
 
     constructor(
         uint256 _penalizeBlockDelay,
-        uint256 _penalizeBlockExpiration
+        uint256 _penalizeBlockExpiration,
+        bool _penalizeExternalGasLimit
     ) {
         penalizeBlockDelay = _penalizeBlockDelay;
         penalizeBlockExpiration = _penalizeBlockExpiration;
+        penalizeExternalGasLimit = _penalizeExternalGasLimit;
     }
 
     function isTransactionType1(bytes calldata rawTransaction) public pure returns (bool) {
@@ -165,7 +168,7 @@ contract Penalizer is IPenalizer {
                 bool isWrongMethodCall = selector != IRelayHub.relayCall.selector;
                 bool isGasLimitWrong = GsnUtils.getParam(decodedTx.data, 4) != decodedTx.gasLimit;
                 require(
-                    isWrongMethodCall || isGasLimitWrong,
+                    isWrongMethodCall || (penalizeExternalGasLimit && isGasLimitWrong),
                     "Legal relay transaction");
             }
         }

@@ -39,8 +39,6 @@ contract RelayHub is IRelayHub, Ownable {
         emit RelayHubConfigured(config);
     }
 
-    uint256 public constant G_NONZERO = 16;
-
     // maps relay worker's address to its manager's address
     mapping(address => address) public override workerToManager;
 
@@ -54,29 +52,11 @@ contract RelayHub is IRelayHub, Ownable {
     constructor (
         IStakeManager _stakeManager,
         address _penalizer,
-        uint256 _maxWorkerCount,
-        uint256 _gasReserve,
-        uint256 _postOverhead,
-        uint256 _gasOverhead,
-        uint256 _maximumRecipientDeposit,
-        uint256 _minimumUnstakeDelay,
-        uint256 _minimumStake,
-        uint256 _dataGasCostPerByte,
-        uint256 _externalCallDataCostOverhead
+        RelayHubConfig memory _config
     ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
-        setConfiguration(RelayHubConfig(
-            _maxWorkerCount,
-            _gasReserve,
-            _postOverhead,
-            _gasOverhead,
-            _maximumRecipientDeposit,
-            _minimumUnstakeDelay,
-            _minimumStake,
-            _dataGasCostPerByte,
-            _externalCallDataCostOverhead
-        ));
+        setConfiguration(_config);
     }
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {

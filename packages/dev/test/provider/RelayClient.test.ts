@@ -112,7 +112,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address

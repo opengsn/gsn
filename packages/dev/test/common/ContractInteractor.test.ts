@@ -45,7 +45,10 @@ contract('ContractInteractor', function (accounts) {
 
   before(async () => {
     sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    pen = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    pen = await Penalizer.new(
+      defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
+      defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration,
+      true)
     rh = await deployHub(sm.address, pen.address)
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
