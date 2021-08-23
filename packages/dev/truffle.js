@@ -1,7 +1,12 @@
 require('ts-node/register/transpile-only')
 
 const HDWalletProvider = require('@truffle/hdwallet-provider')
-const mnemonic = 'digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six'
+let mnemonic = 'digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six'
+
+if (process.env.MNEMONIC_FILE) {
+  console.error(`== reading mnemonic file: ${process.env.MNEMONIC_FILE}`)
+  mnemonic = require('fs').readFileSync(process.env.MNEMONIC_FILE, 'utf-8').replace(/(\r\n|\n|\r)/gm, '')
+}
 
 const secretMnemonicFile = './secret_mnemonic'
 const fs = require('fs')

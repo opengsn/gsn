@@ -19,7 +19,6 @@ import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { toBN } from 'web3-utils'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')

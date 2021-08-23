@@ -524,7 +524,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         // TODO: this tests are excessive, and have a lot of tedious build-up
         it('penalizes relay transactions to addresses other than RelayHub', async function () {
           // Relay sending ether to another account
-          const receipt = await web3.eth.sendTransaction({ from: relayWorker, to: other, value: ether('0.5'), gasPrice: 1e9 }) as TransactionReceipt;
+          const receipt = await web3.eth.sendTransaction({ from: relayWorker, to: other, value: ether('0.5'), gasPrice: 1e9 }) as TransactionReceipt
           const { data, signature } = await getDataAndSignatureFromHash(receipt.transactionHash, chainId)
 
           const method = await commitPenalizationAndReturnMethod(

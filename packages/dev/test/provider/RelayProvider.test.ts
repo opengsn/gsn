@@ -27,7 +27,7 @@ import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { toChecksumAddress } from 'ethereumjs-util'
-import { AccountKeypair, AccountManager } from '@opengsn/provider/dist/AccountManager'
+import { AccountKeypair } from '@opengsn/provider/dist/AccountManager'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
