@@ -1,33 +1,29 @@
-import { ChildProcessWithoutNullStreams } from 'child_process'
-
 import { TestPaymasterConfigurableMisbehaviorInstance, TestRecipientInstance } from '@opengsn/contracts'
-import { deployHub, evmMine, startRelay, stopRelay } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { evmMine } from './TestUtils'
 import { HttpProvider } from 'web3-core'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import sinon from 'sinon'
+import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
+import { RelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestRecipient = artifacts.require('TestRecipient')
-const StakeManager = artifacts.require('StakeManager')
-const Penalizer = artifacts.require('Penalizer')
 const Forwarder = artifacts.require('Forwarder')
+const RelayHub = artifacts.require('RelayHub')
 
 contract('ReputationFlow', function (accounts) {
   let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
-  let relayProcess: ChildProcessWithoutNullStreams
   let testRecipient: TestRecipientInstance
   let relayProvider: RelayProvider
+  let testEnv: TestEnvironment
 
   before(async function () {
-    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    const relayHub = await deployHub(stakeManager.address, penalizer.address)
-    const forwarderInstance = await Forwarder.new()
-    testRecipient = await TestRecipient.new(forwarderInstance.address)
+    const host = (web3.currentProvider as HttpProvider).host
+    testEnv = await GsnTestEnvironment.startGsn(host)
 
-    await registerForwarderForGsn(forwarderInstance)
+    const forwarderInstance = (await Forwarder.at(testEnv.contractsDeployment.forwarderAddress!))
+    const relayHub = (await RelayHub.at(testEnv.contractsDeployment.relayHubAddress!)) as any as RelayHubInstance
+    testRecipient = await TestRecipient.new(forwarderInstance.address)
 
     misbehavingPaymaster = await TestPaymasterConfigurableMisbehavior.new()
     await misbehavingPaymaster.setRevertPreRelayCallOnEvenBlocks(true)
@@ -44,38 +40,29 @@ contract('ReputationFlow', function (accounts) {
     }).init()
     // @ts-ignore
     TestRecipient.web3.setProvider(relayProvider)
-
-    relayProcess = await startRelay(relayHub.address, stakeManager, {
-      initialReputation: 10,
-      checkInterval: 100,
-      stake: 1e18,
-      relayOwner: accounts[1],
-      ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
-    })
-  })
-
-  after(async function () {
-    await stopRelay(relayProcess)
   })
 
   describe('with misbehaving paymaster', function () {
     it('should stop serving the paymaster after specified number of on-chain rejected transactions', async function () {
       sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'validateRelayCall').returns(Promise.resolve({ paymasterAccepted: true, returnValue: '', reverted: false }))
+      sinon.stub(testEnv.httpServer.relayService!, 'validateViewCallSucceeds')
       for (let i = 0; i < 20; i++) {
+        const block = await web3.eth.getBlockNumber()
+        if (block % 2 === 0) {
+          await evmMine()
+          continue
+        }
         try {
           await testRecipient.emitMessage('Hello there!', { gas: 100000 })
         } catch (e) {
           if (e.message.includes('Transaction has been reverted by the EVM') === true) {
-            console.log('wtf is i just revert', i, await web3.eth.getBlockNumber())
             continue
           }
           if (e.message.includes('paymaster rejected in local view call to \'relayCall()\'') === true) {
-            console.log('wtf is i paymaster rejected local??', i, await web3.eth.getBlockNumber())
             await evmMine()
             continue
           }
           if (e.message.includes('Paymaster rejected in server') === true) {
-            console.log('wtf is i paymaster rejected server', i, await web3.eth.getBlockNumber())
             await evmMine()
             continue
           }

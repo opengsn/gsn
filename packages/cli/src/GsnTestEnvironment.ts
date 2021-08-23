@@ -20,6 +20,8 @@ import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
+import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
+import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 
 export interface TestEnvironment {
   contractsDeployment: GSNContractsDeployment
@@ -161,13 +163,17 @@ class GsnTestEnvironmentClass {
     await contractInteractor.init()
     const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
+    const reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
+    const reputationManager = new ReputationManager(reputationStoreManager, logger, { initialReputation: 10 })
+
     const relayServerDependencies: ServerDependencies = {
       logger,
       contractInteractor,
       gasPriceFetcher,
       txStoreManager,
       managerKeyManager,
-      workersKeyManager
+      workersKeyManager,
+      reputationManager
     }
     const relayServerParams: Partial<ServerConfigParams> = {
       devMode: true,
@@ -178,7 +184,7 @@ class GsnTestEnvironmentClass {
       baseRelayFee: '0',
       pctRelayFee: 0,
       checkInterval: 100,
-      runPaymasterReputations: false,
+      runPaymasterReputations: true,
       logLevel: 'error'
     }
     const transactionManager = new TransactionManager(relayServerDependencies, configureServer(relayServerParams))
