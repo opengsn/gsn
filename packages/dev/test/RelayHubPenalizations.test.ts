@@ -39,7 +39,7 @@ const Forwarder = artifacts.require('Forwarder')
 const paymasterData = '0x'
 const clientId = '0'
 
-contract.only('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommitter,
+contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommitter,
   sender, other, relayManager, reporterRelayManager]) { // eslint-disable-line no-unused-vars
   const chainId = defaultEnvironment.chainId
 
@@ -118,7 +118,7 @@ contract.only('RelayHub Penalizations', function ([_, relayOwner, committer, non
     relayRequest: RelayRequest
     signature: string
   }> {
-    const gasPrice = new BN(1e9.toString())
+    const gasPrice = new BN(1e9)
     const gasLimit = new BN('5000000')
     const txData = recipient.contract.methods.emitMessage('').encodeABI()
     const relayRequest: RelayRequest = {

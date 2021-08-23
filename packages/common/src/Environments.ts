@@ -30,8 +30,8 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 33407,
-  postOverhead: 15178,
+  gasOverhead: 31907,
+  postOverhead: 11890,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
