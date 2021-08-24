@@ -27,7 +27,7 @@ import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransaction
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'
-import { configureGSN, deployHub, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
+import { configureGSN, deployHub, emptyBalance, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -80,8 +80,7 @@ contract('RelayClient', function (accounts) {
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
-  let gasLessAccount: AccountKeypair
-  let gasLess: Address
+  const gasLess = accounts[10]
   let relayProcess: ChildProcessWithoutNullStreams
   let forwarderAddress: Address
   let logger: LoggerInterface
@@ -141,8 +140,7 @@ contract('RelayClient', function (accounts) {
     logger = createClientLogger(loggerConfiguration)
     relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
     await relayClient.init()
-    gasLessAccount = relayClient.newAccount()
-    gasLess = toChecksumAddress(gasLessAccount.address)
+    await emptyBalance(gasLess, accounts[0])
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()
@@ -288,7 +286,6 @@ contract('RelayClient', function (accounts) {
           }
         })
         await relayClient.init()
-        relayClient.addAccount(gasLessAccount.privateKey)
         // async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
         const relayingResult = await relayClient.relayTransaction(options)
         assert.match(_dumpRelayingResult(relayingResult), /timeout.*exceeded/)
@@ -316,7 +313,6 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(relayingErrors.size, 0)
@@ -333,7 +329,6 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -351,7 +346,6 @@ contract('RelayClient', function (accounts) {
           }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -369,7 +363,6 @@ contract('RelayClient', function (accounts) {
           }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -388,7 +381,6 @@ contract('RelayClient', function (accounts) {
           }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const ret = await relayClient.relayTransaction(options)
       const { transaction, relayingErrors, pingErrors } = ret
       assert.isUndefined(transaction)
@@ -403,7 +395,6 @@ contract('RelayClient', function (accounts) {
 
       before('registerEventsListener', async () => {
         relayClient = await new RelayClient({ provider: underlyingProvider, config: gsnConfig }).init()
-        relayClient.addAccount(gasLessAccount.privateKey)
         relayClient.registerEventListener(eventsHandler)
       })
       it('should call all events handler', async function () {
@@ -502,7 +493,6 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
       // @ts-ignore
@@ -518,7 +508,6 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const attempt = await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -535,7 +524,6 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { httpClient: badHttpClient }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -564,7 +552,6 @@ contract('RelayClient', function (accounts) {
         })
 
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
@@ -593,7 +580,6 @@ contract('RelayClient', function (accounts) {
             }
           })
         await relayClient.init()
-        relayClient.addAccount(gasLessAccount.privateKey)
         const httpRequest = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
         assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
@@ -619,7 +605,6 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const { hasReceipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
       assert.isFalse(hasReceipt)
       assert.isTrue(wrongNonce)
@@ -653,7 +638,6 @@ contract('RelayClient', function (accounts) {
         }
       })
       await relayClient.init()
-      relayClient.addAccount(gasLessAccount.privateKey)
       const relayingResult = await relayClient.relayTransaction(options)
       assert.isNotNull(relayingResult.transaction)
       assert.equal(relayingResult.pingErrors.size, 0)

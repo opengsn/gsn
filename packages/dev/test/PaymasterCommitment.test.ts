@@ -185,7 +185,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       // gasPrice is '1', so price=gasUsed...
       expectEvent(res, 'TransactionRelayed', { status: '0' })
 
-      // const txCost = toBN(res.receipt.gasUsed).mul(toBN(gasPrice))
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       // console.log('actual paid=', paid, 'gasUsed=', gasUsed, 'diff=', paid - gasUsed)
       assert.closeTo(paid, res.receipt.gasUsed, 50)

@@ -19,7 +19,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { deployHub, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, emptyBalance, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
 import { BadRelayClient } from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
@@ -88,7 +88,6 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
 
 contract('RelayProvider', function (accounts) {
   let web3: Web3
-  let gasLessAccount: AccountKeypair
   let gasLess: Address
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
@@ -144,8 +143,8 @@ contract('RelayProvider', function (accounts) {
       // so changing the global one is not enough.
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
-      gasLessAccount = relayProvider.newAccount()
-      gasLess = toChecksumAddress(gasLessAccount.address)
+      gasLess = accounts[10]
+      await emptyBalance(gasLess, accounts[0])
       console.log('gasLess is', gasLess)
     })
     it('should relay transparently', async function () {
@@ -292,7 +291,6 @@ contract('RelayProvider', function (accounts) {
           ...config
         }
       }).init()
-      relayProvider.addAccount(gasLessAccount.privateKey)
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
         if (error != null) {
           reject(error)
