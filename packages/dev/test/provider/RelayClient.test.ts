@@ -8,7 +8,7 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { PrefixedHexString, toBuffer, toChecksumAddress } from 'ethereumjs-util'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import {
   RelayHubInstance,
@@ -43,7 +43,6 @@ import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { AccountKeypair } from '@opengsn/provider/dist/AccountManager'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

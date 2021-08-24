@@ -285,7 +285,7 @@ export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
   return Object.assign({}, defaultGsnConfig, partialConfig) as GSNConfig
 }
 
-export async function emptyBalance (source: Address, target: Address) {
+export async function emptyBalance (source: Address, target: Address): Promise<void> {
   const gasPrice = toBN(1e9)
   const txCost = toBN(defaultEnvironment.mintxgascost).mul(gasPrice)
   let balance = toBN(await web3.eth.getBalance(source))

@@ -26,8 +26,6 @@ import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { toChecksumAddress } from 'ethereumjs-util'
-import { AccountKeypair } from '@opengsn/provider/dist/AccountManager'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
