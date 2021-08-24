@@ -17,8 +17,7 @@ export interface AccountKeypair {
 
 function toAddress (privateKey: PrefixedHexString): Address {
   const wallet = ethWallet.fromPrivateKey(Buffer.from(removeHexPrefix(privateKey), 'hex'))
-  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  return `0x${wallet.getAddress().toString('hex')}`
+  return wallet.getChecksumAddressString()
 }
 
 export class AccountManager {
