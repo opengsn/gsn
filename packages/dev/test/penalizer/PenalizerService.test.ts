@@ -1,6 +1,5 @@
 import { HttpProvider } from 'web3-core'
 import { Transaction } from '@ethereumjs/tx'
-import { bufferToHex } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 
 import { PenalizerDependencies, PenalizerService } from '@opengsn/relay/dist/penalizer/PenalizerService'
@@ -47,9 +46,6 @@ contract('PenalizerService', function (accounts) {
     await penalizerService.init(false)
 
     relayWorker = env.relayServer.transactionManager.workersKeyManager.getAddress(0)
-    // @ts-ignore
-    await env.web3.eth.personal.importRawKey(bufferToHex(env.relayServer.transactionManager.workersKeyManager._privateKeys[relayWorker]), '')
-    await env.web3.eth.personal.unlockAccount(relayWorker, '', 1e6)
   })
 
   afterEach(async function () {

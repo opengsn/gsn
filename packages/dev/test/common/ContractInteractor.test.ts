@@ -101,7 +101,7 @@ contract('ContractInteractor', function (accounts) {
       const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x')
       assert.deepEqual(ret, {
         paymasterAccepted: false,
-        returnValue: 'view call to \'relayCall\' reverted in client: Paymaster balance too low',
+        returnValue: 'view call to \'relayCall\' reverted in client: with reason string \'Paymaster balance too low\'',
         reverted: true
       })
     })
@@ -158,9 +158,11 @@ contract('ContractInteractor', function (accounts) {
 
     before(async function () {
       contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
-      const nonce = await web3.eth.getTransactionCount('0xb473D6BE09D0d6a23e1832046dBE258cF6E8635B')
-      let transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', nonce })
-      transaction = transaction.sign(Buffer.from('46e6ef4a356fa3fa3929bf4b59e6b3eb9d0521ea660fd2879c67bd501002ac2b', 'hex'))
+      await contractInteractor.init()
+      provider.reset()
+      const nonce = await web3.eth.getTransactionCount('0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc')
+      let transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', gasPrice: 105157849, nonce }, contractInteractor.getRawTxOptions())
+      transaction = transaction.sign(Buffer.from('8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba', 'hex'))
       sampleTransactionData = '0x' + transaction.serialize().toString('hex')
       sampleTransactionHash = '0x' + transaction.hash().toString('hex')
     })

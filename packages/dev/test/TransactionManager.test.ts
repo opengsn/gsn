@@ -125,7 +125,7 @@ contract('TransactionManager', function (accounts) {
         await relayServer.transactionManager.resendTransaction(
           oldTransaction, latestBlock, oldTransaction.gasPrice * 2, false)
       } catch (e) {
-        assert.include(e.message, 'the tx doesn\'t have the correct nonce. account has nonce')
+        assert.include(e.message, 'Nonce too low. Expected nonce to be')
       }
       storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions.length, 1)

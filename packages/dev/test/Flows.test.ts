@@ -12,7 +12,7 @@ import {
   TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
   TestRecipientInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { deployHub, startRelay, stopRelay } from './TestUtils'
+import { deployHub, emptyBalance, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -45,15 +45,14 @@ options.forEach(params => {
     let paymaster: TestPaymasterEverythingAcceptedInstance
     let rhub: RelayHubInstance
     let sm: StakeManagerInstance
-    let gasless: Address
+    const gasless = accounts[10]
     let relayproc: ChildProcessWithoutNullStreams
     let relayClientConfig: Partial<GSNConfig>
 
     before(async () => {
-      const gasPriceFactor = 1.2
+      await emptyBalance(gasless, accounts[0])
 
-      gasless = await web3.eth.personal.newAccount('password')
-      await web3.eth.personal.unlockAccount(gasless, 'password', 0)
+      const gasPriceFactor = 1.2
 
       sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
       const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
@@ -74,9 +73,6 @@ options.forEach(params => {
           relaylog: process.env.relaylog
         })
         console.log('relay started')
-        from = gasless
-      } else {
-        from = accounts[0]
       }
 
       const forwarder = await Forwarder.new()
@@ -118,7 +114,11 @@ options.forEach(params => {
         // so changing the global one is not enough...
         // @ts-ignore
         TestRecipient.web3.setProvider(relayProvider)
+
+        from = gasless
       })
+    } else {
+      from = accounts[0]
     }
 
     it(params.title + 'send normal transaction', async () => {
@@ -134,7 +134,7 @@ options.forEach(params => {
       assert.equal('hello', res.logs[0].args.message)
     })
 
-    it(params.title + 'send gasless tranasaction', async () => {
+    it(params.title + 'send gasless transaction', async () => {
       console.log('gasless=' + gasless)
 
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed)')

@@ -15,6 +15,8 @@ import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { Environment, EnvironmentsKeys } from '@opengsn/common'
+import { Address } from '@opengsn/common/dist/types/Aliases'
+import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -279,6 +281,15 @@ export async function deployHub (
 
 export function configureGSN (partialConfig: Partial<GSNConfig>): GSNConfig {
   return Object.assign({}, defaultGsnConfig, partialConfig) as GSNConfig
+}
+
+export async function emptyBalance (source: Address, target: Address): Promise<void> {
+  const gasPrice = toBN(1e9)
+  const txCost = toBN(defaultEnvironment.mintxgascost).mul(gasPrice)
+  let balance = toBN(await web3.eth.getBalance(source))
+  await web3.eth.sendTransaction({ from: source, to: target, value: balance.sub(txCost), gasPrice, gas: defaultEnvironment.mintxgascost })
+  balance = toBN(await web3.eth.getBalance(source))
+  assert.isTrue(balance.eqn(0))
 }
 
 /**

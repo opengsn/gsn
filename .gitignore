@@ -42,3 +42,4 @@ yarn-error.log
 /packages/paymasters/build/
 /packages/paymasters/dist/
 /packages/paymasters/json-input.json
+hardhat.log
