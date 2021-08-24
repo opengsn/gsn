@@ -1,9 +1,9 @@
 diff --git a/node_modules/truffle/build/.cli.bundled.js.swp b/node_modules/truffle/build/.cli.bundled.js.swp
 new file mode 100644
-index 0000000..087eb08
+index 0000000..054ed1f
 Binary files /dev/null and b/node_modules/truffle/build/.cli.bundled.js.swp differ
 diff --git a/node_modules/truffle/build/cli.bundled.js b/node_modules/truffle/build/cli.bundled.js
-index 5991472..20e6594 100755
+index 5991472..bb4573a 100755
 --- a/node_modules/truffle/build/cli.bundled.js
 +++ b/node_modules/truffle/build/cli.bundled.js
 @@ -199453,6 +199453,7 @@ async function invokeCompiler({ compilerInput, options }) {
@@ -14,7 +14,7 @@ index 5991472..20e6594 100755
    const outputString = solc.compile(inputString);
    const compilerOutput = JSON.parse(outputString);
  
-@@ -203423,6 +203424,12 @@ const reason = {
+@@ -203423,6 +203424,13 @@ const reason = {
        res && typeof res === "object" && res.error && res.error.data;
      const isString =
        res && typeof res === "object" && typeof res.result === "string";
@@ -22,6 +22,7 @@ index 5991472..20e6594 100755
 +      res && typeof res === "object" && res.error && res.error.message && !res.error.data;
 +
 +    if (isHardHat) {
++      if (res.error.message.includes('Transaction reverted without a reason string')) return 'revert'
 +      return res.error.message.match('VM Exception while processing transaction: reverted with reason string \'(.*)\'')[1]
 +    }
  
