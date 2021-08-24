@@ -37,7 +37,7 @@ export const defaultGsnConfig: GSNConfig = {
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   sliceSize: 3,
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
-  methodSuffix: '',
+  methodSuffix: '_v4',
   requiredVersionRange: gsnRequiredVersion,
   jsonStringifyRequest: false,
   auditorsCount: 1,

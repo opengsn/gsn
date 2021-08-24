@@ -52,7 +52,10 @@ contract('KnownRelaysManager', function (
     workerPaymasterRejected,
     workerTransactionRelayed,
     owner,
-    other
+    other,
+    workerRelayWorkersAdded,
+    workerRelayServerRegistered,
+    workerNotActive
   ]) {
   const relayLookupWindowBlocks = 100
   const pastEventsQueryMaxPageSize = 10
@@ -66,15 +69,9 @@ contract('KnownRelaysManager', function (
     let relayHub: RelayHubInstance
     let testRecipient: TestRecipientInstance
     let paymaster: TestPaymasterConfigurableMisbehaviorInstance
-    let workerRelayWorkersAdded
-    let workerRelayServerRegistered
-    let workerNotActive
     const gas = 4e6
 
     before(async function () {
-      workerRelayWorkersAdded = await web3.eth.personal.newAccount('password')
-      workerRelayServerRegistered = await web3.eth.personal.newAccount('password')
-      workerNotActive = await web3.eth.personal.newAccount('password')
       stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
       penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address)

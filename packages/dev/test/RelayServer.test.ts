@@ -379,6 +379,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         assert.equal(env.relayServer.minGasPrice, env.relayServer.config.gasPriceFactor * gasPrice)
       })
       it('should throw when min gas price is higher than max', async function () {
+        await env.relayServer._refreshGasPrice()
         const originalMaxPrice = env.relayServer.config.maxGasPrice
         env.relayServer.config.maxGasPrice = (env.relayServer.minGasPrice - 1).toString()
         try {

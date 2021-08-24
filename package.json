@@ -43,7 +43,7 @@
   },
   "prepublish": "yarn prepare",
   "scripts": {
-    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-testrpc",
+    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-hardhat",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 120000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "ganache-fork-mainnet": "ganache-cli --fork https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43 --port 8544 --chainId 1 --l 10000000  --unlock 0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503",
     "postinstall": "patch-package",
@@ -58,7 +58,10 @@
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "lerna run test --stream --no-prefix",
     "lerna-run-test-fork": "lerna run test-fork --stream --no-prefix",
+    "lerna-run-test-only": "lerna run test-only --stream",
     "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 12000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test'",
+    "lerna-run-test-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test'",
+    "lerna-run-test-only-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-only'",
     "verdaccio-start": "verdaccio --config verdaccio.yaml",
     "verdaccio-clean": "rm -rf verdaccio",
     "verdaccio-clean-opengsn": "rm -rf verdaccio/@opengsn"

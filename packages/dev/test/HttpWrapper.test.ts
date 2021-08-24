@@ -29,16 +29,10 @@ describe('HttpWrapper', () => {
     await expect(res).to.be.eventually.rejectedWith({ error: 'connect ECONNREFUSED 127.0.0.1:44321' })
   })
 
-  it('should timeout after specified time', async () => {
-    // this test abuses the fact that a local ganache is slow, and should take over 1ms to respond even if it's local
-    const http = new HttpWrapper({ timeout: 1 })
-    const res =
-      // @ts-ignore
-      http.sendPromise(web3.currentProvider.host, {
-        jsonrpc: '2.0',
-        method: 'net_version',
-        id: 123
-      })
-    return await expect(res).to.be.eventually.rejectedWith('timeout of 1ms exceeded')
+  it('should pass timeout to provider', async () => {
+    // This test should be removed. It checks axios functionality.
+    const http = new HttpWrapper({ timeout: 1234 })
+    // @ts-ignore
+    assert.equal(http.provider.defaults.timeout, 1234)
   })
 })

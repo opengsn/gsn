@@ -82,20 +82,20 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     async function testDeposit (sender: string, paymaster: string, amount: BN): Promise<void> {
       const senderBalanceTracker = await balance.tracker(sender)
       const relayHubBalanceTracker = await balance.tracker(relayHub)
-
-      const { logs } = await relayHubInstance.depositFor(paymaster, {
+      const gasPrice = new BN(1e9)
+      const res = await relayHubInstance.depositFor(paymaster, {
         from: sender,
         value: amount,
-        gasPrice: 0
+        gasPrice
       })
-      expectEvent.inLogs(logs, 'Deposited', {
+      expectEvent.inLogs(res.logs, 'Deposited', {
         paymaster,
         from: sender,
         amount
       })
-
+      const txCost = (new BN(res.receipt.gasUsed)).mul(gasPrice)
       expect(await relayHubInstance.balanceOf(paymaster)).to.be.bignumber.equal(amount)
-      expect(await senderBalanceTracker.delta()).to.be.bignumber.equal(amount.neg())
+      expect(await senderBalanceTracker.delta()).to.be.bignumber.equal(amount.neg().sub(txCost))
       expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equal(amount)
     }
 
@@ -112,7 +112,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         relayHubInstance.depositFor(target, {
           from: other,
           value: ether('3'),
-          gasPrice: 0
+          gasPrice: 1e9
         }),
         'deposit too big'
       )
@@ -122,17 +122,17 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
-        gasPrice: 0
+        gasPrice: 1e9
       })
       await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
-        gasPrice: 0
+        gasPrice: 1e9
       })
       await relayHubInstance.depositFor(target, {
         from: other,
         value: ether('1'),
-        gasPrice: 0
+        gasPrice: 1e9
       })
 
       expect(await relayHubInstance.balanceOf(target)).to.be.bignumber.equals(ether('3'))
@@ -173,7 +173,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   describe('relayCall', function () {
     const baseRelayFee = '10000'
     const pctRelayFee = '10'
-    const gasPrice = '10'
+    const gasPrice = 1e9.toString()
     const gasLimit = '1000000'
     const senderNonce = '0'
     let sharedRelayRequestData: RelayRequest
@@ -215,7 +215,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         await relayHubInstance.depositFor(paymaster, {
           from: other,
           value: ether('1'),
-          gasPrice: 0
+          gasPrice: 1e9
         })
       })
 
@@ -351,7 +351,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             signatureWithPermissivePaymaster, '0x', 7e6)
             .call({
               from: relayWorker,
-              gas: 7e6
+              gas: 7e6,
+              gasPrice: 1e9
             })
           assert.equal(relayCallView.returnValue, null)
           assert.equal(relayCallView.paymasterAccepted, true)
@@ -362,7 +363,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           const relayCallView =
             await relayHubInstance.contract.methods
               .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x', 7e6)
-              .call({ from: relayWorker, gas: 7e6 })
+              .call({ from: relayWorker, gas: 7e6, gasPrice: 1e9 })
 
           assert.equal(relayCallView.paymasterAccepted, false)
 
@@ -438,13 +439,13 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
         it('should revert if encoded function contains extra bytes', async () => {
           const encoded = await relayHubInstance.contract.methods.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', gas).encodeABI() as string
-          expectRevert(web3.eth.call({
+          await expectRevert(web3.eth.call({
             data: encoded + '1234',
             from: relayWorker,
             to: relayHubInstance.address,
             gas,
             gasPrice
-          }), 'revert extra msg.data')
+          }), 'Error: VM Exception while processing transaction: reverted with reason string \'extra msg.data bytes\'')
         })
 
         it('relayCall executes the transaction and increments sender nonce on hub', async function () {

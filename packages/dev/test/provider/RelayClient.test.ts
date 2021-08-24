@@ -27,7 +27,7 @@ import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransaction
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'
-import { configureGSN, deployHub, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
+import { configureGSN, deployHub, emptyBalance, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -79,7 +79,7 @@ contract('RelayClient', function (accounts) {
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
-  let gasLess: Address
+  const gasLess = accounts[10]
   let relayProcess: ChildProcessWithoutNullStreams
   let forwarderAddress: Address
   let logger: LoggerInterface
@@ -139,7 +139,7 @@ contract('RelayClient', function (accounts) {
     logger = createClientLogger(loggerConfiguration)
     relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
     await relayClient.init()
-    gasLess = await web3.eth.personal.newAccount('password')
+    await emptyBalance(gasLess, accounts[0])
     from = gasLess
     to = testRecipient.address
     data = testRecipient.contract.methods.emitMessage('hello world').encodeABI()
@@ -285,7 +285,6 @@ contract('RelayClient', function (accounts) {
           }
         })
         await relayClient.init()
-
         // async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
         const relayingResult = await relayClient.relayTransaction(options)
         assert.match(_dumpRelayingResult(relayingResult), /timeout.*exceeded/)
@@ -346,7 +345,6 @@ contract('RelayClient', function (accounts) {
           }
         })
       await relayClient.init()
-
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -364,7 +362,6 @@ contract('RelayClient', function (accounts) {
           }
         })
       await relayClient.init()
-
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
@@ -383,7 +380,6 @@ contract('RelayClient', function (accounts) {
           }
         })
       await relayClient.init()
-
       const ret = await relayClient.relayTransaction(options)
       const { transaction, relayingErrors, pingErrors } = ret
       assert.isUndefined(transaction)
@@ -608,7 +604,6 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
-
       const { hasReceipt, wrongNonce, broadcastError } = await relayClient._broadcastRawTx(transaction)
       assert.isFalse(hasReceipt)
       assert.isTrue(wrongNonce)
@@ -642,7 +637,6 @@ contract('RelayClient', function (accounts) {
         }
       })
       await relayClient.init()
-
       const relayingResult = await relayClient.relayTransaction(options)
       assert.isNotNull(relayingResult.transaction)
       assert.equal(relayingResult.pingErrors.size, 0)

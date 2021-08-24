@@ -21,6 +21,7 @@ import {
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { toBuffer } from 'ethereumjs-util'
+import { toBN } from 'web3-utils'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -35,7 +36,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const chainId = defaultEnvironment.chainId
   const baseFee = new BN('300')
   const fee = new BN('10')
-  const gasPrice = new BN('10')
+  const gasPrice = new BN(1e9)
   const gasLimit = new BN('1000000')
   const externalGasLimit = 5e6.toString()
   const paymasterData = '0x'
@@ -43,8 +44,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   const senderNonce = new BN('0')
   const magicNumbers = {
-    pre: 5484,
-    post: 1532
+    pre: 9984,
+    post: 2832
   }
 
   let relayHub: RelayHubInstance
@@ -244,7 +245,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           .relayCall(10e6, relayRequestMisbehaving, signature, '0x', externalGasLimit)
           .call({
             from: relayRequestMisbehaving.relayData.relayWorker,
-            gas: externalGasLimit
+            gas: externalGasLimit,
+            gasPrice: 1e9
           })
       assert.equal(viewRelayCallResponse[0], false)
       assert.equal(viewRelayCallResponse[1], null) // no revert string on out-of-gas
@@ -534,7 +536,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   'unexpected over-paying by ' + (weiActualCharge.sub(expectedActualCharge)).toString())
                 // Check that relay did pay it's gas fee by himself.
                 // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-                const expectedBalanceAfter = beforeBalances.relayWorkers.subn(res.receipt.gasUsed * gasPrice)
+                const expectedBalanceAfter = beforeBalances.relayWorkers.sub(toBN(res.receipt.gasUsed).mul(toBN(gasPrice)))
                 assert.equal(expectedBalanceAfter.cmp(afterBalances.relayWorkers), 0, 'relay did not pay the expected gas fees')
 
                 // Check that relay's weiActualCharge is deducted from paymaster's stake.

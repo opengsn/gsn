@@ -72,10 +72,20 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
   return abi.decodeParameter('string', '0x' + revertBytes.slice(10)) as any
 }
 
+export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
+  const nodeInfo = await web3.eth.getNodeInfo()
+  // ganache-cli
+  if (nodeInfo.toLowerCase().includes('testrpc')) return ''
+  // hardhat
+  if (nodeInfo.toLowerCase().includes('hardhat')) return '_v4'
+  // all other networks
+  return '_v4'
+}
+
 export async function getEip712Signature (
   web3: Web3,
   typedRequestData: EIP712TypedData,
-  methodSuffix = '',
+  methodSuffix: string | null = null,
   jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
   const senderAddress = typedRequestData.message.from
@@ -85,6 +95,7 @@ export async function getEip712Signature (
   } else {
     dataToSign = typedRequestData
   }
+  methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(web3)
   return await new Promise((resolve, reject) => {
     let method
     // @ts-ignore (the entire web3 typing is fucked up)
@@ -95,12 +106,13 @@ export async function getEip712Signature (
       // @ts-ignore
       method = web3.currentProvider.send
     }
-    method.bind(web3.currentProvider)({
-      method: 'eth_signTypedData' + methodSuffix,
+    const paramBlock = {
+      method: `eth_signTypedData${methodSuffix}`,
       params: [senderAddress, dataToSign],
-      from: senderAddress,
+      jsonrpc: '2.0',
       id: Date.now()
-    }, (error: Error | string | null, result?: JsonRpcResponse) => {
+    }
+    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null, result?: JsonRpcResponse) => {
       if (result?.error != null) {
         error = result.error
       }

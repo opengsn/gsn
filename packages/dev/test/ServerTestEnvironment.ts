@@ -121,7 +121,6 @@ export class ServerTestEnvironment {
     await this.paymaster.deposit({ value: this.web3.utils.toWei('1', 'ether') })
 
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
-    this.gasLess = await this.web3.eth.personal.newAccount('password')
     const shared: Partial<GSNConfig> = {
       loggerConfiguration: { logLevel: 'error' },
       paymasterAddress: this.paymaster.address
@@ -145,6 +144,7 @@ export class ServerTestEnvironment {
       config: mergedConfig
     })
     await this.relayClient.init()
+    this.gasLess = this.relayClient.newAccount().address
   }
 
   async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {

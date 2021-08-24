@@ -411,19 +411,19 @@ contract('StakeManager', function ([_, relayManager, anyRelayHub, owner, nonOwne
       const relayOwnerBalanceTracker = await balance.tracker(owner)
       const stakeManagerBalanceTracker = await balance.tracker(stakeManager.address)
 
-      // We call unstake with a gasPrice of zero to accurately measure the balance change in the relayOwner
-      const { logs } = await stakeManager.withdrawStake(relayManager, {
+      const gasPrice = 10
+      const res = await stakeManager.withdrawStake(relayManager, {
         from: owner,
-        gasPrice: 0
+        gasPrice: 10
       })
-      expectEvent.inLogs(logs, 'StakeWithdrawn', {
+      expectEvent.inLogs(res.logs, 'StakeWithdrawn', {
         relayManager,
         amount: initialStake
       })
 
       const relayOwnerGain = await relayOwnerBalanceTracker.delta()
       const stakeManagerLoss = await stakeManagerBalanceTracker.delta()
-      expect(relayOwnerGain).to.be.bignumber.equal(initialStake)
+      expect(relayOwnerGain).to.be.bignumber.equal(initialStake.subn(gasPrice * res.receipt.gasUsed))
       expect(stakeManagerLoss).to.be.bignumber.equal(initialStake.neg())
     })
 

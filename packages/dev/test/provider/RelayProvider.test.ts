@@ -19,13 +19,14 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { deployHub, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, emptyBalance, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
 import { BadRelayClient } from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { toChecksumAddress } from 'ethereumjs-util'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -61,7 +62,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
     relayData: {
       pctRelayFee: '1',
       baseRelayFee: '1',
-      gasPrice: '1',
+      gasPrice: '4494095',
       paymaster,
       paymasterData,
       clientId,
@@ -93,12 +94,11 @@ contract('RelayProvider', function (accounts) {
   let paymasterInstance: TestPaymasterEverythingAcceptedInstance
   let paymaster: Address
   let relayProcess: ChildProcessWithoutNullStreams
-  let relayProvider: any
+  let relayProvider: RelayProvider
   let forwarderAddress: Address
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
-    gasLess = await web3.eth.personal.newAccount('password')
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
@@ -124,7 +124,6 @@ contract('RelayProvider', function (accounts) {
   after(async function () {
     await stopRelay(relayProcess)
   })
-
   describe('Use Provider to relay transparently', () => {
     let testRecipient: TestRecipientInstance
     before(async () => {
@@ -143,6 +142,9 @@ contract('RelayProvider', function (accounts) {
       // so changing the global one is not enough.
       // @ts-ignore
       TestRecipient.web3.setProvider(relayProvider)
+      gasLess = accounts[10]
+      await emptyBalance(gasLess, accounts[0])
+      console.log('gasLess is', gasLess)
     })
     it('should relay transparently', async function () {
       const res = await testRecipient.emitMessage('hello world', {
@@ -218,7 +220,7 @@ contract('RelayProvider', function (accounts) {
     // this is not the way the revert reason is being reported by GSN solidity contracts
     it('should fail if transaction failed', async () => {
       await expectRevert(testRecipient.testRevert({
-        from: gasLess,
+        from: accounts[0],
         // @ts-ignore
         paymaster
       }), 'always fail')
@@ -345,7 +347,7 @@ contract('RelayProvider', function (accounts) {
       const paymasterRejectedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
-        gasPrice: '1'
+        gasPrice: '4494095'
       })
       expectEvent.inLogs(paymasterRejectedReceiptTruffle.logs, 'TransactionRejectedByPaymaster')
       paymasterRejectedTxReceipt = await web3.eth.getTransactionReceipt(paymasterRejectedReceiptTruffle.tx)
@@ -363,7 +365,7 @@ contract('RelayProvider', function (accounts) {
       const innerTxFailedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
-        gasPrice: '1'
+        gasPrice: '4494095'
       })
       expectEvent.inLogs(innerTxFailedReceiptTruffle.logs, 'TransactionRejectedByPaymaster', {
         reason: encodeRevertReason('You asked me to revert, remember?')
@@ -374,7 +376,7 @@ contract('RelayProvider', function (accounts) {
       const innerTxSuccessReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
         from: accounts[0],
         gas,
-        gasPrice: '1'
+        gasPrice: '4494095'
       })
       expectEvent.inLogs(innerTxSuccessReceiptTruffle.logs, 'TransactionRelayed', {
         status: '0'
@@ -425,10 +427,10 @@ contract('RelayProvider', function (accounts) {
       const web3 = new Web3(relayProvider)
       const accountsBefore = await web3.eth.getAccounts()
       const newAccount = relayProvider.newAccount()
-      const address = '0x982a8cbe734cb8c29a6a7e02a3b0e4512148f6f9'
+      const address = toChecksumAddress('0x982a8cbe734cb8c29a6a7e02a3b0e4512148f6f9')
       relayProvider.addAccount('0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c')
       const accountsAfter = await web3.eth.getAccounts()
-      const newAccounts = accountsAfter.filter(value => !accountsBefore.includes(value)).map(it => it.toLowerCase())
+      const newAccounts = accountsAfter.filter(value => !accountsBefore.includes(value))
       assert.equal(newAccounts.length, 2)
       assert.include(newAccounts, address)
       assert.include(newAccounts, newAccount.address)

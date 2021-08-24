@@ -24,7 +24,7 @@ contract('StatisticsManager', function (accounts) {
     await env.relayHub.depositFor(misbehavingPaymaster.address, {
       from: accounts[0],
       value: 1e18.toString(),
-      gasPrice: 0
+      gasPrice: 1e9
     })
     // create 3 relays
     await env.newServerInstance()
@@ -46,11 +46,11 @@ contract('StatisticsManager', function (accounts) {
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
+    await misbehavingPaymaster.setRevertPreRelayCallOnEvenBlocks(true)
     block = await web3.eth.getBlockNumber()
     if (block % 2 !== 0) {
       await evmMine()
     }
-    await misbehavingPaymaster.setRevertPreRelayCallOnEvenBlocks(true)
 
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest({}, { paymasterAddress: misbehavingPaymaster.address }))
 
