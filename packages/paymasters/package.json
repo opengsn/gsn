@@ -10,6 +10,7 @@
     "lint:js": "eslint -f unix .",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "test": "yarn tsc && yarn truffle-test-compile-all",
+    "test-fork": "truffle test test/PermitERC20UniswapV3Paymaster.test.ts --compile-all --network npmtest",
     "test1": "truffle test --network npmtest",
     "truffle-test-compile-all": "truffle test --compile-all --network npmtest",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
@@ -30,18 +31,21 @@
     "@openzeppelin/contracts": "^4.2.0",
     "@opengsn/dev": "^2.2.2",
     "@opengsn/common": "^2.2.2",
-    "@opengsn/provider": "^2.2.2",
     "@opengsn/contracts": "^2.2.2",
+    "@opengsn/dev": "^2.2.2",
+    "@opengsn/provider": "^2.2.2",
+    "@uniswap/v3-periphery": "^1.1.1",
     "ethereumjs-util": "^7.1.0"
   },
   "devDependencies": {
-    "solhint": "^3.3.2",
+    "@ethereumjs/tx": "^3.2.0",
     "@typechain/truffle-v5": "^4.0.1",
     "@types/chai": "^4.2.12",
+    "@types/ethereumjs-util": "^6.1.0",
     "@types/mocha": "^8.2.0",
     "@types/web3": "1.2.2",
-    "@types/ethereumjs-util": "^6.1.0",
-    "@ethereumjs/tx": "^3.2.0"
+    "ganache-cli": "^6.12.2",
+    "solhint": "^3.3.2"
   },
   "peerDependencies": {
     "@types/bn.js": "^5.1.0",

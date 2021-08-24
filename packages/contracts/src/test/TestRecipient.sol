@@ -11,15 +11,7 @@ contract TestRecipient is BaseRelayRecipient {
     string public override versionRecipient = "2.2.3+opengsn.test.irelayrecipient";
 
     constructor(address forwarder) {
-        setTrustedForwarder(forwarder);
-    }
-
-    function getTrustedForwarder() public view returns(address) {
-        return trustedForwarder;
-    }
-
-    function setTrustedForwarder(address forwarder) internal {
-        trustedForwarder = forwarder;
+        _setTrustedForwarder(forwarder);
     }
 
     event Reverting(string message);

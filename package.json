@@ -45,6 +45,7 @@
   "scripts": {
     "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-hardhat",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 120000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
+    "ganache-fork-mainnet": "ganache-cli --fork https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43 --port 8544 --chainId 1 --l 10000000  --unlock 0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503",
     "postinstall": "patch-package",
     "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
     "extract_abi": "./scripts/extract_abi.js",
@@ -56,6 +57,7 @@
     "lerna-lint": "lerna run lint",
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "lerna run test --stream --no-prefix",
+    "lerna-run-test-fork": "lerna run test-fork --stream --no-prefix",
     "lerna-run-test1": "lerna run test1 --stream",
     "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 12000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test1'",
     "lerna-run-test-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test'",
@@ -84,6 +86,7 @@
     "eslint-plugin-node": "11.1.0",
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
+    "ganache-cli": "^6.12.2",
     "run-with-testrpc": "^0.3.1",
     "truffle": "5.1.26",
     "ts-node": "8.6.2",

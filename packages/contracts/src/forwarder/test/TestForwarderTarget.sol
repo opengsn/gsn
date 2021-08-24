@@ -8,7 +8,7 @@ contract TestForwarderTarget is BaseRelayRecipient {
     string public override versionRecipient = "2.2.3+opengsn.test.recipient";
 
     constructor(address forwarder) {
-        trustedForwarder = forwarder;
+        _setTrustedForwarder(forwarder);
     }
 
     // solhint-disable-next-line no-empty-blocks
