@@ -26,6 +26,7 @@ import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { toChecksumAddress } from 'ethereumjs-util'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -426,10 +427,10 @@ contract('RelayProvider', function (accounts) {
       const web3 = new Web3(relayProvider)
       const accountsBefore = await web3.eth.getAccounts()
       const newAccount = relayProvider.newAccount()
-      const address = '0x982a8cbe734cb8c29a6a7e02a3b0e4512148f6f9'
+      const address = toChecksumAddress('0x982a8cbe734cb8c29a6a7e02a3b0e4512148f6f9')
       relayProvider.addAccount('0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c')
       const accountsAfter = await web3.eth.getAccounts()
-      const newAccounts = accountsAfter.filter(value => !accountsBefore.includes(value)).map(it => it.toLowerCase())
+      const newAccounts = accountsAfter.filter(value => !accountsBefore.includes(value))
       assert.equal(newAccounts.length, 2)
       assert.include(newAccounts, address)
       assert.include(newAccounts, newAccount.address)
