@@ -38,7 +38,7 @@
     "chai-as-promised": "^7.1.1",
     "eth-sig-util": "2.5.2",
     "ethereumjs-util": "^7.1.0",
-    "hardhat": "^2.6.0",
+    "hardhat": "^2.6.1",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "sinon": "^9.2.3",

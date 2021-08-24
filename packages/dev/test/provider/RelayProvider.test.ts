@@ -131,27 +131,9 @@ contract('RelayProvider', function (accounts) {
     before(async () => {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
-      const httpProvider = new Web3.providers.HttpProvider(underlyingProvider.host)
-      // @ts-ignore
-      // const origSend = httpProvider.send.bind(httpProvider)
-      // httpProvider.send = function (r, cb) {
-      //   const now = Date.now()
-      //   console.log('>>> ', r)
-      //   // eslint-disable-next-line
-      //   if (r && r.params && r.params[0] && r.params[0].topics) {
-      //     console.log('>>> ', r.params[0].topics)
-      //   }
-      //   // eslint-disable-next-line
-      //   if (r && r.params && r.params[0] && r.params[0].fromBlock == 1 ) {
-      //     console.log('=== big wait!')
-      //   }
-      //   origSend(r, (err, res) => {
-      //     console.log('<<<', Date.now() - now, err, res)
-      //     cb(err, res)
-      //   })
-      // }
+      const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
       relayProvider = await RelayProvider.newProvider({
-        provider: httpProvider as any,
+        provider: websocketProvider as any,
         config: {
           paymasterAddress: paymasterInstance.address,
           ...config
@@ -211,7 +193,7 @@ contract('RelayProvider', function (accounts) {
       })
     })
 
-    it.skip('should subscribe to events', async () => {
+    it('should subscribe to events', async () => {
       const block = await web3.eth.getBlockNumber()
 
       const eventPromise = new Promise((resolve, reject) => {
@@ -466,9 +448,9 @@ contract('RelayProvider', function (accounts) {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: paymasterInstance.address
       }
-      const httpProvider = new Web3.providers.HttpProvider(underlyingProvider.host)
+      const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
       relayProvider = await RelayProvider.newProvider({
-        provider: httpProvider as any,
+        provider: websocketProvider as any,
         config: gsnConfig
       }).init()
       // @ts-ignore
