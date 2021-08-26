@@ -7,7 +7,7 @@ import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 
-import { BaseRelayFeeBidModeParams, GSNConfig, RelayClient } from '@opengsn/provider'
+import { arbitrumBaseRelayFeeBidModeParams, GSNConfig, RelayClient } from '@opengsn/provider'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import {
   ForwarderInstance,
@@ -33,14 +33,6 @@ const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythi
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 abiDecoder.addABI(RelayHubABI)
-
-// TODO: this must be hard-coded somewhere in GSNConfigurator!
-const baseRelayFeeBidModeParams: BaseRelayFeeBidModeParams = {
-  maxApprovalDataLength: 0,
-  maxPaymasterDataLength: 0,
-  serverGasReserve: 100000,
-  serverGasFactor: 1.1
-}
 
 contract.only('BaseRelayFee bidding mode', function ([from, relayOwner]) {
   const pctRelayFee = '10'
@@ -142,7 +134,7 @@ contract.only('BaseRelayFee bidding mode', function ([from, relayOwner]) {
         })
 
         const gsnConfig: GSNConfig = configureGSN({
-          baseRelayFeeBidModeParams,
+          baseRelayFeeBidModeParams: arbitrumBaseRelayFeeBidModeParams,
           loggerConfiguration: { logLevel: 'debug' },
           environment: environments.arbitrum,
           paymasterAddress: paymaster.address

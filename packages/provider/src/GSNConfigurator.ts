@@ -47,6 +47,13 @@ export const defaultGsnConfig: GSNConfig = {
   environment: defaultEnvironment
 }
 
+export const arbitrumBaseRelayFeeBidModeParams: BaseRelayFeeBidModeParams = {
+  maxApprovalDataLength: 0,
+  maxPaymasterDataLength: 0,
+  serverGasReserve: 100000,
+  serverGasFactor: 1.1
+}
+
 export interface LoggerConfiguration {
   logLevel: NpmLogLevel
   loggerUrl?: string
