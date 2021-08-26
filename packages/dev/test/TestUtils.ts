@@ -53,7 +53,7 @@ export async function startRelay (
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
-  args.push('--environmentName', EnvironmentsKeys.ganacheLocal)
+  args.push('--environmentName', options.environmentName)
 
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)

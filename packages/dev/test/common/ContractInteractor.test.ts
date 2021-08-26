@@ -1,6 +1,7 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
+import BN from 'bn.js'
 import { PastEventOptions } from 'web3-eth-contract'
 
 import {
@@ -98,7 +99,8 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x')
+      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x', new BN(blockGasLimit), new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'view call to \'relayCall\' reverted in client: with reason string \'Paymaster balance too low\'',
@@ -142,7 +144,8 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x')
+      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x', new BN(blockGasLimit), new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',

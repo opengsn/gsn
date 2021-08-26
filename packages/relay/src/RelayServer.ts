@@ -197,6 +197,9 @@ export class RelayServer extends EventEmitter {
   }
 
   validateFees (req: RelayTransactionRequest): void {
+    if (this.config.baseRelayFeeBidMode && parseInt(req.relayRequest.relayData.pctRelayFee) !== 0) {
+      throw new Error('This server is running in a baseRelayFee bid mode, setting pctRelayFee is forbidden!')
+    }
     // if trusted paymaster, we trust it to handle fees
     if (this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
       return
@@ -295,6 +298,24 @@ export class RelayServer extends EventEmitter {
       gasAndDataLimits,
       relayCallGasLimit: req.relayRequest.request.gas
     })
+    if (this.config.baseRelayFeeBidMode) {
+      const expectedBid = this.contractInteractor.calculateTotalBaseRelayFeeBid({
+        gasUsage: tmpMaxPossibleGas,
+        gasPrice: req.relayRequest.relayData.gasPrice,
+        gasReserve: GAS_RESERVE,
+        gasFactor: GAS_FACTOR,
+        pctRelayFee: this.config.pctRelayFee.toString(),
+        baseRelayFee: this.config.baseRelayFee
+      })
+      const message =
+        `Proposed baseRelayFee: ${req.relayRequest.relayData.baseRelayFee}` +
+        `Server estimate of its expenses: ${expectedBid.toString()}`
+      this.logger.info(message)
+      if (new BN(expectedBid).gt(new BN(req.relayRequest.relayData.baseRelayFee))) {
+        throw new Error(`Refusing to relay a transaction in a baseRelayFeeBidMode. ${message}`)
+      }
+    }
+
     const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
@@ -312,9 +333,9 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
+  async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, externalGasLimit: number, maxPossibleGas: number): Promise<void> {
     const method = this.relayHubContract.contract.methods.relayCall(
-      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, externalGasLimit)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet =
@@ -355,7 +376,13 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
     const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
-    await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
+    let externalGasLimit: number
+    if (this.config.baseRelayFeeBidMode) {
+      externalGasLimit = 0
+    } else {
+      externalGasLimit = maxPossibleGas
+    }
+    await this.validateViewCallSucceeds(req, acceptanceBudget, externalGasLimit, maxPossibleGas)
 
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
@@ -364,7 +391,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
     const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, externalGasLimit)
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,

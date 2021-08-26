@@ -1,3 +1,4 @@
+import BN from 'bn.js'
 import { EventEmitter } from 'events'
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
@@ -79,6 +80,7 @@ export class RelayClient {
   dependencies!: GSNDependencies
   private readonly rawConstructorInput: GSNUnresolvedConstructorInput
 
+  private isBaseRelayFeeBiddingMode = false
   private initialized = false
   logger!: LoggerInterface
   initializingPromise?: Promise<void>
@@ -109,6 +111,7 @@ export class RelayClient {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
+    this.isBaseRelayFeeBiddingMode = this.config.baseRelayFeeBidModeParams != null
   }
 
   /**
@@ -191,7 +194,13 @@ export class RelayClient {
     await this.dependencies.knownRelaysManager.refresh()
     gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
     if (gsnTransactionDetails.gas == null) {
-      const estimated = await this.dependencies.contractInteractor.estimateGas(gsnTransactionDetails)
+      let estimated: number
+      if (this.isBaseRelayFeeBiddingMode) {
+        // technically, on any network subtracting calldata gas from gas limit is correct, but it does matter here
+        estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+      } else {
+        estimated = await this.dependencies.contractInteractor.estimateGas(gsnTransactionDetails)
+      }
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
     const relaySelectionManager = await new RelaySelectionManager(gsnTransactionDetails, this.dependencies.knownRelaysManager, this.dependencies.httpClient, this.dependencies.pingFilter, this.logger, this.config).init()
@@ -247,12 +256,30 @@ export class RelayClient {
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayingAttempt> {
     this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
+    if (this.isBaseRelayFeeBiddingMode !== relayInfo.pingResponse.baseRelayFeeBidMode) {
+      return { error: new Error('This Relay Server is configured with different baseRelayFeeBidMode flag') }
+    }
     const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.maxAcceptanceBudget)
     const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
 
     this.emit(new GsnValidateRequestEvent())
 
-    const acceptRelayCallResult = await this.dependencies.contractInteractor.validateRelayCall(maxAcceptanceBudget, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData, this.config.maxViewableGasLimit)
+    const viewCallGasLimit =
+      await this.dependencies.contractInteractor.getMaxViewableGasLimit(httpRequest.relayRequest, this.config.maxViewableGasLimit)
+    let externalGasLimit: BN
+    if (this.config.baseRelayFeeBidModeParams == null) {
+      externalGasLimit = viewCallGasLimit
+    } else {
+      externalGasLimit = new BN(0)
+    }
+    const acceptRelayCallResult =
+      await this.dependencies.contractInteractor.validateRelayCall(
+        maxAcceptanceBudget,
+        httpRequest.relayRequest,
+        httpRequest.metadata.signature,
+        httpRequest.metadata.approvalData,
+        externalGasLimit,
+        viewCallGasLimit)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {
@@ -284,7 +311,7 @@ export class RelayClient {
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error }
     }
-    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
+    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction, this.isBaseRelayFeeBiddingMode)) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return {
@@ -352,12 +379,41 @@ export class RelayClient {
         relayWorker
       }
     }
+    if (this.isBaseRelayFeeBiddingMode) {
+      relayRequest.relayData.pctRelayFee = '0x0'
+      const gasUsage = this.dependencies.contractInteractor.estimateMaxPossibleGas({
+        relayRequest,
+        relayInfo,
+        maxPaymasterDataLength: this.config.baseRelayFeeBidModeParams?.maxPaymasterDataLength ?? 0,
+        maxApprovalDataLength: this.config.baseRelayFeeBidModeParams?.maxApprovalDataLength ?? 0
+      })
+      relayRequest.relayData.baseRelayFee =
+        await this.dependencies.contractInteractor.calculateTotalBaseRelayFeeBid({
+          gasUsage,
+          gasPrice,
+          gasReserve: this.config.baseRelayFeeBidModeParams?.serverGasReserve ?? 0,
+          gasFactor: this.config.baseRelayFeeBidModeParams?.serverGasFactor ?? 1,
+          pctRelayFee: relayInfo.relayInfo.pctRelayFee,
+          baseRelayFee: relayInfo.relayInfo.baseRelayFee
+        })
+    }
 
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = await this.dependencies.asyncPaymasterData(relayRequest)
     this.emit(new GsnSignRequestEvent())
     const signature = await this.dependencies.accountManager.sign(relayRequest)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
+    if (this.config.baseRelayFeeBidModeParams != null) {
+      if (toBuffer(relayRequest.relayData.paymasterData).length >
+        this.config.baseRelayFeeBidModeParams.maxPaymasterDataLength) {
+        throw new Error('actual paymasterData larger than maxPaymasterDataLength')
+      }
+      if (toBuffer(approvalData).length >
+        this.config.baseRelayFeeBidModeParams.maxApprovalDataLength) {
+        throw new Error('actual approvalData larger than maxApprovalDataLength')
+      }
+    }
+
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.dependencies.contractInteractor.getTransactionCount(relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap

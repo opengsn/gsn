@@ -28,7 +28,8 @@ export class RelayedTransactionValidator {
   validateRelayResponse (
     request: RelayTransactionRequest,
     maxAcceptanceBudget: number,
-    returnedTx: PrefixedHexString
+    returnedTx: PrefixedHexString,
+    baseRelayFeeBiddingMode: boolean
   ): boolean {
     const transaction = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
     if (transaction.to == null) {
@@ -56,7 +57,7 @@ export class RelayedTransactionValidator {
       relayRequest: request.relayRequest,
       signature: request.metadata.signature,
       approvalData: request.metadata.approvalData,
-      externalGasLimit
+      externalGasLimit: baseRelayFeeBiddingMode ? '0x0' : externalGasLimit
     })
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress

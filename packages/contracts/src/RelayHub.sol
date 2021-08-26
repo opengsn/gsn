@@ -130,6 +130,11 @@ contract RelayHub is IRelayHub, Ownable {
         require(maxAcceptanceBudget >= gasAndDataLimits.acceptanceBudget, "acceptance budget too high");
         require(gasAndDataLimits.acceptanceBudget >= gasAndDataLimits.preRelayedCallGasLimit, "acceptance budget too low");
 
+        if (config.baseRelayFeeBidMode) {
+            require(externalGasLimit == 0, "baseRelayFeeMode gas must be 0");
+            maxPossibleGas = 0;
+            return (gasAndDataLimits, maxPossibleGas);
+        }
 
         uint256 externalCallDataCost = externalGasLimit - initialGasLeft - config.externalCallDataCostOverhead;
         uint256 txDataCostPerByte = externalCallDataCost/msg.data.length;
@@ -221,7 +226,7 @@ contract RelayHub is IRelayHub, Ownable {
         // RelayCallStatus value.
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasAndDataLimits,
-                _tmpInitialGas - gasleft(),
+                config.baseRelayFeeBidMode ? 0 : _tmpInitialGas - gasleft(),
                 vars.maxPossibleGas
                 )
         );
@@ -256,7 +261,7 @@ contract RelayHub is IRelayHub, Ownable {
             }
         }
         // We now perform the actual charge calculation, based on the measured gas used
-        uint256 gasUsed = (externalGasLimit - gasleft()) + config.gasOverhead;
+        uint256 gasUsed = config.baseRelayFeeBidMode ? 0 : (externalGasLimit - gasleft()) + config.gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
@@ -349,7 +354,7 @@ contract RelayHub is IRelayHub, Ownable {
             IPaymaster.postRelayedCall.selector,
             vars.recipientContext,
             vars.relayedCallSuccess,
-            totalInitialGas - gasleft(), /*gasUseWithoutPost*/
+            config.baseRelayFeeBidMode ? 0 : totalInitialGas - gasleft(), /*gasUseWithoutPost*/
             relayRequest.relayData
         );
 
@@ -384,6 +389,9 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
+        if(config.baseRelayFeeBidMode){
+            return relayData.baseRelayFee;
+        }
         return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 
