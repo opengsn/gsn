@@ -162,6 +162,7 @@ export class ContractInteractor {
   }
 
   async init (): Promise<ContractInteractor> {
+    const initStartTimestamp = Date.now()
     this.logger.debug('interactor init start')
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
@@ -178,6 +179,7 @@ export class ContractInteractor {
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
+    this.logger.debug(`client init finished in ${Date.now() - initStartTimestamp} ms`)
     return this
   }
 
@@ -206,7 +208,7 @@ export class ContractInteractor {
       this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
       this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
       this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
-        this._validateVersion(version)
+        this._validateVersion(version, 'Paymaster')
         return version
       })
     ])
@@ -233,13 +235,13 @@ export class ContractInteractor {
     }
     const hub = this.relayHubInstance
     const version = await hub.versionHub()
-    this._validateVersion(version)
+    this._validateVersion(version, 'RelayHub')
   }
 
-  _validateVersion (version: string): void {
+  _validateVersion (version: string, contractName: string): void {
     const versionSatisfied = this.versionManager.isRequiredVersionSatisfied(version)
     if (!versionSatisfied) {
-      throw new Error(`Provided Hub version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
+      throw new Error(`Provided ${contractName} version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
     }
   }
 
@@ -334,18 +336,21 @@ export class ContractInteractor {
     approvalData: PrefixedHexString,
     externalGasLimit: BN,
     viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+    if (viewCallGasLimit == null || relayRequest.relayData.gasPrice == null) {
+      throw new Error('validateRelayCall: invalid input')
+    }
     const relayHub = this.relayHubInstance
     try {
-      const encodedRelayCall = this.encodeABI({
+      let encodedData = {
         maxAcceptanceBudget,
         relayRequest,
         signature,
         approvalData,
         externalGasLimit
-      })
+      }
+      const encodedRelayCall = this.encodeABI(encodedData)
       const res: string = await new Promise((resolve, reject) => {
-        // @ts-ignore
-        this.web3.currentProvider.send({
+        const rpcPayload = {
           jsonrpc: '2.0',
           id: 1,
           method: 'eth_call',
@@ -359,7 +364,10 @@ export class ContractInteractor {
             },
             'latest'
           ]
-        }, (err: any, res: { result: string }) => {
+        }
+        this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(encodedData)}`)
+        // @ts-ignore
+        this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string }) => {
           const revertMsg = this._decodeRevertFromResponse(err, res)
           if (revertMsg != null) {
             reject(new Error(revertMsg))
@@ -397,12 +405,20 @@ export class ContractInteractor {
     }
   }
 
-  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: number): Promise<BN> {
-    const blockGasLimit = toBN(maxViewableGasLimit)
-    const workerBalance = toBN(await this.getBalance(relayRequest.relayData.relayWorker))
-    const workerGasLimit = workerBalance.div(toBN(
-      parseInt(relayRequest.relayData.gasPrice) === 0 ? Number.MAX_SAFE_INTEGER : relayRequest.relayData.gasPrice))
-    return BN.min(blockGasLimit, workerGasLimit)
+  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: IntString): Promise<BN> {
+    const maxViewableGasLimitBN = toBN(maxViewableGasLimit)
+    const gasPrice = toBN(relayRequest.relayData.gasPrice)
+    if (gasPrice.eqn(0)) {
+      return maxViewableGasLimitBN
+    }
+    let workerBalanceString = await this.getBalance(relayRequest.relayData.relayWorker)
+    if (workerBalanceString == null) {
+      this.logger.error('getMaxViewableGasLimit: failed to get relay worker balance')
+      workerBalanceString = '0'
+    }
+    const workerBalance = toBN(workerBalanceString)
+    const workerGasLimit = workerBalance.div(gasPrice)
+    return BN.min(maxViewableGasLimitBN, workerGasLimit)
   }
 
   /**
@@ -665,6 +681,9 @@ export class ContractInteractor {
     pctRelayFee: IntString
     baseRelayFee: IntString
   }): IntString {
+    if (_.gasPrice == null || _.pctRelayFee == null || _.baseRelayFee == null) {
+      throw new Error('calculateTotalBaseRelayFeeBid: invalid input')
+    }
     const maxPossibleGas = _.gasReserve + Math.floor(_.gasUsage * _.gasFactor)
     const maxPossibleTxCost = new BN(_.gasPrice).muln(maxPossibleGas)
     const eventualAgreedTransactionEthPrice =
@@ -672,8 +691,9 @@ export class ContractInteractor {
         .mul(new BN(_.pctRelayFee).addn(100)).divn(100)
         .add(new BN(_.baseRelayFee))
     this.logger.debug(
-      `estimateArbitrumTransactionCost: applied pctRelayFee(${_.pctRelayFee})\n` +
+      `calculateTotalBaseRelayFeeBid: applied pctRelayFee(${_.pctRelayFee})\n` +
       `to estimated max possible tx cost(${maxPossibleTxCost.toString()})\n` +
+      `(uses ${maxPossibleGas} [original usage: ${_.gasUsage}] gas at ${_.gasPrice} wei per gas)\n` +
       `added requested baseRelayFee(${_.baseRelayFee})\n` +
       `signing transaction that pays to the relay: ${eventualAgreedTransactionEthPrice.toString()}`
     )
@@ -681,7 +701,7 @@ export class ContractInteractor {
   }
 
   /**
-   * @returns maximum possible gas consumption by this relayed call
+   * @returns result - maximum possible gas consumption by this relayed call
    * (calculated on chain by RelayHub.verifyGasAndDataLimits)
    */
   calculateTransactionMaxPossibleGas (
@@ -690,16 +710,28 @@ export class ContractInteractor {
       gasAndDataLimits: PaymasterGasAndDataLimits
       relayCallGasLimit: string
     }): number {
+    const msgDataLength = toBuffer(_.msgData).length
     const msgDataGasCostInsideTransaction =
       new BN(this.relayHubConfiguration.dataGasCostPerByte)
-        .muln(toBuffer(_.msgData).length)
+        .muln(msgDataLength)
         .toNumber()
-    return parseInt(this.relayHubConfiguration.gasOverhead.toString()) +
+    const calldataCost = this.calculateCalldataCost(_.msgData)
+    const result = parseInt(this.relayHubConfiguration.gasOverhead.toString()) +
       msgDataGasCostInsideTransaction +
-      this.calculateCalldataCost(_.msgData) +
+      calldataCost +
       parseInt(_.relayCallGasLimit) +
       parseInt(_.gasAndDataLimits.preRelayedCallGasLimit.toString()) +
       parseInt(_.gasAndDataLimits.postRelayedCallGasLimit.toString())
+    this.logger.debug(`
+input:\n${JSON.stringify(_)}
+msgDataLength: ${msgDataLength}
+calldataCost: ${calldataCost}
+msgDataGasCostInsideTransaction: ${msgDataGasCostInsideTransaction}
+environment: ${JSON.stringify(this.environment)}
+relayHubConfiguration: ${JSON.stringify(this.relayHubConfiguration)}
+calculateTransactionMaxPossibleGas: result: ${result}
+`)
+    return result
   }
 
   calculateCalldataCost (msgData: string): number {
@@ -711,6 +743,9 @@ export class ContractInteractor {
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
   async getGasPrice (): Promise<IntString> {
     const gasPriceFromNode = await this.web3.eth.getGasPrice()
+    if (gasPriceFromNode == null) {
+      throw new Error('getGasPrice: node returned null value')
+    }
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     if (!this.environment.getGasPriceFactor) {
       this.logger.warn('Environment not set')

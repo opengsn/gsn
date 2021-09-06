@@ -43,7 +43,8 @@ export const defaultGsnConfig: GSNConfig = {
   jsonStringifyRequest: false,
   auditorsCount: 1,
   clientId: '1',
-  maxViewableGasLimit: 10000000,
+  requestValidBlocks: '6000',
+  maxViewableGasLimit: '10000000',
   environment: defaultEnvironment
 }
 
@@ -90,7 +91,8 @@ export interface GSNConfig {
   paymasterAddress?: Address
   clientId: IntString
   auditorsCount: number
-  maxViewableGasLimit: number
+  requestValidBlocks: IntString
+  maxViewableGasLimit: IntString
   environment: Environment
   baseRelayFeeBidModeParams?: BaseRelayFeeBidModeParams
 }

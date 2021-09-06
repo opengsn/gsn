@@ -14,6 +14,13 @@ import { ReputationManager, ReputationManagerConfiguration } from './ReputationM
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
+export enum LoggingProviderMode {
+  NONE,
+  DURATION,
+  ALL,
+  CHATTY
+}
+
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
   ownerAddress: string
@@ -30,7 +37,7 @@ export interface ServerConfigParams {
   checkInterval: number
   readyTimeout: number
   devMode: boolean
-  loggingProvider: boolean
+  loggingProvider: LoggingProviderMode
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
   // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
@@ -117,7 +124,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
-  loggingProvider: false,
+  loggingProvider: LoggingProviderMode.NONE,
   runPenalizer: true,
   logLevel: 'debug',
   loggerUrl: '',
@@ -165,7 +172,7 @@ const ConfigParamsTypes = {
   checkInterval: 'number',
   readyTimeout: 'number',
   devMode: 'boolean',
-  loggingProvider: 'boolean',
+  loggingProvider: 'number',
   logLevel: 'string',
 
   loggerUrl: 'string',

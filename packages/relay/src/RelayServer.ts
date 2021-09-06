@@ -178,7 +178,10 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
+    let requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
+    if (this.config.baseRelayFeeBidMode) {
+      requestGasPrice = parseInt(req.metadata.minAcceptableGasPrice)
+    }
     if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
         `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
@@ -197,8 +200,11 @@ export class RelayServer extends EventEmitter {
   }
 
   validateFees (req: RelayTransactionRequest): void {
-    if (this.config.baseRelayFeeBidMode && parseInt(req.relayRequest.relayData.pctRelayFee) !== 0) {
-      throw new Error('This server is running in a baseRelayFee bid mode, setting pctRelayFee is forbidden!')
+    if (this.config.baseRelayFeeBidMode) {
+      if (parseInt(req.relayRequest.relayData.pctRelayFee) !== 0) {
+        throw new Error('This server is running in a baseRelayFee bid mode, setting pctRelayFee is forbidden!')
+      }
+      return
     }
     // if trusted paymaster, we trust it to handle fees
     if (this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
@@ -301,7 +307,7 @@ export class RelayServer extends EventEmitter {
     if (this.config.baseRelayFeeBidMode) {
       const expectedBid = this.contractInteractor.calculateTotalBaseRelayFeeBid({
         gasUsage: tmpMaxPossibleGas,
-        gasPrice: req.relayRequest.relayData.gasPrice,
+        gasPrice: req.metadata.minAcceptableGasPrice,
         gasReserve: GAS_RESERVE,
         gasFactor: GAS_FACTOR,
         pctRelayFee: this.config.pctRelayFee.toString(),
@@ -390,6 +396,12 @@ returnValue        | ${viewRelayCallRet.returnValue}
     // Send relayed transaction
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
+    let gasPrice: string
+    if (this.config.baseRelayFeeBidMode) {
+      gasPrice = req.metadata.minAcceptableGasPrice
+    } else {
+      gasPrice = req.relayRequest.relayData.gasPrice
+    }
     const method = this.relayHubContract.contract.methods.relayCall(
       acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, externalGasLimit)
     const details: SendTransactionDetails =
@@ -400,7 +412,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
         destination: req.metadata.relayHubAddress,
         gasLimit: maxPossibleGas,
         creationBlockNumber: currentBlock,
-        gasPrice: req.relayRequest.relayData.gasPrice
+        gasPrice
       }
     const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
@@ -514,6 +526,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   async init (): Promise<void> {
+    const initStartTimestamp = Date.now()
     this.logger.debug('server init start')
     if (this.initialized) {
       throw new Error('_init was already called')
@@ -559,6 +572,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
     // Assume started server is not registered until _worker figures stuff out
     this.registrationManager.printNotRegisteredMessage()
+    this.logger.debug(`server init finished in ${Date.now() - initStartTimestamp} ms`)
   }
 
   async replenishServer (workerIndex: number, currentBlock: number): Promise<PrefixedHexString[]> {

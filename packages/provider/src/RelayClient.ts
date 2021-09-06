@@ -37,7 +37,6 @@ import {
 } from './GsnEvents'
 
 // forwarder requests are signed with expiration time.
-const REQUEST_VALID_BLOCKS = 6000 // roughly a day
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -340,7 +339,7 @@ export class RelayClient {
 
     // valid that many blocks into the future.
     const validUntilPromise = this.dependencies.contractInteractor.getBlockNumber()
-      .then((num: number) => (num + REQUEST_VALID_BLOCKS).toString())
+      .then((num: number) => (new BN(this.config.requestValidBlocks).addn(num)).toString())
 
     const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
     const relayWorker = relayInfo.pingResponse.relayWorkerAddress
@@ -379,7 +378,9 @@ export class RelayClient {
         relayWorker
       }
     }
+    const minAcceptableGasPrice = relayRequest.relayData.gasPrice
     if (this.isBaseRelayFeeBiddingMode) {
+      relayRequest.relayData.gasPrice = '0x0'
       relayRequest.relayData.pctRelayFee = '0x0'
       const gasUsage = this.dependencies.contractInteractor.estimateMaxPossibleGas({
         relayRequest,
@@ -420,6 +421,7 @@ export class RelayClient {
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
     const metadata: RelayMetadata = {
+      minAcceptableGasPrice,
       relayHubAddress,
       signature,
       approvalData,
@@ -547,7 +549,7 @@ export function _dumpRelayingResult (relayingResult: RelayingResult): string {
       const err = relayingResult.pingErrors.get(e)
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const error = err?.message ?? err?.toString() ?? ''
-      str += `\n${e} => ${error}\n`
+      str += `\n${e} => ${error} stack:${err?.stack}\n`
     })
   }
   if (relayingResult.relayingErrors.size > 0) {
@@ -556,7 +558,7 @@ export function _dumpRelayingResult (relayingResult: RelayingResult): string {
       const err = relayingResult.relayingErrors.get(e)
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const error = err?.message ?? err?.toString() ?? ''
-      str += `${e} => ${error}`
+      str += `${e} => ${error} stack:${err?.stack}`
     })
   }
   return str

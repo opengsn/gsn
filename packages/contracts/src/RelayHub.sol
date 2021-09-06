@@ -132,6 +132,7 @@ contract RelayHub is IRelayHub, Ownable {
 
         if (config.baseRelayFeeBidMode) {
             require(externalGasLimit == 0, "baseRelayFeeMode gas must be 0");
+            require(relayRequest.relayData.gasPrice == 0, "baseRelayFeeMode gasPrice must be0");
             maxPossibleGas = 0;
             return (gasAndDataLimits, maxPossibleGas);
         }

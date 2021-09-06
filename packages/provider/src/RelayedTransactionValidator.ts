@@ -1,5 +1,6 @@
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { toHex } from 'web3-utils'
 
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 
@@ -39,19 +40,19 @@ export class RelayedTransactionValidator {
       throw new Error('tx signature must be defined')
     }
     this.logger.info(`returnedTx:
-    v:        ${bufferToHex(transaction.v.toBuffer())}
-    r:        ${bufferToHex(transaction.r.toBuffer())}
-    s:        ${bufferToHex(transaction.s.toBuffer())}
+    v:        ${toHex(transaction.v)}
+    r:        ${toHex(transaction.r)}
+    s:        ${toHex(transaction.s)}
     to:       ${transaction.to.toString()}
     data:     ${bufferToHex(transaction.data)}
-    gasLimit: ${bufferToHex(transaction.gasLimit.toBuffer())}
-    gasPrice: ${bufferToHex(transaction.gasPrice.toBuffer())}
-    value:    ${bufferToHex(transaction.value.toBuffer())}
+    gasLimit: ${toHex(transaction.gasLimit)}
+    gasPrice: ${toHex(transaction.gasPrice)}
+    value:    ${toHex(transaction.value)}
     `)
 
-    const signer = bufferToHex(transaction.getSenderAddress().toBuffer())
+    const signer = transaction.getSenderAddress().toString()
 
-    const externalGasLimit = bufferToHex(transaction.gasLimit.toBuffer())
+    const externalGasLimit = toHex(transaction.gasLimit)
     const relayRequestAbiEncode = this.contractInteractor.encodeABI({
       maxAcceptanceBudget,
       relayRequest: request.relayRequest,
@@ -66,7 +67,7 @@ export class RelayedTransactionValidator {
     }
 
     if (
-      isSameAddress(bufferToHex(transaction.to.toBuffer()), relayHubAddress) &&
+      isSameAddress(transaction.to.toString(), relayHubAddress) &&
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
@@ -84,7 +85,7 @@ export class RelayedTransactionValidator {
       return true
     } else {
       console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)
-      console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to.toBuffer()), signer)
+      console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), transaction.to.toString(), signer)
       return false
     }
   }

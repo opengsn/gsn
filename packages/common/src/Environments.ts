@@ -77,7 +77,7 @@ const ganacheLocal: Environment = {
 
 /* begin Arbitrum-specific Environment */
 const arbitrumRelayHubConfigurationOverride: Partial<RelayHubConfiguration> = {
-  gasOverhead: 0,
+  gasOverhead: 1000000,
   postOverhead: 0,
   minimumStake: 1e16.toString(),
   maxGasCostPerCalldataByte: 0,
