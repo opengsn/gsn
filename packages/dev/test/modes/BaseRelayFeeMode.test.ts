@@ -1,14 +1,12 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
+import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import chai from 'chai'
-import sinonChai from 'sinon-chai'
-import chaiAsPromised from 'chai-as-promised'
 
-import { arbitrumBaseRelayFeeBidModeParams, GSNConfig, RelayClient } from '@opengsn/provider'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import {
   ForwarderInstance,
   PenalizerInstance, RelayHubInstance,
@@ -16,15 +14,17 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
 } from '@opengsn/contracts'
-import { configureGSN, deployHub, startRelay, stopRelay } from '../TestUtils'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { arbitrumBaseRelayFeeBidModeParams, GSNConfig, RelayClient } from '@opengsn/provider'
 import { environments } from '@opengsn/common/dist/Environments'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
+import { configureGSN, deployHub, startRelay, stopRelay } from '../TestUtils'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -38,7 +38,7 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 
 abiDecoder.addABI(RelayHubABI)
 
-contract.skip('BaseRelayFee bidding mode', function (accounts: Truffle.Accounts) {
+contract('BaseRelayFee bidding mode', function (accounts: Truffle.Accounts) {
   const from = accounts[0]
   const relayOwner = accounts[1]
 
@@ -107,37 +107,9 @@ contract.skip('BaseRelayFee bidding mode', function (accounts: Truffle.Accounts)
       })
     })
 
-    // TODO: this test is not specific to a BRF bid-mode, move to CI tests
-    describe('ContractInteractor', function () {
-      describe('#estimateGasWithoutCalldata()', function () {
-        it('should calculate gas used for calculation only', async function () {})
-        it('should throw if calldataGasCost estimation exceeds originalGasEstimation', async function () {})
-      })
-
-      describe('#estimateMaxPossibleGas()', function () {
-
-      })
-
-      describe('#calculateTotalBaseRelayFeeBid()', function () {
-
-      })
-
-      describe('#calculateTransactionMaxPossibleGas()', function () {
-
-      })
-      describe('#calculateCalldataCost()', function () {
-
-      })
-    })
-
-    describe('RelayClient', function () {
-      it('should throw if input parameters are incorrect')
-      it('should throw if attempting to use a relay server that is not in baseRelayFee bidding mode')
-    })
-
-    // TODO: this test is not specific to a BRF bid-mode, move to RTV tests
+    // TODO: RelayedTransactionValidator is not currently covered by tests
     describe('RelayedTransactionValidator', function () {
-      it('should reject a transaction with a gas price below minAcceptableGasPrice', async function () {})
+      it('should reject a transaction with a gas price below minAcceptableGasPrice')
     })
 
     describe('RelayHub', function () {
@@ -149,8 +121,7 @@ contract.skip('BaseRelayFee bidding mode', function (accounts: Truffle.Accounts)
       it('should report to a Paymaster that gasUseWithoutPost is 0', async function () {})
     })
     describe('Penalizer', function () {
-      it('should not penalize externalGasLimit that does not match raw transaction data', async function () {
-      })
+      it('should not penalize externalGasLimit that does not match raw transaction data', async function () {})
     })
   })
 

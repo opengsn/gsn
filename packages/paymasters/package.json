@@ -29,7 +29,6 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.2.0",
-    "@opengsn/dev": "^2.2.2",
     "@opengsn/common": "^2.2.2",
     "@opengsn/contracts": "^2.2.2",
     "@opengsn/dev": "^2.2.2",

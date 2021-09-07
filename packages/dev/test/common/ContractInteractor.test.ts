@@ -24,6 +24,7 @@ import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Vers
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -301,6 +302,44 @@ contract('ContractInteractor', function (accounts) {
         assert.equal(ret.length, 300)
         assert.equal(ret[0].event, 'event1-1-75')
         assert.equal(ret[299].event, 'event300-226-300')
+      })
+    })
+  })
+
+  context('gas calculations', function () {
+    const originalGasEstimation = 100000
+    const msgDataLength = 42
+    let contractInteractor: ContractInteractor
+    let gsnTransactionDetails: GsnTransactionDetails
+
+    before(async function () {
+      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
+      await contractInteractor.init()
+      sinon.stub(contractInteractor.web3.eth, 'estimateGas').resolves(originalGasEstimation)
+    })
+
+    context('#estimateGasWithoutCalldata()', function () {
+      it('should calculate gas used for calculation only', async function () {
+        gsnTransactionDetails = {
+          from: accounts[0],
+          to: accounts[0],
+          data: '0x' + 'ff'.repeat(msgDataLength),
+          clientId: '1'
+        }
+        const estimation = await contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+        const expectedEstimation = originalGasEstimation - msgDataLength * defaultEnvironment.gtxdatanonzero
+        assert.equal(estimation, expectedEstimation)
+      })
+
+      it('should throw if calldataGasCost estimation exceeds originalGasEstimation', async function () {
+        gsnTransactionDetails = {
+          from: accounts[0],
+          to: accounts[0],
+          data: '0x' + 'ff'.repeat(msgDataLength * 10000),
+          clientId: '1'
+        }
+        await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
+          .to.eventually.be.rejectedWith('calldataGasCost exceeded originalGasEstimation')
       })
     })
   })
