@@ -341,7 +341,7 @@ export class ContractInteractor {
     }
     const relayHub = this.relayHubInstance
     try {
-      let encodedData = {
+      const encodedData = {
         maxAcceptanceBudget,
         relayRequest,
         signature,
@@ -411,10 +411,10 @@ export class ContractInteractor {
     if (gasPrice.eqn(0)) {
       return maxViewableGasLimitBN
     }
-    let workerBalanceString = await this.getBalance(relayRequest.relayData.relayWorker)
+    const workerBalanceString = await this.getBalance(relayRequest.relayData.relayWorker)
     if (workerBalanceString == null) {
       this.logger.error('getMaxViewableGasLimit: failed to get relay worker balance')
-      workerBalanceString = '0'
+      return maxViewableGasLimitBN
     }
     const workerBalance = toBN(workerBalanceString)
     const workerGasLimit = workerBalance.div(gasPrice)
@@ -552,7 +552,10 @@ export class ContractInteractor {
           let attempts = 0
           while (true) {
             try {
-              const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
+              const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, {
+                fromBlock,
+                toBlock
+              }))
               relayEventParts.push(pastEvents)
               break
             } catch (e) {

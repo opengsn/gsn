@@ -19,8 +19,12 @@ import {
 import { configureGSN, deployHub, startRelay, stopRelay } from '../TestUtils'
 import { environments } from '@opengsn/common/dist/Environments'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
+
+import { ServerTestEnvironment } from '../ServerTestEnvironment'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -34,7 +38,10 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 
 abiDecoder.addABI(RelayHubABI)
 
-contract.only('BaseRelayFee bidding mode', function ([from, relayOwner]) {
+contract.skip('BaseRelayFee bidding mode', function (accounts: Truffle.Accounts) {
+  const from = accounts[0]
+  const relayOwner = accounts[1]
+
   const pctRelayFee = '10'
   const baseRelayFee = '1000000000000'
 
@@ -64,8 +71,40 @@ contract.only('BaseRelayFee bidding mode', function ([from, relayOwner]) {
 
   describe('unit tests', function () {
     describe('RelayServer', function () {
-      it('should reject a request if a baseRelayFee bid is too low', async function () {})
-      it('should reject a request if it specifies gasPrice or pctRelayFee', async function () {})
+      let env: ServerTestEnvironment
+      let req: RelayTransactionRequest
+
+      before(async function () {
+        env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
+        const relayClientConfig: Partial<GSNConfig> = {}
+        await env.init(relayClientConfig)
+        const overrideParams: Partial<ServerConfigParams> = {
+          baseRelayFeeBidMode: true
+        }
+        await env.newServerInstance(overrideParams)
+        await env.clearServerStorage()
+        req = await env.createRelayHttpRequest()
+      })
+
+      it('should reject a request if a baseRelayFee bid is too low', async function () {
+        req.relayRequest.relayData.baseRelayFee = '7777'
+        try {
+          await env.relayServer.createRelayTransaction(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, 'Refusing to relay a transaction in a baseRelayFeeBidMode. Proposed baseRelayFee: 7777')
+        }
+      })
+
+      it('should reject a request if it specifies pctRelayFee', async function () {
+        req.relayRequest.relayData.pctRelayFee = '7777'
+        try {
+          await env.relayServer.createRelayTransaction(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, 'This server is running in a baseRelayFee bid mode, setting pctRelayFee is forbidden!')
+        }
+      })
     })
 
     // TODO: this test is not specific to a BRF bid-mode, move to CI tests
@@ -105,6 +144,7 @@ contract.only('BaseRelayFee bidding mode', function ([from, relayOwner]) {
       it('should not accept externalGasLimit other than 0', async function () {})
       it('should not accept pctRelayFee other than 0', async function () {})
       it('should not accept gasPrice other than 0', async function () {})
+      it('should not accept if baseRelayFee is higher than Paymaster balance', async function () {})
       it('should report to a Paymaster that maxPossibleGas is 0', async function () {})
       it('should report to a Paymaster that gasUseWithoutPost is 0', async function () {})
     })
@@ -161,7 +201,7 @@ contract.only('BaseRelayFee bidding mode', function ([from, relayOwner]) {
         stopRelay(relayProcess)
       })
 
-      it.only('should relay a transaction with 0 gasPrice and pctRelayFee but sufficient baseRelayFee', async function () {
+      it('should relay a transaction with 0 gasPrice and pctRelayFee but sufficient baseRelayFee', async function () {
         const relayingResult = await relayClient.relayTransaction(gsnTransactionDetails)
         const allErrorsAsString = JSON.stringify(Array.from(relayingResult.relayingErrors.values()).map(it => it.stack))
         assert.equal(relayingResult.relayingErrors.size, 0, allErrorsAsString)

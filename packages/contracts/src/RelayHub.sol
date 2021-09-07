@@ -131,10 +131,11 @@ contract RelayHub is IRelayHub, Ownable {
         require(gasAndDataLimits.acceptanceBudget >= gasAndDataLimits.preRelayedCallGasLimit, "acceptance budget too low");
 
         if (config.baseRelayFeeBidMode) {
-            require(externalGasLimit == 0, "baseRelayFeeMode gas must be 0");
-            require(relayRequest.relayData.gasPrice == 0, "baseRelayFeeMode gasPrice must be0");
-            maxPossibleGas = 0;
-            return (gasAndDataLimits, maxPossibleGas);
+            require(externalGasLimit == 0, "baseRelayFeeMode: gas must be 0");
+            require(relayRequest.relayData.gasPrice == 0, "baseRelayFeeMode: gasPrice not 0");
+            require(relayRequest.relayData.baseRelayFee <= balances[relayRequest.relayData.paymaster],
+                "Paymaster balance too low");
+            return (gasAndDataLimits, 0);
         }
 
         uint256 externalCallDataCost = externalGasLimit - initialGasLeft - config.externalCallDataCostOverhead;

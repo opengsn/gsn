@@ -14,7 +14,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { Environment, EnvironmentsKeys } from '@opengsn/common'
+import { Environment } from '@opengsn/common'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
@@ -53,7 +53,6 @@ export async function startRelay (
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
-  args.push('--environmentName', options.environmentName)
 
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
@@ -78,6 +77,9 @@ export async function startRelay (
   }
   if (options.baseRelayFeeBidMode) {
     args.push('--baseRelayFeeBidMode', options.baseRelayFeeBidMode)
+  }
+  if (options.environmentName) {
+    args.push('--environmentName', options.environmentName)
   }
   const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',

@@ -44,7 +44,7 @@ export const defaultGsnConfig: GSNConfig = {
   auditorsCount: 1,
   clientId: '1',
   requestValidBlocks: '6000',
-  maxViewableGasLimit: '10000000',
+  maxViewableGasLimit: '12000000',
   environment: defaultEnvironment
 }
 

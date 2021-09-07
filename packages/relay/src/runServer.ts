@@ -23,7 +23,7 @@ import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './pe
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
-import { Environment, gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
+import { Environment, EnvironmentsKeys, gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
 
 function error (err: string): never {
   console.error(err)
@@ -67,6 +67,7 @@ async function run (): Promise<void> {
       error('missing ethereumNodeUrl')
     }
     const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
+    conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ganacheLocal
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
     if (loggingProvider !== LoggingProviderMode.NONE) {
       const orig = web3provider

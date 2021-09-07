@@ -1,3 +1,4 @@
+import BN from 'bn.js'
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toHex } from 'web3-utils'
@@ -71,8 +72,10 @@ export class RelayedTransactionValidator {
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      this.logger.info('validateRelayResponse - valid transaction response')
-
+      const minAcceptableGasPrice = baseRelayFeeBiddingMode ? request.metadata.minAcceptableGasPrice : request.relayRequest.relayData.gasPrice
+      if (transaction.gasPrice.lt(new BN(minAcceptableGasPrice))) {
+        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${minAcceptableGasPrice}`)
+      }
       const receivedNonce = transaction.nonce.toNumber()
       if (receivedNonce > request.metadata.relayMaxNonce) {
         // TODO: need to validate that client retries the same request and doesn't double-spend.
@@ -82,6 +85,7 @@ export class RelayedTransactionValidator {
         throw new Error(`Relay used a tx nonce higher than requested. Requested ${request.metadata.relayMaxNonce} got ${receivedNonce}`)
       }
 
+      this.logger.info('validateRelayResponse - valid transaction response')
       return true
     } else {
       console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)
