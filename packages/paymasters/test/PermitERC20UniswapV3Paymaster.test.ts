@@ -50,7 +50,7 @@ const MAX_POSSIBLE_GAS = 1e6
 const PERMIT_DATA_LENGTH = 0
 const POOL_FEE = 3000
 
-const TOKEN_PRE_CHARGE = toWei('1', 'ether')
+const TOKEN_PRE_CHARGE = toWei('10', 'ether')
 const GAS_PRICE = '1000000000' // 1 wei
 
 async function detectMainnet (): Promise<boolean> {
