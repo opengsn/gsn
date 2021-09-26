@@ -213,7 +213,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       // console.log('actual paid=', paid, 'gasUsed=', gasUsed, 'diff=', paid - gasUsed)
-      assert.closeTo(paid, res.receipt.gasUsed, 50)
+      assert.closeTo(paid, res.receipt.gasUsed, 100)
     })
 
     it('paymaster should not pay for requests exceeding msg.data size limit', async () => {
@@ -356,7 +356,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const paymasterPaid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       // TODO understand why there's a 2100 gas decrease (cost of sload?)
-      assert.closeTo(paymasterPaid - parseInt(gasUsed), 17100, 50)
+      assert.closeTo(paymasterPaid - parseInt(gasUsed), 17100, 100)
     })
 
     it('paymaster should not have preRelayedCall gas limit > acceptance budget', async () => {

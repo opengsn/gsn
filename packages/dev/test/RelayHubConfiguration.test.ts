@@ -238,14 +238,14 @@ contract('RelayHub Configuration',
         })
 
         it('should let owner change configuration', async function () {
-          const config: RelayHubConfiguration = {
-            gasOverhead: toBN(0xef),
-            postOverhead: toBN(0xef),
-            gasReserve: toBN(0xef),
-            maxWorkerCount: toBN(0xef),
-            minimumStake: toBN(0xef),
-            minimumUnstakeDelay: toBN(0xef),
-            maximumRecipientDeposit: toBN(0xef)
+          const config = {
+            gasOverhead: 0xef.toString(),
+            postOverhead: 0xef.toString(),
+            gasReserve: 0xef.toString(),
+            maxWorkerCount: 0xef.toString(),
+            minimumStake: 0xef.toString(),
+            minimumUnstakeDelay: 0xef.toString(),
+            maximumRecipientDeposit: 0xef.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.
