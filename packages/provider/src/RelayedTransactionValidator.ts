@@ -29,9 +29,7 @@ export class RelayedTransactionValidator {
    */
   validateRelayResponse (
     request: RelayTransactionRequest,
-    maxAcceptanceBudget: number,
-    returnedTx: PrefixedHexString,
-    baseRelayFeeBiddingMode: boolean
+    returnedTx: PrefixedHexString
   ): boolean {
     const transaction = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
     if (transaction.to == null) {
@@ -53,13 +51,11 @@ export class RelayedTransactionValidator {
 
     const signer = transaction.getSenderAddress().toString()
 
-    const externalGasLimit = toHex(transaction.gasLimit)
     const relayRequestAbiEncode = this.contractInteractor.encodeABI({
-      maxAcceptanceBudget,
       relayRequest: request.relayRequest,
       signature: request.metadata.signature,
       approvalData: request.metadata.approvalData,
-      externalGasLimit: baseRelayFeeBiddingMode ? '0x0' : externalGasLimit
+      maxAcceptanceBudget: request.metadata.maxAcceptanceBudget
     })
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
@@ -72,9 +68,8 @@ export class RelayedTransactionValidator {
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      const minAcceptableGasPrice = baseRelayFeeBiddingMode ? request.metadata.minAcceptableGasPrice : request.relayRequest.relayData.gasPrice
-      if (transaction.gasPrice.lt(new BN(minAcceptableGasPrice))) {
-        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${minAcceptableGasPrice}`)
+      if (transaction.gasPrice.lt(new BN(request.relayRequest.relayData.gasPrice))) {
+        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.gasPrice}`)
       }
       const receivedNonce = transaction.nonce.toNumber()
       if (receivedNonce > request.metadata.relayMaxNonce) {

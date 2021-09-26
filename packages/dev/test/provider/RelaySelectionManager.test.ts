@@ -40,7 +40,6 @@ contract('RelaySelectionManager', function (accounts) {
     pctRelayFee: '1'
   }
   const pingResponse: PingResponse = {
-    baseRelayFeeBidMode: false,
     ownerAddress: '',
     relayWorkerAddress: '',
     relayManagerAddress: '',
@@ -119,7 +118,7 @@ contract('RelaySelectionManager', function (accounts) {
         const StakeManager = artifacts.require('StakeManager')
         const Penalizer = artifacts.require('Penalizer')
         const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-        const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
+        const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
         relayHub = await deployHub(stakeManager.address, penalizer.address)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
@@ -140,7 +139,6 @@ contract('RelaySelectionManager', function (accounts) {
       it('should fill in the details if the relay was known only by URL', async function () {
         const urlInfo: RelayInfoUrl = { relayUrl: preferredRelayUrl }
         const pingResponse: PingResponse = {
-          baseRelayFeeBidMode: false,
           relayWorkerAddress: relayManager,
           relayManagerAddress: relayManager,
           relayHubAddress: relayManager,

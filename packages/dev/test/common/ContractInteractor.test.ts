@@ -12,7 +12,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -49,8 +49,7 @@ contract('ContractInteractor', function (accounts) {
     sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     pen = await Penalizer.new(
       defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
-      defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration,
-      true)
+      defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     rh = await deployHub(sm.address, pen.address)
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
@@ -93,6 +92,7 @@ contract('ContractInteractor', function (accounts) {
           gasPrice: '1',
           pctRelayFee: '0',
           baseRelayFee: '0',
+          transactionCalldataGasUsed: '0',
           relayWorker: workerAddress,
           forwarder: constants.ZERO_ADDRESS,
           paymaster: pm.address,
@@ -101,7 +101,13 @@ contract('ContractInteractor', function (accounts) {
         }
       }
       const blockGasLimit = await contractInteractor._getBlockGasLimit()
-      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x', new BN(blockGasLimit), new BN(blockGasLimit))
+      const encodedData: RelayCallABI = {
+        maxAcceptanceBudget: '200000',
+        relayRequest,
+        signature: '0x',
+        approvalData: '0x'
+      }
+      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'view call to \'relayCall\' reverted in client: with reason string \'Paymaster balance too low\'',
@@ -138,6 +144,7 @@ contract('ContractInteractor', function (accounts) {
           gasPrice: '1',
           pctRelayFee: '0',
           baseRelayFee: '0',
+          transactionCalldataGasUsed: '0',
           relayWorker: workerAddress,
           forwarder: addr(4),
           paymaster: pm.address,
@@ -146,7 +153,13 @@ contract('ContractInteractor', function (accounts) {
         }
       }
       const blockGasLimit = await contractInteractor._getBlockGasLimit()
-      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x', new BN(blockGasLimit), new BN(blockGasLimit))
+      const encodedData: RelayCallABI = {
+        maxAcceptanceBudget: '200000',
+        relayRequest,
+        signature: '0x',
+        approvalData: '0x'
+      }
+      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',
@@ -165,7 +178,12 @@ contract('ContractInteractor', function (accounts) {
       await contractInteractor.init()
       provider.reset()
       const nonce = await web3.eth.getTransactionCount('0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc')
-      let transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', gasPrice: 105157849, nonce }, contractInteractor.getRawTxOptions())
+      let transaction = Transaction.fromTxData({
+        to: constants.ZERO_ADDRESS,
+        gasLimit: '0x5208',
+        gasPrice: 105157849,
+        nonce
+      }, contractInteractor.getRawTxOptions())
       transaction = transaction.sign(Buffer.from('8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba', 'hex'))
       sampleTransactionData = '0x' + transaction.serialize().toString('hex')
       sampleTransactionHash = '0x' + transaction.hash().toString('hex')

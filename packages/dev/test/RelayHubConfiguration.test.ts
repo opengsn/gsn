@@ -62,8 +62,7 @@ contract('RelayHub Configuration',
       stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
       penalizer = await Penalizer.new(
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
-        defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration,
-        true)
+        defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address)
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
@@ -97,6 +96,7 @@ contract('RelayHub Configuration',
         relayData: {
           baseRelayFee: baseRelayFee.toString(),
           pctRelayFee: pctRelayFee.toString(),
+          transactionCalldataGasUsed: '0',
           gasPrice: gasPrice.toString(),
           relayWorker,
           forwarder,
@@ -194,7 +194,7 @@ contract('RelayHub Configuration',
         await evmMineMany(blocksForward)
 
         await expectRevert(
-          relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, externalGasLimit, {
+          relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
             from: relayWorker,
             gasPrice,
             gas: externalGasLimit
@@ -203,7 +203,7 @@ contract('RelayHub Configuration',
       })
 
       it('should not revert before deprecationBlock set', async function () {
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, externalGasLimit, {
+        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit
@@ -215,7 +215,7 @@ contract('RelayHub Configuration',
         const block = parseInt((await web3.eth.getBlockNumber()).toString()) + blocksForward
         await relayHub.deprecateHub(block)
         await evmMineMany(blocksForward - 3)
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, externalGasLimit, {
+        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit
@@ -244,10 +244,8 @@ contract('RelayHub Configuration',
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             maximumRecipientDeposit: 0xef.toString(),
-            dataGasCostPerByte: 0xef.toString(),
-            externalCallDataCostOverhead: 0xef.toString(),
-            maxGasCostPerCalldataByte: 0xef.toString(),
-            baseRelayFeeBidMode: false
+            transactionCalldataGasUsedOverhead: 0xef.toString(),
+            maxGasCostPerCalldataByte: 0xef.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.

@@ -9,7 +9,7 @@ export interface RelayMetadata {
   relayHubAddress: Address
   relayMaxNonce: number
   signature: PrefixedHexString
-  minAcceptableGasPrice: PrefixedHexString
+  maxAcceptanceBudget: PrefixedHexString
 }
 
 export interface RelayTransactionRequest {
@@ -32,6 +32,7 @@ export const RelayTransactionRequestShape = {
       gasPrice: ow.string,
       pctRelayFee: ow.string,
       baseRelayFee: ow.string,
+      transactionCalldataGasUsed: ow.string,
       relayWorker: ow.string,
       paymaster: ow.string,
       paymasterData: ow.string,
@@ -44,9 +45,6 @@ export const RelayTransactionRequestShape = {
     relayHubAddress: ow.string,
     relayMaxNonce: ow.number,
     signature: ow.string,
-    // in baseRelayFee bidding mode, gas price is not signed and cannot enforced by the RelayHub
-    // client will consider relay transactions with low signed gas price as invalid
-    // NOTE: this is not related to fee but the fact that Arbitrum will treat tx gasPrice as maximum, not actual price
-    minAcceptableGasPrice: ow.string
+    maxAcceptanceBudget: ow.string
   }
 }

@@ -43,7 +43,6 @@ import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { arbitrumBaseRelayFeeBidModeParams, EmptyDataCallback } from '@opengsn/provider'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -113,7 +112,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
@@ -453,7 +452,6 @@ contract('RelayClient', function (accounts) {
       await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
-        baseRelayFeeBidMode: false,
         ownerAddress: relayOwner,
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
@@ -576,7 +574,10 @@ contract('RelayClient', function (accounts) {
         const relayClient =
           new RelayClient({
             provider: underlyingProvider,
-            config: gsnConfig,
+            config: Object.assign({}, gsnConfig, {
+              maxApprovalDataLength: 5,
+              maxPaymasterDataLength: 2
+            }),
             overrideDependencies: {
               asyncApprovalData,
               asyncPaymasterData
@@ -589,42 +590,18 @@ contract('RelayClient', function (accounts) {
       })
     })
 
-    describe('in baseRelayFeeBiddingMode', function () {
+    it('should throw if variable length parameters are bigger than reported', async function () {
       const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
         return '0x' + 'ff'.repeat(101)
       }
 
-      let relayClient: RelayClient
+      relayClient.dependencies.asyncApprovalData = getLongData
+      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
 
-      before(async function () {
-        const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
-        const paramsOverride = { maxPaymasterDataLength: 100, maxApprovalDataLength: 100 }
-        const gsnConfig: Partial<GSNConfig> = {
-          loggerConfiguration,
-          baseRelayFeeBidModeParams: Object.assign({}, arbitrumBaseRelayFeeBidModeParams, paramsOverride),
-          paymasterAddress: paymaster.address
-        }
-        relayClient = await new RelayClient({ provider: underlyingProvider, config: gsnConfig }).init()
-      })
-
-      it('should throw if variable length parameters are bigger than reported', async function () {
-        relayClient.dependencies.asyncApprovalData = getLongData
-        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
-          .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
-
-        relayClient.dependencies.asyncPaymasterData = getLongData
-        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
-          .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
-      })
-
-      it('should return error if attempting to use a relay server that is not in baseRelayFee bidding mode', async function () {
-        relayClient.dependencies.asyncApprovalData = EmptyDataCallback
-        relayClient.dependencies.asyncPaymasterData = EmptyDataCallback
-        const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
-        assert.isUndefined(transaction)
-        // @ts-ignore
-        assert.equal(error.message, 'This Relay Server is configured with different baseRelayFeeBidMode flag')
-      })
+      relayClient.dependencies.asyncPaymasterData = getLongData
+      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
     })
   })
 

@@ -45,14 +45,9 @@ export const defaultGsnConfig: GSNConfig = {
   clientId: '1',
   requestValidBlocks: '6000',
   maxViewableGasLimit: '12000000',
-  environment: defaultEnvironment
-}
-
-export const arbitrumBaseRelayFeeBidModeParams: BaseRelayFeeBidModeParams = {
+  environment: defaultEnvironment,
   maxApprovalDataLength: 0,
-  maxPaymasterDataLength: 0,
-  serverGasReserve: 100000,
-  serverGasFactor: 1.1
+  maxPaymasterDataLength: 0
 }
 
 export interface LoggerConfiguration {
@@ -94,14 +89,8 @@ export interface GSNConfig {
   requestValidBlocks: IntString
   maxViewableGasLimit: IntString
   environment: Environment
-  baseRelayFeeBidModeParams?: BaseRelayFeeBidModeParams
-}
-
-export interface BaseRelayFeeBidModeParams {
   maxApprovalDataLength: number
   maxPaymasterDataLength: number
-  serverGasReserve: number
-  serverGasFactor: number
 }
 
 export interface GSNDependencies {

@@ -2,14 +2,16 @@ import chalk from 'chalk'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
+import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
 import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
@@ -32,8 +34,6 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
-import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 import Timeout = NodeJS.Timeout
 
 /**
@@ -139,7 +139,6 @@ export class RelayServer extends EventEmitter {
       }
     }
     return {
-      baseRelayFeeBidMode: this.config.baseRelayFeeBidMode,
       relayWorkerAddress: this.workerAddress,
       relayManagerAddress: this.managerAddress,
       relayHubAddress: this.relayHubContract?.address ?? '',
@@ -178,10 +177,7 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    let requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
-    if (this.config.baseRelayFeeBidMode) {
-      requestGasPrice = parseInt(req.metadata.minAcceptableGasPrice)
-    }
+    const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
     if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
       throw new Error(
         `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
@@ -200,12 +196,6 @@ export class RelayServer extends EventEmitter {
   }
 
   validateFees (req: RelayTransactionRequest): void {
-    if (this.config.baseRelayFeeBidMode) {
-      if (parseInt(req.relayRequest.relayData.pctRelayFee) !== 0) {
-        throw new Error('This server is running in a baseRelayFee bid mode, setting pctRelayFee is forbidden!')
-      }
-      return
-    }
     // if trusted paymaster, we trust it to handle fees
     if (this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
       return
@@ -256,20 +246,26 @@ export class RelayServer extends EventEmitter {
     const paymaster = req.relayRequest.relayData.paymaster
     let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymaster)
     let acceptanceBudget: number
-
-    const dummyBlockGas = 12e6
     acceptanceBudget = this.config.maxAcceptanceBudget
 
-    const msgData = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget,
-      req.relayRequest,
-      req.metadata.signature,
-      req.metadata.approvalData,
-      dummyBlockGas
-    ).encodeABI()
+    const relayCallAbiInput: RelayCallABI = {
+      maxAcceptanceBudget: acceptanceBudget.toString(),
+      relayRequest: req.relayRequest,
+      signature: req.metadata.signature,
+      approvalData: req.metadata.approvalData
+    }
+    const msgData = this.contractInteractor.encodeABI(relayCallAbiInput)
+    const relayTransactionCalldataGasUsedCalculation = this.contractInteractor.calculateCalldataCost(msgData)
+    const message =
+      `Client signed transactionCalldataGasUsed: ${req.relayRequest.relayData.transactionCalldataGasUsed}` +
+      `Server estimate of its transactionCalldata gas expenses: ${relayTransactionCalldataGasUsedCalculation}`
+    this.logger.info(message)
+    if (toBN(relayTransactionCalldataGasUsedCalculation).gt(toBN(req.relayRequest.relayData.transactionCalldataGasUsed))) {
+      throw new Error(`Refusing to relay a transaction due to calldata cost. ${message}`)
+    }
     const msgDataLength = toBuffer(msgData).length
     // estimated cost of transferring the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc)
-    const msgDataGasCostInsideTransaction = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
+    // const msgDataGasCostInsideTransaction = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
     if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
@@ -284,6 +280,7 @@ export class RelayServer extends EventEmitter {
         }
         throw new Error(message)
       }
+      const msgDataGasCostInsideTransaction = msgDataLength * this.environment.dataOnChainHandlingGasCostPerByte
       const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
       if (paymasterAcceptanceBudget + msgDataGasCostInsideTransaction > acceptanceBudget) {
         if (!this._isTrustedPaymaster(paymaster)) {
@@ -304,23 +301,6 @@ export class RelayServer extends EventEmitter {
       gasAndDataLimits,
       relayCallGasLimit: req.relayRequest.request.gas
     })
-    if (this.config.baseRelayFeeBidMode) {
-      const expectedBid = this.contractInteractor.calculateTotalBaseRelayFeeBid({
-        gasUsage: tmpMaxPossibleGas,
-        gasPrice: req.metadata.minAcceptableGasPrice,
-        gasReserve: GAS_RESERVE,
-        gasFactor: GAS_FACTOR,
-        pctRelayFee: this.config.pctRelayFee.toString(),
-        baseRelayFee: this.config.baseRelayFee
-      })
-      const message =
-        `Proposed baseRelayFee: ${req.relayRequest.relayData.baseRelayFee}` +
-        `Server estimate of its expenses: ${expectedBid.toString()}`
-      this.logger.info(message)
-      if (new BN(expectedBid).gt(new BN(req.relayRequest.relayData.baseRelayFee))) {
-        throw new Error(`Refusing to relay a transaction in a baseRelayFeeBidMode. ${message}`)
-      }
-    }
 
     const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
     const maxCharge =
@@ -339,9 +319,10 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, externalGasLimit: number, maxPossibleGas: number): Promise<void> {
+  async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
+    this.logger.debug(`validateViewCallSucceeds: ${JSON.stringify(arguments)}`)
     const method = this.relayHubContract.contract.methods.relayCall(
-      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, externalGasLimit)
+      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet =
@@ -381,14 +362,12 @@ returnValue        | ${viewRelayCallRet.returnValue}
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
     }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
-    const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
-    let externalGasLimit: number
-    if (this.config.baseRelayFeeBidMode) {
-      externalGasLimit = 0
-    } else {
-      externalGasLimit = maxPossibleGas
-    }
-    await this.validateViewCallSucceeds(req, acceptanceBudget, externalGasLimit, maxPossibleGas)
+    const {
+      acceptanceBudget,
+      maxPossibleGas
+    } = await this.validatePaymasterGasAndDataLimits(req)
+
+    await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
 
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
@@ -396,14 +375,9 @@ returnValue        | ${viewRelayCallRet.returnValue}
     // Send relayed transaction
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
-    let gasPrice: string
-    if (this.config.baseRelayFeeBidMode) {
-      gasPrice = req.metadata.minAcceptableGasPrice
-    } else {
-      gasPrice = req.relayRequest.relayData.gasPrice
-    }
+    const gasPrice = req.relayRequest.relayData.gasPrice
     const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, externalGasLimit)
+      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,

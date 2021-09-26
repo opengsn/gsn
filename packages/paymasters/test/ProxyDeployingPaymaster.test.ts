@@ -159,6 +159,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       },
       relayData: {
         ...gasData,
+        transactionCalldataGasUsed: '0',
         relayWorker,
         paymaster: paymaster.address,
         paymasterData,
@@ -239,7 +240,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
             )
           )
           const gas = 5000000
-          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', gas, {
+          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', {
             from: relayWorker,
             gas
           })
@@ -388,6 +389,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         },
         relayData: {
           ...gasData,
+          transactionCalldataGasUsed: '0',
           relayWorker,
           paymaster: paymaster.address,
           paymasterData: '0x',

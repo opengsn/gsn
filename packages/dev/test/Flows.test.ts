@@ -55,7 +55,7 @@ options.forEach(params => {
       const gasPriceFactor = 1.2
 
       sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-      const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
+      const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       rhub = await deployHub(sm.address, p.address)
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
@@ -98,7 +98,9 @@ options.forEach(params => {
 
         relayClientConfig = {
           loggerConfiguration: { logLevel: 'error' },
-          paymasterAddress: paymaster.address
+          paymasterAddress: paymaster.address,
+          maxApprovalDataLength: 4,
+          maxPaymasterDataLength: 4
         }
 
         const relayProvider = await RelayProvider.newProvider(

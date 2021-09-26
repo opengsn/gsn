@@ -58,7 +58,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       gas: 10000000
     })
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     hub = await deployHub(stakeManager.address, penalizer.address)
     token = await TestToken.at(await uniswap.tokenAddress())
 
@@ -92,6 +92,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         forwarder: forwarder.address,
         pctRelayFee: '1',
         baseRelayFee: '0',
+        transactionCalldataGasUsed: '0',
         gasPrice: await web3.eth.getGasPrice(),
         paymasterData,
         clientId: '1'
@@ -207,7 +208,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const gas = 5000000
 
       const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-      const relayCall: any = await hub.relayCall.call(1e06, req, wrongSignature, '0x', gas, {
+      const relayCall: any = await hub.relayCall.call(1e06, req, wrongSignature, '0x', {
         from: relay,
         gas
       })
@@ -244,7 +245,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const preBalance = await hub.balanceOf(paymaster.address)
 
       const externalGasLimit = 5e6.toString()
-      const ret = await hub.relayCall(10e6, _relayRequest, signature, '0x', externalGasLimit, {
+      const ret = await hub.relayCall(10e6, _relayRequest, signature, '0x', {
         from: relay,
         gasPrice: 1e9,
         gas: externalGasLimit

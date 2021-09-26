@@ -446,6 +446,16 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           }
         })
 
+        it('should reject a request if a transactionCalldataGasUsed  is too low', async function () {
+          req.relayRequest.relayData.transactionCalldataGasUsed = '500'
+          try {
+            await env.relayServer.validatePaymasterGasAndDataLimits(req)
+            assert.fail()
+          } catch (e) {
+            assert.include(e.message, 'Refusing to relay a transaction due to calldata cost. Client signed transactionCalldataGasUsed: 500')
+          }
+        })
+
         it('should accept a transaction from paymaster returning below configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
           const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
@@ -473,7 +483,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.metadata.signature = INCORRECT_ECDSA_SIGNATURE
         try {
-          await env.relayServer.validateViewCallSucceeds(req, 200000, 2000000, 2000000)
+          await env.relayServer.validateViewCallSucceeds(req, 200000, 2000000)
           assert.fail()
         } catch (e) {
           assert.include(e.message, 'Paymaster rejected in server: FWD: signature mismatch')

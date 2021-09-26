@@ -11,6 +11,7 @@ export interface Environment {
   readonly maxUnstakeDelay: number
   readonly gtxdatanonzero: number
   readonly gtxdatazero: number
+  readonly dataOnChainHandlingGasCostPerByte: number
   readonly getGasPriceFactor: number
 }
 
@@ -22,22 +23,19 @@ const defaultStakeManagerMaxUnstakeDelay: number = 10000000
 
 const defaultPenalizerConfiguration: PenalizerConfiguration = {
   penalizeBlockDelay: 5,
-  penalizeBlockExpiration: 60000,
-  penalizeExternalGasLimit: true
+  penalizeBlockExpiration: 60000
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 32048,
-  postOverhead: 12036,
+  gasOverhead: 54409,
+  postOverhead: 18627,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
   maximumRecipientDeposit: 2e18.toString(),
-  dataGasCostPerByte: 13,
   maxGasCostPerCalldataByte: 16,
-  baseRelayFeeBidMode: false,
-  externalCallDataCostOverhead: 22380
+  transactionCalldataGasUsedOverhead: 22380
 }
 
 // TODO add as constructor params to paymaster instead of constants
@@ -52,6 +50,7 @@ const defaultPaymasterConfiguration: PaymasterConfiguration = {
 }
 
 const ethereumMainnet: Environment = {
+  dataOnChainHandlingGasCostPerByte: 13,
   chainId: 1,
   relayHubConfiguration: defaultRelayHubConfiguration,
   penalizerConfiguration: defaultPenalizerConfiguration,
@@ -64,6 +63,7 @@ const ethereumMainnet: Environment = {
 }
 
 const ganacheLocal: Environment = {
+  dataOnChainHandlingGasCostPerByte: 13,
   chainId: 1337,
   relayHubConfiguration: defaultRelayHubConfiguration,
   penalizerConfiguration: defaultPenalizerConfiguration,
@@ -81,8 +81,7 @@ const arbitrumRelayHubConfigurationOverride: Partial<RelayHubConfiguration> = {
   postOverhead: 0,
   minimumStake: 1e16.toString(),
   maxGasCostPerCalldataByte: 0,
-  baseRelayFeeBidMode: true,
-  externalCallDataCostOverhead: 700000
+  transactionCalldataGasUsedOverhead: 700000
 }
 
 const arbitrumRelayHubConfiguration: RelayHubConfiguration =
@@ -90,18 +89,10 @@ const arbitrumRelayHubConfiguration: RelayHubConfiguration =
     defaultRelayHubConfiguration,
     arbitrumRelayHubConfigurationOverride)
 
-const arbitrumPenalizerConfigurationOverride: Partial<PenalizerConfiguration> = {
-  penalizeExternalGasLimit: false
-}
-
-const arbitrumPenalizerConfiguration: PenalizerConfiguration =
-  Object.assign({},
-    defaultPenalizerConfiguration,
-    arbitrumPenalizerConfigurationOverride)
-
 const arbitrum: Environment = {
+  dataOnChainHandlingGasCostPerByte: 13, // TODO: check if memory allocation costs in Arbitrum are unchanged!
   relayHubConfiguration: arbitrumRelayHubConfiguration,
-  penalizerConfiguration: arbitrumPenalizerConfiguration,
+  penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
   maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
   chainId: 421611,

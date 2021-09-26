@@ -11,5 +11,4 @@ export interface PingResponse {
   chainId?: IntString
   ready: boolean
   version: string
-  baseRelayFeeBidMode: boolean
 }

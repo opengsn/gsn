@@ -22,14 +22,10 @@ interface IRelayHub {
         uint256 minimumUnstakeDelay;
         // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
         uint256 minimumStake;
-        // relayCall()'s msg.data upper bound gas cost per byte
-        uint256 dataGasCostPerByte;
         // relayCalls() minimal gas overhead when calculating cost of putting tx on chain.
-        uint256 externalCallDataCostOverhead;
+        uint256 transactionCalldataGasUsedOverhead;
         // maximum cost of sending a calldata byte, prevents Relays from malicious claim of enormous external gas limit
         uint256 maxGasCostPerCalldataByte;
-        // if set to true, requested gas price will be forced to be 0, making gas used calculation redundant
-        bool baseRelayFeeBidMode;
     }
 
     event RelayHubConfigured(RelayHubConfig config);
@@ -154,15 +150,13 @@ interface IRelayHub {
     /// @param signature - client's EIP-712 signature over the relayRequest struct
     /// @param approvalData: dapp-specific data forwarded to preRelayedCall.
     ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the Paymaster
-    /// @param externalGasLimit - the value passed as gasLimit to the transaction.
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
         uint maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        bytes calldata approvalData,
-        uint externalGasLimit
+        bytes calldata approvalData
     )
     external
     returns (bool paymasterAccepted, bytes memory returnValue);
@@ -184,8 +178,6 @@ interface IRelayHub {
 
     /// Returns the whole hub configuration
     function getConfiguration() external view returns (RelayHubConfig memory config);
-
-    function calldataGasCost(uint256 length) external view returns (uint256);
 
     function workerToManager(address worker) external view returns(address);
 

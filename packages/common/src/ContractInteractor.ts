@@ -49,7 +49,7 @@ import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNCo
 import { sleep } from './Utils.js'
 import { Environment } from './Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
-import { RelayInfo } from './types/RelayInfo'
+import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { constants } from './Constants'
 
 import TransactionDetails = Truffle.TransactionDetails
@@ -61,6 +61,22 @@ export interface ConstructorParams {
   deployment?: GSNContractsDeployment
   maxPageSize: number
   environment: Environment
+}
+
+export interface RelayCallABI {
+  signature: PrefixedHexString
+  relayRequest: RelayRequest
+  approvalData: PrefixedHexString
+  maxAcceptanceBudget: PrefixedHexString
+}
+
+export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
+  return {
+    relayRequest: r.relayRequest,
+    signature: r.metadata.signature,
+    approvalData: r.metadata.approvalData,
+    maxAcceptanceBudget: r.metadata.maxAcceptanceBudget
+  }
 }
 
 export class ContractInteractor {
@@ -330,25 +346,14 @@ export class ContractInteractor {
    * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
    */
   async validateRelayCall (
-    maxAcceptanceBudget: number,
-    relayRequest: RelayRequest,
-    signature: PrefixedHexString,
-    approvalData: PrefixedHexString,
-    externalGasLimit: BN,
+    relayCallABIData: RelayCallABI,
     viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
-    if (viewCallGasLimit == null || relayRequest.relayData.gasPrice == null) {
+    if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.gasPrice == null) {
       throw new Error('validateRelayCall: invalid input')
     }
     const relayHub = this.relayHubInstance
     try {
-      const encodedData = {
-        maxAcceptanceBudget,
-        relayRequest,
-        signature,
-        approvalData,
-        externalGasLimit
-      }
-      const encodedRelayCall = this.encodeABI(encodedData)
+      const encodedRelayCall = this.encodeABI(relayCallABIData)
       const res: string = await new Promise((resolve, reject) => {
         const rpcPayload = {
           jsonrpc: '2.0',
@@ -356,16 +361,16 @@ export class ContractInteractor {
           method: 'eth_call',
           params: [
             {
-              from: relayRequest.relayData.relayWorker,
+              from: relayCallABIData.relayRequest.relayData.relayWorker,
               to: relayHub.address,
-              gasPrice: toHex(relayRequest.relayData.gasPrice),
+              gasPrice: toHex(relayCallABIData.relayRequest.relayData.gasPrice),
               gas: toHex(viewCallGasLimit),
               data: encodedRelayCall
             },
             'latest'
           ]
         }
-        this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(encodedData)}`)
+        this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(relayCallABIData)}`)
         // @ts-ignore
         this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string }) => {
           const revertMsg = this._decodeRevertFromResponse(err, res)
@@ -452,15 +457,9 @@ export class ContractInteractor {
   }
 
   encodeABI (
-    _: {
-      maxAcceptanceBudget: BN | number
-      relayRequest: RelayRequest
-      signature: PrefixedHexString
-      approvalData: PrefixedHexString
-      externalGasLimit: BN | IntString
-    }
+    _: RelayCallABI
   ): PrefixedHexString {
-    return this.relayCallMethod(_.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData, _.externalGasLimit).encodeABI()
+    return this.relayCallMethod(_.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
@@ -647,63 +646,6 @@ export class ContractInteractor {
   }
 
   /**
-   * Without knowing the actual size of the 'bytes' parameters, calculate the maximum possible transaction cost
-   * based on configurable max sizes of these parameters
-   */
-  estimateMaxPossibleGas (_: {
-    relayRequest: RelayRequest
-    relayInfo: RelayInfo
-    maxPaymasterDataLength: number
-    maxApprovalDataLength: number
-  }): number {
-    // NOTE: it is safe to put fake data here because it will be overridden with real value later
-    _.relayRequest.relayData.paymasterData = '0x' + 'ff'.repeat(_.maxPaymasterDataLength)
-    const msgDataFake = this.encodeABI({
-      maxAcceptanceBudget: constants.MAX_UINT256,
-      relayRequest: _.relayRequest,
-      signature: '0x' + 'ff'.repeat(65),
-      approvalData: '0x' + 'ff'.repeat(_.maxApprovalDataLength),
-      externalGasLimit: '0'
-    })
-
-    if (this.paymasterGasAndDataLimits == null) {
-      throw new Error('PaymasterGasAndDataLimits value not initialized')
-    }
-    return this.calculateTransactionMaxPossibleGas({
-      gasAndDataLimits: this.paymasterGasAndDataLimits,
-      msgData: msgDataFake,
-      relayCallGasLimit: _.relayRequest.request.gas
-    })
-  }
-
-  calculateTotalBaseRelayFeeBid (_: {
-    gasUsage: number
-    gasPrice: string
-    gasReserve: number
-    gasFactor: number
-    pctRelayFee: IntString
-    baseRelayFee: IntString
-  }): IntString {
-    if (_.gasPrice == null || _.pctRelayFee == null || _.baseRelayFee == null) {
-      throw new Error('calculateTotalBaseRelayFeeBid: invalid input')
-    }
-    const maxPossibleGas = _.gasReserve + Math.floor(_.gasUsage * _.gasFactor)
-    const maxPossibleTxCost = new BN(_.gasPrice).muln(maxPossibleGas)
-    const eventualAgreedTransactionEthPrice =
-      maxPossibleTxCost
-        .mul(new BN(_.pctRelayFee).addn(100)).divn(100)
-        .add(new BN(_.baseRelayFee))
-    this.logger.debug(
-      `calculateTotalBaseRelayFeeBid: applied pctRelayFee(${_.pctRelayFee})\n` +
-      `to estimated max possible tx cost(${maxPossibleTxCost.toString()})\n` +
-      `(uses ${maxPossibleGas} [original usage: ${_.gasUsage}] gas at ${_.gasPrice} wei per gas)\n` +
-      `added requested baseRelayFee(${_.baseRelayFee})\n` +
-      `signing transaction that pays to the relay: ${eventualAgreedTransactionEthPrice.toString()}`
-    )
-    return eventualAgreedTransactionEthPrice.toString()
-  }
-
-  /**
    * @returns result - maximum possible gas consumption by this relayed call
    * (calculated on chain by RelayHub.verifyGasAndDataLimits)
    */
@@ -715,7 +657,7 @@ export class ContractInteractor {
     }): number {
     const msgDataLength = toBuffer(_.msgData).length
     const msgDataGasCostInsideTransaction =
-      new BN(this.relayHubConfiguration.dataGasCostPerByte)
+      new BN(this.environment.dataOnChainHandlingGasCostPerByte)
         .muln(msgDataLength)
         .toNumber()
     const calldataCost = this.calculateCalldataCost(_.msgData)
@@ -737,7 +679,46 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return result
   }
 
-  calculateCalldataCost (msgData: string): number {
+  /**
+   * @param relayCallABI actual inputs of the 'relayCall' method
+   * @return {PrefixedHexString} exact calculation of how much gas sending this data will consume
+   */
+  calculateCalldataCostAbi (relayCallABI: RelayCallABI): PrefixedHexString {
+    const encodedData = this.encodeABI({ ...relayCallABI })
+    return `0x${this.calculateCalldataCost(encodedData).toString(16)}`
+  }
+
+  /**
+   * @param relayRequestOriginal request input of the 'relayCall' method with some fields not yet initialized
+   * @param variableFieldSizes configurable sizes of 'relayCall' parameters with variable size types
+   * @return {PrefixedHexString} top boundary estimation of how much gas sending this data will consume
+   */
+  estimateCalldataCostForRequest (
+    relayRequestOriginal: RelayRequest,
+    variableFieldSizes: { maxApprovalDataLength: number, maxPaymasterDataLength: number }
+  ): PrefixedHexString {
+    // protecting the original object from temporary modifications done here
+    const relayRequest: RelayRequest =
+      Object.assign(
+        {}, relayRequestOriginal,
+        {
+          relayData: Object.assign({}, relayRequestOriginal.relayData)
+        })
+    relayRequest.relayData.transactionCalldataGasUsed = '0xffffffffff'
+    relayRequest.relayData.paymasterData = '0x' + 'ff'.repeat(variableFieldSizes.maxPaymasterDataLength)
+    const maxAcceptanceBudget = constants.MAX_UINT256.toString()
+    const signature = '0x' + 'ff'.repeat(65)
+    const approvalData = '0x' + 'ff'.repeat(variableFieldSizes.maxApprovalDataLength)
+    const encodedData = this.encodeABI({
+      relayRequest,
+      signature,
+      approvalData,
+      maxAcceptanceBudget
+    })
+    return `0x${this.calculateCalldataCost(encodedData).toString(16)}`
+  }
+
+  calculateCalldataCost (msgData: PrefixedHexString): number {
     const { calldataZeroBytes, calldataNonzeroBytes } = calculateCalldataBytesZeroNonzero(msgData)
     return calldataZeroBytes * this.environment.gtxdatazero +
       calldataNonzeroBytes * this.environment.gtxdatanonzero

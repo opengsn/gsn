@@ -82,7 +82,6 @@ export interface ServerConfigParams {
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
 
-  baseRelayFeeBidMode: boolean
   environmentName?: string
 }
 
@@ -105,7 +104,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
   maxAcceptanceBudget:
     defaultEnvironment.paymasterConfiguration.acceptanceBudget +
-    parseInt(defaultEnvironment.relayHubConfiguration.dataGasCostPerByte.toString()) *
+    parseInt(defaultEnvironment.dataOnChainHandlingGasCostPerByte.toString()) *
     defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
@@ -149,8 +148,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
-  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
-  baseRelayFeeBidMode: false
+  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER
 }
 
 const ConfigParamsTypes = {
@@ -218,8 +216,7 @@ const ConfigParamsTypes = {
   coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number',
-  environmentName: 'string',
-  baseRelayFeeBidMode: 'boolean'
+  environmentName: 'string'
 } as any
 
 // by default: no waiting period - use VersionRegistry entries immediately.

@@ -111,15 +111,10 @@ contract RelayHub is IRelayHub, Ownable {
         emit Withdrawn(account, dest, amount);
     }
 
-    function calldataGasCost(uint256 length) public override view returns (uint256) {
-        return config.dataGasCostPerByte.mul(length);
-}
-
     function verifyGasAndDataLimits(
         uint256 maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
-        uint256 initialGasLeft,
-        uint256 externalGasLimit
+        uint256 initialGasLeft
     )
     private
     view
@@ -127,35 +122,11 @@ contract RelayHub is IRelayHub, Ownable {
         gasAndDataLimits =
             IPaymaster(relayRequest.relayData.paymaster).getGasAndDataLimits{gas:50000}();
         require(msg.data.length <= gasAndDataLimits.calldataSizeLimit, "msg.data exceeded limit" );
+
         require(maxAcceptanceBudget >= gasAndDataLimits.acceptanceBudget, "acceptance budget too high");
         require(gasAndDataLimits.acceptanceBudget >= gasAndDataLimits.preRelayedCallGasLimit, "acceptance budget too low");
 
-        if (config.baseRelayFeeBidMode) {
-            require(externalGasLimit == 0, "baseRelayFeeMode: gas must be 0");
-            require(relayRequest.relayData.gasPrice == 0, "baseRelayFeeMode: gasPrice not 0");
-            require(relayRequest.relayData.baseRelayFee <= balances[relayRequest.relayData.paymaster],
-                "Paymaster balance too low");
-            return (gasAndDataLimits, 0);
-        }
-
-        uint256 externalCallDataCost = externalGasLimit - initialGasLeft - config.externalCallDataCostOverhead;
-        uint256 txDataCostPerByte = externalCallDataCost/msg.data.length;
-        require(txDataCostPerByte <= config.maxGasCostPerCalldataByte, "invalid externalGasLimit");
-
-        uint256 dataGasCost = calldataGasCost(msg.data.length);
-        maxPossibleGas =
-            config.gasOverhead.add(
-            gasAndDataLimits.preRelayedCallGasLimit).add(
-            gasAndDataLimits.postRelayedCallGasLimit).add(
-            relayRequest.request.gas).add(
-            dataGasCost).add(
-            externalCallDataCost);
-
-        // This transaction must have enough gas to forward the call to the recipient with the requested amount, and not
-        // run out of gas later in this function.
-        require(
-            externalGasLimit >= maxPossibleGas,
-            "no gas for innerRelayCall");
+        maxPossibleGas = relayRequest.relayData.transactionCalldataGasUsed + initialGasLeft;
 
         uint256 maxPossibleCharge = calculateCharge(
             maxPossibleGas,
@@ -181,15 +152,13 @@ contract RelayHub is IRelayHub, Ownable {
         uint256 gasBeforeInner;
         bytes retData;
         address relayManager;
-        uint256 dataGasCost;
     }
 
     function relayCall(
         uint maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        bytes calldata approvalData,
-        uint externalGasLimit
+        bytes calldata approvalData
     )
     external
     override
@@ -207,11 +176,9 @@ contract RelayHub is IRelayHub, Ownable {
             isRelayManagerStaked(vars.relayManager),
             "relay manager not staked"
         );
-        require(relayRequest.relayData.gasPrice <= tx.gasprice, "Invalid gas price");
-        require(externalGasLimit <= block.gaslimit, "Impossible gas limit");
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
-             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft, externalGasLimit);
+             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
 
         RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
 
@@ -222,13 +189,22 @@ contract RelayHub is IRelayHub, Ownable {
         uint256 innerGasLimit = gasleft()*63/64- config.gasReserve;
         vars.gasBeforeInner = gasleft();
 
-        uint256 _tmpInitialGas = innerGasLimit + externalGasLimit + config.gasOverhead + config.postOverhead;
+        /*
+        Preparing to calculate "gasUseWithoutPost":
+        AGL = calldataGasUsage + vars.initialGasLeft :: approximate gas limit for current transaction
+        GU1 = AGL - gasleft(called right before innerRelayCall) :: gas actually used by current transaction until that point
+        GU2 = innerGasLimit - gasleft(called in the end inside the innerRelayCall) :: gas actually used by innerRelayCall
+        GWP1 = GU1 + GU2 :: gas actually used before calling postRelayCall
+        TGO = config.gasOverhead + config.postOverhead :: extra that will be added to the charge to cover hidden costs
+        GWP = GWP1 + TGO :: transaction "gas used without postRelayCall"
+        */
+        uint256 _tmpInitialGas = relayRequest.relayData.transactionCalldataGasUsed + vars.initialGasLeft + innerGasLimit + config.gasOverhead + config.postOverhead;
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasAndDataLimits,
-                config.baseRelayFeeBidMode ? 0 : _tmpInitialGas - gasleft(),
+                _tmpInitialGas - gasleft(), /* totalInitialGas */
                 vars.maxPossibleGas
                 )
         );
@@ -240,11 +216,10 @@ contract RelayHub is IRelayHub, Ownable {
         }
     }
     {
-        vars.dataGasCost = calldataGasCost(msg.data.length);
         if (!vars.success) {
             //Failure cases where the PM doesn't pay
             if (vars.status == RelayCallStatus.RejectedByPreRelayed ||
-                    (vars.innerGasUsed <= vars.gasAndDataLimits.acceptanceBudget.add(vars.dataGasCost)) && (
+                    (vars.innerGasUsed <= vars.gasAndDataLimits.acceptanceBudget.add(relayRequest.relayData.transactionCalldataGasUsed)) && (
                     vars.status == RelayCallStatus.RejectedByForwarder ||
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
             )) {
@@ -263,7 +238,7 @@ contract RelayHub is IRelayHub, Ownable {
             }
         }
         // We now perform the actual charge calculation, based on the measured gas used
-        uint256 gasUsed = config.baseRelayFeeBidMode ? 0 : (externalGasLimit - gasleft()) + config.gasOverhead;
+        uint256 gasUsed = relayRequest.relayData.transactionCalldataGasUsed + (vars.initialGasLeft - gasleft()) + config.gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
@@ -356,7 +331,7 @@ contract RelayHub is IRelayHub, Ownable {
             IPaymaster.postRelayedCall.selector,
             vars.recipientContext,
             vars.relayedCallSuccess,
-            config.baseRelayFeeBidMode ? 0 : totalInitialGas - gasleft(), /*gasUseWithoutPost*/
+            totalInitialGas - gasleft(), /*gasUseWithoutPost*/
             relayRequest.relayData
         );
 
@@ -391,9 +366,6 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
-        if(config.baseRelayFeeBidMode){
-            return relayData.baseRelayFee;
-        }
         return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 

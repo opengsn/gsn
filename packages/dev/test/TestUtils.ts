@@ -75,9 +75,6 @@ export async function startRelay (
   if (options.workerTargetBalance) {
     args.push('--workerTargetBalance', options.workerTargetBalance)
   }
-  if (options.baseRelayFeeBidMode) {
-    args.push('--baseRelayFeeBidMode', options.baseRelayFeeBidMode)
-  }
   if (options.environmentName) {
     args.push('--environmentName', options.environmentName)
   }

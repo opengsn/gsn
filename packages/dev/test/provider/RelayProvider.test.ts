@@ -1,10 +1,11 @@
-import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { HttpProvider } from 'web3-core'
-import { ChildProcessWithoutNullStreams } from 'child_process'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
-import chaiAsPromised from 'chai-as-promised'
 import Web3 from 'web3'
+import chaiAsPromised from 'chai-as-promised'
+import { ChildProcessWithoutNullStreams } from 'child_process'
+import { HttpProvider } from 'web3-core'
+import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
+import { toChecksumAddress } from 'ethereumjs-util'
 
 import { BaseTransactionReceipt, RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
@@ -26,7 +27,6 @@ import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { toChecksumAddress } from 'ethereumjs-util'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -62,6 +62,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
     relayData: {
       pctRelayFee: '1',
       baseRelayFee: '1',
+      transactionCalldataGasUsed: '0',
       gasPrice: '4494095',
       paymaster,
       paymasterData,
@@ -100,7 +101,7 @@ contract('RelayProvider', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration, true)
+    penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
@@ -344,7 +345,7 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
       const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-      const paymasterRejectedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
+      const paymasterRejectedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
         from: accounts[0],
         gas,
         gasPrice: '4494095'
@@ -362,7 +363,7 @@ contract('RelayProvider', function (accounts) {
       relayProvider = RelayProvider.newProvider({ provider: underlyingProvider, config: gsnConfig })
       await relayProvider.init()
 
-      const innerTxFailedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
+      const innerTxFailedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
         from: accounts[0],
         gas,
         gasPrice: '4494095'
@@ -373,7 +374,7 @@ contract('RelayProvider', function (accounts) {
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setRevertPreRelayCall(false)
-      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gas, {
+      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
         from: accounts[0],
         gas,
         gasPrice: '4494095'
