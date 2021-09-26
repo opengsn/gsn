@@ -191,10 +191,10 @@ contract RelayHub is IRelayHub, Ownable {
 
         /*
         Preparing to calculate "gasUseWithoutPost":
-        AGL = calldataGasUsage + vars.initialGasLeft :: approximate gas limit for current transaction
-        GU1 = AGL - gasleft(called right before innerRelayCall) :: gas actually used by current transaction until that point
-        GU2 = innerGasLimit - gasleft(called in the end inside the innerRelayCall) :: gas actually used by innerRelayCall
-        GWP1 = GU1 + GU2 :: gas actually used before calling postRelayCall
+        MPG = calldataGasUsage + vars.initialGasLeft :: max possible gas, an approximate gas limit for the current transaction
+        GU1 = MPG - gasleft(called right before innerRelayCall) :: gas actually used by current transaction until that point
+        GU2 = innerGasLimit - gasleft(called inside the innerRelayCall just before preRelayedCall) :: gas actually used by innerRelayCall before calling postRelayCall
+        GWP1 = GU1 + GU2 :: gas actually used by the entire transaction before calling postRelayCall
         TGO = config.gasOverhead + config.postOverhead :: extra that will be added to the charge to cover hidden costs
         GWP = GWP1 + TGO :: transaction "gas used without postRelayCall"
         */

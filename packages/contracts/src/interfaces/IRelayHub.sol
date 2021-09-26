@@ -22,10 +22,6 @@ interface IRelayHub {
         uint256 minimumUnstakeDelay;
         // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
         uint256 minimumStake;
-        // relayCalls() minimal gas overhead when calculating cost of putting tx on chain.
-        uint256 transactionCalldataGasUsedOverhead;
-        // maximum cost of sending a calldata byte, prevents Relays from malicious claim of enormous external gas limit
-        uint256 maxGasCostPerCalldataByte;
     }
 
     event RelayHubConfigured(RelayHubConfig config);

@@ -8,6 +8,4 @@ export interface RelayHubConfiguration {
   maximumRecipientDeposit: IntString | BN
   minimumUnstakeDelay: number | BN
   minimumStake: IntString | BN
-  maxGasCostPerCalldataByte: number | BN
-  transactionCalldataGasUsedOverhead: number | BN
 }

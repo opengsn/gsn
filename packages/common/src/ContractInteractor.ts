@@ -50,7 +50,6 @@ import { sleep } from './Utils.js'
 import { Environment } from './Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
-import { constants } from './Constants'
 
 import TransactionDetails = Truffle.TransactionDetails
 
@@ -91,7 +90,6 @@ export class ContractInteractor {
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
   relayHubConfiguration!: RelayHubConfiguration
-  paymasterGasAndDataLimits?: PaymasterGasAndDataLimits
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
@@ -207,7 +205,6 @@ export class ContractInteractor {
 
     if (this.deployment.paymasterAddress != null) {
       await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
-      this.paymasterGasAndDataLimits = await this.paymasterInstance.getGasAndDataLimits()
     } else if (this.deployment.relayHubAddress != null) {
       // TODO: this branch shouldn't exist as it's only used by the Server and can lead to broken Client configuration
       await this._resolveDeploymentFromRelayHub(this.deployment.relayHubAddress)
@@ -637,7 +634,7 @@ export class ContractInteractor {
     const originalGasEstimation = await this.web3.eth.estimateGas(gsnTransactionDetails)
     const calldataGasCost = this.calculateCalldataCost(gsnTransactionDetails.data)
     const adjustedEstimation = originalGasEstimation - calldataGasCost
-    this.logger.info(`estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
+    this.logger.debug(`estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
     if (adjustedEstimation < 0) {
       throw new Error('estimateGasWithoutCalldata: calldataGasCost exceeded originalGasEstimation\n' +
         'your Environment configuration and Ethereum node you are connected to are not compatible')
@@ -680,15 +677,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   /**
-   * @param relayCallABI actual inputs of the 'relayCall' method
-   * @return {PrefixedHexString} exact calculation of how much gas sending this data will consume
-   */
-  calculateCalldataCostAbi (relayCallABI: RelayCallABI): PrefixedHexString {
-    const encodedData = this.encodeABI({ ...relayCallABI })
-    return `0x${this.calculateCalldataCost(encodedData).toString(16)}`
-  }
-
-  /**
    * @param relayRequestOriginal request input of the 'relayCall' method with some fields not yet initialized
    * @param variableFieldSizes configurable sizes of 'relayCall' parameters with variable size types
    * @return {PrefixedHexString} top boundary estimation of how much gas sending this data will consume
@@ -706,7 +694,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
         })
     relayRequest.relayData.transactionCalldataGasUsed = '0xffffffffff'
     relayRequest.relayData.paymasterData = '0x' + 'ff'.repeat(variableFieldSizes.maxPaymasterDataLength)
-    const maxAcceptanceBudget = constants.MAX_UINT256.toString()
+    const maxAcceptanceBudget = '0xffffffffff'
     const signature = '0x' + 'ff'.repeat(65)
     const approvalData = '0x' + 'ff'.repeat(variableFieldSizes.maxApprovalDataLength)
     const encodedData = this.encodeABI({

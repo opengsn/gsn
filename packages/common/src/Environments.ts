@@ -33,9 +33,7 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
-  maximumRecipientDeposit: 2e18.toString(),
-  maxGasCostPerCalldataByte: 16,
-  transactionCalldataGasUsedOverhead: 22380
+  maximumRecipientDeposit: 2e18.toString()
 }
 
 // TODO add as constructor params to paymaster instead of constants
@@ -79,9 +77,7 @@ const ganacheLocal: Environment = {
 const arbitrumRelayHubConfigurationOverride: Partial<RelayHubConfiguration> = {
   gasOverhead: 1000000,
   postOverhead: 0,
-  minimumStake: 1e16.toString(),
-  maxGasCostPerCalldataByte: 0,
-  transactionCalldataGasUsedOverhead: 700000
+  minimumStake: 1e16.toString()
 }
 
 const arbitrumRelayHubConfiguration: RelayHubConfiguration =

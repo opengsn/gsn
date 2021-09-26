@@ -331,16 +331,19 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             gasPrice: gasPrice
           })
 
-          // As there can be some discrepancy between estimation and actual cost (zeroes in signature, etc.)
-          // we actually account for this difference this way
-          const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCostAbi({
+          const encodedData = contractInteractor.encodeABI({
             maxAcceptanceBudget: 10e6.toString(),
             relayRequest,
             signature,
             approvalData: '0x'
           })
+          // As there can be some discrepancy between estimation and actual cost (zeroes in signature, etc.)
+          // we actually account for this difference this way
+          const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCost(encodedData)
           const calldataOverchargeGas =
-            (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - parseInt(actualTransactionCalldataGasUsed))
+            (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
+          // This discrepancy should not be even close 100 gas in a transaction without paymaster, approval datas
+          assert.closeTo(calldataOverchargeGas, 0, 100)
           console.log('calldataOverchargeGas', calldataOverchargeGas)
           const resultEvent = res.logs.find(e => e.event === 'TransactionResult')
           if (len === 0) {
@@ -512,15 +515,16 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
                 // how much gas we actually spent on this tx
                 const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
-
-                const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCostAbi({
+                const encodedData = contractInteractor.encodeABI({
                   maxAcceptanceBudget: 10e6.toString(),
                   relayRequest,
                   signature,
                   approvalData: '0x'
                 })
+
+                const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCost(encodedData)
                 const calldataOverchargeGas =
-                  (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - parseInt(actualTransactionCalldataGasUsed))
+                  (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
                 const calldataOverchargeWei = gasPrice.muln(calldataOverchargeGas)
                 if (requestedFee === 0) {
                   logOverhead(weiActualCharge, workerWeiGasUsed, calldataOverchargeWei)
