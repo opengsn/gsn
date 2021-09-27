@@ -59,6 +59,7 @@ contract('ProxyRelayProvider', function () {
       loggerConfiguration: {
         logLevel: 'error'
       },
+      maxPaymasterDataLength: 32,
       paymasterAddress: paymaster.address
     }
     proxyRelayProvider = await ProxyRelayProvider.newProxyRelayProvider(

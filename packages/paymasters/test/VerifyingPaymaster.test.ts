@@ -100,6 +100,7 @@ contract('VerifyingPaymaster', ([from]) => {
         loggerConfiguration: {
           logLevel: 'error'
         },
+        maxApprovalDataLength: 132,
         paymasterAddress: pm.address
       }
       const input: GSNUnresolvedConstructorInput = {

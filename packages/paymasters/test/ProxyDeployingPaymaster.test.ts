@@ -409,6 +409,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         loggerConfiguration: {
           logLevel: 'error'
         },
+        maxPaymasterDataLength: 32,
         paymasterAddress: paymaster.address
       }
       encodedCall = counter.contract.methods.increment().encodeABI()
