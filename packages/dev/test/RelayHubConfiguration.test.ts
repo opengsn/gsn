@@ -1,7 +1,6 @@
 import BN from 'bn.js'
 import chai from 'chai'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { toBN } from 'web3-utils'
 
 import { deployHub, evmMine, evmMineMany } from './TestUtils'
 
@@ -17,7 +16,6 @@ import {
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 
 const { assert } = chai.use(chaiAsPromised)
 
