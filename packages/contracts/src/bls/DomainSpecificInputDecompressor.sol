@@ -16,14 +16,22 @@ contract DomainSpecificInputDecompressor {
     bytes4 constant METHOD_BURN = 0x00000000; // signature not currently known
     bytes4 constant METHOD_APPROVE = 0x095ea7b3;
 
-    mapping(uint256 => bytes4) public methodSignatures;
-    mapping(uint256 => address) public senders;
-    mapping(uint256 => address) public targets;
-    mapping(uint256 => address) public paymasters;
+    bytes4[] public methodSignatures;
+    address[] public senders;
+    address[] public targets;
+    address[] public paymasters;
 
-    // method-specific parameters tables
-    mapping(uint256 => address) public recipients;
+    // note: a length of an array after this value was added (zero indicates 'no value')
+    mapping(bytes4 => uint256) public reverseMethodSignatures;
+    mapping(address => uint256) public reverseSenders;
+    mapping(address => uint256) public reverseTargets;
+    mapping(address => uint256) public reversePaymasters;
 
+    // method-specific parameters tables and their reverse maps
+    address[] public recipients;
+    mapping(address => uint256) public reverseRecipients;
+
+    uint256 constant ARRAY_OFFSET = 8; // RLP ITEMS IN AN ITEM
     uint256 constant ITEM_SIZE = 8; // RLP ITEMS IN AN ITEM
     uint256 constant ID_MAX_VALUE = 0xffffffff;
 
@@ -43,63 +51,39 @@ contract DomainSpecificInputDecompressor {
         uint256[2] memory blsSignature = [values[1].toUint(), values[2].toUint()];
         uint256 batchSize = values[3].toUint();
         BLSBatchGateway.BatchItem[] memory bi = new BLSBatchGateway.BatchItem[](batchSize);
+        RLPReader.RLPItem[] memory batchItems = values[3].toList();
         for (uint256 i = 0; i < batchSize; i++) {
-            bi[i] = decodeBatchItem(values, i);
+            bi[i] = decodeBatchItem(batchItems[i].toList());
         }
         return BLSBatchGateway.Batch(bi, [uint256(1), uint256(1)], 0);
     }
 
     function decodeBatchItem(
-        RLPReader.RLPItem[] memory values,
-        uint256 i//temIndex
+        RLPReader.RLPItem[] memory values
     )
     public
     returns (
         BLSBatchGateway.BatchItem memory bi
     ) {
         // 1. read inputs
-        uint256 id = values[3 + ITEM_SIZE * i + 1].toUint();
-        uint256 nonce = values[3 + ITEM_SIZE * i + 2].toUint();
+        uint256 id = values[1].toUint();
+        uint256 nonce = values[2].toUint();
 
-        uint256 paymasterId = values[3 + ITEM_SIZE * i + 3].toUint();
-        uint256 senderId = values[3 + ITEM_SIZE * i + 4].toUint();
-        uint256 targetId = values[3 + ITEM_SIZE * i + 5].toUint();
-        RLPReader.RLPItem memory methodSignatureItem = values[3 + ITEM_SIZE * i + 6];
+        uint256 paymasterId = values[3].toUint();
+        uint256 senderId = values[4].toUint();
+        uint256 targetId = values[5].toUint();
+        RLPReader.RLPItem memory methodSignatureItem = values[6];
+        bytes memory methodData = values[7].toBytes();
 
 
         // 2. resolve values
-        bytes4 methodSignature;
-        if (methodSignatureItem.len == 5) {
-            // ?do I understand the RLP encoding correctly?
-            // encoding of a full size byte array, even if it contains leading zeroes
-            methodSignature = bytes4(bytes32(methodSignatureItem.toUint()));
-        } else {
-            uint256 methodSignatureId = methodSignatureItem.toUint();
-            methodSignature = methodSignatures[methodSignatureId];
-        }
+        bytes4 methodSignature = resolveMethodSignature(methodSignatureItem);
 
-        address paymaster;
-        // SET MAX CACHE SIZE; VALUES BIGGER THAN THAT CONSIDERED ACTUAL INPUT
-        if (paymasterId > ID_MAX_VALUE) {
-            paymaster = address(uint160(paymasterId));
-        } else {
-            paymaster = paymasters[paymasterId];
-        }
-        address sender;
-        if (senderId > ID_MAX_VALUE) {
-            sender = address(uint160(senderId));
-        } else {
-            sender = senders[paymasterId];
-        }
-        address target;
-        if (targetId > ID_MAX_VALUE) {
-            target = address(uint160(targetId));
-        } else {
-            target = targets[paymasterId];
-        }
+        address paymaster = resolveIdToAddress(paymasters, paymasterId);
+        address sender = resolveIdToAddress(senders, senderId);
+        address target = resolveIdToAddress(targets, targetId);
 
         uint256 gasLimit;
-        bytes memory methodData = values[3 + ITEM_SIZE * i + 1].toBytes();
         if (methodSignature == METHOD_TRANSFER ||
             methodSignature == METHOD_APPROVE) {
             uint256 value;
@@ -112,6 +96,64 @@ contract DomainSpecificInputDecompressor {
         } else if (methodSignature == METHOD_BURN) {
             uint256 value;
         }
+
+        // 3. Store new values into cache
+        saveBytes4ToCache(methodSignatures, reverseMethodSignatures, methodSignature);
+        saveAddressToCache(paymasters, reversePaymasters, paymaster);
+        saveAddressToCache(senders, reverseSenders, sender);
+        saveAddressToCache(targets, reverseTargets, target);
+
         bi = BLSBatchGateway.BatchItem(id, nonce, paymaster, sender, target, methodSignature, methodData, gasLimit);
+    }
+
+    function resolveIdToAddress(address[] storage addressCache, uint256 id) internal view returns (address){
+        // SET MAX CACHE SIZE; VALUES BIGGER THAN THAT CONSIDERED ACTUAL INPUT
+        if (id > ID_MAX_VALUE) {
+            return address(uint160(id));
+        } else {
+            return addressCache[id];
+        }
+        return address(0);
+    }
+
+
+    /// it is impossible to treat method signature smaller than a certain value as an id because even 0x00000000 is a valid method signature
+    /// instead, check if it was encoded as a 4-byte array or a number; client must put zeroes when calling with actual value;
+    /// THIS IS PROBLEMATIC, BETTER IDEAS??? It is not very generic/scalable
+    /// client must use actual value if its methodSignatureID is >0x00ffffff (indistinguishable)
+    function resolveMethodSignature(
+        RLPReader.RLPItem memory methodSignatureItem
+    ) internal view returns (bytes4){
+        if (methodSignatureItem.len == 5) {
+            // ?do I understand the RLP encoding correctly?
+            // encoding of a full size byte array, even if it contains leading zeroes
+            return bytes4(bytes32(methodSignatureItem.toUint()));
+        } else {
+            uint256 methodSignatureId = methodSignatureItem.toUint();
+            return methodSignatures[methodSignatureId];
+        }
+    }
+
+    function saveAddressToCache(
+        address[] storage addressCache,
+        mapping(address => uint256) storage reverseMap,
+        address addressToCache
+    ) internal {
+        if (reverseMap[addressToCache] == 0) {
+            addressCache.push(addressToCache);
+            reverseMap[addressToCache] = addressCache.length;
+        }
+    }
+
+    /// I don't expect bytes4 will be a common parameter type, but still keeping it generic here.
+    function saveBytes4ToCache(
+        bytes4[] storage bytes4Cache,
+        mapping(address => bytes4) storage reverseMap,
+        bytes4 bytes4ToCache
+    ) internal {
+        if (reverseMap[bytes4ToCache] == 0) {
+            bytes4Cache.push(bytes4ToCache);
+            reverseMap[bytes4ToCache] = bytes4Cache.length;
+        }
     }
 }
