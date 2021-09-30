@@ -29,6 +29,7 @@ export interface StoredTransactionSerialized {
   readonly data: PrefixedHexString
   readonly nonce: number
   readonly txId: PrefixedHexString
+  readonly value: PrefixedHexString
 }
 
 export interface NonceSigner {
@@ -55,7 +56,8 @@ export function createStoredTransaction (tx: Transaction, metadata: StoredTransa
     gasPrice: ethUtils.bufferToInt(tx.gasPrice.toBuffer()),
     data: ethUtils.bufferToHex(tx.data),
     nonce: ethUtils.bufferToInt(tx.nonce.toBuffer()),
-    txId: ethUtils.bufferToHex(tx.hash())
+    txId: ethUtils.bufferToHex(tx.hash()),
+    value: ethUtils.bufferToHex(tx.value.toBuffer())
   }
   return Object.assign({}, details, metadata)
 }

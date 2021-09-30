@@ -56,7 +56,6 @@ export class RelayServer extends EventEmitter {
   lastScannedBlock: number
   lastRefreshBlock = 0
   ready = false
-  lastSuccessfulRounds = Number.MAX_SAFE_INTEGER
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   minGasPrice: number = 0
@@ -387,7 +386,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
         const timedOut = Date.now() - now
         this.logger.warn(chalk.bgRedBright(`Relay state: Timed-out after ${timedOut}`))
 
-        this.lastSuccessfulRounds = 0
       }, this.config.readyTimeout)
     }
 
@@ -407,7 +405,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
         this.emit('error', e)
         const error = e as Error
         this.logger.error(`error in worker: ${error.message} ${error.stack}`)
-        this.lastSuccessfulRounds = 0
+        this.setReadyState(false)
       })
       .finally(() => {
         clearTimeout(workerTimeout)
@@ -437,7 +435,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
 
     await this._worker(blockNumber)
       .then((transactions) => {
-        this.lastSuccessfulRounds++
         if (transactions.length !== 0) {
           this.logger.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
         }
@@ -805,9 +802,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   isReady (): boolean {
-    if (this.lastSuccessfulRounds < this.config.successfulRoundsForReady) {
-      return false
-    }
     return this.ready
   }
 
@@ -815,12 +809,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.isReady() !== isReady) {
       const now = Date.now()
       if (isReady) {
-        if (this.lastSuccessfulRounds < this.config.successfulRoundsForReady) {
-          const roundsUntilReady = this.config.successfulRoundsForReady - this.lastSuccessfulRounds
-          this.logger.warn(chalk.yellow(`Relayer state: almost READY (in ${roundsUntilReady} rounds)`))
-        } else {
-          this.logger.warn(chalk.greenBright('Relayer state: READY'))
-        }
+        this.logger.warn(chalk.greenBright('Relayer state: READY'))
         this.readinessInfo.totalNotReadyTime += now - this.readinessInfo.currentStateTimestamp
       } else {
         this.readinessInfo.totalReadyTime += now - this.readinessInfo.currentStateTimestamp

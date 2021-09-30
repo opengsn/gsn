@@ -57,7 +57,6 @@ export interface ServerConfigParams {
   minHubWithdrawalBalance: number
   refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutBlocks: number
-  successfulRoundsForReady: number
   confirmationsNeeded: number
   retryGasPriceFactor: number
   maxGasPrice: string
@@ -126,7 +125,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workdir: '',
   refreshStateTimeoutBlocks: 5,
   pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
-  successfulRoundsForReady: 3, // successful mined blocks to become ready after exception
   confirmationsNeeded: 12,
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
@@ -194,7 +192,6 @@ const ConfigParamsTypes = {
   requiredVersionRange: 'string',
   retryGasPriceFactor: 'number',
   runPaymasterReputations: 'boolean',
-  successfulRoundsForReady: 'number',
   refreshStateTimeoutBlocks: 'number',
   pendingTransactionTimeoutBlocks: 'number',
   minAlertedDelayMS: 'number',

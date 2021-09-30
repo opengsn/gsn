@@ -96,17 +96,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(relayServer.isReady(), false)
     })
 
-    it('after setReadyState(true), should stay non ready', () => {
-      relayServer.setReadyState(true)
-      assert.equal(relayServer.isReady(), false)
-    })
-
-    it('should become ready after processing few blocks', async () => {
-      await evmMineMany(1)
-      await relayServer.intervalHandler()
-      assert.equal(relayServer.isReady(), false)
-      await evmMineMany(1)
-      await relayServer.intervalHandler()
+    it('should become ready after processing a block', async () => {
       await evmMineMany(1)
       await relayServer.intervalHandler()
       assert.equal(relayServer.isReady(), true)
