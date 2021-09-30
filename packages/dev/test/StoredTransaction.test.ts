@@ -8,7 +8,7 @@ import {
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, toBuffer } from 'ethereumjs-util'
 
-contract.only('StoredTransaction', function (accounts) {
+contract('StoredTransaction', function (accounts) {
   let tx: Transaction
   let metadata: StoredTransactionMetadata
   let serialized: StoredTransactionSerialized
