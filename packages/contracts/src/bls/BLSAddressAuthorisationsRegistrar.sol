@@ -25,13 +25,16 @@ contract BLSAddressAuthorisationsRegistrar is BaseRelayRecipient {
     function getAuthorisation(address authoriser) external view returns (BLSTypes.BLSPublicKey memory){
         return authorisations[authoriser];
     }
+
     function getAuthoriser(bytes32 blsPublicKeyHash) external view returns (address){
         return authorisers[blsPublicKeyHash];
     }
 
     function registerAddressAuthorisation(BLSTypes.BLSPublicKey calldata blsPublicKey, bytes calldata ecSignature) external {
-        bytes memory message = abi.encode(prefix, blsPublicKey);
+        bytes memory ecrecoverMessage = abi.encode(prefix, blsPublicKey);
         address authoriser = keccak256(message).recover(ecSignature);
+        bytes memory blsVerifyMessage = abi.encode(prefix, authoriser);
+        require(BLS.verifySingle(blsVerifyMessage), "BLS signature verification failed");
         // TODO: extract null-check logic for Key struct?
         require(authorisations[authoriser].pubkey[0] == 0, 'authoriser already has bls key');
         require(authorisations[authoriser].pubkey[1] == 0, 'authoriser already has bls key');
@@ -40,11 +43,5 @@ contract BLSAddressAuthorisationsRegistrar is BaseRelayRecipient {
         authorisations[authoriser] = blsPublicKey;
         // NOTE: indexed by a message hash, is this ok?
         authorisers[keccak256(message)] = authoriser;
-    }
-
-    function unregisterAddressAuthorisation(bytes32 blsPublicKeyHash) external {
-        address authoriser = _msgSender();
-        delete authorisations[authoriser];
-        delete authorisers[blsPublicKeyHash];
     }
 }

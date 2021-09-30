@@ -49,11 +49,12 @@ contract DomainSpecificInputDecompressor {
 
         uint256 maxApprovalData = values[0].toUint();
         uint256[2] memory blsSignature = [values[1].toUint(), values[2].toUint()];
-        uint256 batchSize = values[3].toUint();
-        BLSBatchGateway.BatchItem[] memory bi = new BLSBatchGateway.BatchItem[](batchSize);
-        RLPReader.RLPItem[] memory batchItems = values[3].toList();
-        for (uint256 i = 0; i < batchSize; i++) {
-            bi[i] = decodeBatchItem(batchItems[i].toList());
+
+
+        RLPReader.RLPItem[] memory batchRLPItems = values[3].toList();
+        BLSBatchGateway.BatchItem[] memory bi = new BLSBatchGateway.BatchItem[](batchRLPItems.length);
+        for (uint256 i = 0; i < batchRLPItems.length; i++) {
+            bi[i] = decodeBatchItem(batchRLPItems[i].toList());
         }
         return BLSBatchGateway.Batch(bi, [uint256(1), uint256(1)], 0);
     }
@@ -66,15 +67,15 @@ contract DomainSpecificInputDecompressor {
         BLSBatchGateway.BatchItem memory bi
     ) {
         // 1. read inputs
-        uint256 id = values[1].toUint();
-        uint256 nonce = values[2].toUint();
+        uint256 id = values[0].toUint();
+        uint256 nonce = values[1].toUint();
 
-        uint256 paymasterId = values[3].toUint();
-        uint256 senderId = values[4].toUint();
-        uint256 targetId = values[5].toUint();
+        uint256 paymasterId = values[2].toUint();
+        uint256 senderId = values[3].toUint();
+        uint256 targetId = values[4].toUint();
+        uint256 gasLimit = values[5].toUint();
         RLPReader.RLPItem memory methodSignatureItem = values[6];
         bytes memory methodData = values[7].toBytes();
-
 
         // 2. resolve values
         bytes4 methodSignature = resolveMethodSignature(methodSignatureItem);
@@ -83,7 +84,6 @@ contract DomainSpecificInputDecompressor {
         address sender = resolveIdToAddress(senders, senderId);
         address target = resolveIdToAddress(targets, targetId);
 
-        uint256 gasLimit;
         if (methodSignature == METHOD_TRANSFER ||
             methodSignature == METHOD_APPROVE) {
             uint256 value;
@@ -111,6 +111,7 @@ contract DomainSpecificInputDecompressor {
         if (id > ID_MAX_VALUE) {
             return address(uint160(id));
         } else {
+            require(id < addressCache.length, 'address: invalid id');
             return addressCache[id];
         }
         return address(0);
@@ -130,6 +131,7 @@ contract DomainSpecificInputDecompressor {
             return bytes4(bytes32(methodSignatureItem.toUint()));
         } else {
             uint256 methodSignatureId = methodSignatureItem.toUint();
+            require(methodSignatureId < methodSignatures.length, 'methodSig: invalid id');
             return methodSignatures[methodSignatureId];
         }
     }
@@ -148,7 +150,7 @@ contract DomainSpecificInputDecompressor {
     /// I don't expect bytes4 will be a common parameter type, but still keeping it generic here.
     function saveBytes4ToCache(
         bytes4[] storage bytes4Cache,
-        mapping(address => bytes4) storage reverseMap,
+        mapping(bytes4 => uint256) storage reverseMap,
         bytes4 bytes4ToCache
     ) internal {
         if (reverseMap[bytes4ToCache] == 0) {

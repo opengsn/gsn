@@ -25,6 +25,8 @@
     "bn.js": "^5.2.0",
     "chalk": "^4.1.0",
     "eth-sig-util": "2.5.2",
+    "ethers": "^5.4.7",
+    "mcl-wasm": "0.4.5",
     "@ethereumjs/tx": "^3.2.0",
     "ethereumjs-util": "^7.1.0",
     "ethval": "^2.1.1",
