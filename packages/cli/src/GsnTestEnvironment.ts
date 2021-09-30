@@ -184,6 +184,7 @@ class GsnTestEnvironmentClass {
       baseRelayFee: '0',
       pctRelayFee: 0,
       checkInterval: 100,
+      refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,
       logLevel: 'error'
     }
