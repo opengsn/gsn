@@ -385,7 +385,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
       workerTimeout = setTimeout(() => {
         const timedOut = Date.now() - now
         this.logger.warn(chalk.bgRedBright(`Relay state: Timed-out after ${timedOut}`))
-
       }, this.config.readyTimeout)
     }
 
