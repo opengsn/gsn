@@ -22,6 +22,12 @@ export interface BatchItem {
   methodData: Buffer
 }
 
+export interface ApprovalItem {
+  authoriser: Address
+  blsPublicKey: BN[]
+  signature: string
+}
+
 // TODO: this is to allow RelayServers to add elements to cache without user transactions (TBD)
 export interface AddToCacheItem {
   externallyOwnedAccounts: Address[]
@@ -93,15 +99,18 @@ export function encodeBatch (
   _: {
     maxAcceptanceBudget: BN
     blsSignature: BN[]
+    approvals?: ApprovalItem[]
     items: BatchItem[]
     addToCache?: AddToCacheItem
   }
 ): PrefixedHexString {
   const batchItems: List[] = _.items.map(it => { return [it.id, it.nonce, it.paymaster, it.sender, it.target, it.gasLimit, it.methodSignature, it.methodData] })
+  const approvalItems: List[] = _.approvals?.map(it => { return [it.authoriser, it.blsPublicKey, it.signature] }) ?? []
   const list: List = [
     _.maxAcceptanceBudget,
     _.blsSignature[0],
     _.blsSignature[1],
-    batchItems]
+    batchItems,
+    approvalItems]
   return bufferToHex(encode(list))
 }

@@ -113,7 +113,11 @@ contract DomainSpecificInputDecompressor {
     }
 
     function decodeApprovalItem(RLPReader.RLPItem[] memory approvalRLPItem) public view returns (BLSBatchGateway.ApprovalItem memory){
-        return BLSBatchGateway.ApprovalItem(address(0), [uint256(1), uint256(1), uint256(1), uint256(1)], '');
+        address sender = approvalRLPItem[0].toAddress();
+        RLPReader.RLPItem[] memory blsPublicKeyItems = approvalRLPItem[1].toList();
+        uint256[4] memory blsPublicKey = [blsPublicKeyItems[0].toUint(), blsPublicKeyItems[1].toUint(), blsPublicKeyItems[2].toUint(), blsPublicKeyItems[3].toUint()];
+        bytes memory signature = approvalRLPItem[2].toBytes();
+        return BLSBatchGateway.ApprovalItem(sender, blsPublicKey, signature);
     }
 
 

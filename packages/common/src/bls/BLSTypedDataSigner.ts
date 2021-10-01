@@ -14,7 +14,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 
 export interface BLSKeypair {
   secret: any
-  pubkey: any
+  pubkey: string[]
 }
 
 export class BLSTypedDataSigner {

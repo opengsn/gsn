@@ -86,7 +86,7 @@ contract BLSBatchGateway {
             0x103cb7ac4b0d13f4bab829a88f1303741673663077568953b30721054d822e27,
             0x08cf151d45f98f4003bcad178e7188bdb62cca4858e8dd3dab63542b83240229
             ];
-            //;authorisationsRegistrar.getAuthorisation(relayRequests[i].request.from);
+            blsPublicKeys[i] = authorisationsRegistrar.getAuthorisedPublicKey(relayRequests[i].request.from);
             // TODO: convert relayRequests to messages
             messages[i] = [
             0x0144452bb020b7f5ae1fd4fcbd5375c69c0966482abc7ca8768973f18019ee34,
