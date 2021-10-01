@@ -34,10 +34,18 @@ contract BLSBatchGateway {
         uint256 gasLimit; // not input usually
     }
 
+    struct ApprovalItem {
+        address from;
+        uint256[4] blsPublicKey;
+        bytes signature;
+    }
+
     struct Batch {
         BatchItem[] items;
+        ApprovalItem[] approvalItems;
         uint256[2] blsSignature;
         uint256 maxAcceptanceBudget;
+
     }
 
     event BatchRelayed(address indexed relayWorker, uint256 accepted, uint256 rejected);
@@ -59,6 +67,7 @@ contract BLSBatchGateway {
 
     fallback() external payable {
         Batch memory batch = decompressor.decodeBatch(msg.data);
+        handleNewApprovals(batch.approvalItems);
 
         if (batch.items.length == 0) {
             // TODO: I am considering 'rawBatch' with an extra field for caching, thus having to relay empty batch
@@ -118,10 +127,20 @@ contract BLSBatchGateway {
         emit BatchRelayed(msg.sender, accepted, rejected);
     }
 
-    function decodeBatchItem(BatchItem memory batchItem) public view returns (GsnTypes.RelayRequest memory relayRequest){
-        relayRequest = GsnTypes.RelayRequest(
+    function decodeBatchItem(BatchItem memory batchItem) public view returns (GsnTypes.RelayRequest memory){
+        return GsnTypes.RelayRequest(
             IForwarder.ForwardRequest(batchItem.sender, batchItem.target, 0, 0, 0, '', 0),
             GsnTypes.RelayData(0, 0, 0, 0, address(0), address(0), address(0), '', 0)
         );
+    }
+
+    function handleNewApprovals(ApprovalItem[] memory approvalItems) internal {
+        for (uint256 i; i < approvalItems.length; i++) {
+            authorisationsRegistrar.registerAddressAuthorisation(
+                approvalItems[i].from,
+                approvalItems[i].blsPublicKey,
+                approvalItems[i].signature
+            );
+        }
     }
 }

@@ -82,12 +82,12 @@ export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
 }
 
 export async function getEip712Signature (
+  senderAddress: Address,
   web3: Web3,
   typedRequestData: EIP712TypedData,
   methodSuffix: string | null = null,
   jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
-  const senderAddress = typedRequestData.message.from
   let dataToSign: EIP712TypedData | string
   if (jsonStringifyRequest) {
     dataToSign = JSON.stringify(typedRequestData)

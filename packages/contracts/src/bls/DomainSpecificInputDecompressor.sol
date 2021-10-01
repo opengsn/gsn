@@ -52,11 +52,17 @@ contract DomainSpecificInputDecompressor {
 
 
         RLPReader.RLPItem[] memory batchRLPItems = values[3].toList();
+        RLPReader.RLPItem[] memory approvalsRLPItems = values[4].toList();
         BLSBatchGateway.BatchItem[] memory bi = new BLSBatchGateway.BatchItem[](batchRLPItems.length);
+        BLSBatchGateway.ApprovalItem[] memory ai = new BLSBatchGateway.ApprovalItem[](approvalsRLPItems.length);
+
+        for (uint256 i = 0; i < approvalsRLPItems.length; i++) {
+            ai[i] = decodeApprovalItem(approvalsRLPItems[i].toList());
+        }
         for (uint256 i = 0; i < batchRLPItems.length; i++) {
             bi[i] = decodeBatchItem(batchRLPItems[i].toList());
         }
-        return BLSBatchGateway.Batch(bi, [uint256(1), uint256(1)], 0);
+        return BLSBatchGateway.Batch(bi, ai, [uint256(1), uint256(1)], 0);
     }
 
     function decodeBatchItem(
@@ -105,6 +111,11 @@ contract DomainSpecificInputDecompressor {
 
         bi = BLSBatchGateway.BatchItem(id, nonce, paymaster, sender, target, methodSignature, methodData, gasLimit);
     }
+
+    function decodeApprovalItem(RLPReader.RLPItem[] memory approvalRLPItem) public view returns (BLSBatchGateway.ApprovalItem memory){
+        return BLSBatchGateway.ApprovalItem(address(0), [uint256(1), uint256(1), uint256(1), uint256(1)], '');
+    }
+
 
     function resolveIdToAddress(address[] storage addressCache, uint256 id) internal view returns (address){
         // SET MAX CACHE SIZE; VALUES BIGGER THAN THAT CONSIDERED ACTUAL INPUT
