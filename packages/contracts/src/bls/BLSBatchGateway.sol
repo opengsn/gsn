@@ -45,7 +45,6 @@ contract BLSBatchGateway {
         ApprovalItem[] approvalItems;
         uint256[2] blsSignature;
         uint256 maxAcceptanceBudget;
-
     }
 
     event BatchRelayed(address indexed relayWorker, uint256 accepted, uint256 rejected);
@@ -80,25 +79,13 @@ contract BLSBatchGateway {
         uint256[2][] memory messages = new uint256[2][](batch.items.length);
         for (uint256 i = 0; i < batch.items.length; i++) {
             relayRequests[i] = decodeBatchItem(batch.items[i]);
-            blsPublicKeys[i] = [
-            0x2591180d099ddbc1b4cfcfaf2450dc0f054339950d461a88bdfe27d513268f3a,
-            0x0b5f4bda51133493803cd01f82b77ec9e20485f233136f0189f4873615b03c36,
-            0x103cb7ac4b0d13f4bab829a88f1303741673663077568953b30721054d822e27,
-            0x08cf151d45f98f4003bcad178e7188bdb62cca4858e8dd3dab63542b83240229
-            ];
             blsPublicKeys[i] = authorisationsRegistrar.getAuthorisedPublicKey(relayRequests[i].request.from);
-            // TODO: convert relayRequests to messages
-            messages[i] = [
-            0x0144452bb020b7f5ae1fd4fcbd5375c69c0966482abc7ca8768973f18019ee34,
-            0x041b981eedc6773924050521a9e7706440b9b8b477f7ca4b6580230801d678bc
-            ];
+            // TODO: require key is not null
+//            messages[i] = BLS.hashToPoint('testing-evmbls', abi.encode(relayRequests[i]));
+            messages[i] = BLS.hashToPoint('testing-evmbls', abi.encodePacked(bytes4(0xffffffff)));
         }
-        uint256[2] memory validSig = [
-        0x2169f1cf7b279b5cd8b25d42bf432296c302f066e5258fe9785c888689fe94b9,
-        0x196e1dda38e0289a0d9628b7fca627e1bebc2c5985e64be3dd75529895916aef
-        ];
         // TODO: is abiEncode enough? EIP-712 requires ECDSA? Can we push for amendment/alternative?
-        bool isSignatureValid = BLS.verifyMultiple(validSig /*batch.blsSignature*/, blsPublicKeys, messages);
+        bool isSignatureValid = BLS.verifyMultiple(batch.blsSignature, blsPublicKeys, messages);
         require(isSignatureValid, "BLS signature verification failed");
 
         //        uint256[2] memory signature,
@@ -121,11 +108,14 @@ contract BLSBatchGateway {
                     rejected++;
                 }
             } else {
+                emit RelayCallReverted(batch.items[i].id, returnData);
                 rejected++;
             }
         }
         emit BatchRelayed(msg.sender, accepted, rejected);
     }
+
+    event RelayCallReverted(uint256 indexed batchItemId, bytes returnData);
 
     function decodeBatchItem(BatchItem memory batchItem) public view returns (GsnTypes.RelayRequest memory){
         return GsnTypes.RelayRequest(

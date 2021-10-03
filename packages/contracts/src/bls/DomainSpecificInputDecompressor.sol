@@ -47,7 +47,7 @@ contract DomainSpecificInputDecompressor {
         RLPReader.RLPItem[] memory values = encodedBatch.toRlpItem().toList();
         // must convert to an rlpItem first!
 
-        uint256 maxApprovalData = values[0].toUint();
+        uint256 maxAcceptanceBudget = values[0].toUint();
         uint256[2] memory blsSignature = [values[1].toUint(), values[2].toUint()];
 
 
@@ -62,7 +62,7 @@ contract DomainSpecificInputDecompressor {
         for (uint256 i = 0; i < batchRLPItems.length; i++) {
             bi[i] = decodeBatchItem(batchRLPItems[i].toList());
         }
-        return BLSBatchGateway.Batch(bi, ai, [uint256(1), uint256(1)], 0);
+        return BLSBatchGateway.Batch(bi, ai, blsSignature, maxAcceptanceBudget);
     }
 
     function decodeBatchItem(

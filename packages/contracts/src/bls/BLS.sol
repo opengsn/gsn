@@ -89,8 +89,9 @@ library BLS {
 
     function hashToPoint(bytes memory domain, bytes memory message) internal view returns (uint256[2] memory) {
         uint256[2] memory u = hashToField(domain, message);
-        uint256[2] memory p0 = mapToPointFT(u[0]);
-        uint256[2] memory p1 = mapToPointFT(u[1]);
+        // WARN: ALEXF: switched to TI, is it ok?
+        uint256[2] memory p0 = mapToPointTI(bytes32(u[0]));
+        uint256[2] memory p1 = mapToPointTI(bytes32(u[1]));
         uint256[4] memory bnAddInput;
         bnAddInput[0] = p0[0];
         bnAddInput[1] = p0[1];

@@ -11,7 +11,6 @@ import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
 import { BLSKeypair, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { ApprovalDataInterface, TypedApprovalData } from '@opengsn/common/dist/bls/TypedApprovalData'
-import { toBN } from 'web3-utils'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString
@@ -27,9 +26,8 @@ export class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
-  private readonly blsTypedDataSigner?: BLSTypedDataSigner
+  private blsTypedDataSigner?: BLSTypedDataSigner
   readonly chainId: number
-  private blsKeypair?: BLSKeypair
 
   constructor (provider: Web3ProviderBaseInterface, chainId: number, config: GSNConfig) {
     this.web3 = new Web3(provider as any)
@@ -131,10 +129,10 @@ export class AccountManager {
 
   /**
    * Only a single BLS keypair is currently supported
-   * @param blsKeypair
+   * @param keypair
    */
-  setBLSKeypair (blsKeypair: BLSKeypair): void {
-    this.blsKeypair = blsKeypair
+  setBLSKeypair (keypair: BLSKeypair): void {
+    this.blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
   }
 
   /**
@@ -148,15 +146,16 @@ export class AccountManager {
     ethereumAddress: Address,
     registrarAddress: Address
   ): Promise<PrefixedHexString> {
-    if (this.blsKeypair == null) {
+    if (this.blsTypedDataSigner == null) {
       throw new Error('BLS Keypair is not set in the AccountManager')
     }
+    const publicKeySerialized = this.blsTypedDataSigner.getPublicKeySerialized()
     const approvalRequest: ApprovalDataInterface = {
       clientMessage: 'I UNDERSTAND WHAT I AM DOING',
-      blsPublicKey0: this.blsKeypair.pubkey[0],
-      blsPublicKey1: this.blsKeypair.pubkey[1],
-      blsPublicKey2: this.blsKeypair.pubkey[2],
-      blsPublicKey3: this.blsKeypair.pubkey[3]
+      blsPublicKey0: publicKeySerialized[0].toString(),
+      blsPublicKey1: publicKeySerialized[1].toString(),
+      blsPublicKey2: publicKeySerialized[2].toString(),
+      blsPublicKey3: publicKeySerialized[3].toString()
     }
     const signedData = new TypedApprovalData(
       this.chainId,

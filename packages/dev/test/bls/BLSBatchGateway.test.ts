@@ -14,29 +14,23 @@ import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { configureGSN } from '../TestUtils'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { Address } from '@opengsn/common/dist/types/Aliases'
+import { bufferToHex } from 'ethereumjs-util'
 
 const BLSAddressAuthorisationsRegistrar = artifacts.require('BLSAddressAuthorisationsRegistrar')
 const DomainSpecificInputDecompressor = artifacts.require('DomainSpecificInputDecompressor')
 const BLSBatchGateway = artifacts.require('BLSBatchGateway')
 const BLSTestHub = artifacts.require('BLSTestHub')
 
-const blsPublicKey: string[] = [
-  '0x2591180d099ddbc1b4cfcfaf2450dc0f054339950d461a88bdfe27d513268f3a',
-  '0x0b5f4bda51133493803cd01f82b77ec9e20485f233136f0189f4873615b03c36',
-  '0x103cb7ac4b0d13f4bab829a88f1303741673663077568953b30721054d822e27',
-  '0x08cf151d45f98f4003bcad178e7188bdb62cca4858e8dd3dab63542b83240229'
-]
-
-async function createAuthorisationSignature (from: string, registrar: BLSAddressAuthorisationsRegistrarInstance): Promise<string> {
+async function createAuthorisationSignature (
+  from: string,
+  blsKeypair: any,
+  registrar: BLSAddressAuthorisationsRegistrarInstance): Promise<string> {
   const config = configureGSN({
     methodSuffix: '_v4',
     jsonStringifyRequest: false
   })
   const accountManager = new AccountManager(web3.currentProvider as HttpProvider, 1337, config)
-  accountManager.setBLSKeypair({
-    pubkey: blsPublicKey,
-    secret: ''
-  })
+  accountManager.setBLSKeypair(blsKeypair)
   return await accountManager.createAccountAuthorisation(from, registrar.address.toLowerCase())
 }
 
@@ -64,8 +58,9 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
     it('should accept empty batch and emit empty BatchRelayed event', async function () {
       const data = encodeBatch({
         maxAcceptanceBudget: toBN(15),
-        blsSignature: [toBN(5), toBN(7)],
-        items: []
+        blsSignature: [],
+        items: [],
+        approvals: []
       })
       const receipt = await web3.eth.sendTransaction({
         from,
@@ -89,16 +84,17 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
         }
       }
       const batchItem = await decompressorInteractor.relayRequestToBatchItem(toBN(777), relayRequest)
-      const authorisationSignature = await createAuthorisationSignature(from, registrar)
+      const authorisationSignature = await createAuthorisationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const authorisationItem: ApprovalItem = {
         authoriser: from,
-        blsPublicKey: blsPublicKey.map(it => { return toBN(it) }),
+        blsPublicKey: blsTypedDataSigner.getPublicKeySerialized(),
         signature: authorisationSignature
       }
+      const blsSignature = await blsTypedDataSigner.signTypedDataBLS('0xffffffff')
       // await registrar.registerAddressAuthorisation(from, blsPublicKey, authorisationSignature)
       const data = encodeBatch({
         maxAcceptanceBudget: toBN(15),
-        blsSignature: [toBN(5), toBN(7)],
+        blsSignature,
         items: [batchItem],
         approvals: [authorisationItem]
       })
@@ -147,10 +143,12 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
         toBN('0x0d0f7ffada69be42006ba9236c07b9ee3a13d43705e4cf006fb509542281fd78'),
         toBN('0x019049c5f410a54c9d85add908a921c75c3f8c94e8bcebdfafc5da8afec910dc')]
       const batchItem = await decompressorInteractor.relayRequestToBatchItem(toBN(777), relayRequest)
+      const blsSignature = await blsTypedDataSigner.signTypedDataBLS('hello world')
       const data = encodeBatch({
         maxAcceptanceBudget: toBN(15),
-        blsSignature: blsTypedDataSigner.signTypedDataBLS().map(it => toBN(it.toString())), // TODO: converge on BN, probably
-        items: [batchItem]
+        blsSignature,
+        items: [batchItem],
+        approvals: []
       })
       await expectRevert(web3.eth.call({
         from,

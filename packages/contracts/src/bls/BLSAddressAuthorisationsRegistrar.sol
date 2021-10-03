@@ -22,7 +22,6 @@ contract BLSAddressAuthorisationsRegistrar is BaseRelayRecipient {
     event AuthorisationIssued(address indexed authoriser, bytes32 blsPublicKeyHash);
 
     string public override versionRecipient = "2.2.3+opengsn.bls.address_authorisations_registrar";
-    string public prefix = 'sign me up';
 
     /** 712 start */
     bytes public constant APPROVAL_DATA_TYPE = "ApprovalData(uint256 blsPublicKey0,uint256 blsPublicKey1,uint256 blsPublicKey2,uint256 blsPublicKey3,string clientMessage)";
