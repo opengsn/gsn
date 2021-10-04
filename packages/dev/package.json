@@ -14,7 +14,7 @@
     "tsc": "tsc",
     "truffle-compile": "truffle compile",
     "lint": "eslint -f unix .",
-    "test111": "lerna run tsc && truffle --compile-all --network npmtest test",
+    "test": "lerna run tsc && truffle --compile-all --network npmtest test",
     "truffle-console": "truffle console",
     "truffle-test": "truffle test --compile-all ",
     "test-only": "truffle --network npmtest test",
