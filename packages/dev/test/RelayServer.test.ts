@@ -83,7 +83,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       relayServer = env.relayServer
       // force "ready
       assert.equal(relayServer.isReady(), true)
-      const stub = sinon.stub(relayServer.contractInteractor, 'getBlock').rejects(Error('simulate getBlock failed'))
+      const stub = sinon.stub(relayServer.contractInteractor, 'getBlockNumber').rejects(Error('simulate getBlock failed'))
       try {
         await relayServer.intervalHandler()
       } finally {

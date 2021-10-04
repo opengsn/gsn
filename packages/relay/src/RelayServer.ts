@@ -397,16 +397,16 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     let gotBlock = false
     // eslint-disable-next-line @typescript-eslint/return-await
-    return this.contractInteractor.getBlock('latest')
+    return this.contractInteractor.getBlockNumber()
       .then(
-        block => {
+        blockNumber => {
           gotBlock = true
-          if (block.number < this.config.coldRestartLogsFromBlock) {
+          if (blockNumber < this.config.coldRestartLogsFromBlock) {
             throw new Error(
-              `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${block.number}`)
+              `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${blockNumber}`)
           }
-          if (block.number > this.lastScannedBlock) {
-            return this._workerSemaphore.bind(this)(block.number)
+          if (blockNumber > this.lastScannedBlock) {
+            return this._workerSemaphore.bind(this)(blockNumber)
           }
         })
       .catch((e) => {
