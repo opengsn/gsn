@@ -33,10 +33,6 @@ contract.only('HashcashPaymaster', ([from]) => {
       }
     } = await GsnTestEnvironment.startGsn(host))
 
-    // TODO: fix
-    // @ts-ignore
-    httpServer.relayService?.config.checkInterval = 1000
-
     s = await SampleRecipient.new()
     await s.setForwarder(forwarderAddress!)
 
