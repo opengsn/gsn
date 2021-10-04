@@ -36,6 +36,8 @@ jobs: # a collection of steps
     docker: # run the steps with Docker
       - image: cimg/node:16.6.2
     steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
       - run: # run tests
           name: test
           command: yarn test | tee /tmp/test-dev-results.log
@@ -46,6 +48,8 @@ jobs: # a collection of steps
     docker: # run the steps with Docker
       - image: cimg/node:16.6.2
     steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
       - run: # run tests
           name: test
           command: yarn test | tee /tmp/test-paymasters-results.log
@@ -56,6 +60,8 @@ jobs: # a collection of steps
     docker: # run the steps with Docker
       - image: cimg/node:16.6.2
     steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
       - run: # run ganache mainnet fork
           name: ganache-fork-mainnet
           command: yarn ganache-fork-mainnet
