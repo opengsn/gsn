@@ -27,6 +27,14 @@ jobs: # a collection of steps
             - ./packages/provider/node_modules
             - ./packages/relay/node_modules
 
+      - run:
+          name: yarn-preprocess
+          command: yarn preprocess
+
+      - run:
+          name: lint
+          command: yarn lerna-lint
+
       - persist_to_workspace:
           root: .
           paths:
@@ -40,7 +48,7 @@ jobs: # a collection of steps
           at: .
       - run: # run tests
           name: test
-          command: yarn test | tee /tmp/test-dev-results.log
+          command: yarn lerna-run-test-with-hardhat | tee /tmp/test-dev-results.log
       - store_test_results: # special step to upload test results for display in Test Summary
           path: /tmp/test-dev-results.log
   test_paymasters:
@@ -52,7 +60,7 @@ jobs: # a collection of steps
           at: .
       - run: # run tests
           name: test
-          command: yarn test | tee /tmp/test-paymasters-results.log
+          command: yarn lerna-run-test-with-hardhat | tee /tmp/test-paymasters-results.log
       - store_test_results: # special step to upload test results for display in Test Summary
           path: /tmp/test-paymasters-results.log
   test_fork:
