@@ -27,15 +27,55 @@ jobs: # a collection of steps
             - ./packages/provider/node_modules
             - ./packages/relay/node_modules
 
+  #coverage is broken (doesn't cover all contracts). disabled for now..
+  #      - restore_cache: # special cache for coverage test
+  #          key: last-coverage
+  #          paths:
+  #            - ./coverage
+
+  #      - run: # run coverage. update "coverage/covsig.txt" if successful run.
+  #          # use last coverage report if no test/contract was changed.
+  #          name: coverage
+  #          command: yarn run coverage-if-changed
+
+  #      - save_cache: # special cache for coverage test
+  #          key: last-coverage
+  #          paths:
+  #            - ./coverage
+
+  #      - store_artifacts: # special step to save test results as as artifact
+  #          path: ./coverage
+  #      - store_artifacts:
+  #          path: ./coverage.html
+  test_dev:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
       - run: # run tests
           name: test
-          command: yarn test | tee /tmp/test-results.log
-
+          command: yarn test | tee /tmp/test-dev-results.log
+      - store_test_results: # special step to upload test results for display in Test Summary
+          path: /tmp/test-dev-results.log
+  test_paymasters:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - run: # run tests
+          name: test
+          command: yarn test | tee /tmp/test-paymasters-results.log
+      - store_test_results: # special step to upload test results for display in Test Summary
+          path: /tmp/test-paymasters-results.log
+  test_fork:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
       - run: # run ganache mainnet fork
           name: ganache-fork-mainnet
           command: yarn ganache-fork-mainnet
           background: true
-
       # https://discuss.circleci.com/t/run-http-server-in-background-during-tests/3177
       # wait for the server to start responding. We expect Bad Request 400 once it starts listening.
       # so override the shell and have the last command be the : { null } command to force exit code 0.
@@ -45,36 +85,27 @@ jobs: # a collection of steps
           command: |
             wget --post-data="{\"method\": \"eth_blockNumber\"}" --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:8544/
             :
-
       - run: # run tests with fork
           name: test-fork
-          command: yarn lerna-run-test-fork | tee /tmp/test-results.log
-
-#coverage is broken (doesn't cover all contracts). disabled for now..
-#      - restore_cache: # special cache for coverage test
-#          key: last-coverage
-#          paths:
-#            - ./coverage
-
-#      - run: # run coverage. update "coverage/covsig.txt" if successful run.
-#          # use last coverage report if no test/contract was changed.
-#          name: coverage
-#          command: yarn run coverage-if-changed
-
-#      - save_cache: # special cache for coverage test
-#          key: last-coverage
-#          paths:
-#            - ./coverage
-
-#      - store_artifacts: # special step to save test results as as artifact
-#          path: ./coverage
-#      - store_artifacts:
-#          path: ./coverage.html
-
+          command: yarn lerna-run-test-fork | tee /tmp/test-fork-results.log
       - store_test_results: # special step to upload test results for display in Test Summary
-          path: /tmp/test-results.log
+          path: /tmp/test-fork-results.log
 
 #too much noise..
 #notify:
 #  webhooks:
 #    - url: https://twist.com/integrations/circleci/from_circleci?install_id=85424&post_data_url=https%3A%2F%2Ftwist.com%2Fapi%2Fv3%2Fintegration_incoming%2Fpost_data%3Finstall_id%3D85424%26install_token%3D85424_0aad1ece9d2470896c9142aae3440b5b
+
+workflow:
+  build_and_test:
+    jobs:
+      - build
+      - test_dev:
+          requires:
+            - build
+      - test_paymasters:
+          requires:
+            - build
+      - test_fork:
+          requires:
+            - build
