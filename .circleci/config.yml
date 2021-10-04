@@ -26,27 +26,6 @@ jobs: # a collection of steps
             - ./packages/paymasters/node_modules
             - ./packages/provider/node_modules
             - ./packages/relay/node_modules
-
-  #coverage is broken (doesn't cover all contracts). disabled for now..
-  #      - restore_cache: # special cache for coverage test
-  #          key: last-coverage
-  #          paths:
-  #            - ./coverage
-
-  #      - run: # run coverage. update "coverage/covsig.txt" if successful run.
-  #          # use last coverage report if no test/contract was changed.
-  #          name: coverage
-  #          command: yarn run coverage-if-changed
-
-  #      - save_cache: # special cache for coverage test
-  #          key: last-coverage
-  #          paths:
-  #            - ./coverage
-
-  #      - store_artifacts: # special step to save test results as as artifact
-  #          path: ./coverage
-  #      - store_artifacts:
-  #          path: ./coverage.html
   test_dev:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
@@ -96,7 +75,8 @@ jobs: # a collection of steps
 #  webhooks:
 #    - url: https://twist.com/integrations/circleci/from_circleci?install_id=85424&post_data_url=https%3A%2F%2Ftwist.com%2Fapi%2Fv3%2Fintegration_incoming%2Fpost_data%3Finstall_id%3D85424%26install_token%3D85424_0aad1ece9d2470896c9142aae3440b5b
 
-workflow:
+workflows:
+  version: 2
   build_and_test:
     jobs:
       - build
