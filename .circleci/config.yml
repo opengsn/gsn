@@ -26,6 +26,11 @@ jobs: # a collection of steps
             - ./packages/paymasters/node_modules
             - ./packages/provider/node_modules
             - ./packages/relay/node_modules
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
   test_dev:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
