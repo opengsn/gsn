@@ -334,48 +334,56 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   async createRelayTransaction (req: RelayTransactionRequest): Promise<PrefixedHexString> {
-    this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
-    if (!this.isReady()) {
-      throw new Error('relay not ready')
-    }
-    if (this.alerted) {
-      this.logger.error('Alerted state: slowing down traffic')
-      await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
-    }
-    const currentBlock = await this.contractInteractor.getBlockNumber()
-    this.validateInput(req, currentBlock)
-    this.validateFees(req)
-    await this.validateMaxNonce(req.metadata.relayMaxNonce)
-
-    if (this.config.runPaymasterReputations) {
-      await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
-    }
-    // Call relayCall as a view function to see if we'll get paid for relaying this tx
-    const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
-    await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
-
-    if (this.config.runPaymasterReputations) {
-      await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
-    }
-    // Send relayed transaction
-    this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
-
-    const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
-    const details: SendTransactionDetails =
-      {
-        signer: this.workerAddress,
-        serverAction: ServerAction.RELAY_CALL,
-        method,
-        destination: req.metadata.relayHubAddress,
-        gasLimit: maxPossibleGas,
-        creationBlockNumber: currentBlock,
-        gasPrice: req.relayRequest.relayData.gasPrice
+    let i = 0
+    try {
+      this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
+      if (!this.isReady()) {
+        throw new Error('relay not ready')
       }
-    const { signedTx } = await this.transactionManager.sendTransaction(details)
-    // after sending a transaction is a good time to check the worker's balance, and replenish it.
-    await this.replenishServer(0, currentBlock)
-    return signedTx
+      i++
+      if (this.alerted) {
+        this.logger.error('Alerted state: slowing down traffic')
+        await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
+      }
+      i++
+      const currentBlock = await this.contractInteractor.getBlockNumber()
+      this.validateInput(req, currentBlock)
+      this.validateFees(req)
+      await this.validateMaxNonce(req.metadata.relayMaxNonce)
+      i++
+      if (this.config.runPaymasterReputations) {
+        await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
+      }
+      // Call relayCall as a view function to see if we'll get paid for relaying this tx
+      const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
+      await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
+      if (this.config.runPaymasterReputations) {
+        await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
+      }
+      // Send relayed transaction
+      this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
+      i++
+      const method = this.relayHubContract.contract.methods.relayCall(
+        acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      const details: SendTransactionDetails =
+        {
+          signer: this.workerAddress,
+          serverAction: ServerAction.RELAY_CALL,
+          method,
+          destination: req.metadata.relayHubAddress,
+          gasLimit: maxPossibleGas,
+          creationBlockNumber: currentBlock,
+          gasPrice: req.relayRequest.relayData.gasPrice
+        }
+      const { signedTx } = await this.transactionManager.sendTransaction(details)
+      // after sending a transaction is a good time to check the worker's balance, and replenish it.
+      i++
+      await this.replenishServer(0, currentBlock)
+      return signedTx
+    } catch (e) {
+      const error = e as Error
+      throw new Error(`wtf ${i} ${error.message}`)
+    }
   }
 
   async intervalHandler (): Promise<void> {
@@ -387,11 +395,12 @@ returnValue        | ${viewRelayCallRet.returnValue}
         this.logger.warn(chalk.bgRedBright(`Relay state: Timed-out after ${timedOut}`))
       }, this.config.readyTimeout)
     }
-
+    let gotBlock = false
     // eslint-disable-next-line @typescript-eslint/return-await
     return this.contractInteractor.getBlock('latest')
       .then(
         block => {
+          gotBlock = true
           if (block.number < this.config.coldRestartLogsFromBlock) {
             throw new Error(
               `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${block.number}`)
@@ -403,7 +412,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       .catch((e) => {
         this.emit('error', e)
         const error = e as Error
-        this.logger.error(`error in worker: ${error.message} ${error.stack}`)
+        this.logger.error(`error in worker: ${error.message} ${error.stack} gotBlock: ${gotBlock}`)
         this.setReadyState(false)
       })
       .finally(() => {
@@ -586,23 +595,34 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _worker (blockNumber: number): Promise<PrefixedHexString[]> {
-    if (!this.initialized) {
-      await this.init()
+    let i = 0
+    try {
+      if (!this.initialized) {
+        await this.init()
+      }
+      i++
+      if (blockNumber <= this.lastScannedBlock) {
+        throw new Error('Attempt to scan older block, aborting')
+      }
+      if (!this._shouldRefreshState(blockNumber)) {
+        return []
+      }
+      i++
+      this.lastRefreshBlock = blockNumber
+      await this._refreshGasPrice()
+      i++
+      await this.registrationManager.refreshBalance()
+      i++
+      if (!this.registrationManager.balanceRequired.isSatisfied) {
+        this.setReadyState(false)
+        return []
+      }
+      i++
+      return await this._handleChanges(blockNumber)
+    } catch (e) {
+      const error = e as Error
+      throw new Error(`${i} ${error.message}`)
     }
-    if (blockNumber <= this.lastScannedBlock) {
-      throw new Error('Attempt to scan older block, aborting')
-    }
-    if (!this._shouldRefreshState(blockNumber)) {
-      return []
-    }
-    this.lastRefreshBlock = blockNumber
-    await this._refreshGasPrice()
-    await this.registrationManager.refreshBalance()
-    if (!this.registrationManager.balanceRequired.isSatisfied) {
-      this.setReadyState(false)
-      return []
-    }
-    return await this._handleChanges(blockNumber)
   }
 
   async _refreshGasPrice (): Promise<void> {
