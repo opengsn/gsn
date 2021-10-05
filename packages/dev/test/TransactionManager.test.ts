@@ -9,7 +9,7 @@ import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
 
-contract('TransactionManager', function (accounts) {
+contract.only('TransactionManager', function (accounts) {
   const confirmationsNeeded = 12
   let relayServer: RelayServer
   let env: ServerTestEnvironment
@@ -55,6 +55,7 @@ contract('TransactionManager', function (accounts) {
         await Promise.all(promises)
         assert.fail()
       } catch (e) {
+        console.log(e)
         assert.include(e.message, 'violates the unique constraint')
         // there may be multiple fields marked as 'unique', this checks that 'nonceSigner' is the one that throws
         assert.deepEqual(e.key, { nonce: 0, signer: env.relayServer.workerAddress })
