@@ -382,7 +382,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       return signedTx
     } catch (e) {
       const error = e as Error
-      error.message = error.message + 'crt ' + i
+      error.message = `${error.message} crt ${i}`
       throw error
     }
   }
@@ -621,9 +621,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       i++
       return await this._handleChanges(blockNumber)
     } catch (e) {
-
       const error = e as Error
-      error.message = error.message + 'w ' + i
+      error.message = `${error.message} w ${i}`
       throw error
     }
   }
