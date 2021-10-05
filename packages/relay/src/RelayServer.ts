@@ -412,7 +412,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       .catch((e) => {
         this.emit('error', e)
         const error = e as Error
-        this.logger.error(`error in worker: ${error.message} ${error.stack} gotBlock: ${gotBlock}`)
+        this.logger.error(`error in worker: ${error.message} gotBlockNumber: ${gotBlock} ${error.stack}`)
         this.setReadyState(false)
       })
       .finally(() => {
