@@ -17,7 +17,7 @@
     "test": "lerna run tsc && truffle --compile-all --network npmtest test",
     "truffle-console": "truffle console",
     "truffle-test": "truffle test --compile-all ",
-    "test-only1212": "truffle --network npmtest test",
+    "test-only": "truffle --network npmtest test",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {
