@@ -9,7 +9,7 @@ import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
 
-contract.only('TransactionManager', function (accounts) {
+contract('TransactionManager', function (accounts) {
   const confirmationsNeeded = 12
   let relayServer: RelayServer
   let env: ServerTestEnvironment
