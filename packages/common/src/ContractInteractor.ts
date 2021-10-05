@@ -566,7 +566,11 @@ export class ContractInteractor {
     let blockNumber = -1
     let attempts = 0
     while (blockNumber < this.lastBlockNumber && attempts <= 100) {
-      blockNumber = await this.web3.eth.getBlockNumber()
+      try {
+        blockNumber = await this.web3.eth.getBlockNumber()
+      } catch (e) {
+        this.logger.error(`getBlockNumber: ${(e as Error).message}`)
+      }
       await sleep(100)
       attempts++
     }
