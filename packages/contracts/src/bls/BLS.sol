@@ -2,8 +2,6 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
-import "./BLSTypes.sol";
-
 import { modexp_3064_fd54, modexp_c191_3f52 } from "./modexp.sol";
 
 library BLS {

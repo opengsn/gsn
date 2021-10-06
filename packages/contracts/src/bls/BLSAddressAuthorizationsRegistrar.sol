@@ -7,21 +7,19 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../BaseRelayRecipient.sol";
 import "../utils/GsnEip712Library.sol";
 
-import "./BLSTypes.sol";
-
 /*
  * This contract maintains a verified one-to-many mapping of
- * BLS public keys for Ethereum addresses that authorise these keys
+ * BLS public keys for Ethereum addresses that authorize these keys
  * to act on their behalf using the BLSBatchGateway.
- * Note: BLS key can be authorised by someone who doesn't hold said key,
+ * Note: BLS key can be authorized by someone who doesn't hold said key,
  * but it does not give such person any advantage so that is not an issue.
  */
-contract BLSAddressAuthorisationsRegistrar is BaseRelayRecipient {
+contract BLSAddressAuthorizationsRegistrar is BaseRelayRecipient {
     using ECDSA for bytes32;
 
-    event AuthorisationIssued(address indexed authoriser, bytes32 blsPublicKeyHash);
+    event AuthorizationIssued(address indexed authorizer, bytes32 blsPublicKeyHash);
 
-    string public override versionRecipient = "2.2.3+opengsn.bls.address_authorisations_registrar";
+    string public override versionRecipient = "2.2.3+opengsn.bls.address_authorizations_registrar";
 
     /** 712 start */
     bytes public constant APPROVAL_DATA_TYPE = "ApprovalData(uint256 blsPublicKey0,uint256 blsPublicKey1,uint256 blsPublicKey2,uint256 blsPublicKey3,string clientMessage)";
@@ -69,26 +67,26 @@ contract BLSAddressAuthorisationsRegistrar is BaseRelayRecipient {
 
     /** 712 end */
 
-    mapping(address => uint256[4]) private authorisations;
+    mapping(address => uint256[4]) private authorizations;
 
-    function getAuthorisedPublicKey(address authoriser) external view returns (uint256[4] memory){
-        return authorisations[authoriser];
+    function getAuthorizedPublicKey(address authorizer) external view returns (uint256[4] memory){
+        return authorizations[authorizer];
     }
 
-    function registerAddressAuthorisation(
-        address authoriser,
+    function registerAddressAuthorization(
+        address authorizer,
         uint256[4] memory blsPublicKey,
         bytes memory ecSignature
     ) external {
-        verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], 'I UNDERSTAND WHAT I AM DOING'), authoriser, ecSignature);
+        verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], 'I UNDERSTAND WHAT I AM DOING'), authorizer, ecSignature);
         // TODO: extract null-check logic for Key struct?
-        require(authorisations[authoriser][0] == 0, 'authoriser already has bls key');
-        require(authorisations[authoriser][1] == 0, 'authoriser already has bls key');
-        require(authorisations[authoriser][2] == 0, 'authoriser already has bls key');
-        require(authorisations[authoriser][3] == 0, 'authoriser already has bls key');
+        require(authorizations[authorizer][0] == 0, 'authorizer already has bls key');
+        require(authorizations[authorizer][1] == 0, 'authorizer already has bls key');
+        require(authorizations[authorizer][2] == 0, 'authorizer already has bls key');
+        require(authorizations[authorizer][3] == 0, 'authorizer already has bls key');
 
-        authorisations[authoriser] = blsPublicKey;
+        authorizations[authorizer] = blsPublicKey;
 
-        emit AuthorisationIssued(authoriser, keccak256(abi.encode(blsPublicKey)));
+        emit AuthorizationIssued(authorizer, keccak256(abi.encode(blsPublicKey)));
     }
 }

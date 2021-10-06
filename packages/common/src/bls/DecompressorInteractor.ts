@@ -3,27 +3,30 @@ import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encode, List } from 'rlp'
 import { toBN } from 'web3-utils'
 
-import { RelayRequest } from '../EIP712/RelayRequest'
-import { Address, Web3ProviderBaseInterface } from '../types/Aliases'
 import { DomainSpecificInputDecompressorInstance } from '@opengsn/contracts'
+
+import { Address, Web3ProviderBaseInterface } from '../types/Aliases'
 import { Contract, TruffleContract } from '../LightTruffleContract'
+import { RelayRequest } from '../EIP712/RelayRequest'
+
 import relayHubAbi from '../interfaces/IRelayHub.json'
 
 // all inputs must be a BN so they are RLP-encoded as values, not strings
 // gasLimit of 0 will be replaced with some on-chain hard-coded value for this methodSignature
-export interface BatchItem {
+export interface RelayRequestsElement {
   id: BN
   nonce: BN
   paymaster: BN
   sender: BN
   target: BN
-  methodSignature: BN
   gasLimit: BN
+  calldataGas: BN
+  methodSignature: BN
   methodData: Buffer
 }
 
-export interface ApprovalItem {
-  authoriser: Address
+export interface SignedKeyAuthorization {
+  authorizer: Address
   blsPublicKey: BN[]
   signature: string
 }
@@ -33,6 +36,12 @@ export interface AddToCacheItem {
   externallyOwnedAccounts: Address[]
   paymasters: Address[]
   recipients: Address[]
+}
+
+export const none: AddToCacheItem = {
+  externallyOwnedAccounts: [],
+  paymasters: [],
+  recipients: []
 }
 
 enum SeparatelyCachedAddressTypes {
@@ -68,15 +77,16 @@ export class DecompressorInteractor {
   }
 
   /**
-   * Compress a structure into a {@link BatchItem} that can be efficiently RLP-encoded.
+   * Compress a structure into a {@link RelayRequestsElement} that can be efficiently RLP-encoded.
    */
-  async relayRequestToBatchItem (batchItemID: BN, relayRequest: RelayRequest): Promise<BatchItem> {
+  async compressRelayRequest (batchItemID: BN, relayRequest: RelayRequest): Promise<RelayRequestsElement> {
     const nonce = toBN(Date.now())
     const paymaster = toBN(Date.now())
     const sender = await this.addressToId(relayRequest.request.from, SeparatelyCachedAddressTypes.eoa)
     const target = await this.addressToId(relayRequest.request.to, SeparatelyCachedAddressTypes.recipients)
     const methodSignature = toBN(0xffffffff)
     const gasLimit = toBN(Date.now())
+    const calldataGas = toBN(relayRequest.relayData.transactionCalldataGasUsed)
     const methodData = Buffer.from([10, 12, 14])
     return {
       id: batchItemID,
@@ -86,6 +96,7 @@ export class DecompressorInteractor {
       target,
       methodSignature,
       gasLimit,
+      calldataGas,
       methodData
     }
   }
@@ -95,21 +106,36 @@ export class DecompressorInteractor {
   }
 }
 
+/**
+ * Input to the RLP encoding. Values that are cached on-chain are already replaced with corresponding cache IDs.
+ */
+export interface RLPBatchCompressedInput {
+  gasPrice: BN
+  validUntil: BN
+  relayWorker: BN
+  pctRelayFee: BN
+  baseRelayFee: BN
+  maxAcceptanceBudget: BN
+  blsSignature: BN[]
+  authorizations: SignedKeyAuthorization[]
+  relayRequestElements: RelayRequestsElement[]
+  addToCache: AddToCacheItem
+}
+
 export function encodeBatch (
-  _: {
-    maxAcceptanceBudget: BN
-    blsSignature: BN[]
-    approvals?: ApprovalItem[]
-    items: BatchItem[]
-    addToCache?: AddToCacheItem
-  }
+  input: RLPBatchCompressedInput
 ): PrefixedHexString {
-  const batchItems: List[] = _.items.map(it => { return [it.id, it.nonce, it.paymaster, it.sender, it.target, it.gasLimit, it.methodSignature, it.methodData] })
-  const approvalItems: List[] = _.approvals?.map(it => { return [it.authoriser, it.blsPublicKey, it.signature] }) ?? []
+  const batchItems: List[] = input.relayRequestElements.map(it => { return [it.id, it.nonce, it.paymaster, it.sender, it.target, it.gasLimit, it.calldataGas, it.methodSignature, it.methodData] })
+  const approvalItems: List[] = input.authorizations?.map(it => { return [it.authorizer, it.blsPublicKey, it.signature] }) ?? []
   const list: List = [
-    _.maxAcceptanceBudget,
-    _.blsSignature[0],
-    _.blsSignature[1],
+    input.gasPrice,
+    input.validUntil,
+    input.relayWorker,
+    input.pctRelayFee,
+    input.baseRelayFee,
+    input.maxAcceptanceBudget,
+    input.blsSignature[0],
+    input.blsSignature[1],
     batchItems,
     approvalItems]
   return bufferToHex(encode(list))

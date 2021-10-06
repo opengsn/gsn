@@ -1,13 +1,12 @@
-import { BLSAddressAuthorisationsRegistrarInstance } from '@opengsn/contracts'
+import { BLSAddressAuthorizationsRegistrarInstance } from '@opengsn/contracts'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { HttpProvider } from 'web3-core'
-import { defaultEnvironment } from '@opengsn/common'
 import { configureGSN } from '../TestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 
 const TestUtil = artifacts.require('TestUtil')
-const BLSAddressAuthorisationsRegistrar = artifacts.require('BLSAddressAuthorisationsRegistrar')
+const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 
 const blsPublicKey: string[] = [
   '0x2591180d099ddbc1b4cfcfaf2450dc0f054339950d461a88bdfe27d513268f3a',
@@ -16,15 +15,15 @@ const blsPublicKey: string[] = [
   '0x08cf151d45f98f4003bcad178e7188bdb62cca4858e8dd3dab63542b83240229'
 ]
 
-contract('BLSAddressAuthorisationsRegistrar', function ([from]: string[]) {
-  let registrar: BLSAddressAuthorisationsRegistrarInstance
+contract('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
+  let registrar: BLSAddressAuthorizationsRegistrarInstance
   let accountManager: AccountManager
-  let authorisationSignature: PrefixedHexString
+  let authorizationSignature: PrefixedHexString
 
   before(async function () {
     const testUtil = await TestUtil.new()
     const chainId = (await testUtil.libGetChainID()).toNumber()
-    registrar = await BLSAddressAuthorisationsRegistrar.new()
+    registrar = await BLSAddressAuthorizationsRegistrar.new()
     const config = configureGSN({
       methodSuffix: '_v4',
       jsonStringifyRequest: false
@@ -34,23 +33,23 @@ contract('BLSAddressAuthorisationsRegistrar', function ([from]: string[]) {
       pubkey: blsPublicKey,
       secret: ''
     })
-    authorisationSignature = await accountManager.createAccountAuthorisation(from, registrar.address.toLowerCase())
+    authorizationSignature = await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
   })
 
-  context('#registerAddressAuthorisation()', function () {
+  context('#registerAddressAuthorization()', function () {
     it('should register a correctly signed BLS public key to the given address', async function () {
-      const receipt = await registrar.registerAddressAuthorisation(from, blsPublicKey, authorisationSignature)
+      const receipt = await registrar.registerAddressAuthorization(from, blsPublicKey, authorizationSignature)
       const expectedPublicKeyHash = web3.utils.keccak256(web3.eth.abi.encodeParameter('uint256[4]', blsPublicKey))
-      await expectEvent.inLogs(receipt.logs, 'AuthorisationIssued', {
+      await expectEvent.inLogs(receipt.logs, 'AuthorizationIssued', {
         authoriser: from,
         blsPublicKeyHash: expectedPublicKeyHash
       })
     })
 
     it('should revert and attempt to add incorrectly signed BLS public key to the given address', async function () {
-      const differentSignature = await accountManager.createAccountAuthorisation(from, from)
+      const differentSignature = await accountManager.createAccountAuthorization(from, from)
       await expectRevert(
-        registrar.registerAddressAuthorisation(from, blsPublicKey, differentSignature),
+        registrar.registerAddressAuthorization(from, blsPublicKey, differentSignature),
         'registrar: signature mismatch')
     })
   })

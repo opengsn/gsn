@@ -9,54 +9,27 @@ import "../utils/RLPReader.sol";
 import "../utils/GsnTypes.sol";
 
 import "./BLS.sol";
-import "./BLSTypes.sol";
-import "./BLSAddressAuthorisationsRegistrar.sol";
+import "./BLSAddressAuthorizationsRegistrar.sol";
 import "./DomainSpecificInputDecompressor.sol";
-
+import "./interfaces/BLSTypes.sol";
 
 contract BLSBatchGateway {
 
-    // TODO: consider allowing RelayServers to specify decompressor address as port of the input
     DomainSpecificInputDecompressor public decompressor;
-    BLSAddressAuthorisationsRegistrar public authorisationsRegistrar;
+    BLSAddressAuthorizationsRegistrar public authorizationsRegistrar;
     IRelayHub public relayHub;
 
-
-    // subset of fields for RelayRequest + id;
-    struct BatchItem {
-        uint256 id; // input
-        uint256 nonce; // input
-        address paymaster; // cached
-        address sender; // cached
-        address target; // cached
-        bytes4 methodSignature; // cached
-        bytes methodData; // only ABI encoding, shortened input
-        uint256 gasLimit; // not input usually
-    }
-
-    struct ApprovalItem {
-        address from;
-        uint256[4] blsPublicKey;
-        bytes signature;
-    }
-
-    struct Batch {
-        BatchItem[] items;
-        ApprovalItem[] approvalItems;
-        uint256[2] blsSignature;
-        uint256 maxAcceptanceBudget;
-    }
-
-    event BatchRelayed(address indexed relayWorker, uint256 accepted, uint256 rejected);
+    event RelayCallReverted(uint256 indexed batchItemId, bytes returnData);
+    event BatchRelayed(address indexed relayWorker, uint256 batchSize);
     event SkippedInvalidBatchItem(uint256 itemId, string reason);
 
     constructor(
         DomainSpecificInputDecompressor _decompressor,
-        BLSAddressAuthorisationsRegistrar _authorisationsRegistrar,
+        BLSAddressAuthorizationsRegistrar _authorizationsRegistrar,
         IRelayHub _relayHub
     ) {
         decompressor = _decompressor;
-        authorisationsRegistrar = _authorisationsRegistrar;
+        authorizationsRegistrar = _authorizationsRegistrar;
         relayHub = _relayHub;
     }
 
@@ -65,21 +38,17 @@ contract BLSBatchGateway {
     }
 
     fallback() external payable {
-        Batch memory batch = decompressor.decodeBatch(msg.data);
-        handleNewApprovals(batch.approvalItems);
+        BLSTypes.Batch memory batch = decompressor.decodeBatch(msg.data);
+        handleNewApprovals(batch.authorizations);
 
-        if (batch.items.length == 0) {
-            // TODO: I am considering 'rawBatch' with an extra field for caching, thus having to relay empty batch
-            // also useful as an 'activity indicator'
-            emit BatchRelayed(msg.sender, 0, 0);
+        if (batch.relayRequests.length == 0) {
+            emit BatchRelayed(msg.sender, 0);
             return;
         }
-        uint256[4][] memory blsPublicKeys = new uint256[4][](batch.items.length);
-        GsnTypes.RelayRequest[] memory relayRequests = new GsnTypes.RelayRequest[](batch.items.length);
-        uint256[2][] memory messages = new uint256[2][](batch.items.length);
-        for (uint256 i = 0; i < batch.items.length; i++) {
-            relayRequests[i] = decodeBatchItem(batch.items[i]);
-            blsPublicKeys[i] = authorisationsRegistrar.getAuthorisedPublicKey(relayRequests[i].request.from);
+        uint256[4][] memory blsPublicKeys = new uint256[4][](batch.relayRequests.length);
+        uint256[2][] memory messages = new uint256[2][](batch.relayRequests.length);
+        for (uint256 i = 0; i < batch.relayRequests.length; i++) {
+            blsPublicKeys[i] = authorizationsRegistrar.getAuthorizedPublicKey(batch.relayRequests[i].request.from);
             // TODO: require key is not null
 //            messages[i] = BLS.hashToPoint('testing-evmbls', abi.encode(relayRequests[i]));
             messages[i] = BLS.hashToPoint('testing-evmbls', abi.encodePacked(bytes4(0xffffffff)));
@@ -88,45 +57,20 @@ contract BLSBatchGateway {
         bool isSignatureValid = BLS.verifyMultiple(batch.blsSignature, blsPublicKeys, messages);
         require(isSignatureValid, "BLS signature verification failed");
 
-        //        uint256[2] memory signature,
-        //        uint256[4][] memory pubkeys,
-        //        uint256[2][] memory messages
-        uint256 accepted = 0;
-        uint256 rejected = 0;
-        for (uint256 i = 0; i < relayRequests.length; i++) {
-            // TODO --//--
-            //            if (blsPublicKeys[i].pubkey[0] == 0) {
-            //                emit SkippedInvalidBatchItem(batch.items[i].id, 'missing authorisation');
-            //            }
-            (bool success, bytes memory returnData) = address(relayHub).call(abi.encodeWithSelector(relayHub.relayCall.selector, batch.items[i].id, batch.maxAcceptanceBudget, relayRequests[i], "", ""));
-            // TODO: this count gathering is ugly, think if we actually need it?
+        for (uint256 i = 0; i < batch.relayRequests.length; i++) {
+            (bool success, bytes memory returnData) = address(relayHub).call(abi.encodeWithSelector(relayHub.relayCall.selector, batch.relayRequestIds[i], batch.metadata.maxAcceptanceBudget, batch.relayRequests[i], "", ""));
             if (success) {
                 (bool paymasterAccepted,) = abi.decode(returnData, (bool, bytes));
-                if (paymasterAccepted) {
-                    accepted++;
-                } else {
-                    rejected++;
-                }
             } else {
-                emit RelayCallReverted(batch.items[i].id, returnData);
-                rejected++;
+                emit RelayCallReverted(batch.relayRequestIds[i], returnData);
             }
         }
-        emit BatchRelayed(msg.sender, accepted, rejected);
+        emit BatchRelayed(msg.sender, batch.relayRequests.length);
     }
 
-    event RelayCallReverted(uint256 indexed batchItemId, bytes returnData);
-
-    function decodeBatchItem(BatchItem memory batchItem) public view returns (GsnTypes.RelayRequest memory){
-        return GsnTypes.RelayRequest(
-            IForwarder.ForwardRequest(batchItem.sender, batchItem.target, 0, 0, 0, '', 0),
-            GsnTypes.RelayData(0, 0, 0, 0, address(0), address(0), address(0), '', 0)
-        );
-    }
-
-    function handleNewApprovals(ApprovalItem[] memory approvalItems) internal {
+    function handleNewApprovals(BLSTypes.SignedKeyAuthorization[] memory approvalItems) internal {
         for (uint256 i; i < approvalItems.length; i++) {
-            authorisationsRegistrar.registerAddressAuthorisation(
+            authorizationsRegistrar.registerAddressAuthorization(
                 approvalItems[i].from,
                 approvalItems[i].blsPublicKey,
                 approvalItems[i].signature

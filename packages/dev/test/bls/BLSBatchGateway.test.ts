@@ -2,36 +2,41 @@ import { toBN } from 'web3-utils'
 import { HttpProvider } from 'web3-core'
 
 import {
-  BLSAddressAuthorisationsRegistrarInstance,
+  BLSAddressAuthorizationsRegistrarInstance,
   BLSBatchGatewayInstance,
   BLSTestHubInstance,
   DomainSpecificInputDecompressorInstance
 } from '@opengsn/contracts'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { ApprovalItem, DecompressorInteractor, encodeBatch } from '@opengsn/common/dist/bls/DecompressorInteractor'
+import {
+  DecompressorInteractor,
+  SignedKeyAuthorization,
+  RLPBatchCompressedInput,
+  encodeBatch,
+  none
+} from '@opengsn/common/dist/bls/DecompressorInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { configureGSN } from '../TestUtils'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { bufferToHex } from 'ethereumjs-util'
+import { constants } from '@opengsn/common'
 
-const BLSAddressAuthorisationsRegistrar = artifacts.require('BLSAddressAuthorisationsRegistrar')
+const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const DomainSpecificInputDecompressor = artifacts.require('DomainSpecificInputDecompressor')
 const BLSBatchGateway = artifacts.require('BLSBatchGateway')
 const BLSTestHub = artifacts.require('BLSTestHub')
 
-async function createAuthorisationSignature (
+async function createAuthorizationSignature (
   from: string,
   blsKeypair: any,
-  registrar: BLSAddressAuthorisationsRegistrarInstance): Promise<string> {
+  registrar: BLSAddressAuthorizationsRegistrarInstance): Promise<string> {
   const config = configureGSN({
     methodSuffix: '_v4',
     jsonStringifyRequest: false
   })
   const accountManager = new AccountManager(web3.currentProvider as HttpProvider, 1337, config)
   accountManager.setBLSKeypair(blsKeypair)
-  return await accountManager.createAccountAuthorisation(from, registrar.address.toLowerCase())
+  return accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
 }
 
 contract.only('BLSBatchGateway', function ([from, to]: string[]) {
@@ -41,12 +46,25 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
   let blsTestHub: BLSTestHubInstance
   let gateway: BLSBatchGatewayInstance
   let decompressor: DomainSpecificInputDecompressorInstance
-  let registrar: BLSAddressAuthorisationsRegistrarInstance
+  let registrar: BLSAddressAuthorizationsRegistrarInstance
+
+  const batchInput: RLPBatchCompressedInput = {
+    gasPrice: toBN(15),
+    validUntil: toBN(15),
+    relayWorker: toBN(15),
+    pctRelayFee: toBN(15),
+    baseRelayFee: toBN(15),
+    maxAcceptanceBudget: toBN(15),
+    blsSignature: [],
+    relayRequestElements: [],
+    authorizations: [],
+    addToCache: none
+  }
 
   before(async function () {
     blsTestHub = await BLSTestHub.new()
-    decompressor = await DomainSpecificInputDecompressor.new()
-    registrar = await BLSAddressAuthorisationsRegistrar.new()
+    decompressor = await DomainSpecificInputDecompressor.new(constants.ZERO_ADDRESS)
+    registrar = await BLSAddressAuthorizationsRegistrar.new()
     gateway = await BLSBatchGateway.new(decompressor.address, registrar.address, blsTestHub.address)
 
     blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
@@ -56,12 +74,7 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
 
   context('fallback function', function () {
     it('should accept empty batch and emit empty BatchRelayed event', async function () {
-      const data = encodeBatch({
-        maxAcceptanceBudget: toBN(15),
-        blsSignature: [],
-        items: [],
-        approvals: []
-      })
+      const data = encodeBatch(batchInput)
       const receipt = await web3.eth.sendTransaction({
         from,
         to: gateway.address,
@@ -81,37 +94,39 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
         request: {
           from,
           to
+        },
+        // @ts-ignore
+        relayData: {
+          transactionCalldataGasUsed: '777'
         }
       }
-      const batchItem = await decompressorInteractor.relayRequestToBatchItem(toBN(777), relayRequest)
-      const authorisationSignature = await createAuthorisationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
-      const authorisationItem: ApprovalItem = {
-        authoriser: from,
-        blsPublicKey: blsTypedDataSigner.getPublicKeySerialized(),
-        signature: authorisationSignature
+      const batchItem = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest)
+      const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
+      const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
+      const authorizationItem: SignedKeyAuthorization = {
+        authorizer: from,
+        blsPublicKey,
+        signature: authorizationSignature
       }
       const blsSignature = await blsTypedDataSigner.signTypedDataBLS('0xffffffff')
-      // await registrar.registerAddressAuthorisation(from, blsPublicKey, authorisationSignature)
-      const data = encodeBatch({
-        maxAcceptanceBudget: toBN(15),
+      const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature,
-        items: [batchItem],
-        approvals: [authorisationItem]
-      })
+        relayRequestElements: [batchItem],
+        authorizations: [authorizationItem]
+      }))
       const receipt = await web3.eth.sendTransaction({
         from,
         to: gateway.address,
         data
       }) as TransactionReceipt
 
-      await expectEvent.inTransaction(receipt.transactionHash, BLSAddressAuthorisationsRegistrar, 'AuthorisationIssued', {
-        authoriser: from
+      await expectEvent.inTransaction(receipt.transactionHash, BLSAddressAuthorizationsRegistrar, 'AuthorizationIssued', {
+        authorizer: from
       })
 
       await expectEvent.inTransaction(receipt.transactionHash, BLSBatchGateway, 'BatchRelayed', {
         relayWorker: from,
-        accepted: '1',
-        rejected: '0'
+        batchSize: '1'
       })
 
       await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
@@ -125,7 +140,7 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
     it('should accept batch with a single element with compresses fields and emit BatchRelayed event', async function () {
     })
 
-    it('should accept batch with multiple elements with different fields and emit BatchRelayed event', async function () {
+    it('should accept batch with multiple elements with different fields and an aggregated BLS signature', async function () {
     })
 
     it('should reject batch with a single element with an incorrect BLS signature', async function () {
@@ -139,17 +154,14 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
       }
 
       // it seems that if the signature is not some BLS signature hardhat will revert the entire transaction
-      const invalidBLSSignature = [
-        toBN('0x0d0f7ffada69be42006ba9236c07b9ee3a13d43705e4cf006fb509542281fd78'),
-        toBN('0x019049c5f410a54c9d85add908a921c75c3f8c94e8bcebdfafc5da8afec910dc')]
-      const batchItem = await decompressorInteractor.relayRequestToBatchItem(toBN(777), relayRequest)
+      const batchItem = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest)
       const blsSignature = await blsTypedDataSigner.signTypedDataBLS('hello world')
-      const data = encodeBatch({
-        maxAcceptanceBudget: toBN(15),
-        blsSignature,
-        items: [batchItem],
-        approvals: []
-      })
+      const data = encodeBatch(
+        Object.assign({}, batchInput, {
+          blsSignature,
+          relayRequestElements: [batchItem]
+        })
+      )
       await expectRevert(web3.eth.call({
         from,
         to: gateway.address,
