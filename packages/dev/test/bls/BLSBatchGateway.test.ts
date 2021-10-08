@@ -1,5 +1,6 @@
 import { toBN } from 'web3-utils'
 import { HttpProvider } from 'web3-core'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import {
   BLSAddressAuthorizationsRegistrarInstance,
@@ -17,9 +18,10 @@ import {
   none
 } from '@opengsn/common/dist/bls/DecompressorInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
-import { configureGSN } from '../TestUtils'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { constants } from '@opengsn/common'
+
+import { configureGSN } from '../TestUtils'
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const DomainSpecificInputDecompressor = artifacts.require('DomainSpecificInputDecompressor')
@@ -39,7 +41,7 @@ async function createAuthorizationSignature (
   return accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
 }
 
-contract.only('BLSBatchGateway', function ([from, to]: string[]) {
+contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
   let decompressorInteractor: DecompressorInteractor
   let blsTypedDataSigner: BLSTypedDataSigner
 
@@ -87,7 +89,7 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
       })
     })
 
-    it.only('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
+    it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
       // @ts-ignore
       const relayRequest: RelayRequest = {
         // @ts-ignore
@@ -140,7 +142,80 @@ contract.only('BLSBatchGateway', function ([from, to]: string[]) {
     it('should accept batch with a single element with compresses fields and emit BatchRelayed event', async function () {
     })
 
-    it('should accept batch with multiple elements with different fields and an aggregated BLS signature', async function () {
+    // TODO: this test is twice a duplicate of test 1; extract parts?
+    it.only('should accept batch with multiple elements with different fields and an aggregated BLS signature', async function () {
+      // create another signer with another keypair
+      const blsTypedDataSigner1 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
+      const blsTypedDataSigner2 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
+
+      // @ts-ignore
+      const relayRequest1: RelayRequest = {
+        // @ts-ignore
+        request: {
+          from,
+          to
+        },
+        // @ts-ignore
+        relayData: {
+          transactionCalldataGasUsed: '777'
+        }
+      }
+
+      const relayRequest2: RelayRequest = {
+        // @ts-ignore
+        request: {
+          from: from2,
+          to
+        },
+        // @ts-ignore
+        relayData: {
+          transactionCalldataGasUsed: '777'
+        }
+      }
+      const batchItem1 = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest1)
+      const batchItem2 = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest2)
+      const authorizationSignature1 = await createAuthorizationSignature(from, blsTypedDataSigner1.blsKeypair, registrar)
+      const authorizationSignature2 = await createAuthorizationSignature(from2, blsTypedDataSigner2.blsKeypair, registrar)
+      const blsPublicKey1 = blsTypedDataSigner1.getPublicKeySerialized()
+      const blsPublicKey2 = blsTypedDataSigner2.getPublicKeySerialized()
+      const authorizationItem1: SignedKeyAuthorization = {
+        authorizer: from,
+        blsPublicKey: blsPublicKey1,
+        signature: authorizationSignature1
+      }
+      const authorizationItem2: SignedKeyAuthorization = {
+        authorizer: from2,
+        blsPublicKey: blsPublicKey2,
+        signature: authorizationSignature2
+      }
+      const blsSignature1: PrefixedHexString[] = (await blsTypedDataSigner1.signTypedDataBLS('0xffffffff')).map(it => { return it.toString('hex') })
+      const blsSignature2: PrefixedHexString[] = (await blsTypedDataSigner2.signTypedDataBLS('0xffffffff')).map(it => { return it.toString('hex') })
+
+      const aggregatedBlsSignature = BLSTypedDataSigner.aggregateSignatures([blsSignature1, blsSignature2])
+
+      const data = encodeBatch(Object.assign({}, batchInput, {
+        blsSignature: aggregatedBlsSignature,
+        relayRequestElements: [batchItem1, batchItem2],
+        authorizations: [authorizationItem1, authorizationItem2]
+      }))
+      const receipt = await web3.eth.sendTransaction({
+        from,
+        to: gateway.address,
+        data
+      }) as TransactionReceipt
+
+      await expectEvent.inTransaction(receipt.transactionHash, BLSAddressAuthorizationsRegistrar, 'AuthorizationIssued', {
+        authorizer: from
+      })
+
+      await expectEvent.inTransaction(receipt.transactionHash, BLSAddressAuthorizationsRegistrar, 'AuthorizationIssued', {
+        authorizer: from2
+      })
+
+      await expectEvent.inTransaction(receipt.transactionHash, BLSBatchGateway, 'BatchRelayed', {
+        relayWorker: from,
+        batchSize: '2'
+      })
     })
 
     it('should reject batch with a single element with an incorrect BLS signature', async function () {

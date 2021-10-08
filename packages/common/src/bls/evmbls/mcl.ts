@@ -1,8 +1,9 @@
+// @ts-ignore
+import mcl from 'mcl-wasm'
+
 import { ethers } from 'ethers'
 import { toBig, FIELD_ORDER, bigToHex, randHex } from './utils'
 import { hashToField } from './hash_to_field'
-
-const mcl = require('mcl-wasm')
 
 export type mclG2 = any;
 export type mclG1 = any;
@@ -168,6 +169,8 @@ export function newKeyPair () {
 
 export function sign (message: string, secret: mclFR) {
   const M = hashToPoint(message)
+
+  Object.setPrototypeOf(secret, mcl.Fr.prototype); // TODO: this seems to be a bug in 'instanceof'/'mcl-wasm' or some other JS magic, but '.mul' sometimes fails with "mul:mismatch type" otherwise
   const signature = mcl.mul(M, secret)
   signature.normalize()
   return {
@@ -188,6 +191,10 @@ export function compressPubkey (p: mclG2) {
 
 export function compressSignature (p: mclG1) {
   return g1ToCompressed(p)
+}
+
+export function newFp () {
+  return new mcl.Fp()
 }
 
 export function newG1 () {
