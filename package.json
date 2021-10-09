@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "0.5.5",
-    "@truffle/hdwallet-provider": "1.0.34",
+    "@truffle/hdwallet-provider": "1.4.1",
     "@typechain/truffle-v5": "^4.0.1",
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.2.12",

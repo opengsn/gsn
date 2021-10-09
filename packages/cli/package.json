@@ -1,55 +1,55 @@
 {
-  "name": "@opengsn/cli",
-  "version": "2.2.2",
-  "license": "GPL-3.0-only",
-  "main": "dist/commands/gsn.js",
-  "bin": {
-    "gsn": "dist/commands/gsn.js"
-  },
-  "scripts": {
-    "tsc": "tsc",
-    "lint": "eslint -f unix .",
-    "chmod-commands": "chmod a+rx ./dist/commands/*.js",
-    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/cli/compiled"
-  },
-  "files": [
-    "dist/*",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "dependencies": {
-    "@opengsn/common": "^2.2.2",
-    "@opengsn/provider": "^2.2.2",
-    "@opengsn/relay": "^2.2.2",
-    "@truffle/hdwallet-provider": "1.0.34",
-    "@types/asciichart": "^1.5.4",
-    "@types/clear": "^0.1.1",
-    "@types/cli-table": "^0.3.0",
-    "@types/node": "^13.0.0",
-    "@types/web3-provider-engine": "^14.0.0",
-    "asciichart": "^1.5.25",
-    "chalk": "^4.1.0",
-    "clear": "^0.1.0",
-    "cli-table": "^0.3.4",
-    "colors": "^1.4.0",
-    "commander": "^6.1.0",
-    "console-read-write": "^0.1.1",
-    "date-format": "^3.0.0",
-    "@ethereumjs/tx": "^3.2.0",
-    "ethereumjs-util": "^7.1.0",
-    "moment": "^2.29.1",
-    "terminal-link": "^2.1.1",
-    "web3-provider-engine": "14.1.0",
-    "winston": "^3.3.3"
-  },
-  "devDependencies": {
-    "web3-core": "1.2.6",
-    "web3-core-helpers": "1.2.6",
-    "web3-eth": "1.2.6",
-    "web3-eth-abi": "1.2.6",
-    "web3-eth-contract": "1.2.6",
-    "web3-utils": "1.2.6"
-  }
+    "name": "@opengsn/cli",
+    "version": "2.2.2",
+    "license": "GPL-3.0-only",
+    "main": "dist/commands/gsn.js",
+    "bin": {
+        "gsn": "dist/commands/gsn.js"
+    },
+    "scripts": {
+        "tsc": "tsc",
+        "lint": "eslint -f unix .",
+        "chmod-commands": "chmod a+rx ./dist/commands/*.js",
+        "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/cli/compiled"
+    },
+    "files": [
+        "dist/*",
+        "README.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@opengsn/common": "^2.2.2",
+        "@opengsn/provider": "^2.2.2",
+        "@opengsn/relay": "^2.2.2",
+        "@truffle/hdwallet-provider": "1.4.1",
+        "@types/asciichart": "^1.5.4",
+        "@types/clear": "^0.1.1",
+        "@types/cli-table": "^0.3.0",
+        "@types/node": "^13.0.0",
+        "@types/web3-provider-engine": "^14.0.0",
+        "asciichart": "^1.5.25",
+        "chalk": "^4.1.0",
+        "clear": "^0.1.0",
+        "cli-table": "^0.3.4",
+        "colors": "^1.4.0",
+        "commander": "^6.1.0",
+        "console-read-write": "^0.1.1",
+        "date-format": "^3.0.0",
+        "@ethereumjs/tx": "^3.2.0",
+        "ethereumjs-util": "^7.1.0",
+        "moment": "^2.29.1",
+        "terminal-link": "^2.1.1",
+        "web3-provider-engine": "14.1.0",
+        "winston": "^3.3.3"
+    },
+    "devDependencies": {
+        "web3-core": "1.2.6",
+        "web3-core-helpers": "1.2.6",
+        "web3-eth": "1.2.6",
+        "web3-eth-abi": "1.2.6",
+        "web3-eth-contract": "1.2.6",
+        "web3-utils": "1.2.6"
+    }
 }
