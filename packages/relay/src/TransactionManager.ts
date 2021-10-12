@@ -191,7 +191,8 @@ data         | 0x${transaction.data.toString('hex')}
         gasLimit: tx.gas,
         gasPrice: newGasPrice,
         data: tx.data,
-        nonce: tx.nonce
+        nonce: tx.nonce,
+        value: tx.value
       },
       this.rawTxOptions)
 

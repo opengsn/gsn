@@ -46,6 +46,7 @@ contract('PenalizationFlow', function (accounts) {
       url: LocalhostOne,
       relayOwner: accounts[0],
       ethereumNodeUrl: currentProvider.host,
+      refreshStateTimeoutBlocks: 1,
       gasPriceFactor: 1.2,
       relaylog: process.env.relaylog
     })
