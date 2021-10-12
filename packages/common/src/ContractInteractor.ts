@@ -82,6 +82,7 @@ export class ContractInteractor {
   private networkId?: number
   private networkType?: string
   private paymasterVersion?: SemVerString
+  private chain?: string
 
   constructor (
     {
@@ -152,12 +153,12 @@ export class ContractInteractor {
     await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility()
-    const chain = await this.web3.eth.net.getNetworkType()
+    this.chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
-    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
+    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, this.chain)
     return this
   }
 
@@ -563,9 +564,12 @@ export class ContractInteractor {
   }
 
   async getBlockNumber (): Promise<number> {
+    if (this.chain === 'private') {
+      return await this.web3.eth.getBlockNumber()
+    }
     let blockNumber = -1
     let attempts = 0
-    while (attempts <= 100) {
+    while (attempts <= 10) {
       try {
         blockNumber = await this.web3.eth.getBlockNumber()
       } catch (e) {
@@ -574,7 +578,7 @@ export class ContractInteractor {
       if (blockNumber >= this.lastBlockNumber) {
         break
       }
-      await sleep(100)
+      await sleep(1000)
       attempts++
     }
     if (blockNumber < this.lastBlockNumber) {
