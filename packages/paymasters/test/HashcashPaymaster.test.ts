@@ -14,7 +14,7 @@ const HashcashPaymaster = artifacts.require('HashcashPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')
 const IRelayHub = artifacts.require('IRelayHub')
 
-contract('HashcashPaymaster', ([from]) => {
+contract.skip('HashcashPaymaster', ([from]) => {
   let pm: HashcashPaymasterInstance
   let s: SampleRecipientInstance
   let gsnConfig: Partial<GSNConfig>
