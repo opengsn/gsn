@@ -74,6 +74,9 @@ export async function startRelay (
   if (options.workerTargetBalance) {
     args.push('--workerTargetBalance', options.workerTargetBalance)
   }
+  if (options.refreshStateTimeoutBlocks) {
+    args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
+  }
   const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
     [runServerPath, ...args])

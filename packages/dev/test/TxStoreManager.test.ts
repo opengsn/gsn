@@ -3,6 +3,7 @@ import fs from 'fs'
 import { ServerAction, StoredTransaction } from '@opengsn/relay/dist/StoredTransaction'
 import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { toHex } from 'web3-utils'
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
@@ -41,6 +42,7 @@ contract('TxStoreManager', function (accounts) {
       gasPrice: 0,
       data: '',
       nonce: 111,
+      value: toHex(1e18),
       txId: '123456',
       serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
@@ -54,6 +56,7 @@ contract('TxStoreManager', function (accounts) {
       gasPrice: 0,
       data: '',
       nonce: 112,
+      value: toHex(1e18),
       txId: '1234567',
       serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
@@ -68,6 +71,7 @@ contract('TxStoreManager', function (accounts) {
         gasPrice: 0,
         data: '',
         nonce: 113,
+        value: toHex(1e18),
         txId: '12345678',
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
