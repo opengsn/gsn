@@ -1,5 +1,5 @@
 import { Transaction } from '@ethereumjs/tx'
-import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 
@@ -34,7 +34,7 @@ export class RelayedTransactionValidator {
     const transaction = {
       signer: tx.getSenderAddress().toString(),
       ...tx.toJSON()
-    }
+    } as any
 
     if (transaction.to == null) {
       throw new Error('transaction.to must be defined')
@@ -43,7 +43,7 @@ export class RelayedTransactionValidator {
       throw new Error('tx signature must be defined')
     }
 
-    this.logger.debug(`returnedTx: ${JSON.stringify(transaction,null,2)}`)
+    this.logger.debug(`returnedTx: ${JSON.stringify(transaction, null, 2)}`)
 
     const signer = transaction.signer
 
