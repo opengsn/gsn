@@ -30,27 +30,41 @@ export class RelayedTransactionValidator {
     maxAcceptanceBudget: number,
     returnedTx: PrefixedHexString
   ): boolean {
-    const transaction = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
-    if (transaction.to == null) {
+    const tx = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
+    if (tx.to == null) {
       throw new Error('transaction.to must be defined')
     }
-    if (transaction.s == null || transaction.r == null || transaction.v == null) {
+    if (tx.s == null || tx.r == null || tx.v == null) {
       throw new Error('tx signature must be defined')
     }
-    this.logger.info(`returnedTx:
-    v:        ${bufferToHex(transaction.v.toBuffer())}
-    r:        ${bufferToHex(transaction.r.toBuffer())}
-    s:        ${bufferToHex(transaction.s.toBuffer())}
-    to:       ${transaction.to.toString()}
-    data:     ${bufferToHex(transaction.data)}
-    gasLimit: ${bufferToHex(transaction.gasLimit.toBuffer())}
-    gasPrice: ${bufferToHex(transaction.gasPrice.toBuffer())}
-    value:    ${bufferToHex(transaction.value.toBuffer())}
+
+    const transaction = {
+      v: `0x${tx.v.toString(16)}`,
+      r: `0x${tx.r.toString(16)}`,
+      s: `0x${tx.s.toString(16)}`,
+      to: tx.to.toString(),
+      data: `0x${tx.data.toString('hex')}`,
+      gasLimit: `0x${tx.gasLimit.toString(16)}`,
+      gasPrice: `0x${tx.gasPrice.toString(16)}`,
+      value: `0x${tx.value.toString(16)}`,
+      nonce: `0x${tx.nonce.toString(16)}`
+    }
+    console.log
+      // this.logger.debug
+      (`returnedTx:
+    v:        ${transaction.v}
+    r:        ${transaction.r}
+    s:        ${transaction.s}
+    to:       ${transaction.to}
+    data:     ${transaction.data}
+    gasLimit: ${transaction.gasLimit}
+    gasPrice: ${transaction.gasPrice}
+    value:    ${transaction.value}
     `)
 
-    const signer = bufferToHex(transaction.getSenderAddress().toBuffer())
+    const signer = tx.getSenderAddress().toString()
 
-    const externalGasLimit = bufferToHex(transaction.gasLimit.toBuffer())
+    const externalGasLimit = transaction.gasLimit
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
@@ -59,13 +73,13 @@ export class RelayedTransactionValidator {
     }
 
     if (
-      isSameAddress(bufferToHex(transaction.to.toBuffer()), relayHubAddress) &&
-      relayRequestAbiEncode === bufferToHex(transaction.data) &&
+      isSameAddress(transaction.to, relayHubAddress) &&
+      relayRequestAbiEncode === transaction.data &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
       this.logger.info('validateRelayResponse - valid transaction response')
 
-      const receivedNonce = transaction.nonce.toNumber()
+      const receivedNonce = parseInt(transaction.nonce)
       if (receivedNonce > request.metadata.relayMaxNonce) {
         // TODO: need to validate that client retries the same request and doesn't double-spend.
         // Note that this transaction is totally valid from the EVM's point of view
@@ -77,7 +91,7 @@ export class RelayedTransactionValidator {
       return true
     } else {
       console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)
-      console.error('validateRelayResponse: rsp', bufferToHex(transaction.data), bufferToHex(transaction.to.toBuffer()), signer)
+      console.error('validateRelayResponse: rsp', transaction.data, transaction.to, signer)
       return false
     }
   }
