@@ -82,7 +82,6 @@ export class ContractInteractor {
   private networkId?: number
   private networkType?: string
   private paymasterVersion?: SemVerString
-  private chain!: string
 
   constructor (
     {
@@ -153,12 +152,11 @@ export class ContractInteractor {
     await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility()
-    this.chain = await this.web3.eth.net.getNetworkType()
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
     // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
-    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, this.chain)
+    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, this.networkType)
     return this
   }
 
@@ -477,7 +475,7 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    const delay = this.chain === 'private' ? 0 : 300
+    const delay = this.getNetworkType() === 'private' ? 0 : 300
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -567,7 +565,7 @@ export class ContractInteractor {
   async getBlockNumber (): Promise<number> {
     let blockNumber = -1
     let attempts = 0
-    const delay = this.chain === 'private' ? 0 : 1000
+    const delay = this.getNetworkType() === 'private' ? 0 : 1000
     while (blockNumber < this.lastBlockNumber && attempts <= 10) {
       try {
         blockNumber = await this.web3.eth.getBlockNumber()
