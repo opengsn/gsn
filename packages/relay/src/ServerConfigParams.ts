@@ -296,7 +296,8 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
       versionRegistryAddress: config.versionRegistryAddress
     }
   })
-  await contractInteractor.init()
+  await contractInteractor._initializeContracts()
+  await contractInteractor._initializeNetworkParams()
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
