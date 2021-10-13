@@ -155,7 +155,7 @@ export class ContractInteractor {
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
-    // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
+    // networkType === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, this.networkType)
     return this
   }
