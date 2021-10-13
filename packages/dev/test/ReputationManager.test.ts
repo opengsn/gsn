@@ -53,6 +53,7 @@ contract('ReputationManager', function () {
       maxPageSize,
       logger
     })
+    await contractInteractor.init()
   })
 
   after(() => {

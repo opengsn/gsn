@@ -14,7 +14,7 @@ const HashcashPaymaster = artifacts.require('HashcashPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')
 const IRelayHub = artifacts.require('IRelayHub')
 
-contract.skip('HashcashPaymaster', ([from]) => {
+contract('HashcashPaymaster', ([from]) => {
   let pm: HashcashPaymasterInstance
   let s: SampleRecipientInstance
   let gsnConfig: Partial<GSNConfig>
@@ -46,6 +46,10 @@ contract.skip('HashcashPaymaster', ([from]) => {
       },
       paymasterAddress: pm.address
     }
+  })
+
+  after(async function () {
+    await GsnTestEnvironment.stopGsn()
   })
 
   it('should fail to send without approvalData', async () => {
