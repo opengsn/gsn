@@ -31,38 +31,21 @@ export class RelayedTransactionValidator {
     returnedTx: PrefixedHexString
   ): boolean {
     const tx = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
-    if (tx.to == null) {
+    const transaction = {
+      signer: tx.getSenderAddress().toString(),
+      ...tx.toJSON()
+    }
+
+    if (transaction.to == null) {
       throw new Error('transaction.to must be defined')
     }
-    if (tx.s == null || tx.r == null || tx.v == null) {
+    if (transaction.s == null || transaction.r == null || transaction.v == null) {
       throw new Error('tx signature must be defined')
     }
 
-    const transaction = {
-      v: `0x${tx.v.toString(16)}`,
-      r: `0x${tx.r.toString(16)}`,
-      s: `0x${tx.s.toString(16)}`,
-      to: tx.to.toString(),
-      data: `0x${tx.data.toString('hex')}`,
-      gasLimit: `0x${tx.gasLimit.toString(16)}`,
-      gasPrice: `0x${tx.gasPrice.toString(16)}`,
-      value: `0x${tx.value.toString(16)}`,
-      nonce: `0x${tx.nonce.toString(16)}`
-    }
-    console.log
-      // this.logger.debug
-      (`returnedTx:
-    v:        ${transaction.v}
-    r:        ${transaction.r}
-    s:        ${transaction.s}
-    to:       ${transaction.to}
-    data:     ${transaction.data}
-    gasLimit: ${transaction.gasLimit}
-    gasPrice: ${transaction.gasPrice}
-    value:    ${transaction.value}
-    `)
+    this.logger.debug(`returnedTx: ${JSON.stringify(transaction,null,2)}`)
 
-    const signer = tx.getSenderAddress().toString()
+    const signer = transaction.signer
 
     const externalGasLimit = transaction.gasLimit
     const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
