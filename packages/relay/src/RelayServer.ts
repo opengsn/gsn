@@ -55,7 +55,6 @@ export class RelayServer extends EventEmitter {
   lastScannedBlock: number
   lastRefreshBlock = 0
   ready = false
-  lastSuccessfulRounds = Number.MAX_SAFE_INTEGER
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   minGasPrice: number = 0
@@ -357,7 +356,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.validateInput(req, currentBlock)
     this.validateFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
-
     if (this.config.runPaymasterReputations) {
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
     }
@@ -368,7 +366,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     } = await this.validatePaymasterGasAndDataLimits(req)
 
     await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
-
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
     }
@@ -401,28 +398,27 @@ returnValue        | ${viewRelayCallRet.returnValue}
       workerTimeout = setTimeout(() => {
         const timedOut = Date.now() - now
         this.logger.warn(chalk.bgRedBright(`Relay state: Timed-out after ${timedOut}`))
-
-        this.lastSuccessfulRounds = 0
       }, this.config.readyTimeout)
     }
-
+    let gotBlock = false
     // eslint-disable-next-line @typescript-eslint/return-await
-    return this.contractInteractor.getBlock('latest')
+    return this.contractInteractor.getBlockNumber()
       .then(
-        block => {
-          if (block.number < this.config.coldRestartLogsFromBlock) {
+        blockNumber => {
+          gotBlock = true
+          if (blockNumber < this.config.coldRestartLogsFromBlock) {
             throw new Error(
-              `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${block.number}`)
+              `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${blockNumber}`)
           }
-          if (block.number > this.lastScannedBlock) {
-            return this._workerSemaphore.bind(this)(block.number)
+          if (blockNumber > this.lastScannedBlock) {
+            return this._workerSemaphore.bind(this)(blockNumber)
           }
         })
       .catch((e) => {
         this.emit('error', e)
         const error = e as Error
-        this.logger.error(`error in worker: ${error.message} ${error.stack}`)
-        this.lastSuccessfulRounds = 0
+        this.logger.error(`error in worker: ${error.message} gotBlockNumber: ${gotBlock} ${error.stack}`)
+        this.setReadyState(false)
       })
       .finally(() => {
         clearTimeout(workerTimeout)
@@ -452,7 +448,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
 
     await this._worker(blockNumber)
       .then((transactions) => {
-        this.lastSuccessfulRounds++
         if (transactions.length !== 0) {
           this.logger.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
         }
@@ -822,9 +817,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   isReady (): boolean {
-    if (this.lastSuccessfulRounds < this.config.successfulRoundsForReady) {
-      return false
-    }
     return this.ready
   }
 
@@ -832,12 +824,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.isReady() !== isReady) {
       const now = Date.now()
       if (isReady) {
-        if (this.lastSuccessfulRounds < this.config.successfulRoundsForReady) {
-          const roundsUntilReady = this.config.successfulRoundsForReady - this.lastSuccessfulRounds
-          this.logger.warn(chalk.yellow(`Relayer state: almost READY (in ${roundsUntilReady} rounds)`))
-        } else {
-          this.logger.warn(chalk.greenBright('Relayer state: READY'))
-        }
+        this.logger.warn(chalk.greenBright('Relayer state: READY'))
         this.readinessInfo.totalNotReadyTime += now - this.readinessInfo.currentStateTimestamp
       } else {
         this.readinessInfo.totalReadyTime += now - this.readinessInfo.currentStateTimestamp

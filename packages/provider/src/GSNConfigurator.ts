@@ -40,7 +40,7 @@ export const defaultGsnConfig: GSNConfig = {
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
   methodSuffix: '_v4',
   requiredVersionRange: gsnRequiredVersion,
-  jsonStringifyRequest: false,
+  jsonStringifyRequest: true,
   auditorsCount: 1,
   clientId: '1',
   requestValidBlocks: '6000',

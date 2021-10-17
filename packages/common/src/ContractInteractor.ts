@@ -184,17 +184,20 @@ export class ContractInteractor {
     await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility()
+    await this._initializeNetworkParams()
     if (this.relayHubInstance != null) {
       this.relayHubConfiguration = await this.relayHubInstance.getConfiguration()
     }
-    const chain = await this.web3.eth.net.getNetworkType()
+    this.logger.debug(`client init finished in ${Date.now() - initStartTimestamp} ms`)
+    return this
+  }
+
+  async _initializeNetworkParams (): Promise<void> {
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
-    // chain === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
-    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, chain)
-    this.logger.debug(`client init finished in ${Date.now() - initStartTimestamp} ms`)
-    return this
+    // networkType === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
+    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, this.networkType)
   }
 
   async _resolveDeployment (): Promise<void> {
@@ -517,6 +520,7 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+    const delay = this.getNetworkType() === 'private' ? 0 : 300
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -570,7 +574,7 @@ export class ContractInteractor {
                 this.logger.error('Too many attempts. throwing ')
                 throw e
               }
-              await sleep(300)
+              await sleep(delay)
             }
           }
         }
@@ -609,9 +613,17 @@ export class ContractInteractor {
   async getBlockNumber (): Promise<number> {
     let blockNumber = -1
     let attempts = 0
-    while (blockNumber < this.lastBlockNumber && attempts <= 100) {
-      blockNumber = await this.web3.eth.getBlockNumber()
-      await sleep(100)
+    const delay = this.getNetworkType() === 'private' ? 0 : 1000
+    while (blockNumber < this.lastBlockNumber && attempts <= 10) {
+      try {
+        blockNumber = await this.web3.eth.getBlockNumber()
+      } catch (e) {
+        this.logger.error(`getBlockNumber: ${(e as Error).message}`)
+      }
+      if (blockNumber >= this.lastBlockNumber) {
+        break
+      }
+      await sleep(delay)
       attempts++
     }
     if (blockNumber < this.lastBlockNumber) {

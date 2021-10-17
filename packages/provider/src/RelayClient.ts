@@ -444,19 +444,8 @@ export class RelayClient {
     provider,
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
-    const isMetamask: boolean = (provider as any).isMetaMask
-
-    // provide defaults valid for metamask (unless explicitly specified values)
-    const methodSuffix = config.methodSuffix ?? (isMetamask ? '_v4' : defaultGsnConfig.methodSuffix)
-    const jsonStringifyRequest = config.jsonStringifyRequest ?? (isMetamask ? true : defaultGsnConfig.jsonStringifyRequest)
-
-    const resolvedConfig: Partial<GSNConfig> = {
-      methodSuffix,
-      jsonStringifyRequest
-    }
     return {
       ...defaultGsnConfig,
-      ...resolvedConfig,
       ...config
     }
   }

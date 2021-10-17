@@ -41,13 +41,12 @@
   "bin": {
     "gsn": "dist/src/cli/commands/gsn.js"
   },
-  "prepublish": "yarn prepare",
   "scripts": {
-    "test": "yarn prepare && yarn lerna-lint && yarn lerna-run-test-with-hardhat",
+    "test": "yarn preprocess && yarn lerna-lint && yarn lerna-run-test-with-hardhat",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 120000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
     "ganache-fork-mainnet": "ganache-cli --fork https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43 --port 8544 --chainId 1 --l 10000000  --unlock 0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503",
     "postinstall": "patch-package",
-    "prepare": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
+    "preprocess": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
     "extract_abi": "./scripts/extract_abi.js",
     "lerna-typechain-generate": "lerna run typechain-generate",
     "lerna-publish": "lerna publish",

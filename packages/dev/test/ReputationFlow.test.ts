@@ -42,6 +42,10 @@ contract('ReputationFlow', function (accounts) {
     TestRecipient.web3.setProvider(relayProvider)
   })
 
+  after(async function () {
+    await GsnTestEnvironment.stopGsn()
+  })
+
   describe('with misbehaving paymaster', function () {
     it('should stop serving the paymaster after specified number of on-chain rejected transactions', async function () {
       sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'validateRelayCall').returns(Promise.resolve({ paymasterAccepted: true, returnValue: '', reverted: false }))
