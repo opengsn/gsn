@@ -3,7 +3,7 @@
 import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
-import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction, FeeMarketEIP1559TxData } from '@ethereumjs/tx'
+import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
 import { TxOptions } from '@ethereumjs/tx/dist/types'
 import { encode } from 'rlp'
@@ -265,7 +265,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
           'Legal relay transaction'
         )
-      });
+      })
 
       it('should not penalize TransactionType2 tx', async function () {
         const signedTx = eip1559Transaction.sign(relayCallArgs.privateKey)
