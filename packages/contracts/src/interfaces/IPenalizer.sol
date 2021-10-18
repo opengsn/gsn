@@ -9,7 +9,6 @@ interface IPenalizer {
 
     struct Transaction {
         uint256 nonce;
-        uint256 gasPrice;
         uint256 gasLimit;
         address to;
         uint256 value;

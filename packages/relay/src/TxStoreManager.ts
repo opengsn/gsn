@@ -14,13 +14,16 @@ export class TxStoreManager {
   private readonly txstore: AsyncNedb<any>
   private readonly logger: LoggerInterface
 
-  constructor ({ workdir = '/tmp/test/', inMemory = false }, logger: LoggerInterface) {
+  constructor ({ workdir = '/tmp/test/', inMemory = false, autoCompactionInterval = 0 }, logger: LoggerInterface) {
     this.logger = logger
     this.txstore = new AsyncNedb({
       filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
       autoload: true,
       timestampData: true
     })
+    if (autoCompactionInterval !== 0) {
+      this.txstore.persistence.setAutocompactionInterval(autoCompactionInterval)
+    }
     this.txstore.ensureIndex({ fieldName: 'txId', unique: true })
     this.txstore.ensureIndex({ fieldName: 'nonceSigner', unique: true })
 
