@@ -94,7 +94,7 @@ async function run (): Promise<void> {
   console.log('Creating managers...\n')
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
-  const txStoreManager = new TxStoreManager({ workdir }, logger)
+  const txStoreManager = new TxStoreManager({ workdir, autoCompactionInterval: config.dbAutoCompactionInterval }, logger)
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
