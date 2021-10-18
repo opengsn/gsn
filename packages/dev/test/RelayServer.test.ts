@@ -57,7 +57,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   })
 
   describe('#init()', function () {
-    it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
+    it('should initialize relay params', async function () {
       const env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
       await env.init({})
       env.newServerInstanceNoFunding()
@@ -71,6 +71,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(relayServerToInit.isReady(), false, 'relay should not be ready yet')
       assert.equal(relayServerToInit.chainId, chainId)
       assert.equal(relayServerToInit.networkId, networkId)
+      // @ts-ignore
+      expect(relayServerToInit.txStoreManager.txstore.persistence.autocompactionIntervalId).to.exist
     })
   })
 
