@@ -8,7 +8,7 @@ import "../arbitrum/ArbSys.sol";
 * If some behavior is needed from ArbSys, it has to be stubbed here.
  */
 contract TestArbSys is ArbSys {
-    function getStorageGasAvailable() override view external returns (uint) {
+    function getStorageGasAvailable() external override view returns (uint) {
         // we need some really large value as for gasleft but also one that does decrease on every call
         return gasleft() * 100;
     }

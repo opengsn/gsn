@@ -19,7 +19,7 @@ const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
-contract.only('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]: string[]) {
+contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]: string[]) {
   let arbRelayHub: ArbRelayHubInstance
   let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
@@ -44,7 +44,8 @@ contract.only('ArbRelayHub', function ([from, relayWorker, relayManager, relayOw
     let relayRequest: RelayRequest
     let signature: string
 
-    before('so much boilerplate only to get the relay request working...', async function () {
+    // TODO: extract repetitive test code to test utils
+    before('prepare the relay request and relay worker', async function () {
       await registerForwarderForGsn(forwarder)
       const testRecipient = await TestRecipient.new(forwarder.address)
       const paymaster = await TestPaymasterEverythingAccepted.new()

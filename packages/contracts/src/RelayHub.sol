@@ -23,7 +23,9 @@ import "./interfaces/IStakeManager.sol";
 contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
 
-    string public override versionHub = "2.2.3+opengsn.hub.irelayhub";
+    function versionHub() override virtual public pure returns (string memory){
+        return "2.2.3+opengsn.hub.irelayhub";
+    }
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
