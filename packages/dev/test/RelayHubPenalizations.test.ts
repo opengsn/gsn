@@ -148,7 +148,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               clientId
             }
           }
-        encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
+        encodedCall = relayHub.contract.methods.relayCall(0, 10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
         legacyTx = new Transaction({
           nonce: relayCallArgs.nonce,
@@ -586,6 +586,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayRequest
           )
           const signature = await getEip712Signature(
+            relayRequest.request.from,
             web3,
             dataToSign
           )
@@ -594,7 +595,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             value: ether('1')
           })
           const externalGasLimit = gasLimit.add(new BN(1e6))
-          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+          const relayCallTx = await relayHub.relayCall(0, 10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice
@@ -694,7 +695,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             clientId
           }
         }
-      const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
+      const encodedCall = relayHub.contract.methods.relayCall(0, 10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
       const transaction = Transaction.fromTxData({
         nonce: relayCallArgs.nonce,

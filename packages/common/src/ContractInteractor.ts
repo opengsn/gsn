@@ -129,37 +129,30 @@ export class ContractInteractor {
     this.provider = provider
     this.lastBlockNumber = 0
     this.environment = environment
-    // @ts-ignore
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
       abi: paymasterAbi
     })
-    // @ts-ignore
     this.IRelayHubContract = TruffleContract({
       contractName: 'IRelayHub',
       abi: relayHubAbi
     })
-    // @ts-ignore
     this.IForwarderContract = TruffleContract({
       contractName: 'IForwarder',
       abi: forwarderAbi
     })
-    // @ts-ignore
     this.IStakeManager = TruffleContract({
       contractName: 'IStakeManager',
       abi: stakeManagerAbi
     })
-    // @ts-ignore
     this.IPenalizer = TruffleContract({
       contractName: 'IPenalizer',
       abi: penalizerAbi
     })
-    // @ts-ignore
     this.IRelayRecipient = TruffleContract({
       contractName: 'IRelayRecipient',
       abi: gsnRecipientAbi
     })
-    // @ts-ignore
     this.IVersionRegistry = TruffleContract({
       contractName: 'IVersionRegistry',
       abi: versionRegistryAbi

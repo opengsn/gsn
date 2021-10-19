@@ -155,6 +155,7 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function relayCall(
+        uint256 batchItemId,
         uint maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -164,6 +165,7 @@ contract RelayHub is IRelayHub, Ownable {
     override
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
+        (batchItemId);
         RelayCallData memory vars;
         vars.initialGasLeft = gasleft();
         require(!isDeprecated(), "hub deprecated");

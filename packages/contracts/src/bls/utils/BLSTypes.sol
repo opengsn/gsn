@@ -19,17 +19,20 @@ interface BLSTypes {
         uint256 target;
         uint256 gasLimit;
         uint256 calldataGas;
-        bytes4 methodSignature;
-        bytes methodData;
+//        bytes4 methodSignature;
+        bytes encodedData;
+        // 0 - use default one; 1 - use encodedData as-is; other - use as ID;
+        uint256 cacheDecoder;
     }
 
     struct BatchMetadata {
         uint256 gasPrice;
         uint256 validUntil;
-        address relayWorker;
         uint256 pctRelayFee;
         uint256 baseRelayFee;
         uint256 maxAcceptanceBudget;
+        address relayWorker;
+        address defaultCacheDecoder;
     }
 
     struct Batch {
@@ -39,4 +42,11 @@ interface BLSTypes {
         uint256[] relayRequestIds;
         uint256[2] blsSignature;
     }
+
+    struct AddressCache {
+        // note: a length of an array after this value was added (zero indicates 'no value')
+        mapping(address => uint256) reverse;
+        address[] cache;
+    }
+
 }

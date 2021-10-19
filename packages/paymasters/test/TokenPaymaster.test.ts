@@ -115,6 +115,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       relayRequest
     )
     signature = await getEip712Signature(
+      relayRequest.request.from,
       web3,
       dataToSign
     )
@@ -139,13 +140,13 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
 
       it('should reject if unknown paymasterData', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: '0x1234' })
-        const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
+        const signature = await getEip712Signature(req.request.from, web3, new TypedRequestData(1, forwarder.address, req))
         assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), '\'paymasterData: invalid length for Uniswap v1 exchange address\' -- Reason given: paymasterData: invalid length for Uniswap v1 exchange address.')
       })
 
       it('should reject if unsupported uniswap in paymasterData', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', nonUniswap) })
-        const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
+        const signature = await getEip712Signature(req.request.from, web3, new TypedRequestData(1, forwarder.address, req))
         assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), '\'unsupported token uniswap\' -- Reason given: unsupported token uniswap.')
       })
     })
@@ -176,7 +177,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
 
         it('callPreRC should succeed with specific token/uniswap', async () => {
           const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-          const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
+          const signature = await getEip712Signature(req.request.from, web3, new TypedRequestData(1, forwarder.address, req))
           const ret: any = await testHub.callPreRC.call(req, signature, '0x', 1e6)
           const decoded = web3.eth.abi.decodeParameters(['address', 'address', 'address', 'address'], ret.context) as any
           assert.equal(decoded[2], token.address)
@@ -198,6 +199,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
 
     it('should reject if incorrect signature', async () => {
       const wrongSignature = await getEip712Signature(
+        relayRequest.request.from,
         web3,
         new TypedRequestData(
           222,
@@ -208,7 +210,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const gas = 5000000
 
       const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-      const relayCall: any = await hub.relayCall.call(1e06, req, wrongSignature, '0x', {
+      const relayCall: any = await hub.relayCall.call(0, 1e06, req, wrongSignature, '0x', {
         from: relay,
         gas
       })
@@ -238,6 +240,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         _relayRequest
       )
       const signature = await getEip712Signature(
+        relayRequest.request.from,
         web3,
         dataToSign
       )
@@ -245,7 +248,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const preBalance = await hub.balanceOf(paymaster.address)
 
       const externalGasLimit = 5e6.toString()
-      const ret = await hub.relayCall(10e6, _relayRequest, signature, '0x', {
+      const ret = await hub.relayCall(0, 10e6, _relayRequest, signature, '0x', {
         from: relay,
         gasPrice: 1e9,
         gas: externalGasLimit

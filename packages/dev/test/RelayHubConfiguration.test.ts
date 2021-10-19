@@ -112,6 +112,7 @@ contract('RelayHub Configuration',
         relayRequest
       )
       signature = await getEip712Signature(
+        relayRequest.request.from,
         web3,
         dataToSign
       )
@@ -194,7 +195,7 @@ contract('RelayHub Configuration',
         await evmMineMany(blocksForward)
 
         await expectRevert(
-          relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
+          relayHub.relayCall(0, maxAcceptanceBudget, relayRequest, signature, apporovalData, {
             from: relayWorker,
             gasPrice,
             gas: externalGasLimit
@@ -203,7 +204,7 @@ contract('RelayHub Configuration',
       })
 
       it('should not revert before deprecationBlock set', async function () {
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
+        const res = await relayHub.relayCall(0, maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit
@@ -215,7 +216,7 @@ contract('RelayHub Configuration',
         const block = parseInt((await web3.eth.getBlockNumber()).toString()) + blocksForward
         await relayHub.deprecateHub(block)
         await evmMineMany(blocksForward - 3)
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
+        const res = await relayHub.relayCall(0, maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit

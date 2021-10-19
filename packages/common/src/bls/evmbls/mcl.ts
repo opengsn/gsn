@@ -1,3 +1,4 @@
+/* eslint-disable */
 // @ts-ignore
 import mcl from 'mcl-wasm'
 
@@ -195,6 +196,10 @@ export function compressSignature (p: mclG1) {
 
 export function newFp () {
   return new mcl.Fp()
+}
+
+export function newFp2 () {
+  return new mcl.Fp2()
 }
 
 export function newG1 () {

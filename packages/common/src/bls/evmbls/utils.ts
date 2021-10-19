@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { randomBytes, hexlify, hexZeroPad } from 'ethers/lib/utils'
 import { BigNumber } from 'ethers'
 import { assert } from 'chai'

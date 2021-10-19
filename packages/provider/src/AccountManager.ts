@@ -77,7 +77,7 @@ export class AccountManager {
     return await this.performSigning(relayRequest.request.from, signedData)
   }
 
-  private async performSigning (ethereumAddress: Address, signedData: EIP712TypedData) {
+  private async performSigning (ethereumAddress: Address, signedData: EIP712TypedData): Promise<PrefixedHexString> {
     const keypair = this.accounts.find(account => isSameAddress(account.address, ethereumAddress))
 
     let signature: PrefixedHexString
@@ -105,7 +105,7 @@ export class AccountManager {
     return signature
   }
 
-// These methods is extracted to
+  // These methods is extracted to
   // a) allow different implementations in the future, and
   // b) allow spying on Account Manager in tests
   async _signWithProvider (senderAddress: Address, signedData: EIP712TypedData): Promise<string> {
@@ -142,7 +142,7 @@ export class AccountManager {
    * @param registrarAddress
    * @returns authorisation - a serialized data used by the Gateway to authorise the public key in the first run
    */
-  async createAccountAuthorisation (
+  async createAccountAuthorization (
     ethereumAddress: Address,
     registrarAddress: Address
   ): Promise<PrefixedHexString> {

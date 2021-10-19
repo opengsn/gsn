@@ -8,14 +8,14 @@ import "../forwarder/IForwarder.sol";
 import "../utils/RLPReader.sol";
 import "../utils/GsnTypes.sol";
 
-import "./BLS.sol";
+import "./utils/BLS.sol";
 import "./BLSAddressAuthorizationsRegistrar.sol";
-import "./DomainSpecificInputDecompressor.sol";
-import "./interfaces/BLSTypes.sol";
+import "./BatchGatewayCacheDecoder.sol";
+import "./utils/BLSTypes.sol";
 
 contract BLSBatchGateway {
 
-    DomainSpecificInputDecompressor public decompressor;
+    BatchGatewayCacheDecoder public decompressor;
     BLSAddressAuthorizationsRegistrar public authorizationsRegistrar;
     IRelayHub public relayHub;
 
@@ -24,7 +24,7 @@ contract BLSBatchGateway {
     event SkippedInvalidBatchItem(uint256 itemId, string reason);
 
     constructor(
-        DomainSpecificInputDecompressor _decompressor,
+        BatchGatewayCacheDecoder _decompressor,
         BLSAddressAuthorizationsRegistrar _authorizationsRegistrar,
         IRelayHub _relayHub
     ) {
@@ -34,9 +34,10 @@ contract BLSBatchGateway {
     }
 
     receive() external payable {
-        revert();
+        revert("address not payable");
     }
 
+    //solhint-disable-next-line no-complex-fallback
     fallback() external payable {
         BLSTypes.Batch memory batch = decompressor.decodeBatch(msg.data);
         handleNewApprovals(batch.authorizations);
@@ -49,19 +50,22 @@ contract BLSBatchGateway {
         uint256[2][] memory messages = new uint256[2][](batch.relayRequests.length);
         for (uint256 i = 0; i < batch.relayRequests.length; i++) {
             blsPublicKeys[i] = authorizationsRegistrar.getAuthorizedPublicKey(batch.relayRequests[i].request.from);
+            require(blsPublicKeys[i][0] != 0, "key not set");
             // TODO: require key is not null
 //            messages[i] = BLS.hashToPoint('testing-evmbls', abi.encode(relayRequests[i]));
-            messages[i] = BLS.hashToPoint('testing-evmbls', abi.encodePacked(bytes4(0xffffffff)));
+            messages[i] = BLS.hashToPoint("testing-evmbls", abi.encodePacked(bytes4(0xffffffff)));
         }
         // TODO: is abiEncode enough? EIP-712 requires ECDSA? Can we push for amendment/alternative?
         bool isSignatureValid = BLS.verifyMultiple(batch.blsSignature, blsPublicKeys, messages);
-        require(isSignatureValid, "BLS signature verification failed");
+        require(isSignatureValid, "BLS signature check failed");
 
         for (uint256 i = 0; i < batch.relayRequests.length; i++) {
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory returnData) = address(relayHub).call(abi.encodeWithSelector(relayHub.relayCall.selector, batch.relayRequestIds[i], batch.metadata.maxAcceptanceBudget, batch.relayRequests[i], "", ""));
-            if (success) {
-                (bool paymasterAccepted,) = abi.decode(returnData, (bool, bytes));
-            } else {
+            if (!success) {
+                // NO need to emit if paymaster rejected - there will be a 'TransactionRelayed' event for this item
+//                (bool paymasterAccepted,) = abi.decode(returnData, (bool, bytes));
+//            } else {
                 emit RelayCallReverted(batch.relayRequestIds[i], returnData);
             }
         }

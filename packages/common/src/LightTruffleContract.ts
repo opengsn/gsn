@@ -12,8 +12,10 @@ function getComponent (key: string, components: AbiOutput[]): AbiOutput | undefi
 }
 
 function retypeItem (abiOutput: AbiOutput, ret: any): any {
-  if (abiOutput.type.includes('int')) {
+  if (abiOutput.type.includes('int') && !abiOutput.type.includes('[')) {
     return toBN(ret)
+  } else if (abiOutput.type.includes('int') && abiOutput.type.includes('[')) {
+    return ret.map(toBN)
   } else if (abiOutput.type.includes('tuple') && abiOutput.components != null) {
     const keys = Object.keys(ret)
     const newRet: any = {}
@@ -104,6 +106,9 @@ export class Contract<T> {
   }
 }
 
-export function TruffleContract ({ contractName, abi }: { contractName: string, abi: any[] }): any {
+export function TruffleContract ({
+  contractName,
+  abi
+}: { contractName: string, abi: any[] }): any {
   return new Contract(contractName, abi)
 }

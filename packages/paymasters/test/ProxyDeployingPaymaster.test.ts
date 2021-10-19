@@ -169,6 +169,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     }
     proxyAddress = await paymaster.getPayer(relayRequest)
     signature = await getEip712Signature(
+      relayRequest.request.from,
       web3,
       new TypedRequestData(
         defaultEnvironment.chainId,
@@ -201,6 +202,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         const relayRequestX = cloneRelayRequest(relayRequest)
         relayRequestX.request.value = 1e18.toString()
         const signatureX = await getEip712Signature(
+          relayRequest.request.from,
           web3,
           new TypedRequestData(
             defaultEnvironment.chainId,
@@ -232,6 +234,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
 
         it('should reject if incorrect signature', async () => {
           const wrongSignature = await getEip712Signature(
+            relayRequest.request.from,
             web3,
             new TypedRequestData(
               222,
@@ -240,7 +243,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
             )
           )
           const gas = 5000000
-          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', {
+          const relayCall: any = await relayHub.relayCall.call(0, 10e6, relayRequest, wrongSignature, '0x', {
             from: relayWorker,
             gas
           })

@@ -3,18 +3,19 @@ import { toBN } from 'web3-utils'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import {
+  MAPPING_MODE_TI,
   aggreagate,
   g1ToBN,
   g1ToHex,
   g2ToBN,
   init,
-  MAPPING_MODE_TI, mclToHex,
+  mclToHex,
   newFp,
   newG1,
   newKeyPair,
   setDomain,
   setMappingMode,
-  sign
+  sign, newG2, newFp2
 } from './evmbls/mcl'
 
 export interface BLSKeypair {
@@ -22,7 +23,7 @@ export interface BLSKeypair {
   pubkey: any
 }
 
-const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
+export const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
 
 /**
  * The ERC-712 describes the specification of structured data signature, but relies on the ECDSA
@@ -40,7 +41,7 @@ export class BLSTypedDataSigner {
     return newKeyPair()
   }
 
-  static aggregateSignatures (signatures: PrefixedHexString[][]): BN[] {
+  aggregateSignatures (signatures: PrefixedHexString[][]): BN[] {
     let aggSignature = newG1()
     for (const signature of signatures) {
       const signatureG1 = BLSTypedDataSigner._hex_to_mcl_G1_type(signature)
@@ -53,7 +54,42 @@ export class BLSTypedDataSigner {
     return BLSTypedDataSigner.g1SignatureToBN(aggSignature)
   }
 
-  private static _hex_to_mcl_G1_type (hex: PrefixedHexString[]): any {
+  static _hex_to_mcl_G2_type (hex: PrefixedHexString[]): any {
+    // reverse this:
+    //
+    // export function g2ToBN (p: mclG2) {
+    //   const x = mclToHex(p.getX(), false)
+    //   const y = mclToHex(p.getY(), false)
+    //   return [
+    //     toBig('0x' + x.slice(64)),
+    //     toBig('0x' + x.slice(0, 64)),
+    //     toBig('0x' + y.slice(64)),
+    //     toBig('0x' + y.slice(0, 64)),
+    //   ]
+    // }
+
+    const xStr = `0x${hex[0].replace('0x', '').padStart(64, '0')}${hex[1].replace('0x', '').padStart(64, '0')}`
+    const yStr = `0x${hex[2].replace('0x', '').padStart(64, '0')}${hex[3].replace('0x', '').padStart(64, '0')}`
+
+    const x = newFp2()
+    const y = newFp2()
+    const z = newFp2()
+    const p = newG2()
+
+    // Do not commit - does not work
+    x.deserialize(Buffer.from(xStr))
+    y.deserialize(Buffer.from(yStr))
+    z.deserialize(Buffer.from([1]))
+    p.setX(x)
+    p.setY(y)
+    p.setZ(z)
+
+    console.log(`_hex_to_mcl_G2_type input: ${JSON.stringify(hex)} output: ${JSON.stringify(g1ToHex(p))}`)
+
+    return p
+  }
+
+  static _hex_to_mcl_G1_type (hex: PrefixedHexString[]): any {
     if (hex[0].length !== 64 || hex[1].length !== 64) {
       console.error('_hex_to_mcl_G1_type: Incorrect hex signature string length!')
     }

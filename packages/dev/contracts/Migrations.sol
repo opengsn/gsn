@@ -29,12 +29,14 @@ import "@opengsn/contracts/src/forwarder/Forwarder.sol";
 import "@opengsn/contracts/src/forwarder/test/TestForwarder.sol";
 import "@opengsn/contracts/src/forwarder/test/TestForwarderTarget.sol";
 
-import "@opengsn/contracts/src/bls/BLS.sol";
+import "@opengsn/contracts/src/bls/utils/BLS.sol";
 import "@opengsn/contracts/src/bls/BLSAddressAuthorizationsRegistrar.sol";
 import "@opengsn/contracts/src/bls/BLSBatchGateway.sol";
-import "@opengsn/contracts/src/bls/DomainSpecificInputDecompressor.sol";
+import "@opengsn/contracts/src/bls/BatchGatewayCacheDecoder.sol";
 import "@opengsn/contracts/src/bls/GatewayForwarder.sol";
+import "@opengsn/contracts/src/bls/ERC20CacheDecoder.sol";
 import "@opengsn/contracts/src/test/BLSTestHub.sol";
+import "@opengsn/contracts/src/test/TestToken.sol";
 
 contract Migrations {
     address public owner;

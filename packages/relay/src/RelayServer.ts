@@ -322,7 +322,7 @@ export class RelayServer extends EventEmitter {
   async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
     this.logger.debug(`validateViewCallSucceeds: ${JSON.stringify(arguments)}`)
     const method = this.relayHubContract.contract.methods.relayCall(
-      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
+      0, maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet =
@@ -377,7 +377,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
 
     const gasPrice = req.relayRequest.relayData.gasPrice
     const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
+      0, acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,

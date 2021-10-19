@@ -17,10 +17,10 @@ contract GatewayForwarder {
 
     function execute(
         IForwarder.ForwardRequest calldata req,
-        bytes32 domainSeparator,
-        bytes32 requestTypeHash,
-        bytes calldata suffixData,
-        bytes calldata sig
+        bytes32,
+        bytes32,
+        bytes calldata,
+        bytes calldata
     )
     external payable
 //    override

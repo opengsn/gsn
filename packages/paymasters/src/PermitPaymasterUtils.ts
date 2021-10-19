@@ -56,10 +56,7 @@ interface Types extends EIP712Types {
   Permit: EIP712TypeProperty[]
 }
 
-// TODO: for now, 'from' field can be thrown in without exception raised by Metamask
-//  this makes it compatible with old 'getEip712Signature' (used in too many tests)
 export interface PermitInterfaceDAI {
-  from: Address
   holder: Address
   spender: Address
   nonce: IntString
@@ -68,7 +65,6 @@ export interface PermitInterfaceDAI {
 }
 
 export interface PermitInterfaceEIP2612 {
-  from: Address
   owner: Address
   spender: Address
   nonce: IntString
@@ -142,8 +138,6 @@ export async function signAndEncodeDaiPermit (
   const nonce = forceNonce ?? await daiInstance.nonces(holder)
   const chainId = await web3.eth.getChainId()
   const permit: PermitInterfaceDAI = {
-    // TODO: not include holder as 'from', not pass 'from'
-    from: holder,
     holder,
     spender,
     nonce,
@@ -157,6 +151,7 @@ export async function signAndEncodeDaiPermit (
     permit
   )
   const signature = await getEip712Signature(
+    holder,
     web3,
     dataToSign
   )
@@ -191,8 +186,6 @@ export async function signAndEncodeEIP2612Permit (
   const nonce = forceNonce ?? await eip2612TokenInstance.nonces(owner)
   const chainId = await web3.eth.getChainId()
   const permit: PermitInterfaceEIP2612 = {
-    // TODO: not include holder as 'from', not pass 'from'
-    from: owner,
     owner,
     spender,
     nonce: nonce.toString(),
@@ -207,6 +200,7 @@ export async function signAndEncodeEIP2612Permit (
     domainType
   )
   const signature = await getEip712Signature(
+    owner,
     web3,
     dataToSign
   )

@@ -4,21 +4,18 @@ import { HttpProvider } from 'web3-core'
 import { configureGSN } from '../TestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { BigNumberToBN, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { g2ToBN } from '@opengsn/common/dist/bls/evmbls/mcl'
 
 const TestUtil = artifacts.require('TestUtil')
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 
-const blsPublicKey: string[] = [
-  '0x2591180d099ddbc1b4cfcfaf2450dc0f054339950d461a88bdfe27d513268f3a',
-  '0x0b5f4bda51133493803cd01f82b77ec9e20485f233136f0189f4873615b03c36',
-  '0x103cb7ac4b0d13f4bab829a88f1303741673663077568953b30721054d822e27',
-  '0x08cf151d45f98f4003bcad178e7188bdb62cca4858e8dd3dab63542b83240229'
-]
-
-contract('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
+contract.only('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
   let registrar: BLSAddressAuthorizationsRegistrarInstance
   let accountManager: AccountManager
   let authorizationSignature: PrefixedHexString
+
+  let blsPublicKey: string[]
 
   before(async function () {
     const testUtil = await TestUtil.new()
@@ -29,10 +26,12 @@ contract('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
       jsonStringifyRequest: false
     })
     accountManager = new AccountManager(web3.currentProvider as HttpProvider, chainId, config)
-    accountManager.setBLSKeypair({
-      pubkey: blsPublicKey,
-      secret: ''
-    })
+
+    const keypair = await BLSTypedDataSigner.newKeypair()
+    accountManager.setBLSKeypair(keypair)
+    blsPublicKey = g2ToBN(keypair.pubkey)
+      .map(BigNumberToBN)
+      .map((it: BN) => { return `0x${it.toString('hex')}` })
     authorizationSignature = await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
   })
 
@@ -41,7 +40,7 @@ contract('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
       const receipt = await registrar.registerAddressAuthorization(from, blsPublicKey, authorizationSignature)
       const expectedPublicKeyHash = web3.utils.keccak256(web3.eth.abi.encodeParameter('uint256[4]', blsPublicKey))
       await expectEvent.inLogs(receipt.logs, 'AuthorizationIssued', {
-        authoriser: from,
+        authorizer: from,
         blsPublicKeyHash: expectedPublicKeyHash
       })
     })

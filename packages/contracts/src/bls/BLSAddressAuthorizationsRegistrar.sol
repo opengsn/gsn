@@ -78,12 +78,12 @@ contract BLSAddressAuthorizationsRegistrar is BaseRelayRecipient {
         uint256[4] memory blsPublicKey,
         bytes memory ecSignature
     ) external {
-        verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], 'I UNDERSTAND WHAT I AM DOING'), authorizer, ecSignature);
+        verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], "I UNDERSTAND WHAT I AM DOING"), authorizer, ecSignature);
         // TODO: extract null-check logic for Key struct?
-        require(authorizations[authorizer][0] == 0, 'authorizer already has bls key');
-        require(authorizations[authorizer][1] == 0, 'authorizer already has bls key');
-        require(authorizations[authorizer][2] == 0, 'authorizer already has bls key');
-        require(authorizations[authorizer][3] == 0, 'authorizer already has bls key');
+        require(authorizations[authorizer][0] == 0, "authorizer already has bls key");
+        require(authorizations[authorizer][1] == 0, "authorizer already has bls key");
+        require(authorizations[authorizer][2] == 0, "authorizer already has bls key");
+        require(authorizations[authorizer][3] == 0, "authorizer already has bls key");
 
         authorizations[authorizer] = blsPublicKey;
 

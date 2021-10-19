@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { BigNumber } from 'ethers'
 import { sha256, arrayify, hexlify, zeroPad } from 'ethers/lib/utils'
 
