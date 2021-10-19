@@ -26,26 +26,38 @@ contract Penalizer is IPenalizer {
         penalizeBlockExpiration = _penalizeBlockExpiration;
     }
 
-    function isTransactionType1(bytes calldata rawTransaction) public pure returns (bool) {
+    function isLegacyTransaction(bytes calldata rawTransaction) internal pure returns (bool) {
+        uint8 transactionTypeByte = uint8(rawTransaction[0]);
+        return (transactionTypeByte >= 0xc0 && transactionTypeByte <= 0xfe);
+    }
+
+    function isTransactionType1(bytes calldata rawTransaction) internal pure returns (bool) {
         return (uint8(rawTransaction[0]) == 1);
     }
 
+    function isTransactionType2(bytes calldata rawTransaction) internal pure returns (bool) {
+        return (uint8(rawTransaction[0]) == 2);
+    }
+
     function isTransactionTypeValid(bytes calldata rawTransaction) public pure returns(bool) {
-        uint8 transactionTypeByte = uint8(rawTransaction[0]);
-        return (transactionTypeByte >= 0xc0 && transactionTypeByte <= 0xfe);
+        return isLegacyTransaction(rawTransaction) || isTransactionType1(rawTransaction) || isTransactionType2(rawTransaction);
     }
 
     function decodeTransaction(bytes calldata rawTransaction) public pure returns (Transaction memory transaction) {
         if (isTransactionType1(rawTransaction)) {
             (transaction.nonce,
-            transaction.gasPrice,
             transaction.gasLimit,
             transaction.to,
             transaction.value,
             transaction.data) = RLPReader.decodeTransactionType1(rawTransaction);
+        } else if (isTransactionType2(rawTransaction)) {
+            (transaction.nonce,
+            transaction.gasLimit,
+            transaction.to,
+            transaction.value,
+            transaction.data) = RLPReader.decodeTransactionType2(rawTransaction);
         } else {
             (transaction.nonce,
-            transaction.gasPrice,
             transaction.gasLimit,
             transaction.to,
             transaction.value,

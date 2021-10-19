@@ -25,7 +25,7 @@ import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
-import { configureServer, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { configureServer, ServerConfigParams, serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -201,7 +201,7 @@ export class ServerTestEnvironment {
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
-    const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir }, logger)
+    const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
     const gasPriceFetcher = new GasPriceFetcher('', '', this.contractInteractor, logger)
     const serverDependencies = {
       contractInteractor: this.contractInteractor,
