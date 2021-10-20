@@ -41,6 +41,29 @@ async function createAuthorizationSignature (
 }
 
 contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
+  const relayRequest: RelayRequest = {
+    request: {
+      from,
+      to,
+      data: '0xff00ff00deadbeef',
+      value: '0',
+      nonce: '666',
+      gas: '124123412',
+      validUntil: '15'
+    },
+    relayData: {
+      gasPrice: '15',
+      pctRelayFee: '15',
+      baseRelayFee: '15',
+      transactionCalldataGasUsed: '777',
+      relayWorker: from,
+      paymaster: from,
+      paymasterData: '0x',
+      clientId: '0',
+      forwarder: constants.ZERO_ADDRESS
+    }
+  }
+
   let decompressorInteractor: CacheDecodersInteractor
   let blsTypedDataSigner: BLSTypedDataSigner
 
@@ -52,7 +75,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
   const batchInput: RLPBatchCompressedInput = {
     gasPrice: toBN(15),
     validUntil: toBN(15),
-    relayWorker: toBN(15),
+    relayWorker: toBN(from),
     pctRelayFee: toBN(15),
     baseRelayFee: toBN(15),
     maxAcceptanceBudget: toBN(15),
@@ -101,18 +124,6 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     })
 
     it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
-      // @ts-ignore
-      const relayRequest: RelayRequest = {
-        // @ts-ignore
-        request: {
-          from,
-          to
-        },
-        // @ts-ignore
-        relayData: {
-          transactionCalldataGasUsed: '777'
-        }
-      }
       const batchItem = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest)
       const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
@@ -121,7 +132,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
         blsPublicKey,
         signature: authorizationSignature
       }
-      const blsSignature = await blsTypedDataSigner.signTypedDataBLS('0xffffffff')
+      const blsSignature = await blsTypedDataSigner.signRelayRequestBLS(relayRequest)
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature,
         relayRequestElements: [batchItem],
@@ -158,31 +169,9 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       const blsTypedDataSigner1 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
       const blsTypedDataSigner2 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
 
-      // @ts-ignore
-      const relayRequest1: RelayRequest = {
-        // @ts-ignore
-        request: {
-          from,
-          to
-        },
-        // @ts-ignore
-        relayData: {
-          transactionCalldataGasUsed: '777'
-        }
-      }
-
-      const relayRequest2: RelayRequest = {
-        // @ts-ignore
-        request: {
-          from: from2,
-          to
-        },
-        // @ts-ignore
-        relayData: {
-          transactionCalldataGasUsed: '777'
-        }
-      }
-      const batchItem1 = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest1)
+      const relayRequest2: RelayRequest = JSON.parse(JSON.stringify(relayRequest))
+      relayRequest2.request.from = from2
+      const batchItem1 = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest)
       const batchItem2 = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest2)
       const authorizationSignature1 = await createAuthorizationSignature(from, blsTypedDataSigner1.blsKeypair, registrar)
       const authorizationSignature2 = await createAuthorizationSignature(from2, blsTypedDataSigner2.blsKeypair, registrar)
@@ -198,8 +187,8 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
         blsPublicKey: blsPublicKey2,
         signature: authorizationSignature2
       }
-      const blsSignature1: PrefixedHexString[] = (await blsTypedDataSigner1.signTypedDataBLS('0xffffffff')).map((it: BN) => { return it.toString('hex') })
-      const blsSignature2: PrefixedHexString[] = (await blsTypedDataSigner2.signTypedDataBLS('0xffffffff')).map((it: BN) => { return it.toString('hex') })
+      const blsSignature1: PrefixedHexString[] = (await blsTypedDataSigner1.signRelayRequestBLS(relayRequest)).map((it: BN) => { return it.toString('hex') })
+      const blsSignature2: PrefixedHexString[] = (await blsTypedDataSigner2.signRelayRequestBLS(relayRequest2)).map((it: BN) => { return it.toString('hex') })
 
       const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures([blsSignature1, blsSignature2])
 
@@ -229,19 +218,6 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     })
 
     it('should reject batch with a single element with an incorrect BLS signature', async function () {
-      // @ts-ignore
-      const relayRequest: RelayRequest = {
-        // @ts-ignore
-        request: {
-          from,
-          to
-        },
-        // @ts-ignore
-        relayData: {
-          transactionCalldataGasUsed: '777'
-        }
-      }
-
       const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
       const authorizationItem: SignedKeyAuthorization = {

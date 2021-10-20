@@ -1,6 +1,9 @@
+import Web3 from 'web3'
 import { BigNumber } from 'ethers'
-import { toBN } from 'web3-utils'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { toBN } from 'web3-utils'
+
+import { RelayRequest } from '../EIP712/RelayRequest'
 
 import {
   MAPPING_MODE_TI,
@@ -128,6 +131,38 @@ export class BLSTypedDataSigner {
 
   getPublicKeySerialized (): BN[] {
     return g2ToBN(this.blsKeypair.pubkey).map(BigNumberToBN)
+  }
+
+  async signRelayRequestBLS (relayRequest: RelayRequest): Promise<BN[]> {
+    const web3 = new Web3()
+    const types = ['tuple(tuple(address,address,uint256,uint256,uint256,bytes,uint256),tuple(uint256,uint256,uint256,uint256,address,address,address,bytes,uint256))']
+    const parameters = [
+      [
+        [
+          relayRequest.request.from,
+          relayRequest.request.to,
+          relayRequest.request.value,
+          relayRequest.request.gas,
+          relayRequest.request.nonce,
+          relayRequest.request.data,
+          relayRequest.request.validUntil
+        ],
+        [
+          relayRequest.relayData.gasPrice,
+          relayRequest.relayData.pctRelayFee,
+          relayRequest.relayData.baseRelayFee,
+          relayRequest.relayData.transactionCalldataGasUsed,
+          relayRequest.relayData.relayWorker,
+          relayRequest.relayData.paymaster,
+          relayRequest.relayData.forwarder,
+          relayRequest.relayData.paymasterData,
+          relayRequest.relayData.clientId
+        ]
+      ]
+    ]
+    const relayRequestEncoded = web3.eth.abi.encodeParameters(types, parameters)
+    console.log('signRelayRequestBLS: ', relayRequestEncoded)
+    return await this.signTypedDataBLS(relayRequestEncoded)
   }
 
   async signTypedDataBLS (message: PrefixedHexString): Promise<BN[]> {

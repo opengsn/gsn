@@ -91,13 +91,13 @@ export class CacheDecodersInteractor {
    * Compress a structure into a {@link RelayRequestsElement} that can be efficiently RLP-encoded.
    */
   async compressRelayRequest (batchItemID: BN, relayRequest: RelayRequest): Promise<RelayRequestsElement> {
-    const nonce = toBN(Date.now())
-    const paymaster = toBN(Date.now())
+    const nonce = toBN(relayRequest.request.nonce)
+    const paymaster = toBN(relayRequest.relayData.paymaster)
     const sender = await this.addressToId(relayRequest.request.from, SeparatelyCachedAddressTypes.eoa)
     const target = await this.addressToId(relayRequest.request.to, SeparatelyCachedAddressTypes.recipients)
-    const gasLimit = toBN(Date.now())
+    const gasLimit = toBN(relayRequest.request.gas)
     const calldataGas = toBN(relayRequest.relayData.transactionCalldataGasUsed)
-    const methodData = Buffer.from('0xffffffff001122')
+    const methodData = Buffer.from(relayRequest.request.data.replace('0x', ''), 'hex')
     const cacheDecoder = toBN(1) // use encodedData as-is
     return {
       id: batchItemID,
