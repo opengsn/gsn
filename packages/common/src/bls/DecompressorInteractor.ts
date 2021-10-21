@@ -95,7 +95,13 @@ export class CacheDecodersInteractor {
     const paymaster = toBN(relayRequest.relayData.paymaster)
     const sender = await this.addressToId(relayRequest.request.from, SeparatelyCachedAddressTypes.eoa)
     const target = await this.addressToId(relayRequest.request.to, SeparatelyCachedAddressTypes.recipients)
-    const gasLimit = toBN(relayRequest.request.gas)
+    const gasLimitBN = toBN(relayRequest.request.gas)
+    // https://github.com/indutny/bn.js/issues/112#issuecomment-190560276
+    // "I can't really think about anything other than rn? Like returns number." srsly?
+    if (gasLimitBN.modn(10000) !== 0) {
+      throw new Error('gas limit must be a multiple of 10000')
+    }
+    const gasLimit = gasLimitBN.divn(10000)
     const calldataGas = toBN(relayRequest.relayData.transactionCalldataGasUsed)
     const methodData = Buffer.from(relayRequest.request.data.replace('0x', ''), 'hex')
     const cacheDecoder = toBN(1) // use encodedData as-is

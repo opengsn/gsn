@@ -48,7 +48,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       data: '0xff00ff00deadbeef',
       value: '0',
       nonce: '666',
-      gas: '124123412',
+      gas: '124120000',
       validUntil: '15'
     },
     relayData: {

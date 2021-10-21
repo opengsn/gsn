@@ -53,7 +53,7 @@ contract BLSBatchGateway {
             require(blsPublicKeys[i][0] != 0, "key not set");
             // TODO: require key is not null
             bytes memory encodedRelayRequest = abi.encode(batch.relayRequests[i]);
-            messages[i] = BLS.hashToPoint('testing-evmbls', encodedRelayRequest);
+            messages[i] = BLS.hashToPoint("testing-evmbls", encodedRelayRequest);
         }
         // TODO: is abiEncode enough? EIP-712 requires ECDSA? Can we push for amendment/alternative?
         bool isSignatureValid = BLS.verifyMultiple(batch.blsSignature, blsPublicKeys, messages);

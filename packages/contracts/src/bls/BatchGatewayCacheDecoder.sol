@@ -111,7 +111,7 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         batchElement.paymaster = values[2].toUint();
         batchElement.sender = values[3].toUint();
         batchElement.target = values[4].toUint();
-        batchElement.gasLimit = values[5].toUint();
+        batchElement.gasLimit = values[5].toUint() * 10000;
         batchElement.calldataGas = values[6].toUint();
         batchElement.encodedData = values[7].toBytes();
         batchElement.cacheDecoder = values[8].toUint();
