@@ -9,7 +9,7 @@ import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { BLSKeypair, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { InternalBLSKeypairType, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { ApprovalDataInterface, TypedApprovalData } from '@opengsn/common/dist/bls/TypedApprovalData'
 
 export interface AccountKeypair {
@@ -131,7 +131,7 @@ export class AccountManager {
    * Only a single BLS keypair is currently supported
    * @param keypair
    */
-  setBLSKeypair (keypair: BLSKeypair): void {
+  setBLSKeypair (keypair: InternalBLSKeypairType): void { // TODO: does not make sense, accept serialized keypair
     this.blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
   }
 

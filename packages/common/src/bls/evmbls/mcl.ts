@@ -160,15 +160,20 @@ export function g2ToHex (p: mclG2) {
 
 export function newKeyPair () {
   const secret = randFr()
-  const pubkey = mcl.mul(g2(), secret)
-  pubkey.normalize()
+  const pubkey = secretToPubkey(secret)
   return {
     pubkey,
     secret
   }
 }
 
-export function sign (message: string, secret: mclFR) {
+export function secretToPubkey(secret: SecretKey): PublicKey {
+  const pubkey = mcl.mul(g2(), secret)
+  pubkey.normalize()
+  return pubkey
+}
+
+export function sign (message: string, secret: 2) {
   const M = hashToPoint(message)
 
   Object.setPrototypeOf(secret, mcl.Fr.prototype); // TODO: this seems to be a bug in 'instanceof'/'mcl-wasm' or some other JS magic, but '.mul' sometimes fails with "mul:mismatch type" otherwise
@@ -196,6 +201,14 @@ export function compressSignature (p: mclG1) {
 
 export function newFp () {
   return new mcl.Fp()
+}
+
+export function newFr () {
+  return new mcl.Fr()
+}
+
+export function deserializeHexStrToFr(str: string) {
+  return mcl.deserializeHexStrToFr(str)
 }
 
 export function newFp2 () {

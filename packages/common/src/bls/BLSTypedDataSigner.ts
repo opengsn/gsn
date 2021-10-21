@@ -18,12 +18,17 @@ import {
   newKeyPair,
   setDomain,
   setMappingMode,
-  sign, newG2, newFp2
+  sign,
+  newG2,
+  newFp2,
+  SecretKey,
+  PublicKey,
+  deserializeHexStrToFr, secretToPubkey
 } from './evmbls/mcl'
 
-export interface BLSKeypair {
-  secret: any
-  pubkey: any
+export interface InternalBLSKeypairType {
+  secret: SecretKey
+  pubkey: PublicKey
 }
 
 export const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
@@ -37,9 +42,9 @@ export const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
  *
  */
 export class BLSTypedDataSigner {
-  readonly blsKeypair: BLSKeypair
+  readonly blsKeypair: InternalBLSKeypairType
 
-  static async newKeypair (): Promise<BLSKeypair> {
+  static async newKeypair (): Promise<InternalBLSKeypairType> {
     await this.init()
     return newKeyPair()
   }
@@ -125,12 +130,25 @@ export class BLSTypedDataSigner {
     setDomain('testing-evmbls')
   }
 
-  constructor (_: { keypair: BLSKeypair }) {
+  constructor (_: { keypair: InternalBLSKeypairType }) {
     this.blsKeypair = _.keypair
   }
 
   getPublicKeySerialized (): BN[] {
     return g2ToBN(this.blsKeypair.pubkey).map(BigNumberToBN)
+  }
+
+  getPrivateKeySerialized (): PrefixedHexString {
+    return this.blsKeypair.secret.serializeToHexStr()
+  }
+
+  deserializeHexStringKeypair (serializedSecretKey: PrefixedHexString): InternalBLSKeypairType {
+    const secret = deserializeHexStrToFr(serializedSecretKey)
+    const pubkey = secretToPubkey(secret)
+    return {
+      secret,
+      pubkey
+    }
   }
 
   async signRelayRequestBLS (relayRequest: RelayRequest): Promise<BN[]> {
@@ -165,6 +183,7 @@ export class BLSTypedDataSigner {
     return await this.signTypedDataBLS(relayRequestEncoded)
   }
 
+  // TODO: rename
   async signTypedDataBLS (message: PrefixedHexString): Promise<BN[]> {
     const {
       signature,

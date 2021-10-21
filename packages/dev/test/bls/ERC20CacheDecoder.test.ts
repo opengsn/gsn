@@ -8,7 +8,7 @@ import { constants } from '@opengsn/common'
 const TestToken = artifacts.require('TestToken')
 const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
 
-contract.only('ERC20CacheDecoder', function ([destination]: string[]) {
+contract('ERC20CacheDecoder', function ([destination]: string[]) {
   let testToken: TestTokenInstance
   let erc20CacheDecoder: ERC20CacheDecoderInstance
   let cacheDecodersInteractor: CacheDecodersInteractor
