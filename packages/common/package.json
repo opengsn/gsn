@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/common",
-  "version": "2.2.2",
+  "version": "2.2.4",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "scripts": {
@@ -16,7 +16,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@opengsn/contracts": "^2.2.2",
+    "@ethereumjs/tx": "^3.2.0",
+    "@opengsn/contracts": "^2.2.4",
     "@types/bn.js": "^5.1.0",
     "@types/eth-sig-util": "^2.1.0",
     "@types/semver": "^7.3.4",
@@ -25,7 +26,6 @@
     "bn.js": "^5.2.0",
     "chalk": "^4.1.0",
     "eth-sig-util": "2.5.2",
-    "@ethereumjs/tx": "^3.2.0",
     "ethereumjs-util": "^7.1.0",
     "ethval": "^2.1.1",
     "ow": "^0.17.0",
