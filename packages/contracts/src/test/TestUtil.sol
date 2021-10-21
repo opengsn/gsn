@@ -73,4 +73,11 @@ contract TestUtil {
     function libGetChainID() public view returns (uint256) {
         return GsnEip712Library.getChainID();
     }
+
+    function getRelayRequestID(GsnTypes.RelayRequest calldata relayRequest, bytes calldata signature)
+    public
+    pure
+    returns (bytes32) {
+        return GsnUtils.getRelayRequestID(relayRequest, signature);
+    }
 }

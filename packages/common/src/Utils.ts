@@ -19,6 +19,8 @@ import { Address } from './types/Aliases'
 import chalk from 'chalk'
 import { encode, List } from 'rlp'
 import { EIP712TypedData } from 'eth-sig-util'
+import { RelayRequest } from './EIP712/RelayRequest'
+import Web3 from 'web3'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -137,7 +139,10 @@ export function calculateCalldataBytesZeroNonzero (
   calldataBuf.forEach(ch => {
     ch === 0 ? calldataZeroBytes++ : calldataNonzeroBytes++
   })
-  return { calldataZeroBytes, calldataNonzeroBytes }
+  return {
+    calldataZeroBytes,
+    calldataNonzeroBytes
+  }
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
@@ -252,4 +257,44 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
 
 export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
   return bufferToHex(Transaction.fromSerializedTx(toBuffer(signedTransaction), transactionOptions).hash())
+}
+
+export const RelayRequestABITupleType = 'tuple(tuple(address,address,uint256,uint256,uint256,bytes,uint256),tuple(uint256,uint256,uint256,uint256,address,address,address,bytes,uint256))'
+
+export function abiTupleRelayRequest (relayRequest: RelayRequest): any[] {
+  return [
+    [
+      relayRequest.request.from,
+      relayRequest.request.to,
+      relayRequest.request.value,
+      relayRequest.request.gas,
+      relayRequest.request.nonce,
+      relayRequest.request.data,
+      relayRequest.request.validUntil
+    ],
+    [
+      relayRequest.relayData.gasPrice,
+      relayRequest.relayData.pctRelayFee,
+      relayRequest.relayData.baseRelayFee,
+      relayRequest.relayData.transactionCalldataGasUsed,
+      relayRequest.relayData.relayWorker,
+      relayRequest.relayData.paymaster,
+      relayRequest.relayData.forwarder,
+      relayRequest.relayData.paymasterData,
+      relayRequest.relayData.clientId
+    ]
+  ]
+}
+
+export function abiEncodeRelayRequest (relayRequest: RelayRequest): PrefixedHexString {
+  const web3 = new Web3()
+  const types = [RelayRequestABITupleType]
+  const parameters = [abiTupleRelayRequest(relayRequest)]
+  return web3.eth.abi.encodeParameters(types, parameters)
+}
+
+export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString = '0x'): PrefixedHexString {
+  const types = [RelayRequestABITupleType, 'bytes']
+  const parameters = [abiTupleRelayRequest(relayRequest), signature]
+  return web3.utils.keccak256(web3.eth.abi.encodeParameters(types, parameters))
 }

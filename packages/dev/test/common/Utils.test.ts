@@ -17,6 +17,7 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
+import { getRelayRequestID } from '@opengsn/common'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -26,14 +27,15 @@ const TestUtil = artifacts.require('TestUtil')
 const Forwarder = artifacts.require('Forwarder')
 const TestRecipient = artifacts.require('TestRecipient')
 
-contract('Utils', function (accounts) {
+contract.only('Utils', function (accounts) {
+  let relayRequest: RelayRequest
+  let chainId: number
+  let forwarder: PrefixedHexString
+  let testUtil: TestUtilInstance
+
   describe('#getEip712Signature()', function () {
     // ganache always reports chainId as '1'
-    let chainId: number
-    let forwarder: PrefixedHexString
-    let relayRequest: RelayRequest
     const senderAddress = accounts[0]
-    let testUtil: TestUtilInstance
     let recipient: TestRecipientInstance
 
     let forwarderInstance: ForwarderInstance
@@ -127,7 +129,10 @@ contract('Utils', function (accounts) {
         GsnRequestType.typeName,
         GsnRequestType.typeSuffix
       )
-      const { typeStr, typeHash } = res.logs[0].args as RequestTypeRegistered['args']
+      const {
+        typeStr,
+        typeHash
+      } = res.logs[0].args as RequestTypeRegistered['args']
 
       assert.equal(typeStr, await testUtil.libRelayRequestType())
       assert.equal(typeHash, await testUtil.libRelayRequestTypeHash())
@@ -194,6 +199,32 @@ contract('Utils', function (accounts) {
         const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
       })
+    })
+  })
+
+  context('RelayRequestID', function () {
+    let signature: PrefixedHexString
+    before(async function () {
+      const requestData = new TypedRequestData(
+        chainId,
+        forwarder,
+        relayRequest
+      )
+      signature = await getEip712Signature(
+        relayRequest.request.from,
+        web3, requestData)
+    })
+
+    it('should calculate a valid RelayRequestID with signature', async function () {
+      const relayRequestID = getRelayRequestID(relayRequest, signature)
+      const onChainRelayRequestId = await testUtil.getRelayRequestID(relayRequest, signature)
+      assert.equal(relayRequestID, onChainRelayRequestId)
+    })
+
+    it('should calculate a valid RelayRequestID without signature', async function () {
+      const relayRequestID = getRelayRequestID(relayRequest)
+      const onChainRelayRequestId = await testUtil.getRelayRequestID(relayRequest, '0x')
+      assert.equal(relayRequestID, onChainRelayRequestId)
     })
   })
 })
