@@ -1,4 +1,3 @@
-import Web3 from 'web3'
 import { BigNumber } from 'ethers'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
@@ -25,7 +24,7 @@ import {
   PublicKey,
   deserializeHexStrToFr, secretToPubkey
 } from './evmbls/mcl'
-import { abiEncodeRelayRequest, abiTupleRelayRequest, RelayRequestABITupleType } from '../Utils'
+import { abiEncodeRelayRequest } from '../Utils'
 
 export interface InternalBLSKeypairType {
   secret: SecretKey
