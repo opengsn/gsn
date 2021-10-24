@@ -153,11 +153,13 @@ class GsnTestEnvironmentClass {
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
+    const environment = defaultEnvironment
     const contractInteractor = new ContractInteractor(
       {
         provider: new Web3.providers.HttpProvider(host),
         logger,
         maxPageSize,
+        environment,
         deployment: deploymentResult
       })
     await contractInteractor.init()

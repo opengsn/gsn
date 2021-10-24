@@ -479,6 +479,7 @@ contract('RelayClient', function (accounts) {
     it('should return error if view call to \'relayCall()\' fails', async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         logger,
         maxPageSize,
@@ -532,6 +533,7 @@ contract('RelayClient', function (accounts) {
     it('should return error if transaction returned by a relay does not pass validation', async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         logger,
         maxPageSize,
@@ -572,7 +574,10 @@ contract('RelayClient', function (accounts) {
         const relayClient =
           new RelayClient({
             provider: underlyingProvider,
-            config: gsnConfig,
+            config: Object.assign({}, gsnConfig, {
+              maxApprovalDataLength: 5,
+              maxPaymasterDataLength: 2
+            }),
             overrideDependencies: {
               asyncApprovalData,
               asyncPaymasterData
@@ -584,6 +589,20 @@ contract('RelayClient', function (accounts) {
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
       })
     })
+
+    it('should throw if variable length parameters are bigger than reported', async function () {
+      const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+        return '0x' + 'ff'.repeat(101)
+      }
+
+      relayClient.dependencies.asyncApprovalData = getLongData
+      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
+
+      relayClient.dependencies.asyncPaymasterData = getLongData
+      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
+    })
   })
 
   describe('#_broadcastRawTx()', function () {
@@ -591,6 +610,7 @@ contract('RelayClient', function (accounts) {
     it('should return \'wrongNonce\' if broadcast fails with nonce error', async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
+        environment: defaultEnvironment,
         provider: underlyingProvider,
         logger,
         maxPageSize,

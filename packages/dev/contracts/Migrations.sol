@@ -18,6 +18,7 @@ import "@opengsn/contracts/src/test/TestRecipient.sol";
 import "@opengsn/contracts/src/test/TestRelayHubValidator.sol";
 import "@opengsn/contracts/src/test/TestRelayWorkerContract.sol";
 import "@opengsn/contracts/src/test/TestUtil.sol";
+import "@opengsn/contracts/src/test/TestArbSys.sol";
 
 import "@opengsn/contracts/src/utils/GsnEip712Library.sol";
 import "@opengsn/contracts/src/utils/GsnUtils.sol";
@@ -28,6 +29,8 @@ import "@opengsn/contracts/src/utils/VersionRegistry.sol";
 import "@opengsn/contracts/src/forwarder/Forwarder.sol";
 import "@opengsn/contracts/src/forwarder/test/TestForwarder.sol";
 import "@opengsn/contracts/src/forwarder/test/TestForwarderTarget.sol";
+
+import "@opengsn/contracts/src/arbitrum/ArbRelayHub.sol";
 
 contract Migrations {
     address public owner;

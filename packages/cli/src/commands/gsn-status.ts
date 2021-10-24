@@ -14,6 +14,7 @@ import {
   CommandLineStatisticsPresenterConfig,
   defaultCommandLineStatisticsPresenterConfig
 } from '../CommandLineStatisticsPresenterConfig'
+import { defaultEnvironment } from '@opengsn/common'
 
 const commander = gsnCommander(['n', 'h'])
   .parse(process.argv);
@@ -31,7 +32,8 @@ const commander = gsnCommander(['n', 'h'])
   const logger = createCommandsLogger(commander.loglevel)
   const provider = new Web3.providers.HttpProvider(host)
   const maxPageSize = Number.MAX_SAFE_INTEGER
-  const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+  const environment = defaultEnvironment
+  const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
   await contractInteractor.init()
   const timeout = 1000
   const httpClient = new HttpClient(new HttpWrapper({ timeout }), logger)

@@ -1,3 +1,4 @@
+import BN from 'bn.js'
 import { Transaction } from '@ethereumjs/tx'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
@@ -27,7 +28,6 @@ export class RelayedTransactionValidator {
    */
   validateRelayResponse (
     request: RelayTransactionRequest,
-    maxAcceptanceBudget: number,
     returnedTx: PrefixedHexString
   ): boolean {
     const tx = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
@@ -47,8 +47,12 @@ export class RelayedTransactionValidator {
 
     const signer = transaction.signer
 
-    const externalGasLimit = transaction.gasLimit
-    const relayRequestAbiEncode = this.contractInteractor.encodeABI(maxAcceptanceBudget, request.relayRequest, request.metadata.signature, request.metadata.approvalData, externalGasLimit)
+    const relayRequestAbiEncode = this.contractInteractor.encodeABI({
+      relayRequest: request.relayRequest,
+      signature: request.metadata.signature,
+      approvalData: request.metadata.approvalData,
+      maxAcceptanceBudget: request.metadata.maxAcceptanceBudget
+    })
 
     const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
     if (relayHubAddress == null) {
@@ -60,8 +64,9 @@ export class RelayedTransactionValidator {
       relayRequestAbiEncode === transaction.data &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      this.logger.info('validateRelayResponse - valid transaction response')
-
+      if (new BN(transaction.gasPrice.toString()).lt(new BN(request.relayRequest.relayData.gasPrice))) {
+        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.gasPrice}`)
+      }
       const receivedNonce = parseInt(transaction.nonce)
       if (receivedNonce > request.metadata.relayMaxNonce) {
         // TODO: need to validate that client retries the same request and doesn't double-spend.
@@ -71,6 +76,7 @@ export class RelayedTransactionValidator {
         throw new Error(`Relay used a tx nonce higher than requested. Requested ${request.metadata.relayMaxNonce} got ${receivedNonce}`)
       }
 
+      this.logger.info('validateRelayResponse - valid transaction response')
       return true
     } else {
       console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)

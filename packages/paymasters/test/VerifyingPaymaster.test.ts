@@ -35,6 +35,7 @@ contract('VerifyingPaymaster', ([from]) => {
           pctRelayFee: '3',
           baseRelayFee: '4',
           gasPrice: '5',
+          transactionCalldataGasUsed: '0',
           paymaster: '0x'.padEnd(42, '3'),
           paymasterData: '0x',
           clientId: '6',
@@ -99,6 +100,7 @@ contract('VerifyingPaymaster', ([from]) => {
         loggerConfiguration: {
           logLevel: 'error'
         },
+        maxApprovalDataLength: 132,
         paymasterAddress: pm.address
       }
       const input: GSNUnresolvedConstructorInput = {

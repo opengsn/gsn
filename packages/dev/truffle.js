@@ -83,6 +83,12 @@ module.exports = {
         return new HDWalletProvider(mnemonic, 'https://kotti.connect.bloq.cloud/v1/roast-blossom-sentence')
       },
       network_id: '6'
+    },
+    arbitrum_rinkeby: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://rinkeby.arbitrum.io/rpc')
+      },
+      network_id: '421611'
     }
   },
   mocha: {

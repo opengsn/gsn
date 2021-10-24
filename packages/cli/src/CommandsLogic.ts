@@ -3,7 +3,7 @@ import io from 'console-read-write'
 import BN from 'bn.js'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
-import { Contract, SendOptions } from 'web3-eth-contract'
+import { Contract } from 'web3-eth-contract'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
 import { fromWei, toBN } from 'web3-utils'
 import ow from 'ow'
@@ -17,7 +17,7 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import VersionRegistryAbi from './compiled/VersionRegistry.json'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -46,7 +46,7 @@ export interface RegisterOptions {
 interface DeployOptions {
   from: Address
   gasPrice: string
-  gasLimit: number
+  gasLimit: number | IntString
   deployPaymaster?: boolean
   forwarderAddress?: string
   relayHubAddress?: string
@@ -65,14 +65,20 @@ interface DeployOptions {
  */
 const DeployOptionsPartialShape = {
   from: ow.string,
-  gasPrice: ow.string,
-  gasLimit: ow.number
+  gasPrice: ow.string
 }
 
 interface RegistrationResult {
   success: boolean
   transactions?: string[]
   error?: string
+}
+
+export interface SendOptions {
+  from: string
+  gasPrice: number | string | BN
+  gas: number | string | BN
+  value: number | string | BN
 }
 
 export class CommandsLogic {
@@ -98,7 +104,8 @@ export class CommandsLogic {
     }
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
-    this.contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+    const environment = defaultEnvironment
+    this.contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
     this.deployment = deployment
     this.web3 = new Web3(provider)
   }
@@ -340,15 +347,8 @@ export class CommandsLogic {
       arguments: [
         sInstance.options.address,
         pInstance.options.address,
-        deployOptions.relayHubConfiguration.maxWorkerCount,
-        deployOptions.relayHubConfiguration.gasReserve,
-        deployOptions.relayHubConfiguration.postOverhead,
-        deployOptions.relayHubConfiguration.gasOverhead,
-        deployOptions.relayHubConfiguration.maximumRecipientDeposit,
-        deployOptions.relayHubConfiguration.minimumUnstakeDelay,
-        deployOptions.relayHubConfiguration.minimumStake,
-        deployOptions.relayHubConfiguration.dataGasCostPerByte,
-        deployOptions.relayHubConfiguration.externalCallDataCostOverhead]
+        deployOptions.relayHubConfiguration
+      ]
     }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
 
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, { ...options }, deployOptions.skipConfirmation)
@@ -384,11 +384,12 @@ export class CommandsLogic {
         .contract(json)
         .deploy(constructorArgs)
       const estimatedGasCost = await sendMethod.estimateGas()
-      const maxCost = new BN(options.gasPrice).muln(options.gas)
-      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice, 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
+      const maxCost = new BN(options.gasPrice).mul(new BN(options.gas))
+      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
       }
+      // @ts-ignore - web3 refuses to accept string as gas limit, and max for a number in BN is 0x4000000 (~67M)
       const deployPromise = sendMethod.send({ ...options })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       deployPromise.on('transactionHash', function (hash) {

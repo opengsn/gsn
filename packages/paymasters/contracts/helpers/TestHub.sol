@@ -17,25 +17,9 @@ contract TestHub is RelayHub, AllEvents {
     constructor(
         IStakeManager _stakeManager,
         address _penalizer,
-        uint256 _maxWorkerCount,
-        uint256 _gasReserve,
-        uint256 _postOverhead,
-        uint256 _gasOverhead,
-        uint256 _maximumRecipientDeposit,
-        uint256 _minimumUnstakeDelay,
-        uint256 _minimumStake,
-        uint256 _dataGasCostPerByte,
-        uint256 _externalCallDataCostOverhead) RelayHub(_stakeManager,
+        RelayHubConfig memory _config) RelayHub(_stakeManager,
         _penalizer,
-        _maxWorkerCount,
-        _gasReserve,
-        _postOverhead,
-        _gasOverhead,
-        _maximumRecipientDeposit,
-        _minimumUnstakeDelay,
-        _minimumStake,
-        _dataGasCostPerByte,
-        _externalCallDataCostOverhead)
+        _config)
         // solhint-disable-next-line no-empty-blocks
     {}
 
