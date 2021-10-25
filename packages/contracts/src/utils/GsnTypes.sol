@@ -9,6 +9,7 @@ interface GsnTypes {
         uint256 gasPrice;
         uint256 pctRelayFee;
         uint256 baseRelayFee;
+        uint256 transactionCalldataGasUsed;
         address relayWorker;
         address paymaster;
         address forwarder;

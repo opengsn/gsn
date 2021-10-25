@@ -2,7 +2,7 @@ import BN from 'bn.js'
 import Web3 from 'web3'
 import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
 import { toBN, toHex } from 'web3-utils'
 import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
@@ -20,7 +20,13 @@ import versionRegistryAbi from './interfaces/IVersionRegistry.json'
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
-import { address2topic, decodeRevertReason, event2topic } from './Utils'
+import {
+  address2topic,
+  calculateCalldataBytesZeroNonzero,
+  decodeRevertReason,
+  event2topic,
+  PaymasterGasAndDataLimits
+} from './Utils'
 import {
   BaseRelayRecipientInstance,
   IForwarderInstance,
@@ -41,6 +47,10 @@ import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
+import { Environment } from './Environments'
+import { RelayHubConfiguration } from './types/RelayHubConfiguration'
+import { RelayTransactionRequest } from './types/RelayTransactionRequest'
+
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -49,6 +59,23 @@ export interface ConstructorParams {
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
   maxPageSize: number
+  environment: Environment
+}
+
+export interface RelayCallABI {
+  signature: PrefixedHexString
+  relayRequest: RelayRequest
+  approvalData: PrefixedHexString
+  maxAcceptanceBudget: PrefixedHexString
+}
+
+export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
+  return {
+    relayRequest: r.relayRequest,
+    signature: r.metadata.signature,
+    approvalData: r.metadata.approvalData,
+    maxAcceptanceBudget: r.metadata.maxAcceptanceBudget
+  }
 }
 
 export class ContractInteractor {
@@ -62,6 +89,7 @@ export class ContractInteractor {
 
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
+  relayHubConfiguration!: RelayHubConfiguration
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
@@ -82,6 +110,7 @@ export class ContractInteractor {
   private networkId?: number
   private networkType?: string
   private paymasterVersion?: SemVerString
+  readonly environment: Environment
 
   constructor (
     {
@@ -89,6 +118,7 @@ export class ContractInteractor {
       provider,
       versionManager,
       logger,
+      environment,
       deployment = {}
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
@@ -98,6 +128,7 @@ export class ContractInteractor {
     this.deployment = deployment
     this.provider = provider
     this.lastBlockNumber = 0
+    this.environment = environment
     // @ts-ignore
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
@@ -145,6 +176,7 @@ export class ContractInteractor {
   }
 
   async init (): Promise<ContractInteractor> {
+    const initStartTimestamp = Date.now()
     this.logger.debug('interactor init start')
     if (this.rawTxOptions != null) {
       throw new Error('_init was already called')
@@ -153,6 +185,10 @@ export class ContractInteractor {
     await this._initializeContracts()
     await this._validateCompatibility()
     await this._initializeNetworkParams()
+    if (this.relayHubInstance != null) {
+      this.relayHubConfiguration = await this.relayHubInstance.getConfiguration()
+    }
+    this.logger.debug(`client init finished in ${Date.now() - initStartTimestamp} ms`)
     return this
   }
 
@@ -188,7 +224,7 @@ export class ContractInteractor {
       this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
       this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
       this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
-        this._validateVersion(version)
+        this._validateVersion(version, 'Paymaster')
         return version
       })
     ])
@@ -215,13 +251,13 @@ export class ContractInteractor {
     }
     const hub = this.relayHubInstance
     const version = await hub.versionHub()
-    this._validateVersion(version)
+    this._validateVersion(version, 'RelayHub')
   }
 
-  _validateVersion (version: string): void {
+  _validateVersion (version: string, contractName: string): void {
     const versionSatisfied = this.versionManager.isRequiredVersionSatisfied(version)
     if (!versionSatisfied) {
-      throw new Error(`Provided Hub version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
+      throw new Error(`Provided ${contractName} version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
     }
   }
 
@@ -310,38 +346,33 @@ export class ContractInteractor {
    * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
    */
   async validateRelayCall (
-    maxAcceptanceBudget: number,
-    relayRequest: RelayRequest,
-    signature: PrefixedHexString,
-    approvalData: PrefixedHexString,
-    maxViewableGasLimit?: number): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+    relayCallABIData: RelayCallABI,
+    viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+    if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.gasPrice == null) {
+      throw new Error('validateRelayCall: invalid input')
+    }
     const relayHub = this.relayHubInstance
     try {
-      const externalGasLimit = await this.getMaxViewableGasLimit(relayRequest, maxViewableGasLimit)
-      const encodedRelayCall = relayHub.contract.methods.relayCall(
-        maxAcceptanceBudget,
-        relayRequest,
-        signature,
-        approvalData,
-        externalGasLimit
-      ).encodeABI()
+      const encodedRelayCall = this.encodeABI(relayCallABIData)
       const res: string = await new Promise((resolve, reject) => {
-        // @ts-ignore
-        this.web3.currentProvider.send({
+        const rpcPayload = {
           jsonrpc: '2.0',
           id: 1,
           method: 'eth_call',
           params: [
             {
-              from: relayRequest.relayData.relayWorker,
+              from: relayCallABIData.relayRequest.relayData.relayWorker,
               to: relayHub.address,
-              gasPrice: toHex(relayRequest.relayData.gasPrice),
-              gas: toHex(externalGasLimit),
+              gasPrice: toHex(relayCallABIData.relayRequest.relayData.gasPrice),
+              gas: toHex(viewCallGasLimit),
               data: encodedRelayCall
             },
             'latest'
           ]
-        }, (err: any, res: { result: string }) => {
+        }
+        this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(relayCallABIData)}`)
+        // @ts-ignore
+        this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string }) => {
           const revertMsg = this._decodeRevertFromResponse(err, res)
           if (revertMsg != null) {
             reject(new Error(revertMsg))
@@ -379,12 +410,20 @@ export class ContractInteractor {
     }
   }
 
-  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit?: number): Promise<BN> {
-    const blockGasLimit = toBN(maxViewableGasLimit ?? await this._getBlockGasLimit())
-    const workerBalance = toBN(await this.getBalance(relayRequest.relayData.relayWorker))
-    const workerGasLimit = workerBalance.div(toBN(
-      relayRequest.relayData.gasPrice === '0' ? 1 : relayRequest.relayData.gasPrice))
-    return BN.min(blockGasLimit, workerGasLimit)
+  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: IntString): Promise<BN> {
+    const maxViewableGasLimitBN = toBN(maxViewableGasLimit)
+    const gasPrice = toBN(relayRequest.relayData.gasPrice)
+    if (gasPrice.eqn(0)) {
+      return maxViewableGasLimitBN
+    }
+    const workerBalanceString = await this.getBalance(relayRequest.relayData.relayWorker)
+    if (workerBalanceString == null) {
+      this.logger.error('getMaxViewableGasLimit: failed to get relay worker balance')
+      return maxViewableGasLimitBN
+    }
+    const workerBalance = toBN(workerBalanceString)
+    const workerGasLimit = workerBalance.div(gasPrice)
+    return BN.min(maxViewableGasLimitBN, workerGasLimit)
   }
 
   /**
@@ -417,8 +456,10 @@ export class ContractInteractor {
     return null
   }
 
-  encodeABI (maxAcceptanceBudget: number, relayRequest: RelayRequest, sig: PrefixedHexString, approvalData: PrefixedHexString, externalGasLimit: IntString): PrefixedHexString {
-    return this.relayCallMethod(maxAcceptanceBudget, relayRequest, sig, approvalData, externalGasLimit).encodeABI()
+  encodeABI (
+    _: RelayCallABI
+  ): PrefixedHexString {
+    return this.relayCallMethod(_.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
@@ -511,7 +552,10 @@ export class ContractInteractor {
           let attempts = 0
           while (true) {
             try {
-              const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, { fromBlock, toBlock }))
+              const pastEvents = await this._getPastEvents(contract, names, extraTopics, Object.assign({}, options, {
+                fromBlock,
+                toBlock
+              }))
               relayEventParts.push(pastEvents)
               break
             } catch (e) {
@@ -598,9 +642,103 @@ export class ContractInteractor {
     return await this.web3.eth.estimateGas(gsnTransactionDetails)
   }
 
+  async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
+    const originalGasEstimation = await this.web3.eth.estimateGas(gsnTransactionDetails)
+    const calldataGasCost = this.calculateCalldataCost(gsnTransactionDetails.data)
+    const adjustedEstimation = originalGasEstimation - calldataGasCost
+    this.logger.debug(`estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
+    if (adjustedEstimation < 0) {
+      throw new Error('estimateGasWithoutCalldata: calldataGasCost exceeded originalGasEstimation\n' +
+        'your Environment configuration and Ethereum node you are connected to are not compatible')
+    }
+    return adjustedEstimation
+  }
+
+  /**
+   * @returns result - maximum possible gas consumption by this relayed call
+   * (calculated on chain by RelayHub.verifyGasAndDataLimits)
+   */
+  calculateTransactionMaxPossibleGas (
+    _: {
+      msgData: PrefixedHexString
+      gasAndDataLimits: PaymasterGasAndDataLimits
+      relayCallGasLimit: string
+    }): number {
+    const msgDataLength = toBuffer(_.msgData).length
+    const msgDataGasCostInsideTransaction =
+      new BN(this.environment.dataOnChainHandlingGasCostPerByte)
+        .muln(msgDataLength)
+        .toNumber()
+    const calldataCost = this.calculateCalldataCost(_.msgData)
+    const result = parseInt(this.relayHubConfiguration.gasOverhead.toString()) +
+      msgDataGasCostInsideTransaction +
+      calldataCost +
+      parseInt(_.relayCallGasLimit) +
+      parseInt(_.gasAndDataLimits.preRelayedCallGasLimit.toString()) +
+      parseInt(_.gasAndDataLimits.postRelayedCallGasLimit.toString())
+    this.logger.debug(`
+input:\n${JSON.stringify(_)}
+msgDataLength: ${msgDataLength}
+calldataCost: ${calldataCost}
+msgDataGasCostInsideTransaction: ${msgDataGasCostInsideTransaction}
+environment: ${JSON.stringify(this.environment)}
+relayHubConfiguration: ${JSON.stringify(this.relayHubConfiguration)}
+calculateTransactionMaxPossibleGas: result: ${result}
+`)
+    return result
+  }
+
+  /**
+   * @param relayRequestOriginal request input of the 'relayCall' method with some fields not yet initialized
+   * @param variableFieldSizes configurable sizes of 'relayCall' parameters with variable size types
+   * @return {PrefixedHexString} top boundary estimation of how much gas sending this data will consume
+   */
+  estimateCalldataCostForRequest (
+    relayRequestOriginal: RelayRequest,
+    variableFieldSizes: { maxApprovalDataLength: number, maxPaymasterDataLength: number }
+  ): PrefixedHexString {
+    // protecting the original object from temporary modifications done here
+    const relayRequest: RelayRequest =
+      Object.assign(
+        {}, relayRequestOriginal,
+        {
+          relayData: Object.assign({}, relayRequestOriginal.relayData)
+        })
+    relayRequest.relayData.transactionCalldataGasUsed = '0xffffffffff'
+    relayRequest.relayData.paymasterData = '0x' + 'ff'.repeat(variableFieldSizes.maxPaymasterDataLength)
+    const maxAcceptanceBudget = '0xffffffffff'
+    const signature = '0x' + 'ff'.repeat(65)
+    const approvalData = '0x' + 'ff'.repeat(variableFieldSizes.maxApprovalDataLength)
+    const encodedData = this.encodeABI({
+      relayRequest,
+      signature,
+      approvalData,
+      maxAcceptanceBudget
+    })
+    return `0x${this.calculateCalldataCost(encodedData).toString(16)}`
+  }
+
+  calculateCalldataCost (msgData: PrefixedHexString): number {
+    const { calldataZeroBytes, calldataNonzeroBytes } = calculateCalldataBytesZeroNonzero(msgData)
+    return calldataZeroBytes * this.environment.gtxdatazero +
+      calldataNonzeroBytes * this.environment.gtxdatanonzero
+  }
+
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
-  async getGasPrice (): Promise<string> {
-    return await this.web3.eth.getGasPrice()
+  async getGasPrice (): Promise<IntString> {
+    const gasPriceFromNode = await this.web3.eth.getGasPrice()
+    if (gasPriceFromNode == null) {
+      throw new Error('getGasPrice: node returned null value')
+    }
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    if (!this.environment.getGasPriceFactor) {
+      this.logger.warn('Environment not set')
+      return gasPriceFromNode
+    }
+    const gasPriceActual =
+      new BN(gasPriceFromNode)
+        .muln(this.environment.getGasPriceFactor)
+    return gasPriceActual.toString()
   }
 
   async getTransactionCount (address: string, defaultBlock?: BlockNumber): Promise<number> {

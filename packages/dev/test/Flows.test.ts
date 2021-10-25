@@ -98,7 +98,9 @@ options.forEach(params => {
 
         relayClientConfig = {
           loggerConfiguration: { logLevel: 'error' },
-          paymasterAddress: paymaster.address
+          paymasterAddress: paymaster.address,
+          maxApprovalDataLength: 4,
+          maxPaymasterDataLength: 4
         }
 
         const relayProvider = await RelayProvider.newProvider(
@@ -169,6 +171,7 @@ options.forEach(params => {
        * to the recipient. We are setting 10M as a block gas limit, so cannot go much higher than 9M gas here.
        */
       describe('with different gas limits', function () {
+        // note: cannot set 'innerGasLimit' too close to 'maxViewableGasLimit' and expect it to pass
         [1e4, 1e5, 1e6, 1e7]
           .forEach(innerGasLimit =>
             it(`should calculate valid external tx gas limit for a transaction with inner call gas limit of  ${innerGasLimit.toString()}`, async function () {

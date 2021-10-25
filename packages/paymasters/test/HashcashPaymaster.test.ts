@@ -44,6 +44,7 @@ contract('HashcashPaymaster', ([from]) => {
       loggerConfiguration: {
         logLevel: 'error'
       },
+      maxApprovalDataLength: 65,
       paymasterAddress: pm.address
     }
   })

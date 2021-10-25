@@ -1,6 +1,7 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
+import BN from 'bn.js'
 import { PastEventOptions } from 'web3-eth-contract'
 
 import {
@@ -11,7 +12,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -23,12 +24,15 @@ import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Vers
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 
 const { expect } = chai.use(chaiAsPromised)
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
+
+const environment = defaultEnvironment
 
 contract('ContractInteractor', function (accounts) {
   const provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
@@ -43,7 +47,9 @@ contract('ContractInteractor', function (accounts) {
 
   before(async () => {
     sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    pen = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    pen = await Penalizer.new(
+      defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
+      defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     rh = await deployHub(sm.address, pen.address)
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
@@ -63,6 +69,7 @@ contract('ContractInteractor', function (accounts) {
     it('should return relayCall revert reason', async () => {
       const contractInteractor = new ContractInteractor(
         {
+          environment,
           provider: web3.currentProvider as HttpProvider,
           versionManager,
           logger,
@@ -85,6 +92,7 @@ contract('ContractInteractor', function (accounts) {
           gasPrice: '1',
           pctRelayFee: '0',
           baseRelayFee: '0',
+          transactionCalldataGasUsed: '0',
           relayWorker: workerAddress,
           forwarder: constants.ZERO_ADDRESS,
           paymaster: pm.address,
@@ -92,7 +100,14 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x')
+      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const encodedData: RelayCallABI = {
+        maxAcceptanceBudget: '200000',
+        relayRequest,
+        signature: '0x',
+        approvalData: '0x'
+      }
+      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'view call to \'relayCall\' reverted in client: with reason string \'Paymaster balance too low\'',
@@ -106,6 +121,7 @@ contract('ContractInteractor', function (accounts) {
       await rh.depositFor(pm.address, { value: 1e18.toString() })
       await pm.setRevertPreRelayCall(true)
       const contractInteractor = new ContractInteractor({
+        environment,
         provider: web3.currentProvider as HttpProvider,
         versionManager,
         logger,
@@ -128,6 +144,7 @@ contract('ContractInteractor', function (accounts) {
           gasPrice: '1',
           pctRelayFee: '0',
           baseRelayFee: '0',
+          transactionCalldataGasUsed: '0',
           relayWorker: workerAddress,
           forwarder: addr(4),
           paymaster: pm.address,
@@ -135,7 +152,14 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const ret = await contractInteractor.validateRelayCall(200000, relayRequest, '0x', '0x')
+      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const encodedData: RelayCallABI = {
+        maxAcceptanceBudget: '200000',
+        relayRequest,
+        signature: '0x',
+        approvalData: '0x'
+      }
+      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',
@@ -150,11 +174,16 @@ contract('ContractInteractor', function (accounts) {
     let sampleTransactionData: PrefixedHexString
 
     before(async function () {
-      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize })
+      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
       await contractInteractor.init()
       provider.reset()
       const nonce = await web3.eth.getTransactionCount('0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc')
-      let transaction = Transaction.fromTxData({ to: constants.ZERO_ADDRESS, gasLimit: '0x5208', gasPrice: 105157849, nonce }, contractInteractor.getRawTxOptions())
+      let transaction = Transaction.fromTxData({
+        to: constants.ZERO_ADDRESS,
+        gasLimit: '0x5208',
+        gasPrice: 105157849,
+        nonce
+      }, contractInteractor.getRawTxOptions())
       transaction = transaction.sign(Buffer.from('8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba', 'hex'))
       sampleTransactionData = '0x' + transaction.serialize().toString('hex')
       sampleTransactionHash = '0x' + transaction.hash().toString('hex')
@@ -173,7 +202,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: pm.address
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await contractInteractor._resolveDeployment()
       const deploymentOut = contractInteractor.getDeployment()
       assert.equal(deploymentOut.paymasterAddress, pm.address)
@@ -187,7 +216,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: constants.ZERO_ADDRESS
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -196,7 +225,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: sm.address
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -206,14 +235,21 @@ contract('ContractInteractor', function (accounts) {
         paymasterAddress: pm.address
       }
       const versionManager = new VersionsManager('1.0.0', '1.0.0-old-client')
-      const contractInteractor = new ContractInteractor({ provider, logger, versionManager, deployment, maxPageSize })
+      const contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        versionManager,
+        deployment,
+        maxPageSize,
+        environment
+      })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith(/Provided.*version.*does not satisfy the requirement/)
     })
   })
 
   describe('#splitRange', () => {
-    const contractInteractor = new ContractInteractor({ provider, logger, maxPageSize })
+    const contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
     it('split 1', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 6, 1),
         [{ fromBlock: 1, toBlock: 6 }])
@@ -248,7 +284,7 @@ contract('ContractInteractor', function (accounts) {
     let contractInteractor: ContractInteractor
     before(async function () {
       const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
-      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await contractInteractor.init()
       provider.reset()
     })
@@ -284,6 +320,44 @@ contract('ContractInteractor', function (accounts) {
         assert.equal(ret.length, 300)
         assert.equal(ret[0].event, 'event1-1-75')
         assert.equal(ret[299].event, 'event300-226-300')
+      })
+    })
+  })
+
+  context('gas calculations', function () {
+    const originalGasEstimation = 100000
+    const msgDataLength = 42
+    let contractInteractor: ContractInteractor
+    let gsnTransactionDetails: GsnTransactionDetails
+
+    before(async function () {
+      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
+      await contractInteractor.init()
+      sinon.stub(contractInteractor.web3.eth, 'estimateGas').resolves(originalGasEstimation)
+    })
+
+    context('#estimateGasWithoutCalldata()', function () {
+      it('should calculate gas used for calculation only', async function () {
+        gsnTransactionDetails = {
+          from: accounts[0],
+          to: accounts[0],
+          data: '0x' + 'ff'.repeat(msgDataLength),
+          clientId: '1'
+        }
+        const estimation = await contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+        const expectedEstimation = originalGasEstimation - msgDataLength * defaultEnvironment.gtxdatanonzero
+        assert.equal(estimation, expectedEstimation)
+      })
+
+      it('should throw if calldataGasCost estimation exceeds originalGasEstimation', async function () {
+        gsnTransactionDetails = {
+          from: accounts[0],
+          to: accounts[0],
+          data: '0x' + 'ff'.repeat(msgDataLength * 10000),
+          clientId: '1'
+        }
+        await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
+          .to.eventually.be.rejectedWith('calldataGasCost exceeded originalGasEstimation')
       })
     })
   })

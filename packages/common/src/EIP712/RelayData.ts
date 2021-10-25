@@ -5,6 +5,7 @@ export interface RelayData {
   gasPrice: IntString
   pctRelayFee: IntString
   baseRelayFee: IntString
+  transactionCalldataGasUsed: IntString
   relayWorker: Address
   paymaster: Address
   paymasterData: PrefixedHexString

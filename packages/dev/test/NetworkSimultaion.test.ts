@@ -14,6 +14,7 @@ import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { evmMine, evmMineMany, revert, snapshot } from './TestUtils'
 import { signedTransactionToHash } from '@opengsn/common/dist/Utils'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { defaultEnvironment } from '@opengsn/common'
 
 contract('Network Simulation for Relay Server', function (accounts) {
   const pendingTransactionTimeoutBlocks = 5
@@ -28,6 +29,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         maxPageSize,
         provider,
         logger,

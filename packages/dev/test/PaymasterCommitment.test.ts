@@ -1,5 +1,7 @@
-import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
+import { HttpProvider } from 'web3-core'
+import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -13,12 +15,14 @@ import {
   ForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance
 } from '@opengsn/contracts/types/truffle-contracts'
+import { ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
-import { deployHub, encodeRevertReason } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
+import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+
+import { deployHub, encodeRevertReason } from './TestUtils'
 
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
@@ -34,7 +38,13 @@ interface PartialRelayRequest {
 
 // given partial request, fill it in from defaults, and return request and signature to send.
 // if nonce is not explicitly specified, read it from forwarder
-async function makeRequest (web3: Web3, req: PartialRelayRequest, defaultRequest: RelayRequest, chainId: number, forwarderInstance: ForwarderInstance): Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
+async function makeRequest (
+  web3: Web3,
+  req: PartialRelayRequest,
+  defaultRequest: RelayRequest,
+  chainId: number,
+  forwarderInstance: ForwarderInstance,
+  relayHubInstance: RelayHubInstance): Promise<{ req: RelayRequest, sig: PrefixedHexString }> {
   const filledRequest = {
     request: { ...defaultRequest.request, ...req.request },
     relayData: { ...defaultRequest.relayData, ...req.relayData }
@@ -43,6 +53,21 @@ async function makeRequest (web3: Web3, req: PartialRelayRequest, defaultRequest
   if ((filledRequest.request.nonce ?? '0') === '0') {
     filledRequest.request.nonce = (await forwarderInstance.getNonce(filledRequest.request.from)).toString()
   }
+  const deployment: GSNContractsDeployment = {
+    relayHubAddress: relayHubInstance.address
+  }
+  const contractInteractor = new ContractInteractor({
+    environment: defaultEnvironment,
+    provider: web3.eth.currentProvider as HttpProvider,
+    logger: createServerLogger('error', '', ''),
+    deployment,
+    maxPageSize: Number.MAX_SAFE_INTEGER
+  })
+  filledRequest.relayData.transactionCalldataGasUsed =
+    contractInteractor.estimateCalldataCostForRequest(filledRequest, {
+      maxApprovalDataLength: 0,
+      maxPaymasterDataLength: 0
+    })
 
   const sig = await getEip712Signature(
     web3,
@@ -152,6 +177,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         relayData: {
           pctRelayFee,
           baseRelayFee,
+          transactionCalldataGasUsed: '0',
           gasPrice: '1',
           relayWorker,
           forwarder,
@@ -175,9 +201,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -187,7 +213,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const paid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       // console.log('actual paid=', paid, 'gasUsed=', gasUsed, 'diff=', paid - gasUsed)
-      assert.closeTo(paid, res.receipt.gasUsed, 50)
+      assert.closeTo(paid, res.receipt.gasUsed, 100)
     })
 
     it('paymaster should not pay for requests exceeding msg.data size limit', async () => {
@@ -198,12 +224,12 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit))
       await expectRevert(
-        relayHubInstance.relayCall(10e6, r.req, r.sig, hugeApprovalData, externalGasLimit, {
+        relayHubInstance.relayCall(10e6, r.req, r.sig, hugeApprovalData, {
           from: relayWorker,
           gas: externalGasLimit,
           gasPrice
@@ -220,12 +246,12 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
-      const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
+      const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
@@ -248,12 +274,12 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
-      const relayCallParams: [number, RelayRequest, string, string, number, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData, externalGasLimit]
+      const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
@@ -284,20 +310,20 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
       const gasLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
       const maxAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
       // fail if a bit lower
-      expectRevert(relayHubInstance.relayCall(maxAcceptanceBudget - 1, r.req, r.sig, '0x', externalGasLimit, {
+      expectRevert(relayHubInstance.relayCall(maxAcceptanceBudget - 1, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
       }), 'acceptance budget too high')
 
       // but succeed if the value is OK
-      const res = await relayHubInstance.relayCall(maxAcceptanceBudget, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(maxAcceptanceBudget, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -317,9 +343,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         request: {
           data: recipientContract.contract.methods.emitMessage('').encodeABI()
         }
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -330,7 +356,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const paymasterPaid = paymasterBalance.sub(await relayHubInstance.balanceOf(paymaster)).toNumber()
       // TODO understand why there's a 2100 gas decrease (cost of sload?)
-      assert.closeTo(paymasterPaid - parseInt(gasUsed), 17100, 50)
+      assert.closeTo(paymasterPaid - parseInt(gasUsed), 17100, 100)
     })
 
     it('paymaster should not have preRelayedCall gas limit > acceptance budget', async () => {
@@ -348,9 +374,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      expectRevert(relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      expectRevert(relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -366,9 +392,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -389,9 +415,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -417,9 +443,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -436,9 +462,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -461,9 +487,9 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         },
         relayData: { paymaster }
 
-      }, sharedRelayRequestData, chainId, forwarderInstance)
+      }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', externalGasLimit, {
+      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice

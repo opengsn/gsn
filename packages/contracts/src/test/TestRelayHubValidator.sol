@@ -11,8 +11,7 @@ contract TestRelayHubValidator {
         uint, //paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        bytes calldata approvalData,
-        uint //externalGasLimit
+        bytes calldata approvalData
     ) external pure {
         RelayHubValidator.verifyTransactionPacking(relayRequest, signature, approvalData);
     }
