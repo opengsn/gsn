@@ -71,6 +71,7 @@ export class RelayServer extends EventEmitter {
   transactionManager: TransactionManager
   txStoreManager: TxStoreManager
   readinessInfo: ReadinessInfo
+  maxGasLimit: number = 0
 
   lastMinedActiveTransaction?: EventData
 
@@ -293,6 +294,9 @@ export class RelayServer extends EventEmitter {
       msgDataGasCostInsideTransaction
     })
     const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
+    if (maxPossibleGas >= this.maxGasLimit) {
+      throw new Error(`maxPossibleGas (${maxPossibleGas}) exceeds maxGasLimit (${this.maxGasLimit})`)
+    }
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)
@@ -506,8 +510,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
     )
     await this.registrationManager.init()
 
-    this.chainId = await this.contractInteractor.chainId
-    this.networkId = await this.contractInteractor.getNetworkId()
+    this.chainId = this.contractInteractor.chainId
+    this.networkId = this.contractInteractor.getNetworkId()
     if (this.config.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
       this.logger.error('Don\'t use real network\'s chainId & networkId while in devMode.')
       process.exit(-1)
@@ -520,6 +524,7 @@ networkId               | ${this.networkId}
 latestBlock             | ${latestBlock.number}
 latestBlock timestamp   | ${latestBlock.timestamp}
 `)
+    this.maxGasLimit = Math.floor(0.75 * latestBlock.gasLimit)
     this.initialized = true
 
     // Assume started server is not registered until _worker figures stuff out

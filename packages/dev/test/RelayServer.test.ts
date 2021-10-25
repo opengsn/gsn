@@ -400,6 +400,20 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
+      it('should fail to relay with high maxPossibleGas', async function () {
+        const req = await env.createRelayHttpRequest()
+        const origMaxGas = env.relayServer.maxGasLimit
+        env.relayServer.maxGasLimit = 1
+        try {
+          await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, 'exceeds maxGasLimit')
+        } finally {
+          env.relayServer.maxGasLimit = origMaxGas
+        }
+      })
+
       it('should fail to relay when paymaster\'s balance too low', async function () {
         id = (await snapshot()).result
         const req = await env.createRelayHttpRequest()
@@ -477,6 +491,20 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   describe('#createRelayTransaction()', function () {
     beforeEach(async function () {
       await env.relayServer.txStoreManager.clearAll()
+    })
+    it('should not relay transaction if maxPossibleGas too high', async function () {
+      const req = await env.createRelayHttpRequest()
+      assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
+      const origMaxGas = env.relayServer.maxGasLimit
+      env.relayServer.maxGasLimit = 1
+      try {
+        await env.relayServer.createRelayTransaction(req)
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, 'exceeds maxGasLimit')
+      } finally {
+        env.relayServer.maxGasLimit = origMaxGas
+      }
     })
 
     it('should relay transaction', async function () {
