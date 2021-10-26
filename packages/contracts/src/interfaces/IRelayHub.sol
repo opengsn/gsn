@@ -186,6 +186,8 @@ interface IRelayHub {
 
     function penalizer() external view returns (address);
 
+    function relayRegistrar() external view returns (address);
+
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
     /// @return true if stake size and delay satisfy all requirements
     function isRelayManagerStaked(address relayManager) external view returns(bool);

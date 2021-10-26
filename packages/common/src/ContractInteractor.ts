@@ -16,6 +16,7 @@ import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
 import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
 import versionRegistryAbi from './interfaces/IVersionRegistry.json'
+import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
 
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
@@ -33,9 +34,9 @@ import {
   IPaymasterInstance,
   IPenalizerInstance,
   IRelayHubInstance,
-  IRelayRecipientInstance,
+  IRelayRecipientInstance, IRelayRegistrarInstance,
   IStakeManagerInstance,
-  IVersionRegistryInstance
+  IVersionRegistryInstance,
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
@@ -86,6 +87,7 @@ export class ContractInteractor {
   private readonly IPenalizer: Contract<IPenalizerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IVersionRegistry: Contract<IVersionRegistryInstance>
+  private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
 
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
@@ -95,6 +97,7 @@ export class ContractInteractor {
   penalizerInstance!: IPenalizerInstance
   versionRegistry!: IVersionRegistryInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
+  private relayRegistrar?: IRelayRegistrarInstance
   private readonly relayCallMethod: any
 
   readonly web3: Web3
@@ -164,6 +167,10 @@ export class ContractInteractor {
       contractName: 'IVersionRegistry',
       abi: versionRegistryAbi
     })
+    this.IRelayRegistrar = TruffleContract({
+      contractName: 'IRelayRegistrar',
+      abi: relayRegistrarAbi
+    })
     this.IStakeManager.setProvider(this.provider, undefined)
     this.IRelayHubContract.setProvider(this.provider, undefined)
     this.IPaymasterContract.setProvider(this.provider, undefined)
@@ -171,6 +178,7 @@ export class ContractInteractor {
     this.IPenalizer.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
     this.IVersionRegistry.setProvider(this.provider, undefined)
+    this.IRelayRegistrar.setProvider(this.provider, undefined)
 
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
@@ -219,7 +227,7 @@ export class ContractInteractor {
   async _resolveDeploymentFromPaymaster (paymasterAddress: Address): Promise<void> {
     this.paymasterInstance = await this._createPaymaster(paymasterAddress)
     const [
-      relayHubAddress, forwarderAddress, paymasterVersion
+      relayHubAddress, forwarderAddress, paymasterVersion,
     ] = await Promise.all([
       this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
       this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
@@ -236,13 +244,15 @@ export class ContractInteractor {
 
   async _resolveDeploymentFromRelayHub (relayHubAddress: Address): Promise<void> {
     this.relayHubInstance = await this._createRelayHub(relayHubAddress)
-    const [stakeManagerAddress, penalizerAddress] = await Promise.all([
+    const [stakeManagerAddress, penalizerAddress, relayRegistrarAddress] = await Promise.all([
       this._hubStakeManagerAddress(),
-      this._hubPenalizerAddress()
+      this._hubPenalizerAddress(),
+      this._hubRelayRegistrarAddress()
     ])
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.stakeManagerAddress = stakeManagerAddress
     this.deployment.penalizerAddress = penalizerAddress
+    this.deployment.relayRegistrarAddress = relayRegistrarAddress
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -279,6 +289,9 @@ export class ContractInteractor {
     }
     if (this.deployment.versionRegistryAddress != null) {
       this.versionRegistry = await this._createVersionRegistry(this.deployment.versionRegistryAddress)
+    }
+    if (this.deployment.relayRegistrarAddress != null) {
+      this.relayRegistrar = await this._createRelayRegistrar(this.deployment.relayRegistrarAddress)
     }
   }
 
@@ -320,6 +333,9 @@ export class ContractInteractor {
 
   async _createVersionRegistry (address: Address): Promise<IVersionRegistryInstance> {
     return await this.IVersionRegistry.at(address)
+  }
+  async _createRelayRegistrar (address: Address): Promise<IRelayRegistrarInstance> {
+    return await this.IRelayRegistrar.at(address)
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {
@@ -940,10 +956,24 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.relayHubInstance.penalizer()
   }
 
+  private async _hubRelayRegistrarAddress (): Promise<Address> {
+    return await this.relayHubInstance.relayRegistrar()
+  }
+
   penalizerAddress (): Address {
     return this.penalizerInstance.address
   }
 
+  //get registered relayers, bypassing the events
+  async getRegisteredRelays() : Promise<any|null> {
+    if ( this.relayRegistrar == null ) {
+      //TODO: maybe move event lookup here?
+      throw new Error( 'no registrar. must use events')
+    }
+    return this.relayRegistrar?.readValues(100).map(ret=>({
+      url: ret.url
+    }))
+  }
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])

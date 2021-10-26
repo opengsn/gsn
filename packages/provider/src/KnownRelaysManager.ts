@@ -104,6 +104,8 @@ export class KnownRelaysManager {
   }
 
   async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
+
+    await this.contractInteractor.getRegisteredRelays()
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
