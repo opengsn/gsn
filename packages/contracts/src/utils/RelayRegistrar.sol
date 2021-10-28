@@ -4,6 +4,7 @@ pragma solidity ^0.8.6;
 
 import "./LRUList.sol";
 import "../interfaces/IRelayRegistrar.sol";
+import "../interfaces/IRelayHub.sol";
 
 contract RelayRegistrar is LRUList, IRelayRegistrar {
 
@@ -54,21 +55,22 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
 
     /**
      * read relay info of registered relays
-     * @param relayHub - check each relay if it is registered with this hub (staked, authorized, not penalized)
      * @param maxCount - return at most that many relays from the beginning of the list
+     * @return info - list of RelayInfo for registered relays
+     * @return filled - # of entries filled in info
      */
-    function readValues(IRelayHub relayHub, uint maxCount) public view override returns (RelayInfo[] memory info, uint filled) {
-        (info, filled,) = readValuesFrom(relayHub, address(this), maxCount);
+    function readValues(uint maxCount) public view override returns (RelayInfo[] memory info, uint filled) {
+        (info, filled,) = readValuesFrom(address(this), maxCount);
     }
 
-    function readValuesFrom(IRelayHub relayHub, address from, uint maxCount) public view override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
+    function readValuesFrom(address from, uint maxCount) public view override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
         address[] memory items;
         (items, nextFrom) = readItemsFrom(from, maxCount);
         filled = 0;
         ret = new RelayInfo[](items.length);
         for (uint i = 0; i < items.length; i++) {
             address relayManager = items[i];
-            if (address(relayHub) == address(0) || relayHub.isRelayManagerStaked(relayManager)) {
+            if (relayHub == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
                 ret[filled++] = getRelayInfo(relayManager);
             }
         }

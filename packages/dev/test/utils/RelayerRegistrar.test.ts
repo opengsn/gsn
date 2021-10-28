@@ -58,7 +58,7 @@ contract('#RelayerRegistrar', function ([fromAddress]) {
     expect(info.blockNumber).to.eql(1)
   })
   it('should read list', async () => {
-    const ret = await reg.readValues(AddressZero, 5)
+    const ret = await reg.readValues(5)
 
     expect(ret).to.eql([
       {

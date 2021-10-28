@@ -401,13 +401,13 @@ contract('ContractInteractor', function (accounts) {
         .to.eql(await relayReg.getRelayInfo(accounts[1]))
     })
     it('should get matching returned array of structs', async () => {
-      expect(await lightreg.readValues(AddressZero, 100))
-        .to.eql(await relayReg.readValues(AddressZero, 100))
+      expect(await lightreg.readValues(100))
+        .to.eql(await relayReg.readValues(100))
     })
     it('should get matching mixed return value', async () => {
       const head = relayReg.address
-      expect(await lightreg.readValuesFrom(AddressZero, head, 100))
-        .to.eql(await relayReg.readValuesFrom(AddressZero, head, 100))
+      expect(await lightreg.readValuesFrom(head, 100))
+        .to.eql(await relayReg.readValuesFrom(head, 100))
     })
   })
 })

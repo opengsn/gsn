@@ -8,6 +8,7 @@
   },
   "scripts": {
     "tsc": "tsc",
+    "watch-tsc": "tsc -w",
     "lint": "eslint -f unix .",
     "chmod-commands": "chmod a+rx ./dist/commands/*.js",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/cli/compiled"

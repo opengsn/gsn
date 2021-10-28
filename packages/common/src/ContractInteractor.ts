@@ -985,7 +985,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       throw new Error('no registrar. must use events')
     }
     // TODO: typechain broken return value types.
-    const { info: relayInfos, filled } = await this.relayRegistrar?.readValues(this.relayHubInstance.address, 100) as any
+    const { info: relayInfos, filled } = await this.relayRegistrar?.readValues(100) as any
     return relayInfos.slice(0, filled)
   }
 

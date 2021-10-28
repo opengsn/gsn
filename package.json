@@ -53,6 +53,7 @@
     "lerna-publish-force-no-git": "lerna publish --no-push --no-git-tag-version --force-publish",
     "lerna-chmod-commands": "lerna run chmod-commands",
     "lerna-tsc": "lerna run tsc",
+    "lerna-watch-tsc": "lerna run --parallel watch-tsc",
     "lerna-lint": "lerna run lint",
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "lerna run test --stream --no-prefix",
