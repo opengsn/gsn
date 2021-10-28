@@ -63,6 +63,17 @@ jobs: # a collection of steps
 #          command: yarn lerna-run-test-only-with-hardhat | tee /tmp/test-paymasters-results.log
 #      - store_test_results: # special step to upload test results for display in Test Summary
 #          path: /tmp/test-paymasters-results.log
+  lint:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
+      - run: # run tests
+          name: lint
+          command: yarn lint
+
   test_fork:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
@@ -105,6 +116,10 @@ workflows:
 #      - test_paymasters:
 #          requires:
 #            - build
+      - lint:
+          requires:
+            - build
       - test_fork:
           requires:
             - build
+
