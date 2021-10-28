@@ -19,7 +19,7 @@ const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
-contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]: string[]) {
+contract.skip('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]: string[]) {
   let arbRelayHub: ArbRelayHubInstance
   let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance

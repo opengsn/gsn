@@ -12,13 +12,11 @@ function getComponent (key: string, components: AbiOutput[]): AbiOutput | undefi
 }
 
 function retypeItem (abiOutput: AbiOutput, ret: any): any {
-
   if (abiOutput.type.includes('int')) {
-
     return toBN(ret)
   } else if (abiOutput.type === 'tuple[]') {
-    return ret.map((item:any)=>retypeItem(
-      {...abiOutput, type:'tuple'}, item
+    return ret.map((item: any) => retypeItem(
+      { ...abiOutput, type: 'tuple' }, item
     ))
   } else if (abiOutput.type.includes('tuple') && abiOutput.components != null) {
     const keys = Object.keys(ret)

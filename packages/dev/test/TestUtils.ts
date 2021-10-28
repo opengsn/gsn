@@ -18,7 +18,6 @@ import { Environment } from '@opengsn/common'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
-
 require('source-map-support').install({ errorFormatterForce: true })
 
 const RelayHub = artifacts.require('RelayHub')

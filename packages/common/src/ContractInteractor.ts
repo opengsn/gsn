@@ -36,7 +36,7 @@ import {
   IRelayHubInstance,
   IRelayRecipientInstance, IRelayRegistrarInstance,
   IStakeManagerInstance,
-  IVersionRegistryInstance,
+  IVersionRegistryInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
@@ -51,6 +51,7 @@ import { sleep } from './Utils.js'
 import { Environment } from './Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
+import { constants } from './Constants'
 
 import TransactionDetails = Truffle.TransactionDetails
 
@@ -227,7 +228,7 @@ export class ContractInteractor {
   async _resolveDeploymentFromPaymaster (paymasterAddress: Address): Promise<void> {
     this.paymasterInstance = await this._createPaymaster(paymasterAddress)
     const [
-      relayHubAddress, forwarderAddress, paymasterVersion,
+      relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
       this.paymasterInstance.getHubAddr().catch((e: Error) => {
         throw new Error(`Not a paymaster contract: ${e.message}`)
@@ -253,7 +254,7 @@ export class ContractInteractor {
     const [stakeManagerAddress, penalizerAddress, relayRegistrarAddress] = await Promise.all([
       this._hubStakeManagerAddress(),
       this._hubPenalizerAddress(),
-      this._hubRelayRegistrarAddress()
+      this._hubRelayRegistrarAddress().catch((e: any) => constants.ZERO_ADDRESS) // old RelayHub doesn't have registrar
     ])
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.stakeManagerAddress = stakeManagerAddress
@@ -301,9 +302,10 @@ export class ContractInteractor {
     }
   }
 
-  hasRelayRegistrar(): boolean {
+  hasRelayRegistrar (): boolean {
     return this.deployment.relayRegistrarAddress != null
   }
+
   // must use these options when creating Transaction object
   getRawTxOptions (): TxOptions {
     if (this.rawTxOptions == null) {
@@ -343,6 +345,7 @@ export class ContractInteractor {
   async _createVersionRegistry (address: Address): Promise<IVersionRegistryInstance> {
     return await this.IVersionRegistry.at(address)
   }
+
   async _createRelayRegistrar (address: Address): Promise<IRelayRegistrarInstance> {
     return await this.IRelayRegistrar.at(address)
   }
@@ -572,7 +575,7 @@ export class ContractInteractor {
       const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
       try {
         // eslint-disable-next-line
-        for (const { fromBlock, toBlock } of rangeParts) {
+        for (const {fromBlock, toBlock} of rangeParts) {
           // this.logger.debug('Getting events from block ' + fromBlock.toString() + ' to ' + toBlock.toString())
           let attempts = 0
           while (true) {
@@ -780,7 +783,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
-    if (!this.web3.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
+    if (!this.web3.utils.isAddress(address)) {
+      throw new Error(exceptionTitle + ' ' + address)
+    }
   }
 
   async getCode (address: string): Promise<string> {
@@ -973,17 +978,17 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return this.penalizerInstance.address
   }
 
-  //get registered relayers, bypassing the events
-  async getRegisteredRelays(): Promise<{relayManager: string, baseRelayFee: BN, pctRelayFee: BN, url:string}[] | null> {
-
+  // get registered relayers, bypassing the events
+  async getRegisteredRelays (): Promise<Array<{ relayManager: string, baseRelayFee: BN, pctRelayFee: BN, url: string }> | null> {
     if (this.relayRegistrar == null) {
-      //TODO: maybe move event lookup here?
+      // TODO: maybe move event lookup here?
       throw new Error('no registrar. must use events')
     }
-    //TODO: typechain broken return value types.
-    const {info: relayInfos, filled} = await this.relayRegistrar?.readValues(this.relayHubInstance.address, 100) as any
+    // TODO: typechain broken return value types.
+    const { info: relayInfos, filled } = await this.relayRegistrar?.readValues(this.relayHubInstance.address, 100) as any
     return relayInfos.slice(0, filled)
   }
+
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])

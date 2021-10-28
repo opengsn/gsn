@@ -24,7 +24,7 @@ interface IRelayRegistrar {
 
     function getRelayInfo(address relayManager) external view returns (RelayInfo memory info);
 
-    function readValues(IRelayHub relayHub, uint maxCount) view external returns (RelayInfo[] memory info, uint filled);
+    function readValues(IRelayHub relayHub, uint maxCount) external view returns (RelayInfo[] memory info, uint filled);
 
-    function readValuesFrom(IRelayHub relayHub, address from, uint maxCount) view external returns (RelayInfo[] memory ret, uint filled, address nextFrom);
+    function readValuesFrom(IRelayHub relayHub, address from, uint maxCount) external view returns (RelayInfo[] memory ret, uint filled, address nextFrom);
 }

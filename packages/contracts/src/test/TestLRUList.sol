@@ -12,11 +12,11 @@ contract TestLRUList is LRUList {
         values[item] = value;
     }
 
-    function readValues(uint maxCount) view public returns (uint[] memory ret) {
+    function readValues(uint maxCount) public view returns (uint[] memory ret) {
         (ret,) = readValuesFrom(address(this), maxCount);
     }
 
-    function readValuesFrom(address from, uint maxCount) view public returns (uint[] memory ret, address nextFrom) {
+    function readValuesFrom(address from, uint maxCount) public view returns (uint[] memory ret, address nextFrom) {
         address[] memory items;
         (items, nextFrom) = readItemsFrom(from, maxCount);
         ret = new uint[](items.length);

@@ -13,7 +13,7 @@ pragma solidity ^0.8.6;
 contract LRUList {
 
     //need some "maximum" value. MAX_UINT is as good..
-    uint constant MAX = type(uint32).max;
+    uint constant private MAX = type(uint32).max;
 
     mapping(address => address) public next;
 
@@ -30,7 +30,7 @@ contract LRUList {
     function moveToTop(address addr, address prevItem) internal {
         address head = address(this);
         if (prevItem == address(0)) {
-            require(next[addr] == address(0), "must specify prevItem for existing item");
+            require(next[addr] == address(0), "missing prevItem - existing item");
             next[addr] = next[head];
             next[head] = addr;
         } else {
@@ -98,7 +98,7 @@ contract LRUList {
 
     //find item previous to given item.
     // (works well for normal count. use prevFrom for insanely huge lists)
-    function getPrev(address item) view public returns (address ret) {
+    function getPrev(address item) public view returns (address ret) {
         //check if not in list (instead of revert)
         if ( next[item]==address(0))
             return address (0);
@@ -116,16 +116,16 @@ contract LRUList {
         require(next[item] != address(0), "item not in list");
         address p = from;
         for (uint i = 0; i < scanCount; i++) {
-            address p_next = next[p];
+            address pNext = next[p];
 
-            require(p_next != address(0), "item not in list");
-            if (p_next == item)
+            require(pNext != address(0), "item not in list");
+            if (pNext == item)
                 return (p, address(0));
 
-            if (p_next == address(this)) {
+            if (pNext == address(this)) {
                 break;
             }
-            p = p_next;
+            p = pNext;
         }
         return (address(0), p);
     }

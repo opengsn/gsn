@@ -1,5 +1,6 @@
 pragma solidity ^0.8.6;
 //SPDX-License-Identifier: UNLICENSED
+/* solhint-disable no-inline-assembly */
 
 import "./LRUList.sol";
 import "../interfaces/IRelayRegistrar.sol";
@@ -15,7 +16,7 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
 
     mapping(address => RelayStorageInfo) public values;
 
-    address immutable relayHub;
+    address public immutable relayHub;
 
     constructor(address _relayHub) {
         relayHub = _relayHub;
@@ -56,11 +57,11 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
      * @param relayHub - check each relay if it is registered with this hub (staked, authorized, not penalized)
      * @param maxCount - return at most that many relays from the beginning of the list
      */
-    function readValues(IRelayHub relayHub, uint maxCount) view public override returns (RelayInfo[] memory info, uint filled) {
+    function readValues(IRelayHub relayHub, uint maxCount) public view override returns (RelayInfo[] memory info, uint filled) {
         (info, filled,) = readValuesFrom(relayHub, address(this), maxCount);
     }
 
-    function readValuesFrom(IRelayHub relayHub, address from, uint maxCount) view public override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
+    function readValuesFrom(IRelayHub relayHub, address from, uint maxCount) public view override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
         address[] memory items;
         (items, nextFrom) = readItemsFrom(from, maxCount);
         filled = 0;
