@@ -45,7 +45,7 @@ const IQuoter = artifacts.require('IQuoter')
 // as we are using forked mainnet, we will need to impersonate an account with a lot of DAI & UNI
 const MAJOR_DAI_AND_UNI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
 
-const GAS_USED_BY_POST = 199009
+const GAS_USED_BY_POST = 197490
 const MAX_POSSIBLE_GAS = 1e6
 const PERMIT_DATA_LENGTH = 0
 const POOL_FEE = 3000
@@ -454,7 +454,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       )
       const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, 500])
       const postGasUse = await calculatePostGas(daiPermittableToken, permitPaymasterZeroGUBP, account0, context)
-      assert.closeTo(postGasUse.toNumber(), GAS_USED_BY_POST, 1000)
+      assert.closeTo(postGasUse.toNumber(), GAS_USED_BY_POST, 5000)
     })
   })
 })

@@ -65,8 +65,8 @@ export interface ServerConfigParams {
   minHubWithdrawalBalance: number
   refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutBlocks: number
-  successfulRoundsForReady: number
   confirmationsNeeded: number
+  dbAutoCompactionInterval: number
   retryGasPriceFactor: number
   maxGasPrice: string
   defaultGasLimit: number
@@ -139,8 +139,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workdir: '',
   refreshStateTimeoutBlocks: 5,
   pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
-  successfulRoundsForReady: 3, // successful mined blocks to become ready after exception
   confirmationsNeeded: 12,
+  dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
   maxGasPrice: 100e9.toString(),
@@ -205,9 +205,9 @@ const ConfigParamsTypes = {
   initialReputation: 'number',
 
   requiredVersionRange: 'string',
+  dbAutoCompactionInterval: 'number',
   retryGasPriceFactor: 'number',
   runPaymasterReputations: 'boolean',
-  successfulRoundsForReady: 'number',
   refreshStateTimeoutBlocks: 'number',
   pendingTransactionTimeoutBlocks: 'number',
   minAlertedDelayMS: 'number',
@@ -329,6 +329,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     environment
   })
   await contractInteractor._initializeContracts()
+  await contractInteractor._initializeNetworkParams()
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')

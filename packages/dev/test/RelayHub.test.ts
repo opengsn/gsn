@@ -351,8 +351,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const relayCallView =
             await relayHubInstance.contract.methods
-              .call({ from: relayWorker, gas: 7e6, gasPrice: 1e9 })
               .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x')
+              .call({ from: relayWorker, gas: 7e6, gasPrice: 1e9 })
 
           assert.equal(relayCallView.paymasterAccepted, false)
 

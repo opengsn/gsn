@@ -202,5 +202,8 @@ interface IRelayHub {
 
     /// @return a SemVer-compliant version of the hub contract
     function versionHub() external view returns (string memory);
+
+    /// @return a total measurable amount of gas left to current execution; same as 'gasleft()' for pure EVMs
+    function aggregateGasleft() external view returns (uint256);
 }
 

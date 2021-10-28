@@ -141,10 +141,7 @@ export function calculateCalldataBytesZeroNonzero (
   calldataBuf.forEach(ch => {
     ch === 0 ? calldataZeroBytes++ : calldataNonzeroBytes++
   })
-  return {
-    calldataZeroBytes,
-    calldataNonzeroBytes
-  }
+  return { calldataZeroBytes, calldataNonzeroBytes }
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {

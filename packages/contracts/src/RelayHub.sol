@@ -23,7 +23,9 @@ import "./interfaces/IStakeManager.sol";
 contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
 
-    string public override versionHub = "2.2.3+opengsn.hub.irelayhub";
+    function versionHub() override virtual public pure returns (string memory){
+        return "2.2.3+opengsn.hub.irelayhub";
+    }
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
@@ -169,7 +171,7 @@ contract RelayHub is IRelayHub, Ownable {
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
         RelayCallData memory vars;
-        vars.initialGasLeft = gasleft();
+        vars.initialGasLeft = aggregateGasleft();
         vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
@@ -196,7 +198,7 @@ contract RelayHub is IRelayHub, Ownable {
         //How much gas to pass down to innerRelayCall. must be lower than the default 63/64
         // actually, min(gasleft*63/64, gasleft-GAS_RESERVE) might be enough.
         uint256 innerGasLimit = gasleft()*63/64- config.gasReserve;
-        vars.gasBeforeInner = gasleft();
+        vars.gasBeforeInner = aggregateGasleft();
 
         /*
         Preparing to calculate "gasUseWithoutPost":
@@ -213,12 +215,12 @@ contract RelayHub is IRelayHub, Ownable {
         // RelayCallStatus value.
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasAndDataLimits,
-                _tmpInitialGas - gasleft(), /* totalInitialGas */
+                _tmpInitialGas - aggregateGasleft(), /* totalInitialGas */
                 vars.maxPossibleGas
                 )
         );
         vars.success = success;
-        vars.innerGasUsed = vars.gasBeforeInner-gasleft();
+        vars.innerGasUsed = vars.gasBeforeInner-aggregateGasleft();
         (vars.status, vars.relayedCallReturnValue) = abi.decode(relayCallStatus, (RelayCallStatus, bytes));
         if ( vars.relayedCallReturnValue.length>0 ) {
             emit TransactionResult(vars.status, vars.relayedCallReturnValue);
@@ -247,8 +249,9 @@ contract RelayHub is IRelayHub, Ownable {
                 return (false, vars.relayedCallReturnValue);
             }
         }
+
         // We now perform the actual charge calculation, based on the measured gas used
-        uint256 gasUsed = relayRequest.relayData.transactionCalldataGasUsed + (vars.initialGasLeft - gasleft()) + config.gasOverhead;
+        uint256 gasUsed = relayRequest.relayData.transactionCalldataGasUsed + (vars.initialGasLeft - aggregateGasleft()) + config.gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
@@ -269,6 +272,9 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     struct InnerRelayCallData {
+        uint256 initialGasLeft;
+        // TODO: consider if it is even an important value we want to account for; its probably not
+        uint256 gasUsedToCallInner;
         uint256 balanceBefore;
         bytes32 preReturnValue;
         bool relayedCallSuccess;
@@ -290,6 +296,8 @@ contract RelayHub is IRelayHub, Ownable {
     returns (RelayCallStatus, bytes memory)
     {
         InnerRelayCallData memory vars;
+        vars.initialGasLeft = aggregateGasleft();
+        vars.gasUsedToCallInner = totalInitialGas - gasleft();
         // A new gas measurement is performed inside innerRelayCall, since
         // due to EIP150 available gas amounts cannot be directly compared across external calls
 
@@ -342,7 +350,7 @@ contract RelayHub is IRelayHub, Ownable {
             IPaymaster.postRelayedCall.selector,
             vars.recipientContext,
             vars.relayedCallSuccess,
-            totalInitialGas - gasleft(), /*gasUseWithoutPost*/
+            vars.gasUsedToCallInner + (vars.initialGasLeft - aggregateGasleft()), /*gasUseWithoutPost*/
             relayRequest.relayData
         );
 
@@ -406,5 +414,9 @@ contract RelayHub is IRelayHub, Ownable {
         IStakeManager.StakeInfo memory stakeInfo = stakeManager.getStakeInfo(relayManager);
         require(stakeInfo.stake > 0, "relay manager not staked");
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
+    }
+
+    function aggregateGasleft() public override virtual view returns (uint256){
+        return gasleft();
     }
 }

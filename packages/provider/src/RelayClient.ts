@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
-import { asRelayCallAbi, ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, asRelayCallAbi } from '@opengsn/common/dist/ContractInteractor'
 import { GsnTransactionDetails, GsnTransactionDetailsShape } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
@@ -514,19 +514,8 @@ export class RelayClient {
     provider,
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
-    const isMetamask: boolean = (provider as any).isMetaMask
-
-    // provide defaults valid for metamask (unless explicitly specified values)
-    const methodSuffix = config.methodSuffix ?? (isMetamask ? '_v4' : defaultGsnConfig.methodSuffix)
-    const jsonStringifyRequest = config.jsonStringifyRequest ?? (isMetamask ? true : defaultGsnConfig.jsonStringifyRequest)
-
-    const resolvedConfig: Partial<GSNConfig> = {
-      methodSuffix,
-      jsonStringifyRequest
-    }
     return {
       ...defaultGsnConfig,
-      ...resolvedConfig,
       ...config
     }
   }

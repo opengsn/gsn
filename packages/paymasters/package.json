@@ -1,7 +1,7 @@
 {
   "name": "@opengsn/paymasters",
   "license": "GPL-3.0-only",
-  "version": "2.2.2",
+  "version": "2.2.4",
   "scripts": {
     "truffle-compile": "truffle compile --compile-all",
     "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 './build/contracts/**/*.json'",
@@ -28,11 +28,11 @@
     "access": "public"
   },
   "dependencies": {
+    "@opengsn/common": "^2.2.4",
+    "@opengsn/contracts": "^2.2.4",
+    "@opengsn/dev": "^2.2.4",
+    "@opengsn/provider": "^2.2.4",
     "@openzeppelin/contracts": "^4.2.0",
-    "@opengsn/common": "^2.2.2",
-    "@opengsn/contracts": "^2.2.2",
-    "@opengsn/dev": "^2.2.2",
-    "@opengsn/provider": "^2.2.2",
     "@uniswap/v3-periphery": "^1.1.1",
     "ethereumjs-util": "^7.1.0"
   },
