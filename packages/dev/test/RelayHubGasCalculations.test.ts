@@ -173,7 +173,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
-      const tx = await relayHub.relayCall(0, 10e6, relayRequest, signature, '0x', {
+      const tx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: externalGasLimit.toString(),
         gasPrice
@@ -214,7 +214,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       )
       const viewRelayCallResponse =
         await relayHub.contract.methods
-          .relayCall(0, 10e6, relayRequestMisbehaving, signature, '0x')
+          .relayCall(10e6, relayRequestMisbehaving, signature, '0x')
           .call({
             from: relayRequestMisbehaving.relayData.relayWorker,
             gas: externalGasLimit,
@@ -223,7 +223,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       assert.equal(viewRelayCallResponse[0], false)
       assert.equal(viewRelayCallResponse[1], null) // no revert string on out-of-gas
 
-      const res = await relayHub.relayCall(0, 10e6, relayRequestMisbehaving, signature, '0x', {
+      const res = await relayHub.relayCall(10e6, relayRequestMisbehaving, signature, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice: gasPrice
@@ -328,7 +328,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             web3,
             dataToSign
           )
-          const res = await relayHub.relayCall(0, 10e6, relayRequest, signature, '0x', {
+          const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice: gasPrice
@@ -419,7 +419,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             web3,
             dataToSign
           )
-          const relayCall = relayHub.contract.methods.relayCall(0, 10e6, relayRequest, signature, approvalData)
+          const relayCall = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, approvalData)
           const receipt = await relayCall.send({
             from: relayWorker,
             gas: externalGasLimit,
@@ -505,7 +505,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   web3,
                   dataToSign
                 )
-                const res = await relayHub.relayCall(0, 10e6, relayRequest, signature, '0x', {
+                const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
                   from: relayWorker,
                   gas: externalGasLimit,
                   gasPrice: gasPrice

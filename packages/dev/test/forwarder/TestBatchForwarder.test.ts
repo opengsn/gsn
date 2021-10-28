@@ -106,7 +106,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(0, 10e6, relayRequest, signature, '0x', {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })
@@ -145,7 +145,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(0, 10e6, relayRequest, signature, '0x', {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })
@@ -178,7 +178,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(0, 10e6, relayRequest, signature, '0x', {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })

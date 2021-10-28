@@ -8,13 +8,12 @@ import "../interfaces/IRelayHub.sol";
 contract TestRelayWorkerContract {
 
     function relayCall(
-        uint256 batchItemId,
         IRelayHub hub,
         uint maxAcceptanceBudget,
         GsnTypes.RelayRequest memory relayRequest,
         bytes memory signature)
     public
     {
-        hub.relayCall(batchItemId, maxAcceptanceBudget, relayRequest, signature, "");
+        hub.relayCall(maxAcceptanceBudget, relayRequest, signature, "");
     }
 }

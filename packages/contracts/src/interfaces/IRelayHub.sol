@@ -62,7 +62,8 @@ interface IRelayHub {
     event TransactionRejectedByPaymaster(
         address indexed relayManager,
         address indexed paymaster,
-        address indexed from,
+        bytes32 indexed relayRequestID,
+        address from,
         address to,
         address relayWorker,
         bytes4 selector,
@@ -77,7 +78,8 @@ interface IRelayHub {
     event TransactionRelayed(
         address indexed relayManager,
         address indexed relayWorker,
-        address indexed from,
+        bytes32 indexed relayRequestID,
+        address from,
         address to,
         address paymaster,
         bytes4 selector,
@@ -149,7 +151,6 @@ interface IRelayHub {
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
-        uint256 batchItemId,
         uint maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -186,6 +187,8 @@ interface IRelayHub {
     function stakeManager() external view returns (IStakeManager);
 
     function penalizer() external view returns (address);
+
+    function batchGateway() external view returns (address);
 
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
     /// @return true if stake size and delay satisfy all requirements

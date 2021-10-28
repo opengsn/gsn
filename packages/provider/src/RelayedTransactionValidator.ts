@@ -1,7 +1,6 @@
-import BN from 'bn.js'
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
-import { toHex } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 
@@ -68,8 +67,9 @@ export class RelayedTransactionValidator {
       relayRequestAbiEncode === bufferToHex(transaction.data) &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      if (transaction.gasPrice.lt(new BN(request.relayRequest.relayData.gasPrice))) {
-        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.gasPrice}`)
+      const requestGasPriceBN = toBN(request.relayRequest.relayData.gasPrice)
+      if (transaction.gasPrice.lt(requestGasPriceBN)) {
+        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${requestGasPriceBN.toString()}, received ${transaction.gasPrice.toString()}`)
       }
       const receivedNonce = transaction.nonce.toNumber()
       if (receivedNonce > request.metadata.relayMaxNonce) {

@@ -9,7 +9,7 @@ import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
-import { ether, expectRevert } from '@openzeppelin/test-helpers'
+import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
 require('source-map-support').install({ errorFormatterForce: true })
@@ -18,6 +18,7 @@ const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
 const Forwarder = artifacts.require('Forwarder')
 const TestForwarder = artifacts.require('TestForwarder')
+const GatewayForwarder = artifacts.require('GatewayForwarder')
 
 const keccak256 = web3.utils.keccak256
 

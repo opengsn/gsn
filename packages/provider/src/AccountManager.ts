@@ -22,6 +22,11 @@ function toAddress (privateKey: PrefixedHexString): Address {
   return wallet.getChecksumAddressString()
 }
 
+export enum SigningAlgorithm {
+  ECDSA_EIP_712,
+  BLS_ALT_BN128
+}
+
 export class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
@@ -65,7 +70,32 @@ export class AccountManager {
     }
   }
 
-  async sign (relayRequest: RelayRequest): Promise<PrefixedHexString> {
+  //TODO: remove default value
+  async sign (relayRequest: RelayRequest, signingAlgorithm: SigningAlgorithm = SigningAlgorithm.ECDSA_EIP_712): Promise<PrefixedHexString> {
+    switch (signingAlgorithm) {
+      case SigningAlgorithm.ECDSA_EIP_712:
+        return await this.signEIP712ECDSA(relayRequest)
+      case SigningAlgorithm.BLS_ALT_BN128:
+        return await this.signBLSALTBN128(relayRequest)
+    }
+  }
+
+  /**
+   *
+   * @param relayRequest
+   * @returns JSON array of 4 components of the BLS signature used to aggregate a signature
+   * TODO: switch to serialized BLS signature for individual RelayRequests
+   */
+  async signBLSALTBN128 (relayRequest: RelayRequest): Promise<string> {
+    if (this.blsTypedDataSigner == null) {
+      throw new Error('BLS not initialized')
+    }
+    const signatureBN = await this.blsTypedDataSigner.signRelayRequestBLS(relayRequest)
+    const strings = signatureBN.map((it: BN) => { return it.toString('hex') })
+    return JSON.stringify(strings)
+  }
+
+  async signEIP712ECDSA (relayRequest: RelayRequest): Promise<PrefixedHexString> {
     const forwarder = relayRequest.relayData.forwarder
 
     const cloneRequest = { ...relayRequest }

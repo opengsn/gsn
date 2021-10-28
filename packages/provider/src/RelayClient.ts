@@ -1,17 +1,28 @@
 import BN from 'bn.js'
+import ow from 'ow'
 import { EventEmitter } from 'events'
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
-import { ContractInteractor, asRelayCallAbi } from '@opengsn/common/dist/ContractInteractor'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { asRelayCallAbi, ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { GsnTransactionDetails, GsnTransactionDetailsShape } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
-import { AsyncDataCallback, PingFilter, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+import {
+  Address,
+  AsyncDataCallback,
+  IntString,
+  PingFilter,
+  Web3ProviderBaseInterface
+} from '@opengsn/common/dist/types/Aliases'
 import { AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+import {
+  RelayMetadata,
+  RelayTransactionRequest,
+  RelayTransactionRequestShape
+} from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
@@ -35,6 +46,8 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
+import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
+import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 
 // forwarder requests are signed with expiration time.
 
@@ -47,8 +60,8 @@ export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHe
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
   if (
-    gsnTransactionDetails.gasPrice != null &&
-    parseInt(pingResponse.minGasPrice) > parseInt(gsnTransactionDetails.gasPrice)
+    gsnTransactionDetails.gasPriceForLookup != null &&
+    parseInt(pingResponse.minGasPrice) > parseInt(gsnTransactionDetails.gasPriceForLookup)
   ) {
     throw new Error(`Proposed gas price: ${gsnTransactionDetails.gasPrice}; relay's MinGasPrice: ${pingResponse.minGasPrice}`)
   }
@@ -71,6 +84,12 @@ export interface RelayingResult {
   pingErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
   auditPromises?: Array<Promise<AuditResponse>>
+}
+
+export interface GSNContractsDeploymentResolvedForRequest {
+  forwarderAddress: Address
+  paymasterAddress: Address
+  relayHubAddress: Address
 }
 
 export class RelayClient {
@@ -161,7 +180,10 @@ export class RelayClient {
           broadcastError
         }
       }
-      return { hasReceipt: false, broadcastError }
+      return {
+        hasReceipt: false,
+        broadcastError
+      }
     }
   }
 
@@ -189,7 +211,9 @@ export class RelayClient {
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
     await this.dependencies.knownRelaysManager.refresh()
-    gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
+    gsnTransactionDetails.gasPrice = '0x0'
+    gsnTransactionDetails.gasPriceForLookup = await this._getRelayRequestGasPriceValueForServerLookup(gsnTransactionDetails)
+    gsnTransactionDetails.value = gsnTransactionDetails.value ?? '0x0'
     if (gsnTransactionDetails.gas == null) {
       const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
@@ -309,93 +333,139 @@ export class RelayClient {
     relayInfo: RelayInfo,
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayTransactionRequest> {
-    const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress
-    const forwarder = this.dependencies.contractInteractor.getDeployment().forwarderAddress
-    const paymaster = this.dependencies.contractInteractor.getDeployment().paymasterAddress
-    if (relayHubAddress == null || paymaster == null || forwarder == null) {
-      throw new Error('Contract addresses are not initialized!')
-    }
+    // TODO: narrow down the GsnTransactionDetails interface and resolve it by this point so we can actually use exactShape here
+    ow(gsnTransactionDetails, ow.object.partialShape(GsnTransactionDetailsShape))
+    const deployment = this._getResolvedDeployment()
 
-    // valid that many blocks into the future.
-    const validUntilPromise = this.dependencies.contractInteractor.getBlockNumber()
-      .then((num: number) => (new BN(this.config.requestValidBlocks).addn(num)).toString())
-
-    const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
-    const relayWorker = relayInfo.pingResponse.relayWorkerAddress
-    const gasPriceHex = gsnTransactionDetails.gasPrice
-    const gasLimitHex = gsnTransactionDetails.gas
-    if (gasPriceHex == null || gasLimitHex == null) {
-      throw new Error('RelayClient internal exception. Gas price or gas limit still not calculated. Cannot happen.')
-    }
-    if (gasPriceHex.indexOf('0x') !== 0) {
-      throw new Error(`Invalid gasPrice hex string: ${gasPriceHex}`)
-    }
-    if (gasLimitHex.indexOf('0x') !== 0) {
-      throw new Error(`Invalid gasLimit hex string: ${gasLimitHex}`)
-    }
-    const gasLimit = parseInt(gasLimitHex, 16).toString()
-    const gasPrice = parseInt(gasPriceHex, 16).toString()
-    const value = gsnTransactionDetails.value ?? '0'
+    const request = await this._prepareForwarderRequest(gsnTransactionDetails)
+    const relayData = await this._prepareRelayData(gsnTransactionDetails, relayInfo, deployment)
     const relayRequest: RelayRequest = {
-      request: {
-        to: gsnTransactionDetails.to,
-        data: gsnTransactionDetails.data,
-        from: gsnTransactionDetails.from,
-        value: value,
-        nonce: senderNonce,
-        gas: gasLimit,
-        validUntil: await validUntilPromise
-      },
-      relayData: {
-        pctRelayFee: relayInfo.relayInfo.pctRelayFee,
-        baseRelayFee: relayInfo.relayInfo.baseRelayFee,
-        gasPrice,
-        paymaster,
-        transactionCalldataGasUsed: '', // temp value. filled in by estimateCalldataCostAbi, below.
-        paymasterData: '', // temp value. filled in by asyncPaymasterData, below.
-        clientId: this.config.clientId,
-        forwarder,
-        relayWorker
-      }
+      request,
+      relayData
     }
+    await this._fillInComputedFields(relayRequest)
 
+    const metadata = await this.prepareRelayRequestMetadata(relayRequest, relayInfo, deployment)
+    const httpRequest: RelayTransactionRequest = {
+      relayRequest,
+      metadata
+    }
+    this._verifyRelayTransactionRequestCorrectness(httpRequest)
+    this.logger.info(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
+
+    return httpRequest
+  }
+
+  async _getRelayRequestValidUntilValue (): Promise<IntString> {
+    // valid that many blocks into the future.
+    const blockNumber = await this.dependencies.contractInteractor.getBlockNumberRightNow()
+    return new BN(this.config.requestValidBlocks).addn(blockNumber).toString()
+  }
+
+  async _getRelayRequestGasPriceValueForServerLookup (gsnTransactionDetails: GsnTransactionDetails): Promise<PrefixedHexString> {
+    return gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
+  }
+
+  async _getRelayRequestGasPriceValue (gsnTransactionDetails: GsnTransactionDetails, _relayInfo: RelayInfo): Promise<PrefixedHexString> {
+    if (gsnTransactionDetails.gasPriceForLookup == null) {
+      throw new Error('BaseRelayClient uses the same gas price for lookup and relaying. Cannot happen.')
+    }
+    return gsnTransactionDetails.gasPriceForLookup
+  }
+
+  async _getRelayRequestGasLimitValue (gsnTransactionDetails: GsnTransactionDetails): Promise<PrefixedHexString> {
+    // ?? for regular flow gas price can be omitted from tx params and filled in from RPC to sort relays, or passed in (web3.js fills it in before tx reaches provider)
+    //  on batched flow it must be omitted and must be set from the HTTP response
+    return parseInt(gsnTransactionDetails.gas ?? '', 16).toString()
+  }
+
+  async _prepareForwarderRequest (gsnTransactionDetails: GsnTransactionDetails): Promise<ForwardRequest> {
+    const gas = await this._getRelayRequestGasLimitValue(gsnTransactionDetails)
+    const validUntil = await this._getRelayRequestValidUntilValue()
+    const nonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from)
+    const value = gsnTransactionDetails.value ?? '0x0'
+    return {
+      to: gsnTransactionDetails.to,
+      data: gsnTransactionDetails.data,
+      from: gsnTransactionDetails.from,
+      value,
+      nonce,
+      gas,
+      validUntil
+    }
+  }
+
+  async _prepareRelayData (gsnTransactionDetails: GsnTransactionDetails, relayInfo: RelayInfo, deployment: GSNContractsDeploymentResolvedForRequest): Promise<RelayData> {
+    const gasPrice = await this._getRelayRequestGasPriceValue(gsnTransactionDetails, relayInfo)
+    const relayWorker = relayInfo.pingResponse.relayWorkerAddress
+    return {
+      gasPrice,
+      relayWorker,
+      clientId: this.config.clientId,
+      pctRelayFee: relayInfo.relayInfo.pctRelayFee,
+      baseRelayFee: relayInfo.relayInfo.baseRelayFee,
+      paymaster: deployment.paymasterAddress,
+      forwarder: deployment.forwarderAddress,
+      transactionCalldataGasUsed: '', // temp value. filled in by estimateCalldataCostAbi, below.
+      paymasterData: '' // temp value. filled in by asyncPaymasterData, below.
+    }
+  }
+
+  // modifies the input object itself
+  async _fillInComputedFields (relayRequest: RelayRequest): Promise<void> {
     relayRequest.relayData.transactionCalldataGasUsed =
       this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
 
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = await this.dependencies.asyncPaymasterData(relayRequest)
-    this.emit(new GsnSignRequestEvent())
-    const signature = await this.dependencies.accountManager.sign(relayRequest)
-    const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
+  }
 
-    if (toBuffer(relayRequest.relayData.paymasterData).length >
+  _getResolvedDeployment (): GSNContractsDeploymentResolvedForRequest {
+    const {
+      relayHubAddress,
+      paymasterAddress,
+      forwarderAddress
+    } = this.dependencies.contractInteractor.getDeployment()
+    if (
+      relayHubAddress == null ||
+      paymasterAddress == null ||
+      forwarderAddress == null) {
+      throw new Error('Contract addresses are not initialized!')
+    }
+    return {
+      relayHubAddress,
+      paymasterAddress,
+      forwarderAddress
+    }
+  }
+
+  _verifyRelayTransactionRequestCorrectness (relayTransactionRequest: RelayTransactionRequest): void {
+    if (toBuffer(relayTransactionRequest.relayRequest.relayData.paymasterData).length >
       this.config.maxPaymasterDataLength) {
       throw new Error('actual paymasterData larger than maxPaymasterDataLength')
     }
-    if (toBuffer(approvalData).length >
+    if (toBuffer(relayTransactionRequest.metadata.approvalData).length >
       this.config.maxApprovalDataLength) {
       throw new Error('actual approvalData larger than maxApprovalDataLength')
     }
 
-    // max nonce is not signed, as contracts cannot access addresses' nonces.
-    const transactionCount = await this.dependencies.contractInteractor.getTransactionCount(relayWorker)
+    ow(relayTransactionRequest, ow.object.exactShape(RelayTransactionRequestShape))
+  }
+
+  async prepareRelayRequestMetadata (relayRequest: RelayRequest, relayInfo: RelayInfo, deployment: GSNContractsDeploymentResolvedForRequest): Promise<RelayMetadata> {
+    this.emit(new GsnSignRequestEvent())
+    const signature = await this.dependencies.accountManager.sign(relayRequest, this.config.signingAlgorithm)
+    const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
+    const transactionCount =
+      await this.dependencies.contractInteractor.getTransactionCount(relayRequest.relayData.relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
-    // TODO: the server accepts a flat object, and that is why this code looks like shit.
-    //  Must teach server to accept correct types
-    const metadata: RelayMetadata = {
+    return {
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
-      relayHubAddress,
+      relayHubAddress: deployment.relayHubAddress,
       signature,
       approvalData,
       relayMaxNonce
     }
-    const httpRequest: RelayTransactionRequest = {
-      relayRequest,
-      metadata
-    }
-    this.logger.info(`Created HTTP relay request: ${JSON.stringify(httpRequest)}`)
-
-    return httpRequest
   }
 
   newAccount (): AccountKeypair {

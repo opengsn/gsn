@@ -22,6 +22,8 @@ import { EIP712TypedData } from 'eth-sig-util'
 import { RelayRequest } from './EIP712/RelayRequest'
 import Web3 from 'web3'
 
+export const ValidHexString = /^0x[a-f0-9]*$/
+
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
     throw new Error('Cannot remove hex prefix')
@@ -294,7 +296,7 @@ export function abiEncodeRelayRequest (relayRequest: RelayRequest): PrefixedHexS
 }
 
 export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString = '0x'): PrefixedHexString {
-  const types = [RelayRequestABITupleType, 'bytes']
-  const parameters = [abiTupleRelayRequest(relayRequest), signature]
+  const types = ['address', 'uint256', 'bytes']
+  const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]
   return web3.utils.keccak256(web3.eth.abi.encodeParameters(types, parameters))
 }

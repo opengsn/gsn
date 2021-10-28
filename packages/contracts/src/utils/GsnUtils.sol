@@ -11,7 +11,7 @@ library GsnUtils {
     internal
     pure
     returns (bytes32) {
-        return keccak256(abi.encode(relayRequest, signature));
+        return keccak256(abi.encode(relayRequest.request.from, relayRequest.request.nonce, signature));
     }
 
     /**

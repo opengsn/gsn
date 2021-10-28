@@ -317,9 +317,8 @@ export class ContractInteractor {
     return await recipient.isTrustedForwarder(forwarder)
   }
 
-  async getSenderNonce (sender: Address, forwarderAddress: Address): Promise<IntString> {
-    const forwarder = await this._createForwarder(forwarderAddress)
-    const nonce = await forwarder.getNonce(sender)
+  async getSenderNonce (sender: Address): Promise<IntString> {
+    const nonce = await this.forwarderInstance.getNonce(sender)
     return nonce.toString()
   }
 
@@ -599,6 +598,11 @@ export class ContractInteractor {
     return await this.web3.eth.getBalance(address, defaultBlock)
   }
 
+  async getBlockNumberRightNow (): Promise<number> {
+    return await this.web3.eth.getBlockNumber()
+  }
+
+  // TODO: rename to 'getNextBlockNumber' as this is not a generic 'getBlockNumber' function
   async getBlockNumber (): Promise<number> {
     let blockNumber = -1
     let attempts = 0

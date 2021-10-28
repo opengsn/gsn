@@ -1,6 +1,6 @@
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 
-import { AccountManager } from './AccountManager'
+import { AccountManager, SigningAlgorithm } from './AccountManager'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { KnownRelaysManager } from './KnownRelaysManager'
@@ -47,7 +47,8 @@ export const defaultGsnConfig: GSNConfig = {
   maxViewableGasLimit: '12000000',
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
-  maxPaymasterDataLength: 0
+  maxPaymasterDataLength: 0,
+  signingAlgorithm: SigningAlgorithm.ECDSA_EIP_712
 }
 
 export interface LoggerConfiguration {
@@ -91,6 +92,7 @@ export interface GSNConfig {
   environment: Environment
   maxApprovalDataLength: number
   maxPaymasterDataLength: number
+  signingAlgorithm: SigningAlgorithm
 }
 
 export interface GSNDependencies {

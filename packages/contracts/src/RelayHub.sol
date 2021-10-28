@@ -27,6 +27,7 @@ contract RelayHub is IRelayHub, Ownable {
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
+    address public immutable override batchGateway;
 
     RelayHubConfig private config;
 
@@ -52,10 +53,12 @@ contract RelayHub is IRelayHub, Ownable {
     constructor (
         IStakeManager _stakeManager,
         address _penalizer,
+        address _batchGateway,
         RelayHubConfig memory _config
     ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
+        batchGateway = _batchGateway;
         setConfiguration(_config);
     }
 
@@ -152,10 +155,10 @@ contract RelayHub is IRelayHub, Ownable {
         uint256 gasBeforeInner;
         bytes retData;
         address relayManager;
+        bytes32 relayRequestId;
     }
 
     function relayCall(
-        uint256 batchItemId,
         uint maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -165,12 +168,16 @@ contract RelayHub is IRelayHub, Ownable {
     override
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
-        (batchItemId);
         RelayCallData memory vars;
         vars.initialGasLeft = gasleft();
+        vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
-        require(msg.sender == tx.origin, "relay worker must be EOA");
+        if (msg.sender == batchGateway){
+            require(signature.length == 0, "batch gateway signature not zero");
+        } else {
+            require(msg.sender == tx.origin, "relay worker must be EOA");
+        }
         vars.relayManager = workerToManager[msg.sender];
         require(vars.relayManager != address(0), "Unknown relay worker");
         require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
@@ -230,6 +237,7 @@ contract RelayHub is IRelayHub, Ownable {
                 emit TransactionRejectedByPaymaster(
                     vars.relayManager,
                     relayRequest.relayData.paymaster,
+                    vars.relayRequestId,
                     relayRequest.request.from,
                     relayRequest.request.to,
                     msg.sender,
@@ -249,6 +257,7 @@ contract RelayHub is IRelayHub, Ownable {
         emit TransactionRelayed(
             vars.relayManager,
             msg.sender,
+            vars.relayRequestId,
             relayRequest.request.from,
             relayRequest.request.to,
             relayRequest.relayData.paymaster,
