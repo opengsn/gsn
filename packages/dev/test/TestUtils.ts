@@ -18,9 +18,11 @@ import { Environment } from '@opengsn/common'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
+
 require('source-map-support').install({ errorFormatterForce: true })
 
 const RelayHub = artifacts.require('RelayHub')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const localhostOne = 'http://localhost:8090'
 
@@ -278,6 +280,10 @@ export async function deployHub (
     stakeManager,
     penalizer,
     relayHubConfiguration)
+
+  const relayRegistrar = await RelayRegistrar.new(hub.address)
+  await hub.setRegistrar(relayRegistrar.address)
+
   return hub
 }
 

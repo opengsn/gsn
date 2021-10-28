@@ -2,7 +2,7 @@ import { addresses2topics } from '@opengsn/common/dist/Utils'
 
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayFailureInfo } from '@opengsn/common/dist/types/RelayFailureInfo'
-import { Address, AsyncScoreCalculator, RelayFilter } from '@opengsn/common/dist/types/Aliases'
+import { Address, AsyncScoreCalculator, IntString, RelayFilter } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 
 import {
@@ -63,7 +63,25 @@ export class KnownRelaysManager {
     this.allRelayers = await this.getRelayInfoForManagers(recentlyActiveRelayManagers)
   }
 
-  async getRelayInfoForManagers (relayManagers: Set<Address>): Promise<RelayRegisteredEventInfo[]> {
+  async getRelayInfoForManagers(relayManagers: Set<Address>|null): Promise<RelayRegisteredEventInfo[]> {
+    const relayInfos = await this.contractInteractor.getRegisteredRelays()
+    if (relayInfos != null) {
+      console.log('== using relayInfos from registrar')
+      //TODO: update the registrar with penalized and unregistered relays.
+      let infos = relayInfos.map((info: any) => ({
+          relayManager: info.relayManager,
+          baseRelayFee: info.baseRelayFee.toString(),
+          pctRelayFee: info.pctRelayFee.toString(),
+          relayUrl: info.url
+        }));
+      console.log('==infos=', infos, 'filterMgr', relayManagers)
+      if (relayManagers!=null) {
+        infos = infos.filter(info=>relayManagers.has(info.relayManager.toLowerCase()))
+      }
+
+      return infos
+    }
+
     // As 'topics' are used as 'filter', having an empty set results in querying all register events.
     if (relayManagers.size === 0) {
       return []
@@ -103,9 +121,13 @@ export class KnownRelaysManager {
     return origRelays.filter(this.relayFilter)
   }
 
-  async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>> {
+  async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>|null> {
+    const foundRelayManagers: Set<Address> = new Set()
 
-    await this.contractInteractor.getRegisteredRelays()
+    if (this.contractInteractor.hasRelayRegistrar()) {
+      return null;
+    }
+
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
@@ -115,7 +137,6 @@ export class KnownRelaysManager {
     }, undefined)
 
     this.logger.info(`fetchRelaysAdded: found ${relayEvents.length} events`)
-    const foundRelayManagers: Set<Address> = new Set()
     relayEvents.forEach((event: any) => {
       // TODO: remove relay managers who are not staked
       // if (event.event === 'RelayRemoved') {

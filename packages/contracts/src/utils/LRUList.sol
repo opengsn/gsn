@@ -6,7 +6,7 @@ pragma solidity ^0.8.6;
  * each item is an address.
  * subclass should add
  * - setValue(address, value) method
- * 	- internally call moveToT1p() and keep value in storage
+ * 	- internally call moveToTop() and keep value in storage
  * - readValues(max) - to read first values
  * 	- call readItems(max) and iterate storage to read values.
  */
@@ -38,17 +38,20 @@ contract LRUList {
             // after:  head -> addr -> first  ..  prev ->         another
 
             require(next[prevItem] == addr, "given wrong prevItem");
-            address addrNext = next[addr];
-            next[addr] = next[head];
-            next[head] = addr;
-            next[prevItem] = addrNext;
+            address nextHead = next[head];
+            if ( nextHead != addr) {
+                address addrNext = next[addr];
+                next[addr] = nextHead;
+                next[head] = addr;
+                next[prevItem] = addrNext;
+            }
         }
     }
 
     /**
      * count all items in the list.
      */
-    function countItems() external view returns (uint ret) {
+    function countItems() public view returns (uint ret) {
         (ret,) = countFrom(address(this), MAX);
     }
 

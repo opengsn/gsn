@@ -147,7 +147,7 @@ contract('KnownRelaysManager', function (
       async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
         const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
-        const actual = Array.from(res.values())
+        const actual = Array.from(res!.values())
         assert.equal(actual.length, 4)
         assert.equal(actual[0], activeRelayServerRegistered)
         assert.equal(actual[1], activeRelayWorkersAdded)

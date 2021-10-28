@@ -7,7 +7,7 @@ import "../interfaces/IRelayRegistrar.sol";
 contract RelayRegistrar is LRUList, IRelayRegistrar {
 
     struct RelayStorageInfo {
-        uint96 blockNumber;
+        uint96 blockRegistered;
         uint96 baseRelayFee;
         uint96 pctRelayFee;
         bytes32[3] urlParts;
@@ -21,43 +21,55 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
         relayHub = _relayHub;
     }
 
-    function registerRelayer( address prevItem, RelayInfo calldata info) external override {
-        require(msg.sender == relayHub, "not called from RelayHub");
+    function countRelays() external view override returns (uint) {
+        return countItems();
+    }
 
-        address relayer = info.relayer;
-        if ( prevItem==address (0)) {
+    function registerRelayer(address prevItem, RelayInfo calldata info) external override {
+        require(msg.sender == relayHub, "not called from RelayHub");
+        address relayManager = info.relayManager;
+        if (prevItem == address(0)) {
             //try to find prevItem. can be expensive if the list is large.
-            prevItem = getPrev(relayer);
+            prevItem = getPrev(relayManager);
         }
-        moveToTop(relayer, prevItem);
-        RelayStorageInfo storage storageInfo = values[relayer];
-        storageInfo.blockNumber = uint96(info.blockNumber);
+        moveToTop(relayManager, prevItem);
+        RelayStorageInfo storage storageInfo = values[relayManager];
+        storageInfo.blockRegistered = uint96(info.blockNumber);
         storageInfo.baseRelayFee = uint96(info.baseRelayFee);
         storageInfo.pctRelayFee = uint96(info.pctRelayFee);
         bytes32[3] memory parts = splitString(info.url);
         storageInfo.urlParts = parts;
     }
 
-    function getRelayInfo(address relayer) public view override returns (RelayInfo memory info) {
-        RelayStorageInfo storage storageInfo = values[relayer];
-        require(storageInfo.blockNumber != 0, "relayer not found");
-        info.blockNumber = storageInfo.blockNumber;
+    function getRelayInfo(address relayManager) public view override returns (RelayInfo memory info) {
+        RelayStorageInfo storage storageInfo = values[relayManager];
+        require(storageInfo.blockRegistered != 0, "relayManager not found");
+        info.blockNumber = storageInfo.blockRegistered;
         info.baseRelayFee = storageInfo.baseRelayFee;
         info.pctRelayFee = storageInfo.pctRelayFee;
-        info.relayer = relayer;
+        info.relayManager = relayManager;
         info.url = packString(storageInfo.urlParts);
     }
 
-    function readValues(uint maxCount) view public override returns (RelayInfo[] memory info) {
-        (info,) = readValuesFrom(address(this), maxCount);
+    /**
+     * read relay info of registered relays
+     * @param relayHub - check each relay if it is registered with this hub (staked, authorized, not penalized)
+     * @param maxCount - return at most that many relays from the beginning of the list
+     */
+    function readValues(IRelayHub relayHub, uint maxCount) view public override returns (RelayInfo[] memory info, uint filled) {
+        (info, filled,) = readValuesFrom(relayHub, address(this), maxCount);
     }
 
-    function readValuesFrom(address from, uint maxCount) view public returns (RelayInfo[] memory ret, address nextFrom) {
+    function readValuesFrom(IRelayHub relayHub, address from, uint maxCount) view public override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
         address[] memory items;
         (items, nextFrom) = readItemsFrom(from, maxCount);
+        filled = 0;
         ret = new RelayInfo[](items.length);
         for (uint i = 0; i < items.length; i++) {
-            ret[i] = getRelayInfo(items[i]);
+            address relayManager = items[i];
+            if (address(relayHub) == address(0) || relayHub.isRelayManagerStaked(relayManager)) {
+                ret[filled++] = getRelayInfo(relayManager);
+            }
         }
     }
 

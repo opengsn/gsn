@@ -229,9 +229,15 @@ export class ContractInteractor {
     const [
       relayHubAddress, forwarderAddress, paymasterVersion,
     ] = await Promise.all([
-      this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
-      this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
-      this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
+      this.paymasterInstance.getHubAddr().catch((e: Error) => {
+        throw new Error(`Not a paymaster contract: ${e.message}`)
+      }),
+      this.paymasterInstance.trustedForwarder().catch((e: Error) => {
+        throw new Error(`paymaster has no trustedForwarder(): ${e.message}`)
+      }),
+      this.paymasterInstance.versionPaymaster().catch((e: Error) => {
+        throw new Error(`Not a paymaster contract: ${e.message}`)
+      }).then((version: string) => {
         this._validateVersion(version, 'Paymaster')
         return version
       })
@@ -295,6 +301,9 @@ export class ContractInteractor {
     }
   }
 
+  hasRelayRegistrar(): boolean {
+    return this.deployment.relayRegistrarAddress != null
+  }
   // must use these options when creating Transaction object
   getRawTxOptions (): TxOptions {
     if (this.rawTxOptions == null) {
@@ -965,14 +974,15 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   //get registered relayers, bypassing the events
-  async getRegisteredRelays() : Promise<any|null> {
-    if ( this.relayRegistrar == null ) {
+  async getRegisteredRelays(): Promise<{relayManager: string, baseRelayFee: BN, pctRelayFee: BN, url:string}[] | null> {
+
+    if (this.relayRegistrar == null) {
       //TODO: maybe move event lookup here?
-      throw new Error( 'no registrar. must use events')
+      throw new Error('no registrar. must use events')
     }
-    return this.relayRegistrar?.readValues(100).map(ret=>({
-      url: ret.url
-    }))
+    //TODO: typechain broken return value types.
+    const {info: relayInfos, filled} = await this.relayRegistrar?.readValues(this.relayHubInstance.address, 100) as any
+    return relayInfos.slice(0, filled)
   }
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {
     const topics = address2topic(managerAddress)

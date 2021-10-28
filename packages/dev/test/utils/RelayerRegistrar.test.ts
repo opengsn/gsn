@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { RelayRegistrarInstance } from "@opengsn/contracts";
 import { AddressZero, HashZero } from "ethers/constants";
-
+import '../utils/chaiHelper'
 function addr(n: number) {
   return '0x'.padEnd(42, n.toString())
 }
@@ -20,14 +20,22 @@ contract('#RelayerRegistrar', function ([fromAddress]) {
             pctRelayFee: 2,
             baseRelayFee: 3,
             url: 'http://relay',
-            relayer: relay
+            relayManager: relay
         })
+        await reg.registerRelayer(AddressZero, {
+            blockNumber: 210,
+            pctRelayFee: 220,
+            baseRelayFee: 230,
+            url: 'http://relay20',
+            relayManager: relay2
+        })
+
         await reg.registerRelayer(AddressZero, {
             blockNumber: 21,
             pctRelayFee: 22,
             baseRelayFee: 23,
             url: 'http://relay2',
-            relayer: relay2
+            relayManager: relay2
         })
     });
     it('#splitString, packString', async () => {
@@ -40,7 +48,7 @@ contract('#RelayerRegistrar', function ([fromAddress]) {
         const str = 'this is a long string to split. it should fit into several items. this should fit into 3 words'
         expect(await reg.packString(await reg.splitString(str))).to.eql(str)
 
-        expect(await reg.packString(await reg.splitString('asdasd'))).to.eql('asdasd')
+        expect(await reg.packString(await reg.splitString('short string'))).to.eql('short string')
         expect(await reg.packString(await reg.splitString('1'))).to.eql('1')
     });
 
@@ -50,19 +58,19 @@ contract('#RelayerRegistrar', function ([fromAddress]) {
     });
     it('should read list', async () => {
 
-        const ret = await reg.readValues(5)
+        const ret = await reg.readValues(AddressZero,5)
 
         expect(ret).to.eql([
                 {
                     blockNumber: '21',
-                    relayer: '0x2222222222222222222222222222222222222222',
+                    relayManager: '0x2222222222222222222222222222222222222222',
                     baseRelayFee: '23',
                     pctRelayFee: '22',
                     url: 'http://relay2'
                 },
                 {
                     blockNumber: '1',
-                    relayer: '0x1111111111111111111111111111111111111111',
+                    relayManager: '0x1111111111111111111111111111111111111111',
                     baseRelayFee: '3',
                     pctRelayFee: '2',
                     url: 'http://relay'

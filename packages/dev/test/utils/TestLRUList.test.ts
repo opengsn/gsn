@@ -1,9 +1,8 @@
 import { expect } from "chai";
-import { RelayRegistrarInstance, TestLRUListInstance } from "@opengsn/contracts";
+import { TestLRUListInstance } from "@opengsn/contracts";
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { AddressZero, HashZero } from "ethers/constants";
+import { AddressZero } from "ethers/constants";
 import './chaiHelper'
-
 
 function addr(n: number) {
     return '0x'.padEnd(42, n.toString())

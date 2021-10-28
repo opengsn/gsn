@@ -54,7 +54,9 @@ chai.Assertion.overwriteMethod('eql', function (original) {
         const _actual = cleanValue(ctx._obj)
         const _expected = cleanValue(expected)
         // original.apply(this,arguments)
-        assert.deepEqual(_actual, _expected)
+        ctx._obj = _actual
+        original.apply( ctx, [_expected])
+        // assert.deepEqual(_actual, _expected)
         // ctx.assert(
         //     _actual == _expected,
         //     'expected #{act} to equal #{exp}',
