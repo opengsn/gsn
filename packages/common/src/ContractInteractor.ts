@@ -345,8 +345,7 @@ export class ContractInteractor {
           const revertMsg = this._decodeRevertFromResponse(err, res)
           if (revertMsg != null) {
             reject(new Error(revertMsg))
-          }
-          if (err !== null) {
+          } else if (err !== null) {
             reject(err)
           } else {
             resolve(res.result)
@@ -405,7 +404,8 @@ export class ContractInteractor {
     if (matchGanache != null) {
       return matchGanache[1]
     }
-    const m = err?.data?.toString().match(/(0x08c379a0\S*)/)
+    const errorData = err?.data ?? res?.error?.data
+    const m = errorData?.toString().match(/(0x08c379a0\S*)/)
     if (m != null) {
       return decodeRevertReason(m[1])
     }
