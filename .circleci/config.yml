@@ -31,10 +31,6 @@ jobs: # a collection of steps
           name: yarn-preprocess
           command: yarn preprocess
 
-      - run:
-          name: lint
-          command: yarn lerna-lint
-
       - persist_to_workspace:
           root: .
           paths:
@@ -72,7 +68,7 @@ jobs: # a collection of steps
           at: .
       - run: # run tests
           name: lint
-          command: yarn lint
+          command: yarn lerna-lint
 
   test_fork:
     working_directory: ~/gls # directory where steps will run
