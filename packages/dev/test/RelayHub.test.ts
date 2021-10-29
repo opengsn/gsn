@@ -730,5 +730,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         })
       })
     })
+
+    context('with BatchGateway', function () {
+      it('should reject relayCall with signature that is non-zero length')
+      it('should accept relayCall coming from the BatchGateway')
+    })
   })
 })

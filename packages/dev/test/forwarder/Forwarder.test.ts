@@ -1,5 +1,5 @@
 import {
-  ForwarderInstance,
+  ForwarderInstance, GatewayForwarderInstance,
   TestForwarderInstance,
   TestForwarderTargetInstance
 } from '@opengsn/contracts/types/truffle-contracts'
@@ -57,6 +57,8 @@ contract('Forwarder', ([from]) => {
   let fwd: ForwarderInstance
 
   let tf: TestForwarderInstance
+
+  let recipient: TestForwarderTargetInstance
 
   let chainId: number
 
@@ -288,7 +290,6 @@ contract('Forwarder', ([from]) => {
     let data: EIP712TypedData
     let typeName: string
     let typeHash: string
-    let recipient: TestForwarderTargetInstance
     let testfwd: TestForwarderInstance
     let domainSeparator: string
 
@@ -547,6 +548,33 @@ contract('Forwarder', ([from]) => {
 
         assert.equal(await web3.eth.getBalance(senderAddress), extraFunds.toString())
       })
+    })
+  })
+
+  context('GatewayForwarder', function () {
+    let req1: any
+    let gatewayForwarder: GatewayForwarderInstance
+
+    before(async function () {
+      gatewayForwarder = await GatewayForwarder.new(from)
+      req1 = {
+        to: recipient.address,
+        data: recipient.contract.methods.emitMessage('hello').encodeABI(),
+        from: senderAddress,
+        nonce: (await fwd.getNonce(senderAddress)).toString(),
+        value: '0',
+        gas: '1000000',
+        validUntil: 0
+      }
+    })
+
+    it('should accept transaction with zero length signature coming from the trusted RelayHub', async function () {
+      const res = await fwd.execute(req1, '0x', '0x', '0x', '0x')
+      expectEvent(res, 'TransactionRelayed', { status: '0' })
+    })
+
+    it('should reject transaction with invalid signature not coming from the trusted RelayHub', async function () {
+      await expectRevert(gatewayForwarder.execute(req1, '0x', '0x', '0x', '0xdeadbeef'), 'invalid typename')
     })
   })
 })

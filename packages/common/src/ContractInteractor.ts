@@ -338,27 +338,29 @@ export class ContractInteractor {
    * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
    */
   async validateRelayCall (
-    relayCallABIData: RelayCallABI,
+    localViewCallParameters: TransactionConfig,
     viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
-    if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.gasPrice == null) {
+    if (viewCallGasLimit == null || localViewCallParameters.gasPrice == null) {
       throw new Error('validateRelayCall: invalid input')
     }
-    const relayHub = this.relayHubInstance
+    // const relayHub = this.relayHubInstance
     try {
       const encodedRelayCall = this.encodeABI(relayCallABIData)
       const res: string = await new Promise((resolve, reject) => {
+        // TODO TODO TODO this must work with from: gateway and no signature!!!
+        // const localViewCallParameters: TransactionConfig = {
+        //   from: relayCallABIData.relayRequest.relayData.relayWorker,
+        //   to: relayHub.address,
+        //   gasPrice: toHex(relayCallABIData.relayRequest.relayData.gasPrice),
+        //   gas: toHex(viewCallGasLimit),
+        //   data: encodedRelayCall
+        // }
         const rpcPayload = {
           jsonrpc: '2.0',
           id: 1,
           method: 'eth_call',
           params: [
-            {
-              from: relayCallABIData.relayRequest.relayData.relayWorker,
-              to: relayHub.address,
-              gasPrice: toHex(relayCallABIData.relayRequest.relayData.gasPrice),
-              gas: toHex(viewCallGasLimit),
-              data: encodedRelayCall
-            },
+            localViewCallParameters,
             'latest'
           ]
         }

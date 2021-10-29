@@ -12,3 +12,7 @@ export interface PingResponse {
   ready: boolean
   version: string
 }
+
+export interface PingResponseBatchMode extends PingResponse {
+  validUntil: IntString
+}

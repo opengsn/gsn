@@ -118,6 +118,10 @@ export class RelaySelectionManager {
     if (!pingResponse.ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
     }
+    // TODO: note that throwing error to lose a ping race is a very much legacy code and should be removed
+    // if (!pingResponse.acceptsBLSBatchRequests && this.config.runBLSBatchingMode) {
+    //   throw new Error('Relay does not run in a batching mode')
+    // }
     this.pingFilter(pingResponse, this.gsnTransactionDetails)
     return {
       pingResponse,

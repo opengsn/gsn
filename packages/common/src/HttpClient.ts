@@ -26,6 +26,15 @@ export class HttpClient {
     return pingResponse
   }
 
+  // TODO: I am not sure returning an empty string is a good idea here. What data we may need from a 'relayBatchMode'?
+  async relayTransactionInBatch (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
+    const { error }: { signedTx: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relayBatchMode', request)
+    if (error != null) {
+      throw new Error(`Got error response from relay: ${error}`)
+    }
+    return ''
+  }
+
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
     const { signedTx, error }: { signedTx: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
     this.logger.info(`relayTransaction response: ${signedTx}, error: ${error}`)

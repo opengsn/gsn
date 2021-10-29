@@ -23,7 +23,7 @@ import {
   RelayTransactionRequest,
   RelayTransactionRequestShape
 } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { decodeRevertReason } from '@opengsn/common/dist/Utils'
+import { decodeRevertReason, getRelayRequestID } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -73,13 +73,16 @@ export interface GSNUnresolvedConstructorInput {
   overrideDependencies?: Partial<GSNDependencies>
 }
 
-interface RelayingAttempt {
+export interface RelayingAttempt {
+  relayRequestID?: PrefixedHexString
   transaction?: Transaction
+  hexTransaction?: PrefixedHexString
   error?: Error
   auditPromise?: Promise<AuditResponse>
 }
 
 export interface RelayingResult {
+  relayRequestID?: PrefixedHexString
   transaction?: Transaction
   pingErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
@@ -101,6 +104,8 @@ export class RelayClient {
   private initialized = false
   logger!: LoggerInterface
   initializingPromise?: Promise<void>
+
+  protected auditPromises: Array<Promise<AuditResponse>> = []
 
   constructor (
     rawConstructorInput: GSNUnresolvedConstructorInput
@@ -147,7 +152,7 @@ export class RelayClient {
     this.emitter.off('gsn', handler)
   }
 
-  private emit (event: GsnEvent): void {
+  protected emit (event: GsnEvent): void {
     this.emitter.emit('gsn', event)
   }
 
@@ -215,7 +220,8 @@ export class RelayClient {
     gsnTransactionDetails.gasPriceForLookup = await this._getRelayRequestGasPriceValueForServerLookup(gsnTransactionDetails)
     gsnTransactionDetails.value = gsnTransactionDetails.value ?? '0x0'
     if (gsnTransactionDetails.gas == null) {
-      const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+      const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(
+        Object.assign({}, gsnTransactionDetails, { gasPrice: gsnTransactionDetails.gasPriceForLookup }))
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
     const relaySelectionManager = await new RelaySelectionManager(gsnTransactionDetails, this.dependencies.knownRelaysManager, this.dependencies.httpClient, this.dependencies.pingFilter, this.logger, this.config).init()
@@ -225,7 +231,8 @@ export class RelayClient {
       throw new Error('no registered relayers')
     }
     const relayingErrors = new Map<string, Error>()
-    const auditPromises: Array<Promise<AuditResponse>> = []
+    this.auditPromises = []
+
     const paymaster = this.dependencies.contractInteractor.getDeployment().paymasterAddress
 
     while (true) {
@@ -235,18 +242,16 @@ export class RelayClient {
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
           .catch(error => ({ error }))
-        if (relayingAttempt.auditPromise != null) {
-          auditPromises.push(relayingAttempt.auditPromise)
-        }
-        if (relayingAttempt.transaction == null) {
-          relayingErrors.set(activeRelay.relayInfo.relayUrl, relayingAttempt.error ?? new Error('No error reason was given'))
+        if (relayingAttempt.error != null) {
+          relayingErrors.set(activeRelay.relayInfo.relayUrl, relayingAttempt.error)
           continue
         }
       }
       return {
+        relayRequestID: relayingAttempt?.relayRequestID,
         transaction: relayingAttempt?.transaction,
         relayingErrors,
-        auditPromises,
+        auditPromises: this.auditPromises,
         pingErrors: relaySelectionManager.errors
       }
     }
@@ -274,7 +279,28 @@ export class RelayClient {
     const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
 
     this.emit(new GsnValidateRequestEvent())
+    const { error: validationError } = await this._validateRequestBeforeSending(httpRequest)
+    if (validationError != null) { return { error: validationError } }
+    const {
+      hexTransaction,
+      transaction,
+      error: requestError
+    } = await this._sendRelayRequestToServer(httpRequest, relayInfo)
+    if (requestError != null) { return { error: requestError } }
+    const { error: callbackError } = await this._onTransactionSentToServer(relayInfo, httpRequest, transaction, hexTransaction)
+    if (callbackError != null) { return { error: callbackError } }
+    this.emit(new GsnRelayerResponseEvent(true))
+    return {
+      relayRequestID: getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature),
+      transaction
+    }
+  }
 
+  _getFromAddressForValidation (httpRequest: RelayTransactionRequest): Address {
+    return httpRequest.relayRequest.relayData.relayWorker
+  }
+
+  async _validateRequestBeforeSending (httpRequest: RelayTransactionRequest): Promise<{ error?: Error }> {
     const viewCallGasLimit =
       await this.dependencies.contractInteractor.getMaxViewableGasLimit(httpRequest.relayRequest, this.config.maxViewableGasLimit)
 
@@ -291,41 +317,60 @@ export class RelayClient {
       }
       return { error: new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`) }
     }
-    let hexTransaction: PrefixedHexString
-    let transaction: Transaction
-    let auditPromise: Promise<AuditResponse>
+    return {}
+  }
+
+  async _onTransactionSentToServer (
+    relayInfo: RelayInfo,
+    httpRequest: RelayTransactionRequest,
+    transaction?: Transaction,
+    hexTransaction?: PrefixedHexString
+  ): Promise<{ error?: Error }> {
+    if (transaction == null || hexTransaction == null) {
+      this.logger.warn('_onTransactionSentToServer called empty - transaction likely was not relayed')
+      return {}
+    }
+    // 1. Broadcast the raw transaction we have received from the server
+    // TODO: push this promise into 'auditPromises' array
+    await this._broadcastRawTx(transaction)
+
+    // 2. Initiate sending audit requests to alternative servers
+    const auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
+      .then((penalizeResponse) => {
+        if (penalizeResponse.commitTxHash != null) {
+          const txHash = bufferToHex(transaction.hash())
+          this.logger.error(`The transaction with id: ${txHash} was penalized! Penalization commitment tx id: ${penalizeResponse.commitTxHash}`)
+        }
+        return penalizeResponse
+      })
+    this.auditPromises.push(auditPromise)
+
+    // 3. Validate response from server is valid
+    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
+      this.emit(new GsnRelayerResponseEvent(false))
+      this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
+      return {
+        error: new Error('Returned transaction did not pass validation')
+      }
+    }
+    return {}
+  }
+
+  async _sendRelayRequestToServer (httpRequest: RelayTransactionRequest, relayInfo: RelayInfo): Promise<RelayingAttempt> {
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
-      hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
-      transaction = Transaction.fromSerializedTx(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
-      auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
-        .then((penalizeResponse) => {
-          if (penalizeResponse.commitTxHash != null) {
-            const txHash = bufferToHex(transaction.hash())
-            this.logger.error(`The transaction with id: ${txHash} was penalized! Penalization commitment tx id: ${penalizeResponse.commitTxHash}`)
-          }
-          return penalizeResponse
-        })
+      const hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
+      const transaction = Transaction.fromSerializedTx(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
+      return {
+        hexTransaction,
+        transaction
+      }
     } catch (error) {
       if (error?.message == null || error.message.indexOf('timeout') !== -1) {
         this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       }
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error }
-    }
-    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
-      this.emit(new GsnRelayerResponseEvent(false))
-      this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
-      return {
-        auditPromise,
-        error: new Error('Returned transaction did not pass validation')
-      }
-    }
-    this.emit(new GsnRelayerResponseEvent(true))
-    await this._broadcastRawTx(transaction)
-    return {
-      auditPromise,
-      transaction
     }
   }
 
@@ -337,7 +382,7 @@ export class RelayClient {
     ow(gsnTransactionDetails, ow.object.partialShape(GsnTransactionDetailsShape))
     const deployment = this._getResolvedDeployment()
 
-    const request = await this._prepareForwarderRequest(gsnTransactionDetails)
+    const request = await this._prepareForwarderRequest(gsnTransactionDetails, relayInfo)
     const relayData = await this._prepareRelayData(gsnTransactionDetails, relayInfo, deployment)
     const relayRequest: RelayRequest = {
       request,
@@ -356,7 +401,7 @@ export class RelayClient {
     return httpRequest
   }
 
-  async _getRelayRequestValidUntilValue (): Promise<IntString> {
+  async _getRelayRequestValidUntilValue (_relayInfo: RelayInfo): Promise<IntString> {
     // valid that many blocks into the future.
     const blockNumber = await this.dependencies.contractInteractor.getBlockNumberRightNow()
     return new BN(this.config.requestValidBlocks).addn(blockNumber).toString()
@@ -379,9 +424,9 @@ export class RelayClient {
     return parseInt(gsnTransactionDetails.gas ?? '', 16).toString()
   }
 
-  async _prepareForwarderRequest (gsnTransactionDetails: GsnTransactionDetails): Promise<ForwardRequest> {
+  async _prepareForwarderRequest (gsnTransactionDetails: GsnTransactionDetails, relayInfo: RelayInfo): Promise<ForwardRequest> {
     const gas = await this._getRelayRequestGasLimitValue(gsnTransactionDetails)
-    const validUntil = await this._getRelayRequestValidUntilValue()
+    const validUntil = await this._getRelayRequestValidUntilValue(relayInfo)
     const nonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from)
     const value = gsnTransactionDetails.value ?? '0x0'
     return {
