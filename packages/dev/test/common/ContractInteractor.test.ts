@@ -27,6 +27,7 @@ import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { AddressZero } from 'ethers/constants'
+import { toHex } from "web3-utils";
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -184,7 +185,7 @@ contract('ContractInteractor', function (accounts) {
       let transaction = Transaction.fromTxData({
         to: constants.ZERO_ADDRESS,
         gasLimit: '0x5208',
-        gasPrice: 105157849,
+        gasPrice: toHex(await web3.eth.getGasPrice()),
         nonce
       }, contractInteractor.getRawTxOptions())
       transaction = transaction.sign(Buffer.from('8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba', 'hex'))
@@ -302,6 +303,11 @@ contract('ContractInteractor', function (accounts) {
 
     context('with stub 100 blocks getLogs limit', function () {
       before(function () {
+        if ( process.env.TEST_LONG==null) {
+          console.log('skipped long test. set TEST_LONG to enable')
+          this.skip()
+          return
+        }
         // @ts-ignore
         contractInteractor.maxPageSize = Number.MAX_SAFE_INTEGER
         sinon.stub(contractInteractor, '_getPastEvents').callsFake(async function (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<any> {
@@ -365,7 +371,7 @@ contract('ContractInteractor', function (accounts) {
     })
   })
 
-  context('#LightTruffleContract', () => {
+  context.skip('#LightTruffleContract', () => {
     let contractInteractor: ContractInteractor
     let relayReg: RelayRegistrarInstance
     let lightreg: IRelayRegistrarInstance

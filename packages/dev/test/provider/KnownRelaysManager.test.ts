@@ -143,7 +143,7 @@ contract('KnownRelaysManager', function (
       })
     })
 
-    it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
+    it.skip('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
       async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
         const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()

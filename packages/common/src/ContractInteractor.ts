@@ -400,7 +400,10 @@ export class ContractInteractor {
         }
         this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(relayCallABIData)}`)
         // @ts-ignore
-        this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string }) => {
+        this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string, error: any }) => {
+          if (res.error != null) {
+            err = res.error
+          }
           const revertMsg = this._decodeRevertFromResponse(err, res)
           if (revertMsg != null) {
             reject(new Error(revertMsg))
@@ -471,6 +474,9 @@ export class ContractInteractor {
     }
     if (matchGanache != null) {
       return matchGanache[1]
+    }
+    if (res?.error != null) {
+      err = res.error
     }
     const m = err?.data?.toString().match(/(0x08c379a0\S*)/)
     if (m != null) {
