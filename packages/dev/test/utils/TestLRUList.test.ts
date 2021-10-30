@@ -10,7 +10,7 @@ function addr (n: number): string {
 
 const TestLRUList = artifacts.require('TestLRUList')
 
-describe.only('TestLRUList', function () {
+describe('TestLRUList', function () {
   let list: TestLRUListInstance
   before(async () => {
     list = await TestLRUList.new()
