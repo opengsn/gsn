@@ -55,6 +55,7 @@
     "lerna-tsc": "lerna run tsc",
     "lerna-watch-tsc": "lerna run --parallel watch-tsc",
     "lerna-lint": "lerna run lint",
+    "lerna-lint-fix": "lerna run lint-fix",
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "lerna run test --stream --no-prefix",
     "lerna-run-test-fork": "lerna run test-fork --stream --no-prefix",

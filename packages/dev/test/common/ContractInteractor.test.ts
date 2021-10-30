@@ -27,7 +27,7 @@ import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { AddressZero } from 'ethers/constants'
-import { toHex } from "web3-utils";
+import { toHex } from 'web3-utils'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -303,7 +303,7 @@ contract('ContractInteractor', function (accounts) {
 
     context('with stub 100 blocks getLogs limit', function () {
       before(function () {
-        if ( process.env.TEST_LONG==null) {
+        if (process.env.TEST_LONG == null) {
           console.log('skipped long test. set TEST_LONG to enable')
           this.skip()
           return

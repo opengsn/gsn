@@ -10,6 +10,7 @@
     "tsc": "tsc",
     "watch-tsc": "tsc -w",
     "lint": "eslint -f unix .",
+    "lint-fix": "yarn lint --fix",
     "chmod-commands": "chmod a+rx ./dist/commands/*.js",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/cli/compiled"
   },

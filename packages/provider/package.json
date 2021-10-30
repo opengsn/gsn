@@ -7,6 +7,7 @@
     "tsc": "tsc",
     "watch-tsc": "tsc -w",
     "lint": "eslint -f unix .",
+    "lint-fix": "yarn lint --fix",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "files": [

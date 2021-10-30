@@ -25,13 +25,13 @@ describe.only('TestLRUList', function () {
     expect(await list.next(list.address)).to.eql(list.address)
   })
   it('prevFrom of unknown item should revert', async () => {
-    await expectRevert(list.prevFrom(addr(1), list.address,10), 'item not in list')
+    await expectRevert(list.prevFrom(addr(1), list.address, 10), 'item not in list')
   })
   it('getPrev of unknown should be zero-address', async () => {
     expect(await list.getPrev(addr(1))).to.eql(AddressZero)
   })
 
-  it('should fail on not-in-list item', async ( ) => {
+  it('should fail on not-in-list item', async () => {
     await expectRevert(list.setValue(addr(99), addr(88), 99),
       'given wrong prevItem')
   })
