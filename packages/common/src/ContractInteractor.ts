@@ -259,7 +259,7 @@ export class ContractInteractor {
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.stakeManagerAddress = stakeManagerAddress
     this.deployment.penalizerAddress = penalizerAddress
-    this.deployment.relayRegistrarAddress = relayRegistrarAddress
+    this.deployment.relayRegistrarAddress = relayRegistrarAddress?.toLowerCase() === constants.ZERO_ADDRESS ? undefined : relayRegistrarAddress
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -987,8 +987,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   // get registered relayers, bypassing the events
   async getRegisteredRelays (): Promise<Array<{ relayManager: string, baseRelayFee: BN, pctRelayFee: BN, url: string }> | null> {
     if (this.relayRegistrar == null) {
-      // TODO: maybe move event lookup here?
-      throw new Error('no registrar. must use events')
+      return null
     }
     // TODO: typechain broken return value types.
     const { info: relayInfos, filled } = await this.relayRegistrar?.readValues(100) as any
