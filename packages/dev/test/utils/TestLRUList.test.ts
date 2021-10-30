@@ -10,7 +10,7 @@ function addr (n: number): string {
 
 const TestLRUList = artifacts.require('TestLRUList')
 
-describe('TestLRUList', function () {
+describe.only('TestLRUList', function () {
   let list: TestLRUListInstance
   before(async () => {
     list = await TestLRUList.new()
@@ -24,14 +24,14 @@ describe('TestLRUList', function () {
   it('next of list should be itself', async () => {
     expect(await list.next(list.address)).to.eql(list.address)
   })
-  it('prevItem of empty list should be itself', async () => {
-    expect(await list.getPrev(list.address)).to.eql(list.address)
+  it('prevFrom of unknown item should revert', async () => {
+    await expectRevert(list.prevFrom(addr(1), list.address,10), 'item not in list')
   })
-  it('prevItem of unknown should revert', async () => {
-    await expectRevert(list.getPrev(addr(1)), 'item not in list')
+  it('getPrev of unknown should be zero-address', async () => {
+    expect(await list.getPrev(addr(1))).to.eql(AddressZero)
   })
 
-  it('should fail on not-in-list item', async () => {
+  it('should fail on not-in-list item', async ( ) => {
     await expectRevert(list.setValue(addr(99), addr(88), 99),
       'given wrong prevItem')
   })
@@ -50,7 +50,7 @@ describe('TestLRUList', function () {
     })
     it('should fail to add same item as new', async () => {
       await expectRevert(list.setValue(addr(1), AddressZero, 11),
-        'must specify prevItem')
+        'no prevItem for existing item')
     })
     it('add same item should keep list unchanged', async () => {
       expect(await list.readValues(100)).to.eql([11])

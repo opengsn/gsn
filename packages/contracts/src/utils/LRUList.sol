@@ -30,7 +30,7 @@ contract LRUList {
     function moveToTop(address addr, address prevItem) internal {
         address head = address(this);
         if (prevItem == address(0)) {
-            require(next[addr] == address(0), "missing prevItem - existing item");
+            require(next[addr] == address(0), "no prevItem for existing item");
             next[addr] = next[head];
             next[head] = addr;
         } else {
@@ -65,7 +65,7 @@ contract LRUList {
         ret = 0;
         address head = address(this);
         address p = next[from];
-        require(p != address(0), "item not in list");
+        require(p != address(0), "from not in list");
         for (;;) {
             if (p == head) {
                 return (ret, address(0));
