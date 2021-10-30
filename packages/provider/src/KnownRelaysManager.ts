@@ -74,12 +74,11 @@ export class KnownRelaysManager {
         pctRelayFee: info.pctRelayFee.toString(),
         relayUrl: info.url
       }))
-      console.log('==infos=', infos, 'filterMgr', relayManagers)
       if (relayManagers != null) {
         infos = infos.filter(info => relayManagers.has(info.relayManager.toLowerCase()))
       }
 
-      return infos
+      return infos.filter(this.relayFilter)
     }
 
     // As 'topics' are used as 'filter', having an empty set results in querying all register events.

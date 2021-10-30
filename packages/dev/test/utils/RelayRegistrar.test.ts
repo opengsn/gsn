@@ -9,13 +9,13 @@ function addr (n: number): string {
 
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
-contract('#RelayerRegistrar', function ([fromAddress]) {
+contract('#RelayRegistrar', function ([fromAddress]) {
   let reg: RelayRegistrarInstance
   const relay = addr(1)
   const relay2 = addr(2)
 
   before(async () => {
-    reg = await RelayRegistrar.new(fromAddress)
+    reg = await RelayRegistrar.new(AddressZero)
     await reg.registerRelayer(AddressZero, {
       blockNumber: 1,
       pctRelayFee: 2,
@@ -58,9 +58,9 @@ contract('#RelayerRegistrar', function ([fromAddress]) {
     expect(info.blockNumber).to.eql(1)
   })
   it('should read list', async () => {
-    const ret = await reg.readValues(5)
+    const { info, filled } = await reg.readValues(5) as any
 
-    expect(ret).to.eql([
+    expect(info).to.eql([
       {
         blockNumber: '21',
         relayManager: '0x2222222222222222222222222222222222222222',
@@ -75,7 +75,7 @@ contract('#RelayerRegistrar', function ([fromAddress]) {
         pctRelayFee: '2',
         url: 'http://relay'
       }
-    ]
-    )
+    ])
+    expect(filled).to.eql(2)
   })
 })

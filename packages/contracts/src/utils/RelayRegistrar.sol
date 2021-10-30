@@ -28,7 +28,7 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
     }
 
     function registerRelayer(address prevItem, RelayInfo calldata info) external override {
-        require(msg.sender == relayHub, "not called from RelayHub");
+        require(msg.sender == relayHub || relayHub==address (0), "not called from RelayHub");
         address relayManager = info.relayManager;
         if (prevItem == address(0)) {
             //try to find prevItem. can be expensive if the list is large.

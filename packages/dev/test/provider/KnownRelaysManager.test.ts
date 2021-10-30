@@ -240,9 +240,9 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.equal(preferredRelays.length, 1)
       assert.equal(preferredRelays[0].relayUrl, 'http://localhost:8090')
       assert.equal(activeRelays.length, 3)
-      assert.equal(activeRelays[0].relayUrl, 'http://localhost:8090')
+      assert.equal(activeRelays[0].relayUrl, 'stakeAndAuthorization2')
       assert.equal(activeRelays[1].relayUrl, 'stakeAndAuthorization1')
-      assert.equal(activeRelays[2].relayUrl, 'stakeAndAuthorization2')
+      assert.equal(activeRelays[2].relayUrl, 'http://localhost:8090')
     })
 
     it('should use \'relayFilter\' to remove unsuitable relays', async function () {
