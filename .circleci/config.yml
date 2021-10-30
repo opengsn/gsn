@@ -12,8 +12,8 @@ jobs: # a collection of steps
           key: dependency-cache-{{ checksum "yarn.lock" }}
 
       - run:
-          name: yarn-install
-          command: yarn
+          name: yarn-install-if-has-cache
+          command:  test -d node_modules/truffle || yarn
 
       - save_cache: # special step to save the dependency cache
           key: dependency-cache-{{ checksum "yarn.lock" }}
