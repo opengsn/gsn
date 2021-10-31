@@ -3,6 +3,7 @@ import ow from 'ow'
 
 import { Address } from './Aliases'
 import { RelayRequest } from '../EIP712/RelayRequest'
+import { AuthorizationElement } from '../bls/DecompressorInteractor'
 
 export interface RelayMetadata {
   approvalData: PrefixedHexString
@@ -10,6 +11,8 @@ export interface RelayMetadata {
   relayMaxNonce: number
   signature: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
+  calldataCacheDecoder?: Address
+  authorization?: AuthorizationElement
 }
 
 export interface RelayTransactionRequest {

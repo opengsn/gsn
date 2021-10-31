@@ -66,7 +66,7 @@ export class RelayedTransactionValidator {
     ) {
       const requestGasPriceBN = toBN(request.relayRequest.relayData.gasPrice)
       if (toBN(transaction.gasPrice).lt(requestGasPriceBN)) {
-        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${requestGasPriceBN.toString()}, received ${transaction.gasPrice.toString()}`)
+        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${requestGasPriceBN.toString()}, received ${transaction.gasPrice.toString() as string}`)
       }
       const receivedNonce = parseInt(transaction.nonce)
       if (receivedNonce > request.metadata.relayMaxNonce) {

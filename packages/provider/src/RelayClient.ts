@@ -48,6 +48,7 @@ import {
 } from './GsnEvents'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
+import { toHex } from 'web3-utils'
 
 // forwarder requests are signed with expiration time.
 
@@ -296,18 +297,11 @@ export class RelayClient {
     }
   }
 
-  _getFromAddressForValidation (httpRequest: RelayTransactionRequest): Address {
-    return httpRequest.relayRequest.relayData.relayWorker
-  }
-
   async _validateRequestBeforeSending (httpRequest: RelayTransactionRequest): Promise<{ error?: Error }> {
-    const viewCallGasLimit =
-      await this.dependencies.contractInteractor.getMaxViewableGasLimit(httpRequest.relayRequest, this.config.maxViewableGasLimit)
+    const localViewCallParameters = await this._getLocalViewCallParameters(httpRequest)
 
     const acceptRelayCallResult =
-      await this.dependencies.contractInteractor.validateRelayCall(
-        asRelayCallAbi(httpRequest),
-        viewCallGasLimit)
+      await this.dependencies.contractInteractor.validateRelayCall(localViewCallParameters)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {
@@ -318,6 +312,20 @@ export class RelayClient {
       return { error: new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`) }
     }
     return {}
+  }
+
+  async _getLocalViewCallParameters (httpRequest: RelayTransactionRequest): Promise<TransactionConfig> {
+    const viewCallGasLimit =
+      await this.dependencies.contractInteractor.getMaxViewableGasLimit(httpRequest.relayRequest, this.config.maxViewableGasLimit)
+    const encodedRelayCall = this.dependencies.contractInteractor.encodeABI(asRelayCallAbi(httpRequest))
+
+    return {
+      from: httpRequest.relayRequest.relayData.relayWorker,
+      to: this._getResolvedDeployment().relayHubAddress,
+      gasPrice: toHex(httpRequest.relayRequest.relayData.gasPrice),
+      gas: toHex(viewCallGasLimit),
+      data: encodedRelayCall
+    }
   }
 
   async _onTransactionSentToServer (
@@ -366,12 +374,16 @@ export class RelayClient {
         transaction
       }
     } catch (error) {
-      if (error?.message == null || error.message.indexOf('timeout') !== -1) {
-        this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
-      }
-      this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
-      return { error }
+      return this._onRelayTransactionError(error, relayInfo, httpRequest)
     }
+  }
+
+  _onRelayTransactionError (error: Error, relayInfo: RelayInfo, httpRequest: RelayTransactionRequest): { error: Error } {
+    if (error?.message == null || error.message.includes('timeout')) {
+      this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
+    }
+    this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
+    return { error }
   }
 
   async _prepareRelayHttpRequest (
@@ -388,7 +400,6 @@ export class RelayClient {
       request,
       relayData
     }
-    await this._fillInComputedFields(relayRequest)
 
     const metadata = await this.prepareRelayRequestMetadata(relayRequest, relayInfo, deployment)
     const httpRequest: RelayTransactionRequest = {
@@ -499,7 +510,8 @@ export class RelayClient {
 
   async prepareRelayRequestMetadata (relayRequest: RelayRequest, relayInfo: RelayInfo, deployment: GSNContractsDeploymentResolvedForRequest): Promise<RelayMetadata> {
     this.emit(new GsnSignRequestEvent())
-    const signature = await this.dependencies.accountManager.sign(relayRequest, this.config.signingAlgorithm)
+    await this._fillInComputedFields(relayRequest)
+    const signature = await this.dependencies.accountManager.signEIP712ECDSA(relayRequest)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
     const transactionCount =
       await this.dependencies.contractInteractor.getTransactionCount(relayRequest.relayData.relayWorker)

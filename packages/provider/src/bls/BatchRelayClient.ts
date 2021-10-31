@@ -1,6 +1,7 @@
-import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import {
+  GSNContractsDeploymentResolvedForRequest,
   RelayClient, RelayingAttempt
 } from '../RelayClient'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
@@ -8,11 +9,25 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { PingResponseBatchMode } from '@opengsn/common/dist/PingResponse'
 import { Transaction } from '@ethereumjs/tx'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { GsnSendToRelayerEvent } from '../GsnEvents'
+import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+import { GsnSendToRelayerEvent, GsnSignRequestEvent } from '../GsnEvents'
+import { asRelayCallAbi } from '@opengsn/common'
+import { toBN, toHex } from 'web3-utils'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import {
+  AuthorizationElement,
+  CacheDecoderInteractor,
+  TargetType
+} from '@opengsn/common/dist/bls/DecompressorInteractor'
+import { AccountManager } from '../AccountManager'
 
 export class BatchRelayClient extends RelayClient {
   batchGateway: Address = '' // TODO
+  authorizationsRegistrar: Address = '' // TODO
+
+  // Account manager is passed to
+  accountManager!: AccountManager
+  cacheDecoderInteractor!: CacheDecoderInteractor
 
   /**
    * In batching mode, client must use the gas price value the server has returned in a ping
@@ -29,23 +44,65 @@ export class BatchRelayClient extends RelayClient {
     return (relayInfo.pingResponse as PingResponseBatchMode).validUntil
   }
 
-  _getFromAddressForValidation (_httpRequest: RelayTransactionRequest): Address {
-    return this.batchGateway
+  /**
+   * Sends local view call from the BatchGateway address and with empty signature to pass origin, signature checks.
+   */
+  async _getLocalViewCallParameters (httpRequest: RelayTransactionRequest): Promise<TransactionConfig> {
+    const viewCallGasLimit =
+      await this.dependencies.contractInteractor.getMaxViewableGasLimit(httpRequest.relayRequest, this.config.maxViewableGasLimit)
+    const httpRequestWithoutSignature = Object.assign({}, httpRequest, { metadata: Object.assign({}, httpRequest.metadata, { signature: '0x' }) })
+    const encodedRelayCall = this.dependencies.contractInteractor.encodeABI(asRelayCallAbi(httpRequestWithoutSignature))
+
+    return {
+      from: this.batchGateway,
+      to: this._getResolvedDeployment().relayHubAddress,
+      gasPrice: toHex(httpRequest.relayRequest.relayData.gasPrice),
+      gas: toHex(viewCallGasLimit),
+      data: encodedRelayCall
+    }
   }
 
-  // async _prepareRelayHttpRequest (
-  //   relayInfo: RelayInfo,
-  //   gsnTransactionDetails: GsnTransactionDetails
-  // ): Promise<RelayTransactionRequest> {
-  // difference:
-  // 1. These fields are now directly given by 'getAddress' response:
-  //   a. gasPrice V
-  //   b. validUntil V
-  //   c. clientId X
-  // 2. 'estimateCalldataCostForRequest' should be accounting for storage costs for new slots in batch
-  // 3. use BLS signature method V (is configuration parameter only)
-  // 4. 'relayMaxNonce' does not matter - we wait for relay to send a batch anyway (configurable by setting very high maxRelayNonceGap)
-  // }
+  async prepareRelayRequestMetadata (relayRequest: RelayRequest, relayInfo: RelayInfo, deployment: GSNContractsDeploymentResolvedForRequest): Promise<RelayMetadata> {
+    this.emit(new GsnSignRequestEvent())
+    const authorization = await this._fillInComputedFieldsWithAuthorization(relayRequest)
+    const signature = await this.dependencies.accountManager.signBLSALTBN128(relayRequest)
+    return {
+      maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
+      relayHubAddress: deployment.relayHubAddress,
+      signature,
+      approvalData: '0x',
+      relayMaxNonce: Number.MAX_SAFE_INTEGER,
+      authorization
+    }
+  }
+
+  /**
+   * Modifies the input object itself to include fields computed on an almost full {@link RelayRequest}
+   * @param relayRequest - an object that will be modified by this method
+   * @returns PrefixedHexString and RLP-encoded {@link AuthorizationElement} to be passed to the server
+   */
+  async _fillInComputedFieldsWithAuthorization (relayRequest: RelayRequest): Promise<AuthorizationElement | undefined> {
+    let authorizationElement: AuthorizationElement | undefined
+    const authorizationIssued = await this.accountManager.authorizationIssued(relayRequest.request.from)
+    if (!authorizationIssued) {
+      authorizationElement = await this.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.authorizationsRegistrar)
+    }
+    const targetType = this._getTargetType(relayRequest.request.to)
+    const compressedData = await this.cacheDecoderInteractor.compressAbiEncodedCalldata(targetType, relayRequest.request.data)
+    const compressRelayRequest = await this.cacheDecoderInteractor.compressRelayRequest(relayRequest, compressedData.cachedEncodedData)
+    const calldataCost = this.cacheDecoderInteractor.estimateCalldataCostForRelayRequestsElement(compressRelayRequest.relayRequestElement, authorizationElement)
+    const writeSlotsCount = compressRelayRequest.writeSlotsCount + compressedData.writeSlotsCount
+    const storageL2Cost = this.cacheDecoderInteractor.writeSlotsToL2Gas(writeSlotsCount)
+
+    // TODO: sanitize types
+    relayRequest.relayData.transactionCalldataGasUsed = toBN(calldataCost).and(storageL2Cost).toString()
+    return authorizationElement
+  }
+
+  _getTargetType (_target: Address): TargetType {
+    // TODO: add constructor param with mapping of address to target
+    return TargetType.ERC20
+  }
 
   /**
    * Send transaction with batching REST API. Nothing to do with a 200 OK response so far.
@@ -56,11 +113,7 @@ export class BatchRelayClient extends RelayClient {
       await this.dependencies.httpClient.relayTransactionInBatch(relayInfo.relayInfo.relayUrl, httpRequest)
       return {}
     } catch (error) {
-      if (error?.message == null || error.message.indexOf('timeout') !== -1) {
-        this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
-      }
-      this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
-      return { error }
+      return this._onRelayTransactionError(error, relayInfo, httpRequest)
     }
   }
 
@@ -74,15 +127,4 @@ export class BatchRelayClient extends RelayClient {
     hexTransaction?: PrefixedHexString): Promise<{ error?: Error }> {
     return {}
   }
-
-  // async _attemptRelay (
-  //   relayInfo: RelayInfo,
-  //   gsnTransactionDetails: GsnTransactionDetails
-  // ): Promise<RelayingAttemptBatchMode> {
-  // // difference:
-  // // 1. will run local view call 'from: gateway' without signature so that it can pass signature check V
-  // // NOTE: this can be done BEFORE signature, saving client a 'signature'-'rejected' flow
-  // // 2. All code after sending is different. Does not call 'auditTransaction' and 'validateRelayResponse'. V
-  // // Returned object is not a transaction V
-  // }
 }

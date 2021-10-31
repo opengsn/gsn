@@ -11,6 +11,7 @@ import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
 import { InternalBLSKeypairType, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { ApprovalDataInterface, TypedApprovalData } from '@opengsn/common/dist/bls/TypedApprovalData'
+import { AuthorizationElement } from '@opengsn/common/dist/bls/DecompressorInteractor'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString
@@ -20,11 +21,6 @@ export interface AccountKeypair {
 function toAddress (privateKey: PrefixedHexString): Address {
   const wallet = ethWallet.fromPrivateKey(Buffer.from(removeHexPrefix(privateKey), 'hex'))
   return wallet.getChecksumAddressString()
-}
-
-export enum SigningAlgorithm {
-  ECDSA_EIP_712,
-  BLS_ALT_BN128
 }
 
 export class AccountManager {
@@ -67,16 +63,6 @@ export class AccountManager {
     return {
       privateKey,
       address
-    }
-  }
-
-  //TODO: remove default value
-  async sign (relayRequest: RelayRequest, signingAlgorithm: SigningAlgorithm = SigningAlgorithm.ECDSA_EIP_712): Promise<PrefixedHexString> {
-    switch (signingAlgorithm) {
-      case SigningAlgorithm.ECDSA_EIP_712:
-        return await this.signEIP712ECDSA(relayRequest)
-      case SigningAlgorithm.BLS_ALT_BN128:
-        return await this.signBLSALTBN128(relayRequest)
     }
   }
 
@@ -182,10 +168,10 @@ export class AccountManager {
     const publicKeySerialized = this.blsTypedDataSigner.getPublicKeySerialized()
     const approvalRequest: ApprovalDataInterface = {
       clientMessage: 'I UNDERSTAND WHAT I AM DOING',
-      blsPublicKey0: publicKeySerialized[0].toString(),
-      blsPublicKey1: publicKeySerialized[1].toString(),
-      blsPublicKey2: publicKeySerialized[2].toString(),
-      blsPublicKey3: publicKeySerialized[3].toString()
+      blsPublicKey0: publicKeySerialized[0],
+      blsPublicKey1: publicKeySerialized[1],
+      blsPublicKey2: publicKeySerialized[2],
+      blsPublicKey3: publicKeySerialized[3]
     }
     const signedData = new TypedApprovalData(
       this.chainId,
@@ -193,5 +179,26 @@ export class AccountManager {
       approvalRequest
     )
     return await this.performSigning(ethereumAddress, signedData)
+  }
+
+  // TODO: clean up
+  async createAccountAuthorizationElement (
+    ethereumAddress: Address,
+    registrarAddress: Address): Promise<AuthorizationElement> {
+    const authorizationSignature = await this.createAccountAuthorization(ethereumAddress, registrarAddress)
+    if (this.blsTypedDataSigner == null) {
+      throw new Error('WTF')
+    }
+    const blsPublicKey = this.blsTypedDataSigner.getPublicKeySerialized()
+    return {
+      authorizer: ethereumAddress,
+      blsPublicKey,
+      signature: authorizationSignature
+    }
+  }
+
+  // TODO
+  async authorizationIssued (ethereumAddress: Address): Promise<boolean> {
+    return false
   }
 }

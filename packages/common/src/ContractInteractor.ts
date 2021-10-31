@@ -4,7 +4,7 @@ import { BlockTransactionString } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
-import { toBN, toHex } from 'web3-utils'
+import { toBN } from 'web3-utils'
 import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
 
 import abi from 'web3-eth-abi'
@@ -338,23 +338,12 @@ export class ContractInteractor {
    * - returnValue - if either reverted or paymaster NOT accepted, then this is the reason string.
    */
   async validateRelayCall (
-    localViewCallParameters: TransactionConfig,
-    viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
-    if (viewCallGasLimit == null || localViewCallParameters.gasPrice == null) {
+    localViewCallParameters: TransactionConfig): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+    if (localViewCallParameters.gas == null || localViewCallParameters.gasPrice == null) {
       throw new Error('validateRelayCall: invalid input')
     }
-    // const relayHub = this.relayHubInstance
     try {
-      const encodedRelayCall = this.encodeABI(relayCallABIData)
       const res: string = await new Promise((resolve, reject) => {
-        // TODO TODO TODO this must work with from: gateway and no signature!!!
-        // const localViewCallParameters: TransactionConfig = {
-        //   from: relayCallABIData.relayRequest.relayData.relayWorker,
-        //   to: relayHub.address,
-        //   gasPrice: toHex(relayCallABIData.relayRequest.relayData.gasPrice),
-        //   gas: toHex(viewCallGasLimit),
-        //   data: encodedRelayCall
-        // }
         const rpcPayload = {
           jsonrpc: '2.0',
           id: 1,
@@ -364,7 +353,7 @@ export class ContractInteractor {
             'latest'
           ]
         }
-        this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(relayCallABIData)}`)
+        this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}`)
         // @ts-ignore
         this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string }) => {
           const revertMsg = this._decodeRevertFromResponse(err, res)

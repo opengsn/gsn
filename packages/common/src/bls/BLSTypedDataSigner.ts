@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { toBN } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 
 import { RelayRequest } from '../EIP712/RelayRequest'
 
@@ -32,6 +32,7 @@ export interface InternalBLSKeypairType {
 }
 
 export const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
+export const BigNumberToHex = (it: BigNumber): PrefixedHexString => toHex(it.toString())
 
 /**
  * The ERC-712 describes the specification of structured data signature, but relies on the ECDSA
@@ -134,8 +135,8 @@ export class BLSTypedDataSigner {
     this.blsKeypair = _.keypair
   }
 
-  getPublicKeySerialized (): BN[] {
-    return g2ToBN(this.blsKeypair.pubkey).map(BigNumberToBN)
+  getPublicKeySerialized (): PrefixedHexString[] {
+    return g2ToBN(this.blsKeypair.pubkey).map(BigNumberToHex)
   }
 
   getPrivateKeySerialized (): PrefixedHexString {
