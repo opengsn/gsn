@@ -74,7 +74,7 @@ export class VersionRegistry {
    * @param id object id to return version history for
    */
   async getAllVersions (id: string): Promise<VersionInfo[]> {
-    const events = await this.contractInteractor.getPastEventsForVersionRegistry(['VersionAdded', 'VersionCanceled'], [string32(id)], { fromBlock: this.fromBlock })
+    const events = await this.contractInteractor.getPastEventsForVersionRegistry(['VersionAdded', 'VersionCanceled'], [[string32(id)]], { fromBlock: this.fromBlock })
     // map of ver=>reason, for every canceled version
     const cancelReasons: { [key: string]: string } = events.filter(e => e.event === 'VersionCanceled').reduce((set, e) => ({
       ...set,

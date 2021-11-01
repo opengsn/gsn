@@ -94,7 +94,7 @@ contract('AccountManager', function (accounts) {
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest)
+      const signature = await accountManager.signEIP712ECDSA(relayRequest)
       // @ts-ignore
       const rec = sigUtil.recoverTypedSignature_v4({
         data: signedData,
@@ -111,7 +111,7 @@ contract('AccountManager', function (accounts) {
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest)
+      const signature = await accountManager.signEIP712ECDSA(relayRequest)
       // @ts-ignore
       const rec = sigUtil.recoverTypedSignature_v4({
         data: signedData,
@@ -123,7 +123,7 @@ contract('AccountManager', function (accounts) {
     })
     it('should throw if web3 fails to sign with requested address', async function () {
       relayRequest.request.from = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
-      const promise = accountManager.sign(relayRequest)
+      const promise = accountManager.signEIP712ECDSA(relayRequest)
       await expect(promise).to.be.eventually.rejectedWith('Failed to sign relayed transaction for 0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee')
     })
   })

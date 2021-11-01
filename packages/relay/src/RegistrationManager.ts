@@ -153,7 +153,7 @@ export class RegistrationManager {
     if (!this.isInitialized) {
       throw new Error('RegistrationManager not initialized')
     }
-    const topics = [address2topic(this.managerAddress)]
+    const topics = [[address2topic(this.managerAddress)]]
     const options: PastEventOptions = {
       fromBlock: lastScannedBlock + 1,
       toBlock: 'latest'
@@ -240,7 +240,7 @@ export class RegistrationManager {
   }
 
   async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
-    const topics = address2topic(this.managerAddress)
+    const topics = [address2topic(this.managerAddress)]
     const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
       {
         fromBlock: this.config.coldRestartLogsFromBlock
@@ -473,7 +473,7 @@ export class RegistrationManager {
   }
 
   async _queryLatestWorkerAddedEvent (): Promise<EventData | undefined> {
-    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
+    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([[address2topic(this.managerAddress)]],
       {
         fromBlock: this.config.coldRestartLogsFromBlock
       },

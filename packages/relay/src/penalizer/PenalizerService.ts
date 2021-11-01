@@ -240,7 +240,7 @@ export class PenalizerService {
     const nonMinedCommitHashes = unconfirmedPenalizations.map(up => up.commitHash)
     if (unconfirmedPenalizations.length > 0) {
       // TODO: sanitize functional stuff
-      const topics = [address2topic(this.managerAddress)]
+      const topics = [[address2topic(this.managerAddress)]]
       const commitments = await this.contractInteractor.getPastEventsForPenalizer([CommitAdded], topics, { fromBlock: 1 })
       const newlyMinedCommitments = commitments
         .filter(it => {

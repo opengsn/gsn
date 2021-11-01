@@ -392,7 +392,7 @@ contract.only('ContractInteractor', function (accounts) {
       before(function () {
         // @ts-ignore
         contractInteractor.maxPageSize = Number.MAX_SAFE_INTEGER
-        sinon.stub(contractInteractor, '_getPastEvents').callsFake(async function (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<any> {
+        sinon.stub(contractInteractor, '_getPastEvents').callsFake(async function (contract: any, names: EventName[], extraTopics: string[][], options: PastEventOptions): Promise<any> {
           const fromBlock = options.fromBlock as number
           const toBlock = options.toBlock as number
           if (toBlock - fromBlock > 100) {

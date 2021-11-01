@@ -445,20 +445,20 @@ export class ContractInteractor {
     return this.relayCallMethod(_.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
   }
 
-  async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
+  async getPastEventsForHub (extraTopics: string[][], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.relayHubInstance.contract, names, extraTopics, options)
   }
 
-  async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForStakeManager (names: EventName[], extraTopics: string[][], options: PastEventOptions): Promise<EventData[]> {
     const stakeManager = await this.stakeManagerInstance
     return await this._getPastEventsPaginated(stakeManager.contract, names, extraTopics, options)
   }
 
-  async getPastEventsForPenalizer (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForPenalizer (names: EventName[], extraTopics: string[][], options: PastEventOptions): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
   }
 
-  async getPastEventsForVersionRegistry (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForVersionRegistry (names: EventName[], extraTopics: string[][], options: PastEventOptions): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.versionRegistry.contract, names, extraTopics, options)
   }
 
@@ -502,7 +502,7 @@ export class ContractInteractor {
    * Splits requested range into pages to avoid fetching too many blocks at once.
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
-  async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[][], options: PastEventOptions): Promise<EventData[]> {
     const delay = this.getNetworkType() === 'private' ? 0 : 300
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
@@ -578,13 +578,12 @@ export class ContractInteractor {
     return relayEventParts.flat()
   }
 
-  async _getPastEvents (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  async _getPastEvents (contract: any, names: EventName[], extraTopics: string[][], options: PastEventOptions): Promise<EventData[]> {
     const topics: string[][] = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
-    // TODO: AFAIK this means only the first parameter of the event is supported
     if (extraTopics.length > 0) {
-      topics.push(extraTopics)
+      topics.push(...extraTopics)
     }
     return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
   }
@@ -934,7 +933,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {
     const topics = address2topic(managerAddress)
-    const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
+    const workersAddedEvents = await this.getPastEventsForHub([[topics]], { fromBlock: 1 }, [RelayWorkersAdded])
     return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
   }
 

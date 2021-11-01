@@ -1,6 +1,6 @@
 import { TransactionReceipt } from 'web3-core'
 
-import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, ConstructorParams } from '@opengsn/common/dist/ContractInteractor'
 
 export class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'
@@ -13,7 +13,7 @@ export class BadContractInteractor extends ContractInteractor {
     this.failValidateARC = failValidateARC
   }
 
-  async validateRelayCall (relayCallABIData: RelayCallABI, viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+  async validateRelayCall (localViewCallParameters: TransactionConfig): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
     if (this.failValidateARC) {
       return {
         paymasterAccepted: false,
@@ -21,7 +21,7 @@ export class BadContractInteractor extends ContractInteractor {
         returnValue: BadContractInteractor.message
       }
     }
-    return await super.validateRelayCall(relayCallABIData, viewCallGasLimit)
+    return await super.validateRelayCall(localViewCallParameters)
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await

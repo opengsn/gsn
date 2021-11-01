@@ -1,3 +1,5 @@
+/* eslint-disable no-void */
+// noinspection ES6MissingAwait
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import { HttpProvider } from 'web3-core'
@@ -11,7 +13,7 @@ import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
-import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from './RelayClient'
+import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
 import { GSNConfig } from './GSNConfigurator'
 import { Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 
@@ -27,10 +29,11 @@ export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) =>
 interface ISendAsync {
   sendAsync?: any
 }
+
 // TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
 export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   protected readonly origProvider: HttpProvider & ISendAsync
-  private readonly origProviderSend: any
+  protected readonly origProviderSend: any
   protected config!: GSNConfig
 
   readonly relayClient: RelayClient
@@ -93,7 +96,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
         if (payload.params[0].to === undefined) {
           throw new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.')
         }
-        this._ethSendTransaction(payload, callback)
+        void this._ethSendTransaction(payload, callback)
         return
       }
       if (payload.method === 'eth_getTransactionReceipt') {
@@ -128,25 +131,33 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     })
   }
 
-  _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+  async _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
-    this.relayClient.relayTransaction(gsnTransactionDetails)
-      .then((relayingResult) => {
-        if (relayingResult.transaction != null) {
-          const jsonRpcSendResult = this._convertTransactionToRpcSendResponse(relayingResult.transaction, payload)
-          callback(null, jsonRpcSendResult)
-        } else {
-          const message = `Failed to relay call. Results:\n${_dumpRelayingResult(relayingResult)}`
-          this.logger.error(message)
-          callback(new Error(message))
-        }
-      }, (reason: any) => {
-        const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
-        const msg = `Rejected relayTransaction call with reason: ${reasonStr}`
-        this.logger.info(msg)
-        callback(new Error(msg))
-      })
+    try {
+      const r = await this.relayClient.relayTransaction(gsnTransactionDetails)
+      void this._onRelayTransactionFulfilled(r, payload, callback)
+    } catch (reason) {
+      void this._onRelayTransactionRejected(reason, callback)
+    }
+  }
+
+  async _onRelayTransactionFulfilled (relayingResult: RelayingResult, payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
+    if (relayingResult.transaction != null) {
+      const jsonRpcSendResult = this._convertTransactionToRpcSendResponse(relayingResult.transaction, payload)
+      callback(null, jsonRpcSendResult)
+    } else {
+      const message = `Failed to relay call. Results:\n${_dumpRelayingResult(relayingResult)}`
+      this.logger.error(message)
+      callback(new Error(message))
+    }
+  }
+
+  async _onRelayTransactionRejected (reason: any, callback: JsonRpcCallback): Promise<void> {
+    const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
+    const msg = `Rejected relayTransaction call with reason: ${reasonStr}`
+    this.logger.info(msg)
+    callback(new Error(msg))
   }
 
   _convertTransactionToRpcSendResponse (transaction: Transaction, request: JsonRpcPayload): JsonRpcResponse {

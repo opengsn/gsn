@@ -724,7 +724,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async getAllHubEventsSinceLastScan (): Promise<EventData[]> {
-    const topics = [address2topic(this.managerAddress)]
+    const topics = [[address2topic(this.managerAddress)]]
     const options = {
       fromBlock: this.lastScannedBlock + 1,
       toBlock: 'latest'
@@ -773,7 +773,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _queryLatestActiveEvent (): Promise<EventData | undefined> {
-    const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
+    const events: EventData[] = await this.contractInteractor.getPastEventsForHub([[address2topic(this.managerAddress)]], {
       fromBlock: this.config.coldRestartLogsFromBlock
     })
     return getLatestEventData(events)
