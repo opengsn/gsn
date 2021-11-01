@@ -22,7 +22,7 @@ import { EIP712TypedData } from 'eth-sig-util'
 import { RelayRequest } from './EIP712/RelayRequest'
 import Web3 from 'web3'
 
-export const ValidHexString = /^0x[a-f0-9]*$/
+export const ValidHexString = /^0x[A-Fa-f0-9]*$/
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {

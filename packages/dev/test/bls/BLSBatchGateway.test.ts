@@ -11,10 +11,8 @@ import {
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
-  CacheDecodersInteractor,
-  SignedKeyAuthorization,
   RLPBatchCompressedInput,
-  encodeBatch
+  encodeBatch, CacheDecoderInteractor, AuthorizationElement
 } from '@opengsn/common/dist/bls/DecompressorInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
@@ -64,7 +62,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     }
   }
 
-  let decompressorInteractor: CacheDecodersInteractor
+  let decompressorInteractor: CacheDecoderInteractor
   let blsTypedDataSigner: BLSTypedDataSigner
 
   let blsTestHub: BLSTestHubInstance
@@ -92,7 +90,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     gateway = await BLSBatchGateway.new(decompressor.address, registrar.address, blsTestHub.address)
 
     blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
-    decompressorInteractor = await new CacheDecodersInteractor({ provider: web3.currentProvider as HttpProvider })
+    decompressorInteractor = await new CacheDecoderInteractor({ provider: web3.currentProvider as HttpProvider })
       .init({
         decompressorAddress: decompressor.address,
         erc20cacheDecoder: constants.ZERO_ADDRESS
@@ -124,10 +122,10 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     })
 
     it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
-      const batchItem = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest)
+      const batchItem = await decompressorInteractor.compressRelayRequest(relayRequest)
       const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
-      const authorizationItem: SignedKeyAuthorization = {
+      const authorizationItem: AuthorizationElement = {
         authorizer: from,
         blsPublicKey,
         signature: authorizationSignature
@@ -171,18 +169,18 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
 
       const relayRequest2: RelayRequest = JSON.parse(JSON.stringify(relayRequest))
       relayRequest2.request.from = from2
-      const batchItem1 = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest)
-      const batchItem2 = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest2)
+      const batchItem1 = await decompressorInteractor.compressRelayRequest(relayRequest)
+      const batchItem2 = await decompressorInteractor.compressRelayRequest(relayRequest2)
       const authorizationSignature1 = await createAuthorizationSignature(from, blsTypedDataSigner1.blsKeypair, registrar)
       const authorizationSignature2 = await createAuthorizationSignature(from2, blsTypedDataSigner2.blsKeypair, registrar)
       const blsPublicKey1 = blsTypedDataSigner1.getPublicKeySerialized()
       const blsPublicKey2 = blsTypedDataSigner2.getPublicKeySerialized()
-      const authorizationItem1: SignedKeyAuthorization = {
+      const authorizationItem1: AuthorizationElement = {
         authorizer: from,
         blsPublicKey: blsPublicKey1,
         signature: authorizationSignature1
       }
-      const authorizationItem2: SignedKeyAuthorization = {
+      const authorizationItem2: AuthorizationElement = {
         authorizer: from2,
         blsPublicKey: blsPublicKey2,
         signature: authorizationSignature2
@@ -220,14 +218,14 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     it('should reject batch with a single element with an incorrect BLS signature', async function () {
       const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
-      const authorizationItem: SignedKeyAuthorization = {
+      const authorizationItem: AuthorizationElement = {
         authorizer: from,
         blsPublicKey,
         signature: authorizationSignature
       }
 
       // it seems that if the signature is not some BLS signature hardhat will revert the entire transaction
-      const batchItem = await decompressorInteractor.compressRelayRequest(toBN(777), relayRequest)
+      const batchItem = await decompressorInteractor.compressRelayRequest(relayRequest)
       const blsSignature = (await blsTypedDataSigner.signTypedDataBLS('0xffffffff')).map((it: BN) => { return it.toString('hex') })
       const data = encodeBatch(
         Object.assign({}, batchInput, {

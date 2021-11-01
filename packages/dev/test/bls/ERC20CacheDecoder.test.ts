@@ -2,7 +2,7 @@ import { HttpProvider } from 'web3-core'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import { ERC20CacheDecoderInstance, TestTokenInstance } from '@opengsn/contracts'
-import { CacheDecodersInteractor } from '@opengsn/common/dist/bls/DecompressorInteractor'
+import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/DecompressorInteractor'
 import { constants } from '@opengsn/common'
 
 const TestToken = artifacts.require('TestToken')
@@ -11,7 +11,7 @@ const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
 contract('ERC20CacheDecoder', function ([destination]: string[]) {
   let testToken: TestTokenInstance
   let erc20CacheDecoder: ERC20CacheDecoderInstance
-  let cacheDecodersInteractor: CacheDecodersInteractor
+  let cacheDecodersInteractor: CacheDecoderInteractor
 
   let erc20transferCalldata: PrefixedHexString
   let erc20rlpEncodedNewInput: PrefixedHexString
@@ -20,13 +20,13 @@ contract('ERC20CacheDecoder', function ([destination]: string[]) {
   before(async function () {
     testToken = await TestToken.new()
     erc20CacheDecoder = await ERC20CacheDecoder.new()
-    cacheDecodersInteractor = await new CacheDecodersInteractor({ provider: web3.currentProvider as HttpProvider })
+    cacheDecodersInteractor = await new CacheDecoderInteractor({ provider: web3.currentProvider as HttpProvider })
       .init({
         decompressorAddress: constants.ZERO_ADDRESS,
         erc20cacheDecoder: erc20CacheDecoder.address
       })
-    erc20transferCalldata = testToken.contract.methods.transfer(destination, value).encodeABI()
-    erc20rlpEncodedNewInput = await cacheDecodersInteractor.compressErc20Transfer(destination, value)
+    erc20transferCalldata = testToken.contract.methods.transfer(destination, value).encodeABI();
+    ({ cachedEncodedData: erc20rlpEncodedNewInput } = await cacheDecodersInteractor.compressErc20Transfer(destination, value))
   })
 
   context('#convertAddressesToIds()', function () {})
@@ -42,7 +42,7 @@ contract('ERC20CacheDecoder', function ([destination]: string[]) {
       await erc20CacheDecoder.decodeCalldata(erc20rlpEncodedNewInput)
       // create cached calldata rlp-encoding
       const erc20rlpEncodedCached = await cacheDecodersInteractor.compressErc20Transfer(destination, value)
-      assert.equal(erc20rlpEncodedCached.length, 16)
+      assert.equal(erc20rlpEncodedCached.cachedEncodedData.length, 16)
       // decode calldata using cache
       const res = await erc20CacheDecoder.decodeCalldata.call(erc20rlpEncodedNewInput)
       assert.equal(res, erc20transferCalldata)

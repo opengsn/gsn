@@ -1,7 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
-import BN from 'bn.js'
 import { PastEventOptions } from 'web3-eth-contract'
 
 import {
@@ -12,7 +11,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
-import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -25,6 +24,9 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { RelayClient } from '@opengsn/provider/dist/RelayClient'
+import { LoggerConfiguration } from '@opengsn/provider'
+import { RelayMetadata } from '@opengsn/common/dist/types/RelayTransactionRequest'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -34,7 +36,7 @@ const Penalizer = artifacts.require('Penalizer')
 
 const environment = defaultEnvironment
 
-contract('ContractInteractor', function (accounts) {
+contract.only('ContractInteractor', function (accounts) {
   const provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
   const logger = createClientLogger({ logLevel: 'error' })
   const workerAddress = accounts[2]
@@ -44,6 +46,8 @@ contract('ContractInteractor', function (accounts) {
   let sm: StakeManagerInstance
   let pen: PenalizerInstance
   let pm: TestPaymasterConfigurableMisbehaviorInstance
+
+  let relayClient: RelayClient
 
   before(async () => {
     sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
@@ -58,6 +62,18 @@ contract('ContractInteractor', function (accounts) {
     await sm.stakeForRelayManager(mgrAddress, 1000, { value: 1e18.toString() })
     await sm.authorizeHubByOwner(mgrAddress, rh.address)
     await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
+
+    const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
+    const gsnConfig = {
+      loggerConfiguration,
+      paymasterAddress: pm.address
+    }
+    const underlyingProvider = web3.currentProvider as HttpProvider
+    relayClient = new RelayClient({
+      provider: underlyingProvider,
+      config: gsnConfig
+    })
+    await relayClient.init()
   })
 
   function addr (n: number): string {
@@ -100,14 +116,15 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
-      const encodedData: RelayCallABI = {
+      const metadata: RelayMetadata = {
+        relayHubAddress: rh.address,
+        relayMaxNonce: 0,
         maxAcceptanceBudget: '200000',
-        relayRequest,
         signature: '0x',
         approvalData: '0x'
       }
-      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+      const localViewCallParameters = await relayClient._getLocalViewCallParameters({ relayRequest, metadata })
+      const ret = await contractInteractor.validateRelayCall(localViewCallParameters)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'view call to \'relayCall\' reverted in client: with reason string \'Paymaster balance too low\'',
@@ -152,14 +169,15 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
-      const encodedData: RelayCallABI = {
+      const metadata: RelayMetadata = {
+        relayHubAddress: rh.address,
+        relayMaxNonce: 0,
         maxAcceptanceBudget: '200000',
-        relayRequest,
         signature: '0x',
         approvalData: '0x'
       }
-      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+      const localViewCallParameters = await relayClient._getLocalViewCallParameters({ relayRequest, metadata })
+      const ret = await contractInteractor.validateRelayCall(localViewCallParameters)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',
@@ -174,7 +192,12 @@ contract('ContractInteractor', function (accounts) {
     let sampleTransactionData: PrefixedHexString
 
     before(async function () {
-      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
+      contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        maxPageSize,
+        environment
+      })
       await contractInteractor.init()
       provider.reset()
       const nonce = await web3.eth.getTransactionCount('0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc')
@@ -202,7 +225,13 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: pm.address
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      const contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        deployment,
+        maxPageSize,
+        environment
+      })
       await contractInteractor._resolveDeployment()
       const deploymentOut = contractInteractor.getDeployment()
       assert.equal(deploymentOut.paymasterAddress, pm.address)
@@ -216,7 +245,13 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: constants.ZERO_ADDRESS
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      const contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        deployment,
+        maxPageSize,
+        environment
+      })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -225,7 +260,13 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = {
         paymasterAddress: sm.address
       }
-      const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      const contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        deployment,
+        maxPageSize,
+        environment
+      })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -249,33 +290,74 @@ contract('ContractInteractor', function (accounts) {
   })
 
   describe('#splitRange', () => {
-    const contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
+    const contractInteractor = new ContractInteractor({
+      provider,
+      logger,
+      maxPageSize,
+      environment
+    })
     it('split 1', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 6, 1),
-        [{ fromBlock: 1, toBlock: 6 }])
+        [{
+          fromBlock: 1,
+          toBlock: 6
+        }])
     })
     it('split 2', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 6, 2),
-        [{ fromBlock: 1, toBlock: 3 }, { fromBlock: 4, toBlock: 6 }])
+        [{
+          fromBlock: 1,
+          toBlock: 3
+        }, {
+          fromBlock: 4,
+          toBlock: 6
+        }])
     })
     it('split 2 odd', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 7, 2),
-        [{ fromBlock: 1, toBlock: 4 }, { fromBlock: 5, toBlock: 7 }])
+        [{
+          fromBlock: 1,
+          toBlock: 4
+        }, {
+          fromBlock: 5,
+          toBlock: 7
+        }])
     })
     it('split 3', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 9, 3),
-        [{ fromBlock: 1, toBlock: 3 }, { fromBlock: 4, toBlock: 6 }, { fromBlock: 7, toBlock: 9 }])
+        [{
+          fromBlock: 1,
+          toBlock: 3
+        }, {
+          fromBlock: 4,
+          toBlock: 6
+        }, {
+          fromBlock: 7,
+          toBlock: 9
+        }])
     })
 
     it('split 3 odd', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 10, 3),
-        [{ fromBlock: 1, toBlock: 4 }, { fromBlock: 5, toBlock: 8 }, { fromBlock: 9, toBlock: 10 }])
+        [{
+          fromBlock: 1,
+          toBlock: 4
+        }, {
+          fromBlock: 5,
+          toBlock: 8
+        }, {
+          fromBlock: 9,
+          toBlock: 10
+        }])
     })
 
     it('split with exactly 1 block for last range', () => {
       const splitRange = contractInteractor.splitRange(100, 200, 21)
       assert.equal(splitRange.length, 21)
-      assert.deepEqual(splitRange[20], { fromBlock: 200, toBlock: 200 })
+      assert.deepEqual(splitRange[20], {
+        fromBlock: 200,
+        toBlock: 200
+      })
     })
   })
 
@@ -284,7 +366,13 @@ contract('ContractInteractor', function (accounts) {
     let contractInteractor: ContractInteractor
     before(async function () {
       const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
-      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        deployment,
+        maxPageSize,
+        environment
+      })
       await contractInteractor.init()
       provider.reset()
     })
@@ -292,7 +380,10 @@ contract('ContractInteractor', function (accounts) {
     it('should split requested events window into necessary number of parts', async function () {
       // from 100 to 200 is actually 101 blocks, with max page size of 5 it is 21 queries
       const expectedGetLogsCalls = 21
-      await contractInteractor.getPastEventsForHub([], { fromBlock: 100, toBlock: 200 })
+      await contractInteractor.getPastEventsForHub([], {
+        fromBlock: 100,
+        toBlock: 200
+      })
       const getLogsAfter = provider.methodsCount.get('eth_getLogs')
       assert.equal(getLogsAfter, expectedGetLogsCalls)
     })
@@ -315,7 +406,10 @@ contract('ContractInteractor', function (accounts) {
         })
       })
       it('should break large request into multiple chunks', async () => {
-        const ret = await contractInteractor.getPastEventsForHub([], { fromBlock: 1, toBlock: 300 })
+        const ret = await contractInteractor.getPastEventsForHub([], {
+          fromBlock: 1,
+          toBlock: 300
+        })
 
         assert.equal(ret.length, 300)
         assert.equal(ret[0].event, 'event1-1-75')
@@ -331,7 +425,12 @@ contract('ContractInteractor', function (accounts) {
     let gsnTransactionDetails: GsnTransactionDetails
 
     before(async function () {
-      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
+      contractInteractor = new ContractInteractor({
+        provider,
+        logger,
+        maxPageSize,
+        environment
+      })
       await contractInteractor.init()
       sinon.stub(contractInteractor.web3.eth, 'estimateGas').resolves(originalGasEstimation)
     })

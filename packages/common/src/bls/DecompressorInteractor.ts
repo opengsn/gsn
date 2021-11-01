@@ -1,5 +1,5 @@
 import BN from 'bn.js'
-import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
+import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { encode, List } from 'rlp'
 import { toBN } from 'web3-utils'
 
@@ -137,7 +137,7 @@ export class CacheDecoderInteractor {
    * @param relayRequest - a raw {@link RelayRequest} to compress, except for method data
    * @param compressedData - an already compressed method data that will be included as-is
    */
-  async compressRelayRequest (relayRequest: RelayRequest, compressedData: PrefixedHexString): Promise<RelayRequestCachingResult> {
+  async compressRelayRequest (relayRequest: RelayRequest, compressedData?: PrefixedHexString): Promise<RelayRequestCachingResult> {
     const nonce = toBN(relayRequest.request.nonce)
     const paymaster = toBN(relayRequest.relayData.paymaster)
     const sender = await this.addressToId(relayRequest.request.from, SeparatelyCachedAddressTypes.eoa)
@@ -148,7 +148,12 @@ export class CacheDecoderInteractor {
     }
     const gasLimit = gasLimitBN.divn(10000)
     const calldataGas = toBN(relayRequest.relayData.transactionCalldataGasUsed)
-    const methodData = Buffer.from(relayRequest.request.data.replace('0x', ''), 'hex')
+    let methodData: Buffer
+    if (compressedData == null) {
+      methodData = toBuffer(relayRequest.request.data)
+    } else {
+      methodData = toBuffer(compressedData)
+    }
     const cacheDecoder = toBN(1) // use encodedData as-is
     const relayRequestElement = {
       nonce,
