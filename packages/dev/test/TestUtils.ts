@@ -280,7 +280,7 @@ export async function deployHub (
     penalizer,
     relayHubConfiguration)
 
-  const relayRegistrar = await RelayRegistrar.new(hub.address)
+  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
   await hub.setRegistrar(relayRegistrar.address)
 
   return hub

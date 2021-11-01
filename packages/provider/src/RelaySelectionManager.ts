@@ -65,11 +65,11 @@ export class RelaySelectionManager {
         return (raceResult.winner as RelayInfo)
       } else {
         const managerAddress = raceResult.winner.pingResponse.relayManagerAddress
-        this.logger.info(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
-        const events = await this.knownRelaysManager.getRelayInfoForManagers(new Set([managerAddress]))
-        if (events.length === 1) {
+        this.logger.debug(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(raceResult.winner.relayInfo)}`)
+        const event = await this.knownRelaysManager.getRelayInfoForManager(managerAddress)
+        if (event!=null) {
           // as preferred relay URL is not guaranteed to match the advertised one for the same manager, preserve URL
-          const relayInfo = events[0]
+          const relayInfo = event
           relayInfo.relayUrl = raceResult.winner.relayInfo.relayUrl
           return {
             pingResponse: raceResult.winner.pingResponse,

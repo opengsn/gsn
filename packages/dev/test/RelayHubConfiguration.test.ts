@@ -5,7 +5,7 @@ import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { deployHub, evmMine, evmMineMany } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
-import { defaultEnvironment, getEip712Signature } from '@opengsn/common/dist'
+import { constants, defaultEnvironment, getEip712Signature } from '@opengsn/common/dist'
 import {
   ForwarderInstance,
   PenalizerInstance,
@@ -16,6 +16,7 @@ import {
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { RelayRegistrarInstance } from "@opengsn/contracts";
 
 const { assert } = chai.use(chaiAsPromised)
 
@@ -24,6 +25,7 @@ const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub Configuration',
   function ([relayHubDeployer, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectOwner]) { // eslint-disable-line no-unused-vars
@@ -43,6 +45,7 @@ contract('RelayHub Configuration',
     const blocksForward = 10
 
     let relayHub: RelayHubInstance
+    let relayRegistrar: RelayRegistrarInstance
     let stakeManager: StakeManagerInstance
     let penalizer: PenalizerInstance
     let recipient: TestRecipientInstance
@@ -64,6 +67,7 @@ contract('RelayHub Configuration',
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address)
+      relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
       // Register hub's RelayRequest with forwarder, if not already done.
@@ -81,7 +85,7 @@ contract('RelayHub Configuration',
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayHub.registerRelayServer(0, pctRelayFee, '', { from: relayManager })
+      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, 0, pctRelayFee, '', { from: relayManager })
       encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
       relayRequest = {
         request: {

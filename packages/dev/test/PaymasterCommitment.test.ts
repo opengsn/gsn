@@ -13,9 +13,9 @@ import {
   StakeManagerInstance,
   TestRecipientInstance,
   ForwarderInstance,
-  TestPaymasterConfigurableMisbehaviorInstance
+  TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { constants, ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
@@ -30,6 +30,7 @@ const Penalizer = artifacts.require('Penalizer')
 const TestUtil = artifacts.require('TestUtil')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 interface PartialRelayRequest {
   request?: Partial<ForwardRequest>
@@ -106,6 +107,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let relayHubInstance: RelayHubInstance
+  let relayRegistrar: RelayRegistrarInstance
+
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterConfigurableMisbehaviorInstance
   let forwarderInstance: ForwarderInstance
@@ -120,6 +123,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
+    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
 
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
@@ -141,7 +145,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
 
     await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayHubInstance.registerRelayServer(baseRelayFee, pctRelayFee, 'url', { from: relayManager })
+    await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, baseRelayFee, pctRelayFee, 'url', { from: relayManager })
   })
 
   describe('paymaster commitments', function () {

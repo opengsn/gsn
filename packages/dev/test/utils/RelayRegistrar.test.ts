@@ -2,42 +2,20 @@ import { expect } from 'chai'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { AddressZero, HashZero } from 'ethers/constants'
 import '../utils/chaiHelper'
-
-function addr (n: number): string {
-  return '0x'.padEnd(42, n.toString())
-}
+import { cleanValue } from './chaiHelper'
 
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
-contract('#RelayRegistrar', function ([fromAddress]) {
+contract('#RelayRegistrar', function ([fromAddress, relay, relay2]) {
   let reg: RelayRegistrarInstance
-  const relay = addr(1)
-  const relay2 = addr(2)
 
+  let relay1block: number
   before(async () => {
-    reg = await RelayRegistrar.new(AddressZero)
-    await reg.registerRelayer(AddressZero, {
-      blockNumber: 1,
-      pctRelayFee: 2,
-      baseRelayFee: 3,
-      url: 'http://relay',
-      relayManager: relay
-    })
-    await reg.registerRelayer(AddressZero, {
-      blockNumber: 210,
-      pctRelayFee: 220,
-      baseRelayFee: 230,
-      url: 'http://relay20',
-      relayManager: relay2
-    })
-
-    await reg.registerRelayer(AddressZero, {
-      blockNumber: 21,
-      pctRelayFee: 22,
-      baseRelayFee: 23,
-      url: 'http://relay2',
-      relayManager: relay2
-    })
+    reg = await RelayRegistrar.new(AddressZero, true)
+    await reg.registerRelayServer(AddressZero, 1, 2, 'http://relay', { from: relay })
+    relay1block = await web3.eth.getBlockNumber()
+    await reg.registerRelayServer(AddressZero, 210, 220, 'http://relay20', { from: relay2 })
+    await reg.registerRelayServer(AddressZero, 21, 22, 'http://relay2', { from: relay2 })
   })
   it('#splitString, packString', async () => {
     expect(await reg.splitString('1')).to.eql(['0x31'.padEnd(66, '0'), HashZero, HashZero])
@@ -55,23 +33,26 @@ contract('#RelayRegistrar', function ([fromAddress]) {
 
   it('should get info', async () => {
     const info = await reg.getRelayInfo(relay)
-    expect(info.blockNumber).to.eql(1)
+    expect(info.baseRelayFee).to.eql(1)
+    expect(info.blockNumber).to.eql(relay1block)
   })
   it('should read list', async () => {
-    const { info, filled } = await reg.readValues(5) as any
+    const ret = await reg.readRelayInfos(0, 5) as any
+    let { info, filled } = ret
 
+    info = cleanValue(info)
+    // remove block number, to make the test deterministic..
+    info.forEach((item: any) => delete item.blockNumber)
     expect(info).to.eql([
       {
-        blockNumber: '21',
-        relayManager: '0x2222222222222222222222222222222222222222',
-        baseRelayFee: '23',
+        relayManager: relay2,
+        baseRelayFee: '21',
         pctRelayFee: '22',
         url: 'http://relay2'
       },
       {
-        blockNumber: '1',
-        relayManager: '0x1111111111111111111111111111111111111111',
-        baseRelayFee: '3',
+        relayManager: relay,
+        baseRelayFee: '1',
         pctRelayFee: '2',
         url: 'http://relay'
       }

@@ -48,6 +48,7 @@ export class RegistrationManager {
 
   isInitialized = false
   hubAddress: Address
+  registrarAddress: Address
 
   managerAddress: Address
   workerAddress: Address
@@ -124,6 +125,7 @@ export class RegistrationManager {
       this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
     }
 
+    this.registrarAddress = await this.contractInteractor.relayRegistrar.address
     if (this.lastMinedRegisterTransaction == null) {
       this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
@@ -240,8 +242,9 @@ export class RegistrationManager {
   }
 
   async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
+    const reginfo = await this.contractInteractor.getRegisteredRelays([this.managerAddress])
     const topics = address2topic(this.managerAddress)
-    const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
+    const registerEvents = await this.contractInteractor.getPastEventsForRegistrar([topics],
       {
         fromBlock: this.config.coldRestartLogsFromBlock
       },
@@ -380,7 +383,7 @@ export class RegistrationManager {
       gasLimit,
       signer: this.managerAddress,
       method: registerMethod,
-      destination: this.hubAddress,
+      destination: this.registrarAddress,
       creationBlockNumber: currentBlock
     }
     const { transactionHash } = await this.transactionManager.sendTransaction(details)

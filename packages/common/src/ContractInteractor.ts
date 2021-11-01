@@ -46,7 +46,13 @@ import { Contract, TruffleContract } from './LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
-import { ActiveManagerEvents, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
+import {
+  ActiveManagerEvents,
+  HubUnauthorized, RelayRegisteredEventInfo,
+  RelayServerRegistered,
+  RelayWorkersAdded,
+  StakeInfo, StakePenalized, StakeUnlocked
+} from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
@@ -98,7 +104,7 @@ export class ContractInteractor {
   penalizerInstance!: IPenalizerInstance
   versionRegistry!: IVersionRegistryInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
-  private relayRegistrar?: IRelayRegistrarInstance
+  relayRegistrar?: IRelayRegistrarInstance
   private readonly relayCallMethod: any
 
   readonly web3: Web3
@@ -254,12 +260,12 @@ export class ContractInteractor {
     const [stakeManagerAddress, penalizerAddress, relayRegistrarAddress] = await Promise.all([
       this._hubStakeManagerAddress(),
       this._hubPenalizerAddress(),
-      this._hubRelayRegistrarAddress().catch((e: any) => constants.ZERO_ADDRESS) // old RelayHub doesn't have registrar
+      this._hubRelayRegistrarAddress()
     ])
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.stakeManagerAddress = stakeManagerAddress
     this.deployment.penalizerAddress = penalizerAddress
-    this.deployment.relayRegistrarAddress = relayRegistrarAddress?.toLowerCase() === constants.ZERO_ADDRESS ? undefined : relayRegistrarAddress
+    this.deployment.relayRegistrarAddress = relayRegistrarAddress
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -300,10 +306,6 @@ export class ContractInteractor {
     if (this.deployment.relayRegistrarAddress != null) {
       this.relayRegistrar = await this._createRelayRegistrar(this.deployment.relayRegistrarAddress)
     }
-  }
-
-  hasRelayRegistrar (): boolean {
-    return this.deployment.relayRegistrarAddress != null
   }
 
   // must use these options when creating Transaction object
@@ -498,6 +500,10 @@ export class ContractInteractor {
 
   async getPastEventsForHub (extraTopics: string[], options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.relayHubInstance.contract, names, extraTopics, options)
+  }
+
+  async getPastEventsForRegistrar (extraTopics: string[], options: PastEventOptions, names: EventName[] = [RelayServerRegistered]): Promise<EventData[]> {
+    return await this._getPastEventsPaginated(this.relayRegistrar?.contract, names, extraTopics, options)
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
@@ -888,8 +894,8 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
   async getRegisterRelayMethod (baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
-    const hub = this.relayHubInstance
-    return hub.contract.methods.registerRelayServer(baseRelayFee, pctRelayFee, url)
+    const registrar = this.relayRegistrar
+    return registrar?.contract.methods.registerRelayServer(constants.ZERO_ADDRESS, baseRelayFee, pctRelayFee, url)
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
@@ -984,14 +990,67 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return this.penalizerInstance.address
   }
 
-  // get registered relayers, bypassing the events
-  async getRegisteredRelays (): Promise<Array<{ relayManager: string, baseRelayFee: BN, pctRelayFee: BN, url: string }> | null> {
+  /**
+   * discover registered relays
+   * @param subset if set, then filter only to these relays
+   */
+  async getRegisteredRelays (subset?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
+    const infoFromStorage = await this.getRegisteredRelaysFromRegistrar()
+    if (infoFromStorage != null) {
+      return infoFromStorage.filter(info => subset?.length === 0 || subset?.includes(info.relayManager))
+    } else {
+      return await this.getRegisteredRelaysFromEvents(subset, fromBlock)
+    }
+  }
+
+  async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
+    // each topic in getPastEvent is either a string or array-of-strings, to search for all.
+    const subsetManagersTopics = subsetManagers?.map(address2topic) as any as string
+    const [registerEvents, unregisterEvents] = await Promise.all([
+      this.getPastEventsForRegistrar([subsetManagersTopics],
+        { fromBlock },
+        [RelayServerRegistered]),
+
+      this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [subsetManagersTopics], { fromBlock })
+    ])
+    // we don't check event order: removed relayer can't be re-registered, so we simply ignore any "register" of a relayer that was ever removed/unauthorized/penalized
+    const removed = new Set(unregisterEvents.map(event => event.returnValues.relayManager))
+    const relaySet: { [relayManager: string]: RelayRegisteredEventInfo } = {}
+    registerEvents
+      .filter(event => !removed.has(event.returnValues.relayManager))
+      .map(event => {
+        const { relayManager, pctRelayFee, baseRelayFee, url } = event.returnValues
+        const ret: RelayRegisteredEventInfo = {
+          relayManager, pctRelayFee, baseRelayFee, relayUrl: url
+        }
+        return ret
+      })
+      .forEach(info => {
+        relaySet[info.relayManager] = info
+      })
+    return Object.values(relaySet)
+  }
+
+  // get registered relayers from registrar
+  // (output format matches event info)
+  async getRegisteredRelaysFromRegistrar (): Promise<null | RelayRegisteredEventInfo[]> {
     if (this.relayRegistrar == null) {
       return null
     }
-    // TODO: typechain broken return value types.
-    const { info: relayInfos, filled } = await this.relayRegistrar?.readValues(100) as any
-    return relayInfos.slice(0, filled)
+    // TODO: using "any" because of typechain broken return value types.
+    const ret = await this.relayRegistrar?.readRelayInfos(0, 100)
+    const relayInfos = ret[0]
+    const filled = parseInt(ret[1].toString())
+
+    return relayInfos.slice(0, filled).map(info => {
+      const ret: RelayRegisteredEventInfo = {
+        relayManager: info.relayManager,
+        pctRelayFee: info.pctRelayFee.toString(),
+        baseRelayFee: info.baseRelayFee.toString(),
+        relayUrl: info.url
+      }
+      return ret
+    })
   }
 
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {

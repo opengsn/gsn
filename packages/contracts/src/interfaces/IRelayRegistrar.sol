@@ -16,14 +16,31 @@ interface IRelayRegistrar {
         string url;
     }
 
-    function registerRelayer( address prevItem, RelayInfo calldata info) external;
+    /// Emitted when a relay server registers or updates its details
+    /// Looking at these events lets a client discover relay servers
+    event RelayServerRegistered(
+        address indexed relayManager,
+        uint256 baseRelayFee,
+        uint256 pctRelayFee,
+        string relayUrl
+    );
+
+    /**
+     * called by relay server to register (or re-register) itself.
+     * The relayer must be staked in the RelayHub
+     * @param prevItem - output of getPrev(relayServerAddress). Can be left as zero, but might require more on-chain calculation
+     */
+    function registerRelayServer(address prevItem, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
 
     //TODO: wrapper for countItems. used only for (type) testing. to be removed.
     function countRelays() external view returns (uint);
 
+    // does this registrar save state into storage? false means only events are emitted.
+    function usingSavedState() external returns (bool);
+
     function getRelayInfo(address relayManager) external view returns (RelayInfo memory info);
 
-    function readValues(uint maxCount) external view returns (RelayInfo[] memory info, uint filled);
+    function readRelayInfos(uint oldestBlock, uint maxCount) external view returns (RelayInfo[] memory info, uint filled);
 
-    function readValuesFrom(address from, uint maxCount) external view returns (RelayInfo[] memory ret, uint filled, address nextFrom);
+    function readRelayInfosFrom(address from, uint oldestBlock, uint maxCount) external view returns (RelayInfo[] memory ret, uint filled, address nextFrom);
 }

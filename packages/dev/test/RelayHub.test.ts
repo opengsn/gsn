@@ -20,6 +20,8 @@ import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
+import { RelayRegistrarInstance } from "@opengsn/contracts";
+import { constants } from "@opengsn/common";
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -30,6 +32,7 @@ const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythi
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
@@ -48,6 +51,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let relayHubInstance: RelayHubInstance
+  let relayRegistrar: RelayRegistrarInstance
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterEverythingAcceptedInstance
   let forwarderInstance: ForwarderInstance
@@ -59,6 +63,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
+    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
+
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
@@ -275,7 +281,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()
 
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-        await relayHubInstance.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
+        await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, baseRelayFee, pctRelayFee, url, { from: relayManager })
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
         relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(

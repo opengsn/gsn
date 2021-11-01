@@ -1,21 +1,16 @@
-import { addresses2topics } from '@opengsn/common/dist/Utils'
-
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayFailureInfo } from '@opengsn/common/dist/types/RelayFailureInfo'
 import { Address, AsyncScoreCalculator, RelayFilter } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 
 import {
-  HubUnauthorized,
   RelayInfoUrl,
   RelayRegisteredEventInfo,
-  RelayServerRegistered,
-  StakePenalized,
-  StakeUnlocked,
   isInfoFromEvent
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { isSameAddress } from "@opengsn/common";
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -46,7 +41,7 @@ export class KnownRelaysManager {
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
   public preferredRelayers: RelayInfoUrl[] = []
-  public allRelayers: RelayInfoUrl[] = []
+  public allRelayers: RelayRegisteredEventInfo[] = []
 
   constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
     this.config = config
@@ -58,95 +53,27 @@ export class KnownRelaysManager {
 
   async refresh (): Promise<void> {
     this._refreshFailures()
-    const recentlyActiveRelayManagers = await this._fetchRecentlyActiveRelayManagers()
-    this.preferredRelayers = this.config.preferredRelays.map(relayUrl => { return { relayUrl } })
-    this.allRelayers = await this.getRelayInfoForManagers(recentlyActiveRelayManagers)
+    this.preferredRelayers = this.config.preferredRelays.map(relayUrl => {
+      return {relayUrl}
+    })
+    this.allRelayers = await this.getRelayInfoForManagers()
   }
 
-  async getRelayInfoForManagers (relayManagers: Set<Address>|null): Promise<RelayRegisteredEventInfo[]> {
-    const relayInfos = await this.contractInteractor.getRegisteredRelays()
-    if (relayInfos != null) {
-      console.log('== using relayInfos from registrar')
-      // TODO: update the registrar with penalized and unregistered relays.
-      let infos = relayInfos.map((info: any) => ({
-        relayManager: info.relayManager,
-        baseRelayFee: info.baseRelayFee.toString(),
-        pctRelayFee: info.pctRelayFee.toString(),
-        relayUrl: info.url
-      }))
-      if (relayManagers != null) {
-        infos = infos.filter(info => relayManagers.has(info.relayManager.toLowerCase()))
-      }
-
-      return infos.filter(this.relayFilter)
-    }
-
-    // As 'topics' are used as 'filter', having an empty set results in querying all register events.
-    if (relayManagers == null || relayManagers.size === 0) {
-      return []
-    }
-    const toBlock = await this.contractInteractor.getBlockNumber()
-    const fromBlock = Math.max(0, toBlock - this.config.relayRegistrationLookupBlocks)
-
-    const topics = addresses2topics(Array.from(relayManagers))
-    const relayServerRegisteredEvents = await this.contractInteractor.getPastEventsForHub(topics, { fromBlock }, [RelayServerRegistered])
-    const relayManagerExitEvents = await this.contractInteractor.getPastEventsForStakeManager([StakeUnlocked, HubUnauthorized, StakePenalized], topics, { fromBlock })
-
-    this.logger.info(`== getRelayInfoForManagers: found ${relayServerRegisteredEvents.length} unique RelayServerRegistered events`)
-    if (relayServerRegisteredEvents.length === 0) {
-      this.logger.error(`Did not find any RelayServerRegistered Event for any of ${relayManagers.size} relay managers! {fromBlock: ${fromBlock}, toBlock: ${toBlock}}`)
-    }
-
-    const mergedEvents = [...relayManagerExitEvents, ...relayServerRegisteredEvents].sort((a, b) => {
-      const blockNumberA = a.blockNumber
-      const blockNumberB = b.blockNumber
-      const transactionIndexA = a.transactionIndex
-      const transactionIndexB = b.transactionIndex
-      if (blockNumberA === blockNumberB) {
-        return transactionIndexA - transactionIndexB
-      }
-      return blockNumberA - blockNumberB
-    })
-    const activeRelays = new Map<Address, RelayRegisteredEventInfo>()
-    mergedEvents.forEach(event => {
-      const args = event.returnValues
-      if (event.event === RelayServerRegistered) {
-        activeRelays.set(args.relayManager, args as RelayRegisteredEventInfo)
-      } else {
-        activeRelays.delete(args.relayManager)
-      }
-    })
-    const origRelays = Array.from(activeRelays.values())
-    return origRelays.filter(this.relayFilter)
+  getRelayInfoForManager (address: string): RelayRegisteredEventInfo|undefined {
+    return this.allRelayers.find(info => isSameAddress(info.relayManager, address))
   }
 
-  async _fetchRecentlyActiveRelayManagers (): Promise<Set<Address>|null> {
-    const foundRelayManagers: Set<Address> = new Set()
-
-    if (this.contractInteractor.hasRelayRegistrar()) {
-      return null
-    }
+  async getRelayInfoForManagers (): Promise<RelayRegisteredEventInfo[]> {
 
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayEvents: any[] = await this.contractInteractor.getPastEventsForHub([], {
-      fromBlock,
-      toBlock
-    }, undefined)
+    const relayInfos = await this.contractInteractor.getRegisteredRelays([], fromBlock)
 
-    this.logger.info(`fetchRelaysAdded: found ${relayEvents.length} events`)
-    relayEvents.forEach((event: any) => {
-      // TODO: remove relay managers who are not staked
-      // if (event.event === 'RelayRemoved') {
-      //   foundRelays.delete(event.returnValues.relay)
-      // } else {
-      foundRelayManagers.add(event.returnValues.relayManager)
-    })
+    this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
-    this.logger.info(`fetchRelaysAdded: found unique relays: ${JSON.stringify(Array.from(foundRelayManagers.values()))}`)
     this.latestScannedBlock = toBlock
-    return foundRelayManagers
+    return relayInfos
   }
 
   _refreshFailures (): void {

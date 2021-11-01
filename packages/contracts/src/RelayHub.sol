@@ -65,23 +65,17 @@ contract RelayHub is IRelayHub, Ownable {
         setConfiguration(_config);
     }
 
-    function setRegistrar(address _relayRegistrar) public {
+    function setRegistrar(address _relayRegistrar) public onlyOwner {
+        require(relayRegistrar == address(0), "relayRegistrar already set");
         relayRegistrar = _relayRegistrar;
     }
 
-    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
-        address relayManager = msg.sender;
+    function verifyCanRegister(address relayManager) external view override {
         require(
             isRelayManagerStaked(relayManager),
             "relay manager not staked"
         );
         require(workerCount[relayManager] > 0, "no relay workers");
-        //TODO: passing "address(0)" works only the first time. after that, need the "prev" value in the list.
-        // need to add it as parameter, since it can become expensive to calculate on-chain.
-        if (relayRegistrar != address(0)) {
-            IRelayRegistrar(relayRegistrar).registerRelayer(address(0), IRelayRegistrar.RelayInfo(block.number, relayManager, baseRelayFee, pctRelayFee, url));
-        }
-        emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
     }
 
     function addRelayWorkers(address[] calldata newRelayWorkers) external override {
