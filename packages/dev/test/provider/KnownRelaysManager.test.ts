@@ -208,6 +208,7 @@ contract('KnownRelaysManager 2', function (accounts) {
         stake: 1e18,
         url: 'asd',
         relayOwner: accounts[1],
+        relaylog: process.env.relaylog,
         ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
       const maxPageSize = Number.MAX_SAFE_INTEGER

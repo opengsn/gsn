@@ -72,7 +72,7 @@ export class KnownRelaysManager {
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
     this.latestScannedBlock = toBlock
-    return relayInfos
+    return relayInfos.filter(this.relayFilter)
   }
 
   _refreshFailures (): void {
