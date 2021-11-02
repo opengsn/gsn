@@ -46,6 +46,7 @@ const ProxyFactory = artifacts.require('ProxyFactory')
 const ProxyIdentity = artifacts.require('ProxyIdentity')
 const StakeManager = artifacts.require('StakeManager')
 const ProxyDeployingPaymaster = artifacts.require('ProxyDeployingPaymaster')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 // these are no longer exported
 export async function snapshot (): Promise<{ id: number, jsonrpc: string, result: string }> {
@@ -87,10 +88,14 @@ export async function deployHub (
   }
 
   // eslint-disable-next-line @typescript-eslint/return-await
-  return await RelayHub.new(
+  const hub = await RelayHub.new(
     stakeManager,
     penalizer,
     relayHubConfiguration)
+
+  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
+  await hub.setRegistrar(relayRegistrar.address)
+  return hub
 }
 
 contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {

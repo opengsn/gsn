@@ -6,7 +6,6 @@ import "./LRUList.sol";
 import "./MinLibBytes.sol";
 import "../interfaces/IRelayHub.sol";
 import "../interfaces/IRelayRegistrar.sol";
-import "hardhat/console.sol";
 
 /**
  * on-chain relayer registrar.
