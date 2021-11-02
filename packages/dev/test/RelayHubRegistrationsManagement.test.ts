@@ -9,7 +9,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub } from './TestUtils'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants } from "@opengsn/common";
+import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

@@ -43,8 +43,8 @@ import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { RelayRegistrarInstance } from "@opengsn/contracts";
-import { constants } from "@opengsn/common";
+import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

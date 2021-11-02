@@ -20,8 +20,8 @@ import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
-import { RelayRegistrarInstance } from "@opengsn/contracts";
-import { constants } from "@opengsn/common";
+import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { constants } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 

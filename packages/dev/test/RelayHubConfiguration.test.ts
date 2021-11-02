@@ -16,7 +16,7 @@ import {
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { RelayRegistrarInstance } from "@opengsn/contracts";
+import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const { assert } = chai.use(chaiAsPromised)
 

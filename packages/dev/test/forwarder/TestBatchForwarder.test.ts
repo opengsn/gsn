@@ -15,8 +15,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason } from '../TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { constants } from "@opengsn/common";
-import { RelayRegistrarContract } from "@opengsn/contracts";
+import { constants } from '@opengsn/common'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const StakeManager = artifacts.require('StakeManager')

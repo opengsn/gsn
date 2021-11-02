@@ -134,6 +134,8 @@ contract('RelaySelectionManager', function (accounts) {
             transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
         stubRaceToSuccess = sinon.stub(relaySelectionManager, '_raceToSuccess')
         stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
+
+        await knownRelaysManager.refresh()
       })
 
       it('should fill in the details if the relay was known only by URL', async function () {

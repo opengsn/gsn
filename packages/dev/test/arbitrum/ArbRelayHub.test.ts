@@ -11,7 +11,7 @@ import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
-import { RelayRegistrarInstance } from "@opengsn/contracts";
+import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const Forwarder = artifacts.require('Forwarder')
 const TestArbSys = artifacts.require('TestArbSys')
@@ -32,7 +32,7 @@ contract.skip('ArbRelayHub', function ([from, relayWorker, relayManager, relayOw
     stakeManager = await StakeManager.new(Number.MAX_SAFE_INTEGER)
     const testArbSys = await TestArbSys.new()
     arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, environments.arbitrum.relayHubConfiguration)
-    relayRegistrar = await RelayRegistrar.new(arbRelayHub.address,true)
+    relayRegistrar = await RelayRegistrar.new(arbRelayHub.address, true)
     await arbRelayHub.setRegistrar(relayRegistrar.address)
   })
 
@@ -67,7 +67,7 @@ contract.skip('ArbRelayHub', function ([from, relayWorker, relayManager, relayOw
       })
       await stakeManager.authorizeHubByOwner(relayManager, arbRelayHub.address, { from: relayOwner })
       await arbRelayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS,'0', '0', '', { from: relayManager })
+      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, '0', '0', '', { from: relayManager })
 
       relayRequest = {
         request: {
