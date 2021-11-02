@@ -104,7 +104,7 @@ export class ContractInteractor {
   penalizerInstance!: IPenalizerInstance
   versionRegistry!: IVersionRegistryInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
-  relayRegistrar?: IRelayRegistrarInstance
+  relayRegistrar!: IRelayRegistrarInstance
   private readonly relayCallMethod: any
 
   readonly web3: Web3
@@ -266,6 +266,7 @@ export class ContractInteractor {
     this.deployment.stakeManagerAddress = stakeManagerAddress
     this.deployment.penalizerAddress = penalizerAddress
     this.deployment.relayRegistrarAddress = relayRegistrarAddress
+    this.relayRegistrar = await this._createRelayRegistrar(relayRegistrarAddress)
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -285,8 +286,11 @@ export class ContractInteractor {
   }
 
   async _initializeContracts (): Promise<void> {
+    // TODO: do we need all this "differential" deployment ?
+    // any sense NOT to initialize some components, or NOT to read them all from the PM and then RH ?
     if (this.relayHubInstance == null && this.deployment.relayHubAddress != null) {
       this.relayHubInstance = await this._createRelayHub(this.deployment.relayHubAddress)
+      this.relayRegistrar = await this._createRelayRegistrar(await this.relayHubInstance.relayRegistrar())
     }
     if (this.paymasterInstance == null && this.deployment.paymasterAddress != null) {
       this.paymasterInstance = await this._createPaymaster(this.deployment.paymasterAddress)
@@ -302,9 +306,6 @@ export class ContractInteractor {
     }
     if (this.deployment.versionRegistryAddress != null) {
       this.versionRegistry = await this._createVersionRegistry(this.deployment.versionRegistryAddress)
-    }
-    if (this.deployment.relayRegistrarAddress != null) {
-      this.relayRegistrar = await this._createRelayRegistrar(this.deployment.relayRegistrarAddress)
     }
   }
 
@@ -587,7 +588,7 @@ export class ContractInteractor {
       const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
       try {
         // eslint-disable-next-line
-        for (const {fromBlock, toBlock} of rangeParts) {
+        for (const { fromBlock, toBlock } of rangeParts) {
           // this.logger.debug('Getting events from block ' + fromBlock.toString() + ' to ' + toBlock.toString())
           let attempts = 0
           while (true) {
@@ -1006,13 +1007,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
   async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
     // each topic in getPastEvent is either a string or array-of-strings, to search for all.
     const subsetManagersTopics = subsetManagers?.map(address2topic) as any as string
-    const [registerEvents, unregisterEvents] = await Promise.all([
-      this.getPastEventsForRegistrar([subsetManagersTopics],
-        { fromBlock },
-        [RelayServerRegistered]),
-
-      this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [subsetManagersTopics], { fromBlock })
-    ])
+    const registerEvents = await this.getPastEventsForRegistrar([subsetManagersTopics],
+      { fromBlock },
+      [RelayServerRegistered])
+    const unregisterEvents = await this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [subsetManagersTopics], { fromBlock })
     // we don't check event order: removed relayer can't be re-registered, so we simply ignore any "register" of a relayer that was ever removed/unauthorized/penalized
     const removed = new Set(unregisterEvents.map(event => event.returnValues.relayManager))
     const relaySet: { [relayManager: string]: RelayRegisteredEventInfo } = {}
@@ -1037,7 +1035,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     if (this.relayRegistrar == null) {
       return null
     }
-    // TODO: using "any" because of typechain broken return value types.
     const ret = await this.relayRegistrar?.readRelayInfos(0, 100)
     const relayInfos = ret[0]
     const filled = parseInt(ret[1].toString())

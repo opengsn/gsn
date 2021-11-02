@@ -10,7 +10,7 @@ import {
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { isSameAddress } from "@opengsn/common";
+import { isSameAddress } from '@opengsn/common'
 
 export const EmptyFilter: RelayFilter = (): boolean => {
   return true
@@ -54,7 +54,7 @@ export class KnownRelaysManager {
   async refresh (): Promise<void> {
     this._refreshFailures()
     this.preferredRelayers = this.config.preferredRelays.map(relayUrl => {
-      return {relayUrl}
+      return { relayUrl }
     })
     this.allRelayers = await this.getRelayInfoForManagers()
   }
@@ -64,7 +64,6 @@ export class KnownRelaysManager {
   }
 
   async getRelayInfoForManagers (): Promise<RelayRegisteredEventInfo[]> {
-
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 

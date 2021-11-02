@@ -48,7 +48,6 @@ export class RegistrationManager {
 
   isInitialized = false
   hubAddress: Address
-  registrarAddress: Address
 
   managerAddress: Address
   workerAddress: Address
@@ -125,7 +124,6 @@ export class RegistrationManager {
       this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
     }
 
-    this.registrarAddress = await this.contractInteractor.relayRegistrar.address
     if (this.lastMinedRegisterTransaction == null) {
       this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
@@ -383,7 +381,7 @@ export class RegistrationManager {
       gasLimit,
       signer: this.managerAddress,
       method: registerMethod,
-      destination: this.registrarAddress,
+      destination: this.contractInteractor.relayRegistrar!.address,
       creationBlockNumber: currentBlock
     }
     const { transactionHash } = await this.transactionManager.sendTransaction(details)

@@ -455,7 +455,7 @@ contract('RelayClient', function (accounts) {
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
-      await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
+      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, 2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
         ownerAddress: relayOwner,
