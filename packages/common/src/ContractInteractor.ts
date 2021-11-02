@@ -290,7 +290,9 @@ export class ContractInteractor {
     // any sense NOT to initialize some components, or NOT to read them all from the PM and then RH ?
     if (this.relayHubInstance == null && this.deployment.relayHubAddress != null) {
       this.relayHubInstance = await this._createRelayHub(this.deployment.relayHubAddress)
-      this.relayRegistrar = await this._createRelayRegistrar(await this.relayHubInstance.relayRegistrar())
+      this.relayRegistrar = await this._createRelayRegistrar(await this.relayHubInstance.relayRegistrar().catch(e => {
+        throw new Error(`Invalid RelayHub at address ${this.relayHubInstance.address}`)
+      }))
     }
     if (this.paymasterInstance == null && this.deployment.paymasterAddress != null) {
       this.paymasterInstance = await this._createPaymaster(this.deployment.paymasterAddress)

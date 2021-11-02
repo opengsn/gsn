@@ -145,7 +145,7 @@ context('#ServerConfigParams', () => {
     it('should fail on no-contract relayhub address', async () => {
       const config = { relayHubAddress: addr(1) }
       await expectRevert(resolveServerConfig(config, provider),
-        'RelayHub: no contract at address 0x1111111111111111111111111111111111111111')
+        'Invalid RelayHub at address 0x1111111111111111111111111111111111111111')
     })
 
     it('should fail on missing hubid for VersionRegistry', async () => {
