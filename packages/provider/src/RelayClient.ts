@@ -35,6 +35,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
+import { removeNullValues } from '@opengsn/common'
 
 // forwarder requests are signed with expiration time.
 
@@ -446,7 +447,7 @@ export class RelayClient {
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     return {
       ...defaultGsnConfig,
-      ...config
+      ...removeNullValues(config)
     }
   }
 

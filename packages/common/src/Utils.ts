@@ -43,7 +43,9 @@ export function signatureRSV2Hex (r: BN | Buffer, s: BN | Buffer, v: number): st
 export function event2topic (contract: any, names: string[]): any {
   // for testing: don't crash on mockup..
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!contract.options || !contract.options.jsonInterface) { return names }
+  if (!contract.options || !contract.options.jsonInterface) {
+    return names
+  }
   return contract.options.jsonInterface
     .filter((e: any) => names.includes(e.name))
     // @ts-ignore
@@ -60,7 +62,9 @@ export function address2topic (address: string): string {
 
 // extract revert reason from a revert bytes array.
 export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string | null {
-  if (revertBytes == null) { return null }
+  if (revertBytes == null) {
+    return null
+  }
   if (!revertBytes.startsWith('0x08c379a0')) {
     if (throwOnError) {
       throw new Error('invalid revert bytes: ' + revertBytes)
@@ -252,4 +256,26 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
 
 export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
   return bufferToHex(Transaction.fromSerializedTx(toBuffer(signedTransaction), transactionOptions).hash())
+}
+
+// remove properties with null (or undefined) value
+// recursive - descend into inner objects
+// (does NOT handle inner arrays)
+export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
+  const c: any = {}
+  Object.assign(c, obj)
+
+  for (const k of Object.keys(c)) {
+    if (c[k] == null) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete c[k]
+    } else if (recursive) {
+      let val = c[k]
+      if (typeof val === 'object' && !Array.isArray(val) && !BN.isBN(val)) {
+        val = removeNullValues(val, recursive)
+      }
+      c[k] = val
+    }
+  }
+  return c
 }
