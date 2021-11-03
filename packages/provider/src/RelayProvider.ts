@@ -105,6 +105,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       }
       if (payload.method === 'eth_accounts') {
         this._getAccounts(payload, callback)
+        return
       }
     }
 
