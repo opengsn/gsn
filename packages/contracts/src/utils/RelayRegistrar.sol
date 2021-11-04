@@ -1,5 +1,5 @@
+//SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.6;
-//SPDX-License-Identifier: UNLICENSED
 /* solhint-disable no-inline-assembly */
 
 import "./LRUList.sol";
@@ -10,14 +10,10 @@ import "../interfaces/IRelayRegistrar.sol";
 /**
  * on-chain relayer registrar.
  * - keep a list of registered relayers (using registerRelayer).
- * - provide view functions to read the list of registered relayers (and filter out invalid oines
+ * - provide view functions to read the list of registered relayers (and filter out invalid ones)
  * - protect the list from spamming entries: only staked relayers are added.
  * - the list is an LRU, so can use "registered in past x blocks" policy
- * implementation issues:
- * - subclass must provide isRelayManagerStaked(address) method (available in IRelayHub) to
- *   filter out invalid relays
  */
-
 contract RelayRegistrar is LRUList, IRelayRegistrar {
     using MinLibBytes for bytes;
 
@@ -30,13 +26,13 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
 
     mapping(address => RelayStorageInfo) public values;
 
-    bool public immutable override usingSavedState;
+    bool public immutable override isUsingStorageRegistry;
 
     IRelayHub public immutable relayHub;
 
-    constructor(IRelayHub _relayHub, bool _usingSavedState) {
+    constructor(IRelayHub _relayHub, bool _isUsingStorageRegistry) {
         relayHub = _relayHub;
-        usingSavedState = _usingSavedState;
+        isUsingStorageRegistry = _isUsingStorageRegistry;
     }
 
     function registerRelayServer(address prevItem, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
@@ -45,12 +41,12 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
             relayHub.verifyCanRegister(relayManager);
         }
         emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
-        if (usingSavedState) {
-            _registerRelay(prevItem, relayManager, baseRelayFee, pctRelayFee, url);
+        if (isUsingStorageRegistry) {
+            storeRelayServerRegistration(prevItem, relayManager, baseRelayFee, pctRelayFee, url);
         }
     }
 
-    function _registerRelay(address prevItem, address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
+    function storeRelayServerRegistration(address prevItem, address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
         if (prevItem == address(0)) {
             //try to find prevItem. can be expensive if the list is large.
             prevItem = getPrev(relayManager);
@@ -101,10 +97,6 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
                 break;
             }
         }
-    }
-
-    function countRelays() external view override returns (uint) {
-        return countItems();
     }
 
     function splitString(string calldata str) public pure returns (bytes32[3] memory parts) {

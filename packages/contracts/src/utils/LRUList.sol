@@ -1,5 +1,5 @@
+//SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.6;
-//SPDX-License-Identifier: UNLICENSED
 
 /**
  * LRU List: keep least-recently added item at the top of the list.
@@ -22,11 +22,11 @@ contract LRUList {
         next[head] = head;
     }
 
-    //item must be either completely new, (with prev=address(0), (and get added at the head of the list)
-    // or already in the list, where next(prev)==addr (and will be moved to the head of the list)
-    // use view-function helper: prevItem = contract.prev(addr)
-    // move the given address to the top of the list.
-    // if item is new, i
+    /**
+     * add new item at the top of the list, or move existing item to the top of the list.
+     * @param addr item to add/move
+     * @param prevItem - address(0) for new item, getPrev(addr) for existing item.
+     */
     function moveToTop(address addr, address prevItem) internal {
         address head = address(this);
         if (prevItem == address(0)) {
@@ -106,12 +106,14 @@ contract LRUList {
     }
 
 
-    //scan list in chunks
-    // item - the item to find the predecessor of.
-    // from - the first address to lookup from. initialize to "this" on first call.
-    // scanCount - max calls to attempt
-    // returns: (ret,null) - "ret" is the predecessor of "item"
-    //      (null,nextFrom) - didn't find result. repeat calling this method with (item,nextFrom,count)
+    /**
+     * scan list in chunks
+     * @param item  - the item to find the predecessor of.
+     * from - the first address to lookup from. initialize to "this" on first call.
+     * scanCount - max calls to attempt
+     * @return ret - the found item, or null if not found.
+     * @return nextFrom - in case ret==null, where to start the next call by calling this method with (item,nextFrom,count)
+    */
     function prevFrom(address item, address from, uint scanCount) public view returns (address ret, address nextFrom) {
         require(next[item] != address(0), "item not in list");
         address p = from;

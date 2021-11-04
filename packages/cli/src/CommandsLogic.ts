@@ -357,7 +357,6 @@ export class CommandsLogic {
       arguments: [rInstance.options.address, true]
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
 
-    // console.log('cur reg\'rar', await rInstance.methods.relayRegistrar().call(),' new reg', rrInstance.options.address)
     if (!isSameAddress(await rInstance.methods.relayRegistrar().call(), rrInstance.options.address)) {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }

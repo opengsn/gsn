@@ -236,15 +236,9 @@ export class ContractInteractor {
     const [
       relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
-      this.paymasterInstance.getHubAddr().catch((e: Error) => {
-        throw new Error(`Not a paymaster contract: ${e.message}`)
-      }),
-      this.paymasterInstance.trustedForwarder().catch((e: Error) => {
-        throw new Error(`paymaster has no trustedForwarder(): ${e.message}`)
-      }),
-      this.paymasterInstance.versionPaymaster().catch((e: Error) => {
-        throw new Error(`Not a paymaster contract: ${e.message}`)
-      }).then((version: string) => {
+      this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
+      this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
+      this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
         this._validateVersion(version, 'Paymaster')
         return version
       })
@@ -266,7 +260,6 @@ export class ContractInteractor {
     this.deployment.stakeManagerAddress = stakeManagerAddress
     this.deployment.penalizerAddress = penalizerAddress
     this.deployment.relayRegistrarAddress = relayRegistrarAddress
-    this.relayRegistrar = await this._createRelayRegistrar(relayRegistrarAddress)
   }
 
   async _validateCompatibility (): Promise<void> {
@@ -506,7 +499,7 @@ export class ContractInteractor {
   }
 
   async getPastEventsForRegistrar (extraTopics: string[], options: PastEventOptions, names: EventName[] = [RelayServerRegistered]): Promise<EventData[]> {
-    return await this._getPastEventsPaginated(this.relayRegistrar?.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(this.relayRegistrar.contract, names, extraTopics, options)
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
@@ -798,9 +791,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
-    if (!this.web3.utils.isAddress(address)) {
-      throw new Error(exceptionTitle + ' ' + address)
-    }
+    if (!this.web3.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
   }
 
   async getCode (address: string): Promise<string> {
@@ -1031,24 +1022,25 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return Object.values(relaySet)
   }
 
-  // get registered relayers from registrar
-  // (output format matches event info)
+  /**
+   * get registered relayers from registrar
+   * (output format matches event info)
+   */
   async getRegisteredRelaysFromRegistrar (): Promise<null | RelayRegisteredEventInfo[]> {
     if (this.relayRegistrar == null) {
       return null
     }
-    const ret = await this.relayRegistrar?.readRelayInfos(0, 100)
+    const ret = await this.relayRegistrar.readRelayInfos(0, 100)
     const relayInfos = ret[0]
     const filled = parseInt(ret[1].toString())
 
     return relayInfos.slice(0, filled).map(info => {
-      const ret: RelayRegisteredEventInfo = {
+      return {
         relayManager: info.relayManager,
         pctRelayFee: info.pctRelayFee.toString(),
         baseRelayFee: info.baseRelayFee.toString(),
         relayUrl: info.url
       }
-      return ret
     })
   }
 

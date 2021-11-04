@@ -65,7 +65,8 @@
     "lerna-run-test-only-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-only'",
     "verdaccio-start": "verdaccio --config verdaccio.yaml",
     "verdaccio-clean": "rm -rf verdaccio",
-    "verdaccio-clean-opengsn": "rm -rf verdaccio/@opengsn"
+    "verdaccio-clean-opengsn": "rm -rf verdaccio/@opengsn",
+    "create-all-deps": "jq '.dependencies,.devDependencies' packages/*/package.json |sort  -u > all.deps"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "0.5.5",

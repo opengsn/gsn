@@ -1,5 +1,5 @@
+//SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.6;
-//SPDX-License-Identifier: UNLICENSED
 
 /**
  * on-chain registrar for all registered relayManagers.
@@ -32,11 +32,12 @@ interface IRelayRegistrar {
      */
     function registerRelayServer(address prevItem, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
 
-    //TODO: wrapper for countItems. used only for (type) testing. to be removed.
-    function countRelays() external view returns (uint);
-
-    // does this registrar save state into storage? false means only events are emitted.
-    function usingSavedState() external returns (bool);
+    /**
+     * does this registrar save state into storage?
+     * @return false only events are used for registration
+     *  true keep registry in storage, in addition to events
+     */
+    function isUsingStorageRegistry() external returns (bool);
 
     function getRelayInfo(address relayManager) external view returns (RelayInfo memory info);
 
