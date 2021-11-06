@@ -395,10 +395,10 @@ contract('ContractInteractor', function (accounts) {
       await relayReg.registerRelayServer(AddressZero, 20, 21, 'url2', { from: accounts[2] })
     })
 
-    it('should get matching numeric return value', async () => {
-      expect(await lightreg.countRelays())
-        .to.deep.equal(await relayReg.countRelays())
-    })
+    // it('should get matching numeric return value', async () => {
+    //   expect(await lightreg.countRelays())
+    //     .to.deep.equal(await relayReg.countRelays())
+    // })
     it('should get matching returned struct', async () => {
       expect(await lightreg.getRelayInfo(accounts[1]))
         .to.eql(await relayReg.getRelayInfo(accounts[1]))
