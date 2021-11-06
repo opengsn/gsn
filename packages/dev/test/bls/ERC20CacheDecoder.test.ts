@@ -2,8 +2,8 @@ import { HttpProvider } from 'web3-core'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import { ERC20CacheDecoderInstance, TestTokenInstance } from '@opengsn/contracts'
-import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/DecompressorInteractor'
-import { constants } from '@opengsn/common'
+import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { constants, GSNBatchingContractsDeployment } from '@opengsn/common'
 
 const TestToken = artifacts.require('TestToken')
 const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
@@ -20,7 +20,9 @@ contract('ERC20CacheDecoder', function ([destination]: string[]) {
   before(async function () {
     testToken = await TestToken.new()
     erc20CacheDecoder = await ERC20CacheDecoder.new()
-    cacheDecodersInteractor = await new CacheDecoderInteractor({ provider: web3.currentProvider as HttpProvider })
+    // @ts-ignore
+    const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
+    cacheDecodersInteractor = await new CacheDecoderInteractor({ provider: web3.currentProvider as HttpProvider, batchingContractsDeployment })
       .init({
         decompressorAddress: constants.ZERO_ADDRESS,
         erc20cacheDecoder: erc20CacheDecoder.address

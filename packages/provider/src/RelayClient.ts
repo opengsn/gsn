@@ -96,6 +96,14 @@ export interface GSNContractsDeploymentResolvedForRequest {
   relayHubAddress: Address
 }
 
+/**
+ * This data can later be used by the BatchRelayProvider to optimize creation of Transaction Receipts
+ */
+export interface SubmittedRelayRequestInfo {
+  submissionBlock: number
+  validUntil: string
+}
+
 export class RelayClient {
   readonly emitter = new EventEmitter()
   config!: GSNConfig
@@ -106,7 +114,10 @@ export class RelayClient {
   logger!: LoggerInterface
   initializingPromise?: Promise<void>
 
+  // TODO: no protection against any kind of race conditions; rethink!
   protected auditPromises: Array<Promise<AuditResponse>> = []
+
+  submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
 
   constructor (
     rawConstructorInput: GSNUnresolvedConstructorInput
@@ -282,17 +293,18 @@ export class RelayClient {
     this.emit(new GsnValidateRequestEvent())
     const { error: validationError } = await this._validateRequestBeforeSending(httpRequest)
     if (validationError != null) { return { error: validationError } }
+    const relayRequestID = getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature)
     const {
       hexTransaction,
       transaction,
       error: requestError
-    } = await this._sendRelayRequestToServer(httpRequest, relayInfo)
+    } = await this._sendRelayRequestToServer(relayRequestID, httpRequest, relayInfo)
     if (requestError != null) { return { error: requestError } }
     const { error: callbackError } = await this._onTransactionSentToServer(relayInfo, httpRequest, transaction, hexTransaction)
     if (callbackError != null) { return { error: callbackError } }
     this.emit(new GsnRelayerResponseEvent(true))
     return {
-      relayRequestID: getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature),
+      relayRequestID,
       transaction
     }
   }
@@ -364,9 +376,11 @@ export class RelayClient {
     return {}
   }
 
-  async _sendRelayRequestToServer (httpRequest: RelayTransactionRequest, relayInfo: RelayInfo): Promise<RelayingAttempt> {
+  async _sendRelayRequestToServer (relayRequestID: string, httpRequest: RelayTransactionRequest, relayInfo: RelayInfo): Promise<RelayingAttempt> {
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
+      const blockNumber = await this.dependencies.contractInteractor.getBlockNumberRightNow()
+      this._saveTransactionDetailsForLater(relayRequestID, blockNumber, httpRequest.relayRequest.request.validUntil)
       const hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
       const transaction = Transaction.fromSerializedTx(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
       return {
@@ -376,6 +390,16 @@ export class RelayClient {
     } catch (error) {
       return this._onRelayTransactionError(error, relayInfo, httpRequest)
     }
+  }
+
+  _saveTransactionDetailsForLater (
+    relayRequestID: string,
+    submissionBlock: number,
+    validUntil: string): void {
+    this.submittedRelayRequests.set(relayRequestID, {
+      validUntil,
+      submissionBlock
+    })
   }
 
   _onRelayTransactionError (error: Error, relayInfo: RelayInfo, httpRequest: RelayTransactionRequest): { error: Error } {

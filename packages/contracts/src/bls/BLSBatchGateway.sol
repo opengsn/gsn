@@ -61,7 +61,7 @@ contract BLSBatchGateway {
 
         for (uint256 i = 0; i < batch.relayRequests.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, bytes memory returnData) = address(relayHub).call(abi.encodeWithSelector(relayHub.relayCall.selector, batch.relayRequestIds[i], batch.metadata.maxAcceptanceBudget, batch.relayRequests[i], "", ""));
+            (bool success, bytes memory returnData) = address(relayHub).call(abi.encodeWithSelector(relayHub.relayCall.selector, batch.metadata.maxAcceptanceBudget, batch.relayRequests[i], "", ""));
             if (!success) {
                 // NO need to emit if paymaster rejected - there will be a 'TransactionRelayed' event for this item
 //                (bool paymasterAccepted,) = abi.decode(returnData, (bool, bytes));

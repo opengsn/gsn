@@ -15,6 +15,7 @@ import { RelayRequest } from '../EIP712/RelayRequest'
 import batchGatewayCacheDecoder from '../interfaces/IBatchGatewayCacheDecoder.json'
 import erc20CacheDecoderAbi from '../interfaces/IERC20CacheDecoder.json'
 import { ContractInteractor } from '../ContractInteractor'
+import { GSNBatchingContractsDeployment } from '../GSNContractsDeployment'
 
 // all inputs must be a BN so they are RLP-encoded as values, not strings
 // gasLimit of 0 will be replaced with some on-chain hard-coded value for this methodSignature
@@ -103,13 +104,17 @@ export class CacheDecoderInteractor {
   private erc20cacheDecoder!: ERC20CacheDecoderInstance
 
   private readonly cachingGasConstants!: CachingGasConstants
-
   private readonly contractInteractor!: ContractInteractor
+
+  batchingContractsDeployment: GSNBatchingContractsDeployment
 
   constructor (_: {
     provider: Web3ProviderBaseInterface
+    batchingContractsDeployment: GSNBatchingContractsDeployment
   }) {
     this.provider = _.provider
+    this.batchingContractsDeployment = _.batchingContractsDeployment
+
     this.BatchGatewayCacheDecoder = TruffleContract({
       contractName: 'BatchGatewayCacheDecoder',
       abi: batchGatewayCacheDecoder

@@ -1,6 +1,6 @@
 import { toBN } from 'web3-utils'
 
-import { encodeBatch, RLPBatchCompressedInput } from '@opengsn/common/dist/bls/DecompressorInteractor'
+import { encodeBatch, RLPBatchCompressedInput } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 
 contract('BatchGatewayCacheDecoder', function () {
   const batchInput: RLPBatchCompressedInput = {

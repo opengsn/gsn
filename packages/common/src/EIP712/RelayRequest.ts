@@ -6,9 +6,17 @@ export interface RelayRequest {
   relayData: RelayData
 }
 
-export function cloneRelayRequest (relayRequest: RelayRequest): RelayRequest {
+// https://stackoverflow.com/a/51365037
+type RecursivePartial<T> = {
+  [P in keyof T]?:
+  T[P] extends (infer U)[] ? RecursivePartial<U>[] :
+    T[P] extends object ? RecursivePartial<T[P]> :
+      T[P];
+};
+
+export function cloneRelayRequest (relayRequest: RelayRequest, overrides: RecursivePartial<RelayRequest> = {}): RelayRequest {
   return {
-    request: { ...relayRequest.request },
-    relayData: { ...relayRequest.relayData }
+    request: Object.assign({}, relayRequest.request, overrides.request),
+    relayData: Object.assign({}, relayRequest.relayData, overrides.relayData)
   }
 }

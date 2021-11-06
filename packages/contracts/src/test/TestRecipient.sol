@@ -32,6 +32,8 @@ contract TestRecipient is BaseRelayRecipient {
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 msgValue, uint256 gasLeft, uint256 balance);
 
+    event SampleRecipientEmittedSomethingElse(string message);
+
     function emitMessage(string memory message) public payable returns (string memory) {
         uint256 gasLeft = gasleft();
         if (paymaster != address(0)) {
@@ -51,6 +53,11 @@ contract TestRecipient is BaseRelayRecipient {
 
     function emitMessageNoParams() public {
         emit SampleRecipientEmitted("Method with no parameters", _msgSender(), msg.sender, tx.origin, 0, gasleft(), address(this).balance);
+    }
+
+    function emitTwoMessages(string calldata message1, string calldata message2) public {
+        emit SampleRecipientEmitted(message1, _msgSender(), msg.sender, tx.origin, 0, gasleft(), address(this).balance);
+        emit SampleRecipientEmittedSomethingElse(message2);
     }
 
     //return (or revert) with a string in the given length

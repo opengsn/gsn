@@ -8,3 +8,10 @@ export interface GSNContractsDeployment {
   stakeManagerAddress?: Address
   versionRegistryAddress?: Address
 }
+
+export interface GSNBatchingContractsDeployment {
+  batchGateway: Address
+  batchGatewayCacheDecoder: Address
+  authorizationsRegistrar: Address
+  calldataDecoders: { [key: string]: Address }
+}

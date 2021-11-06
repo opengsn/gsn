@@ -11,7 +11,7 @@ import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
 import { InternalBLSKeypairType, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { ApprovalDataInterface, TypedApprovalData } from '@opengsn/common/dist/bls/TypedApprovalData'
-import { AuthorizationElement } from '@opengsn/common/dist/bls/DecompressorInteractor'
+import { AuthorizationElement } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString

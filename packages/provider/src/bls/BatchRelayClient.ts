@@ -1,7 +1,7 @@
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import {
-  GSNContractsDeploymentResolvedForRequest,
+  GSNContractsDeploymentResolvedForRequest, GSNUnresolvedConstructorInput,
   RelayClient, RelayingAttempt
 } from '../RelayClient'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
@@ -18,16 +18,18 @@ import {
   AuthorizationElement,
   CacheDecoderInteractor,
   TargetType
-} from '@opengsn/common/dist/bls/DecompressorInteractor'
-import { AccountManager } from '../AccountManager'
+} from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 
 export class BatchRelayClient extends RelayClient {
-  batchGateway: Address = '' // TODO
-  authorizationsRegistrar: Address = '' // TODO
+  cacheDecoderInteractor: CacheDecoderInteractor
 
-  // Account manager is passed to
-  accountManager!: AccountManager
-  cacheDecoderInteractor!: CacheDecoderInteractor
+  constructor (
+    rawConstructorInput: GSNUnresolvedConstructorInput,
+    cacheDecoderInteractor: CacheDecoderInteractor
+  ) {
+    super(rawConstructorInput)
+    this.cacheDecoderInteractor = cacheDecoderInteractor
+  }
 
   /**
    * In batching mode, client must use the gas price value the server has returned in a ping
@@ -54,7 +56,7 @@ export class BatchRelayClient extends RelayClient {
     const encodedRelayCall = this.dependencies.contractInteractor.encodeABI(asRelayCallAbi(httpRequestWithoutSignature))
 
     return {
-      from: this.batchGateway,
+      from: this.cacheDecoderInteractor.batchingContractsDeployment.batchGateway,
       to: this._getResolvedDeployment().relayHubAddress,
       gasPrice: toHex(httpRequest.relayRequest.relayData.gasPrice),
       gas: toHex(viewCallGasLimit),
@@ -83,9 +85,9 @@ export class BatchRelayClient extends RelayClient {
    */
   async _fillInComputedFieldsWithAuthorization (relayRequest: RelayRequest): Promise<AuthorizationElement | undefined> {
     let authorizationElement: AuthorizationElement | undefined
-    const authorizationIssued = await this.accountManager.authorizationIssued(relayRequest.request.from)
+    const authorizationIssued = await this.dependencies.accountManager.authorizationIssued(relayRequest.request.from)
     if (!authorizationIssued) {
-      authorizationElement = await this.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.authorizationsRegistrar)
+      authorizationElement = await this.dependencies.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.cacheDecoderInteractor.batchingContractsDeployment.authorizationsRegistrar)
     }
     const targetType = this._getTargetType(relayRequest.request.to)
     const compressedData = await this.cacheDecoderInteractor.compressAbiEncodedCalldata(targetType, relayRequest.request.data)
@@ -107,7 +109,7 @@ export class BatchRelayClient extends RelayClient {
   /**
    * Send transaction with batching REST API. Nothing to do with a 200 OK response so far.
    */
-  async _sendRelayRequestToServer (httpRequest: RelayTransactionRequest, relayInfo: RelayInfo): Promise<RelayingAttempt> {
+  async _sendRelayRequestToServer (relayRequestID: string, httpRequest: RelayTransactionRequest, relayInfo: RelayInfo): Promise<RelayingAttempt> {
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
       await this.dependencies.httpClient.relayTransactionInBatch(relayInfo.relayInfo.relayUrl, httpRequest)

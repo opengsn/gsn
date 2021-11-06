@@ -42,6 +42,7 @@ import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { _sanitizeAbiDecoderEvent } from '@opengsn/common'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -288,7 +289,7 @@ export class ServerTestEnvironment {
       throw new Error('Transaction Receipt not found')
     }
     const sender = overrideDetails.from ?? this.gasLess
-    const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(this.relayServer.registrationManager._parseEvent)
+    const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(_sanitizeAbiDecoderEvent)
     const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
     assert.exists(event1, 'SampleRecipientEmitted not found, maybe transaction was not relayed successfully')
     assert.equal(event1.args.message, 'hello world')

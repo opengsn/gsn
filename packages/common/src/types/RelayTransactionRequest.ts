@@ -3,7 +3,7 @@ import ow from 'ow'
 
 import { Address } from './Aliases'
 import { RelayRequest } from '../EIP712/RelayRequest'
-import { AuthorizationElement } from '../bls/DecompressorInteractor'
+import { AuthorizationElement } from '../bls/CacheDecoderInteractor'
 
 export interface RelayMetadata {
   approvalData: PrefixedHexString

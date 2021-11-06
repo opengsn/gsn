@@ -8,6 +8,7 @@ import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { _sanitizeAbiDecoderEvent } from '@opengsn/common'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -29,13 +30,13 @@ async function resolveAllReceipts (transactionHashes: PrefixedHexString[]): Prom
 export async function assertRelayAdded (transactionHashes: PrefixedHexString[], server: RelayServer, checkWorkers = true): Promise<void> {
   const receipts = await resolveAllReceipts(transactionHashes)
   const registeredReceipt = receipts.find(r => {
-    const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server.registrationManager._parseEvent)
+    const decodedLogs = abiDecoder.decodeLogs(r.logs).map(_sanitizeAbiDecoderEvent)
     return decodedLogs[0].name === 'RelayServerRegistered'
   })
   if (registeredReceipt == null) {
     throw new Error('Registered Receipt not found')
   }
-  const registeredLogs = abiDecoder.decodeLogs(registeredReceipt.logs).map(server.registrationManager._parseEvent)
+  const registeredLogs = abiDecoder.decodeLogs(registeredReceipt.logs).map(_sanitizeAbiDecoderEvent)
   assert.equal(registeredLogs.length, 1)
   assert.equal(registeredLogs[0].name, 'RelayServerRegistered')
   assert.equal(registeredLogs[0].args.relayManager.toLowerCase(), server.managerAddress.toLowerCase())
@@ -45,10 +46,10 @@ export async function assertRelayAdded (transactionHashes: PrefixedHexString[], 
 
   if (checkWorkers) {
     const workersAddedReceipt = receipts.find(r => {
-      const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server.registrationManager._parseEvent)
+      const decodedLogs = abiDecoder.decodeLogs(r.logs).map(_sanitizeAbiDecoderEvent)
       return decodedLogs[0].name === 'RelayWorkersAdded'
     })
-    const workersAddedLogs = abiDecoder.decodeLogs(workersAddedReceipt!.logs).map(server.registrationManager._parseEvent)
+    const workersAddedLogs = abiDecoder.decodeLogs(workersAddedReceipt!.logs).map(_sanitizeAbiDecoderEvent)
     assert.equal(workersAddedLogs.length, 1)
     assert.equal(workersAddedLogs[0].name, 'RelayWorkersAdded')
   }

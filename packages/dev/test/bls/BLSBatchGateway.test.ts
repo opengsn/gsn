@@ -13,10 +13,10 @@ import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   RLPBatchCompressedInput,
   encodeBatch, CacheDecoderInteractor, AuthorizationElement
-} from '@opengsn/common/dist/bls/DecompressorInteractor'
+} from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
-import { constants } from '@opengsn/common'
+import { constants, GSNBatchingContractsDeployment } from '@opengsn/common'
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
 
@@ -90,7 +90,11 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     gateway = await BLSBatchGateway.new(decompressor.address, registrar.address, blsTestHub.address)
 
     blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
-    decompressorInteractor = await new CacheDecoderInteractor({ provider: web3.currentProvider as HttpProvider })
+    // @ts-ignore
+    const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
+    decompressorInteractor = await new CacheDecoderInteractor({
+      provider: web3.currentProvider as HttpProvider, batchingContractsDeployment
+    })
       .init({
         decompressorAddress: decompressor.address,
         erc20cacheDecoder: constants.ZERO_ADDRESS

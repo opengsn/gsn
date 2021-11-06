@@ -249,23 +249,6 @@ export class RegistrationManager {
     return getLatestEventData(registerEvents)
   }
 
-  _parseEvent (event: { events: any[], name: string, address: string } | null): any {
-    if (event?.events === undefined) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      return `not event: ${event?.toString()}`
-    }
-    const args: Record<string, any> = {}
-    // event arguments is for some weird reason give as ".events"
-    for (const eventArgument of event.events) {
-      args[eventArgument.name] = eventArgument.value
-    }
-    return {
-      name: event.name,
-      address: event.address,
-      args: args
-    }
-  }
-
   async _handleHubAuthorizedEvent (dlog: EventData): Promise<void> {
     if (dlog.returnValues.relayHub.toLowerCase() === this.hubAddress.toLowerCase()) {
       this.isHubAuthorized = true
