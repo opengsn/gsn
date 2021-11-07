@@ -54,6 +54,12 @@ export async function startRelay (
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
+  if (options.loggingProvider) {
+    args.push('--loggingProvider', options.loggingProvider)
+  }
+  if (options.confirmationsNeeded) {
+    args.push('--confirmationsNeeded', options.confirmationsNeeded)
+  }
 
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)

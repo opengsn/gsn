@@ -207,6 +207,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       relayProcess = await startRelay(relayHub.address, stakeManager, {
         stake: 1e18,
         url: 'asd',
+        confirmationsNeeded: 1,
         relayOwner: accounts[1],
         relaylog: process.env.relaylog,
         ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
@@ -244,10 +245,12 @@ contract('KnownRelaysManager 2', function (accounts) {
       const activeRelays = knownRelaysManager.allRelayers
       assert.equal(preferredRelays.length, 1)
       assert.equal(preferredRelays[0].relayUrl, 'http://localhost:8090')
-      assert.equal(activeRelays.length, 3)
-      assert.equal(activeRelays[0].relayUrl, 'stakeAndAuthorization2')
-      assert.equal(activeRelays[1].relayUrl, 'stakeAndAuthorization1')
-      assert.equal(activeRelays[2].relayUrl, 'http://localhost:8090')
+      assert.deepEqual(activeRelays.map((r: any) => r.relayUrl),
+        [
+          'http://localhost:8090',
+          'stakeAndAuthorization1',
+          'stakeAndAuthorization2'
+        ])
     })
 
     it('should use \'relayFilter\' to remove unsuitable relays', async function () {

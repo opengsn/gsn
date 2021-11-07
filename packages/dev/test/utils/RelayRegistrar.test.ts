@@ -45,17 +45,18 @@ contract('#RelayRegistrar', function ([fromAddress, relay, relay2]) {
     info.forEach((item: any) => delete item.blockNumber)
     expect(info).to.eql([
       {
-        relayManager: relay2,
-        baseRelayFee: '21',
-        pctRelayFee: '22',
-        url: 'http://relay2'
-      },
-      {
         relayManager: relay,
         baseRelayFee: '1',
         pctRelayFee: '2',
         url: 'http://relay'
+      },
+      {
+        relayManager: relay2,
+        baseRelayFee: '21',
+        pctRelayFee: '22',
+        url: 'http://relay2'
       }
+
     ])
     expect(filled).to.eql(2)
   })

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.6;
 /* solhint-disable no-inline-assembly */
 
-import "./LRUList.sol";
+//import "./LRUList.sol";
 import "./MinLibBytes.sol";
 import "../interfaces/IRelayHub.sol";
 import "../interfaces/IRelayRegistrar.sol";
@@ -14,7 +14,7 @@ import "../interfaces/IRelayRegistrar.sol";
  * - protect the list from spamming entries: only staked relayers are added.
  * - the list is an LRU, so can use "registered in past x blocks" policy
  */
-contract RelayRegistrar is LRUList, IRelayRegistrar {
+contract RelayRegistrar is IRelayRegistrar {
     using MinLibBytes for bytes;
 
     struct RelayStorageInfo {
@@ -25,6 +25,7 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
     }
 
     mapping(address => RelayStorageInfo) public values;
+    address[] public indexedValues;
 
     bool public immutable override isUsingStorageRegistry;
 
@@ -46,13 +47,27 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
         }
     }
 
-    function storeRelayServerRegistration(address prevItem, address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
-        if (prevItem == address(0)) {
-            //try to find prevItem. can be expensive if the list is large.
-            prevItem = getPrev(relayManager);
-        }
-        moveToTop(relayManager, prevItem);
+    function addItem(address prevItem, address relayManager) internal returns( RelayStorageInfo storage) {
+        (prevItem);   // unused in non-LRU
         RelayStorageInfo storage storageInfo = values[relayManager];
+        if (storageInfo.blockRegistered == 0) {
+            indexedValues.push(relayManager);
+        }
+        return storageInfo;
+    }
+
+    //using LRUList base-class
+    //    function addItem(address prevItem, address relayManager) internal returns( RelayStorageInfo storage) {
+    //        if (prevItem == address(0)) {
+    //            //try to find prevItem. can be expensive if the list is large.
+    //            prevItem = getPrev(relayManager);
+    //        }
+    //        moveToTop(relayManager, prevItem);
+    //        return values[relayManager];
+    //    }
+
+    function storeRelayServerRegistration(address prevItem, address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
+        RelayStorageInfo storage storageInfo = addItem(prevItem, relayManager);
         storageInfo.blockRegistered = uint96(block.number);
         storageInfo.baseRelayFee = uint96(baseRelayFee);
         storageInfo.pctRelayFee = uint96(pctRelayFee);
@@ -83,8 +98,8 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
     }
 
     function readRelayInfosFrom(address from, uint oldestBlock, uint maxCount) public view override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
-        address[] memory items;
-        (items, nextFrom) = readItemsFrom(from, maxCount);
+        (from, nextFrom);   // unused in non-LRU
+        address[] storage items = indexedValues;
         filled = 0;
         ret = new RelayInfo[](items.length);
         for (uint i = 0; i < items.length; i++) {
@@ -92,12 +107,32 @@ contract RelayRegistrar is LRUList, IRelayRegistrar {
             RelayInfo memory info = getRelayInfo(relayManager);
             if (address(relayHub) == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
                 ret[filled++] = info;
+                if (filled >= maxCount)
+                    break;
             }
             if (info.blockNumber < oldestBlock) {
                 break;
             }
         }
     }
+
+    //LRU-based
+    //    function readRelayInfosFrom(address from, uint oldestBlock, uint maxCount) public view override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
+    //        address[] memory items;
+    //        (items, nextFrom) = readItemsFrom(from, maxCount);
+    //        filled = 0;
+    //        ret = new RelayInfo[](items.length);
+    //        for (uint i = 0; i < items.length; i++) {
+    //            address relayManager = items[i];
+    //            RelayInfo memory info = getRelayInfo(relayManager);
+    //            if (address(relayHub) == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
+    //                ret[filled++] = info;
+    //            }
+    //            if (info.blockNumber < oldestBlock) {
+    //                break;
+    //            }
+    //        }
+    //    }
 
     function splitString(string calldata str) public pure returns (bytes32[3] memory parts) {
         bytes calldata url = bytes(str);
