@@ -236,9 +236,15 @@ export class ContractInteractor {
     const [
       relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
-      this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
-      this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
-      this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
+      this.paymasterInstance.getHubAddr().catch((e: Error) => {
+        throw new Error(`Not a paymaster contract: ${e.message}`)
+      }),
+      this.paymasterInstance.trustedForwarder().catch((e: Error) => {
+        throw new Error(`paymaster has no trustedForwarder(): ${e.message}`)
+      }),
+      this.paymasterInstance.versionPaymaster().catch((e: Error) => {
+        throw new Error(`Not a paymaster contract: ${e.message}`)
+      }).then((version: string) => {
         this._validateVersion(version, 'Paymaster')
         return version
       })
@@ -283,9 +289,9 @@ export class ContractInteractor {
     // any sense NOT to initialize some components, or NOT to read them all from the PM and then RH ?
     if (this.relayHubInstance == null && this.deployment.relayHubAddress != null) {
       this.relayHubInstance = await this._createRelayHub(this.deployment.relayHubAddress)
-      this.relayRegistrar = await this._createRelayRegistrar(await this.relayHubInstance.relayRegistrar().catch(e => {
-        throw new Error(`Invalid RelayHub at address ${this.relayHubInstance.address}`)
-      }))
+    }
+    if (this.relayRegistrar == null && this.deployment.relayRegistrarAddress != null) {
+      this.relayRegistrar = await this._createRelayRegistrar(this.deployment.relayRegistrarAddress)
     }
     if (this.paymasterInstance == null && this.deployment.paymasterAddress != null) {
       this.paymasterInstance = await this._createPaymaster(this.deployment.paymasterAddress)
@@ -791,7 +797,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
-    if (!this.web3.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
+    if (!this.web3.utils.isAddress(address)) {
+      throw new Error(exceptionTitle + ' ' + address)
+    }
   }
 
   async getCode (address: string): Promise<string> {

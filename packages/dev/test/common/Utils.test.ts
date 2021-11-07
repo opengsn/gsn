@@ -196,7 +196,7 @@ contract('Utils', function (accounts) {
     })
   })
 
-  describe.only('#removeNullValues', function () {
+  describe('#removeNullValues', function () {
     it('should remove nulls shallowly', async () => {
       expect(removeNullValues({ a: 1, b: 'string', c: null, d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) })).to.deep
         .equal({ a: 1, b: 'string', d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) })
