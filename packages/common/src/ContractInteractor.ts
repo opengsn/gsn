@@ -1041,6 +1041,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const ret = await this.relayRegistrar.readRelayInfos(0, 100)
     const relayInfos = ret[0]
     const filled = parseInt(ret[1].toString())
+    if (filled === 0) {
+      return null
+    }
 
     return relayInfos.slice(0, filled).map(info => {
       return {

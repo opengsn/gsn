@@ -125,6 +125,7 @@ contract('RelaySelectionManager', function (accounts) {
 
         await contractInteractor.initDeployment({
           relayHubAddress: relayHub.address,
+          relayRegistrarAddress: await relayHub.relayRegistrar(),
           stakeManagerAddress: stakeManager.address,
           penalizerAddress: penalizer.address
         })
