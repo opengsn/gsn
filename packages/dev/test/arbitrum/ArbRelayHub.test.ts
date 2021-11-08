@@ -67,7 +67,7 @@ contract.skip('ArbRelayHub', function ([from, relayWorker, relayManager, relayOw
       })
       await stakeManager.authorizeHubByOwner(relayManager, arbRelayHub.address, { from: relayOwner })
       await arbRelayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, '0', '0', '', { from: relayManager })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: relayManager })
 
       relayRequest = {
         request: {

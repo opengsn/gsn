@@ -21,7 +21,6 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/typ
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -42,7 +41,7 @@ export async function stake (stakeManager: StakeManagerInstance, relayHub: Relay
 export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
   const relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
-  await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
+  await relayRegistrar.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
 }
 
 contract('KnownRelaysManager', function (
@@ -125,12 +124,12 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerPaymasterRejected], {
         from: activePaymasterRejected
       })
-      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, '0', '0', '', { from: activeTransactionRelayed })
-      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, '0', '0', '', { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
-      await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, '0', '0', '', { from: activeRelayServerRegistered })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeRelayServerRegistered })
       await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
         from: activeRelayWorkersAdded
       })

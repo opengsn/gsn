@@ -2,7 +2,6 @@
 pragma solidity ^0.8.6;
 /* solhint-disable no-inline-assembly */
 
-//import "./LRUList.sol";
 import "./MinLibBytes.sol";
 import "../interfaces/IRelayHub.sol";
 import "../interfaces/IRelayRegistrar.sol";
@@ -12,7 +11,6 @@ import "../interfaces/IRelayRegistrar.sol";
  * - keep a list of registered relayers (using registerRelayer).
  * - provide view functions to read the list of registered relayers (and filter out invalid ones)
  * - protect the list from spamming entries: only staked relayers are added.
- * - the list is an LRU, so can use "registered in past x blocks" policy
  */
 contract RelayRegistrar is IRelayRegistrar {
     using MinLibBytes for bytes;
@@ -36,19 +34,18 @@ contract RelayRegistrar is IRelayRegistrar {
         isUsingStorageRegistry = _isUsingStorageRegistry;
     }
 
-    function registerRelayServer(address prevItem, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
+    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
         address relayManager = msg.sender;
         if (address(relayHub) != address(0)) {
             relayHub.verifyCanRegister(relayManager);
         }
         emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
         if (isUsingStorageRegistry) {
-            storeRelayServerRegistration(prevItem, relayManager, baseRelayFee, pctRelayFee, url);
+            storeRelayServerRegistration(relayManager, baseRelayFee, pctRelayFee, url);
         }
     }
 
-    function addItem(address prevItem, address relayManager) internal returns( RelayStorageInfo storage) {
-        (prevItem);   // unused in non-LRU
+    function addItem(address relayManager) internal returns (RelayStorageInfo storage) {
         RelayStorageInfo storage storageInfo = values[relayManager];
         if (storageInfo.blockRegistered == 0) {
             indexedValues.push(relayManager);
@@ -56,18 +53,8 @@ contract RelayRegistrar is IRelayRegistrar {
         return storageInfo;
     }
 
-    //using LRUList base-class
-    //    function addItem(address prevItem, address relayManager) internal returns( RelayStorageInfo storage) {
-    //        if (prevItem == address(0)) {
-    //            //try to find prevItem. can be expensive if the list is large.
-    //            prevItem = getPrev(relayManager);
-    //        }
-    //        moveToTop(relayManager, prevItem);
-    //        return values[relayManager];
-    //    }
-
-    function storeRelayServerRegistration(address prevItem, address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
-        RelayStorageInfo storage storageInfo = addItem(prevItem, relayManager);
+    function storeRelayServerRegistration(address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
+        RelayStorageInfo storage storageInfo = addItem(relayManager);
         storageInfo.blockRegistered = uint96(block.number);
         storageInfo.baseRelayFee = uint96(baseRelayFee);
         storageInfo.pctRelayFee = uint96(pctRelayFee);
@@ -87,52 +74,28 @@ contract RelayRegistrar is IRelayRegistrar {
 
     /**
      * read relay info of registered relays
-     * @param oldestBlock - stop filling relays last registered at this block (the list is "least-recently-added", so
-     *  sorted by block number
-     * @param maxCount - return at most that many relays from the beginning of the list
+     * @param maxCount - return at most that many relays
+     * @param oldestBlock - return only relays registered from this block on.
      * @return info - list of RelayInfo for registered relays
      * @return filled - # of entries filled in info (last entries in returned array might be empty)
      */
     function readRelayInfos(uint oldestBlock, uint maxCount) public view override returns (RelayInfo[] memory info, uint filled) {
-        (info, filled,) = readRelayInfosFrom(address(this), oldestBlock, maxCount);
-    }
-
-    function readRelayInfosFrom(address from, uint oldestBlock, uint maxCount) public view override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
-        (from, nextFrom);   // unused in non-LRU
         address[] storage items = indexedValues;
         filled = 0;
-        ret = new RelayInfo[](items.length);
+        info = new RelayInfo[](items.length < maxCount ? items.length : maxCount);
         for (uint i = 0; i < items.length; i++) {
             address relayManager = items[i];
-            RelayInfo memory info = getRelayInfo(relayManager);
+            RelayInfo memory relayInfo = getRelayInfo(relayManager);
+            if (relayInfo.blockNumber < oldestBlock) {
+                continue;
+            }
             if (address(relayHub) == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
-                ret[filled++] = info;
+                info[filled++] = relayInfo;
                 if (filled >= maxCount)
                     break;
             }
-            if (info.blockNumber < oldestBlock) {
-                break;
-            }
         }
     }
-
-    //LRU-based
-    //    function readRelayInfosFrom(address from, uint oldestBlock, uint maxCount) public view override returns (RelayInfo[] memory ret, uint filled, address nextFrom) {
-    //        address[] memory items;
-    //        (items, nextFrom) = readItemsFrom(from, maxCount);
-    //        filled = 0;
-    //        ret = new RelayInfo[](items.length);
-    //        for (uint i = 0; i < items.length; i++) {
-    //            address relayManager = items[i];
-    //            RelayInfo memory info = getRelayInfo(relayManager);
-    //            if (address(relayHub) == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
-    //                ret[filled++] = info;
-    //            }
-    //            if (info.blockNumber < oldestBlock) {
-    //                break;
-    //            }
-    //        }
-    //    }
 
     function splitString(string calldata str) public pure returns (bytes32[3] memory parts) {
         bytes calldata url = bytes(str);

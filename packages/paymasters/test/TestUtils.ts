@@ -34,7 +34,7 @@ export async function registerAsRelayServer (stakeManager: IStakeManagerInstance
   await stakeManager.authorizeHubByOwner(relay, hub.address, { from: relayOwner })
   await hub.addRelayWorkers([relay], { from: relay })
   const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
-  await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, 2e16.toString(), '10', 'url', { from: relay })
+  await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relay })
 }
 
 export async function deployTestHub (calculator: boolean = false): Promise<Truffle.ContractInstance> {

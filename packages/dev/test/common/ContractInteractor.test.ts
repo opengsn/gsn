@@ -391,8 +391,8 @@ contract('ContractInteractor', function (accounts) {
       relayReg = await RelayRegistrar.new(AddressZero, true)
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
 
-      await relayReg.registerRelayServer(AddressZero, 10, 11, 'url1', { from: accounts[1] })
-      await relayReg.registerRelayServer(AddressZero, 20, 21, 'url2', { from: accounts[2] })
+      await relayReg.registerRelayServer(10, 11, 'url1', { from: accounts[1] })
+      await relayReg.registerRelayServer(20, 21, 'url2', { from: accounts[2] })
     })
 
     // it('should get matching numeric return value', async () => {

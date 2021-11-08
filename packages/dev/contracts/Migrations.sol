@@ -27,7 +27,6 @@ import "@opengsn/contracts/src/utils/RLPReader.sol";
 import "@opengsn/contracts/src/utils/VersionRegistry.sol";
 
 import "@opengsn/contracts/src/utils/RelayRegistrar.sol";
-import "@opengsn/contracts/src/test/TestLRUList.sol";
 
 import "@opengsn/contracts/src/forwarder/Forwarder.sol";
 import "@opengsn/contracts/src/forwarder/test/TestForwarder.sol";

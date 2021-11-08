@@ -57,7 +57,6 @@ import { sleep } from './Utils.js'
 import { Environment } from './Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
-import { constants } from './Constants'
 
 import TransactionDetails = Truffle.TransactionDetails
 
@@ -897,7 +896,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
   async getRegisterRelayMethod (baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
     const registrar = this.relayRegistrar
-    return registrar?.contract.methods.registerRelayServer(constants.ZERO_ADDRESS, baseRelayFee, pctRelayFee, url)
+    return registrar?.contract.methods.registerRelayServer(baseRelayFee, pctRelayFee, url)
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {

@@ -12,10 +12,10 @@ contract('#RelayRegistrar', function ([fromAddress, relay, relay2]) {
   let relay1block: number
   before(async () => {
     reg = await RelayRegistrar.new(AddressZero, true)
-    await reg.registerRelayServer(AddressZero, 1, 2, 'http://relay', { from: relay })
+    await reg.registerRelayServer(1, 2, 'http://relay', { from: relay })
     relay1block = await web3.eth.getBlockNumber()
-    await reg.registerRelayServer(AddressZero, 210, 220, 'http://relay20', { from: relay2 })
-    await reg.registerRelayServer(AddressZero, 21, 22, 'http://relay2', { from: relay2 })
+    await reg.registerRelayServer(210, 220, 'http://relay20', { from: relay2 })
+    await reg.registerRelayServer(21, 22, 'http://relay2', { from: relay2 })
   })
   it('#splitString, packString', async () => {
     expect(await reg.splitString('1')).to.eql(['0x31'.padEnd(66, '0'), HashZero, HashZero])

@@ -21,7 +21,6 @@ import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUt
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -281,7 +280,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()
 
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-        await relayRegistrar.registerRelayServer(constants.ZERO_ADDRESS, baseRelayFee, pctRelayFee, url, { from: relayManager })
+        await relayRegistrar.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
         relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(

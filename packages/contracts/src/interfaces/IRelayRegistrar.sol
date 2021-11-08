@@ -28,9 +28,8 @@ interface IRelayRegistrar {
     /**
      * called by relay server to register (or re-register) itself.
      * The relayer must be staked in the RelayHub
-     * @param prevItem - output of getPrev(relayServerAddress). Can be left as zero, but might require more on-chain calculation
      */
-    function registerRelayServer(address prevItem, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
+    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
 
     /**
      * does this registrar save state into storage?
@@ -42,6 +41,4 @@ interface IRelayRegistrar {
     function getRelayInfo(address relayManager) external view returns (RelayInfo memory info);
 
     function readRelayInfos(uint oldestBlock, uint maxCount) external view returns (RelayInfo[] memory info, uint filled);
-
-    function readRelayInfosFrom(address from, uint oldestBlock, uint maxCount) external view returns (RelayInfo[] memory ret, uint filled, address nextFrom);
 }
