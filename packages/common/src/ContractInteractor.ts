@@ -235,15 +235,9 @@ export class ContractInteractor {
     const [
       relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
-      this.paymasterInstance.getHubAddr().catch((e: Error) => {
-        throw new Error(`Not a paymaster contract: ${e.message}`)
-      }),
-      this.paymasterInstance.trustedForwarder().catch((e: Error) => {
-        throw new Error(`paymaster has no trustedForwarder(): ${e.message}`)
-      }),
-      this.paymasterInstance.versionPaymaster().catch((e: Error) => {
-        throw new Error(`Not a paymaster contract: ${e.message}`)
-      }).then((version: string) => {
+      this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
+      this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
+      this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
         this._validateVersion(version, 'Paymaster')
         return version
       })
@@ -796,9 +790,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
-    if (!this.web3.utils.isAddress(address)) {
-      throw new Error(exceptionTitle + ' ' + address)
-    }
+    if (!this.web3.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
   }
 
   async getCode (address: string): Promise<string> {
