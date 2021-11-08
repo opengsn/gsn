@@ -11,6 +11,7 @@
     "tsc": "tsc",
     "watch-tsc": "tsc -w",
     "lint": "eslint -f unix .",
+    "lint-fix": "eslint -f unix . --fix",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
   "publishConfig": {

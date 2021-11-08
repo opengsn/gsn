@@ -244,7 +244,7 @@ data         | 0x${transaction.data.toString('hex')}
     // Get nonce at confirmationsNeeded blocks ago
     const nonces = new Map<string, number>()
     for (const transaction of sortedTxs) {
-      const nonce = nonces.get(transaction.from) ?? await this.contractInteractor.getTransactionCount(transaction.from, blockNumber - this.config.confirmationsNeeded)
+      const nonce = nonces.get(transaction.from) ?? await this.contractInteractor.getTransactionCount(transaction.from, Math.max(0, blockNumber - this.config.confirmationsNeeded))
       nonces.set(transaction.from, nonce)
       if (transaction.nonce < nonce) {
         this.logger.debug(`removing all transaction up to nonce ${nonce} sent by ${transaction.from}`)

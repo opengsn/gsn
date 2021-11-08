@@ -105,7 +105,7 @@ export class ReputationManager {
     if (-changeInAbuseWindow >= this.config.abuseReputationChange) {
       await this.reputationStoreManager.setAbuseFlag(paymaster, eventBlockNumber)
     }
-    const oldChangesExpirationBlock = eventBlockNumber - this.config.abuseTimeWindowBlocks
+    const oldChangesExpirationBlock = Math.max(eventBlockNumber - this.config.abuseTimeWindowBlocks, 0)
     await this.reputationStoreManager.updatePaymasterReputation(paymaster, change, oldChangesExpirationBlock, eventBlockNumber)
   }
 }
