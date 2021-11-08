@@ -1,4 +1,4 @@
-import { Address } from './types/Aliases'
+import { Address, ObjectMap } from './types/Aliases'
 
 export interface GSNContractsDeployment {
   forwarderAddress?: Address
@@ -13,5 +13,5 @@ export interface GSNBatchingContractsDeployment {
   batchGateway: Address
   batchGatewayCacheDecoder: Address
   authorizationsRegistrar: Address
-  calldataDecoders: { [key: string]: Address }
+  calldataDecoders: ObjectMap<Address>
 }

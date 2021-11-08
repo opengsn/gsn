@@ -48,6 +48,8 @@ export const RelayTransactionRequestShape = {
     relayHubAddress: ow.string,
     relayMaxNonce: ow.number,
     signature: ow.string,
-    maxAcceptanceBudget: ow.string
+    maxAcceptanceBudget: ow.string,
+    calldataCacheDecoder: ow.any(ow.string, ow.undefined),
+    authorization: ow.object // TODO - define authorization's shape
   }
 }

@@ -9,10 +9,7 @@ export interface PingResponse {
   maxAcceptanceBudget: IntString
   networkId?: IntString
   chainId?: IntString
+  validUntil?: IntString
   ready: boolean
   version: string
-}
-
-export interface PingResponseBatchMode extends PingResponse {
-  validUntil: IntString
 }

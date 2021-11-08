@@ -7,11 +7,10 @@ import {
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { PingResponseBatchMode } from '@opengsn/common/dist/PingResponse'
 import { Transaction } from '@ethereumjs/tx'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { GsnSendToRelayerEvent, GsnSignRequestEvent } from '../GsnEvents'
-import { asRelayCallAbi } from '@opengsn/common'
+import { asRelayCallAbi, getRelayRequestID } from '@opengsn/common'
 import { toBN, toHex } from 'web3-utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
@@ -31,6 +30,12 @@ export class BatchRelayClient extends RelayClient {
     this.cacheDecoderInteractor = cacheDecoderInteractor
   }
 
+  async init (): Promise<this> {
+    await super.init()
+    this.cacheDecoderInteractor.setContractInteractor(this.dependencies.contractInteractor)
+    return this
+  }
+
   /**
    * In batching mode, client must use the gas price value the server has returned in a ping
    */
@@ -43,7 +48,10 @@ export class BatchRelayClient extends RelayClient {
   }
 
   async _getRelayRequestValidUntilValue (relayInfo: RelayInfo): Promise<IntString> {
-    return (relayInfo.pingResponse as PingResponseBatchMode).validUntil
+    if (relayInfo.pingResponse.validUntil == null) {
+      throw new Error('validUntil missing in PingResponse')
+    }
+    return relayInfo.pingResponse.validUntil
   }
 
   /**
@@ -97,7 +105,8 @@ export class BatchRelayClient extends RelayClient {
     const storageL2Cost = this.cacheDecoderInteractor.writeSlotsToL2Gas(writeSlotsCount)
 
     // TODO: sanitize types
-    relayRequest.relayData.transactionCalldataGasUsed = toBN(calldataCost).and(storageL2Cost).toString()
+    relayRequest.relayData.transactionCalldataGasUsed = toBN(calldataCost).add(storageL2Cost).toString()
+    relayRequest.relayData.paymasterData = '0x'
     return authorizationElement
   }
 
@@ -128,5 +137,10 @@ export class BatchRelayClient extends RelayClient {
     transaction?: Transaction,
     hexTransaction?: PrefixedHexString): Promise<{ error?: Error }> {
     return {}
+  }
+
+  // noinspection JSMethodCanBeStatic
+  _getRelayRequestID (relayRequest: RelayRequest, _: PrefixedHexString): PrefixedHexString {
+    return getRelayRequestID(relayRequest)
   }
 }

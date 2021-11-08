@@ -21,15 +21,14 @@ export class RelaySelectionManager {
   private readonly config: GSNConfig
   private readonly logger: LoggerInterface
   private readonly pingFilter: PingFilter
-  private readonly gsnTransactionDetails: GsnTransactionDetails
+  private gsnTransactionDetails?: GsnTransactionDetails
 
   private remainingRelays: RelayInfoUrl[][] = []
   private isInitialized = false
 
   public errors: Map<string, Error> = new Map<string, Error>()
 
-  constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, logger: LoggerInterface, config: GSNConfig) {
-    this.gsnTransactionDetails = gsnTransactionDetails
+  constructor (knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, logger: LoggerInterface, config: GSNConfig) {
     this.knownRelaysManager = knownRelaysManager
     this.httpClient = httpClient
     this.pingFilter = pingFilter
@@ -83,9 +82,11 @@ export class RelaySelectionManager {
     }
   }
 
-  async init (): Promise<this> {
+  async init (gsnTransactionDetails: GsnTransactionDetails): Promise<this> {
+    this.gsnTransactionDetails = gsnTransactionDetails
     this.remainingRelays = await this.knownRelaysManager.getRelaysSortedForTransaction(this.gsnTransactionDetails)
     this.isInitialized = true
+    this.errors.clear()
     return this
   }
 
@@ -122,6 +123,9 @@ export class RelaySelectionManager {
     // if (!pingResponse.acceptsBLSBatchRequests && this.config.runBLSBatchingMode) {
     //   throw new Error('Relay does not run in a batching mode')
     // }
+    if (this.gsnTransactionDetails == null) {
+      throw new Error('not initialized')
+    }
     this.pingFilter(pingResponse, this.gsnTransactionDetails)
     return {
       pingResponse,

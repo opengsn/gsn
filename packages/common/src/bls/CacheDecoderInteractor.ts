@@ -81,7 +81,7 @@ export interface RelayRequestCachingResult {
   writeSlotsCount: number
 }
 
-interface CachingGasConstants {
+export interface CachingGasConstants {
   authorizationCalldataBytesLength: number
   authorizationStorageSlots: number
   gasPerSlotL2: number
@@ -103,17 +103,23 @@ export class CacheDecoderInteractor {
   private decompressor!: BatchGatewayCacheDecoderInstance
   private erc20cacheDecoder!: ERC20CacheDecoderInstance
 
-  private readonly cachingGasConstants!: CachingGasConstants
-  private readonly contractInteractor!: ContractInteractor
+  private readonly cachingGasConstants: CachingGasConstants
+  private contractInteractor?: ContractInteractor
+
+  setContractInteractor (contractInteractor: ContractInteractor) {
+    this.contractInteractor = contractInteractor
+  }
 
   batchingContractsDeployment: GSNBatchingContractsDeployment
 
   constructor (_: {
     provider: Web3ProviderBaseInterface
     batchingContractsDeployment: GSNBatchingContractsDeployment
+    cachingGasConstants: CachingGasConstants
   }) {
     this.provider = _.provider
     this.batchingContractsDeployment = _.batchingContractsDeployment
+    this.cachingGasConstants = _.cachingGasConstants
 
     this.BatchGatewayCacheDecoder = TruffleContract({
       contractName: 'BatchGatewayCacheDecoder',
@@ -129,11 +135,16 @@ export class CacheDecoderInteractor {
   }
 
   async init (_: {
-    decompressorAddress: Address
-    erc20cacheDecoder: Address
+    // TODO: fix tests then remove 'partial'
+    batchingContractsDeployment: Partial<GSNBatchingContractsDeployment>
+    erc20contractAddress: Address // TODO: this way of accessing calldata decoders is very weird
   }): Promise<this> {
-    this.decompressor = await this.BatchGatewayCacheDecoder.at(_.decompressorAddress)
-    this.erc20cacheDecoder = await this.ERC20CacheDecoder.at(_.erc20cacheDecoder)
+    this.decompressor = await this.BatchGatewayCacheDecoder.at(_.batchingContractsDeployment.batchGatewayCacheDecoder!)
+    const erc20cacheDecoder = _.batchingContractsDeployment.calldataDecoders![_.erc20contractAddress.toLowerCase()]
+    if (erc20cacheDecoder == null) {
+      throw new Error('WTF?')
+    }
+    this.erc20cacheDecoder = await this.ERC20CacheDecoder.at(erc20cacheDecoder)
     return this
   }
 
@@ -177,12 +188,12 @@ export class CacheDecoderInteractor {
   }
 
   decodeAbiEncodedERC20Calldata (abiEncodedCalldata: PrefixedHexString): ERC20Call {
-    const methodID = abiEncodedCalldata.substr(0, 6)
+    const methodID = abiEncodedCalldata.substr(0, 10)
     const method = ERC20MethodIds.indexOf(methodID)
     if (method === -1) {
       throw new Error(`Failed to compress data for methodID ${methodID}: unknown methodID`)
     }
-    const abiEncodedParameters = abiEncodedCalldata.substr(6)
+    const abiEncodedParameters = abiEncodedCalldata.substr(10)
     let data: { [key: string]: any } = {}
     switch (method) {
       case ERC20MethodSignatures.Transfer:
@@ -245,14 +256,18 @@ export class CacheDecoderInteractor {
   estimateCalldataCostForRelayRequestsElement (
     relayRequestElement: RelayRequestsElement,
     authorizationElement?: AuthorizationElement
-  ): IntString {
+  ): PrefixedHexString {
+    // TODO: ContractInteractor does not belong to this class as a member! Refactor!
+    if (this.contractInteractor == null) {
+      throw new Error('ContractInteractor is not initialized')
+    }
     const encodedRelayRequestsElement = encodeRelayRequestsElement(relayRequestElement)
     let relayRequestElementCost = toBN(this.contractInteractor.calculateCalldataCost(encodedRelayRequestsElement))
     if (authorizationElement != null) {
       relayRequestElementCost =
         relayRequestElementCost.addn(this.contractInteractor.calculateCalldataCost(encodedRelayRequestsElement))
     }
-    return relayRequestElementCost.toString()
+    return `0x${relayRequestElementCost.toString(16)}`
   }
 
   writeSlotsToL2Gas (writeSlotsCount: number): BN {

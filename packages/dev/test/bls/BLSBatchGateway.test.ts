@@ -12,7 +12,7 @@ import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   RLPBatchCompressedInput,
-  encodeBatch, CacheDecoderInteractor, AuthorizationElement
+  encodeBatch, CacheDecoderInteractor, AuthorizationElement, CachingGasConstants
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
@@ -90,14 +90,19 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     gateway = await BLSBatchGateway.new(decompressor.address, registrar.address, blsTestHub.address)
 
     blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
+    const cachingGasConstants: CachingGasConstants = {
+      authorizationCalldataBytesLength: 1,
+      authorizationStorageSlots: 1,
+      gasPerSlotL2: 1
+    }
     // @ts-ignore
     const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
     decompressorInteractor = await new CacheDecoderInteractor({
-      provider: web3.currentProvider as HttpProvider, batchingContractsDeployment
+      provider: web3.currentProvider as HttpProvider, batchingContractsDeployment, cachingGasConstants
     })
       .init({
-        decompressorAddress: decompressor.address,
-        erc20cacheDecoder: constants.ZERO_ADDRESS
+        batchingContractsDeployment: { batchGatewayCacheDecoder: decompressor.address },
+        erc20contractAddress: constants.ZERO_ADDRESS
       })
   })
 

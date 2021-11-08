@@ -6,7 +6,7 @@ import { toHex } from 'web3-utils'
 import { BatchRelayClient } from '@opengsn/provider/dist/bls/BatchRelayClient'
 import { BatchRelayProvider } from '@opengsn/provider/dist/bls/BatchRelayProvider'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import {
   _sanitizeAbiDecoderEvent,
   constants,
@@ -40,7 +40,7 @@ function clearAbiDecoder (): void {
   abiDecoder.removeABI(abiDecoder.getABIs())
 }
 
-contract.only('BatchRelayProvider', function ([from, relayWorker]: string[]) {
+contract('BatchRelayProvider', function ([from, relayWorker]: string[]) {
   let relayHub: RelayHubInstance
   let paymaster: TestPaymasterConfigurableMisbehaviorInstance
   let testRecipient: TestRecipientInstance
@@ -69,10 +69,15 @@ contract.only('BatchRelayProvider', function ([from, relayWorker]: string[]) {
     await paymaster.setRelayHub(relayHub.address)
     // TODO: de-duplicate GSN deployment code
     testRecipient = await TestRecipient.new(forwarderInstance.address)
-
+    const cachingGasConstants: CachingGasConstants = {
+      authorizationCalldataBytesLength: 1,
+      authorizationStorageSlots: 1,
+      gasPerSlotL2: 1
+    }
     // @ts-ignore
     batchingContractsDeployment = {}
-    cacheDecoderInteractor = new CacheDecoderInteractor({ provider: underlyingProvider, batchingContractsDeployment })
+    cacheDecoderInteractor = new CacheDecoderInteractor({ provider: underlyingProvider, batchingContractsDeployment, cachingGasConstants })
+    // TODO: if it is possible not to create unnecessary objects, just use stubs
     batchClient = new BatchRelayClient({
       config: {
         paymasterAddress: paymaster.address,
@@ -145,7 +150,7 @@ contract.only('BatchRelayProvider', function ([from, relayWorker]: string[]) {
     })
 
     it.skip('should return a reverted transaction receipt if the request has reverted in recipient', async function () { })
-    it.only('should return a valid transaction receipt only with the events emitted for this batch item', async function () {
+    it('should return a valid transaction receipt only with the events emitted for this batch item', async function () {
       // create a batch of two transactions with different emitted strings
       const m1p1 = 'This is first part of first message'
       const m1p2 = 'This is second part of first message'
@@ -160,7 +165,7 @@ contract.only('BatchRelayProvider', function ([from, relayWorker]: string[]) {
         relayRequest2
       ]
 
-      const batchReceipt = await testBatchGateway.sendBatch(relayHub.address, testBatch, constants.MAX_UINT256)
+      const batchReceipt = await testBatchGateway.sendBatch(relayHub.address, testBatch, constants.MAX_UINT256, { gas: 7000000 })
       assert.equal(batchReceipt.logs.length, 6, 'wrong number of events')
 
       const relayRequestID1 = getRelayRequestID(relayRequest1)

@@ -108,6 +108,7 @@ export class RelayClient {
   readonly emitter = new EventEmitter()
   config!: GSNConfig
   dependencies!: GSNDependencies
+  relaySelectionManager!: RelaySelectionManager
   private readonly rawConstructorInput: GSNUnresolvedConstructorInput
 
   private initialized = false
@@ -145,6 +146,7 @@ export class RelayClient {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
+    this.relaySelectionManager = await new RelaySelectionManager(this.dependencies.knownRelaysManager, this.dependencies.httpClient, this.dependencies.pingFilter, this.logger, this.config)
   }
 
   /**
@@ -228,6 +230,7 @@ export class RelayClient {
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
     await this.dependencies.knownRelaysManager.refresh()
+    await this.relaySelectionManager.init(gsnTransactionDetails)
     gsnTransactionDetails.gasPrice = '0x0'
     gsnTransactionDetails.gasPriceForLookup = await this._getRelayRequestGasPriceValueForServerLookup(gsnTransactionDetails)
     gsnTransactionDetails.value = gsnTransactionDetails.value ?? '0x0'
@@ -236,8 +239,7 @@ export class RelayClient {
         Object.assign({}, gsnTransactionDetails, { gasPrice: gsnTransactionDetails.gasPriceForLookup }))
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
-    const relaySelectionManager = await new RelaySelectionManager(gsnTransactionDetails, this.dependencies.knownRelaysManager, this.dependencies.httpClient, this.dependencies.pingFilter, this.logger, this.config).init()
-    const count = relaySelectionManager.relaysLeft().length
+    const count = this.relaySelectionManager.relaysLeft().length
     this.emit(new GsnDoneRefreshRelaysEvent(count))
     if (count === 0) {
       throw new Error('no registered relayers')
@@ -249,7 +251,7 @@ export class RelayClient {
 
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
-      const activeRelay = await relaySelectionManager.selectNextRelay(paymaster)
+      const activeRelay = await this.relaySelectionManager.selectNextRelay(paymaster)
       if (activeRelay != null) {
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
@@ -264,7 +266,7 @@ export class RelayClient {
         transaction: relayingAttempt?.transaction,
         relayingErrors,
         auditPromises: this.auditPromises,
-        pingErrors: relaySelectionManager.errors
+        pingErrors: this.relaySelectionManager.errors
       }
     }
   }
@@ -293,7 +295,7 @@ export class RelayClient {
     this.emit(new GsnValidateRequestEvent())
     const { error: validationError } = await this._validateRequestBeforeSending(httpRequest)
     if (validationError != null) { return { error: validationError } }
-    const relayRequestID = getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature)
+    const relayRequestID = this._getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature)
     const {
       hexTransaction,
       transaction,
@@ -640,6 +642,11 @@ export class RelayClient {
       asyncPaymasterData,
       scoreCalculator
     }
+  }
+
+  // noinspection JSMethodCanBeStatic
+  _getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
+    return getRelayRequestID(relayRequest, signature)
   }
 }
 
