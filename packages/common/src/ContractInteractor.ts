@@ -990,19 +990,19 @@ calculateTransactionMaxPossibleGas: result: ${result}
   async getRegisteredRelays (subset?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
     const infoFromStorage = await this.getRegisteredRelaysFromRegistrar()
     if (infoFromStorage != null) {
-      return infoFromStorage.filter(info => subset?.length === 0 || subset?.includes(info.relayManager))
+      return infoFromStorage.filter(info => subset == null || subset.includes(info.relayManager))
     } else {
       return await this.getRegisteredRelaysFromEvents(subset, fromBlock)
     }
   }
 
   async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
-    // each topic in getPastEvent is either a string or array-of-strings, to search for all.
-    const subsetManagersTopics = subsetManagers?.map(address2topic) as any as string
-    const registerEvents = await this.getPastEventsForRegistrar([subsetManagersTopics],
+    // each topic in getPastEvent is either a string or array-of-strings, to search for any.
+    const extraTopics = subsetManagers == null ? [] : [subsetManagers?.map(address2topic)] as any
+    const registerEvents = await this.getPastEventsForRegistrar(extraTopics,
       { fromBlock },
       [RelayServerRegistered])
-    const unregisterEvents = await this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [subsetManagersTopics], { fromBlock })
+    const unregisterEvents = await this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [extraTopics], { fromBlock })
     // we don't check event order: removed relayer can't be re-registered, so we simply ignore any "register" of a relayer that was ever removed/unauthorized/penalized
     const removed = new Set(unregisterEvents.map(event => event.returnValues.relayManager))
     const relaySet: { [relayManager: string]: RelayRegisteredEventInfo } = {}
@@ -1036,7 +1036,8 @@ calculateTransactionMaxPossibleGas: result: ${result}
       return null
     }
 
-    return relayInfos.slice(0, filled).map(info => {
+    const infos = relayInfos.slice(0, filled)
+    return infos.map(info => {
       return {
         relayManager: info.relayManager,
         pctRelayFee: info.pctRelayFee.toString(),

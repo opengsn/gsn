@@ -67,7 +67,7 @@ export class KnownRelaysManager {
     const toBlock = await this.contractInteractor.getBlockNumber()
     const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
 
-    const relayInfos = await this.contractInteractor.getRegisteredRelays([], fromBlock)
+    const relayInfos = await this.contractInteractor.getRegisteredRelays(undefined, fromBlock)
 
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
