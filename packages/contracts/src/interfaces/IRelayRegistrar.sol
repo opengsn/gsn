@@ -9,7 +9,10 @@ pragma solidity ^0.8.6;
 interface IRelayRegistrar {
 
     struct RelayInfo {
-        uint blockNumber;
+        //last registration block number
+        uint lastBlockNumber;
+        //stake (first registration) block number
+        uint stakeBlockNumber;
         address relayManager;
         uint baseRelayFee;
         uint pctRelayFee;

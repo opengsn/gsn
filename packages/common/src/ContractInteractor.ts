@@ -631,12 +631,14 @@ export class ContractInteractor {
   }
 
   async _getPastEvents (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    const topics: string[][] = []
+    const topics: Array<string | null | string[]> = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
+    const isEmptyArray = (a: any): boolean => Array.isArray(a) && a.length === 0
+
     // TODO: AFAIK this means only the first parameter of the event is supported
     if (extraTopics.length > 0) {
-      topics.push(extraTopics)
+      topics.push(extraTopics.map((topic: any) => isEmptyArray(topic) ? null : topic))
     }
     return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
   }

@@ -16,7 +16,8 @@ contract RelayRegistrar is IRelayRegistrar {
     using MinLibBytes for bytes;
 
     struct RelayStorageInfo {
-        uint96 blockRegistered;
+        uint32 lastBlockNumber;
+        uint32 stakeBlockNumber;
         uint96 baseRelayFee;
         uint96 pctRelayFee;
         bytes32[3] urlParts;
@@ -47,7 +48,7 @@ contract RelayRegistrar is IRelayRegistrar {
 
     function addItem(address relayManager) internal returns (RelayStorageInfo storage) {
         RelayStorageInfo storage storageInfo = values[relayManager];
-        if (storageInfo.blockRegistered == 0) {
+        if (storageInfo.lastBlockNumber == 0) {
             indexedValues.push(relayManager);
         }
         return storageInfo;
@@ -55,7 +56,10 @@ contract RelayRegistrar is IRelayRegistrar {
 
     function storeRelayServerRegistration(address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
         RelayStorageInfo storage storageInfo = addItem(relayManager);
-        storageInfo.blockRegistered = uint96(block.number);
+        if (storageInfo.stakeBlockNumber==0) {
+            storageInfo.stakeBlockNumber = uint32(block.number);
+        }
+        storageInfo.lastBlockNumber = uint32(block.number);
         storageInfo.baseRelayFee = uint96(baseRelayFee);
         storageInfo.pctRelayFee = uint96(pctRelayFee);
         bytes32[3] memory parts = splitString(url);
@@ -64,8 +68,9 @@ contract RelayRegistrar is IRelayRegistrar {
 
     function getRelayInfo(address relayManager) public view override returns (RelayInfo memory info) {
         RelayStorageInfo storage storageInfo = values[relayManager];
-        require(storageInfo.blockRegistered != 0, "relayManager not found");
-        info.blockNumber = storageInfo.blockRegistered;
+        require(storageInfo.lastBlockNumber != 0, "relayManager not found");
+        info.lastBlockNumber = storageInfo.lastBlockNumber;
+        info.stakeBlockNumber = storageInfo.stakeBlockNumber;
         info.baseRelayFee = storageInfo.baseRelayFee;
         info.pctRelayFee = storageInfo.pctRelayFee;
         info.relayManager = relayManager;
@@ -86,7 +91,7 @@ contract RelayRegistrar is IRelayRegistrar {
         for (uint i = 0; i < items.length; i++) {
             address relayManager = items[i];
             RelayInfo memory relayInfo = getRelayInfo(relayManager);
-            if (relayInfo.blockNumber < oldestBlock) {
+            if (relayInfo.lastBlockNumber < oldestBlock) {
                 continue;
             }
             if (address(relayHub) == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
