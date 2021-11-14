@@ -3,7 +3,6 @@ import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
 import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
-import { Capability } from '@ethereumjs/tx'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 

@@ -158,7 +158,6 @@ export class ServerTestEnvironment {
     await this.relayServer._worker(latestBlock.number)
     latestBlock = await this.web3.eth.getBlock('latest')
     await this.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
-
     // This run should call 'registerRelayServer' and 'addWorkers'
     const receipts = await this.relayServer._worker(latestBlock.number)
     await assertRelayAdded(receipts, this.relayServer) // sanity check

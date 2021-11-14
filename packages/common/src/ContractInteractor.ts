@@ -223,11 +223,13 @@ export class ContractInteractor {
       relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
       this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
-      this.paymasterInstance.trustedForwarder().catch((e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
-      this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then((version: string) => {
-        this._validateVersion(version, 'Paymaster')
-        return version
-      })
+      this.paymasterInstance.trustedForwarder().catch(
+        (e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
+      this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then(
+        (version: string) => {
+          this._validateVersion(version, 'Paymaster')
+          return version
+        })
     ])
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.forwarderAddress = forwarderAddress
@@ -258,7 +260,8 @@ export class ContractInteractor {
   _validateVersion (version: string, contractName: string): void {
     const versionSatisfied = this.versionManager.isRequiredVersionSatisfied(version)
     if (!versionSatisfied) {
-      throw new Error(`Provided ${contractName} version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
+      throw new Error(
+        `Provided ${contractName} version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
     }
   }
 
@@ -489,7 +492,8 @@ export class ContractInteractor {
     }
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
-      throw new Error(`ContractInteractor:getLogsPagesForRange: [${fromBlock.toString()}..${toBlock?.toString()}]: only numbers supported when using pagination`)
+      throw new Error(
+        `ContractInteractor:getLogsPagesForRange: [${fromBlock.toString()}..${toBlock?.toString()}]: only numbers supported when using pagination`)
     }
     const rangeSize = toBlock - fromBlock + 1
     const pagesForRange = Math.max(Math.ceil(rangeSize / this.maxPageSize), 1)
@@ -506,7 +510,8 @@ export class ContractInteractor {
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`ContractInteractor:splitRange: only number supported for block range when using pagination, ${fromBlock} ${toBlock} ${parts}`)
+      throw new Error(
+        `ContractInteractor:splitRange: only number supported for block range when using pagination, ${fromBlock} ${toBlock} ${parts}`)
     }
     const rangeSize = toBlock - fromBlock + 1
     const splitSize = Math.ceil(rangeSize / parts)
@@ -585,7 +590,8 @@ export class ContractInteractor {
       } catch (e) {
         // dynamically adjust query size fo some RPC providers
         if (e.toString().match(/query returned more than/) != null) {
-          this.logger.warn('Received "query returned more than X events" error from server, will try to split the request into smaller chunks')
+          this.logger.warn(
+            'Received "query returned more than X events" error from server, will try to split the request into smaller chunks')
           if (pagesCurrent > 16) {
             throw new Error(`Too many events after splitting by ${pagesCurrent}`)
           }
@@ -649,7 +655,8 @@ export class ContractInteractor {
     const originalGasEstimation = await this.web3.eth.estimateGas(gsnTransactionDetails)
     const calldataGasCost = this.calculateCalldataCost(gsnTransactionDetails.data)
     const adjustedEstimation = originalGasEstimation - calldataGasCost
-    this.logger.debug(`estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
+    this.logger.debug(
+      `estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
     if (adjustedEstimation < 0) {
       throw new Error('estimateGasWithoutCalldata: calldataGasCost exceeded originalGasEstimation\n' +
         'your Environment configuration and Ethereum node you are connected to are not compatible')
@@ -745,16 +752,36 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   async getFeeHistory (blockCount: number | BigNumber | BN | string, lastBlock: number | BigNumber | BN | string, rewardPercentiles: number[]): Promise<FeeHistoryResult> {
-    return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
+    // web3 incorrectly converts blockCount type from prefixed hex string to number, hardhat doesn't handle that properly
+    // see https://github.com/ChainSafe/web3.js/pull/4529
+    // once it's fixed and web3 version is updated use:
+    // return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
+    return await new Promise((resolve, reject) => {
+      // @ts-ignore
+      this.web3.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'eth_feeHistory',
+          params: [blockCount, lastBlock, rewardPercentiles],
+          id: Date.now()
+        },
+        (e: Error | null, r: any) => {
+          if (e != null) {
+            reject(e)
+          } else {
+            resolve(r.result)
+          }
+        })
+    })
   }
 
   async getMaxPriorityFee (): Promise<string> {
-    const networkHistoryFees = await this.getFeeHistory(1, 'latest', [0.5])
+    const networkHistoryFees = await this.getFeeHistory('0x1', 'latest', [0.5])
     return networkHistoryFees.reward[0][0]
   }
 
-  async getGasFees (): Promise<{baseFeePerGas: string, priorityFeePerGas: string}> {
-    const networkHistoryFees = await this.getFeeHistory(1, 'latest', [0.5])
+  async getGasFees (): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
+    const networkHistoryFees = await this.getFeeHistory('0x1', 'latest', [0.5])
     const baseFeePerGas = networkHistoryFees.baseFeePerGas[0]
     const priorityFeePerGas = networkHistoryFees.reward[0][0]
     return { baseFeePerGas, priorityFeePerGas }
@@ -998,6 +1025,6 @@ export function getRawTxOptions (chainId: number, networkId: number, chain?: str
       {
         chainId,
         networkId
-      }, 'istanbul')
+      }, 'london')
   }
 }
