@@ -50,7 +50,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
     gsnTransactionDetails.maxPriorityFeePerGas != null &&
     parseInt(pingResponse.minPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
   ) {
-    throw new Error(`Proposed gas price: ${gsnTransactionDetails.maxPriorityFeePerGas}; relay's minPriorityFeePerGas: ${pingResponse.minPriorityFeePerGas}`)
+    throw new Error(`Proposed priority gas fee: ${gsnTransactionDetails.maxPriorityFeePerGas}; relay's minPriorityFeePerGas: ${pingResponse.minPriorityFeePerGas}`)
   }
 }
 

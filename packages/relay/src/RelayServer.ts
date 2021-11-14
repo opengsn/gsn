@@ -669,7 +669,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     // }
     this.minPriorityFeePerGas = Math.floor(minPriorityFeePerGas * this.config.gasPriceFactor)
     if (this.minPriorityFeePerGas === 0) {
-      throw new Error('Could not get minPriorityFeePerGas from node')
+      this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
+      this.minPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }
     if (this.minPriorityFeePerGas > parseInt(this.config.maxGasPrice)) {
       throw new Error(`network gas price ${this.minPriorityFeePerGas} is higher than max gas price ${this.config.maxGasPrice}`)
