@@ -29,7 +29,7 @@ contract('StoredTransaction', function (accounts) {
       maxPriorityFeePerGas: 1e9,
       data: '0x12345678',
       nonce: 111,
-      txId: '0x6d3e12be85443f6ee57379ca2495b0ebb58f78a7e42f90e5fa67f991af605121',
+      txId: '0x437a03ff976c96807aad1bc895f1535292e4ddf798fd8232600d89912961fc57',
       value: bufferToHex(toBuffer(1e18))
     }
     storedTx = { ...serialized, ...metadata }
@@ -42,6 +42,7 @@ contract('StoredTransaction', function (accounts) {
       nonce: 111,
       value: 1e18
     })
+    tx = tx.sign(Buffer.from('bb8183929e188ef9ea90a909eafd9a67374c6e209874cb3af468e1bcc33fa2c7', 'hex'))
   })
 
   it('should store all tx fields', async function () {
