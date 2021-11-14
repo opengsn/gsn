@@ -26,7 +26,6 @@ import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { getDataAndSignature } from '@opengsn/common/dist'
-import { TransactionReceipt } from 'web3-core'
 import { toBN } from 'web3-utils'
 
 const RelayHub = artifacts.require('RelayHub')
@@ -347,7 +346,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           to: other,
           value: ether('0.5'),
           gasPrice: 1e9
-        }) as TransactionReceipt;
+        });
         ({
           data: penalizableTxData,
           signature: penalizableTxSignature
@@ -532,7 +531,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             to: other,
             value: ether('0.5'),
             gasPrice: 1e9
-          }) as TransactionReceipt
+          })
           const { data, signature } = await getDataAndSignatureFromHash(receipt.transactionHash, chainId)
 
           const method = await commitPenalizationAndReturnMethod(
@@ -569,7 +568,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             to: other,
             value: ether('0.5'),
             gasPrice
-          }) as TransactionReceipt
+          })
 
           const res = await stakeManager.unlockStake(relayManager, { from: relayOwner })
           expectEvent(res, StakeUnlocked, {
@@ -661,7 +660,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             to: other,
             value: ether('0.5'),
             gasPrice: 1e9
-          }) as TransactionReceipt;
+          });
           ({
             data: penalizableTxData,
             signature: penalizableTxSignature
