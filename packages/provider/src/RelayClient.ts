@@ -189,7 +189,8 @@ export class RelayClient {
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
     await this.dependencies.knownRelaysManager.refresh()
-    const { maxPriorityFeePerGas } = await this._calculateGasFees()
+    const { maxPriorityFeePerGas, maxFeePerGas } = await this._calculateGasFees()
+    gsnTransactionDetails.maxFeePerGas = gsnTransactionDetails.maxFeePerGas ?? maxFeePerGas
     gsnTransactionDetails.maxPriorityFeePerGas = gsnTransactionDetails.maxPriorityFeePerGas ?? maxPriorityFeePerGas
     if (gsnTransactionDetails.gas == null) {
       const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
