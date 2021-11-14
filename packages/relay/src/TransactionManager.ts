@@ -122,7 +122,8 @@ data         | ${transaction.data}
 
   async sendTransaction (txDetails: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = txDetails.method?.encodeABI() ?? '0x'
-    const gasPrice = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
+    const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
+    const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? maxFeePerGas.toString())
 
     const releaseMutex = await this.nonceMutex.acquire()
     if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
@@ -142,8 +143,8 @@ data         | ${transaction.data}
           to: txDetails.destination,
           value: txDetails.value,
           gasLimit: txDetails.gasLimit,
-          maxFeePerGas: txDetails.maxFeePerGas ?? gasPrice,
-          maxPriorityFeePerGas: txDetails.maxPriorityFeePerGas ?? gasPrice,
+          maxFeePerGas,
+          maxPriorityFeePerGas: maxPriorityFeePerGas,
           data: Buffer.from(encodedCall.slice(2), 'hex'),
           nonce
         }, this.rawTxOptions)
@@ -152,7 +153,7 @@ data         | ${transaction.data}
           to: txDetails.destination,
           value: txDetails.value,
           gasLimit: txDetails.gasLimit,
-          gasPrice,
+          gasPrice: maxFeePerGas,
           data: Buffer.from(encodedCall.slice(2), 'hex'),
           nonce
         }, this.rawTxOptions)
