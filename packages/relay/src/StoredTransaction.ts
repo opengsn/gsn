@@ -53,7 +53,7 @@ export function createStoredTransaction (tx: TypedTransaction, metadata: StoredT
   }
   const details: Partial<StoredTransactionSerialized> =
     {
-      to: ethUtils.bufferToHex(tx.to!.toBuffer()),
+      to: ethUtils.bufferToHex(tx.to.toBuffer()),
       gas: ethUtils.bufferToInt(tx.gasLimit.toBuffer()),
       data: ethUtils.bufferToHex(tx.data),
       nonce: ethUtils.bufferToInt(tx.nonce.toBuffer()),

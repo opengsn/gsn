@@ -197,7 +197,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateGasFees(req: RelayTransactionRequest) {
+  validateGasFees (req: RelayTransactionRequest): void {
     const requestPriorityFee = parseInt(req.relayRequest.relayData.maxPriorityFeePerGas)
     const requestMaxFee = parseInt(req.relayRequest.relayData.maxFeePerGas)
     if (this.minPriorityFeePerGas > requestPriorityFee) {
@@ -359,7 +359,6 @@ export class RelayServer extends EventEmitter {
             gasLimit: maxPossibleGas
           }, 'pending')
       }
-
     } catch (e) {
       throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
@@ -535,7 +534,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     const latestBlock = await this.contractInteractor.getBlock('latest')
     // todo remove once updating to web3 1.6.1
-    //@ts-ignore
+    // @ts-ignore
     if (latestBlock.baseFeePerGas != null) {
       this.transactionType = TransactionType.TYPE_TWO
     }
@@ -660,7 +659,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _refreshPriorityFee (): Promise<void> {
-    let minPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
+    const minPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
     // if (this.transactionType == TransactionType.TYPE_TWO) {
     //   // todo remove once updating to web3 1.6.1
     //   // @ts-ignore

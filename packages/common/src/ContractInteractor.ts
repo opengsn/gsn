@@ -50,9 +50,9 @@ import { sleep } from './Utils.js'
 import { Environment } from './Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
+import { BigNumber } from 'bignumber.js'
 
 import TransactionDetails = Truffle.TransactionDetails
-import { BigNumber } from 'bignumber.js'
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
@@ -510,8 +510,7 @@ export class ContractInteractor {
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(
-        `ContractInteractor:splitRange: only number supported for block range when using pagination, ${fromBlock} ${toBlock} ${parts}`)
+      throw new Error(`ContractInteractor:splitRange: only number supported for block range when using pagination, ${fromBlock} ${toBlock} ${parts}`)
     }
     const rangeSize = toBlock - fromBlock + 1
     const splitSize = Math.ceil(rangeSize / parts)

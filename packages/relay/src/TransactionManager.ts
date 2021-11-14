@@ -205,7 +205,7 @@ data         | ${transaction.data}
   async resendTransaction (tx: StoredTransaction, currentBlock: number, newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
     // Resend transaction with exactly the same values except for gas price
     let txToSign: TypedTransaction
-    if (this.transactionType == TransactionType.TYPE_TWO) {
+    if (this.transactionType === TransactionType.TYPE_TWO) {
       txToSign = new FeeMarketEIP1559Transaction(
         {
           to: tx.to,
@@ -249,7 +249,7 @@ data         | ${transaction.data}
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
     let isMaxGasPriceReached = false
     let newMaxFee = oldMaxFee * this.config.retryGasPriceFactor
-    let newMaxPriorityFee = oldMaxPriorityFee * this.config.retryGasPriceFactor
+    const newMaxPriorityFee = oldMaxPriorityFee * this.config.retryGasPriceFactor
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newMaxFee > parseInt(this.config.maxGasPrice)) {

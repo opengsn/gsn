@@ -7,7 +7,7 @@ import fs from 'fs'
 import ow from 'ow'
 import { toHex } from 'web3-utils'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { Transaction, FeeMarketEIP1559Transaction, TypedTransaction } from '@ethereumjs/tx'
+import { TypedTransaction } from '@ethereumjs/tx'
 
 export const KEYSTORE_FILENAME = 'keystore'
 
