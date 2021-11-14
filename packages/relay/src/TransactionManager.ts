@@ -213,13 +213,18 @@ data         | 0x${transaction.data.toString('hex')}
     }
   }
 
-  _resolveNewGasPrice (oldGasPrice: number): { newGasPrice: number, isMaxGasPriceReached: boolean } {
+  _resolveNewGasPrice (oldGasPrice: number, minGasPrice: number): { newGasPrice: number, isMaxGasPriceReached: boolean } {
     let isMaxGasPriceReached = false
     let newGasPrice = oldGasPrice * this.config.retryGasPriceFactor
+    if (newGasPrice < minGasPrice) {
+      this.logger.warn(`Adjusting newGasPrice ${newGasPrice} to current minimum of ${minGasPrice}`)
+      newGasPrice = minGasPrice
+    }
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newGasPrice > parseInt(this.config.maxGasPrice)) {
       isMaxGasPriceReached = true
+      this.logger.warn(`Adjusting newGasPrice ${newGasPrice} to maxGasPrice ${this.config.maxGasPrice}`)
       newGasPrice = parseInt(this.config.maxGasPrice)
     }
     return { newGasPrice, isMaxGasPriceReached }
@@ -290,7 +295,7 @@ data         | 0x${transaction.data.toString('hex')}
    * This methods uses the oldest pending transaction for reference. If it was not mined in a reasonable time,
    * it is boosted. All consequent transactions with gas price lower then that are boosted as well.
    */
-  async boostUnderpricedPendingTransactionsForSigner (signer: string, currentBlockHeight: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async boostUnderpricedPendingTransactionsForSigner (signer: string, currentBlockHeight: number, minGasPrice: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const boostedTransactions = new Map<PrefixedHexString, SignedTransactionDetails>()
 
     // Load unconfirmed transactions from store again
@@ -313,8 +318,8 @@ data         | 0x${transaction.data.toString('hex')}
       return boostedTransactions
     }
 
-    // Calculate new gas price as a % increase over the previous one
-    const { newGasPrice, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.gasPrice)
+    // Calculate new gas price as a % increase over the previous one, with a minimum value
+    const { newGasPrice, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.gasPrice, minGasPrice)
     const underpricedTransactions = sortedTxs.filter(it => it.gasPrice <= newGasPrice)
     for (const transaction of underpricedTransactions) {
       const boostedTransactionDetails = await this.resendTransaction(transaction, currentBlockHeight, newGasPrice, isMaxGasPriceReached)
