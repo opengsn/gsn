@@ -367,8 +367,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       it('should set min gas price to network average * gas price factor', async function () {
         env.relayServer.minPriorityFeePerGas = 0
         await env.relayServer._refreshPriorityFee()
-        const gasPrice = parseInt(await env.web3.eth.getGasPrice())
-        assert.equal(env.relayServer.minPriorityFeePerGas, env.relayServer.config.gasPriceFactor * gasPrice)
+        const priorityFee = parseInt(await env.relayServer.contractInteractor.getMaxPriorityFee())
+        assert.equal(env.relayServer.minPriorityFeePerGas, env.relayServer.config.gasPriceFactor * priorityFee)
       })
       it('should throw when min gas price is higher than max', async function () {
         await env.relayServer._refreshPriorityFee()
@@ -419,7 +419,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         try {
           await env.paymaster.withdrawAll(accounts[0])
-          await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          const res = await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e) {
           assert.include(e.message, 'paymaster balance too low')

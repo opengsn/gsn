@@ -322,7 +322,8 @@ export class RelayServer extends EventEmitter {
       throw new Error(`maxPossibleGas (${maxPossibleGas}) exceeds maxGasLimit (${this.maxGasLimit})`)
     }
     const maxCharge =
-      await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
+      await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData,
+        { gasPrice: req.relayRequest.relayData.maxFeePerGas })
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)
 
     if (paymasterBalance.lt(maxCharge)) {
