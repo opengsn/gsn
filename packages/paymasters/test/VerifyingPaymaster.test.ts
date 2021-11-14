@@ -34,7 +34,8 @@ contract('VerifyingPaymaster', ([from]) => {
         relayData: {
           pctRelayFee: '3',
           baseRelayFee: '4',
-          gasPrice: '5',
+          maxFeePerGas: '5',
+          maxPriorityFeePerGas: '5',
           transactionCalldataGasUsed: '0',
           paymaster: '0x'.padEnd(42, '3'),
           paymasterData: '0x',

@@ -218,31 +218,31 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
-      it('should fail to relay with low gasPrice', async function () {
-        const wrongGasPrice = env.relayServer.minGasPrice - 1
+      it('should fail to relay with low maxPriorityFeePerGas', async function () {
+        const wrongPriorityFee = env.relayServer.minPriorityFeePerGas - 1
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
+        req.relayRequest.relayData.maxPriorityFeePerGas = wrongPriorityFee.toString()
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
+            `priorityFee given ${wrongPriorityFee} too low : ${env.relayServer.minPriorityFeePerGas}`)
         }
       })
 
-      it('should fail to relay with high gasPrice', async function () {
-        const wrongGasPrice = parseInt(env.relayServer.config.maxGasPrice) + 1
+      it('should fail to relay with high maxPriorityFeePerGas', async function () {
+        const wrongFee = parseInt(env.relayServer.config.maxGasPrice) + 1
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
+        req.relayRequest.relayData.maxFeePerGas = wrongFee.toString()
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
+            `maxFee given ${wrongFee} too high : ${env.relayServer.config.maxGasPrice}`)
         }
       })
 
@@ -363,24 +363,24 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
     })
 
-    describe('#_refreshGasPrice()', function () {
+    describe('#_refreshPriorityFee()', function () {
       it('should set min gas price to network average * gas price factor', async function () {
-        env.relayServer.minGasPrice = 0
-        await env.relayServer._refreshGasPrice()
+        env.relayServer.minPriorityFeePerGas = 0
+        await env.relayServer._refreshPriorityFee()
         const gasPrice = parseInt(await env.web3.eth.getGasPrice())
-        assert.equal(env.relayServer.minGasPrice, env.relayServer.config.gasPriceFactor * gasPrice)
+        assert.equal(env.relayServer.minPriorityFeePerGas, env.relayServer.config.gasPriceFactor * gasPrice)
       })
       it('should throw when min gas price is higher than max', async function () {
-        await env.relayServer._refreshGasPrice()
+        await env.relayServer._refreshPriorityFee()
         const originalMaxPrice = env.relayServer.config.maxGasPrice
-        env.relayServer.config.maxGasPrice = (env.relayServer.minGasPrice - 1).toString()
+        env.relayServer.config.maxGasPrice = (env.relayServer.minPriorityFeePerGas - 1).toString()
         try {
-          await env.relayServer._refreshGasPrice()
+          await env.relayServer._refreshPriorityFee()
           assert.fail()
         } catch (e) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message,
-            `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
+            `network gas price ${env.relayServer.minPriorityFeePerGas} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
         } finally {
           env.relayServer.config.maxGasPrice = originalMaxPrice
         }
@@ -544,7 +544,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost,
-        gasPrice: gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         creationBlockNumber: 0,
         value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txCost))
       })
@@ -590,7 +591,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         creationBlockNumber: 0,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost,
-        gasPrice: gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
       assert.equal((await relayServer.getManagerBalance()).toString(), '0')
@@ -642,7 +644,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         creationBlockNumber: 0,
         destination: accounts[0],
         gasLimit: defaultEnvironment.mintxgascost,
-        gasPrice: gasPrice.toString(),
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
@@ -821,7 +824,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           destination,
           value = '0x',
           gasLimit,
-          gasPrice
+          maxFeePerGas,
+          maxPriorityFeePerGas
         }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore

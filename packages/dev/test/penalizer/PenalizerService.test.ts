@@ -80,7 +80,7 @@ contract('PenalizerService', function (accounts) {
       const signedTxToMine = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, txToMine)
       const signedTxToPenalize = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, penalizableTx)
       await env.relayServer.transactionManager.contractInteractor.sendSignedTransaction(signedTxToMine.rawTx)
-      await txByNonceService.setTransactionByNonce(signedTxToMine.signedEthJsTx, relayWorker)
+      await txByNonceService.setTransactionByNonce(signedTxToMine.signedEthJsTx as Transaction, relayWorker)
       auditRequest = { signedTx: signedTxToPenalize.rawTx }
     })
 

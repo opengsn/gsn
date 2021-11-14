@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 import Web3 from 'web3'
-import { BlockTransactionString } from 'web3-eth'
+import { BlockTransactionString, FeeHistoryResult } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
@@ -52,6 +52,7 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 
 import TransactionDetails = Truffle.TransactionDetails
+import { BigNumber } from 'bignumber.js'
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
@@ -348,7 +349,7 @@ export class ContractInteractor {
   async validateRelayCall (
     relayCallABIData: RelayCallABI,
     viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
-    if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.gasPrice == null) {
+    if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.maxFeePerGas == null || relayCallABIData.relayRequest.relayData.maxPriorityFeePerGas == null) {
       throw new Error('validateRelayCall: invalid input')
     }
     const relayHub = this.relayHubInstance
@@ -363,7 +364,8 @@ export class ContractInteractor {
             {
               from: relayCallABIData.relayRequest.relayData.relayWorker,
               to: relayHub.address,
-              gasPrice: toHex(relayCallABIData.relayRequest.relayData.gasPrice),
+              // TODO fix gasPrice
+              gasPrice: toHex(relayCallABIData.relayRequest.relayData.maxFeePerGas),
               gas: toHex(viewCallGasLimit),
               data: encodedRelayCall
             },
@@ -412,7 +414,8 @@ export class ContractInteractor {
 
   async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: IntString): Promise<BN> {
     const maxViewableGasLimitBN = toBN(maxViewableGasLimit)
-    const gasPrice = toBN(relayRequest.relayData.gasPrice)
+    // TODO fix gasPrice
+    const gasPrice = toBN(relayRequest.relayData.maxFeePerGas)
     if (gasPrice.eqn(0)) {
       return maxViewableGasLimitBN
     }
@@ -739,6 +742,22 @@ calculateTransactionMaxPossibleGas: result: ${result}
       new BN(gasPriceFromNode)
         .muln(this.environment.getGasPriceFactor)
     return gasPriceActual.toString()
+  }
+
+  async getFeeHistory (blockCount: number | BigNumber | BN | string, lastBlock: number | BigNumber | BN | string, rewardPercentiles: number[]): Promise<FeeHistoryResult> {
+    return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
+  }
+
+  async getMaxPriorityFee (): Promise<string> {
+    const networkHistoryFees = await this.getFeeHistory(1, 'latest', [0.5])
+    return networkHistoryFees.reward[0][0]
+  }
+
+  async getGasFees (): Promise<{baseFeePerGas: string, priorityFeePerGas: string}> {
+    const networkHistoryFees = await this.getFeeHistory(1, 'latest', [0.5])
+    const baseFeePerGas = networkHistoryFees.baseFeePerGas[0]
+    const priorityFeePerGas = networkHistoryFees.reward[0][0]
+    return { baseFeePerGas, priorityFeePerGas }
   }
 
   async getTransactionCount (address: string, defaultBlock?: BlockNumber): Promise<number> {

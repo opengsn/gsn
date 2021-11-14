@@ -4,9 +4,10 @@ pragma solidity ^0.8.0;
 import "../forwarder/IForwarder.sol";
 
 interface GsnTypes {
-    /// @notice gasPrice, pctRelayFee and baseRelayFee must be validated inside of the paymaster's preRelayedCall in order not to overpay
+    /// @notice maxFeePerGas, maxPriorityFeePerGas, pctRelayFee and baseRelayFee must be validated inside of the paymaster's preRelayedCall in order not to overpay
     struct RelayData {
-        uint256 gasPrice;
+        uint256 maxFeePerGas;
+        uint256 maxPriorityFeePerGas;
         uint256 pctRelayFee;
         uint256 baseRelayFee;
         uint256 transactionCalldataGasUsed;

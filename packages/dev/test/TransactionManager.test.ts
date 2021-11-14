@@ -123,7 +123,7 @@ contract('TransactionManager', function (accounts) {
       // Ganache is on auto-mine, so the server will throw after broadcasting on nonce error, after storing the boosted tx.
       try {
         await relayServer.transactionManager.resendTransaction(
-          oldTransaction, latestBlock, oldTransaction.gasPrice * 2, false)
+          oldTransaction, latestBlock, oldTransaction.maxFeePerGas, oldTransaction.maxPriorityFeePerGas * 2, false)
       } catch (e) {
         assert.include(e.message, 'Nonce too low. Expected nonce to be')
       }

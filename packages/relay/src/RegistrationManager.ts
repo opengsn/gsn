@@ -390,6 +390,7 @@ export class RegistrationManager {
   }
 
   async _sendManagerEthBalanceToOwner (currentBlock: number): Promise<PrefixedHexString[]> {
+    // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
     const transactionHashes: PrefixedHexString[] = []
     const gasLimit = mintxgascost
@@ -404,7 +405,8 @@ export class RegistrationManager {
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit,
-        gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         value: toHex(managerBalance.sub(txCost)),
         creationBlockNumber: currentBlock
       }
@@ -419,18 +421,20 @@ export class RegistrationManager {
   async _sendWorkersEthBalancesToOwner (currentBlock: number): Promise<PrefixedHexString[]> {
     // sending workers' balance to owner (currently one worker, todo: extend to multiple)
     const transactionHashes: PrefixedHexString[] = []
+    // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
     const gasLimit = mintxgascost
     const txCost = toBN(gasLimit * parseInt(gasPrice))
     const workerBalance = toBN(await this.contractInteractor.getBalance(this.workerAddress))
     if (workerBalance.gte(txCost)) {
       this.logger.info(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
-      const details = {
+      const details: SendTransactionDetails = {
         signer: this.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit,
-        gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         value: toHex(workerBalance.sub(txCost)),
         creationBlockNumber: currentBlock
       }

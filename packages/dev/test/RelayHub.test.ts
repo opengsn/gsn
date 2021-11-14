@@ -175,6 +175,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     const baseRelayFee = '10000'
     const pctRelayFee = '10'
     const gasPrice = 1e9.toString()
+    const maxFeePerGas = 1e9.toString()
+    const maxPriorityFeePerGas = 1e9.toString()
     const gasLimit = '1000000'
     const senderNonce = '0'
     let sharedRelayRequestData: RelayRequest
@@ -196,7 +198,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           pctRelayFee,
           baseRelayFee,
           transactionCalldataGasUsed: 7e6.toString(),
-          gasPrice,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
           relayWorker,
           forwarder,
           paymaster,
@@ -591,7 +594,8 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             await paymaster2.setTrustedForwarder(forwarder)
             await paymaster2.setRelayHub(relayHub)
             const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
-              gasPrice,
+              maxFeePerGas,
+              maxPriorityFeePerGas,
               pctRelayFee,
               baseRelayFee,
               transactionCalldataGasUsed: 7e6.toString(),

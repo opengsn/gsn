@@ -119,7 +119,8 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
   const gasData = {
     pctRelayFee: '0',
     baseRelayFee: '0',
-    gasPrice: '1',
+    maxFeePerGas: '1',
+    maxPriorityFeePerGas: '1',
     gasLimit: 1e6.toString()
   }
 

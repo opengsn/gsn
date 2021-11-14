@@ -3,6 +3,7 @@ import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
 import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
+import { Capability } from '@ethereumjs/tx'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
@@ -50,6 +51,11 @@ const GAS_FACTOR = 1.1
  */
 const GAS_RESERVE = 100000
 
+export enum TransactionType {
+  LEGACY,
+  TYPE_TWO = 2
+}
+
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
   lastScannedBlock: number
@@ -57,7 +63,7 @@ export class RelayServer extends EventEmitter {
   ready = false
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
-  minGasPrice: number = 0
+  minPriorityFeePerGas: number = 0
   _workerSemaphoreOn = false
   alerted = false
   alertedBlock: number = 0
@@ -71,6 +77,7 @@ export class RelayServer extends EventEmitter {
   txStoreManager: TxStoreManager
   readinessInfo: ReadinessInfo
   maxGasLimit: number = 0
+  transactionType = TransactionType.LEGACY
 
   lastMinedActiveTransaction?: EventData
 
@@ -127,8 +134,8 @@ export class RelayServer extends EventEmitter {
     this.logger.info(`Server worker  address  | ${this.workerAddress}`)
   }
 
-  getMinGasPrice (): number {
-    return this.minGasPrice
+  getMinPriorityFeePerGas (): number {
+    return this.minPriorityFeePerGas
   }
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
@@ -143,7 +150,7 @@ export class RelayServer extends EventEmitter {
       relayManagerAddress: this.managerAddress,
       relayHubAddress: this.relayHubContract?.address ?? '',
       ownerAddress: this.config.ownerAddress,
-      minGasPrice: this.getMinGasPrice().toString(),
+      minPriorityFeePerGas: this.getMinPriorityFeePerGas().toString(),
       maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
       chainId: this.chainId.toString(),
       networkId: this.networkId.toString(),
@@ -177,11 +184,7 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
-    if (this.minGasPrice > requestGasPrice || parseInt(this.config.maxGasPrice) < requestGasPrice) {
-      throw new Error(
-        `gasPrice given ${requestGasPrice} not in range : [${this.minGasPrice}, ${this.config.maxGasPrice}]`)
-    }
+    this.validateGasFees(req)
 
     if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
       throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
@@ -192,6 +195,19 @@ export class RelayServer extends EventEmitter {
     if (expiredInBlocks < this.config.requestMinValidBlocks) {
       throw new Error(
         `Request expired (or too close): expired in ${expiredInBlocks} blocks, we expect it to be valid for ${this.config.requestMinValidBlocks}`)
+    }
+  }
+
+  validateGasFees(req: RelayTransactionRequest) {
+    const requestPriorityFee = parseInt(req.relayRequest.relayData.maxPriorityFeePerGas)
+    const requestMaxFee = parseInt(req.relayRequest.relayData.maxFeePerGas)
+    if (this.minPriorityFeePerGas > requestPriorityFee) {
+      throw new Error(
+        `priorityFee given ${requestPriorityFee} too low : ${this.minPriorityFeePerGas}`)
+    }
+    if (parseInt(this.config.maxGasPrice) < requestMaxFee) {
+      throw new Error(
+        `maxFee given ${requestPriorityFee} too high : ${this.config.maxGasPrice}]`)
     }
   }
 
@@ -328,12 +344,23 @@ export class RelayServer extends EventEmitter {
       maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
-      viewRelayCallRet =
-        await method.call({
-          from: this.workerAddress,
-          gasPrice: req.relayRequest.relayData.gasPrice,
-          gasLimit: maxPossibleGas
-        }, 'pending')
+      if (this.transactionType === TransactionType.TYPE_TWO) {
+        viewRelayCallRet =
+          await method.call({
+            from: this.workerAddress,
+            maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
+            maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas,
+            gasLimit: maxPossibleGas
+          }, 'pending')
+      } else {
+        viewRelayCallRet =
+          await method.call({
+            from: this.workerAddress,
+            gasPrice: req.relayRequest.relayData.maxFeePerGas,
+            gasLimit: maxPossibleGas
+          }, 'pending')
+      }
+
     } catch (e) {
       throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
     }
@@ -351,6 +378,9 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
     if (!this.isReady()) {
       throw new Error('relay not ready')
+    }
+    if (this.transactionType === TransactionType.LEGACY && req.relayRequest.relayData.maxFeePerGas !== req.relayRequest.relayData.maxPriorityFeePerGas) {
+      throw new Error(`Network ${this.contractInteractor.getNetworkType()} doesn't support eip1559`)
     }
     if (this.alerted) {
       this.logger.error('Alerted state: slowing down traffic')
@@ -376,7 +406,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     // Send relayed transaction
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
-    const gasPrice = req.relayRequest.relayData.gasPrice
     const method = this.relayHubContract.contract.methods.relayCall(
       acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     const details: SendTransactionDetails =
@@ -387,7 +416,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
         destination: req.metadata.relayHubAddress,
         gasLimit: maxPossibleGas,
         creationBlockNumber: currentBlock,
-        gasPrice
+        maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
+        maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
       }
     const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
@@ -504,8 +534,13 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (this.initialized) {
       throw new Error('_init was already called')
     }
-
-    await this.transactionManager._init()
+    const latestBlock = await this.contractInteractor.getBlock('latest')
+    // todo remove once updating to web3 1.6.1
+    //@ts-ignore
+    if (latestBlock.baseFeePerGas != null) {
+      this.transactionType = TransactionType.TYPE_TWO
+    }
+    await this.transactionManager._init(this.transactionType)
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
     this.relayHubContract = await this.contractInteractor.relayHubInstance
 
@@ -534,7 +569,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
       process.exit(-1)
     }
 
-    const latestBlock = await this.contractInteractor.getBlock('latest')
     this.logger.info(`Current network info:
 chainId                 | ${this.chainId}
 networkId               | ${this.networkId}
@@ -617,7 +651,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       return []
     }
     this.lastRefreshBlock = blockNumber
-    await this._refreshGasPrice()
+    await this._refreshPriorityFee()
     await this.registrationManager.refreshBalance()
     if (!this.registrationManager.balanceRequired.isSatisfied) {
       this.setReadyState(false)
@@ -626,14 +660,20 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return await this._handleChanges(blockNumber)
   }
 
-  async _refreshGasPrice (): Promise<void> {
-    const gasPriceString = await this.gasPriceFetcher.getGasPrice()
-    this.minGasPrice = Math.floor(parseInt(gasPriceString) * this.config.gasPriceFactor)
-    if (this.minGasPrice === 0) {
-      throw new Error('Could not get gasPrice from node')
+  async _refreshPriorityFee (): Promise<void> {
+    let minPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
+    // if (this.transactionType == TransactionType.TYPE_TWO) {
+    //   // todo remove once updating to web3 1.6.1
+    //   // @ts-ignore
+    //   const baseFee = (await this.contractInteractor.getBlock('latest')).baseFeePerGas.toString()
+    //   minPriorityFeePerGas -= parseInt(baseFee)
+    // }
+    this.minPriorityFeePerGas = Math.floor(minPriorityFeePerGas * this.config.gasPriceFactor)
+    if (this.minPriorityFeePerGas === 0) {
+      throw new Error('Could not get minPriorityFeePerGas from node')
     }
-    if (this.minGasPrice > parseInt(this.config.maxGasPrice)) {
-      throw new Error(`network gas price ${this.minGasPrice} is higher than max gas price ${this.config.maxGasPrice}`)
+    if (this.minPriorityFeePerGas > parseInt(this.config.maxGasPrice)) {
+      throw new Error(`network gas price ${this.minPriorityFeePerGas} is higher than max gas price ${this.config.maxGasPrice}`)
     }
   }
 

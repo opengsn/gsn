@@ -32,5 +32,5 @@ export function packForwardRequest (req: ForwardRequest): string {
 export function packRelayData (data: RelayData): string {
   return abi.encodeParameters(
     ['uint256', 'uint256', 'uint256', 'address', 'address', 'bytes', 'uint256'],
-    [data.gasPrice, data.pctRelayFee, data.baseRelayFee, data.relayWorker, data.paymaster, data.paymasterData, data.clientId])
+    [data.maxFeePerGas, data.maxPriorityFeePerGas, data.pctRelayFee, data.baseRelayFee, data.relayWorker, data.paymaster, data.paymasterData, data.clientId])
 }

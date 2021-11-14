@@ -177,7 +177,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should allow to override metamask defaults', async () => {
-      const minGasPrice = 777
+      const minPriorityFeePerGas = 777
       const suffix = 'suffix'
       const metamaskProvider = {
         isMetaMask: true,
@@ -188,7 +188,7 @@ contract('RelayClient', function (accounts) {
       const constructorInput: GSNUnresolvedConstructorInput = {
         provider: metamaskProvider,
         config: {
-          minGasPrice,
+          minPriorityFeePerGas,
           paymasterAddress: paymaster.address,
           methodSuffix: suffix,
           jsonStringifyRequest: 5 as any
@@ -201,7 +201,7 @@ contract('RelayClient', function (accounts) {
       await anotherRelayClient._initInternal()
       assert.equal(anotherRelayClient.config.methodSuffix, suffix)
       assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
-      assert.equal(anotherRelayClient.config.minGasPrice, minGasPrice)
+      assert.equal(anotherRelayClient.config.minPriorityFeePerGas, minPriorityFeePerGas)
       assert.equal(anotherRelayClient.config.sliceSize, defaultGsnConfig.sliceSize, 'default value expected for a skipped field')
     })
   })
@@ -417,18 +417,18 @@ contract('RelayClient', function (accounts) {
   })
 
   describe('#_calculateDefaultGasPrice()', function () {
-    it('should use minimum gas price if calculated is to low', async function () {
-      const minGasPrice = 1e18
+    it('should use minimum gas price if calculated is too low', async function () {
+      const minPriorityFeePerGas = 1e18
       const gsnConfig: Partial<GSNConfig> = {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: paymaster.address,
-        minGasPrice
+        minPriorityFeePerGas
       }
       const relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
       await relayClient.init()
 
-      const calculatedGasPrice = await relayClient._calculateGasPrice()
-      assert.equal(calculatedGasPrice, `0x${minGasPrice.toString(16)}`)
+      const calculatedGasPrice = await relayClient._calculateGasFees()
+      assert.equal(calculatedGasPrice.maxPriorityFeePerGas, `0x${minPriorityFeePerGas.toString(16)}`)
     })
   })
 
@@ -456,7 +456,7 @@ contract('RelayClient', function (accounts) {
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
-        minGasPrice: '',
+        minPriorityFeePerGas: '',
         maxAcceptanceBudget: 1e10.toString(),
         ready: true,
         version: ''

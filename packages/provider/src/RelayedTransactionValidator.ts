@@ -64,8 +64,9 @@ export class RelayedTransactionValidator {
       relayRequestAbiEncode === transaction.data &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      if (new BN(transaction.gasPrice.toString()).lt(new BN(request.relayRequest.relayData.gasPrice))) {
-        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.gasPrice}`)
+      // TODO fix gasPrice
+      if (new BN(transaction.gasPrice.toString()).lt(new BN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
+        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
       }
       const receivedNonce = parseInt(transaction.nonce)
       if (receivedNonce > request.metadata.relayMaxNonce) {

@@ -116,7 +116,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         pctRelayFee: '0',
         baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
-        gasPrice: GAS_PRICE,
+        maxFeePerGas: GAS_PRICE,
+        maxPriorityFeePerGas: GAS_PRICE,
         paymasterData: '0x',
         clientId: '1'
       },

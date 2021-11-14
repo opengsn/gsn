@@ -41,6 +41,7 @@ export class HttpServer {
       // used to work before workspaces, needs research
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.post('/relay', this.relayHandler.bind(this))
+      // this.app.post('/relay1559', this.relay1559Handler.bind(this))
       this.relayService.on('error', (e) => { console.error('httpServer:', e) })
     }
 
@@ -118,6 +119,21 @@ export class HttpServer {
       this.logger.error(`tx failed: ${error}`)
     }
   }
+  //
+  // async relay1559Handler (req: Request, res: Response): Promise<void> {
+  //   if (this.relayService == null) {
+  //     throw new Error('RelayServer not initialized')
+  //   }
+  //   try {
+  //     ow(req.body, ow.object.exactShape(RelayTransactionRequest1559Shape))
+  //     const signedTx = await this.relayService.createRelayTransaction1559(req.body)
+  //     res.send({ signedTx })
+  //   } catch (e) {
+  //     const error: string = e.message
+  //     res.send({ error })
+  //     this.logger.error(`tx failed: ${error}`)
+  //   }
+  // }
 
   async auditHandler (req: Request<core.ParamsDictionary, AuditResponse, AuditRequest>, res: Response<AuditResponse>): Promise<void> {
     if (this.penalizerService == null) {

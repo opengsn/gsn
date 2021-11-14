@@ -89,7 +89,8 @@ contract('ContractInteractor', function (accounts) {
           validUntil: '0'
         },
         relayData: {
-          gasPrice: '1',
+          maxFeePerGas: '1',
+          maxPriorityFeePerGas: '1',
           pctRelayFee: '0',
           baseRelayFee: '0',
           transactionCalldataGasUsed: '0',
@@ -141,7 +142,8 @@ contract('ContractInteractor', function (accounts) {
           validUntil: '0'
         },
         relayData: {
-          gasPrice: '1',
+          maxFeePerGas: '1',
+          maxPriorityFeePerGas: '1',
           pctRelayFee: '0',
           baseRelayFee: '0',
           transactionCalldataGasUsed: '0',

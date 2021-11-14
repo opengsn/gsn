@@ -374,7 +374,13 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
-        return relayData.baseRelayFee.add((gasUsed.mul(relayData.gasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
+        uint256 chargeableGasPrice;
+        if (relayData.maxFeePerGas > tx.gasprice) {
+            chargeableGasPrice = tx.gasprice;
+        } else {
+            chargeableGasPrice = relayData.maxFeePerGas;
+        }
+        return relayData.baseRelayFee.add((gasUsed.mul(chargeableGasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 
     function isRelayManagerStaked(address relayManager) public override view returns (bool) {

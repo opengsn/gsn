@@ -243,7 +243,8 @@ export class ServerTestEnvironment {
       to: this.recipient.address,
       data: this.encodedFunction,
       gas: toHex(1000000),
-      gasPrice: toHex(20000000000)
+      maxFeePerGas: toHex(20000000000),
+      maxPriorityFeePerGas: toHex(20000000000)
     }
 
     const mergedDeployment = Object.assign({}, this.relayClient.dependencies.contractInteractor.getDeployment(), overrideDeployment)
