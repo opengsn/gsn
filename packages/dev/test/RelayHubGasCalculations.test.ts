@@ -37,8 +37,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const baseFee = new BN('300')
   const fee = new BN('10')
   const gasPrice = new BN(1e9)
-  const maxFeePerGas = new BN(1e9)
-  const maxPriorityFeePerGas = new BN(1e9)
+  const maxFeePerGas = 1e9.toString()
+  const maxPriorityFeePerGas = 1e9.toString()
   const gasLimit = new BN('1000000')
   const externalGasLimit = 5e6.toString()
   const paymasterData = '0x'
