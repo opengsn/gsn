@@ -206,7 +206,11 @@ export class RelayServer extends EventEmitter {
     }
     if (parseInt(this.config.maxGasPrice) < requestMaxFee) {
       throw new Error(
-        `maxFee given ${requestMaxFee} too high : ${this.config.maxGasPrice}]`)
+        `maxFee given ${requestMaxFee} too high : ${this.config.maxGasPrice}`)
+    }
+    if (requestMaxFee < requestPriorityFee) {
+      throw new Error(
+        `maxFee ${requestMaxFee} cannot be lower than priorityFee ${requestPriorityFee}`)
     }
   }
 
