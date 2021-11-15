@@ -683,7 +683,7 @@ export class ContractInteractor {
     }): number {
     const msgDataLength = toBuffer(_.msgData).length
     const msgDataGasCostInsideTransaction =
-      new BN(this.environment.dataOnChainHandlingGasCostPerByte)
+      toBN(this.environment.dataOnChainHandlingGasCostPerByte)
         .muln(msgDataLength)
         .toNumber()
     const calldataCost = this.calculateCalldataCost(_.msgData)
@@ -753,7 +753,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       return gasPriceFromNode
     }
     const gasPriceActual =
-      new BN(gasPriceFromNode)
+      toBN(gasPriceFromNode)
         .muln(this.environment.getGasPriceFactor)
     return gasPriceActual.toString()
   }

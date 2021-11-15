@@ -34,7 +34,7 @@ export class RelayedTransactionValidator {
     const transaction = {
       signer: tx.getSenderAddress().toString(),
       ...tx.toJSON()
-    } as any
+    }
 
     if (transaction.to == null) {
       throw new Error('transaction.to must be defined')
@@ -66,19 +66,20 @@ export class RelayedTransactionValidator {
     ) {
       if (transaction.gasPrice != null) {
         if (toBN(transaction.gasPrice).lt(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
-          throw new Error(`Relay Server signed gas price too low (${transaction.gasPrice()}). Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+          throw new Error(`Relay Server signed gas price too low (${transaction.gasPrice}). Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
         }
       } else if (transaction.maxFeePerGas != null && transaction.maxPriorityFeePerGas != null) {
         if (toBN(transaction.maxPriorityFeePerGas).lt(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
           throw new Error(`Relay Server signed max priority fee too low (${transaction.maxPriorityFeePerGas}). Requested transaction with priority fee at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
         }
-        if (toBN(transaction.maxFeePerGas.toString()).lt(toBN(request.relayRequest.relayData.maxFeePerGas))) {
+        if (toBN(transaction.maxFeePerGas).lt(toBN(request.relayRequest.relayData.maxFeePerGas))) {
           throw new Error(`Relay Server signed max fee too low (${transaction.maxFeePerGas}). Requested transaction with max fee at least ${request.relayRequest.relayData.maxFeePerGas}`)
         }
       } else {
         throw new Error('Transaction must have either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
       }
-      const receivedNonce = parseInt(transaction.nonce)
+      // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
+      const receivedNonce = parseInt(transaction.nonce!)
       if (receivedNonce > request.metadata.relayMaxNonce) {
         // TODO: need to validate that client retries the same request and doesn't double-spend.
         // Note that this transaction is totally valid from the EVM's point of view

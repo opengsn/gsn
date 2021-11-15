@@ -1,4 +1,3 @@
-import BN from 'bn.js'
 import { EventEmitter } from 'events'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
@@ -35,6 +34,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
+import { toBN } from 'web3-utils'
 
 // forwarder requests are signed with expiration time.
 
@@ -325,7 +325,7 @@ export class RelayClient {
 
     // valid that many blocks into the future.
     const validUntilPromise = this.dependencies.contractInteractor.getBlockNumber()
-      .then((num: number) => (new BN(this.config.requestValidBlocks).addn(num)).toString())
+      .then((num: number) => (toBN(this.config.requestValidBlocks).addn(num)).toString())
 
     const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
     const relayWorker = relayInfo.pingResponse.relayWorkerAddress
