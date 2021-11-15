@@ -293,16 +293,6 @@ contract('RelayClient', function (accounts) {
       }
     })
 
-    it('should use forceGasPrice if provided', async function () {
-      const forceGasPrice = '0x777777777'
-      const optionsForceGas = Object.assign({}, options, { forceGasPrice })
-      const { transaction, pingErrors, relayingErrors } = await relayClient.relayTransaction(optionsForceGas)
-      assert.equal(pingErrors.size, 0)
-      assert.equal(relayingErrors.size, 0)
-      // @ts-ignore
-      assert.equal(parseInt(transaction.gasPrice.toString('hex'), 16), parseInt(forceGasPrice))
-    })
-
     it('should return errors encountered in ping', async function () {
       const badHttpClient = new BadHttpClient(logger, true, false, false)
       const relayClient =
@@ -465,14 +455,15 @@ contract('RelayClient', function (accounts) {
         relayInfo: {
           relayManager,
           relayUrl,
-          baseRelayFee: '',
-          pctRelayFee: ''
+          baseRelayFee: '0',
+          pctRelayFee: '0'
         },
         pingResponse
       }
       optionsWithGas = Object.assign({}, options, {
         gas: '0xf4240',
-        gasPrice: '0x51f4d5c00'
+        maxFeePerGas: '0x51f4d5c00',
+        maxPriorityFeePerGas: '0x51f4d5c00'
       })
     })
 
@@ -643,23 +634,23 @@ contract('RelayClient', function (accounts) {
 
     it('should succeed to relay, but report ping error', async () => {
       const relayingResult = await relayClient.relayTransaction(options)
-      assert.isNotNull(relayingResult.transaction)
       assert.match(relayingResult.pingErrors.get(cheapRelayerUrl)?.message as string, /ECONNREFUSED/,
         `relayResult: ${_dumpRelayingResult(relayingResult)}`)
+      assert.exists(relayingResult.transaction)
     })
 
-    it('use preferred relay if one is set', async () => {
+    it('should use preferred relay if one is set', async () => {
       relayClient = new RelayClient({
         provider: underlyingProvider,
         config: {
-          preferredRelays: ['http://localhost:8090'],
-          ...gsnConfig
+          ...gsnConfig,
+          preferredRelays: ['http://localhost:8090']
         }
       })
       await relayClient.init()
       const relayingResult = await relayClient.relayTransaction(options)
-      assert.isNotNull(relayingResult.transaction)
       assert.equal(relayingResult.pingErrors.size, 0)
+      assert.exists(relayingResult.transaction)
     })
   })
 })
