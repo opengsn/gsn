@@ -419,7 +419,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         try {
           await env.paymaster.withdrawAll(accounts[0])
-          const res = await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e) {
           assert.include(e.message, 'paymaster balance too low')

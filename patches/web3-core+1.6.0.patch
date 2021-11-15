@@ -1,0 +1,22 @@
+diff --git a/node_modules/web3-core/types/index.d.ts b/node_modules/web3-core/types/index.d.ts
+index adc7692..cdfe48b 100644
+--- a/node_modules/web3-core/types/index.d.ts
++++ b/node_modules/web3-core/types/index.d.ts
+@@ -124,6 +124,8 @@ export interface Transaction {
+     to: string | null;
+     value: string;
+     gasPrice: string;
++    maxPriorityFeePerGas?: string;
++    maxFeePerGas?: string;
+     gas: number;
+     input: string;
+ }
+@@ -134,6 +136,8 @@ export interface TransactionConfig {
+     value?: number | string | BN;
+     gas?: number | string;
+     gasPrice?: number | string | BN;
++    maxPriorityFeePerGas?: number | string | BN;
++    maxFeePerGas?: number | string | BN;
+     data?: string;
+     nonce?: number;
+     chainId?: number;

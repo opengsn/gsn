@@ -3,7 +3,7 @@ import abiDecoder from 'abi-decoder'
 import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { Transaction } from '@ethereumjs/tx'
+import { TypedTransaction } from '@ethereumjs/tx'
 
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
@@ -149,7 +149,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       })
   }
 
-  _convertTransactionToRpcSendResponse (transaction: Transaction, request: JsonRpcPayload): JsonRpcResponse {
+  _convertTransactionToRpcSendResponse (transaction: TypedTransaction, request: JsonRpcPayload): JsonRpcResponse {
     const txHash: string = transaction.hash().toString('hex')
     const hash = `0x${txHash}`
     const id = (typeof request.id === 'string' ? parseInt(request.id) : request.id) ?? -1

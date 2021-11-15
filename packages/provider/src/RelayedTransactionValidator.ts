@@ -1,5 +1,5 @@
 import BN from 'bn.js'
-import { Transaction } from '@ethereumjs/tx'
+import { TransactionFactory } from '@ethereumjs/tx'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import { isSameAddress } from '@opengsn/common/dist/Utils'
@@ -30,7 +30,7 @@ export class RelayedTransactionValidator {
     request: RelayTransactionRequest,
     returnedTx: PrefixedHexString
   ): boolean {
-    const tx = Transaction.fromSerializedTx(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
+    const tx = TransactionFactory.fromSerializedData(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
     const transaction = {
       signer: tx.getSenderAddress().toString(),
       ...tx.toJSON()
@@ -64,9 +64,19 @@ export class RelayedTransactionValidator {
       relayRequestAbiEncode === transaction.data &&
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
-      // TODO fix gasPrice
-      if (new BN(transaction.gasPrice.toString()).lt(new BN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
-        throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+      if (transaction.gasPrice != null) {
+        if (new BN(transaction.gasPrice.toString()).lt(new BN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
+          throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+        }
+      } else if (transaction.maxFeePerGas != null && transaction.maxPriorityFeePerGas != null) {
+        if (new BN(transaction.maxPriorityFeePerGas.toString()).lt(new BN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
+          throw new Error(`Relay Server signed max priority fee too low. Requested transaction with priority fee at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+        }
+        if (new BN(transaction.maxFeePerGas.toString()).lt(new BN(request.relayRequest.relayData.maxFeePerGas))) {
+          throw new Error(`Relay Server signed max fee too low. Requested transaction with max fee at least ${request.relayRequest.relayData.maxFeePerGas}`)
+        }
+      } else {
+        throw new Error('Transaction must have either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
       }
       const receivedNonce = parseInt(transaction.nonce)
       if (receivedNonce > request.metadata.relayMaxNonce) {

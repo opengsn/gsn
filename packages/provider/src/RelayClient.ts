@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 import { EventEmitter } from 'events'
-import { Transaction } from '@ethereumjs/tx'
+import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
 import { ContractInteractor, asRelayCallAbi } from '@opengsn/common/dist/ContractInteractor'
@@ -61,13 +61,13 @@ export interface GSNUnresolvedConstructorInput {
 }
 
 interface RelayingAttempt {
-  transaction?: Transaction
+  transaction?: TypedTransaction
   error?: Error
   auditPromise?: Promise<AuditResponse>
 }
 
 export interface RelayingResult {
-  transaction?: Transaction
+  transaction?: TypedTransaction
   pingErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
   auditPromises?: Array<Promise<AuditResponse>>
@@ -140,7 +140,7 @@ export class RelayClient {
    *
    * @param {*} transaction - actual Ethereum transaction, signed by a relay
    */
-  async _broadcastRawTx (transaction: Transaction): Promise<{ hasReceipt: boolean, broadcastError?: Error, wrongNonce?: boolean }> {
+  async _broadcastRawTx (transaction: TypedTransaction): Promise<{ hasReceipt: boolean, broadcastError?: Error, wrongNonce?: boolean }> {
     const rawTx = '0x' + transaction.serialize().toString('hex')
     const txHash = '0x' + transaction.hash().toString('hex')
     this.logger.info(`Broadcasting raw transaction signed by relay. TxHash: ${txHash}`)
@@ -242,8 +242,8 @@ export class RelayClient {
       priorityFee = this.config.minPriorityFeePerGas
     }
     const maxPriorityFeePerGas = `0x${priorityFee.toString(16)}`
-    let maxFeePerGas = Math.round(parseInt(gasFees.baseFeePerGas) * (pct + 100) / 100).toString(16)
-    if (maxFeePerGas === '0') {
+    let maxFeePerGas = `0x${Math.round((parseInt(gasFees.baseFeePerGas) + parseInt(gasFees.priorityFeePerGas)) * (pct + 100) / 100).toString(16)}`
+    if (parseInt(maxFeePerGas) === 0) {
       maxFeePerGas = maxPriorityFeePerGas
     }
     return { maxFeePerGas, maxPriorityFeePerGas }
@@ -275,12 +275,12 @@ export class RelayClient {
       return { error: new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`) }
     }
     let hexTransaction: PrefixedHexString
-    let transaction: Transaction
+    let transaction: TypedTransaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
       hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
-      transaction = Transaction.fromSerializedTx(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
+      transaction = TransactionFactory.fromSerializedData(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
       auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
         .then((penalizeResponse) => {
           if (penalizeResponse.commitTxHash != null) {
