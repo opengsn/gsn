@@ -243,7 +243,7 @@ export class RelayClient {
       priorityFee = this.config.minPriorityFeePerGas
     }
     const maxPriorityFeePerGas = `0x${priorityFee.toString(16)}`
-    let maxFeePerGas = `0x${Math.round((parseInt(gasFees.baseFeePerGas) + parseInt(gasFees.priorityFeePerGas)) * (pct + 100) / 100).toString(16)}`
+    let maxFeePerGas = `0x${Math.round((parseInt(gasFees.baseFeePerGas) + priorityFee) * (pct + 100) / 100).toString(16)}`
     if (parseInt(maxFeePerGas) === 0) {
       maxFeePerGas = maxPriorityFeePerGas
     }

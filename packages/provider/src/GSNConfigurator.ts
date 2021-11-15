@@ -34,7 +34,7 @@ export const defaultGsnConfig: GSNConfig = {
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
-  minPriorityFeePerGas: 0,
+  minPriorityFeePerGas: 1e9,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   sliceSize: 3,
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
