@@ -19,7 +19,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from '@opengsn/provider/dist/RelayClient'
+import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, EmptyDataCallback } from '@opengsn/provider/dist/RelayClient'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '@opengsn/provider/dist/GSNConfigurator'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
@@ -582,17 +582,21 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should throw if variable length parameters are bigger than reported', async function () {
-      const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
-        return '0x' + 'ff'.repeat(101)
+      try {
+        const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+          return '0x' + 'ff'.repeat(101)
+        }
+        relayClient.dependencies.asyncApprovalData = getLongData
+        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+          .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
+
+        relayClient.dependencies.asyncPaymasterData = getLongData
+        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+          .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
+      } finally {
+        relayClient.dependencies.asyncApprovalData = EmptyDataCallback
+        relayClient.dependencies.asyncPaymasterData = EmptyDataCallback
       }
-
-      relayClient.dependencies.asyncApprovalData = getLongData
-      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
-        .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
-
-      relayClient.dependencies.asyncPaymasterData = getLongData
-      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
-        .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
     })
   })
 
