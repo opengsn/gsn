@@ -1,4 +1,4 @@
-import { Transaction } from '@ethereumjs/tx'
+import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import Mutex from 'async-mutex/lib/Mutex'
 import * as ethUtils from 'ethereumjs-util'
@@ -24,7 +24,7 @@ contract('TransactionManager', function (accounts) {
   describe('nonce counter asynchronous access protection', function () {
     let _pollNonceOrig: (signer: string) => Promise<number>
     let nonceMutexOrig: Mutex
-    let signTransactionOrig: (signer: string, tx: Transaction) => SignedTransaction
+    let signTransactionOrig: (signer: string, tx: TypedTransaction) => SignedTransaction
     before(function () {
       _pollNonceOrig = relayServer.transactionManager.pollNonce
       relayServer.transactionManager.pollNonce = async function (signer) {
@@ -98,7 +98,7 @@ contract('TransactionManager', function (accounts) {
       await relayServer.transactionManager.txStoreManager.clearAll()
       relayServer.transactionManager._initNonces()
       const { signedTx } = await env.relayTransaction()
-      parsedTxHash = ethUtils.bufferToHex((Transaction.fromSerializedTx(toBuffer(signedTx), relayServer.transactionManager.rawTxOptions)).hash())
+      parsedTxHash = ethUtils.bufferToHex((TransactionFactory.fromSerializedData(toBuffer(signedTx), relayServer.transactionManager.rawTxOptions)).hash())
       latestBlock = (await env.web3.eth.getBlock('latest')).number
     })
 
@@ -123,7 +123,7 @@ contract('TransactionManager', function (accounts) {
       // Ganache is on auto-mine, so the server will throw after broadcasting on nonce error, after storing the boosted tx.
       try {
         await relayServer.transactionManager.resendTransaction(
-          oldTransaction, latestBlock, oldTransaction.maxFeePerGas, oldTransaction.maxPriorityFeePerGas * 2, false)
+          oldTransaction, latestBlock, oldTransaction.maxFeePerGas * 2, oldTransaction.maxPriorityFeePerGas * 2, false)
       } catch (e) {
         assert.include(e.message, 'Nonce too low. Expected nonce to be')
       }
