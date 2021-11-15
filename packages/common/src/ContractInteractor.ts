@@ -382,7 +382,7 @@ export class ContractInteractor {
           if (revertMsg != null) {
             reject(new Error(revertMsg))
           }
-          if (err !== null) {
+          if (err as boolean) {
             reject(err)
           } else {
             resolve(res.result)
@@ -772,8 +772,8 @@ calculateTransactionMaxPossibleGas: result: ${result}
           params: [blockCount, lastBlock, rewardPercentiles],
           id: Date.now()
         },
-        (e: Error | null, r: any) => {
-          if (e != null) {
+        (e: Error | null | boolean, r: any) => {
+          if (e as any as boolean) {
             reject(e)
           } else {
             resolve(r.result)
@@ -938,9 +938,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
         ],
         id: Date.now()
       }, (e: Error | null, r: any) => {
-        if (e != null) {
+        if (e as any as boolean) {
           reject(e)
-        } else if (r.error != null) {
+        } else if (r.error as boolean) {
           reject(r.error)
         } else {
           resolve(r.result)

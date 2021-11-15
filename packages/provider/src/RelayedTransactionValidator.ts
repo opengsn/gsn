@@ -1,4 +1,3 @@
-import BN from 'bn.js'
 import { TransactionFactory } from '@ethereumjs/tx'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
@@ -8,6 +7,7 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { toBN } from 'web3-utils'
 
 export class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
@@ -65,15 +65,15 @@ export class RelayedTransactionValidator {
       isSameAddress(request.relayRequest.relayData.relayWorker, signer)
     ) {
       if (transaction.gasPrice != null) {
-        if (new BN(transaction.gasPrice.toString()).lt(new BN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
-          throw new Error(`Relay Server signed gas price too low. Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+        if (toBN(transaction.gasPrice).lt(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
+          throw new Error(`Relay Server signed gas price too low (${transaction.gasPrice()}). Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
         }
       } else if (transaction.maxFeePerGas != null && transaction.maxPriorityFeePerGas != null) {
-        if (new BN(transaction.maxPriorityFeePerGas.toString()).lt(new BN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
-          throw new Error(`Relay Server signed max priority fee too low. Requested transaction with priority fee at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+        if (toBN(transaction.maxPriorityFeePerGas).lt(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
+          throw new Error(`Relay Server signed max priority fee too low (${transaction.maxPriorityFeePerGas}). Requested transaction with priority fee at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
         }
-        if (new BN(transaction.maxFeePerGas.toString()).lt(new BN(request.relayRequest.relayData.maxFeePerGas))) {
-          throw new Error(`Relay Server signed max fee too low. Requested transaction with max fee at least ${request.relayRequest.relayData.maxFeePerGas}`)
+        if (toBN(transaction.maxFeePerGas.toString()).lt(toBN(request.relayRequest.relayData.maxFeePerGas))) {
+          throw new Error(`Relay Server signed max fee too low (${transaction.maxFeePerGas}). Requested transaction with max fee at least ${request.relayRequest.relayData.maxFeePerGas}`)
         }
       } else {
         throw new Error('Transaction must have either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')

@@ -111,11 +111,11 @@ export async function getEip712Signature (
       jsonrpc: '2.0',
       id: Date.now()
     }
-    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null, result?: JsonRpcResponse) => {
+    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null | boolean, result?: JsonRpcResponse) => {
       if (result?.error != null) {
         error = result.error
       }
-      if (error != null || result == null) {
+      if ((error as any as boolean) || result == null) {
         reject((error as any).message ?? error)
       } else {
         resolve(result.result)
