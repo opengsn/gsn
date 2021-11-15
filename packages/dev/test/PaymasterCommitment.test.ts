@@ -251,7 +251,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1062)
       const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
@@ -279,7 +279,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1030)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1062)
       const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
