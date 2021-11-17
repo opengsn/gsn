@@ -12,7 +12,7 @@ import { Address, IntString, Web3ProviderBaseInterface } from '../types/Aliases'
 import { Contract, TruffleContract } from '../LightTruffleContract'
 import { ERC20CacheDecoderInstance } from '@opengsn/contracts'
 
-import erc20CacheDecoderAbi from '../interfaces/IERC20CacheDecoder.json'
+import calldataCacheDecoderAbi from '../interfaces/ICalldataCacheDecoder.json'
 
 enum ERC20MethodSignatures {
   Transfer,
@@ -50,7 +50,7 @@ export class ERC20CalldataCacheDecoderInteractor implements ICalldataCacheDecode
     this.erc20CacheDecoderAddress = _.erc20CacheDecoderAddress
     this.ERC20CacheDecoder = TruffleContract({
       contractName: 'IRelayHub',
-      abi: erc20CacheDecoderAbi
+      abi: calldataCacheDecoderAbi
     })
     this.ERC20CacheDecoder.setProvider(_.provider, undefined)
   }
