@@ -12,7 +12,6 @@ interface BLSTypes {
     }
 
     struct RelayRequestsElement {
-        uint256 id;
         uint256 nonce;
         uint256 paymaster;
         uint256 sender;

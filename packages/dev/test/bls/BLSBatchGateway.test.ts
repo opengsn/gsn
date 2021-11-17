@@ -89,6 +89,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     registrar = await BLSAddressAuthorizationsRegistrar.new()
     gateway = await BLSBatchGateway.new(decompressor.address, registrar.address, blsTestHub.address)
 
+    batchInput.defaultCacheDecoder = toBN(decompressor.address)
     blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,
@@ -131,8 +132,8 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       })
     })
 
-    it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
-      const batchItem = await decompressorInteractor.compressRelayRequest({ relayRequest })
+    it.only('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
+      const { relayRequestElement } = await decompressorInteractor.compressRelayRequest({ relayRequest })
       const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
       const authorizationItem: AuthorizationElement = {
@@ -143,7 +144,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       const blsSignature = await blsTypedDataSigner.signRelayRequestBLS(relayRequest)
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature,
-        relayRequestElements: [batchItem],
+        relayRequestElements: [relayRequestElement],
         authorizations: [authorizationItem]
       }))
       const receipt = await web3.eth.sendTransaction({
@@ -162,7 +163,6 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       })
 
       await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
-        batchItemId: '777',
         requestFrom: from,
         requestTo: to
       })

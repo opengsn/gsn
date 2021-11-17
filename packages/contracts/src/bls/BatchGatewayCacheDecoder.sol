@@ -82,7 +82,7 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
             authorizations[i] = decodeAuthorizationItem(authorizationsRLPItems[i].toList());
         }
         for (uint256 i = 0; i < relayRequestsRLPItems.length; i++) {
-            (relayRequests[i], relayRequestsIDs[i]) = decodeRelayRequests(
+            relayRequests[i] = decodeRelayRequests(
                 relayRequestsRLPItems[i].toList(),
                 batchMetadata
             );
@@ -96,20 +96,18 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
     )
     public
     returns (
-        GsnTypes.RelayRequest memory,
-        uint256 id
+        GsnTypes.RelayRequest memory
     ) {
         // 1. read inputs
         BLSTypes.RelayRequestsElement memory batchElement;
-        batchElement.id = values[0].toUint();
-        batchElement.nonce = values[1].toUint();
-        batchElement.paymaster = values[2].toUint();
-        batchElement.sender = values[3].toUint();
-        batchElement.target = values[4].toUint();
-        batchElement.gasLimit = values[5].toUint() * 10000;
-        batchElement.calldataGas = values[6].toUint();
-        batchElement.encodedData = values[7].toBytes();
-        batchElement.cacheDecoder = values[8].toUint();
+        batchElement.nonce = values[0].toUint();
+        batchElement.paymaster = values[1].toUint();
+        batchElement.sender = values[2].toUint();
+        batchElement.target = values[3].toUint();
+        batchElement.gasLimit = values[4].toUint() * 10000;
+        batchElement.calldataGas = values[5].toUint();
+        batchElement.encodedData = values[6].toBytes();
+        batchElement.cacheDecoder = values[7].toUint();
 
         // 2. resolve values from inputs and cache
         address paymaster = address(uint160(paymastersCache.queryAndUpdateCache(batchElement.paymaster)));
@@ -129,13 +127,13 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         }
 
         // 4. Fill in values that are optional inputs or computed on-chain and construct a RelayRequest
-        return (
+        return
         GsnTypes.RelayRequest(
             IForwarder.ForwardRequest(sender, target, 0, batchElement.gasLimit, batchElement.nonce, batchElement.encodedData, batchMetadata.validUntil),
             GsnTypes.RelayData(
                 batchMetadata.gasPrice, batchMetadata.pctRelayFee, batchMetadata.baseRelayFee,
                 batchElement.calldataGas, batchMetadata.relayWorker, paymaster, forwarder, "", 0)
-        ), batchElement.id);
+        );
     }
 
     function decodeAuthorizationItem(RLPReader.RLPItem[] memory authorizationRLPItem) public pure returns (BLSTypes.SignedKeyAuthorization memory){

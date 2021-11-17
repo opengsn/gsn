@@ -19,7 +19,7 @@ contract BLSBatchGateway {
     BLSAddressAuthorizationsRegistrar public authorizationsRegistrar;
     IRelayHub public relayHub;
 
-    event RelayCallReverted(uint256 indexed batchItemId, bytes returnData);
+    event RelayCallReverted(uint256 indexed relayRequestId, bytes returnData);
     event BatchRelayed(address indexed relayWorker, uint256 batchSize);
     event SkippedInvalidBatchItem(uint256 itemId, string reason);
 
