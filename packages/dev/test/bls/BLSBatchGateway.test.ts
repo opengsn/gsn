@@ -16,7 +16,7 @@ import {
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
-import { constants, GSNBatchingContractsDeployment } from '@opengsn/common'
+import { constants, ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
 
@@ -98,12 +98,13 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     // @ts-ignore
     const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
     decompressorInteractor = await new CacheDecoderInteractor({
-      provider: web3.currentProvider as HttpProvider, batchingContractsDeployment, cachingGasConstants
+      provider: web3.currentProvider as HttpProvider,
+      batchingContractsDeployment,
+      contractInteractor: {} as ContractInteractor,
+      calldataCacheDecoderInteractors: {},
+      cachingGasConstants
     })
-      .init({
-        batchingContractsDeployment: { batchGatewayCacheDecoder: decompressor.address },
-        erc20contractAddress: constants.ZERO_ADDRESS
-      })
+      .init()
   })
 
   context('fallback function', function () {
@@ -131,7 +132,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     })
 
     it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
-      const batchItem = await decompressorInteractor.compressRelayRequest(relayRequest)
+      const batchItem = await decompressorInteractor.compressRelayRequest({ relayRequest })
       const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
       const authorizationItem: AuthorizationElement = {
@@ -178,8 +179,8 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
 
       const relayRequest2: RelayRequest = JSON.parse(JSON.stringify(relayRequest))
       relayRequest2.request.from = from2
-      const batchItem1 = await decompressorInteractor.compressRelayRequest(relayRequest)
-      const batchItem2 = await decompressorInteractor.compressRelayRequest(relayRequest2)
+      const batchItem1 = await decompressorInteractor.compressRelayRequest({ relayRequest: relayRequest })
+      const batchItem2 = await decompressorInteractor.compressRelayRequest({ relayRequest: relayRequest2 })
       const authorizationSignature1 = await createAuthorizationSignature(from, blsTypedDataSigner1.blsKeypair, registrar)
       const authorizationSignature2 = await createAuthorizationSignature(from2, blsTypedDataSigner2.blsKeypair, registrar)
       const blsPublicKey1 = blsTypedDataSigner1.getPublicKeySerialized()
@@ -234,7 +235,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       }
 
       // it seems that if the signature is not some BLS signature hardhat will revert the entire transaction
-      const batchItem = await decompressorInteractor.compressRelayRequest(relayRequest)
+      const batchItem = await decompressorInteractor.compressRelayRequest({ relayRequest })
       const blsSignature = (await blsTypedDataSigner.signTypedDataBLS('0xffffffff')).map((it: BN) => { return it.toString('hex') })
       const data = encodeBatch(
         Object.assign({}, batchInput, {

@@ -13,6 +13,7 @@ import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+import { BatchManager } from './BatchManager'
 
 export enum LoggingProviderMode {
   NONE,
@@ -84,6 +85,9 @@ export interface ServerConfigParams {
 
   environmentName?: string
   runBatching: boolean
+  batchTargetGasLimit: string
+  batchDurationMS: number
+  batchValidUntilBlocks: number
 }
 
 export interface ServerDependencies {
@@ -94,6 +98,7 @@ export interface ServerDependencies {
   gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager
   reputationManager?: ReputationManager
+  batchManager?: BatchManager
   logger: LoggerInterface
 }
 
@@ -150,12 +155,14 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
-  runBatching: false
+  runBatching: false,
+  batchDurationMS: 0,
+  batchTargetGasLimit: '0',
+  batchValidUntilBlocks: 0
 }
 
-const ConfigParamsTypes = {
+const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 'number' | 'boolean' | 'list' } = {
   ownerAddress: 'string',
-  config: 'string',
   baseRelayFee: 'number',
   pctRelayFee: 'number',
   url: 'string',
@@ -178,9 +185,6 @@ const ConfigParamsTypes = {
   loggerUrl: 'string',
   loggerUserId: 'string',
 
-  customerToken: 'string',
-  hostOverride: 'string',
-  userId: 'string',
   registrationBlockRate: 'number',
   activityBlockRate: 'number',
   maxAcceptanceBudget: 'number',
@@ -203,9 +207,6 @@ const ConfigParamsTypes = {
   etherscanApiUrl: 'string',
   etherscanApiKey: 'string',
 
-  // TODO: does not belong here
-  initialReputation: 'number',
-
   requiredVersionRange: 'string',
   dbAutoCompactionInterval: 'number',
   retryGasPriceFactor: 'number',
@@ -218,8 +219,12 @@ const ConfigParamsTypes = {
   coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number',
-  environmentName: 'string'
-} as any
+  environmentName: 'string',
+  runBatching: 'boolean',
+  batchTargetGasLimit: 'string',
+  batchDurationMS: 'number',
+  batchValidUntilBlocks: 'number'
+}
 
 // by default: no waiting period - use VersionRegistry entries immediately.
 const DefaultRegistryDelayPeriod = 0
@@ -342,7 +347,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
       error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
     }
     const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
-    const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
+    const {
+      version, value, time
+    } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
     contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
     config.relayHubAddress = value

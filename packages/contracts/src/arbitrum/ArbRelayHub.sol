@@ -18,9 +18,8 @@ contract ArbRelayHub is RelayHub {
         ArbSys _arbsys,
         IStakeManager _stakeManager,
         address _penalizer,
-        address _batchGateway,
         RelayHubConfig memory _config
-    ) RelayHub(_stakeManager, _penalizer, _batchGateway, _config){
+    ) RelayHub(_stakeManager, _penalizer, _config){
         arbsys = _arbsys;
     }
 

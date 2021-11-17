@@ -12,7 +12,7 @@ export interface RelayMetadata {
   signature: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
   calldataCacheDecoder?: Address
-  authorization?: AuthorizationElement
+  authorizationElement?: AuthorizationElement
 }
 
 export interface RelayTransactionRequest {
@@ -50,6 +50,7 @@ export const RelayTransactionRequestShape = {
     signature: ow.string,
     maxAcceptanceBudget: ow.string,
     calldataCacheDecoder: ow.any(ow.string, ow.undefined),
-    authorization: ow.object // TODO - define authorization's shape
+    // TODO - define authorization's shape
+    authorizationElement: ow.any(ow.object, ow.undefined)
   }
 }

@@ -17,10 +17,8 @@ contract TestHub is RelayHub, AllEvents {
     constructor(
         IStakeManager _stakeManager,
         address _penalizer,
-        address _batchGateway,
         RelayHubConfig memory _config) RelayHub(_stakeManager,
         _penalizer,
-        _batchGateway,
         _config)
         // solhint-disable-next-line no-empty-blocks
     {}

@@ -2,19 +2,15 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
-import "../utils/GsnTypes.sol";
+import "../bls/utils/BLSTypes.sol";
+import "./ICacheDecoder.sol";
 
-interface IBatchGatewayCacheDecoder {
-    function convertAddressesToIds(
-        address[] memory senders,
-        address[] memory targets,
-        address[] memory paymasters
+interface IBatchGatewayCacheDecoder is ICacheDecoder{
+    function decodeBatch(
+        bytes calldata encodedBatch
     )
     external
-    view
     returns (
-        uint256[] memory sendersID,
-        uint256[] memory targetsID,
-        uint256[] memory paymastersID
+        BLSTypes.Batch memory decodedBatch
     );
 }

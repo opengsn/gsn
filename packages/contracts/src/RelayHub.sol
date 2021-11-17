@@ -29,7 +29,7 @@ contract RelayHub is IRelayHub, Ownable {
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
-    address public immutable override batchGateway;
+    address public override batchGateway;
 
     RelayHubConfig private config;
 
@@ -55,13 +55,16 @@ contract RelayHub is IRelayHub, Ownable {
     constructor (
         IStakeManager _stakeManager,
         address _penalizer,
-        address _batchGateway,
         RelayHubConfig memory _config
     ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
-        batchGateway = _batchGateway;
         setConfiguration(_config);
+    }
+
+    // TODO: align with the Registrar config
+    function setBatchGateway(address _batchGateway) external onlyOwner {
+        batchGateway = _batchGateway;
     }
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {

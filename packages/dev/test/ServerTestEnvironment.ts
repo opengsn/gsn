@@ -4,16 +4,16 @@ import Web3 from 'web3'
 import crypto from 'crypto'
 import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
-import { toHex } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import {
   IForwarderInstance,
   IPenalizerInstance,
-  IRelayHubInstance,
+  RelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance
+  TestPaymasterEverythingAcceptedInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -25,7 +25,12 @@ import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
-import { configureServer, ServerConfigParams, serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigParams'
+import {
+  configureServer,
+  ServerConfigParams,
+  serverDefaultConfiguration,
+  ServerDependencies
+} from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -40,15 +45,26 @@ import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfig
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { GSNBatchingContractsDeployment, GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { _sanitizeAbiDecoderEvent } from '@opengsn/common'
+import { deployBatchingContractsForHub } from './bls/BatchTestUtils'
+import { BatchManager } from '@opengsn/relay/dist/BatchManager'
+import {
+  CacheDecoderInteractor,
+  CachingGasConstants,
+  RLPBatchCompressedInput
+} from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const StakeManager = artifacts.require('StakeManager')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+
+const TestToken = artifacts.require('TestToken')
+const GatewayForwarder = artifacts.require('GatewayForwarder')
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(StakeManagerABI)
@@ -58,6 +74,20 @@ abiDecoder.addABI(TestRecipient.abi)
 // @ts-ignore
 abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 export const LocalhostOne = 'http://localhost:8090'
+
+export const stubBatchInput: RLPBatchCompressedInput = {
+  gasPrice: toBN(15),
+  validUntil: toBN(15),
+  relayWorker: toBN(15),
+  pctRelayFee: toBN(15),
+  baseRelayFee: toBN(15),
+  maxAcceptanceBudget: toBN(15),
+  defaultCacheDecoder: toBN(0),
+  blsSignature: [],
+  relayRequestElements: [],
+  authorizations: []
+}
+
 
 export interface PrepareRelayRequestOption {
   to: string
@@ -70,10 +100,11 @@ export interface PrepareRelayRequestOption {
 export class ServerTestEnvironment {
   stakeManager!: IStakeManagerInstance
   penalizer!: IPenalizerInstance
-  relayHub!: IRelayHubInstance
+  relayHub!: RelayHubInstance
   forwarder!: IForwarderInstance
   paymaster!: TestPaymasterEverythingAcceptedInstance
   recipient!: IRelayRecipientInstance
+  testToken!: TestTokenInstance
 
   relayOwner!: Address
   gasLess!: Address
@@ -95,6 +126,10 @@ export class ServerTestEnvironment {
   web3: Web3
   relayServer!: RelayServer
 
+  batchingContractsDeployment!: GSNBatchingContractsDeployment
+  cacheDecoderInteractor!: CacheDecoderInteractor
+  blsTypedDataSigner!: BLSTypedDataSigner
+
   constructor (provider: HttpProvider, accounts: Address[]) {
     this.provider = provider
     this.web3 = new Web3(this.provider)
@@ -106,13 +141,16 @@ export class ServerTestEnvironment {
    * @param relayHubConfig
    * @param contractFactory - added for Profiling test, as it requires Test Environment to be using
    * different provider from the contract interactor itself.
+   * @param gatewayForwarder
    */
-  async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
+  async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>,
+    // todo: we have 2 forwarders now... allow override of deployment
+    gatewayForwarder: boolean = false
+  ): Promise<void> {
     this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    // @ts-ignore - IRelayHub and RelayHub types are similar enough for tests to work
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
-    this.forwarder = await Forwarder.new()
+    this.forwarder = gatewayForwarder ? await GatewayForwarder.new(this.relayHub.address) : await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()
     await registerForwarderForGsn(this.forwarder)
@@ -127,16 +165,7 @@ export class ServerTestEnvironment {
       paymasterAddress: this.paymaster.address
     }
     if (contractFactory == null) {
-      const logger = createServerLogger('error', '', '')
-      const maxPageSize = Number.MAX_SAFE_INTEGER
-      this.contractInteractor = new ContractInteractor({
-        environment: defaultEnvironment,
-        provider: this.provider,
-        logger,
-        maxPageSize,
-        deployment: { paymasterAddress: this.paymaster.address }
-      })
-      await this.contractInteractor.init()
+      this.contractInteractor = await ServerTestEnvironment.newContractInteractor(this.provider, this.paymaster.address)
     } else {
       this.contractInteractor = await contractFactory(shared)
     }
@@ -147,6 +176,42 @@ export class ServerTestEnvironment {
     })
     await this.relayClient.init()
     this.gasLess = this.relayClient.newAccount().address
+  }
+
+  static async newContractInteractor (provider: HttpProvider, paymasterAddress?: Address) {
+    const logger = createServerLogger('error', '', '')
+    const maxPageSize = Number.MAX_SAFE_INTEGER
+    const contractInteractor = new ContractInteractor({
+      environment: defaultEnvironment,
+      provider,
+      logger,
+      maxPageSize,
+      deployment: { paymasterAddress }
+    })
+    await contractInteractor.init()
+    return contractInteractor
+  }
+
+  async initBatching () {
+    this.testToken = await TestToken.new()
+    await this.testToken.setTrustedForwarder(this.forwarder.address)
+    this.batchingContractsDeployment = await deployBatchingContractsForHub(this.relayHub.address)
+    await this.relayHub.setBatchGateway(this.batchingContractsDeployment.batchGateway)
+
+    const cachingGasConstants: CachingGasConstants = {
+      authorizationCalldataBytesLength: 1,
+      authorizationStorageSlots: 1,
+      gasPerSlotL2: 1
+    }
+    this.cacheDecoderInteractor = new CacheDecoderInteractor({
+      provider: web3.currentProvider as HttpProvider,
+      batchingContractsDeployment: this.batchingContractsDeployment,
+      contractInteractor: this.contractInteractor,
+      calldataCacheDecoderInteractors: {},
+      cachingGasConstants
+    })
+    await this.cacheDecoderInteractor.init()
+    this.blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
   }
 
   async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
@@ -203,9 +268,13 @@ export class ServerTestEnvironment {
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
-    const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
+    const txStoreManager = new TxStoreManager({
+      workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir,
+      autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval
+    }, logger)
     const gasPriceFetcher = new GasPriceFetcher('', '', this.contractInteractor, logger)
-    const serverDependencies = {
+
+    const serverDependencies: ServerDependencies = {
       contractInteractor: this.contractInteractor,
       gasPriceFetcher,
       logger,
@@ -215,6 +284,19 @@ export class ServerTestEnvironment {
     }
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
     const transactionManager = new TransactionManager(serverDependencies, configureServer(mergedConfig))
+
+    if (config.runBatching) {
+      serverDependencies.batchManager = new BatchManager({
+        config: configureServer(mergedConfig),
+        newMinGasPrice: 0,
+        workerAddress: managerKeyManager.getAddress(0),
+        batchingContractsDeployment: this.batchingContractsDeployment,
+        contractInteractor: this.contractInteractor,
+        transactionManager,
+        blsTypedDataSigner: this.blsTypedDataSigner,
+        cacheDecoderInteractor: this.cacheDecoderInteractor
+      })
+    }
     this.relayServer = new RelayServer(mergedConfig, transactionManager, serverDependencies)
     this.relayServer.on('error', (e) => {
       console.log('newServer event', e.message)

@@ -33,6 +33,12 @@ module.exports = {
       {
         ignoreStringArrays: true
       }
+    ],
+    '@typescript-eslint/consistent-type-assertions': ['error',
+      {
+        assertionStyle: 'as',
+        objectLiteralTypeAssertions: 'allow'
+      }
     ]
   },
   overrides: [

@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
-import "../interfaces/IERC20CacheDecoder.sol";
+import "../interfaces/ICalldataCacheDecoder.sol";
 
 import "../utils/GsnTypes.sol";
 import "../utils/RLPReader.sol";
@@ -10,14 +10,11 @@ import "../utils/RLPReader.sol";
 import "./utils/BLSTypes.sol";
 import "./utils/CacheLibrary.sol";
 
-/**
-*
-*/
-contract ERC20CacheDecoder is IERC20CacheDecoder {
+contract ERC20CacheDecoder is ICalldataCacheDecoder {
     using RLPReader for bytes;
     using RLPReader for uint;
     using RLPReader for RLPReader.RLPItem;
-    using CacheLibrary for BLSTypes.AddressCache;
+    using CacheLibrary for CacheLibrary.WordCache;
 
     enum ERC20Method {
         Transfer,
@@ -36,8 +33,7 @@ contract ERC20CacheDecoder is IERC20CacheDecoder {
     bytes4(0xd505accf)
     ];
 
-    // method-specific parameters
-    BLSTypes.AddressCache private recipientsCache;
+    CacheLibrary.WordCache private recipientsCache;
 
     /// Decodes the input and stores the values that are encountered for the first time.
     /// @return decoded the array with all values filled either from input of from the cache
@@ -57,14 +53,14 @@ contract ERC20CacheDecoder is IERC20CacheDecoder {
             methodSignature == methodIds[uint256(ERC20Method.Approve)]) {
             uint256 recipientId = values[1].toUint();
             uint256 value = values[2].toUint();
-            address recipient = recipientsCache.queryAndUpdateCache(recipientId);
+            address recipient = address(uint160(recipientsCache.queryAndUpdateCache(recipientId)));
             return abi.encodeWithSelector(methodSignature, recipient, value);
         } else if (methodSignature == methodIds[uint256(ERC20Method.TransferFrom)]) {
             uint256 ownerId = values[1].toUint();
             uint256 recipientId = values[2].toUint();
             uint256 value = values[3].toUint();
-            address owner = recipientsCache.queryAndUpdateCache(ownerId);
-            address recipient = recipientsCache.queryAndUpdateCache(recipientId);
+            address owner = address(uint160(recipientsCache.queryAndUpdateCache(ownerId)));
+            address recipient = address(uint160(recipientsCache.queryAndUpdateCache(recipientId)));
             return abi.encodeWithSelector(methodSignature, owner, recipient, value);
         } else if (methodSignature == methodIds[uint256(ERC20Method.Burn)]) {
             uint256 value = values[1].toUint();
@@ -73,16 +69,16 @@ contract ERC20CacheDecoder is IERC20CacheDecoder {
         revert("unknown ERC20 method ID");
     }
 
-    function convertAddressesToIds(
-        address[] memory recipients
+    function convertWordsToIds(
+        uint256[][] memory words
     )
     external
     override
     view
     returns (
-        uint256[] memory sendersID
+        uint256[][] memory ret
     ){
-        return recipientsCache.convertAddressesToIdsInternal(recipients);
+        ret[0] = recipientsCache.convertWordsToIdsInternal(words[0]);
+        return ret;
     }
-
 }

@@ -41,6 +41,7 @@ export class HttpServer {
       // used to work before workspaces, needs research
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.post('/relay', this.relayHandler.bind(this))
+      this.app.post('/relay-batched', this.relayHandler.bind(this))
       this.relayService.on('error', (e) => { console.error('httpServer:', e) })
     }
 
@@ -140,6 +141,21 @@ export class HttpServer {
       const message: string = e.message
       res.send({ message })
       this.logger.error(`penalization failed: ${message}`)
+    }
+  }
+
+  async relayBatchHandler (req: Request, res: Response): Promise<void> {
+    if (this.relayService == null) {
+      throw new Error('RelayServer not initialized')
+    }
+    try {
+      ow(req.body, ow.object.exactShape(RelayTransactionRequestShape))
+      const signedTx = await this.relayService.createRelayTransaction(req.body)
+      res.send({ signedTx })
+    } catch (e) {
+      const error: string = e.message
+      res.send({ error })
+      this.logger.error(`tx failed: ${error}`)
     }
   }
 }

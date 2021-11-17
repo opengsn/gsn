@@ -1,39 +1,40 @@
 import { PrefixedHexString } from 'ethereumjs-util'
+import { Transaction } from '@ethereumjs/tx'
+import { toHex } from 'web3-utils'
 
-import {
-  GSNContractsDeploymentResolvedForRequest, GSNUnresolvedConstructorInput,
-  RelayClient, RelayingAttempt
-} from '../RelayClient'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { Transaction } from '@ethereumjs/tx'
+import { IntString } from '@opengsn/common/dist/types/Aliases'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { GsnSendToRelayerEvent, GsnSignRequestEvent } from '../GsnEvents'
-import { asRelayCallAbi, getRelayRequestID } from '@opengsn/common'
-import { toBN, toHex } from 'web3-utils'
+import { asRelayCallAbi, getRelayRequestID, GSNBatchingContractsDeployment } from '@opengsn/common'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+
 import {
   AuthorizationElement,
-  CacheDecoderInteractor,
-  TargetType
+  CacheDecoderInteractor
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 
+import {
+  GSNContractsDeploymentResolvedForRequest,
+  GSNUnresolvedConstructorInput,
+  RelayClient,
+  RelayingAttempt
+} from '../RelayClient'
+
+import { GsnSendToRelayerEvent, GsnSignRequestEvent } from '../GsnEvents'
+
 export class BatchRelayClient extends RelayClient {
+  private readonly batchingContractsDeployment: GSNBatchingContractsDeployment
   cacheDecoderInteractor: CacheDecoderInteractor
 
   constructor (
     rawConstructorInput: GSNUnresolvedConstructorInput,
+    batchingContractsDeployment: GSNBatchingContractsDeployment,
     cacheDecoderInteractor: CacheDecoderInteractor
   ) {
     super(rawConstructorInput)
+    this.batchingContractsDeployment = batchingContractsDeployment
     this.cacheDecoderInteractor = cacheDecoderInteractor
-  }
-
-  async init (): Promise<this> {
-    await super.init()
-    this.cacheDecoderInteractor.setContractInteractor(this.dependencies.contractInteractor)
-    return this
   }
 
   /**
@@ -64,7 +65,7 @@ export class BatchRelayClient extends RelayClient {
     const encodedRelayCall = this.dependencies.contractInteractor.encodeABI(asRelayCallAbi(httpRequestWithoutSignature))
 
     return {
-      from: this.cacheDecoderInteractor.batchingContractsDeployment.batchGateway,
+      from: this.batchingContractsDeployment.batchGateway,
       to: this._getResolvedDeployment().relayHubAddress,
       gasPrice: toHex(httpRequest.relayRequest.relayData.gasPrice),
       gas: toHex(viewCallGasLimit),
@@ -74,7 +75,12 @@ export class BatchRelayClient extends RelayClient {
 
   async prepareRelayRequestMetadata (relayRequest: RelayRequest, relayInfo: RelayInfo, deployment: GSNContractsDeploymentResolvedForRequest): Promise<RelayMetadata> {
     this.emit(new GsnSignRequestEvent())
-    const authorization = await this._fillInComputedFieldsWithAuthorization(relayRequest)
+    let authorizationElement: AuthorizationElement | undefined
+    const authorizationIssued = await this.dependencies.accountManager.isAuthorizationIssuedToCurrentBLSPrivateKey(relayRequest.request.from)
+    if (!authorizationIssued) {
+      authorizationElement = await this.dependencies.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.batchingContractsDeployment.authorizationsRegistrar)
+    }
+    await this._fillInComputedFieldsWithAuthorization(relayRequest, authorizationElement)
     const signature = await this.dependencies.accountManager.signBLSALTBN128(relayRequest)
     return {
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
@@ -82,37 +88,22 @@ export class BatchRelayClient extends RelayClient {
       signature,
       approvalData: '0x',
       relayMaxNonce: Number.MAX_SAFE_INTEGER,
-      authorization
+      authorizationElement
     }
   }
 
   /**
    * Modifies the input object itself to include fields computed on an almost full {@link RelayRequest}
    * @param relayRequest - an object that will be modified by this method
+   * @param authorizationElement - only used to calculate calldata costs
    * @returns PrefixedHexString and RLP-encoded {@link AuthorizationElement} to be passed to the server
    */
-  async _fillInComputedFieldsWithAuthorization (relayRequest: RelayRequest): Promise<AuthorizationElement | undefined> {
-    let authorizationElement: AuthorizationElement | undefined
-    const authorizationIssued = await this.dependencies.accountManager.authorizationIssued(relayRequest.request.from)
-    if (!authorizationIssued) {
-      authorizationElement = await this.dependencies.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.cacheDecoderInteractor.batchingContractsDeployment.authorizationsRegistrar)
-    }
-    const targetType = this._getTargetType(relayRequest.request.to)
-    const compressedData = await this.cacheDecoderInteractor.compressAbiEncodedCalldata(targetType, relayRequest.request.data)
-    const compressRelayRequest = await this.cacheDecoderInteractor.compressRelayRequest(relayRequest, compressedData.cachedEncodedData)
-    const calldataCost = this.cacheDecoderInteractor.estimateCalldataCostForRelayRequestsElement(compressRelayRequest.relayRequestElement, authorizationElement)
-    const writeSlotsCount = compressRelayRequest.writeSlotsCount + compressedData.writeSlotsCount
-    const storageL2Cost = this.cacheDecoderInteractor.writeSlotsToL2Gas(writeSlotsCount)
-
+  async _fillInComputedFieldsWithAuthorization (relayRequest: RelayRequest, authorizationElement: AuthorizationElement | undefined): Promise<void> {
+    const combinedCachingResult = await this.cacheDecoderInteractor.compressRelayRequestAndCalldata(relayRequest)
+    const { totalCost } = await this.cacheDecoderInteractor.calculateTotalCostForRelayRequestsElement(combinedCachingResult, authorizationElement)
     // TODO: sanitize types
-    relayRequest.relayData.transactionCalldataGasUsed = toBN(calldataCost).add(storageL2Cost).toString()
+    relayRequest.relayData.transactionCalldataGasUsed = totalCost.toString()
     relayRequest.relayData.paymasterData = '0x'
-    return authorizationElement
-  }
-
-  _getTargetType (_target: Address): TargetType {
-    // TODO: add constructor param with mapping of address to target
-    return TargetType.ERC20
   }
 
   /**

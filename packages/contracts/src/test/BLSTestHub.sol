@@ -21,6 +21,7 @@ contract BLSTestHub {
     )
     external
     returns (bool paymasterAccepted, bytes memory returnValue){
+        (maxAcceptanceBudget, signature, approvalData);
         emit ReceivedRelayCall(relayRequest.request.from, relayRequest.request.to);
         return (true, '');
     }

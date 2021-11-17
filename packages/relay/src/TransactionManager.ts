@@ -30,6 +30,7 @@ export interface SignedTransactionDetails {
 export interface SendTransactionDetails {
   signer: Address
   serverAction: ServerAction
+  // TODO: do not accept 'method: any', accept hex data or nothing at this point!
   method?: any
   destination: Address
   value?: IntString

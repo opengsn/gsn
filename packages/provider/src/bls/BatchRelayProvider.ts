@@ -18,7 +18,7 @@ import { _dumpRelayingResult, RelayClient, RelayingResult, SubmittedRelayRequest
 import { removeHexPrefix } from '@opengsn/common'
 
 export class BatchRelayProvider extends RelayProvider {
-  web3!: Web3
+  web3: Web3
 
   constructor (relayClient: RelayClient) {
     super(relayClient)

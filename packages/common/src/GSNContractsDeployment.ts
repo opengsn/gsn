@@ -13,5 +13,4 @@ export interface GSNBatchingContractsDeployment {
   batchGateway: Address
   batchGatewayCacheDecoder: Address
   authorizationsRegistrar: Address
-  calldataDecoders: ObjectMap<Address>
 }

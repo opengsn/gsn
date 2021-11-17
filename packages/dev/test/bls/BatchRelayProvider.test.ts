@@ -9,7 +9,7 @@ import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import {
   _sanitizeAbiDecoderEvent,
-  constants,
+  constants, ContractInteractor,
   defaultEnvironment,
   getRelayRequestID,
   GSNBatchingContractsDeployment
@@ -40,7 +40,7 @@ function clearAbiDecoder (): void {
   abiDecoder.removeABI(abiDecoder.getABIs())
 }
 
-contract('BatchRelayProvider', function ([from, relayWorker]: string[]) {
+contract.only('BatchRelayProvider', function ([from, relayWorker]: string[]) {
   let relayHub: RelayHubInstance
   let paymaster: TestPaymasterConfigurableMisbehaviorInstance
   let testRecipient: TestRecipientInstance
@@ -59,7 +59,8 @@ contract('BatchRelayProvider', function ([from, relayWorker]: string[]) {
     testBatchGateway = await BLSTestBatchGateway.new()
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address, testBatchGateway.address)
+    relayHub = await deployHub(stakeManager.address, penalizer.address)
+    await relayHub.setBatchGateway(testBatchGateway.address)
     const forwarderInstance = await GatewayForwarder.new(relayHub.address)
     await registerForwarderForGsn(forwarderInstance)
 
@@ -76,7 +77,13 @@ contract('BatchRelayProvider', function ([from, relayWorker]: string[]) {
     }
     // @ts-ignore
     batchingContractsDeployment = {}
-    cacheDecoderInteractor = new CacheDecoderInteractor({ provider: underlyingProvider, batchingContractsDeployment, cachingGasConstants })
+    cacheDecoderInteractor = new CacheDecoderInteractor({
+      provider: underlyingProvider,
+      contractInteractor: {} as ContractInteractor,
+      calldataCacheDecoderInteractors: {},
+      batchingContractsDeployment,
+      cachingGasConstants
+    })
     // TODO: if it is possible not to create unnecessary objects, just use stubs
     batchClient = new BatchRelayClient({
       config: {
@@ -84,7 +91,7 @@ contract('BatchRelayProvider', function ([from, relayWorker]: string[]) {
         ...config
       },
       provider: underlyingProvider
-    }, cacheDecoderInteractor)
+    }, batchingContractsDeployment, cacheDecoderInteractor)
     await batchClient.init()
     batchProvider = new BatchRelayProvider(batchClient)
 

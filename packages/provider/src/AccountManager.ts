@@ -198,7 +198,7 @@ export class AccountManager {
   }
 
   // TODO
-  async authorizationIssued (ethereumAddress: Address): Promise<boolean> {
+  async isAuthorizationIssuedToCurrentBLSPrivateKey (ethereumAddress: Address): Promise<boolean> {
     return false
   }
 }

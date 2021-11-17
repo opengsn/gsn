@@ -43,10 +43,4 @@ interface BLSTypes {
         uint256[2] blsSignature;
     }
 
-    struct AddressCache {
-        // note: a length of an array after this value was added (zero indicates 'no value')
-        mapping(address => uint256) reverse;
-        address[] cache;
-    }
-
 }

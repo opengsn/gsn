@@ -11,21 +11,18 @@ import "./ERC20CacheDecoder.sol";
 import "./utils/BLSTypes.sol";
 import "./utils/CacheLibrary.sol";
 
-/**
-*
-*/
 contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
     using RLPReader for bytes;
     using RLPReader for uint;
     using RLPReader for RLPReader.RLPItem;
-    using CacheLibrary for BLSTypes.AddressCache;
+    using CacheLibrary for CacheLibrary.WordCache;
 
     address public forwarder;
 
-    BLSTypes.AddressCache private sendersCache;
-    BLSTypes.AddressCache private targetsCache;
-    BLSTypes.AddressCache private paymastersCache;
-    BLSTypes.AddressCache private cacheDecodersCache;
+    CacheLibrary.WordCache private sendersCache;
+    CacheLibrary.WordCache private targetsCache;
+    CacheLibrary.WordCache private paymastersCache;
+    CacheLibrary.WordCache private cacheDecodersCache;
 
     mapping(bytes4 => uint256) public knownGasLimits;
 
@@ -35,24 +32,20 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         cacheDecodersCache.queryAndUpdateCache(type(uint160).max);
     }
 
-    function convertAddressesToIds(
-        address[] memory senders,
-        address[] memory targets,
-        address[] memory paymasters
+    function convertWordsToIds(
+        uint256[][] memory words
     )
     external
     override
     view
     returns (
-        uint256[] memory sendersID,
-        uint256[] memory targetsID,
-        uint256[] memory paymastersID
-    ){
-        return (
-        sendersCache.convertAddressesToIdsInternal(senders),
-        targetsCache.convertAddressesToIdsInternal(targets),
-        paymastersCache.convertAddressesToIdsInternal(paymasters)
-        );
+        uint256[][] memory ret
+    ) {
+        ret[0] = sendersCache.convertWordsToIdsInternal(words[0]);
+        ret[1] = targetsCache.convertWordsToIdsInternal(words[1]);
+        ret[2] = paymastersCache.convertWordsToIdsInternal(words[2]);
+        ret[3] = cacheDecodersCache.convertWordsToIdsInternal(words[3]);
+        return ret;
     }
 
     /// Decodes the input and stores the values that are encountered for the first time.
@@ -61,6 +54,7 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         bytes calldata encodedBatch
     )
     public
+    override
     returns (
         BLSTypes.Batch memory decodedBatch
     ){
@@ -71,9 +65,10 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         batchMetadata.pctRelayFee = values[2].toUint();
         batchMetadata.baseRelayFee = values[3].toUint();
         batchMetadata.maxAcceptanceBudget = values[4].toUint();
+        // TODO: encode/decode relay worker address
         batchMetadata.relayWorker = values[5].toAddress();
         uint256 defaultCacheDecoderId = values[6].toUint();
-        batchMetadata.defaultCacheDecoder = cacheDecodersCache.queryAndUpdateCache(defaultCacheDecoderId);
+        batchMetadata.defaultCacheDecoder = address(uint160(cacheDecodersCache.queryAndUpdateCache(defaultCacheDecoderId)));
 
         uint256[2] memory blsSignature = [values[7].toUint(), values[8].toUint()];
         RLPReader.RLPItem[] memory relayRequestsRLPItems = values[9].toList();
@@ -117,9 +112,9 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         batchElement.cacheDecoder = values[8].toUint();
 
         // 2. resolve values from inputs and cache
-        address paymaster = paymastersCache.queryAndUpdateCache(batchElement.paymaster);
-        address sender = sendersCache.queryAndUpdateCache(batchElement.sender);
-        address target = targetsCache.queryAndUpdateCache(batchElement.target);
+        address paymaster = address(uint160(paymastersCache.queryAndUpdateCache(batchElement.paymaster)));
+        address sender = address(uint160(sendersCache.queryAndUpdateCache(batchElement.sender)));
+        address target = address(uint160(targetsCache.queryAndUpdateCache(batchElement.target)));
 
         // 3. resolve msgData using a CalldataDecompressor if needed
         bytes memory msgData;
@@ -129,7 +124,7 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
             msgData = batchElement.encodedData;
             // TODO: if it is going to copy data again better make a workaround
         } else {
-            address decompressor = cacheDecodersCache.queryAndUpdateCache(batchElement.cacheDecoder);
+            address decompressor = address(uint160(cacheDecodersCache.queryAndUpdateCache(batchElement.cacheDecoder)));
             msgData = ERC20CacheDecoder(decompressor).decodeCalldata(batchElement.encodedData);
         }
 
@@ -143,7 +138,7 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         ), batchElement.id);
     }
 
-    function decodeAuthorizationItem(RLPReader.RLPItem[] memory authorizationRLPItem) public view returns (BLSTypes.SignedKeyAuthorization memory){
+    function decodeAuthorizationItem(RLPReader.RLPItem[] memory authorizationRLPItem) public pure returns (BLSTypes.SignedKeyAuthorization memory){
         address sender = authorizationRLPItem[0].toAddress();
         RLPReader.RLPItem[] memory blsPublicKeyItems = authorizationRLPItem[1].toList();
         uint256[4] memory blsPublicKey = [blsPublicKeyItems[0].toUint(), blsPublicKeyItems[1].toUint(), blsPublicKeyItems[2].toUint(), blsPublicKeyItems[3].toUint()];
