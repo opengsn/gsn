@@ -1,8 +1,9 @@
+import BN from 'bn.js'
 import { EventEmitter } from 'events'
 import { Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, asRelayCallAbi } from '@opengsn/common/dist/ContractInteractor'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
@@ -13,13 +14,13 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-
-import { AccountManager, AccountKeypair } from './AccountManager'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
+
+import { AccountKeypair, AccountManager } from './AccountManager'
+import { DefaultRelayScore, EmptyFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { RelayedTransactionValidator } from './RelayedTransactionValidator'
-import { DefaultRelayScore, EmptyFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { createClientLogger } from './ClientWinstonLogger'
 import { defaultGsnConfig, defaultLoggerConfiguration, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
@@ -36,7 +37,6 @@ import {
 } from './GsnEvents'
 
 // forwarder requests are signed with expiration time.
-const REQUEST_VALID_BLOCKS = 6000 // roughly a day
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -191,7 +191,7 @@ export class RelayClient {
     await this.dependencies.knownRelaysManager.refresh()
     gsnTransactionDetails.gasPrice = gsnTransactionDetails.forceGasPrice ?? await this._calculateGasPrice()
     if (gsnTransactionDetails.gas == null) {
-      const estimated = await this.dependencies.contractInteractor.estimateGas(gsnTransactionDetails)
+      const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
     const relaySelectionManager = await new RelaySelectionManager(gsnTransactionDetails, this.dependencies.knownRelaysManager, this.dependencies.httpClient, this.dependencies.pingFilter, this.logger, this.config).init()
@@ -247,12 +247,17 @@ export class RelayClient {
     gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayingAttempt> {
     this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
-    const maxAcceptanceBudget = parseInt(relayInfo.pingResponse.maxAcceptanceBudget)
     const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
 
     this.emit(new GsnValidateRequestEvent())
 
-    const acceptRelayCallResult = await this.dependencies.contractInteractor.validateRelayCall(maxAcceptanceBudget, httpRequest.relayRequest, httpRequest.metadata.signature, httpRequest.metadata.approvalData, this.config.maxViewableGasLimit)
+    const viewCallGasLimit =
+      await this.dependencies.contractInteractor.getMaxViewableGasLimit(httpRequest.relayRequest, this.config.maxViewableGasLimit)
+
+    const acceptRelayCallResult =
+      await this.dependencies.contractInteractor.validateRelayCall(
+        asRelayCallAbi(httpRequest),
+        viewCallGasLimit)
     if (!acceptRelayCallResult.paymasterAccepted) {
       let message: string
       if (acceptRelayCallResult.reverted) {
@@ -284,7 +289,7 @@ export class RelayClient {
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error }
     }
-    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
+    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return {
@@ -313,7 +318,7 @@ export class RelayClient {
 
     // valid that many blocks into the future.
     const validUntilPromise = this.dependencies.contractInteractor.getBlockNumber()
-      .then((num: number) => (num + REQUEST_VALID_BLOCKS).toString())
+      .then((num: number) => (new BN(this.config.requestValidBlocks).addn(num)).toString())
 
     const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
     const relayWorker = relayInfo.pingResponse.relayWorkerAddress
@@ -346,6 +351,7 @@ export class RelayClient {
         baseRelayFee: relayInfo.relayInfo.baseRelayFee,
         gasPrice,
         paymaster,
+        transactionCalldataGasUsed: '', // temp value. filled in by estimateCalldataCostAbi, below.
         paymasterData: '', // temp value. filled in by asyncPaymasterData, below.
         clientId: this.config.clientId,
         forwarder,
@@ -353,17 +359,31 @@ export class RelayClient {
       }
     }
 
+    relayRequest.relayData.transactionCalldataGasUsed =
+      this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
+
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = await this.dependencies.asyncPaymasterData(relayRequest)
     this.emit(new GsnSignRequestEvent())
     const signature = await this.dependencies.accountManager.sign(relayRequest)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
+
+    if (toBuffer(relayRequest.relayData.paymasterData).length >
+      this.config.maxPaymasterDataLength) {
+      throw new Error('actual paymasterData larger than maxPaymasterDataLength')
+    }
+    if (toBuffer(approvalData).length >
+      this.config.maxApprovalDataLength) {
+      throw new Error('actual approvalData larger than maxApprovalDataLength')
+    }
+
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.dependencies.contractInteractor.getTransactionCount(relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
     // TODO: the server accepts a flat object, and that is why this code looks like shit.
     //  Must teach server to accept correct types
     const metadata: RelayMetadata = {
+      maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
       relayHubAddress,
       signature,
       approvalData,
@@ -442,6 +462,7 @@ export class RelayClient {
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
+        environment: this.config.environment,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)
@@ -477,16 +498,18 @@ export function _dumpRelayingResult (relayingResult: RelayingResult): string {
     str += `Ping errors (${relayingResult.pingErrors.size}):`
     Array.from(relayingResult.pingErrors.keys()).forEach(e => {
       const err = relayingResult.pingErrors.get(e)
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const error = err?.message ?? err?.toString() ?? ''
-      str += `\n${e} => ${error}\n`
+      str += `\n${e} => ${error} stack:${err?.stack}\n`
     })
   }
   if (relayingResult.relayingErrors.size > 0) {
     str += `Relaying errors (${relayingResult.relayingErrors.size}):\n`
     Array.from(relayingResult.relayingErrors.keys()).forEach(e => {
       const err = relayingResult.relayingErrors.get(e)
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const error = err?.message ?? err?.toString() ?? ''
-      str += `${e} => ${error}`
+      str += `${e} => ${error} stack:${err?.stack}`
     })
   }
   return str

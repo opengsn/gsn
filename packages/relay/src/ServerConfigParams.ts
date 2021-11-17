@@ -12,6 +12,14 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+
+export enum LoggingProviderMode {
+  NONE,
+  DURATION,
+  ALL,
+  CHATTY
+}
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
@@ -29,7 +37,7 @@ export interface ServerConfigParams {
   checkInterval: number
   readyTimeout: number
   devMode: boolean
-  loggingProvider: boolean
+  loggingProvider: LoggingProviderMode
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
   // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
@@ -73,6 +81,8 @@ export interface ServerConfigParams {
   coldRestartLogsFromBlock: number
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
+
+  environmentName?: string
 }
 
 export interface ServerDependencies {
@@ -92,7 +102,10 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
-  maxAcceptanceBudget: defaultEnvironment.paymasterConfiguration.acceptanceBudget + defaultEnvironment.relayHubConfiguration.dataGasCostPerByte * defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
+  maxAcceptanceBudget:
+    defaultEnvironment.paymasterConfiguration.acceptanceBudget +
+    parseInt(defaultEnvironment.dataOnChainHandlingGasCostPerByte.toString()) *
+    defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   blacklistedPaymasters: [],
@@ -110,7 +123,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   checkInterval: 10000,
   readyTimeout: 30000,
   devMode: false,
-  loggingProvider: false,
+  loggingProvider: LoggingProviderMode.NONE,
   runPenalizer: true,
   logLevel: 'debug',
   loggerUrl: '',
@@ -157,7 +170,7 @@ const ConfigParamsTypes = {
   checkInterval: 'number',
   readyTimeout: 'number',
   devMode: 'boolean',
-  loggingProvider: 'boolean',
+  loggingProvider: 'number',
   logLevel: 'string',
 
   loggerUrl: 'string',
@@ -202,7 +215,8 @@ const ConfigParamsTypes = {
   maxGasPrice: 'string',
   coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
-  confirmationsNeeded: 'number'
+  confirmationsNeeded: 'number',
+  environmentName: 'string'
 } as any
 
 // by default: no waiting period - use VersionRegistry entries immediately.
@@ -287,7 +301,21 @@ export function parseServerConfig (args: string[], env: any): any {
 }
 
 // resolve params, and validate the resulting struct
-export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
+export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
+  config: ServerConfigParams
+  environment: Environment
+}> {
+  let environment: Environment
+  if (config.environmentName != null) {
+    environment = environments[config.environmentName as EnvironmentsKeys]
+    if (environment == null) {
+      throw new Error(`Unknown named environment: ${config.environmentName}`)
+    }
+  } else {
+    environment = defaultEnvironment
+    console.error(`Must provide one of the supported values for environmentName: ${Object.keys(EnvironmentsKeys).toString()}`)
+  }
+
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
   const contractInteractor = new ContractInteractor({
@@ -297,7 +325,8 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     deployment: {
       relayHubAddress: config.relayHubAddress,
       versionRegistryAddress: config.versionRegistryAddress
-    }
+    },
+    environment
   })
   await contractInteractor._initializeContracts()
   await contractInteractor._initializeNetworkParams()
@@ -331,7 +360,10 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
-  return { ...serverDefaultConfiguration, ...config }
+  return {
+    config: { ...serverDefaultConfiguration, ...config },
+    environment
+  }
 }
 
 export function resolveReputationManagerConfig (config: any): Partial<ReputationManagerConfiguration> {

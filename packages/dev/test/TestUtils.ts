@@ -14,6 +14,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { Environment } from '@opengsn/common'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
@@ -73,6 +74,9 @@ export async function startRelay (
   }
   if (options.workerTargetBalance) {
     args.push('--workerTargetBalance', options.workerTargetBalance)
+  }
+  if (options.environmentName) {
+    args.push('--environmentName', options.environmentName)
   }
   if (options.refreshStateTimeoutBlocks) {
     args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
@@ -264,23 +268,16 @@ export function encodeRevertReason (reason: string): PrefixedHexString {
 export async function deployHub (
   stakeManager: string,
   penalizer: string,
-  configOverride: Partial<RelayHubConfiguration> = {}): Promise<RelayHubInstance> {
+  configOverride: Partial<RelayHubConfiguration> = {},
+  environment: Environment = defaultEnvironment): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
-    ...defaultEnvironment.relayHubConfiguration,
+    ...environment.relayHubConfiguration,
     ...configOverride
   }
   const hub: RelayHubInstance = await RelayHub.new(
     stakeManager,
     penalizer,
-    relayHubConfiguration.maxWorkerCount,
-    relayHubConfiguration.gasReserve,
-    relayHubConfiguration.postOverhead,
-    relayHubConfiguration.gasOverhead,
-    relayHubConfiguration.maximumRecipientDeposit,
-    relayHubConfiguration.minimumUnstakeDelay,
-    relayHubConfiguration.minimumStake,
-    relayHubConfiguration.dataGasCostPerByte,
-    relayHubConfiguration.externalCallDataCostOverhead)
+    relayHubConfiguration)
   return hub
 }
 

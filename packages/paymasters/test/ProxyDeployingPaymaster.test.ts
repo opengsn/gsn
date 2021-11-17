@@ -90,15 +90,7 @@ export async function deployHub (
   return await RelayHub.new(
     stakeManager,
     penalizer,
-    relayHubConfiguration.maxWorkerCount,
-    relayHubConfiguration.gasReserve,
-    relayHubConfiguration.postOverhead,
-    relayHubConfiguration.gasOverhead,
-    relayHubConfiguration.maximumRecipientDeposit,
-    relayHubConfiguration.minimumUnstakeDelay,
-    relayHubConfiguration.minimumStake,
-    relayHubConfiguration.dataGasCostPerByte,
-    relayHubConfiguration.externalCallDataCostOverhead)
+    relayHubConfiguration)
 }
 
 contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
@@ -145,15 +137,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     testHub = await TestHub.new(
       stakeManager.address,
       constants.ZERO_ADDRESS,
-      defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-      defaultEnvironment.relayHubConfiguration.gasReserve,
-      defaultEnvironment.relayHubConfiguration.postOverhead,
-      defaultEnvironment.relayHubConfiguration.gasOverhead,
-      defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-      defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-      defaultEnvironment.relayHubConfiguration.minimumStake,
-      defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-      defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
+      defaultEnvironment.relayHubConfiguration,
       { gas: 10000000 })
     relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS)
     await paymaster.setRelayHub(relayHub.address)
@@ -175,6 +159,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       },
       relayData: {
         ...gasData,
+        transactionCalldataGasUsed: '0',
         relayWorker,
         paymaster: paymaster.address,
         paymasterData,
@@ -255,7 +240,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
             )
           )
           const gas = 5000000
-          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', gas, {
+          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', {
             from: relayWorker,
             gas
           })
@@ -404,6 +389,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         },
         relayData: {
           ...gasData,
+          transactionCalldataGasUsed: '0',
           relayWorker,
           paymaster: paymaster.address,
           paymasterData: '0x',
@@ -423,6 +409,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         loggerConfiguration: {
           logLevel: 'error'
         },
+        maxPaymasterDataLength: 32,
         paymasterAddress: paymaster.address
       }
       encodedCall = counter.contract.methods.increment().encodeABI()

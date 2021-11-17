@@ -14,7 +14,8 @@ import {
   PingFilter,
   RelayFilter
 } from '@opengsn/common/dist/types/Aliases'
-import { gsnRequiredVersion } from '@opengsn/common/dist'
+import { gsnRequiredVersion } from '@opengsn/common/dist/Version'
+import { defaultEnvironment, Environment } from '@opengsn/common/dist/Environments'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -41,7 +42,12 @@ export const defaultGsnConfig: GSNConfig = {
   requiredVersionRange: gsnRequiredVersion,
   jsonStringifyRequest: true,
   auditorsCount: 1,
-  clientId: '1'
+  clientId: '1',
+  requestValidBlocks: '6000',
+  maxViewableGasLimit: '12000000',
+  environment: defaultEnvironment,
+  maxApprovalDataLength: 0,
+  maxPaymasterDataLength: 0
 }
 
 export interface LoggerConfiguration {
@@ -80,7 +86,11 @@ export interface GSNConfig {
   paymasterAddress?: Address
   clientId: IntString
   auditorsCount: number
-  maxViewableGasLimit?: number
+  requestValidBlocks: IntString
+  maxViewableGasLimit: IntString
+  environment: Environment
+  maxApprovalDataLength: number
+  maxPaymasterDataLength: number
 }
 
 export interface GSNDependencies {

@@ -72,6 +72,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       relayData: {
         pctRelayFee: '1',
         baseRelayFee: '0',
+        transactionCalldataGasUsed: '0',
         gasPrice: await web3.eth.getGasPrice(),
         relayWorker: relayWorker,
         forwarder: forwarder.address,
@@ -104,7 +105,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', 7e6, {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })
@@ -142,7 +143,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', 7e6, {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })
@@ -174,7 +175,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', 7e6, {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })

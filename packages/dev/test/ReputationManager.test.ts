@@ -9,6 +9,7 @@ import {
 import { evmMineMany } from './TestUtils'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpProvider } from 'web3-core'
+import { defaultEnvironment } from '@opengsn/common'
 
 /**
  * Attention: these tests are often order and timestamp-dependent! Use debugger with caution.
@@ -49,6 +50,7 @@ contract('ReputationManager', function () {
     reputationManager = new ReputationManager(reputationStoreManager, logger, reputationManagerConfig)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
+      environment: defaultEnvironment,
       provider: web3.currentProvider as HttpProvider,
       maxPageSize,
       logger

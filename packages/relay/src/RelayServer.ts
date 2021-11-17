@@ -2,24 +2,25 @@ import chalk from 'chalk'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
+import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
 import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
 import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { Environment } from '@opengsn/common/dist/Environments'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import {
   address2topic,
-  calculateTransactionMaxPossibleGas,
   decodeRevertReason,
   getLatestEventData,
   PaymasterGasAndDataLimits,
@@ -33,8 +34,6 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
-import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
 import Timeout = NodeJS.Timeout
 
 /**
@@ -84,13 +83,19 @@ export class RelayServer extends EventEmitter {
 
   workerBalanceRequired: AmountRequired
 
-  constructor (config: Partial<ServerConfigParams>, transactionManager: TransactionManager, dependencies: ServerDependencies) {
+  environment: Environment
+
+  constructor (
+    config: Partial<ServerConfigParams>,
+    transactionManager: TransactionManager,
+    dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
     this.lastScannedBlock = config.coldRestartLogsFromBlock ?? 0
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
+    this.environment = this.contractInteractor.environment
     this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.txStoreManager = dependencies.txStoreManager
     this.transactionManager = transactionManager
@@ -240,20 +245,26 @@ export class RelayServer extends EventEmitter {
     const paymaster = req.relayRequest.relayData.paymaster
     let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymaster)
     let acceptanceBudget: number
-
-    const dummyBlockGas = 12e6
     acceptanceBudget = this.config.maxAcceptanceBudget
 
-    const msgData = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget,
-      req.relayRequest,
-      req.metadata.signature,
-      req.metadata.approvalData,
-      dummyBlockGas
-    ).encodeABI()
+    const relayCallAbiInput: RelayCallABI = {
+      maxAcceptanceBudget: acceptanceBudget.toString(),
+      relayRequest: req.relayRequest,
+      signature: req.metadata.signature,
+      approvalData: req.metadata.approvalData
+    }
+    const msgData = this.contractInteractor.encodeABI(relayCallAbiInput)
+    const relayTransactionCalldataGasUsedCalculation = this.contractInteractor.calculateCalldataCost(msgData)
+    const message =
+      `Client signed transactionCalldataGasUsed: ${req.relayRequest.relayData.transactionCalldataGasUsed}` +
+      `Server estimate of its transactionCalldata gas expenses: ${relayTransactionCalldataGasUsedCalculation}`
+    this.logger.info(message)
+    if (toBN(relayTransactionCalldataGasUsedCalculation).gt(toBN(req.relayRequest.relayData.transactionCalldataGasUsed))) {
+      throw new Error(`Refusing to relay a transaction due to calldata cost. ${message}`)
+    }
     const msgDataLength = toBuffer(msgData).length
     // estimated cost of transferring the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc)
-    const msgDataGasCostInsideTransaction = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
+    // const msgDataGasCostInsideTransaction = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
     if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
@@ -268,6 +279,7 @@ export class RelayServer extends EventEmitter {
         }
         throw new Error(message)
       }
+      const msgDataGasCostInsideTransaction = msgDataLength * this.environment.dataOnChainHandlingGasCostPerByte
       const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
       if (paymasterAcceptanceBudget + msgDataGasCostInsideTransaction > acceptanceBudget) {
         if (!this._isTrustedPaymaster(paymaster)) {
@@ -282,16 +294,13 @@ export class RelayServer extends EventEmitter {
       acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
     }
 
-    const hubConfig = await this.relayHubContract.getConfiguration()
-    const hubOverhead = parseInt(hubConfig.gasOverhead.toString())
     // TODO: this is not a good way to calculate gas limit for relay call
-    const tmpMaxPossibleGas = calculateTransactionMaxPossibleGas({
-      gasAndDataLimits,
-      hubOverhead,
-      relayCallGasLimit: req.relayRequest.request.gas,
+    const tmpMaxPossibleGas = this.contractInteractor.calculateTransactionMaxPossibleGas({
       msgData,
-      msgDataGasCostInsideTransaction
+      gasAndDataLimits,
+      relayCallGasLimit: req.relayRequest.request.gas
     })
+
     const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
     const maxCharge =
       await this.relayHubContract.calculateCharge(maxPossibleGas, req.relayRequest.relayData)
@@ -310,8 +319,9 @@ export class RelayServer extends EventEmitter {
   }
 
   async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
+    this.logger.debug(`validateViewCallSucceeds: ${JSON.stringify(arguments)}`)
     const method = this.relayHubContract.contract.methods.relayCall(
-      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
       viewRelayCallRet =
@@ -350,15 +360,21 @@ returnValue        | ${viewRelayCallRet.returnValue}
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
     }
     // Call relayCall as a view function to see if we'll get paid for relaying this tx
-    const { acceptanceBudget, maxPossibleGas } = await this.validatePaymasterGasAndDataLimits(req)
+    const {
+      acceptanceBudget,
+      maxPossibleGas
+    } = await this.validatePaymasterGasAndDataLimits(req)
+
     await this.validateViewCallSucceeds(req, acceptanceBudget, maxPossibleGas)
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
     }
     // Send relayed transaction
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
+
+    const gasPrice = req.relayRequest.relayData.gasPrice
     const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData, maxPossibleGas)
+      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,
@@ -367,7 +383,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
         destination: req.metadata.relayHubAddress,
         gasLimit: maxPossibleGas,
         creationBlockNumber: currentBlock,
-        gasPrice: req.relayRequest.relayData.gasPrice
+        gasPrice
       }
     const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
@@ -479,6 +495,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   async init (): Promise<void> {
+    const initStartTimestamp = Date.now()
     this.logger.debug('server init start')
     if (this.initialized) {
       throw new Error('_init was already called')
@@ -524,6 +541,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
     // Assume started server is not registered until _worker figures stuff out
     this.registrationManager.printNotRegisteredMessage()
+    this.logger.debug(`server init finished in ${Date.now() - initStartTimestamp} ms`)
   }
 
   async replenishServer (workerIndex: number, currentBlock: number): Promise<PrefixedHexString[]> {
@@ -570,7 +588,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
           destination: this.workerAddress,
           value: toHex(refill),
           creationBlockNumber: currentBlock,
-          gasLimit: defaultEnvironment.mintxgascost
+          gasLimit: this.environment.mintxgascost
         }
         const { transactionHash } = await this.transactionManager.sendTransaction(details)
         transactionHashes.push(transactionHash)

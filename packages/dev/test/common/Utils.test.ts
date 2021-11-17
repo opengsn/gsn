@@ -85,6 +85,7 @@ contract('Utils', function (accounts) {
           gasPrice,
           pctRelayFee,
           baseRelayFee,
+          transactionCalldataGasUsed: '0',
           relayWorker,
           forwarder,
           paymaster,

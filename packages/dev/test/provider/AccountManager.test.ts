@@ -69,6 +69,7 @@ contract('AccountManager', function (accounts) {
       relayData: {
         pctRelayFee: '1',
         baseRelayFee: '1',
+        transactionCalldataGasUsed: '0',
         gasPrice: '1',
         relayWorker: constants.ZERO_ADDRESS,
         forwarder: constants.ZERO_ADDRESS,

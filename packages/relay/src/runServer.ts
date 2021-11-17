@@ -1,12 +1,14 @@
 // TODO: convert to 'commander' format
 import fs from 'fs'
 import Web3 from 'web3'
+import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpServer } from './HttpServer'
 import { RelayServer } from './RelayServer'
 import { KeyManager } from './KeyManager'
-import { TxStoreManager, TXSTORE_FILENAME } from './TxStoreManager'
+import { TXSTORE_FILENAME, TxStoreManager } from './TxStoreManager'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import {
+  LoggingProviderMode,
   parseServerConfig,
   resolveReputationManagerConfig,
   resolveServerConfig,
@@ -21,15 +23,38 @@ import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './pe
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
-import { gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
+import { Environment, EnvironmentsKeys, gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
 
 function error (err: string): never {
   console.error(err)
   process.exit(1)
 }
 
+function sanitizeJsonRpcPayload (request: JsonRpcPayload): JsonRpcPayload {
+  // protect original object from modification
+  const clone = JSON.parse(JSON.stringify(request))
+  const data = clone?.params[0]?.data
+  if (typeof data === 'string' && data.length > 1000) {
+    clone.params[0].data = data.substr(0, 70) + '...'
+  }
+  return clone
+}
+
+function sanitizeJsonRpcResponse (response?: JsonRpcResponse): JsonRpcResponse | undefined {
+  if (response == null) {
+    return response
+  }
+  // protect original object from modification
+  const clone: JsonRpcResponse = JSON.parse(JSON.stringify(response))
+  if (typeof clone.result === 'string' && clone.result.length > 1000) {
+    clone.result = clone.result.substr(0, 70) + '...'
+  }
+  return clone
+}
+
 async function run (): Promise<void> {
   let config: ServerConfigParams
+  let environment: Environment
   let web3provider
   let runPenalizer: boolean
   let reputationManagerConfig: Partial<ReputationManagerConfiguration>
@@ -41,32 +66,53 @@ async function run (): Promise<void> {
     if (conf.ethereumNodeUrl == null) {
       error('missing ethereumNodeUrl')
     }
-    const loggingProvider: boolean = conf.loggingProvider ?? false
+    const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
+    conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ganacheLocal
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
-    if (loggingProvider) {
+    if (loggingProvider !== LoggingProviderMode.NONE) {
       const orig = web3provider
       web3provider = {
         // @ts-ignore
         send (r, cb) {
-          const now = Date.now()
-          console.log('>>> ', r)
-          // eslint-disable-next-line
-          if (r && r.params && r.params[0] && r.params[0].topics) {
-            console.log('>>> ', r.params[0].topics)
+          const startTimestamp = Date.now()
+          switch (loggingProvider) {
+            case LoggingProviderMode.DURATION: {
+              let blockRange = ''
+              if (r?.params[0]?.fromBlock != null) {
+                blockRange = `(${r?.params[0]?.fromBlock as string} - ${r?.params[0]?.toBlock as string})`
+              }
+              console.log('>>> ', r.method, blockRange)
+              break
+            }
+            case LoggingProviderMode.ALL:
+              console.log('>>> ', sanitizeJsonRpcPayload(r))
+              // eslint-disable-next-line
+              if (r && r.params && r.params[0] && r.params[0].topics) {
+                console.log('>>>\n', r.params[0].topics, '\n')
+              }
+              break
           }
           // eslint-disable-next-line
-          if (r && r.params && r.params[0] && r.params[0].fromBlock == 1 ) {
-            console.log('=== big wait!')
+          if (r && r.params && r.params[0] && r.params[0].fromBlock == 1) {
+            console.warn('=== eth_getLogs fromBlock: 1, potentially long operation!')
           }
           orig.send(r, (err, res) => {
-            console.log('<<<', Date.now() - now, err, res)
+            const duration = Date.now() - startTimestamp
+            switch (loggingProvider) {
+              case LoggingProviderMode.DURATION:
+                console.log('<<<', r.method, duration)
+                break
+              case LoggingProviderMode.ALL:
+                console.log('<<<\n', r.method, duration, err, sanitizeJsonRpcResponse(res))
+                break
+            }
             cb(err, res)
           })
         }
       }
     }
-    console.log('Resolving server config ...\n')
-    config = await resolveServerConfig(conf, web3provider) as ServerConfigParams
+    console.log('Resolving server config ...\n');
+    ({ config, environment } = await resolveServerConfig(conf, web3provider))
     runPenalizer = config.runPenalizer
     console.log('Resolving reputation manager config...\n')
     reputationManagerConfig = resolveReputationManagerConfig(conf)
@@ -99,6 +145,7 @@ async function run (): Promise<void> {
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
     logger,
+    environment,
     maxPageSize: config.pastEventsQueryMaxPageSize,
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: { relayHubAddress: config.relayHubAddress }
