@@ -49,6 +49,7 @@ contract('ReputationFlow', function (accounts) {
   describe('with misbehaving paymaster', function () {
     it('should stop serving the paymaster after specified number of on-chain rejected transactions', async function () {
       sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'validateRelayCall').returns(Promise.resolve({ paymasterAccepted: true, returnValue: '', reverted: false }))
+      sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'getGasFees').returns(Promise.resolve({ priorityFeePerGas: 30e9.toString(), baseFeePerGas: 30e9.toString() }))
       sinon.stub(testEnv.httpServer.relayService!, 'validateViewCallSucceeds')
       for (let i = 0; i < 20; i++) {
         const block = await web3.eth.getBlockNumber()
@@ -56,6 +57,7 @@ contract('ReputationFlow', function (accounts) {
           await evmMine()
           continue
         }
+        console.log('wtf is fees in test', await relayProvider.relayClient.dependencies.contractInteractor.getGasFees())
         try {
           await testRecipient.emitMessage('Hello there!', { gas: 100000 })
         } catch (e) {
