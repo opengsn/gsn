@@ -4,22 +4,46 @@ import { encode, List } from 'rlp'
 import { toBN } from 'web3-utils'
 
 import {
-  BatchGatewayCacheDecoderInstance,
-  ERC20CacheDecoderInstance
+  BatchGatewayCacheDecoderInstance
 } from '@opengsn/contracts'
 
-import { Address, IntString, Web3ProviderBaseInterface } from '../types/Aliases'
+import { Address, ObjectMap, Web3ProviderBaseInterface } from '../types/Aliases'
 import { Contract, TruffleContract } from '../LightTruffleContract'
 import { RelayRequest } from '../EIP712/RelayRequest'
 
 import batchGatewayCacheDecoder from '../interfaces/IBatchGatewayCacheDecoder.json'
-import erc20CacheDecoderAbi from '../interfaces/IERC20CacheDecoder.json'
 import { ContractInteractor } from '../ContractInteractor'
 import { GSNBatchingContractsDeployment } from '../GSNContractsDeployment'
+import {
+  AddressesCachingResult,
+  CalldataCachingResult,
+  ICalldataCacheDecoderInteractor
+} from './ICalldataCacheDecoderInteractor'
+
+export interface BatchRelayRequestInfo {
+  relayRequestElement: RelayRequestElement
+  authorizationElement?: AuthorizationElement
+  blsSignature: PrefixedHexString[] // what is the format for bls signature?
+}
+
+export interface BatchInfo {
+  id: number
+  workerAddress: Address
+  transactions: BatchRelayRequestInfo[]
+  aggregatedSignature: BN[]
+  isOpen: boolean
+  targetGasLimit: BN
+  gasPrice: BN
+  targetSubmissionTimestamp: number
+  validUntil: number
+  pctRelayFee: number
+  baseRelayFee: number
+  maxAcceptanceBudget: number
+}
 
 // all inputs must be a BN so they are RLP-encoded as values, not strings
 // gasLimit of 0 will be replaced with some on-chain hard-coded value for this methodSignature
-export interface RelayRequestsElement {
+export interface RelayRequestElement {
   nonce: BN
   paymaster: BN
   sender: BN
@@ -36,33 +60,12 @@ export interface AuthorizationElement {
   signature: PrefixedHexString
 }
 
-enum SeparatelyCachedAddressTypes {
+export enum SeparatelyCachedAddressTypes {
   paymasters,
   recipients,
+  decoders,
   eoa
 }
-
-export enum TargetType {
-  ERC20
-}
-
-enum ERC20MethodSignatures {
-  Transfer,
-  TransferFrom,
-  Approve,
-  Mint,
-  Burn,
-  Permit
-}
-
-const ERC20MethodIds = [
-  '0xa9059cbb',
-  '0x23b872dd',
-  '0x095ea7b3',
-  '0x00000000',
-  '0x00000000',
-  '0xd505accf'
-]
 
 /**
  * Caching operation performs a view call to a cache contract and converts all values from original values
@@ -71,13 +74,20 @@ const ERC20MethodIds = [
  * by the number of slots that will be written when caching it.
  * Note: edge-case with repeated new values (e.g. 'transferFrom(addr1, addr1, val)') is not handled.
  */
-export interface CalldataCachingResult {
-  cachedEncodedData: PrefixedHexString
+
+export interface RelayRequestCachingResult {
+  relayRequestElement: RelayRequestElement
   writeSlotsCount: number
 }
 
-export interface RelayRequestCachingResult {
-  relayRequestElement: RelayRequestsElement
+export interface CombinedCachingResult {
+  cachedEncodedData: PrefixedHexString
+  relayRequestElement: RelayRequestElement
+  writeSlotsCount: number
+}
+
+export interface BatchInfoCachingResult {
+  batchCompressedInput: RLPBatchCompressedInput
   writeSlotsCount: number
 }
 
@@ -87,95 +97,75 @@ export interface CachingGasConstants {
   gasPerSlotL2: number
 }
 
-interface ERC20Call {
-  method: ERC20MethodSignatures
-  data: { [key: string]: any }
-}
-
 /**
  * Interacts with a 'Decompressor' contract in order to substitute actual values with their cached IDs.
  */
 export class CacheDecoderInteractor {
-  private readonly provider: Web3ProviderBaseInterface
+  private readonly contractInteractor: ContractInteractor
   private readonly BatchGatewayCacheDecoder: Contract<BatchGatewayCacheDecoderInstance>
-  private readonly ERC20CacheDecoder: Contract<ERC20CacheDecoderInstance>
-
-  private decompressor!: BatchGatewayCacheDecoderInstance
-  private erc20cacheDecoder!: ERC20CacheDecoderInstance
-
+  private readonly calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor>
   private readonly cachingGasConstants: CachingGasConstants
-  private contractInteractor?: ContractInteractor
+  private readonly batchingContractsDeployment: GSNBatchingContractsDeployment
 
-  setContractInteractor (contractInteractor: ContractInteractor) {
-    this.contractInteractor = contractInteractor
-  }
-
-  batchingContractsDeployment: GSNBatchingContractsDeployment
+  private batchGatewayCacheDecoder!: BatchGatewayCacheDecoderInstance
 
   constructor (_: {
     provider: Web3ProviderBaseInterface
+    contractInteractor: ContractInteractor
     batchingContractsDeployment: GSNBatchingContractsDeployment
+    calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor>
     cachingGasConstants: CachingGasConstants
   }) {
-    this.provider = _.provider
+    this.contractInteractor = _.contractInteractor
     this.batchingContractsDeployment = _.batchingContractsDeployment
     this.cachingGasConstants = _.cachingGasConstants
+    this.calldataCacheDecoderInteractors = _.calldataCacheDecoderInteractors
 
     this.BatchGatewayCacheDecoder = TruffleContract({
       contractName: 'BatchGatewayCacheDecoder',
       abi: batchGatewayCacheDecoder
     })
-    this.ERC20CacheDecoder = TruffleContract({
-      contractName: 'IRelayHub',
-      abi: erc20CacheDecoderAbi
-    })
 
-    this.BatchGatewayCacheDecoder.setProvider(this.provider, undefined)
-    this.ERC20CacheDecoder.setProvider(this.provider, undefined)
+    this.BatchGatewayCacheDecoder.setProvider(_.provider, undefined)
   }
 
-  async init (_: {
-    // TODO: fix tests then remove 'partial'
-    batchingContractsDeployment: Partial<GSNBatchingContractsDeployment>
-    erc20contractAddress: Address // TODO: this way of accessing calldata decoders is very weird
-  }): Promise<this> {
-    this.decompressor = await this.BatchGatewayCacheDecoder.at(_.batchingContractsDeployment.batchGatewayCacheDecoder!)
-    const erc20cacheDecoder = _.batchingContractsDeployment.calldataDecoders![_.erc20contractAddress.toLowerCase()]
-    if (erc20cacheDecoder == null) {
-      throw new Error('WTF?')
-    }
-    this.erc20cacheDecoder = await this.ERC20CacheDecoder.at(erc20cacheDecoder)
+  async init (): Promise<this> {
+    this.batchGatewayCacheDecoder = await this.BatchGatewayCacheDecoder.at(this.batchingContractsDeployment.batchGatewayCacheDecoder!)
     return this
   }
 
   /**
-   * Compress a structure into a {@link RelayRequestsElement} that can be efficiently RLP-encoded.
-   * @param relayRequest - a raw {@link RelayRequest} to compress, except for method data
-   * @param compressedData - an already compressed method data that will be included as-is
+   * Compress a structure into a {@link RelayRequestElement} that can be efficiently RLP-encoded.
+   * @param _.relayRequest - a raw {@link RelayRequest} to compress, except for method data
+   * @param _.compressedData - an already compressed method data that will be included as-is
    */
-  async compressRelayRequest (relayRequest: RelayRequest, compressedData?: PrefixedHexString): Promise<RelayRequestCachingResult> {
-    const nonce = toBN(relayRequest.request.nonce)
-    const paymaster = toBN(relayRequest.relayData.paymaster)
-    const sender = await this.addressToId(relayRequest.request.from, SeparatelyCachedAddressTypes.eoa)
-    const target = await this.addressToId(relayRequest.request.to, SeparatelyCachedAddressTypes.recipients)
-    const gasLimitBN = toBN(relayRequest.request.gas)
+  async compressRelayRequest (_: { relayRequest: RelayRequest, cachedEncodedData?: PrefixedHexString }): Promise<RelayRequestCachingResult> {
+    const nonce = toBN(_.relayRequest.request.nonce)
+    const paymaster = toBN(_.relayRequest.relayData.paymaster)
+
+    // TODO: return the tuple of 'address, type' so that all addresses can be queried in one RPC request!
+    const addressesCompressed = await this.compressAddressesToIds([
+      { address: _.relayRequest.request.from, type: SeparatelyCachedAddressTypes.eoa },
+      { address: _.relayRequest.request.to, type: SeparatelyCachedAddressTypes.recipients }
+    ])
+    const gasLimitBN = toBN(_.relayRequest.request.gas)
     if (gasLimitBN.modn(10000) !== 0) {
       throw new Error('gas limit must be a multiple of 10000')
     }
     const gasLimit = gasLimitBN.divn(10000)
-    const calldataGas = toBN(relayRequest.relayData.transactionCalldataGasUsed)
+    const calldataGas = toBN(_.relayRequest.relayData.transactionCalldataGasUsed)
     let methodData: Buffer
-    if (compressedData == null) {
-      methodData = toBuffer(relayRequest.request.data)
+    if (_.cachedEncodedData == null) {
+      methodData = toBuffer(_.relayRequest.request.data)
     } else {
-      methodData = toBuffer(compressedData)
+      methodData = toBuffer(_.cachedEncodedData)
     }
     const cacheDecoder = toBN(1) // use encodedData as-is
     const relayRequestElement = {
       nonce,
       paymaster,
-      sender,
-      target,
+      sender: addressesCompressed.ids[0],
+      target: addressesCompressed.ids[1],
       gasLimit,
       calldataGas,
       methodData,
@@ -183,81 +173,30 @@ export class CacheDecoderInteractor {
     }
     return {
       relayRequestElement,
-      writeSlotsCount: 0
+      writeSlotsCount: addressesCompressed.writeSlotsCount
     }
   }
 
-  decodeAbiEncodedERC20Calldata (abiEncodedCalldata: PrefixedHexString): ERC20Call {
-    const methodID = abiEncodedCalldata.substr(0, 10)
-    const method = ERC20MethodIds.indexOf(methodID)
-    if (method === -1) {
-      throw new Error(`Failed to compress data for methodID ${methodID}: unknown methodID`)
+  /**
+   * In order to be able to operate on a provider level, we support receiving a transaction request as an ABI-encoded
+   * calldata input and target.
+   * We will have to ABI-decode that input into a meaningful data structure and encode it again using RLP and cache.
+   */
+  async compressAbiEncodedCalldata (_: { target: Address, abiEncodedCalldata: PrefixedHexString }): Promise<CalldataCachingResult> {
+    const calldataCacheDecoderInteractor = this.calldataCacheDecoderInteractors[_.target]
+    if (calldataCacheDecoderInteractor == null) {
+      // TODO: set config flag to allow unknown target types to create batch requests
+      throw new Error(`Unknown target address: ${_.target}`)
     }
-    const abiEncodedParameters = abiEncodedCalldata.substr(10)
-    let data: { [key: string]: any } = {}
-    switch (method) {
-      case ERC20MethodSignatures.Transfer:
-        data = web3.eth.abi.decodeParameters(['address', 'uint256'], abiEncodedParameters)
-        break
-    }
-
-    return {
-      method,
-      data
-    }
+    return await calldataCacheDecoderInteractor.compressCalldata(_.abiEncodedCalldata)
   }
 
-  async compressAbiEncodedCalldata (targetType: TargetType, abiEncodedCalldata: PrefixedHexString): Promise<CalldataCachingResult> {
-    switch (targetType) {
-      case TargetType.ERC20: {
-        const erc20Call = this.decodeAbiEncodedERC20Calldata(abiEncodedCalldata)
-        return await this.compressErc20Call(erc20Call)
-      }
-    }
+  // TODO
+  async compressAddressesToIds (addresses: Array<{ address: Address, type: SeparatelyCachedAddressTypes }>): Promise<AddressesCachingResult> {
+    return { ids: addresses.map(it => toBN(it.address)), writeSlotsCount: 0 }
   }
 
-  async compressErc20Call (erc20Call: ERC20Call): Promise<CalldataCachingResult> {
-    switch (erc20Call.method) {
-      case ERC20MethodSignatures.Transfer:
-        return await this.compressErc20Transfer(erc20Call.data[0], erc20Call.data[1])
-    }
-    throw new Error('not implemented')
-  }
-
-  async compressErc20Transfer (destination: Address, value: IntString): Promise<CalldataCachingResult> {
-    let writeSlotsCount = 0
-    const destinationId = await this.erc20addressToId(destination)
-    if (destinationId.eq(toBN(destination))) {
-      writeSlotsCount++
-    }
-    const methodSig = toBN(ERC20MethodSignatures.Transfer)
-    const list: List = [methodSig, destinationId, toBN(value)]
-    const cachedEncodedData = bufferToHex(encode(list))
-    return {
-      cachedEncodedData,
-      writeSlotsCount
-    }
-  }
-
-  async compressErc20Approve (): Promise<CalldataCachingResult> {
-    throw new Error('not implemented')
-  }
-
-  // TODO: either a) separate this class into many or b) find a better way to organize this
-  async addressToId (address: Address, type: SeparatelyCachedAddressTypes): Promise<BN> {
-    return toBN(address)
-  }
-
-  async erc20addressToId (address: Address): Promise<BN> {
-    const [compressedAddress] = await this.erc20cacheDecoder.convertAddressesToIds([address])
-    return compressedAddress
-  }
-
-  estimateCalldataCostForRelayRequestsElement (
-    relayRequestElement: RelayRequestsElement,
-    authorizationElement?: AuthorizationElement
-  ): PrefixedHexString {
-    // TODO: ContractInteractor does not belong to this class as a member! Refactor!
+  _calculateCalldataCostForRelayRequestsElement (relayRequestElement: RelayRequestElement, authorizationElement ?: AuthorizationElement): BN {
     if (this.contractInteractor == null) {
       throw new Error('ContractInteractor is not initialized')
     }
@@ -267,11 +206,77 @@ export class CacheDecoderInteractor {
       relayRequestElementCost =
         relayRequestElementCost.addn(this.contractInteractor.calculateCalldataCost(encodedRelayRequestsElement))
     }
-    return `0x${relayRequestElementCost.toString(16)}`
+    return relayRequestElementCost
   }
 
-  writeSlotsToL2Gas (writeSlotsCount: number): BN {
-    return toBN(this.cachingGasConstants.gasPerSlotL2 * writeSlotsCount)
+  async calculateTotalCostForRelayRequestsElement (combinedCachingResult: CombinedCachingResult, authorizationElement ?: AuthorizationElement): Promise<any> {
+    const calldataCost = this._calculateCalldataCostForRelayRequestsElement(combinedCachingResult.relayRequestElement, authorizationElement)
+    const storageL2Cost = toBN(this.cachingGasConstants.gasPerSlotL2 * combinedCachingResult.writeSlotsCount)
+    let authorizationStorageCost = toBN(0)
+    if (authorizationElement != null
+    ) {
+      toBN(this.cachingGasConstants.gasPerSlotL2 * this.cachingGasConstants.authorizationStorageSlots)
+    }
+    const totalCost = storageL2Cost.add(calldataCost).add(authorizationStorageCost)
+
+    return {
+      authorizationStorageCost,
+      storageL2Cost,
+      calldataCost,
+      totalCost
+    }
+  }
+
+  async compressBatch (batchInfo: BatchInfo): Promise<BatchInfoCachingResult> {
+    const gasPrice: BN = batchInfo.gasPrice
+    const validUntil: BN = toBN(batchInfo.validUntil)
+    const pctRelayFee: BN = toBN(batchInfo.pctRelayFee)
+    const baseRelayFee: BN = toBN(batchInfo.baseRelayFee)
+    const maxAcceptanceBudget: BN = toBN(batchInfo.maxAcceptanceBudget)
+
+    const addressesCompressed = await this.compressAddressesToIds([
+      {
+        address: this.batchingContractsDeployment.batchGatewayCacheDecoder,
+        type: SeparatelyCachedAddressTypes.decoders
+      },
+      {
+        address: batchInfo.workerAddress,
+        type: SeparatelyCachedAddressTypes.eoa
+      }]
+    )
+
+    const blsSignature: BN[] = []
+    const authorizations: AuthorizationElement[] = []
+    const relayRequestElements: RelayRequestElement[] = []
+
+    const batchCompressedInput: RLPBatchCompressedInput = {
+      gasPrice,
+      validUntil,
+      pctRelayFee,
+      baseRelayFee,
+      maxAcceptanceBudget,
+      defaultCacheDecoder: addressesCompressed.ids[0],
+      relayWorker: addressesCompressed.ids[1],
+      blsSignature,
+      authorizations,
+      relayRequestElements
+    }
+    return {
+      batchCompressedInput,
+      writeSlotsCount: 0
+    }
+  }
+
+  async compressRelayRequestAndCalldata (relayRequest: RelayRequest): Promise<CombinedCachingResult> {
+    const { cachedEncodedData, writeSlotsCount: calldataWriteSlotsCount } =
+      await this.compressAbiEncodedCalldata({
+        target: relayRequest.request.to,
+        abiEncodedCalldata: relayRequest.request.data
+      })
+    const { relayRequestElement, writeSlotsCount: relayRequestWriteSlotsCount } =
+      await this.compressRelayRequest({ relayRequest, cachedEncodedData })
+    const writeSlotsCount = calldataWriteSlotsCount + relayRequestWriteSlotsCount
+    return { cachedEncodedData, relayRequestElement, writeSlotsCount }
   }
 }
 
@@ -288,10 +293,10 @@ export interface RLPBatchCompressedInput {
   defaultCacheDecoder: BN
   blsSignature: BN[]
   authorizations: AuthorizationElement[]
-  relayRequestElements: RelayRequestsElement[]
+  relayRequestElements: RelayRequestElement[]
 }
 
-const relayRequestElementToRLPArray = (it: RelayRequestsElement): List => {
+const relayRequestElementToRLPArray = (it: RelayRequestElement): List => {
   return [
     it.nonce,
     it.paymaster,
@@ -313,7 +318,7 @@ const authorizationElementToRLPArray = (it: AuthorizationElement): List => {
 }
 
 export function encodeRelayRequestsElement (
-  relayRequestsElement: RelayRequestsElement
+  relayRequestsElement: RelayRequestElement
 ): PrefixedHexString {
   return bufferToHex(encode(relayRequestElementToRLPArray(relayRequestsElement)))
 }

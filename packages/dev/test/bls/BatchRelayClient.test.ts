@@ -1,18 +1,19 @@
-import { BatchRelayClient } from '@opengsn/provider/dist/bls/BatchRelayClient'
-import { GSNConfig } from '@opengsn/provider'
-import {
-  TestPaymasterEverythingAcceptedInstance
-} from '@opengsn/contracts'
 import { HttpProvider } from 'web3-core'
+import sinon, { SinonStub } from 'sinon'
+
+import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { BatchRelayClient } from '@opengsn/provider/dist/bls/BatchRelayClient'
 import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { GSNConfig } from '@opengsn/provider'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { constants, defaultEnvironment } from '@opengsn/common'
+import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
+import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+import { TestPaymasterEverythingAcceptedInstance } from '@opengsn/contracts'
+import { constants, ContractInteractor, defaultEnvironment } from '@opengsn/common'
+
 import { deployBatchingContractsForHub } from './BatchTestUtils'
 import { deployHub } from '../TestUtils'
-import sinon, { SinonStub } from 'sinon'
-import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 
 const TestToken = artifacts.require('TestToken')
 const StakeManager = artifacts.require('StakeManager')
@@ -38,24 +39,37 @@ contract.only('BatchRelayClient', function ([from]: string[]) {
     await paymaster.setTrustedForwarder(forwarderInstance.address)
     const testToken = await TestToken.new()
 
-    const batchingContractsDeployment = await deployBatchingContractsForHub(relayHub.address, testToken.address)
+    const batchingContractsDeployment = await deployBatchingContractsForHub(relayHub.address)
 
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,
       authorizationStorageSlots: 1,
       gasPerSlotL2: 1
     }
+
+    const contractInteractor = await new ContractInteractor({
+      environment: defaultEnvironment,
+      provider: web3.currentProvider as HttpProvider,
+      logger: createClientLogger(),
+      maxPageSize: Number.MAX_SAFE_INTEGER,
+      deployment: { paymasterAddress: paymaster.address }
+    }).init()
+
     const cacheDecoderInteractor = new CacheDecoderInteractor({
-      provider: underlyingProvider, batchingContractsDeployment, cachingGasConstants
+      calldataCacheDecoderInteractors: {},
+      provider: underlyingProvider,
+      contractInteractor,
+      batchingContractsDeployment,
+      cachingGasConstants
     })
-    await cacheDecoderInteractor.init({ batchingContractsDeployment, erc20contractAddress: testToken.address })
+    await cacheDecoderInteractor.init()
     batchClient = new BatchRelayClient({
       config: {
         paymasterAddress: paymaster.address,
         ...config
       },
       provider: underlyingProvider
-    }, cacheDecoderInteractor)
+    }, batchingContractsDeployment, cacheDecoderInteractor)
 
     await batchClient.init()
 

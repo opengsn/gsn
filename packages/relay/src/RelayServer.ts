@@ -6,7 +6,7 @@ import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
-import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
+  import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
 import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
@@ -33,8 +33,10 @@ import { PaymasterStatus, ReputationManager } from './ReputationManager'
 import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
+import { BatchManager } from './BatchManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import Timeout = NodeJS.Timeout
+import { getRelayRequestID } from '@opengsn/common'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -85,6 +87,7 @@ export class RelayServer extends EventEmitter {
 
   environment: Environment
 
+  // TODO: there is no reason to accept 'Partial' here - require configuration be resolved first!
   constructor (
     config: Partial<ServerConfigParams>,
     transactionManager: TransactionManager,
@@ -98,6 +101,9 @@ export class RelayServer extends EventEmitter {
     this.environment = this.contractInteractor.environment
     this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.txStoreManager = dependencies.txStoreManager
+
+    this.batchManager = dependencies.batchManager
+
     this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
@@ -630,6 +636,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.minGasPrice > parseInt(this.config.maxGasPrice)) {
       throw new Error(`network gas price ${this.minGasPrice} is higher than max gas price ${this.config.maxGasPrice}`)
     }
+
+    this.batchManager?.setNewMinGasPrice(this.minGasPrice)
   }
 
   async _handleChanges (currentBlockNumber: number): Promise<PrefixedHexString[]> {
@@ -834,5 +842,87 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       this.readinessInfo.totalReadinessChanges++
     }
     this.ready = isReady
+  }
+
+  //*************** BATCH CODE - REWRITE AFTER MERGE WITH EIP-1559  ***************//
+  // note that ~90% of the code is exactly same - extract shared logic
+  // all logic that is not identical should be moved to the BatchManager!
+
+  batchManager?: BatchManager
+
+  async createBatchedRelayTransaction (req: RelayTransactionRequest): Promise<PrefixedHexString> {
+    this.logger.debug(`dump batch request params: ${JSON.stringify(req)}`)
+    if (this.batchManager == null) {
+      throw new Error('BatchManager not initialized')
+    }
+    if (!this.isReady()) {
+      throw new Error('relay not ready')
+    }
+    if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
+      throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
+    }
+    if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
+      throw new Error(
+        `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract.address}, request's hub address: ${req.metadata.relayHubAddress}\n`)
+    }
+
+    this.validateFeesExact(req)
+    await this.validateViewCallSucceedsBatch(req, this.config.maxAcceptanceBudget, parseInt(this.config.batchTargetGasLimit))
+    if (this.config.runPaymasterReputations) {
+      await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
+    }
+    await this.batchManager.addTransactionToCurrentBatch(req)
+    return getRelayRequestID(req.relayRequest)
+  }
+
+  /**
+   * In batching mode, all fees must be exactly what the server has returned in the most recent '/getaddr' response
+   */
+  validateFeesExact (req: RelayTransactionRequest): void {
+    if (this.batchManager == null) {
+      throw new Error('BatchManager not initialized')
+    }
+    // if trusted paymaster, we trust it to handle fees
+    if (this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
+      return
+    }
+    // Check that the fee is acceptable
+    if (parseInt(req.relayRequest.relayData.pctRelayFee) !== this.config.pctRelayFee) {
+      throw new Error(
+        `Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
+    }
+    if (!toBN(req.relayRequest.relayData.baseRelayFee).eq(toBN(this.config.baseRelayFee))) {
+      throw new Error(
+        `Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
+    }
+  }
+
+  // FROM GATEWAY + WITHOUT SIGNATURE + HUGE MEANINGLESS 'maxPossibleGas'
+  async validateViewCallSucceedsBatch (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
+    if (this.batchManager == null) {
+      throw new Error('BatchManager not initialized')
+    }
+    this.logger.debug(`validateViewCallSucceeds: ${JSON.stringify(arguments)}`)
+    const method = this.relayHubContract.contract.methods.relayCall(
+      maxAcceptanceBudget, req.relayRequest, '0x', req.metadata.approvalData)
+    let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
+    try {
+      viewRelayCallRet =
+        await method.call({
+          from: this.batchManager.batchingContractsDeployment.batchGateway,
+          gasPrice: req.relayRequest.relayData.gasPrice,
+          gasLimit: maxPossibleGas
+        }, 'pending')
+    } catch (e) {
+      throw new Error(`relayCall reverted in server: ${(e as Error).message}`)
+    }
+    this.logger.debug(`Result for view-only relay call (on pending block):
+paymasterAccepted  | ${viewRelayCallRet.paymasterAccepted ? chalk.green('true') : chalk.red('false')}
+returnValue        | ${viewRelayCallRet.returnValue}
+`)
+    if (!viewRelayCallRet.paymasterAccepted) {
+      throw new Error(
+        `Paymaster rejected in server: ${decodeRevertReason(viewRelayCallRet.returnValue)} req=${JSON.stringify(req, null, 2)}`)
+    }
   }
 }
