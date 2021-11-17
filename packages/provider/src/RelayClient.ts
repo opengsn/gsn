@@ -34,7 +34,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
-import { toBN } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 
 // forwarder requests are signed with expiration time.
 
@@ -191,8 +191,8 @@ export class RelayClient {
     this.emit(new GsnRefreshRelaysEvent())
     await this.dependencies.knownRelaysManager.refresh()
     const { maxPriorityFeePerGas, maxFeePerGas } = await this._calculateGasFees()
-    gsnTransactionDetails.maxFeePerGas = gsnTransactionDetails.maxFeePerGas ?? maxFeePerGas
-    gsnTransactionDetails.maxPriorityFeePerGas = gsnTransactionDetails.maxPriorityFeePerGas ?? maxPriorityFeePerGas
+    gsnTransactionDetails.maxFeePerGas = toHex(gsnTransactionDetails.maxFeePerGas ?? maxFeePerGas)
+    gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas ?? maxPriorityFeePerGas)
     if (gsnTransactionDetails.gas == null) {
       const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`

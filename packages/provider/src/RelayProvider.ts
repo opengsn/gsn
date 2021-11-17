@@ -91,7 +91,8 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
         if (payload.params[0].to === undefined) {
-          throw new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.')
+          callback(new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.'))
+          return
         }
         this._ethSendTransaction(payload, callback)
         return
