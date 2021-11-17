@@ -17,6 +17,7 @@ import { isSameAddress } from '@opengsn/common/dist/Utils'
 import { constants } from '@opengsn/common/dist/Constants'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { TransactionType } from './RelayServer'
+import { toBN } from 'web3-utils'
 
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString
@@ -125,12 +126,17 @@ data         | ${transaction.data}
     const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
     const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? maxFeePerGas.toString())
 
-    const releaseMutex = await this.nonceMutex.acquire()
+    const txCost = toBN(maxFeePerGas).mul(toBN(txDetails.gasLimit))
+    const signerBalance = await this.contractInteractor.getBalance(txDetails.signer)
+    if (txCost.gt(toBN(signerBalance))) {
+      throw new Error(`signer ${txDetails.signer} balance ${signerBalance} too low: tx cost is ${txCost.toString()}`)
+    }
     if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
       const msg = `Preventing to send transaction with action id ${txDetails.serverAction} to address(0)! Validate your configuration!`
       this.logger.error(msg)
       throw new Error(msg)
     }
+    const releaseMutex = await this.nonceMutex.acquire()
     let signedTransaction: SignedTransaction
     let storedTx: StoredTransaction
     try {
@@ -174,13 +180,17 @@ data         | ${transaction.data}
     } finally {
       releaseMutex()
     }
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
-    if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
-      throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
-    }
-    return {
-      transactionHash,
-      signedTx: signedTransaction.rawTx
+    try {
+      const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
+      if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
+        throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
+      }
+      return {
+        transactionHash,
+        signedTx: signedTransaction.rawTx
+      }
+    } catch (e) {
+      throw new Error(`Tx broadcast failed: ${(e as Error).message}`)
     }
   }
 

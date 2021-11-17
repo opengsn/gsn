@@ -75,7 +75,7 @@ class GsnTestEnvironmentClass {
       sleepMs: 100,
       sleepCount: 5,
       stake: ether('1'),
-      funds: ether('1'),
+      funds: ether('5'),
       relayUrl: relayUrl,
       gasPrice: 1e9.toString(),
       unstakeDelay: '2000'
@@ -188,7 +188,8 @@ class GsnTestEnvironmentClass {
       checkInterval: 50,
       refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,
-      logLevel: 'error'
+      logLevel: 'error',
+      workerTargetBalance: 1e18
     }
     const transactionManager = new TransactionManager(relayServerDependencies, configureServer(relayServerParams))
     const backend = new RelayServer(relayServerParams, transactionManager, relayServerDependencies)
