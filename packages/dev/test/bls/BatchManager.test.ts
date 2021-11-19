@@ -1,4 +1,4 @@
-import sinon, { SinonStubbedInstance } from 'sinon'
+import sinon, { SinonFakeTimers, SinonStubbedInstance } from 'sinon'
 import { toBN } from 'web3-utils'
 
 import { BatchManager } from '@opengsn/relay/dist/BatchManager'
@@ -13,8 +13,17 @@ contract.only('BatchManager', function () {
   let batchManager: BatchManager
   let stubContractInteractor: SinonStubbedInstance<ContractInteractor>
   let stubTransactionManager: SinonStubbedInstance<TransactionManager>
-  let stubCacheDecoderInteractor: SinonStubbedInstance<CacheDecoderInteractor>
   let stubBLSTypedDataSigner: SinonStubbedInstance<BLSTypedDataSigner>
+  let stubCacheDecoderInteractor: SinonStubbedInstance<CacheDecoderInteractor>
+
+  let batchRelayRequestInfo: BatchRelayRequestInfo
+
+  const relayRequestGasLimit = toBN(777)
+  const batchTargetGasLimit = relayRequestGasLimit.muln(3).addn(5).toString()
+  const batchTargetSize = 15
+  const batchGasThreshold = 6
+  const batchTimeThreshold = 3
+  const batchBlocksThreshold = 3
 
   before(async function () {
     stubTransactionManager = sinon.createStubInstance(TransactionManager)
@@ -33,7 +42,16 @@ contract.only('BatchManager', function () {
       .onFirstCall().returns([])
 
     batchManager = new BatchManager({
-      config: configureServer({}),
+      config: configureServer({
+        batchTargetSize,
+        batchTargetGasLimit,
+        batchDurationMS: 10000,
+        batchDurationBlocks: 100,
+        batchGasOverhead: '0',
+        batchGasThreshold,
+        batchTimeThreshold,
+        batchBlocksThreshold
+      }),
       newMinGasPrice: 0,
       workerAddress: '',
       contractInteractor: stubContractInteractor as any as ContractInteractor,
@@ -42,6 +60,22 @@ contract.only('BatchManager', function () {
       blsTypedDataSigner: stubBLSTypedDataSigner as any as BLSTypedDataSigner,
       batchingContractsDeployment: { batchGateway: '' } as GSNBatchingContractsDeployment
     })
+
+    const zero = toBN(0)
+    const relayRequestElement = {
+      nonce: zero,
+      paymaster: zero,
+      sender: zero,
+      target: zero,
+      gasLimit: relayRequestGasLimit,
+      calldataGas: zero,
+      methodData: Buffer.from([]),
+      cacheDecoder: zero
+    }
+    batchRelayRequestInfo = {
+      relayRequestElement,
+      blsSignature: []
+    }
   })
 
   context('#nextBatch()', function () {
@@ -67,23 +101,7 @@ contract.only('BatchManager', function () {
 
   context('#broadcastCurrentBatch()', function () {
     before(async function () {
-      // create a batch with like 7 transactions (that do not have to have valid data)
-      const zero = toBN(0)
-      const relayRequestElement = {
-        nonce: zero,
-        paymaster: zero,
-        sender: zero,
-        target: zero,
-        gasLimit: zero,
-        calldataGas: zero,
-        methodData: Buffer.from([]),
-        cacheDecoder: zero
-      }
-      const info: BatchRelayRequestInfo = {
-        relayRequestElement,
-        blsSignature: []
-      }
-      batchManager.currentBatch.transactions.push(info)
+      batchManager.currentBatch.transactions.push(batchRelayRequestInfo)
     })
 
     it('should broadcast the batch containing all submitted transactions', async function () {
@@ -93,5 +111,73 @@ contract.only('BatchManager', function () {
       assert.equal(batchManager.currentBatch.transactions.length, 0)
       assert.equal(batchManager.batchHistory.get(currentBatch)?.transactions.length, 1)
     })
+  })
+
+  context('#isCurrentBatchReady()', function () {
+    let clock: SinonFakeTimers
+
+    afterEach(function () {
+      batchManager.currentBatch.transactions = []
+      clock?.restore()
+    })
+
+    it('should return false if current batch is not nearing current gas or time targets', function () {
+      assert.equal(batchManager.currentBatch.targetGasLimit.toString(), batchTargetGasLimit)
+      assert.equal(batchManager.getCurrentBatchGasUse().toString(), '0')
+      assert.isFalse(batchManager.isCurrentBatchReady(0))
+      batchManager.currentBatch.transactions.push(batchRelayRequestInfo)
+      assert.equal(batchManager.getCurrentBatchGasUse().toString(), relayRequestGasLimit.toString())
+      assert.isFalse(batchManager.isCurrentBatchReady(0))
+    })
+
+    it('should return true when current batch is nearing the gas target', function () {
+      const batchSize = 3
+      for (let i = 0; i < batchSize; i++) {
+        batchManager.currentBatch.transactions.push(batchRelayRequestInfo)
+      }
+      const batchGasUse = batchManager.getCurrentBatchGasUse()
+      assert.isTrue(batchGasUse.lt(toBN(batchTargetGasLimit)), 'batch size exceeded target gas limit')
+      assert.isTrue(batchGasUse.sub(toBN(batchTargetGasLimit)).lt(toBN(batchGasThreshold)), 'batch size difference is smaller then ')
+      assert.equal(batchGasUse.toString(), relayRequestGasLimit.muln(batchSize).toString())
+      assert.isTrue(batchManager.isCurrentBatchReady(0))
+    })
+
+    it('should return true when current batch is nearing the time target', function () {
+      clock = sinon.useFakeTimers()
+      clock.setSystemTime(batchManager.currentBatch.targetSubmissionTimestamp - batchTimeThreshold + 1)
+      assert.isTrue(batchManager.isCurrentBatchReady(0))
+    })
+
+    it('should return true when current batch is nearing the target block', function () {
+      assert.isFalse(batchManager.isCurrentBatchReady(96))
+      assert.isTrue(batchManager.isCurrentBatchReady(97))
+    })
+
+    it('should return true when current batch is nearing the target transactions count', function () {
+      // silence the gas limit readiness
+      batchManager.currentBatch.targetGasLimit = toBN(1000000)
+      for (let i = 0; i < batchTargetSize; i++) {
+        batchManager.currentBatch.transactions.push(batchRelayRequestInfo)
+      }
+      assert.isTrue(batchManager.isCurrentBatchReady(0))
+    })
+  })
+
+  context('#getAuthorizedBLSPublicKey()', function () {
+    it('should throw if sender does not have an authorized signature and did not include new authorization')
+    it('should throw if new authorization element is included but its verification failed')
+    it('should return a public key stored by the registrar')
+    it('should return a public key included in authorization')
+  })
+
+  context('#verifyCurrentBatchParameters()', function () {
+    it('isOpen')
+    it('gasPrice')
+    it('validUntil')
+    it('relayWorker')
+  })
+
+  context('#getCurrentBatchGasLimit()', function () {
+    it('')
   })
 })

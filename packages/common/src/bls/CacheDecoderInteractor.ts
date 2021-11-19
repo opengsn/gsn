@@ -32,10 +32,11 @@ export interface BatchInfo {
   transactions: BatchRelayRequestInfo[]
   aggregatedSignature: BN[]
   isOpen: boolean
+  targetSize: number
+  targetBlock: number
   targetGasLimit: BN
-  gasPrice: BN
   targetSubmissionTimestamp: number
-  validUntil: number
+  gasPrice: BN
   pctRelayFee: number
   baseRelayFee: number
   maxAcceptanceBudget: number
@@ -229,7 +230,7 @@ export class CacheDecoderInteractor {
 
   async compressBatch (batchInfo: BatchInfo): Promise<BatchInfoCachingResult> {
     const gasPrice: BN = batchInfo.gasPrice
-    const validUntil: BN = toBN(batchInfo.validUntil)
+    const validUntil: BN = toBN(batchInfo.targetBlock)
     const pctRelayFee: BN = toBN(batchInfo.pctRelayFee)
     const baseRelayFee: BN = toBN(batchInfo.baseRelayFee)
     const maxAcceptanceBudget: BN = toBN(batchInfo.maxAcceptanceBudget)

@@ -84,10 +84,17 @@ export interface ServerConfigParams {
   pastEventsQueryMaxPageSize: number
 
   environmentName?: string
+
   runBatching: boolean
+  batchMinimalGasLimit: string
   batchTargetGasLimit: string
+  batchTargetSize: number
   batchDurationMS: number
-  batchValidUntilBlocks: number
+  batchDurationBlocks: number
+  batchGasOverhead: string
+  batchGasThreshold: number
+  batchTimeThreshold: number
+  batchBlocksThreshold: number
 }
 
 export interface ServerDependencies {
@@ -156,9 +163,15 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   coldRestartLogsFromBlock: 1,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   runBatching: false,
-  batchDurationMS: 0,
+  batchGasOverhead: '0',
   batchTargetGasLimit: '0',
-  batchValidUntilBlocks: 0
+  batchTargetSize: 0,
+  batchMinimalGasLimit: '0',
+  batchDurationMS: 0,
+  batchDurationBlocks: 0,
+  batchGasThreshold: 0,
+  batchTimeThreshold: 0,
+  batchBlocksThreshold: 0
 }
 
 const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 'number' | 'boolean' | 'list' } = {
@@ -223,7 +236,7 @@ const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 
   runBatching: 'boolean',
   batchTargetGasLimit: 'string',
   batchDurationMS: 'number',
-  batchValidUntilBlocks: 'number'
+  batchDurationBlocks: 'number'
 }
 
 // by default: no waiting period - use VersionRegistry entries immediately.

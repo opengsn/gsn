@@ -17,6 +17,9 @@ library CacheLibrary {
     )
     internal
     returns (uint256) {
+        if (id == 0){
+            return 0;
+        }
         if (id > ID_MAX_VALUE) {
             if (wordCache.reverse[id] == 0) {
                 wordCache.cache.push(id);
