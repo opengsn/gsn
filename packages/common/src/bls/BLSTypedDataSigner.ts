@@ -25,6 +25,7 @@ import {
   deserializeHexStrToFr, secretToPubkey
 } from './evmbls/mcl'
 import { abiEncodeRelayRequest } from '../Utils'
+import { AuthorizationElement } from './CacheDecoderInteractor'
 
 export interface InternalBLSKeypairType {
   secret: SecretKey
@@ -178,5 +179,21 @@ export class BLSTypedDataSigner {
     const hexZ = signatureBN[2].toString('hex')
     console.log('g1SignatureToBN: signature: ', hexX, hexX.length, hexY, hexY.length, hexZ, hexZ.length)
     return signatureBN
+  }
+
+  // TODO
+  static bnArrayToHex (signature: BN[]): PrefixedHexString {
+    const strings = signature.map((it: BN) => { return it.toString('hex') })
+    return JSON.stringify(strings)
+  }
+
+  // TODO
+  static hexStringToArrayBN (signature: PrefixedHexString): BN[] {
+    const array: string[] = JSON.parse(signature)
+    return array.map(toBN)
+  }
+
+  validateAuthorizationSignature (authorizationElement: AuthorizationElement): boolean {
+    return true
   }
 }

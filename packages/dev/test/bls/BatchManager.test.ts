@@ -1,20 +1,31 @@
-import sinon, { SinonFakeTimers, SinonStubbedInstance } from 'sinon'
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import sinon, { SinonSandbox, SinonStubbedInstance } from 'sinon'
 import { toBN } from 'web3-utils'
 
 import { BatchManager } from '@opengsn/relay/dist/BatchManager'
 import { configureServer } from '@opengsn/relay/dist/ServerConfigParams'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
-import { BatchRelayRequestInfo, CacheDecoderInteractor } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import {
+  AuthorizationElement,
+  BatchRelayRequestInfo,
+  CacheDecoderInteractor
+} from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { stubBatchInput } from '../ServerTestEnvironment'
+import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 
-contract.only('BatchManager', function () {
+const { expect, assert } = chai.use(chaiAsPromised)
+
+contract.only('BatchManager', function ([authorizer]: string[]) {
+  let sandbox: SinonSandbox
   let batchManager: BatchManager
   let stubContractInteractor: SinonStubbedInstance<ContractInteractor>
   let stubTransactionManager: SinonStubbedInstance<TransactionManager>
   let stubBLSTypedDataSigner: SinonStubbedInstance<BLSTypedDataSigner>
   let stubCacheDecoderInteractor: SinonStubbedInstance<CacheDecoderInteractor>
+  let stubAuthorizationsInteractor: SinonStubbedInstance<BLSAddressAuthorizationsRegistrarInteractor>
 
   let batchRelayRequestInfo: BatchRelayRequestInfo
 
@@ -26,11 +37,13 @@ contract.only('BatchManager', function () {
   const batchBlocksThreshold = 3
 
   before(async function () {
-    stubTransactionManager = sinon.createStubInstance(TransactionManager)
-    stubCacheDecoderInteractor = sinon.createStubInstance(CacheDecoderInteractor)
-    stubContractInteractor = sinon.createStubInstance(ContractInteractor)
-    stubContractInteractor = sinon.createStubInstance(ContractInteractor)
-    stubBLSTypedDataSigner = sinon.createStubInstance(BLSTypedDataSigner)
+    sandbox = sinon.createSandbox()
+    stubTransactionManager = sandbox.createStubInstance(TransactionManager)
+    stubCacheDecoderInteractor = sandbox.createStubInstance(CacheDecoderInteractor)
+    stubContractInteractor = sandbox.createStubInstance(ContractInteractor)
+    stubContractInteractor = sandbox.createStubInstance(ContractInteractor)
+    stubBLSTypedDataSigner = sandbox.createStubInstance(BLSTypedDataSigner)
+    stubAuthorizationsInteractor = sandbox.createStubInstance(BLSAddressAuthorizationsRegistrarInteractor)
 
     stubTransactionManager.sendTransaction
       .onFirstCall().returns(Promise.resolve({ transactionHash: '0xdeadbeef', signedTx: '' }))
@@ -58,7 +71,8 @@ contract.only('BatchManager', function () {
       transactionManager: stubTransactionManager as any as TransactionManager,
       cacheDecoderInteractor: stubCacheDecoderInteractor as any as CacheDecoderInteractor,
       blsTypedDataSigner: stubBLSTypedDataSigner as any as BLSTypedDataSigner,
-      batchingContractsDeployment: { batchGateway: '' } as GSNBatchingContractsDeployment
+      batchingContractsDeployment: { batchGateway: '' } as GSNBatchingContractsDeployment,
+      authorizationsRegistrarInteractor: stubAuthorizationsInteractor as any as BLSAddressAuthorizationsRegistrarInteractor
     })
 
     const zero = toBN(0)
@@ -114,20 +128,25 @@ contract.only('BatchManager', function () {
   })
 
   context('#isCurrentBatchReady()', function () {
-    let clock: SinonFakeTimers
-
     afterEach(function () {
       batchManager.currentBatch.transactions = []
-      clock?.restore()
+      sandbox.reset()
     })
 
     it('should return false if current batch is not nearing current gas or time targets', function () {
       assert.equal(batchManager.currentBatch.targetGasLimit.toString(), batchTargetGasLimit)
-      assert.equal(batchManager.getCurrentBatchGasUse().toString(), '0')
+      assert.equal(batchManager.getCurrentBatchGasLimit().toString(), '0')
       assert.isFalse(batchManager.isCurrentBatchReady(0))
       batchManager.currentBatch.transactions.push(batchRelayRequestInfo)
-      assert.equal(batchManager.getCurrentBatchGasUse().toString(), relayRequestGasLimit.toString())
+      assert.equal(batchManager.getCurrentBatchGasLimit().toString(), relayRequestGasLimit.toString())
       assert.isFalse(batchManager.isCurrentBatchReady(0))
+    })
+
+    it('should return true when current batch is nearing the time target', function () {
+      const clock = sandbox.useFakeTimers()
+      clock.setSystemTime(batchManager.currentBatch.targetSubmissionTimestamp - batchTimeThreshold + 1)
+      assert.isTrue(batchManager.isCurrentBatchReady(0))
+      clock.reset()
     })
 
     it('should return true when current batch is nearing the gas target', function () {
@@ -135,16 +154,10 @@ contract.only('BatchManager', function () {
       for (let i = 0; i < batchSize; i++) {
         batchManager.currentBatch.transactions.push(batchRelayRequestInfo)
       }
-      const batchGasUse = batchManager.getCurrentBatchGasUse()
-      assert.isTrue(batchGasUse.lt(toBN(batchTargetGasLimit)), 'batch size exceeded target gas limit')
-      assert.isTrue(batchGasUse.sub(toBN(batchTargetGasLimit)).lt(toBN(batchGasThreshold)), 'batch size difference is smaller then ')
-      assert.equal(batchGasUse.toString(), relayRequestGasLimit.muln(batchSize).toString())
-      assert.isTrue(batchManager.isCurrentBatchReady(0))
-    })
-
-    it('should return true when current batch is nearing the time target', function () {
-      clock = sinon.useFakeTimers()
-      clock.setSystemTime(batchManager.currentBatch.targetSubmissionTimestamp - batchTimeThreshold + 1)
+      const batchGasLimit = batchManager.getCurrentBatchGasLimit()
+      assert.isTrue(batchGasLimit.lt(toBN(batchTargetGasLimit)), 'batch size exceeded target gas limit')
+      assert.isTrue(batchGasLimit.sub(toBN(batchTargetGasLimit)).lt(toBN(batchGasThreshold)), 'batch size difference is smaller then ')
+      assert.equal(batchGasLimit.toString(), relayRequestGasLimit.muln(batchSize).toString())
       assert.isTrue(batchManager.isCurrentBatchReady(0))
     })
 
@@ -164,10 +177,43 @@ contract.only('BatchManager', function () {
   })
 
   context('#getAuthorizedBLSPublicKey()', function () {
-    it('should throw if sender does not have an authorized signature and did not include new authorization')
-    it('should throw if new authorization element is included but its verification failed')
+    const blsPublicKey = ['1', '2', '3', '4']
+    const authorizationElement: AuthorizationElement = {
+      blsPublicKey,
+      authorizer,
+      signature: ''
+    }
+
+    afterEach(function () {
+      sandbox.reset()
+    })
+
+    it('should throw if sender does not have an authorized signature and did not pass new authorization', async function () {
+      stubAuthorizationsInteractor.getAuthorizedBLSPublicKey.onFirstCall().returns(Promise.resolve(null))
+      await expect(batchManager.getAuthorizedBLSPublicKey({ address: authorizer })).to.eventually.be.rejectedWith(`Sender address (${authorizer}) does not have an authorized BLS keypair and must pass an authorization with the batch RelayRequest`)
+    })
+
+    it('should throw if new authorization element is included but its verification failed', async function () {
+      stubAuthorizationsInteractor.getAuthorizedBLSPublicKey.onFirstCall().returns(Promise.resolve(null))
+      stubBLSTypedDataSigner.validateAuthorizationSignature.onFirstCall().returns(false)
+
+      await expect(batchManager.getAuthorizedBLSPublicKey({
+        address: authorizer,
+        authorizationElement: authorizationElement
+      })).to.eventually.be.rejectedWith('BLS signature verification failed for the Authorization Element')
+    })
     it('should return a public key stored by the registrar')
-    it('should return a public key included in authorization')
+    it('should return a public key included in a valid authorization', async function () {
+      stubAuthorizationsInteractor.getAuthorizedBLSPublicKey.onFirstCall().returns(Promise.resolve(null))
+      stubBLSTypedDataSigner.validateAuthorizationSignature.onFirstCall().returns(true)
+      const returnedPublicKey = await batchManager.getAuthorizedBLSPublicKey({
+        address: authorizer,
+        authorizationElement
+      })
+      const returnedPublicKeySerialized = BLSTypedDataSigner.bnArrayToHex(returnedPublicKey)
+      const expectedPublicKey = BLSTypedDataSigner.bnArrayToHex(blsPublicKey.map(toBN))
+      assert.equal(returnedPublicKeySerialized, expectedPublicKey)
+    })
   })
 
   context('#verifyCurrentBatchParameters()', function () {
@@ -178,6 +224,9 @@ contract.only('BatchManager', function () {
   })
 
   context('#getCurrentBatchGasLimit()', function () {
+    it('')
+  })
+  context('#validateCurrentBatchParameters()', function () {
     it('')
   })
 })

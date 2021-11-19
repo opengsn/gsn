@@ -56,6 +56,7 @@ import {
   RLPBatchCompressedInput
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -87,7 +88,6 @@ export const stubBatchInput: RLPBatchCompressedInput = {
   relayRequestElements: [],
   authorizations: []
 }
-
 
 export interface PrepareRelayRequestOption {
   to: string
@@ -294,7 +294,8 @@ export class ServerTestEnvironment {
         contractInteractor: this.contractInteractor,
         transactionManager,
         blsTypedDataSigner: this.blsTypedDataSigner,
-        cacheDecoderInteractor: this.cacheDecoderInteractor
+        cacheDecoderInteractor: this.cacheDecoderInteractor,
+        authorizationsRegistrarInteractor: {} as BLSAddressAuthorizationsRegistrarInteractor
       })
     }
     this.relayServer = new RelayServer(mergedConfig, transactionManager, serverDependencies)

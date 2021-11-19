@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "../BaseRelayRecipient.sol";
 import "../utils/GsnEip712Library.sol";
+import "../interfaces/IBLSAddressAuthorizationsRegistrar.sol";
 
 /*
  * This contract maintains a verified one-to-many mapping of
@@ -14,24 +15,14 @@ import "../utils/GsnEip712Library.sol";
  * Note: BLS key can be authorized by someone who doesn't hold said key,
  * but it does not give such person any advantage so that is not an issue.
  */
-contract BLSAddressAuthorizationsRegistrar is BaseRelayRecipient {
+contract BLSAddressAuthorizationsRegistrar is IBLSAddressAuthorizationsRegistrar, BaseRelayRecipient {
     using ECDSA for bytes32;
-
-    event AuthorizationIssued(address indexed authorizer, bytes32 blsPublicKeyHash);
 
     string public override versionRecipient = "2.2.3+opengsn.bls.address_authorizations_registrar";
 
     /** 712 start */
     bytes public constant APPROVAL_DATA_TYPE = "ApprovalData(uint256 blsPublicKey0,uint256 blsPublicKey1,uint256 blsPublicKey2,uint256 blsPublicKey3,string clientMessage)";
     bytes32 public constant APPROVAL_DATA_TYPEHASH = keccak256(APPROVAL_DATA_TYPE);
-
-    struct ApprovalData {
-        uint256 blsPublicKey0;
-        uint256 blsPublicKey1;
-        uint256 blsPublicKey2;
-        uint256 blsPublicKey3;
-        string clientMessage;
-    }
 
     function verifySig(
         ApprovalData memory approvalData,
@@ -51,6 +42,7 @@ contract BLSAddressAuthorizationsRegistrar is BaseRelayRecipient {
         ApprovalData memory req
     )
     public
+    override
     pure
     returns (
         bytes memory
@@ -69,7 +61,15 @@ contract BLSAddressAuthorizationsRegistrar is BaseRelayRecipient {
 
     mapping(address => uint256[4]) private authorizations;
 
-    function getAuthorizedPublicKey(address authorizer) external view returns (uint256[4] memory){
+    function getAuthorizedPublicKey(
+        address authorizer
+    )
+    external
+    override
+    view
+    returns (
+        uint256[4] memory
+    ){
         return authorizations[authorizer];
     }
 
@@ -77,7 +77,10 @@ contract BLSAddressAuthorizationsRegistrar is BaseRelayRecipient {
         address authorizer,
         uint256[4] memory blsPublicKey,
         bytes memory ecSignature
-    ) external {
+    )
+    external
+    override
+    {
         verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], "I UNDERSTAND WHAT I AM DOING"), authorizer, ecSignature);
         // TODO: extract null-check logic for Key struct?
         require(authorizations[authorizer][0] == 0, "authorizer already has bls key");

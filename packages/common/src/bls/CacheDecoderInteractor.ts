@@ -57,7 +57,7 @@ export interface RelayRequestElement {
 
 export interface AuthorizationElement {
   authorizer: Address
-  blsPublicKey: BN[] | PrefixedHexString[]
+  blsPublicKey: PrefixedHexString[]
   signature: PrefixedHexString
 }
 
@@ -99,7 +99,8 @@ export interface CachingGasConstants {
 }
 
 /**
- * Interacts with a 'Decompressor' contract in order to substitute actual values with their cached IDs.
+ * Interacts with BatchGatewayCacheDecoder and various CalldataCacheDecoder contracts in order
+ * to substitute actual values with their cached IDs whenever possible.
  */
 export class CacheDecoderInteractor {
   private readonly contractInteractor: ContractInteractor

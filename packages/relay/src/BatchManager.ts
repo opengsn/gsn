@@ -10,14 +10,15 @@ import {
   encodeBatch
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { SendTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerAction } from './StoredTransaction'
-import { ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
+import { ContractInteractor, GSNBatchingContractsDeployment, isSameAddress } from '@opengsn/common'
 import { ServerConfigParams } from './ServerConfigParams'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 
 export interface SentBatchInfo extends BatchInfo {
   originalTransactionHash: PrefixedHexString
@@ -29,7 +30,7 @@ export interface SentBatchInfo extends BatchInfo {
 export class BatchManager {
   readonly contractInteractor: ContractInteractor
   readonly cacheDecoderInteractor: CacheDecoderInteractor
-  private authorizationsRegistrarInteractor: any
+  readonly authorizationsRegistrarInteractor: BLSAddressAuthorizationsRegistrarInteractor
 
   readonly config: ServerConfigParams
   readonly batchHistory = new Map<number, SentBatchInfo>()
@@ -51,6 +52,7 @@ export class BatchManager {
     blsTypedDataSigner: BLSTypedDataSigner
     cacheDecoderInteractor: CacheDecoderInteractor
     batchingContractsDeployment: GSNBatchingContractsDeployment
+    authorizationsRegistrarInteractor: BLSAddressAuthorizationsRegistrarInteractor
   }) {
     this.config = _.config
     this.newMinGasPrice = _.newMinGasPrice
@@ -60,6 +62,7 @@ export class BatchManager {
     this.blsTypedDataSigner = _.blsTypedDataSigner
     this.cacheDecoderInteractor = _.cacheDecoderInteractor
     this.batchingContractsDeployment = _.batchingContractsDeployment
+    this.authorizationsRegistrarInteractor = _.authorizationsRegistrarInteractor
   }
 
   nextBatch (nextBatchId?: number): void {
@@ -82,7 +85,7 @@ export class BatchManager {
       baseRelayFee: 0,
       maxAcceptanceBudget: 0
     }
-    this.validateCurrentBatchParameters()
+    this.validateCurrentBatchParameters2()
   }
 
   /**
@@ -105,14 +108,17 @@ new target :${newBatchTarget}
   }
 
   async addTransactionToCurrentBatch (req: RelayTransactionRequest): Promise<void> {
-    this.verifyCurrentBatchParameters(req)
+    this.validateCurrentBatchParameters(req)
 
     const { relayRequestElement } = await this.cacheDecoderInteractor.compressRelayRequestAndCalldata(req.relayRequest)
     const authorizationElement = req.metadata.authorizationElement
     const blsSignature: PrefixedHexString[] = JSON.parse(req.metadata.signature)
 
     // validate BLS signatures are ok
-    const authorizedBLSKey = await this.getAuthorizedBLSPublicKey(req)
+    const authorizedBLSKey = await this.getAuthorizedBLSPublicKey({
+      address: req.relayRequest.request.from,
+      authorizationElement: req.metadata.authorizationElement
+    })
     this.validateSignature(req.relayRequest, authorizedBLSKey, req.metadata.signature)
 
     // Add transaction to the current batch
@@ -127,21 +133,27 @@ new target :${newBatchTarget}
     void this.intervalWorker(blockNumber)
   }
 
-  async getAuthorizedBLSPublicKey (req: RelayTransactionRequest): Promise<PrefixedHexString> {
-    let authorizedBLSKey: PrefixedHexString | undefined
-    if (req.metadata.authorizationElement == null) {
-      authorizedBLSKey = await this.authorizationsRegistrarInteractor.getAuthorizedBLSKey(req.relayRequest.request.from)
+  async getAuthorizedBLSPublicKey (_: { address: Address, authorizationElement?: AuthorizationElement }): Promise<BN[]> {
+    let authorizedBLSKey: BN[] | null
+    if (_.authorizationElement == null) {
+      authorizedBLSKey = await this.authorizationsRegistrarInteractor.getAuthorizedBLSPublicKey(_.address)
       if (authorizedBLSKey == null) {
-        throw new Error(`Sender address ${req.relayRequest.request.from} does not have an authorized BLS keypair and must pass an authorization with the batch RelayRequest`)
+        throw new Error(`Sender address (${_.address}) does not have an authorized BLS keypair and must pass an authorization with the batch RelayRequest`)
       }
     } else {
-      this.validateAuthorizationElement(req.metadata.authorizationElement)
-      authorizedBLSKey = req.metadata.authorizationElement.blsPublicKey.toString()// TODO: types don't match
+      if (!isSameAddress(_.authorizationElement.authorizer, _.address)) {
+        throw new Error(`Requested a transaction from (${_.authorizationElement.authorizer}) but the included authorization is for (${_.address})`)
+      }
+      const isSignatureValid = this.blsTypedDataSigner.validateAuthorizationSignature(_.authorizationElement)
+      if (!isSignatureValid){
+        throw new Error('BLS signature verification failed for the Authorization Element')
+      }
+      authorizedBLSKey = _.authorizationElement.blsPublicKey.map(toBN) // TODO: types don't match
     }
     return authorizedBLSKey
   }
 
-  private verifyCurrentBatchParameters (req: RelayTransactionRequest): void {
+  private validateCurrentBatchParameters (req: RelayTransactionRequest): void {
     if (!this.currentBatch.isOpen) {
       // in case there is a race condition between 'add' and 'broadcast', should not happen
       throw new Error(`Current batch ${this.currentBatch.id} has been closed and does not accept new transactions`)
@@ -149,7 +161,7 @@ new target :${newBatchTarget}
     const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
     if (!this.currentBatch.gasPrice.eqn(requestGasPrice)) {
       throw new Error(
-        `gasPrice given ${requestGasPrice} not equal current batch gasPrice ${this.currentBatch.gasPrice}`)
+        `gasPrice given ${requestGasPrice} not equal current batch gasPrice ${this.currentBatch.gasPrice.toString()}`)
     }
 
     const validUntil = parseInt(req.relayRequest.request.validUntil)
@@ -164,7 +176,7 @@ new target :${newBatchTarget}
     }
   }
 
-  private validateSignature (relayRequest: RelayRequest, blsPublicKey: PrefixedHexString, signature: PrefixedHexString): void {
+  private validateSignature (relayRequest: RelayRequest, blsPublicKey: BN[], signature: PrefixedHexString): void {
     if (false) {
       throw new Error('BLS signature validation failed for RelayRequest')
     }
@@ -175,17 +187,10 @@ new target :${newBatchTarget}
     return true
   }
 
-  private validateAuthorizationElement (authorizationElement: AuthorizationElement): boolean {
-    if (false) {
-      throw new Error('Authorization element validation failed!')
-    }
-    return true
-  }
-
   isCurrentBatchReady (blockNumber: number): boolean {
     const now = Date.now()
     const isTimeNearTarget = this.currentBatch.targetSubmissionTimestamp - now < this.config.batchTimeThreshold
-    const currentBatchGasLimit = this.getCurrentBatchGasUse()
+    const currentBatchGasLimit = this.getCurrentBatchGasLimit()
     const isGasLimitNearTarget = this.currentBatch.targetGasLimit.sub(currentBatchGasLimit).lte(toBN(this.config.batchGasThreshold))
     const isBlockNumberNearTarget = this.currentBatch.targetBlock - blockNumber <= this.config.batchBlocksThreshold
     const isSizeMaxedOut = this.currentBatch.targetSize === this.currentBatch.transactions.length
@@ -209,7 +214,7 @@ target time         : ${this.currentBatch.targetSubmissionTimestamp} (${new Date
 current time        : ${now} (${new Date(now).toISOString()})`
       const gasLimitMessage = `
 target gas limit    : ${this.currentBatch.targetGasLimit.toString()}
-current gas limit   : ${currentBatchGasLimit}`
+current gas limit   : ${currentBatchGasLimit.toString()}`
       const blockMessage = `
 target block        : ${this.currentBatch.targetBlock}
 current block       : ${blockNumber}`
@@ -227,8 +232,8 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     return isCurrentBatchReady
   }
 
-  getCurrentBatchGasUse (): BN {
-    const sum = (previousValue: BN, currentValue: BN) => {
+  getCurrentBatchGasLimit (): BN {
+    const sum = (previousValue: BN, currentValue: BN): BN => {
       return previousValue.add(currentValue)
     }
     const sumOfTransactionsGasLimits =
@@ -244,6 +249,7 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
 
   async broadcastCurrentBatch (): Promise<PrefixedHexString> {
     const { batchCompressedInput, writeSlotsCount } = await this.cacheDecoderInteractor.compressBatch(this.currentBatch)
+    this.validateWriteSlotsCount(writeSlotsCount)
     const batchEncodedCallData = encodeBatch(batchCompressedInput)
     const method = {
       encodeABI: function () {
@@ -267,6 +273,14 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     this.onCurrentBatchBroadcast(transactionHash, 0, Date.now())
     this.nextBatch()
     return transactionHash
+  }
+
+  // TODO TBD: sanity check; possibly not needed
+  private validateWriteSlotsCount (writeSlotsCount: number): void {
+    const expectedWriteSlots = 1000
+    if (writeSlotsCount > expectedWriteSlots) {
+      throw new Error('batch is corrupt - requires more slots written than originally estimated')
+    }
   }
 
   private onCurrentBatchBroadcast (originalTransactionHash: PrefixedHexString, submissionBlock: number, submissionTimestamp: number): void {
@@ -293,6 +307,13 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     this.newMinGasPrice = newGasPrice
   }
 
+  /**
+   * TODO: if block gas limit changes to be below target batch gas limit we should adjust somehow
+   */
+  setNewBlockGasLimit (blockGasLimit: IntString): void {
+    throw new Error('not implemented')
+  }
+
   private aggregateSignatures (): BN[] {
     const signatures = this.currentBatch.transactions.map(it => it.blsSignature)
     return this.blsTypedDataSigner.aggregateSignatures(signatures)
@@ -316,7 +337,7 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
   /**
    * Smoke self-test as there are a few ways for the batch to get misconfigured
    */
-  async validateCurrentBatchParameters () {
+  validateCurrentBatchParameters2 (): void {
     // 1. timeThreshold > > check interval
     // 2. batchDurationMS > > timeThreshold
     // 3. gas target < < block gas limit

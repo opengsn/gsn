@@ -77,8 +77,7 @@ export class AccountManager {
       throw new Error('BLS not initialized')
     }
     const signatureBN = await this.blsTypedDataSigner.signRelayRequestBLS(relayRequest)
-    const strings = signatureBN.map((it: BN) => { return it.toString('hex') })
-    return JSON.stringify(strings)
+    return BLSTypedDataSigner.bnArrayToHex(signatureBN)
   }
 
   async signEIP712ECDSA (relayRequest: RelayRequest): Promise<PrefixedHexString> {
