@@ -34,7 +34,8 @@ yarn-error.log
 /packages/contracts/build/
 /packages/contracts/json-input.json
 /packages/contracts/types/truffle-contracts/
-/verdaccio/
+/verdaccio/db/
+/verdaccio/.verdaccio-db.json
 /.yarnrc
 /build/gsn
 /gsn.iml
