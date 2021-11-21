@@ -115,6 +115,7 @@ export function showDeployment (deploymentResult: GSNContractsDeployment, title:
   }
   console.log(`
   RelayHub: ${deploymentResult.relayHubAddress}
+  RelayRegistrar: ${deploymentResult.relayRegistrarAddress}
   StakeManager: ${deploymentResult.stakeManagerAddress}
   Penalizer: ${deploymentResult.penalizerAddress}
   VersionRegistry: ${deploymentResult.versionRegistryAddress}
@@ -129,6 +130,7 @@ export function loadDeployment (workdir: string): GSNContractsDeployment {
 
   return {
     relayHubAddress: getAddress('RelayHub'),
+    relayRegistrar: getAddress('RelayRegistrar'),
     stakeManagerAddress: getAddress('StakeManager'),
     penalizerAddress: getAddress('Penalizer'),
     forwarderAddress: getAddress('Forwarder'),

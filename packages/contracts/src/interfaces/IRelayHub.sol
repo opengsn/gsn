@@ -26,15 +26,6 @@ interface IRelayHub {
 
     event RelayHubConfigured(RelayHubConfig config);
 
-    /// Emitted when a relay server registers or updates its details
-    /// Looking at these events lets a client discover relay servers
-    event RelayServerRegistered(
-        address indexed relayManager,
-        uint256 baseRelayFee,
-        uint256 pctRelayFee,
-        string relayUrl
-    );
-
     /// Emitted when relays are added by a relayManager
     event RelayWorkersAdded(
         address indexed relayManager,
@@ -114,7 +105,7 @@ interface IRelayHub {
     /// This function can be called multiple times, emitting new events
     function addRelayWorkers(address[] calldata newRelayWorkers) external;
 
-    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
+    function verifyCanRegister(address relayManager) external;
 
     // Balance management
 
@@ -185,6 +176,8 @@ interface IRelayHub {
     function stakeManager() external view returns (IStakeManager);
 
     function penalizer() external view returns (address);
+
+    function relayRegistrar() external view returns (address);
 
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
     /// @return true if stake size and delay satisfy all requirements

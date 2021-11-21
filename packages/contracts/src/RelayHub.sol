@@ -19,6 +19,7 @@ import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPaymaster.sol";
 import "./forwarder/IForwarder.sol";
 import "./interfaces/IStakeManager.sol";
+import "./interfaces/IRelayRegistrar.sol";
 
 contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
@@ -29,6 +30,9 @@ contract RelayHub is IRelayHub, Ownable {
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
+
+    //TODO: make immutable (currently has a setter. deployment requires future address, since there is cross-references between RH and RR
+    address public override relayRegistrar;
 
     RelayHubConfig private config;
 
@@ -61,14 +65,17 @@ contract RelayHub is IRelayHub, Ownable {
         setConfiguration(_config);
     }
 
-    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
-        address relayManager = msg.sender;
+    function setRegistrar(address _relayRegistrar) public onlyOwner {
+        require(relayRegistrar == address(0), "relayRegistrar already set");
+        relayRegistrar = _relayRegistrar;
+    }
+
+    function verifyCanRegister(address relayManager) external view override {
         require(
             isRelayManagerStaked(relayManager),
             "relay manager not staked"
         );
         require(workerCount[relayManager] > 0, "no relay workers");
-        emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
     }
 
     function addRelayWorkers(address[] calldata newRelayWorkers) external override {
@@ -180,7 +187,7 @@ contract RelayHub is IRelayHub, Ownable {
         );
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
-             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
+            verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
 
         RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
 
@@ -206,9 +213,9 @@ contract RelayHub is IRelayHub, Ownable {
         // RelayCallStatus value.
         (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasAndDataLimits,
-                _tmpInitialGas - aggregateGasleft(), /* totalInitialGas */
-                vars.maxPossibleGas
-                )
+            _tmpInitialGas - aggregateGasleft(), /* totalInitialGas */
+            vars.maxPossibleGas
+            )
         );
         vars.success = success;
         vars.innerGasUsed = vars.gasBeforeInner-aggregateGasleft();
@@ -224,7 +231,7 @@ contract RelayHub is IRelayHub, Ownable {
                     (vars.innerGasUsed <= vars.gasAndDataLimits.acceptanceBudget.add(relayRequest.relayData.transactionCalldataGasUsed)) && (
                     vars.status == RelayCallStatus.RejectedByForwarder ||
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
-            )) {
+                )) {
                 paymasterAccepted=false;
 
                 emit TransactionRejectedByPaymaster(
@@ -305,7 +312,7 @@ contract RelayHub is IRelayHub, Ownable {
         // Note: we open a new block to avoid growing the stack too much.
         vars.data = abi.encodeWithSelector(
             IPaymaster.preRelayedCall.selector,
-                relayRequest, signature, approvalData, maxPossibleGas
+            relayRequest, signature, approvalData, maxPossibleGas
         );
         {
             bool success;
@@ -346,9 +353,9 @@ contract RelayHub is IRelayHub, Ownable {
         {
         (bool successPost,bytes memory ret) = relayRequest.relayData.paymaster.call{gas:gasAndDataLimits.postRelayedCallGasLimit}(vars.data);
 
-        if (!successPost) {
-            revertWithStatus(RelayCallStatus.PostRelayedFailed, ret);
-        }
+            if (!successPost) {
+                revertWithStatus(RelayCallStatus.PostRelayedFailed, ret);
+            }
         }
 
         if (balances[relayRequest.relayData.paymaster] < vars.balanceBefore) {

@@ -729,7 +729,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       fromBlock: this.lastScannedBlock + 1,
       toBlock: 'latest'
     }
-    const events = await this.contractInteractor.getPastEventsForHub(topics, options)
+    const hubEvents = await this.contractInteractor.getPastEventsForHub(topics, options)
+    const regEvents = await this.contractInteractor.getPastEventsForRegistrar(topics, options)
+    const events = [...hubEvents, ...regEvents]
     if (events.length !== 0) {
       this.logger.debug(`Found ${events.length} events since last scan`)
     }

@@ -2,7 +2,7 @@
 // @ts-ignore
 import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
-import chai from 'chai'
+import chai, { expect } from 'chai'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
@@ -17,6 +17,8 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
+import { removeNullValues } from '@opengsn/common'
+import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -191,6 +193,17 @@ contract('Utils', function (accounts) {
         const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
       })
+    })
+  })
+
+  describe('#removeNullValues', function () {
+    it('should remove nulls shallowly', async () => {
+      expect(removeNullValues({ a: 1, b: 'string', c: null, d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) })).to.deep
+        .equal({ a: 1, b: 'string', d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) })
+    })
+    it('should remove nulls recursively', async () => {
+      expect(removeNullValues({ a: 1, b: 'string', c: null, d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) }, true)).to.deep
+        .equal({ a: 1, b: 'string', d: { f: 3 }, arr: [10, null, 30], bn: toBN(123) })
     })
   })
 })

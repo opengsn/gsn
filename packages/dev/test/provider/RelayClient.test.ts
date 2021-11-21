@@ -43,12 +43,14 @@ import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const { expect, assert } = chai.use(chaiAsPromised)
 chai.use(sinonChai)
@@ -75,6 +77,7 @@ class MockHttpClient extends HttpClient {
 contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
+  let relayRegistrar: RelayRegistrarInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
@@ -106,7 +109,7 @@ contract('RelayClient', function (accounts) {
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
 
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayHub.registerRelayServer(1, 1, cheapRelayerUrl, { from: relayManager })
+    await relayRegistrar.registerRelayServer(1, 1, cheapRelayerUrl, { from: relayManager })
   }
 
   before(async function () {
@@ -114,6 +117,8 @@ contract('RelayClient', function (accounts) {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
+
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
@@ -449,7 +454,7 @@ contract('RelayClient', function (accounts) {
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
-      await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
+      await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
         ownerAddress: relayOwner,

@@ -3,7 +3,7 @@ import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
 import BN from 'bn.js'
 import { PastEventOptions } from 'web3-eth-contract'
-
+// import '../utils/chaiHelper'
 import {
   PenalizerInstance,
   RelayHubInstance,
@@ -25,12 +25,17 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { AddressZero } from 'ethers/constants'
+import { toHex } from 'web3-utils'
+import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
+import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const { expect } = chai.use(chaiAsPromised)
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const environment = defaultEnvironment
 
@@ -181,7 +186,7 @@ contract('ContractInteractor', function (accounts) {
       let transaction = Transaction.fromTxData({
         to: constants.ZERO_ADDRESS,
         gasLimit: '0x5208',
-        gasPrice: 105157849,
+        gasPrice: toHex(await web3.eth.getGasPrice()),
         nonce
       }, contractInteractor.getRawTxOptions())
       transaction = transaction.sign(Buffer.from('8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba', 'hex'))
@@ -299,6 +304,11 @@ contract('ContractInteractor', function (accounts) {
 
     context('with stub 100 blocks getLogs limit', function () {
       before(function () {
+        if (process.env.TEST_LONG == null) {
+          console.log('skipped long test. set TEST_LONG to enable')
+          this.skip()
+          return
+        }
         // @ts-ignore
         contractInteractor.maxPageSize = Number.MAX_SAFE_INTEGER
         sinon.stub(contractInteractor, '_getPastEvents').callsFake(async function (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<any> {
@@ -359,6 +369,43 @@ contract('ContractInteractor', function (accounts) {
         await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
           .to.eventually.be.rejectedWith('calldataGasCost exceeded originalGasEstimation')
       })
+    })
+  })
+
+  context.skip('#LightTruffleContract', () => {
+    let contractInteractor: ContractInteractor
+    let relayReg: RelayRegistrarInstance
+    let lightreg: IRelayRegistrarInstance
+
+    before(async () => {
+      // Using contractInteractor, since hard to test directly: it has (deliberately) the same names as truffle contracts..
+      contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      await contractInteractor.init()
+      relayReg = await RelayRegistrar.new(AddressZero, true)
+      lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
+
+      await relayReg.registerRelayServer(10, 11, 'url1', { from: accounts[1] })
+      await relayReg.registerRelayServer(20, 21, 'url2', { from: accounts[2] })
+    })
+
+    // it('should get matching numeric return value', async () => {
+    //   expect(await lightreg.countRelays())
+    //     .to.deep.equal(await relayReg.countRelays())
+    // })
+    it('should get matching returned struct', async () => {
+      expect(await lightreg.getRelayInfo(accounts[1]))
+        .to.eql(await relayReg.getRelayInfo(accounts[1]))
+    })
+    it('should get matching mixed return values', async () => {
+      expect(await lightreg.readRelayInfos(0, 100))
+        .to.eql(await relayReg.readRelayInfos(0, 100))
     })
   })
 })

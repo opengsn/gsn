@@ -20,7 +20,7 @@ export const Deposited: EventName = 'Deposited'
 /**
  * Emitting any of these events is handled by GSN clients as a sign of activity by a RelayServer.
  */
-export const ActiveManagerEvents = [RelayServerRegistered, RelayWorkersAdded, TransactionRelayed, TransactionRejectedByPaymaster]
+export const ActiveManagerEvents = [RelayWorkersAdded, TransactionRelayed, TransactionRejectedByPaymaster]
 
 export interface RelayInfoUrl {
   relayUrl: string

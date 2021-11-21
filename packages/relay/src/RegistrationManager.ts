@@ -241,7 +241,7 @@ export class RegistrationManager {
 
   async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
     const topics = address2topic(this.managerAddress)
-    const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
+    const registerEvents = await this.contractInteractor.getPastEventsForRegistrar([topics],
       {
         fromBlock: this.config.coldRestartLogsFromBlock
       },
@@ -380,7 +380,7 @@ export class RegistrationManager {
       gasLimit,
       signer: this.managerAddress,
       method: registerMethod,
-      destination: this.hubAddress,
+      destination: this.contractInteractor.relayRegistrar.address,
       creationBlockNumber: currentBlock
     }
     const { transactionHash } = await this.transactionManager.sendTransaction(details)

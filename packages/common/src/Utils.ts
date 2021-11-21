@@ -253,3 +253,28 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
 export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
   return bufferToHex(Transaction.fromSerializedTx(toBuffer(signedTransaction), transactionOptions).hash())
 }
+
+/**
+ * remove properties with null (or undefined) value
+ * (does NOT handle inner arrays)
+ * @param obj - object to clean
+ * @param recursive - descend into inner objects
+ */
+export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
+  const c: any = {}
+  Object.assign(c, obj)
+
+  for (const k of Object.keys(c)) {
+    if (c[k] == null) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete c[k]
+    } else if (recursive) {
+      let val = c[k]
+      if (typeof val === 'object' && !Array.isArray(val) && !BN.isBN(val)) {
+        val = removeNullValues(val, recursive)
+      }
+      c[k] = val
+    }
+  }
+  return c
+}
