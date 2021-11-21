@@ -14,12 +14,7 @@ import {
 import { ChildProcessWithoutNullStreams } from 'child_process'
 
 const StakeManager = artifacts.require('StakeManager')
-const BLSBatchGateway = artifacts.require('BLSBatchGateway')
-const GatewayForwarder = artifacts.require('GatewayForwarder')
-const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
-const BatchGatewayCacheDecoder = artifacts.require('BatchGatewayCacheDecoder')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
-const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 
 contract('Batch Relaying Flow', function ([a, relayOwner]: string[]) {
   let testToken: TestTokenInstance
@@ -30,13 +25,6 @@ contract('Batch Relaying Flow', function ([a, relayOwner]: string[]) {
 
   // modified GSN components
   let relayHub: RelayHubInstance
-  let gatewayForwarder: GatewayForwarderInstance
-
-  // new contracts
-  let batchGateway: BLSBatchGatewayInstance
-  let authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance
-  let gatewayCacheDecoder: BatchGatewayCacheDecoderInstance
-  let erc20CacheDecoder: ERC20CacheDecoderInstance
 
   // other stuff
   // let bathingRelayProvider:
@@ -46,11 +34,7 @@ contract('Batch Relaying Flow', function ([a, relayOwner]: string[]) {
   before(async function () {
     paymaster = await TestPaymasterEverythingAccepted.new()
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-    relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS, batchGateway.address)
-    gatewayForwarder = await GatewayForwarder.new(relayHub.address)
-    gatewayCacheDecoder = await BatchGatewayCacheDecoder.new(gatewayForwarder.address)
-    erc20CacheDecoder = await ERC20CacheDecoder.new()
-    batchGateway = await BLSBatchGateway.new(gatewayCacheDecoder.address, authorizationsRegistrar.address, relayHub.address)
+    relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS)
 
     // 2. start batch server
     relayProcess = await startRelay(relayHub.address, stakeManager, {

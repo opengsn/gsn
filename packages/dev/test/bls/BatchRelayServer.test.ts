@@ -19,7 +19,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
       runBatching: true,
       batchTargetGasLimit: '1000000',
       batchDurationMS: 120000,
-      batchValidUntilBlocks: 1000
+      batchDurationBlocks: 1000
     })
     await env.clearServerStorage()
   })
@@ -34,6 +34,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
     let req: RelayTransactionRequest
 
     before(async function () {
+      env.relayServer.batchManager?.nextBatch(0)
       req = {
         relayRequest: {
           request: {
@@ -42,15 +43,15 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
             from: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
             value: '0x0',
             nonce: '0',
-            gas: '1000000',
-            validUntil: '1000000000'
+            gas: '10000',
+            validUntil: env.relayServer.batchManager!.currentBatch.targetBlock.toString()
           },
           relayData: {
-            gasPrice: '10000',
+            gasPrice: env.relayServer.batchManager!.currentBatch.gasPrice.toString(),
             relayWorker: env.relayServer.workerAddress,
             clientId: '1',
-            pctRelayFee: '0x0',
-            baseRelayFee: '0x0',
+            pctRelayFee: env.relayServer.batchManager!.currentBatch.pctRelayFee.toString(),
+            baseRelayFee: env.relayServer.batchManager!.currentBatch.pctRelayFee.toString(),
             paymaster: env.paymaster.address,
             forwarder: env.forwarder.address,
             transactionCalldataGasUsed: '5000',
