@@ -9,6 +9,7 @@ pragma abicoder v2;
 
 import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./utils/GsnUtils.sol";
@@ -374,12 +375,13 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
-        uint256 chargeableGasPrice;
-        if (relayData.maxFeePerGas > tx.gasprice) {
-            chargeableGasPrice = tx.gasprice;
+        uint256 basefee;
+        if (relayData.maxFeePerGas == relayData.maxPriorityFeePerGas) {
+            basefee = 0;
         } else {
-            chargeableGasPrice = relayData.maxFeePerGas;
+            basefee = block.basefee;
         }
+        uint256 chargeableGasPrice = Math.min(relayData.maxFeePerGas, Math.min(tx.gasprice, basefee + relayData.maxPriorityFeePerGas));
         return relayData.baseRelayFee.add((gasUsed.mul(chargeableGasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 

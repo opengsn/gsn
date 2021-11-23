@@ -57,7 +57,6 @@ contract('ReputationFlow', function (accounts) {
           await evmMine()
           continue
         }
-        console.log('wtf is fees in test', await relayProvider.relayClient.dependencies.contractInteractor.getGasFees())
         try {
           await testRecipient.emitMessage('Hello there!', { gas: 100000 })
         } catch (e) {
