@@ -312,7 +312,7 @@ const relayRequestElementToRLPArray = (it: RelayRequestElement): List => {
 const authorizationElementToRLPArray = (it: AuthorizationElement): List => {
   return [
     it.authorizer,
-    it.blsPublicKey,
+    it.blsPublicKey.map(toBN),
     it.signature
   ]
 }

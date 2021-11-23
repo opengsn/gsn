@@ -7,6 +7,9 @@ import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransac
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { revert, snapshot } from '../TestUtils'
+import { g2ToBN } from '@opengsn/common/dist/bls/evmbls/mcl'
+import { BigNumberToBN, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { AuthorizationElement } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const BLSBatchGateway = artifacts.require('BLSBatchGateway')
@@ -54,6 +57,20 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
 
     before(async function () {
       env.relayServer.batchManager?.nextBatch(0)
+
+      // cannot use hard-coded authorization string due to registrar address being part of the signature
+      const keypair = await BLSTypedDataSigner.newKeypair()
+      env.relayClient.dependencies.accountManager.setBLSKeypair(keypair)
+      const blsPublicKey = g2ToBN(keypair.pubkey)
+        .map(BigNumberToBN)
+        .map((it: BN) => { return `0x${it.toString('hex')}` })
+      const authorizationSignature = await env.relayClient.dependencies.accountManager.createAccountAuthorization(accounts[0], env.batchingContractsDeployment.authorizationsRegistrar.toLowerCase())
+      const authorizationElement: AuthorizationElement = {
+        authorizer: accounts[0],
+        blsPublicKey,
+        signature: authorizationSignature
+      }
+
       req = {
         relayRequest: {
           request: {
@@ -83,16 +100,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
           signature: '["18c1fc456621fce987e6be181d2482a85b249a644dc4580741b21d5855dbd887","263a96fd96dea2c222f7de8ddd000f40839487b3929e5422affe553d65241430","1"]',
           approvalData: '0x',
           relayMaxNonce: 9007199254740991,
-          authorizationElement: {
-            authorizer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-            blsPublicKey: [
-              '0xbd2bcfd99edc43e08cef5acc5a95f2c921432320518ea76fb43e1e6b19ce17c',
-              '0x3307076b9a9a0d87e109a074ea2f72a9a1eebbb257885eef549c8a6f4ef9c0a',
-              '0x1e1beaf98704bdc762f1e1fba1945b81b64cc5d44341b328b65a733a5d7bb510',
-              '0x1435bab42f8ccbac23a9c6c89097cee2d2525f24123f577ac71153e44cb93b9e'
-            ],
-            signature: '0x46fc4752cfdce593fa4b2a6f03bc85b08ff6c1f37daffa91320f4602da9bc8e73e9fcc0cb6b18b06a260abbd0c2002e91448b550ab8c55b8c4415f7530fdc5ba1c'
-          }
+          authorizationElement
         }
       }
     })
@@ -106,8 +114,8 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
       // forcing the single-transaction batch to be mined immediately
       const batchTxHash = await env.relayServer.batchManager?.broadcastCurrentBatch()
       const batchReceipt = await web3.eth.getTransactionReceipt(batchTxHash!)
-      assert.equal(batchReceipt.logs.length, 7)
       const decodedLogs = abiDecoder.decodeLogs(batchReceipt.logs)
+      assert.equal(batchReceipt.logs.length, 7)
       console.log(JSON.stringify(decodedLogs))
     })
 
