@@ -74,6 +74,7 @@ export class BatchManager {
       id,
       targetSubmissionTimestamp,
       targetBlock,
+      defaultCalldataCacheDecoder: this.config.batchDefaultCalldataCacheDecoder,
       targetSize: this.config.batchTargetSize,
       transactions: [],
       aggregatedSignature: [],
@@ -83,7 +84,7 @@ export class BatchManager {
       workerAddress: this.workerAddress,
       pctRelayFee: 0,
       baseRelayFee: 0,
-      maxAcceptanceBudget: 0
+      maxAcceptanceBudget: this.config.maxAcceptanceBudget
     }
     this.validateCurrentBatchParameters2()
   }
@@ -145,7 +146,7 @@ new target :${newBatchTarget}
         throw new Error(`Requested a transaction from (${_.authorizationElement.authorizer}) but the included authorization is for (${_.address})`)
       }
       const isSignatureValid = this.blsTypedDataSigner.validateAuthorizationSignature(_.authorizationElement)
-      if (!isSignatureValid){
+      if (!isSignatureValid) {
         throw new Error('BLS signature verification failed for the Authorization Element')
       }
       authorizedBLSKey = _.authorizationElement.blsPublicKey.map(toBN) // TODO: types don't match
@@ -159,7 +160,7 @@ new target :${newBatchTarget}
       throw new Error(`Current batch ${this.currentBatch.id} has been closed and does not accept new transactions`)
     }
     const requestGasPrice = parseInt(req.relayRequest.relayData.gasPrice)
-    if (!this.currentBatch.gasPrice.eqn(requestGasPrice)) {
+    if (!this.currentBatch.gasPrice.eq(toBN(requestGasPrice))) {
       throw new Error(
         `gasPrice given ${requestGasPrice} not equal current batch gasPrice ${this.currentBatch.gasPrice.toString()}`)
     }
@@ -170,9 +171,11 @@ new target :${newBatchTarget}
         `Incorrect value for  "validUntil": set to block $${validUntil}, we expect it to be valid until #${this.currentBatch.targetBlock}`)
     }
 
-    if (req.relayRequest.relayData.relayWorker.toLowerCase() !== this.workerAddress.toLowerCase()) {
-      throw new Error(
-        `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
+    if (!isSameAddress(req.relayRequest.relayData.relayWorker, this.workerAddress)) {
+      throw new Error(`
+Wrong worker address: (${req.relayRequest.relayData.relayWorker})
+Right worker address: (${this.workerAddress})
+`)
     }
   }
 

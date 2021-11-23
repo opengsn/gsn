@@ -97,7 +97,7 @@ export class ERC20CalldataCacheDecoderInteractor implements ICalldataCacheDecode
   }
 
   async compressAddressesToIds (addresses: Address[][]): Promise<AddressesCachingResult> {
-    return { ids: [], writeSlotsCount: 0 }
+    return { ids: addresses.map(it => it.map(toBN)), writeSlotsCount: 0 }
   }
 
   async compressErc20Transfer (_: { destination: Address, value: IntString }): Promise<CalldataCachingResult> {

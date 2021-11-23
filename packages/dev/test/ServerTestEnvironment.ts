@@ -6,14 +6,15 @@ import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import {
   IForwarderInstance,
   IPenalizerInstance,
   RelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance, TestTokenInstance
+  TestPaymasterEverythingAcceptedInstance,
+  TestTokenInstance, ERC20CacheDecoderInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -57,6 +58,8 @@ import {
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
+import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
+import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -66,6 +69,7 @@ const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythi
 
 const TestToken = artifacts.require('TestToken')
 const GatewayForwarder = artifacts.require('GatewayForwarder')
+const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(StakeManagerABI)
@@ -83,7 +87,7 @@ export const stubBatchInput: RLPBatchCompressedInput = {
   pctRelayFee: toBN(15),
   baseRelayFee: toBN(15),
   maxAcceptanceBudget: toBN(15),
-  defaultCacheDecoder: toBN(0),
+  defaultCalldataCacheDecoder: toBN(0),
   blsSignature: [],
   relayRequestElements: [],
   authorizations: []
@@ -105,6 +109,7 @@ export class ServerTestEnvironment {
   paymaster!: TestPaymasterEverythingAcceptedInstance
   recipient!: IRelayRecipientInstance
   testToken!: TestTokenInstance
+  erc20CacheDecoder!: ERC20CacheDecoderInstance
 
   relayOwner!: Address
   gasLess!: Address
@@ -194,8 +199,9 @@ export class ServerTestEnvironment {
 
   async initBatching () {
     this.testToken = await TestToken.new()
+    this.erc20CacheDecoder = await ERC20CacheDecoder.new()
     await this.testToken.setTrustedForwarder(this.forwarder.address)
-    this.batchingContractsDeployment = await deployBatchingContractsForHub(this.relayHub.address)
+    this.batchingContractsDeployment = await deployBatchingContractsForHub(this.relayHub.address, this.forwarder.address)
     await this.relayHub.setBatchGateway(this.batchingContractsDeployment.batchGateway)
 
     const cachingGasConstants: CachingGasConstants = {
@@ -203,11 +209,16 @@ export class ServerTestEnvironment {
       authorizationStorageSlots: 1,
       gasPerSlotL2: 1
     }
+    const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
+    calldataCacheDecoderInteractors[this.testToken.address.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
+      provider: web3.currentProvider as HttpProvider,
+      erc20CacheDecoderAddress: this.erc20CacheDecoder.address
+    })
     this.cacheDecoderInteractor = new CacheDecoderInteractor({
       provider: web3.currentProvider as HttpProvider,
       batchingContractsDeployment: this.batchingContractsDeployment,
       contractInteractor: this.contractInteractor,
-      calldataCacheDecoderInteractors: {},
+      calldataCacheDecoderInteractors,
       cachingGasConstants
     })
     await this.cacheDecoderInteractor.init()
@@ -289,7 +300,7 @@ export class ServerTestEnvironment {
       serverDependencies.batchManager = new BatchManager({
         config: configureServer(mergedConfig),
         newMinGasPrice: 0,
-        workerAddress: managerKeyManager.getAddress(0),
+        workerAddress: workersKeyManager.getAddress(0),
         batchingContractsDeployment: this.batchingContractsDeployment,
         contractInteractor: this.contractInteractor,
         transactionManager,

@@ -95,6 +95,7 @@ export interface ServerConfigParams {
   batchGasThreshold: number
   batchTimeThreshold: number
   batchBlocksThreshold: number
+  batchDefaultCalldataCacheDecoder: string
 }
 
 export interface ServerDependencies {
@@ -171,7 +172,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   batchDurationBlocks: 0,
   batchGasThreshold: 0,
   batchTimeThreshold: 0,
-  batchBlocksThreshold: 0
+  batchBlocksThreshold: 0,
+  batchDefaultCalldataCacheDecoder: ''
 }
 
 const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 'number' | 'boolean' | 'list' } = {
@@ -236,7 +238,8 @@ const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 
   runBatching: 'boolean',
   batchTargetGasLimit: 'string',
   batchDurationMS: 'number',
-  batchDurationBlocks: 'number'
+  batchDurationBlocks: 'number',
+  batchDefaultCalldataCacheDecoder: 'string'
 }
 
 // by default: no waiting period - use VersionRegistry entries immediately.

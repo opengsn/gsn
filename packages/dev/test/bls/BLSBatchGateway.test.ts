@@ -77,7 +77,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     pctRelayFee: toBN(15),
     baseRelayFee: toBN(15),
     maxAcceptanceBudget: toBN(15),
-    defaultCacheDecoder: toBN(0),
+    defaultCalldataCacheDecoder: toBN(0),
     blsSignature: [],
     relayRequestElements: [],
     authorizations: []
@@ -89,7 +89,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     registrar = await BLSAddressAuthorizationsRegistrar.new()
     gateway = await BLSBatchGateway.new(decompressor.address, registrar.address, blsTestHub.address)
 
-    batchInput.defaultCacheDecoder = toBN(decompressor.address)
+    batchInput.defaultCalldataCacheDecoder = toBN(decompressor.address)
     blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,

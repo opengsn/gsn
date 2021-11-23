@@ -1,8 +1,26 @@
+// @ts-ignore
+import abiDecoder from 'abi-decoder'
+import { HttpProvider } from 'web3-core'
+
+import { GSNConfig } from '@opengsn/provider'
+import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { revert, snapshot } from '../TestUtils'
-import { GSNConfig } from '@opengsn/provider'
-import { HttpProvider } from 'web3-core'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
+const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
+const BLSBatchGateway = artifacts.require('BLSBatchGateway')
+const TestToken = artifacts.require('TestToken')
+const RelayHub = artifacts.require('RelayHub')
+
+// @ts-ignore
+abiDecoder.addABI(BLSAddressAuthorizationsRegistrar.abi)
+// @ts-ignore
+abiDecoder.addABI(BLSBatchGateway.abi)
+// @ts-ignore
+abiDecoder.addABI(TestToken.abi)
+// @ts-ignore
+abiDecoder.addABI(RelayHub.abi)
 
 contract.only('BatchRelayServer integration test', function (accounts: Truffle.Accounts) {
   let globalId: string
@@ -19,7 +37,8 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
       runBatching: true,
       batchTargetGasLimit: '1000000',
       batchDurationMS: 120000,
-      batchDurationBlocks: 1000
+      batchDurationBlocks: 1000,
+      batchDefaultCalldataCacheDecoder: env.erc20CacheDecoder.address
     })
     await env.clearServerStorage()
   })
@@ -87,7 +106,9 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
       // forcing the single-transaction batch to be mined immediately
       const batchTxHash = await env.relayServer.batchManager?.broadcastCurrentBatch()
       const batchReceipt = await web3.eth.getTransactionReceipt(batchTxHash!)
-      assert.equal(batchReceipt.logs.length, 1)
+      assert.equal(batchReceipt.logs.length, 7)
+      const decodedLogs = abiDecoder.decodeLogs(batchReceipt.logs)
+      console.log(JSON.stringify(decodedLogs))
     })
 
     it('should trigger the broadcast of the batch from the worker handler', async function () {

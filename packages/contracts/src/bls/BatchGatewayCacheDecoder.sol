@@ -67,8 +67,8 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         batchMetadata.maxAcceptanceBudget = values[4].toUint();
         // TODO: encode/decode relay worker address
         batchMetadata.relayWorker = values[5].toAddress();
-        uint256 defaultCacheDecoderId = values[6].toUint();
-        batchMetadata.defaultCacheDecoder = address(uint160(cacheDecodersCache.queryAndUpdateCache(defaultCacheDecoderId)));
+        uint256 defaultCalldataCacheDecoderId = values[6].toUint();
+        batchMetadata.defaultCalldataCacheDecoder = address(uint160(cacheDecodersCache.queryAndUpdateCache(defaultCalldataCacheDecoderId)));
 
         uint256[2] memory blsSignature = [values[7].toUint(), values[8].toUint()];
         RLPReader.RLPItem[] memory relayRequestsRLPItems = values[9].toList();
@@ -117,7 +117,7 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         // 3. resolve msgData using a CalldataDecompressor if needed
         bytes memory msgData;
         if (batchElement.cacheDecoder == 0) {
-            msgData = ERC20CacheDecoder(batchMetadata.defaultCacheDecoder).decodeCalldata(batchElement.encodedData);
+            msgData = ERC20CacheDecoder(batchMetadata.defaultCalldataCacheDecoder).decodeCalldata(batchElement.encodedData);
         } else if (batchElement.cacheDecoder == 1) {
             msgData = batchElement.encodedData;
             // TODO: if it is going to copy data again better make a workaround
@@ -129,7 +129,7 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         // 4. Fill in values that are optional inputs or computed on-chain and construct a RelayRequest
         return
         GsnTypes.RelayRequest(
-            IForwarder.ForwardRequest(sender, target, 0, batchElement.gasLimit, batchElement.nonce, batchElement.encodedData, batchMetadata.validUntil),
+            IForwarder.ForwardRequest(sender, target, 0, batchElement.gasLimit, batchElement.nonce, msgData, batchMetadata.validUntil),
             GsnTypes.RelayData(
                 batchMetadata.gasPrice, batchMetadata.pctRelayFee, batchMetadata.baseRelayFee,
                 batchElement.calldataGas, batchMetadata.relayWorker, paymaster, forwarder, "", 0)

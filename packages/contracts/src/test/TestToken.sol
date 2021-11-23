@@ -26,4 +26,10 @@ contract TestToken is ERC20("Test Token", "TOK"), BaseRelayRecipient {
     function mint(uint amount) public {
         _mint(msg.sender, amount);
     }
+
+    event UnknownMsgDataReceived(address msg_sender, address _msgSender, bytes msgData);
+
+    fallback() external payable {
+        emit UnknownMsgDataReceived(msg.sender, _msgSender(), msg.data);
+    }
 }

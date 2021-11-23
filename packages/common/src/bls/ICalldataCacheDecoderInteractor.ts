@@ -2,7 +2,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import BN from 'bn.js'
 
 export interface AddressesCachingResult {
-  ids: BN[]
+  ids: BN[][]
   writeSlotsCount: number
 }
 

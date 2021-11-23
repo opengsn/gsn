@@ -31,7 +31,7 @@ interface BLSTypes {
         uint256 baseRelayFee;
         uint256 maxAcceptanceBudget;
         address relayWorker;
-        address defaultCacheDecoder;
+        address defaultCalldataCacheDecoder;
     }
 
     struct Batch {

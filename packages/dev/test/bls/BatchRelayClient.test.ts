@@ -39,7 +39,7 @@ contract.only('BatchRelayClient', function ([from]: string[]) {
     await paymaster.setTrustedForwarder(forwarderInstance.address)
     const testToken = await TestToken.new()
 
-    const batchingContractsDeployment = await deployBatchingContractsForHub(relayHub.address)
+    const batchingContractsDeployment = await deployBatchingContractsForHub(relayHub.address, forwarderInstance.address)
 
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,

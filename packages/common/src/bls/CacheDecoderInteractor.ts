@@ -30,6 +30,7 @@ export interface BatchInfo {
   id: number
   workerAddress: Address
   transactions: BatchRelayRequestInfo[]
+  defaultCalldataCacheDecoder: Address
   aggregatedSignature: BN[]
   isOpen: boolean
   targetSize: number
@@ -147,8 +148,8 @@ export class CacheDecoderInteractor {
 
     // TODO: return the tuple of 'address, type' so that all addresses can be queried in one RPC request!
     const addressesCompressed = await this.compressAddressesToIds([
-      { address: _.relayRequest.request.from, type: SeparatelyCachedAddressTypes.eoa },
-      { address: _.relayRequest.request.to, type: SeparatelyCachedAddressTypes.recipients }
+      [_.relayRequest.request.from],
+      [_.relayRequest.request.to]
     ])
     const gasLimitBN = toBN(_.relayRequest.request.gas)
     if (gasLimitBN.modn(10000) !== 0) {
@@ -162,12 +163,13 @@ export class CacheDecoderInteractor {
     } else {
       methodData = toBuffer(_.cachedEncodedData)
     }
-    const cacheDecoder = toBN(1) // use encodedData as-is
+    // 0 means use same decoder as the entire batch
+    const cacheDecoder = toBN(0)
     const relayRequestElement = {
       nonce,
       paymaster,
-      sender: addressesCompressed.ids[0],
-      target: addressesCompressed.ids[1],
+      sender: addressesCompressed.ids[0][0],
+      target: addressesCompressed.ids[1][0],
       gasLimit,
       calldataGas,
       methodData,
@@ -185,7 +187,7 @@ export class CacheDecoderInteractor {
    * We will have to ABI-decode that input into a meaningful data structure and encode it again using RLP and cache.
    */
   async compressAbiEncodedCalldata (_: { target: Address, abiEncodedCalldata: PrefixedHexString }): Promise<CalldataCachingResult> {
-    const calldataCacheDecoderInteractor = this.calldataCacheDecoderInteractors[_.target]
+    const calldataCacheDecoderInteractor = this.calldataCacheDecoderInteractors[_.target.toLowerCase()]
     if (calldataCacheDecoderInteractor == null) {
       // TODO: set config flag to allow unknown target types to create batch requests
       throw new Error(`Unknown target address: ${_.target}`)
@@ -194,8 +196,8 @@ export class CacheDecoderInteractor {
   }
 
   // TODO
-  async compressAddressesToIds (addresses: Array<{ address: Address, type: SeparatelyCachedAddressTypes }>): Promise<AddressesCachingResult> {
-    return { ids: addresses.map(it => toBN(it.address)), writeSlotsCount: 0 }
+  async compressAddressesToIds (addresses: Address[][]): Promise<AddressesCachingResult> {
+    return { ids: addresses.map(it => it.map(toBN)), writeSlotsCount: 0 }
   }
 
   _calculateCalldataCostForRelayRequestsElement (relayRequestElement: RelayRequestElement, authorizationElement ?: AuthorizationElement): BN {
@@ -237,19 +239,15 @@ export class CacheDecoderInteractor {
     const maxAcceptanceBudget: BN = toBN(batchInfo.maxAcceptanceBudget)
 
     const addressesCompressed = await this.compressAddressesToIds([
-      {
-        address: this.batchingContractsDeployment.batchGatewayCacheDecoder,
-        type: SeparatelyCachedAddressTypes.decoders
-      },
-      {
-        address: batchInfo.workerAddress,
-        type: SeparatelyCachedAddressTypes.eoa
-      }]
+        [batchInfo.defaultCalldataCacheDecoder],
+        [batchInfo.workerAddress]
+      ]
     )
 
     const blsSignature: BN[] = []
-    const authorizations: AuthorizationElement[] = []
-    const relayRequestElements: RelayRequestElement[] = []
+    const authorizations: AuthorizationElement[] =
+      batchInfo.transactions.filter(it => it.authorizationElement != null).map(it => it.authorizationElement!)
+    const relayRequestElements: RelayRequestElement[] = batchInfo.transactions.map(it => it.relayRequestElement)
 
     const batchCompressedInput: RLPBatchCompressedInput = {
       gasPrice,
@@ -257,8 +255,8 @@ export class CacheDecoderInteractor {
       pctRelayFee,
       baseRelayFee,
       maxAcceptanceBudget,
-      defaultCacheDecoder: addressesCompressed.ids[0],
-      relayWorker: addressesCompressed.ids[1],
+      defaultCalldataCacheDecoder: addressesCompressed.ids[0][0],
+      relayWorker: addressesCompressed.ids[1][0],
       blsSignature,
       authorizations,
       relayRequestElements
@@ -292,7 +290,7 @@ export interface RLPBatchCompressedInput {
   pctRelayFee: BN
   baseRelayFee: BN
   maxAcceptanceBudget: BN
-  defaultCacheDecoder: BN
+  defaultCalldataCacheDecoder: BN
   blsSignature: BN[]
   authorizations: AuthorizationElement[]
   relayRequestElements: RelayRequestElement[]
@@ -337,7 +335,7 @@ export function encodeBatch (
     input.baseRelayFee,
     input.maxAcceptanceBudget,
     input.relayWorker,
-    input.defaultCacheDecoder,
+    input.defaultCalldataCacheDecoder,
     input.blsSignature[0],
     input.blsSignature[1],
     batchItems,
