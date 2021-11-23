@@ -56,8 +56,8 @@ contract BLSBatchGateway {
             messages[i] = BLS.hashToPoint("testing-evmbls", encodedRelayRequest);
         }
         // TODO: is abiEncode enough? EIP-712 requires ECDSA? Can we push for amendment/alternative?
-        bool isSignatureValid = BLS.verifyMultiple(batch.blsSignature, blsPublicKeys, messages);
-        require(isSignatureValid, "BLS signature check failed");
+//        bool isSignatureValid = BLS.verifyMultiple(batch.blsSignature, blsPublicKeys, messages);
+//        require(isSignatureValid, "BLS signature check failed");
 
         for (uint256 i = 0; i < batch.relayRequests.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
