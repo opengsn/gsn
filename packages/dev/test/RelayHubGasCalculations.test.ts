@@ -135,30 +135,33 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   beforeEach(prepareForHub)
 
   describe('#calculateCharge()', function () {
-    it('should calculate fee correctly', async function () {
-      // todo fix
-      const gasUsed = 1e8
-      const maxFeePerGas = 1e9
-      const maxPriorityFeePerGas = 1e9
-      const baseRelayFee = 1000000
-      const pctRelayFee = 10
-      const relayData = {
-        pctRelayFee,
-        baseRelayFee,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
-        transactionCalldataGasUsed: '',
-        gasLimit: 0,
-        relayWorker,
-        forwarder,
-        paymaster: paymaster.address,
-        paymasterData,
-        clientId
-      }
-      const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData)
-      const expectedCharge = baseRelayFee + gasUsed * maxFeePerGas * (pctRelayFee + 100) / 100
-      assert.equal(charge.toString(), expectedCharge.toString())
-    })
+    [[1e9, 1e9, 1e9], [1e9, 1e10, 1e10], [1e9, 1e9, 1e10], [1e10, 1e9, 1e10], [1e9, 1e10, 1e11], [1e11, 1e10, 1e9], [1e10, 1e9, 1e11], [1e9, 1e11, 1e10]]
+      .forEach(([maxFeePerGas, maxPriorityFeePerGas, gasPrice]) => {
+        it('should calculate charge correctly', async function () {
+          const gasUsed = 1e8
+          const baseRelayFee = 1000000
+          const pctRelayFee = 10
+          const relayData = {
+            pctRelayFee,
+            baseRelayFee,
+            maxFeePerGas,
+            maxPriorityFeePerGas,
+            transactionCalldataGasUsed: '',
+            gasLimit: 0,
+            relayWorker,
+            forwarder,
+            paymaster: paymaster.address,
+            paymasterData,
+            clientId
+          }
+          // Hardhat always has block.basefee == 0 on eth_call https://github.com/nomiclabs/hardhat/issues/1688
+          const baseFeePerGas = 0
+          const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData, { gasPrice })
+          const chargeableGasPrice = Math.min(maxFeePerGas, gasPrice, maxPriorityFeePerGas + baseFeePerGas)
+          const expectedCharge = baseRelayFee + gasUsed * chargeableGasPrice * (pctRelayFee + 100) / 100
+          assert.equal(charge.toString(), expectedCharge.toString())
+        })
+      })
   })
 
   describe('#relayCall()', function () {

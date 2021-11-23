@@ -469,6 +469,49 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
         })
 
+        it('relayCall executes type 2 transaction and increments sender nonce on hub', async function () {
+          const nonceBefore = await forwarderInstance.getNonce(senderAddress)
+          const eip1559relayRequest = cloneRelayRequest(relayRequest)
+          eip1559relayRequest.relayData.maxFeePerGas = 1e12.toString()
+          eip1559relayRequest.relayData.maxPriorityFeePerGas = 1e9.toString()
+          const gasPrice = 1e10.toString()
+          const dataToSign = new TypedRequestData(
+            chainId,
+            eip1559relayRequest.relayData.forwarder,
+            eip1559relayRequest
+          )
+          const signature = await getEip712Signature(
+            web3,
+            dataToSign
+          )
+          const {
+            tx,
+            logs
+          } = await relayHubInstance.relayCall(10e6, eip1559relayRequest, signature, '0x', {
+            from: relayWorker,
+            gas,
+            gasPrice
+          })
+          const nonceAfter = await forwarderInstance.getNonce(senderAddress)
+          assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
+
+          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+            message,
+            realSender: senderAddress,
+            msgSender: forwarder,
+            origin: relayWorker
+          })
+
+          const expectedReturnValue = web3.eth.abi.encodeParameter('string', 'emitMessage return value')
+          expectEvent.inLogs(logs, 'TransactionResult', {
+            status: RelayCallStatusCodes.OK,
+            returnValue: expectedReturnValue
+          })
+          expectEvent.inLogs(logs, 'TransactionRelayed', {
+            status: RelayCallStatusCodes.OK
+          })
+        })
+
         it('relayCall should refuse to re-send transaction with same nonce', async function () {
           const { tx } = await relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', {
             from: relayWorker,
