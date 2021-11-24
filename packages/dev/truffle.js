@@ -1,4 +1,6 @@
 require('ts-node/register/transpile-only')
+const { copyContractsRemoveConsole } = require('@opengsn/contracts/testCopyContracts')
+const path = require('path')
 
 const HDWalletProvider = require('@truffle/hdwallet-provider')
 let mnemonic = 'digital unknown jealous mother legal hedgehog save glory december universe spread figure custom found six'
@@ -16,9 +18,9 @@ if (fs.existsSync(secretMnemonicFile)) {
 }
 
 module.exports = {
-  contracts_build_directory: '../cli/src/compiled',
-  contracts_directory: './src',
-
+  contracts_directory: copyContractsRemoveConsole(
+    path.resolve(__dirname, '../contracts/src'),
+    path.resolve(__dirname, 'build/src')),
   networks: {
 
     development: {
