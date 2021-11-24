@@ -19,11 +19,9 @@ function retypeItem (abiOutput: AbiOutput, ret: any): any {
       ...abiOutput,
       type: arrayMemberType
     }, item))
-  }
-  if (abiOutput.type.includes('int') && !abiOutput.type.includes('[')) {
+  } else
+  if (abiOutput.type.includes('int')) {
     return toBN(ret)
-  } else if (abiOutput.type.includes('int') && abiOutput.type.includes('[')) {
-    return ret.map(toBN)
   } else if (abiOutput.type.includes('tuple') && abiOutput.components != null) {
     const keys = Object.keys(ret)
     const newRet: any = {}
