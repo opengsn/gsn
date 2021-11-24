@@ -177,8 +177,11 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
       })
     })
 
-    it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
+    it.only('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
       const compressedRequest1 = await createRelayRequestAndAuthorization(relayRequest, from, decompressorInteractor, registrar)
+
+      console.log('t1', compressedRequest1.blsSignature.map(toBN), [compressedRequest1.relayRequestElement], [compressedRequest1.authorizationItem])
+
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature: compressedRequest1.blsSignature.map(toBN),
         relayRequestElements: [compressedRequest1.relayRequestElement],
@@ -209,7 +212,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
       1,
       // 2, 10, 15, 20
     ].forEach(batchSize =>
-      it(`should accept batch of ${batchSize}`, async function () {
+      it.only(`should accept batch of ${batchSize}`, async function () {
         const requests: RelayRequestElement[] = []
         const authorizations = new Map<string, AuthorizationElement>()
         const sigs: PrefixedHexString[][] = []
@@ -231,9 +234,10 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
           authorizations.set(from, authorizationItem)
           sigs.push(blsSignature)
         }
-        // const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures(sigs)
-        const aggregatedBlsSignature = sigs[0]
+        const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures(sigs)
+        // const aggregatedBlsSignature = sigs[0]
 
+        console.log('t1', aggregatedBlsSignature, requests, Array.from(authorizations.values()))
         const data = encodeBatch(Object.assign({}, batchInput, {
           aggregatedBlsSignature,
           relayRequestElements: requests,

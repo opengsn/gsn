@@ -163,7 +163,7 @@ export class CacheDecoderInteractor {
     } else {
       methodData = toBuffer(_.cachedEncodedData)
     }
-    const cacheDecoder = toBN(1)  //TODO: for un-compressed calldata
+    const cacheDecoder = toBN(0)  //TODO: for un-compressed calldata
     const relayRequestElement = {
       nonce,
       paymaster: resolved.paymasterAsIds[0],
