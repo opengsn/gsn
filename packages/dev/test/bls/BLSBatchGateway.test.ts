@@ -10,7 +10,7 @@ import {
   ERC20CacheDecoderInstance, TestTokenInstance
 } from '@opengsn/contracts'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { cloneRelayRequest, RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   RLPBatchCompressedInput,
   encodeBatch, CacheDecoderInteractor, AuthorizationElement, CachingGasConstants, RelayRequestElement
@@ -20,9 +20,9 @@ import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { constants, ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
-import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
-import { ObjectMap } from '@opengsn/common/dist/types/Aliases'
-import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
+import { ObjectMap } from "@opengsn/common/dist/types/Aliases";
+import { ICalldataCacheDecoderInteractor } from "@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor";
+import { ERC20CalldataCacheDecoderInteractor } from "@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor";
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const BatchGatewayCacheDecoder = artifacts.require('BatchGatewayCacheDecoder')
@@ -69,11 +69,13 @@ async function createRelayRequestAndAuthorization (
 
   return { authorizationItem, relayRequestElement, blsSignature }
 }
-contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
+
+contract.only('BLSBatchGateway', function (accounts: string[]) {
+  const [from, from2] = accounts
   const relayRequest: RelayRequest = {
     request: {
       from,
-      to,
+      to: '',
       data: '',
       value: '0',
       nonce: '666',
@@ -134,7 +136,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       gasPerSlotL2: 1
     }
     // @ts-ignore
-    const batchingContractsDeployment: GSNBatchingContractsDeployment = { batchGatewayCacheDecoder: batchGatewayCacheDecoder.address}
+    const batchingContractsDeployment: GSNBatchingContractsDeployment = { batchGatewayCacheDecoder: batchGatewayCacheDecoder.address }
     const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
     calldataCacheDecoderInteractors[testToken.address.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
       provider: web3.currentProvider as HttpProvider,
@@ -200,24 +202,25 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
         requestFrom: from,
         requestTo: testToken.address
       })
-    })
+    });
 
-    ;[
-      // 1,
-      2,
-      // 10, 20, 30
+    [
+      1,
+      2, 10,15,20
     ].forEach(batchSize =>
       it.only(`should accept batch of ${batchSize}`, async function () {
         const requests: RelayRequestElement[] = []
         const authorizations = new Map<string, AuthorizationElement>()
         const sigs: BN[][] = []
         for (let counter = 0; counter < batchSize; counter++) {
+          const from = accounts[counter]
           const { relayRequestElement } = await decompressorInteractor.compressRelayRequest({
             relayRequest: {
               relayData: relayRequest.relayData,
               request: {
                 ...relayRequest.request,
-                data: '0xface0' + counter.toString()
+                from,
+                data: '0xface' + counter.toString(16).padStart(2, '0')
               }
 
             }
@@ -242,6 +245,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
           relayRequestElements: requests,
           authorizations: Array.from(authorizations.values())
         }))
+        console.log('sending tx count=', requests.length, 'size=', data.length / 2, 'bytes')
         let receipt = await web3.eth.sendTransaction({
           from,
           to: gateway.address,
@@ -249,7 +253,10 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
         }) as TransactionReceipt
 
         console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
+        if (requests.length === 1) {
+          // debugTransaction is VERY slow on hardhat - and crashes on OOM on big batch
         console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+        }
         const data2 = encodeBatch(Object.assign({}, batchInput, {
           aggregatedBlsSignature,
           relayRequestElements: requests,
@@ -261,7 +268,16 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
           data: data2
         }) as TransactionReceipt
         console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
+        if (requests.length === 1) {
+          // debugTransaction is VERY slow on hardhat - and crashes on OOM on big batch
         console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+        }
+        for (let i = 0; i < requests.length; i++) {
+          await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
+            requestFrom: accounts[i],
+            requestData: '0xface' + i.toString(16).padStart(2, '0')
+          })
+        }
 
         // await expectEvent.inTransaction(receipt.transactionHash, BLSAddressAuthorizationsRegistrar, 'AuthorizationIssued', {
         //   authorizer: from

@@ -11,7 +11,7 @@ import "@opengsn/contracts/src/interfaces/IRelayHub.sol";
  * This mock relay hub contract is only used to be called by a Gateway without creating the full GSN deployment
  */
 contract BLSTestHub {
-    event ReceivedRelayCall(address requestFrom, address requestTo, bytes data);
+    event ReceivedRelayCall(address requestFrom, address requestTo, bytes requestData);
 
     function relayCall(
         uint maxAcceptanceBudget,

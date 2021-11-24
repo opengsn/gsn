@@ -214,7 +214,7 @@ export class CacheDecoderInteractor {
     console.log('convertWordsToIds ret=', ret,  'map',ret.map(a=>a.map(x=>x.toString())))
   // TODO
     const countSlots = ret.flatMap(x => x)
-      .reduce((sum, x) => x.gtn(0xffffffff) ? sum + 1 : sum, 0)
+      .reduce((sum, x) => x.gt(toBN('0xffffffff')) ? sum + 1 : sum, 0)
 
     return {
       senderAsIds: ret[0],

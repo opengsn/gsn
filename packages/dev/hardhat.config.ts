@@ -1,9 +1,3 @@
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-
-//const { copyContractsRemoveConsole } = require('../contracts/testCopyContracts')
-const path = require('path')
 module.exports = {
   solidity: {
     version: '0.8.7',
@@ -12,11 +6,7 @@ module.exports = {
     }
   },
   paths: {
-    sources: './contracts-src',
-    //sources: copyContractsRemoveConsole(
-    //  path.resolve(__dirname, '../contracts/src'),
-    //  path.resolve(__dirname, 'build/src')),
-
+    sources: './contracts-src', // symlink, since hardhat can't reference "../contracts/src"
     artifacts: './artifacts'
   },
   networks: {
