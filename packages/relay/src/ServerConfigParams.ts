@@ -96,6 +96,7 @@ export interface ServerConfigParams {
   batchTimeThreshold: number
   batchBlocksThreshold: number
   batchDefaultCalldataCacheDecoder: string
+  trustedCalldataCacheDecoders: Address[]
 }
 
 export interface ServerDependencies {
@@ -173,7 +174,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   batchGasThreshold: 0,
   batchTimeThreshold: 0,
   batchBlocksThreshold: 0,
-  batchDefaultCalldataCacheDecoder: ''
+  batchDefaultCalldataCacheDecoder: '',
+  trustedCalldataCacheDecoders: []
 }
 
 const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 'number' | 'boolean' | 'list' } = {

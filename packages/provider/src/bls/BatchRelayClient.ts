@@ -88,6 +88,7 @@ export class BatchRelayClient extends RelayClient {
       signature,
       approvalData: '0x',
       relayMaxNonce: Number.MAX_SAFE_INTEGER,
+      calldataCacheDecoder: this.cacheDecoderInteractor.getCalldataCacheDecoderForTarget(relayRequest.request.to),
       authorizationElement
     }
   }
