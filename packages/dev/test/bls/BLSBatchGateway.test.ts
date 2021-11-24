@@ -13,7 +13,7 @@ import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { cloneRelayRequest, RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   RLPBatchCompressedInput,
-  encodeBatch, CacheDecoderInteractor, AuthorizationElement, CachingGasConstants
+  encodeBatch, CacheDecoderInteractor, AuthorizationElement, CachingGasConstants, RelayRequestElement
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
@@ -21,7 +21,7 @@ import { constants, ContractInteractor, GSNBatchingContractsDeployment } from '@
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
-import { ObjectMap } from '@opengsn/common/dist/types/Aliases'
+import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
@@ -42,6 +42,32 @@ async function createAuthorizationSignature (
   const accountManager = new AccountManager(web3.currentProvider as HttpProvider, 1337, config)
   accountManager.setBLSKeypair(blsKeypair)
   return await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
+}
+
+async function createRelayRequestAndAuthorization (
+  relayRequest: RelayRequest,
+  from: Address,
+  decompressorInteractor: CacheDecoderInteractor,
+  registrar: BLSAddressAuthorizationsRegistrarInstance):
+  Promise<{
+    authorizationItem: AuthorizationElement
+    relayRequestElement: RelayRequestElement
+    blsSignature: PrefixedHexString[]
+  }> {
+  const keypair = await BLSTypedDataSigner.newKeypair()
+  const blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
+  const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
+  const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
+  const authorizationItem: AuthorizationElement = {
+    authorizer: from,
+    blsPublicKey,
+    signature: authorizationSignature
+  }
+  const relayRequestClone = cloneRelayRequest(relayRequest, { request: { from } })
+  const { relayRequestElement } = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequestClone)
+  const blsSignature: PrefixedHexString[] = (await blsTypedDataSigner.signRelayRequestBLS(relayRequestClone)).map((it: BN) => { return it.toString('hex') })
+
+  return { authorizationItem, relayRequestElement, blsSignature }
 }
 
 contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
@@ -150,19 +176,11 @@ contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
     })
 
     it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
-      const { relayRequestElement } = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest)
-      const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
-      const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
-      const authorizationItem: AuthorizationElement = {
-        authorizer: from,
-        blsPublicKey,
-        signature: authorizationSignature
-      }
-      const blsSignature = await blsTypedDataSigner.signRelayRequestBLS(relayRequest)
+      const compressedRequest1 = await createRelayRequestAndAuthorization(relayRequest, from, decompressorInteractor, registrar)
       const data = encodeBatch(Object.assign({}, batchInput, {
-        blsSignature,
-        relayRequestElements: [relayRequestElement],
-        authorizations: [authorizationItem]
+        blsSignature: compressedRequest1.blsSignature.map(toBN),
+        relayRequestElements: [compressedRequest1.relayRequestElement],
+        authorizations: [compressedRequest1.authorizationItem]
       }))
       const receipt = await web3.eth.sendTransaction({
         from,
@@ -188,38 +206,16 @@ contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
     it('should accept batch with a single element with compresses fields and emit BatchRelayed event', async function () {
     })
 
-    // TODO: this test is twice a duplicate of test 1; extract parts?
     it('should accept batch with multiple elements with different fields and an aggregated BLS signature', async function () {
-      // create another signer with another keypair
-      const blsTypedDataSigner1 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
-      const blsTypedDataSigner2 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
+      const compressedRequest1 = await createRelayRequestAndAuthorization(relayRequest, from, decompressorInteractor, registrar)
+      const compressedRequest2 = await createRelayRequestAndAuthorization(relayRequest, from2, decompressorInteractor, registrar)
 
-      const relayRequest2: RelayRequest = cloneRelayRequest(relayRequest, { request: { from: from2 } })
-      const compressedRequest1 = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest)
-      const compressedRequest2 = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest2)
-      const authorizationSignature1 = await createAuthorizationSignature(from, blsTypedDataSigner1.blsKeypair, registrar)
-      const authorizationSignature2 = await createAuthorizationSignature(from2, blsTypedDataSigner2.blsKeypair, registrar)
-      const blsPublicKey1 = blsTypedDataSigner1.getPublicKeySerialized()
-      const blsPublicKey2 = blsTypedDataSigner2.getPublicKeySerialized()
-      const authorizationItem1: AuthorizationElement = {
-        authorizer: from,
-        blsPublicKey: blsPublicKey1,
-        signature: authorizationSignature1
-      }
-      const authorizationItem2: AuthorizationElement = {
-        authorizer: from2,
-        blsPublicKey: blsPublicKey2,
-        signature: authorizationSignature2
-      }
-      const blsSignature1: PrefixedHexString[] = (await blsTypedDataSigner1.signRelayRequestBLS(relayRequest)).map((it: BN) => { return it.toString('hex') })
-      const blsSignature2: PrefixedHexString[] = (await blsTypedDataSigner2.signRelayRequestBLS(relayRequest2)).map((it: BN) => { return it.toString('hex') })
-
-      const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures([blsSignature1, blsSignature2])
+      const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures([compressedRequest1.blsSignature, compressedRequest2.blsSignature])
 
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature: aggregatedBlsSignature,
         relayRequestElements: [compressedRequest1.relayRequestElement, compressedRequest2.relayRequestElement],
-        authorizations: [authorizationItem1, authorizationItem2]
+        authorizations: [compressedRequest1.authorizationItem, compressedRequest2.authorizationItem]
       }))
       const receipt = await web3.eth.sendTransaction({
         from,
