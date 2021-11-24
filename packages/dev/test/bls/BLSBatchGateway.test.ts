@@ -10,7 +10,7 @@ import {
   ERC20CacheDecoderInstance, TestTokenInstance
 } from '@opengsn/contracts'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { cloneRelayRequest, RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   RLPBatchCompressedInput,
   encodeBatch, CacheDecoderInteractor, AuthorizationElement, CachingGasConstants, RelayRequestElement
@@ -20,9 +20,10 @@ import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { constants, ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
-import { ObjectMap } from "@opengsn/common/dist/types/Aliases";
-import { ICalldataCacheDecoderInteractor } from "@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor";
-import { ERC20CalldataCacheDecoderInteractor } from "@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor";
+import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
+import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
+import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
+import { txStorageOpcodes } from '../utils/debugTransaction'
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const BatchGatewayCacheDecoder = artifacts.require('BatchGatewayCacheDecoder')
@@ -206,35 +207,28 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
 
     [
       1,
-      2, 10,15,20
+      // 2, 10, 15, 20
     ].forEach(batchSize =>
-      it.only(`should accept batch of ${batchSize}`, async function () {
+      it(`should accept batch of ${batchSize}`, async function () {
         const requests: RelayRequestElement[] = []
         const authorizations = new Map<string, AuthorizationElement>()
-        const sigs: BN[][] = []
+        const sigs: PrefixedHexString[][] = []
         for (let counter = 0; counter < batchSize; counter++) {
           const from = accounts[counter]
-          const { relayRequestElement } = await decompressorInteractor.compressRelayRequest({
-            relayRequest: {
-              relayData: relayRequest.relayData,
-              request: {
-                ...relayRequest.request,
-                from,
-                data: '0xface' + counter.toString(16).padStart(2, '0')
-              }
 
-            }
-          })
+          const { relayRequestElement, authorizationItem, blsSignature } = await createRelayRequestAndAuthorization(
+            relayRequest,
+            // {
+            //   relayData: relayRequest.relayData,
+            //   request: {
+            //     ...relayRequest.request,
+            //     from,
+            //     data: testToken.contract.methods.transfer(from, 0).encodeABI()
+            //   }
+            // },
+            from, decompressorInteractor, registrar)
           requests.push(relayRequestElement)
-          const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
-          const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
-          const authorizationItem: AuthorizationElement = {
-            authorizer: from,
-            blsPublicKey,
-            signature: authorizationSignature
-          }
           authorizations.set(from, authorizationItem)
-          const blsSignature = await blsTypedDataSigner.signRelayRequestBLS(relayRequest)
           sigs.push(blsSignature)
         }
         // const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures(sigs)
@@ -255,7 +249,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
         console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
         if (requests.length === 1) {
           // debugTransaction is VERY slow on hardhat - and crashes on OOM on big batch
-        console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+          console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
         }
         const data2 = encodeBatch(Object.assign({}, batchInput, {
           aggregatedBlsSignature,
@@ -270,12 +264,12 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
         console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
         if (requests.length === 1) {
           // debugTransaction is VERY slow on hardhat - and crashes on OOM on big batch
-        console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+          console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
         }
         for (let i = 0; i < requests.length; i++) {
           await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
             requestFrom: accounts[i],
-            requestData: '0xface' + i.toString(16).padStart(2, '0')
+            requestData: testToken.contract.methods.transfer(from, 0).encodeABI()
           })
         }
 

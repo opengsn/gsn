@@ -204,14 +204,12 @@ export class CacheDecoderInteractor {
    * @return slotsWritten how manys lot updates were needed to cache these values.
    */
   async compressAddressesToIds(froms:Address[], tos: Address[], paymasters: Address[], cacheDecoders: Address[]): Promise<AddressesCachingResult> {
-    console.log('convertWordsToIds inputs=' {froms,tos,paymasters, cacheDecoders})
     const ret = await this.batchGatewayCacheDecoder.convertWordsToIds([
       froms,
       tos,
       paymasters,
       cacheDecoders,
     ])
-    console.log('convertWordsToIds ret=', ret,  'map',ret.map(a=>a.map(x=>x.toString())))
   // TODO
     const countSlots = ret.flatMap(x => x)
       .reduce((sum, x) => x.gt(toBN('0xffffffff')) ? sum + 1 : sum, 0)

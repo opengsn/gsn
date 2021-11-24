@@ -159,7 +159,6 @@ export class BLSTypedDataSigner {
 
   async signRelayRequestBLS (relayRequest: RelayRequest): Promise<BN[]> {
     const relayRequestEncoded = abiEncodeRelayRequest(relayRequest)
-    console.log('signRelayRequestBLS: ', relayRequestEncoded)
     return await this.signTypedDataBLS(relayRequestEncoded)
   }
 
@@ -185,7 +184,7 @@ export class BLSTypedDataSigner {
     const hexX = signatureBN[0].toString('hex')
     const hexY = signatureBN[1].toString('hex')
     const hexZ = signatureBN[2].toString('hex')
-    console.log('g1SignatureToBN: signature: ', hexX, hexX.length, hexY, hexY.length, hexZ, hexZ.length)
+    // console.log('g1SignatureToBN: signature: ', hexX, hexX.length, hexY, hexY.length, hexZ, hexZ.length)
     return signatureBN
   }
 
