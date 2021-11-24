@@ -144,13 +144,13 @@ export class CacheDecoderInteractor {
    */
   async compressRelayRequest (_: { relayRequest: RelayRequest, cachedEncodedData?: PrefixedHexString }): Promise<RelayRequestCachingResult> {
     const nonce = toBN(_.relayRequest.request.nonce)
-    const paymaster = toBN(_.relayRequest.relayData.paymaster)
 
     // TODO: return the tuple of 'address, type' so that all addresses can be queried in one RPC request!
-    const addressesCompressed = await this.compressAddressesToIds([
+    const resolved = await this.compressAddressesToIds(
       [_.relayRequest.request.from],
-      [_.relayRequest.request.to]
-    ])
+      [_.relayRequest.request.to],
+      [_.relayRequest.relayData.paymaster],
+      [])
     const gasLimitBN = toBN(_.relayRequest.request.gas)
     if (gasLimitBN.modn(10000) !== 0) {
       throw new Error('gas limit must be a multiple of 10000')
@@ -163,21 +163,20 @@ export class CacheDecoderInteractor {
     } else {
       methodData = toBuffer(_.cachedEncodedData)
     }
-    // 0 means use same decoder as the entire batch
-    const cacheDecoder = toBN(0)
+    const cacheDecoder = toBN(1)  //TODO: for un-compressed calldata
     const relayRequestElement = {
       nonce,
-      paymaster,
-      sender: addressesCompressed.ids[0][0],
-      target: addressesCompressed.ids[1][0],
+      paymaster: resolved.paymasterAsIds[0],
+      sender: resolved.senderAsIds[0],
+      target: resolved.targetAsIds[0],
       gasLimit,
       calldataGas,
       methodData,
-      cacheDecoder
+      cacheDecoder, // resolved.cacheDecoder[0] ???
     }
     return {
       relayRequestElement,
-      writeSlotsCount: addressesCompressed.writeSlotsCount
+      writeSlotsCount: resolved.writeSlotsCount
     }
   }
 
@@ -195,9 +194,35 @@ export class CacheDecoderInteractor {
     return await calldataCacheDecoderInteractor.compressCalldata(_.abiEncodedCalldata)
   }
 
+  /**
+   * resolve request addresses into Ids
+   * returned values are compressed values - either original value if not found in cache, or IDs if they are already cached.
+   * NOTE: order matters: if multiple requests use the same to address, the first one will have the full item (to be written into cache)
+   *  and the rest of the requessts will use that cache item
+   * @param relqyRequest - request to get from,to,paymaster addresses from.
+   * @return senderAsIds/targetAsIds/paymasterAsIds - arrays of all addresses or ids, ready to be encoded
+   * @return slotsWritten how manys lot updates were needed to cache these values.
+   */
+  async compressAddressesToIds(froms:Address[], tos: Address[], paymasters: Address[], cacheDecoders: Address[]): Promise<AddressesCachingResult> {
+    console.log('convertWordsToIds inputs=' {froms,tos,paymasters, cacheDecoders})
+    const ret = await this.batchGatewayCacheDecoder.convertWordsToIds([
+      froms,
+      tos,
+      paymasters,
+      cacheDecoders,
+    ])
+    console.log('convertWordsToIds ret=', ret,  'map',ret.map(a=>a.map(x=>x.toString())))
   // TODO
-  async compressAddressesToIds (addresses: Address[][]): Promise<AddressesCachingResult> {
-    return { ids: addresses.map(it => it.map(toBN)), writeSlotsCount: 0 }
+    const countSlots = ret.flatMap(x => x)
+      .reduce((sum, x) => x.gtn(0xffffffff) ? sum + 1 : sum, 0)
+
+    return {
+      senderAsIds: ret[0],
+      targetAsIds: ret[1],
+      paymasterAsIds: ret[2],
+      cacheDecoders: ret[3],
+      writeSlotsCount: countSlots
+    }
   }
 
   _calculateCalldataCostForRelayRequestsElement (relayRequestElement: RelayRequestElement, authorizationElement ?: AuthorizationElement): BN {
@@ -238,11 +263,7 @@ export class CacheDecoderInteractor {
     const baseRelayFee: BN = toBN(batchInfo.baseRelayFee)
     const maxAcceptanceBudget: BN = toBN(batchInfo.maxAcceptanceBudget)
 
-    const addressesCompressed = await this.compressAddressesToIds([
-        [batchInfo.defaultCalldataCacheDecoder],
-        [batchInfo.workerAddress]
-      ]
-    )
+    const addressesCompressed = await this.compressAddressesToIds([batchInfo.workerAddress], [], [], [this.batchingContractsDeployment.batchGatewayCacheDecoder])
 
     const blsSignature: BN[] = []
     const authorizations: AuthorizationElement[] =
@@ -255,8 +276,8 @@ export class CacheDecoderInteractor {
       pctRelayFee,
       baseRelayFee,
       maxAcceptanceBudget,
-      defaultCalldataCacheDecoder: addressesCompressed.ids[0][0],
-      relayWorker: addressesCompressed.ids[1][0],
+      defaultCalldataCacheDecoder: addressesCompressed.cacheDecoders[0],
+      relayWorker: addressesCompressed.senderAsIds[0],  //TODO: same cache as senders?
       blsSignature,
       authorizations,
       relayRequestElements

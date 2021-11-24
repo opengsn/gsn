@@ -21,7 +21,7 @@ import { constants, ContractInteractor, GSNBatchingContractsDeployment } from '@
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
-import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
+import { ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
@@ -69,12 +69,11 @@ async function createRelayRequestAndAuthorization (
 
   return { authorizationItem, relayRequestElement, blsSignature }
 }
-
-contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
+contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
   const relayRequest: RelayRequest = {
     request: {
       from,
-      to: '',
+      to,
       data: '',
       value: '0',
       nonce: '666',
@@ -135,7 +134,7 @@ contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
       gasPerSlotL2: 1
     }
     // @ts-ignore
-    const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
+    const batchingContractsDeployment: GSNBatchingContractsDeployment = { batchGatewayCacheDecoder: batchGatewayCacheDecoder.address}
     const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
     calldataCacheDecoderInteractors[testToken.address.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
       provider: web3.currentProvider as HttpProvider,
@@ -203,6 +202,82 @@ contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
       })
     })
 
+    ;[
+      // 1,
+      2,
+      // 10, 20, 30
+    ].forEach(batchSize =>
+      it.only(`should accept batch of ${batchSize}`, async function () {
+        const requests: RelayRequestElement[] = []
+        const authorizations = new Map<string, AuthorizationElement>()
+        const sigs: BN[][] = []
+        for (let counter = 0; counter < batchSize; counter++) {
+          const { relayRequestElement } = await decompressorInteractor.compressRelayRequest({
+            relayRequest: {
+              relayData: relayRequest.relayData,
+              request: {
+                ...relayRequest.request,
+                data: '0xface0' + counter.toString()
+              }
+
+            }
+          })
+          requests.push(relayRequestElement)
+          const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
+          const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
+          const authorizationItem: AuthorizationElement = {
+            authorizer: from,
+            blsPublicKey,
+            signature: authorizationSignature
+          }
+          authorizations.set(from, authorizationItem)
+          const blsSignature = await blsTypedDataSigner.signRelayRequestBLS(relayRequest)
+          sigs.push(blsSignature)
+        }
+        // const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures(sigs)
+        const aggregatedBlsSignature = sigs[0]
+
+        const data = encodeBatch(Object.assign({}, batchInput, {
+          aggregatedBlsSignature,
+          relayRequestElements: requests,
+          authorizations: Array.from(authorizations.values())
+        }))
+        let receipt = await web3.eth.sendTransaction({
+          from,
+          to: gateway.address,
+          data
+        }) as TransactionReceipt
+
+        console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
+        console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+        const data2 = encodeBatch(Object.assign({}, batchInput, {
+          aggregatedBlsSignature,
+          relayRequestElements: requests,
+          authorizations: []
+        }))
+        receipt = await web3.eth.sendTransaction({
+          from,
+          to: gateway.address,
+          data: data2
+        }) as TransactionReceipt
+        console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
+        console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+
+        // await expectEvent.inTransaction(receipt.transactionHash, BLSAddressAuthorizationsRegistrar, 'AuthorizationIssued', {
+        //   authorizer: from
+        // })
+        //
+        // await expectEvent.inTransaction(receipt.transactionHash, BLSBatchGateway, 'BatchRelayed', {
+        //   relayWorker: from,
+        //   batchSize: '1'
+        // })
+        //
+        // await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
+        //   requestFrom: from,
+        //   requestTo: to
+        // })
+      })
+    )
     it('should accept batch with a single element with compresses fields and emit BatchRelayed event', async function () {
     })
 
