@@ -1,8 +1,13 @@
 require('ts-node/register/transpile-only')
+const { copyContractsRemoveConsole } = require('./testCopyContracts')
+const path = require('path')
 
 module.exports = {
   // CLI package needs to deploy contracts from JSON artifacts
-  contracts_build_directory: '../cli/src/compiled',
+  contracts_build_directory:
+  copyContractsRemoveConsole(
+    path.resolve(__dirname, '../cli/src/compiled'),
+    path.resolve(__dirname, 'build/src')),
   contracts_directory: './src',
   compilers: {
     solc: {
