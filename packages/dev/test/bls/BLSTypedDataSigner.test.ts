@@ -73,12 +73,21 @@ contract.only('BLSTypedDataSigner', function ([address]: string[]) {
       const signature2 = await blsTypedDataSigner2.signRelayRequestBLS(relayRequest2)
       const signature3 = await blsTypedDataSigner3.signRelayRequestBLS(relayRequest3)
 
-      const pubkeys = [keypair1, keypair2, keypair3].map(it => it.pubkey).map(getPublicKeySerialized)
-      const messages = [signature1, signature2, signature3]
-      const signatures = [signature1, signature2, signature3].map(it => it.map(toHex))
-      const aggregatedSignature = blsTypedDataSigner1.aggregateSignatures(signatures)
+      const blsPointMessage1 = await blsTypedDataSigner1.relayRequestToG1Point(relayRequest)
+      const blsPointMessage2 = await blsTypedDataSigner2.relayRequestToG1Point(relayRequest2)
+      const blsPointMessage3 = await blsTypedDataSigner3.relayRequestToG1Point(relayRequest3)
+      const hexMessageWithoutZ = [
+        [toHex(blsPointMessage1[0]), toHex(blsPointMessage1[1])],
+        [toHex(blsPointMessage2[0]), toHex(blsPointMessage2[1])],
+        [toHex(blsPointMessage3[0]), toHex(blsPointMessage3[1])]
+      ]
 
-      const onChainValid = await blsContract.verifyMultiple(aggregatedSignature, pubkeys, messages)
+      const pubkeys = [keypair1, keypair2, keypair3].map(it => it.pubkey).map(getPublicKeySerialized)
+      const signatures = [signature1, signature2, signature3].map(it => it.map(it => it.toString('hex')))
+      const aggregatedSignature = blsTypedDataSigner1.aggregateSignatures(signatures)
+      const hexSigWithoutZ = [toHex(aggregatedSignature[0]), toHex(aggregatedSignature[1])]
+
+      const onChainValid = await blsContract.verifyMultiple(hexSigWithoutZ, pubkeys, hexMessageWithoutZ)
       assert.isTrue(onChainValid, 'aggregated signature validation failed')
     })
   })
