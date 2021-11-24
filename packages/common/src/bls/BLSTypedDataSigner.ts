@@ -22,7 +22,7 @@ import {
   newFp2,
   SecretKey,
   PublicKey,
-  deserializeHexStrToFr, secretToPubkey
+  deserializeHexStrToFr, secretToPubkey, hashToPoint
 } from './evmbls/mcl'
 import { abiEncodeRelayRequest } from '../Utils'
 import { AuthorizationElement } from './CacheDecoderInteractor'
@@ -34,6 +34,10 @@ export interface InternalBLSKeypairType {
 
 export const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
 export const BigNumberToHex = (it: BigNumber): PrefixedHexString => toHex(it.toString())
+
+export function getPublicKeySerialized (pubkey: PublicKey): PrefixedHexString[] {
+  return g2ToBN(pubkey).map(BigNumberToHex)
+}
 
 /**
  * The ERC-712 describes the specification of structured data signature, but relies on the ECDSA
@@ -137,7 +141,7 @@ export class BLSTypedDataSigner {
   }
 
   getPublicKeySerialized (): PrefixedHexString[] {
-    return g2ToBN(this.blsKeypair.pubkey).map(BigNumberToHex)
+    return getPublicKeySerialized(this.blsKeypair.pubkey)
   }
 
   getPrivateKeySerialized (): PrefixedHexString {
@@ -159,14 +163,18 @@ export class BLSTypedDataSigner {
     return await this.signTypedDataBLS(relayRequestEncoded)
   }
 
+  async relayRequestToG1Point (relayRequest: RelayRequest): Promise<BN[]> {
+    const message = abiEncodeRelayRequest(relayRequest)
+    const m = hashToPoint(message)
+    return BLSTypedDataSigner.g1SignatureToBN(m)
+  }
+
   // TODO: rename
   async signTypedDataBLS (message: PrefixedHexString): Promise<BN[]> {
     const {
-      signature,
-      M
+      signature
     } = sign(message, this.blsKeypair.secret)
-    const messageHashStr = JSON.stringify(g1ToBN(M))
-    console.log('signTypedDataBLS: message hashToPoint: ', messageHashStr)
+    // const messageHashStr = JSON.stringify(g1ToBN(M))
     return BLSTypedDataSigner.g1SignatureToBN(signature)
   }
 

@@ -6,10 +6,11 @@ import {
   BLSAddressAuthorizationsRegistrarInstance,
   BLSBatchGatewayInstance,
   BLSTestHubInstance,
-  BatchGatewayCacheDecoderInstance
+  BatchGatewayCacheDecoderInstance,
+  ERC20CacheDecoderInstance, TestTokenInstance
 } from '@opengsn/contracts'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { cloneRelayRequest, RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   RLPBatchCompressedInput,
   encodeBatch, CacheDecoderInteractor, AuthorizationElement, CachingGasConstants
@@ -19,11 +20,16 @@ import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { constants, ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
+import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
+import { ObjectMap } from '@opengsn/common/dist/types/Aliases'
+import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const BatchGatewayCacheDecoder = artifacts.require('BatchGatewayCacheDecoder')
+const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
 const BLSBatchGateway = artifacts.require('BLSBatchGateway')
 const BLSTestHub = artifacts.require('BLSTestHub')
+const TestToken = artifacts.require('TestToken')
 
 async function createAuthorizationSignature (
   from: string,
@@ -38,12 +44,12 @@ async function createAuthorizationSignature (
   return await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
 }
 
-contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
+contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
   const relayRequest: RelayRequest = {
     request: {
       from,
-      to,
-      data: '0xff00ff00deadbeef',
+      to: '',
+      data: '',
       value: '0',
       nonce: '666',
       gas: '124120000',
@@ -67,8 +73,10 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
 
   let blsTestHub: BLSTestHubInstance
   let gateway: BLSBatchGatewayInstance
-  let decompressor: BatchGatewayCacheDecoderInstance
+  let batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance
+  let calldataCacheDecoder: ERC20CacheDecoderInstance
   let registrar: BLSAddressAuthorizationsRegistrarInstance
+  let testToken: TestTokenInstance
 
   const batchInput: RLPBatchCompressedInput = {
     gasPrice: toBN(15),
@@ -85,11 +93,15 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
 
   before(async function () {
     blsTestHub = await BLSTestHub.new()
-    decompressor = await BatchGatewayCacheDecoder.new(constants.ZERO_ADDRESS)
+    batchGatewayCacheDecoder = await BatchGatewayCacheDecoder.new(constants.ZERO_ADDRESS)
     registrar = await BLSAddressAuthorizationsRegistrar.new()
-    gateway = await BLSBatchGateway.new(decompressor.address, registrar.address, blsTestHub.address)
+    gateway = await BLSBatchGateway.new(batchGatewayCacheDecoder.address, registrar.address, blsTestHub.address)
+    calldataCacheDecoder = await ERC20CacheDecoder.new()
+    testToken = await TestToken.new()
 
-    batchInput.defaultCalldataCacheDecoder = toBN(decompressor.address)
+    relayRequest.request.to = testToken.address
+    relayRequest.request.data = testToken.contract.methods.transfer(constants.ZERO_ADDRESS, 0).encodeABI()
+    batchInput.defaultCalldataCacheDecoder = toBN(calldataCacheDecoder.address)
     blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,
@@ -98,11 +110,16 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
     }
     // @ts-ignore
     const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
+    const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
+    calldataCacheDecoderInteractors[testToken.address.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
+      provider: web3.currentProvider as HttpProvider,
+      erc20CacheDecoderAddress: calldataCacheDecoder.address
+    })
     decompressorInteractor = await new CacheDecoderInteractor({
       provider: web3.currentProvider as HttpProvider,
       batchingContractsDeployment,
       contractInteractor: {} as ContractInteractor,
-      calldataCacheDecoderInteractors: {},
+      calldataCacheDecoderInteractors,
       cachingGasConstants
     })
       .init()
@@ -132,8 +149,8 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       })
     })
 
-    it.only('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
-      const { relayRequestElement } = await decompressorInteractor.compressRelayRequest({ relayRequest })
+    it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
+      const { relayRequestElement } = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest)
       const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
       const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
       const authorizationItem: AuthorizationElement = {
@@ -164,7 +181,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
 
       await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
         requestFrom: from,
-        requestTo: to
+        requestTo: testToken.address
       })
     })
 
@@ -177,10 +194,9 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       const blsTypedDataSigner1 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
       const blsTypedDataSigner2 = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
 
-      const relayRequest2: RelayRequest = JSON.parse(JSON.stringify(relayRequest))
-      relayRequest2.request.from = from2
-      const batchItem1 = await decompressorInteractor.compressRelayRequest({ relayRequest: relayRequest })
-      const batchItem2 = await decompressorInteractor.compressRelayRequest({ relayRequest: relayRequest2 })
+      const relayRequest2: RelayRequest = cloneRelayRequest(relayRequest, { request: { from: from2 } })
+      const compressedRequest1 = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest)
+      const compressedRequest2 = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest2)
       const authorizationSignature1 = await createAuthorizationSignature(from, blsTypedDataSigner1.blsKeypair, registrar)
       const authorizationSignature2 = await createAuthorizationSignature(from2, blsTypedDataSigner2.blsKeypair, registrar)
       const blsPublicKey1 = blsTypedDataSigner1.getPublicKeySerialized()
@@ -202,7 +218,7 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
 
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature: aggregatedBlsSignature,
-        relayRequestElements: [batchItem1, batchItem2],
+        relayRequestElements: [compressedRequest1.relayRequestElement, compressedRequest2.relayRequestElement],
         authorizations: [authorizationItem1, authorizationItem2]
       }))
       const receipt = await web3.eth.sendTransaction({
@@ -235,12 +251,12 @@ contract.only('BLSBatchGateway', function ([from, to, from2]: string[]) {
       }
 
       // it seems that if the signature is not some BLS signature hardhat will revert the entire transaction
-      const batchItem = await decompressorInteractor.compressRelayRequest({ relayRequest })
+      const compressedRequest = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest)
       const blsSignature = (await blsTypedDataSigner.signTypedDataBLS('0xffffffff')).map((it: BN) => { return it.toString('hex') })
       const data = encodeBatch(
         Object.assign({}, batchInput, {
           blsSignature,
-          relayRequestElements: [batchItem],
+          relayRequestElements: [compressedRequest.relayRequestElement],
           authorizations: [authorizationItem]
         })
       )
