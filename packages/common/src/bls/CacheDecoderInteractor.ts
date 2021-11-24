@@ -195,6 +195,10 @@ export class CacheDecoderInteractor {
     return await calldataCacheDecoderInteractor.compressCalldata(_.abiEncodedCalldata)
   }
 
+  getCalldataCacheDecoderForTarget (target: Address): Address {
+    return this.calldataCacheDecoderInteractors[target.toLowerCase()].getCalldataCacheDecoderAddress()
+  }
+
   // TODO
   async compressAddressesToIds (addresses: Address[][]): Promise<AddressesCachingResult> {
     return { ids: addresses.map(it => it.map(toBN)), writeSlotsCount: 0 }
@@ -213,7 +217,12 @@ export class CacheDecoderInteractor {
     return relayRequestElementCost
   }
 
-  async calculateTotalCostForRelayRequestsElement (combinedCachingResult: CombinedCachingResult, authorizationElement ?: AuthorizationElement): Promise<any> {
+  async calculateTotalCostForRelayRequestsElement (combinedCachingResult: CombinedCachingResult, authorizationElement ?: AuthorizationElement): Promise<{
+    authorizationStorageCost: BN
+    storageL2Cost: BN
+    calldataCost: BN
+    totalCost: BN
+  }> {
     const calldataCost = this._calculateCalldataCostForRelayRequestsElement(combinedCachingResult.relayRequestElement, authorizationElement)
     const storageL2Cost = toBN(this.cachingGasConstants.gasPerSlotL2 * combinedCachingResult.writeSlotsCount)
     let authorizationStorageCost = toBN(0)
