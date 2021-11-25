@@ -10,6 +10,7 @@ import "../utils/RLPReader.sol";
 import "./ERC20CacheDecoder.sol";
 import "./utils/BLSTypes.sol";
 import "./utils/CacheLibrary.sol";
+import "hardhat/console.sol";
 
 contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
     using RLPReader for bytes;
@@ -41,6 +42,8 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
     returns (
         uint256[][] memory ret
     ) {
+        ret = new uint256[][](4);
+        
         ret[0] = sendersCache.convertWordsToIdsInternal(words[0]);
         ret[1] = targetsCache.convertWordsToIdsInternal(words[1]);
         ret[2] = paymastersCache.convertWordsToIdsInternal(words[2]);

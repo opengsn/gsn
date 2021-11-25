@@ -20,9 +20,12 @@ import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { constants, ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
 
 import { configureGSN, revert, snapshot } from '../TestUtils'
-import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
+import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
+import { txStorageOpcodes } from '../utils/debugTransaction'
+import sourceMap from 'source-map-support'
+sourceMap.install()
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const BatchGatewayCacheDecoder = artifacts.require('BatchGatewayCacheDecoder')
@@ -70,7 +73,8 @@ async function createRelayRequestAndAuthorization (
   return { authorizationItem, relayRequestElement, blsSignature }
 }
 
-contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
+contract.only('BLSBatchGateway', function (accounts: string[]) {
+  const [from, from2] = accounts
   const relayRequest: RelayRequest = {
     request: {
       from,
@@ -135,7 +139,7 @@ contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
       gasPerSlotL2: 1
     }
     // @ts-ignore
-    const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
+    const batchingContractsDeployment: GSNBatchingContractsDeployment = { batchGatewayCacheDecoder: batchGatewayCacheDecoder.address }
     const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
     calldataCacheDecoderInteractors[testToken.address.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
       provider: web3.currentProvider as HttpProvider,
@@ -175,8 +179,9 @@ contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
       })
     })
 
-    it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
+    it.only('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
       const compressedRequest1 = await createRelayRequestAndAuthorization(relayRequest, from, decompressorInteractor, registrar)
+
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature: compressedRequest1.blsSignature.map(toBN),
         relayRequestElements: [compressedRequest1.relayRequestElement],
@@ -201,8 +206,91 @@ contract.only('BLSBatchGateway', function ([from, from2]: string[]) {
         requestFrom: from,
         requestTo: testToken.address
       })
-    })
+    });
 
+    [
+      1,
+      2, 10, 15, 20
+    ].forEach(batchSize =>
+      it.only(`should accept batch of ${batchSize}`, async function () {
+        const requests: RelayRequestElement[] = []
+        const authorizations = new Map<string, AuthorizationElement>()
+        const sigs: PrefixedHexString[][] = []
+        for (let counter = 0; counter < batchSize; counter++) {
+          const from = accounts[counter]
+
+          const { relayRequestElement, authorizationItem, blsSignature } = await createRelayRequestAndAuthorization(
+            relayRequest,
+            // {
+            //   relayData: relayRequest.relayData,
+            //   request: {
+            //     ...relayRequest.request,
+            //     from,
+            //     data: testToken.contract.methods.transfer(from, 0).encodeABI()
+            //   }
+            // },
+            from, decompressorInteractor, registrar)
+          requests.push(relayRequestElement)
+          authorizations.set(from, authorizationItem)
+          sigs.push(blsSignature)
+        }
+        const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures(sigs)
+        // const aggregatedBlsSignature = sigs[0]
+
+        const data = encodeBatch(Object.assign({}, batchInput, {
+          blsSignature: aggregatedBlsSignature,
+          relayRequestElements: requests,
+          authorizations: Array.from(authorizations.values())
+        }))
+        console.log('sending tx count=', requests.length, 'size=', data.length / 2, 'bytes')
+        let receipt = await web3.eth.sendTransaction({
+          from,
+          to: gateway.address,
+          data
+        }) as TransactionReceipt
+
+        console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
+        if (requests.length === 1) {
+          // debugTransaction is VERY slow on hardhat - and crashes on OOM on big batch
+          console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+        }
+        const data2 = encodeBatch(Object.assign({}, batchInput, {
+          blsSignature: aggregatedBlsSignature,
+          relayRequestElements: requests,
+          authorizations: []
+        }))
+        receipt = await web3.eth.sendTransaction({
+          from,
+          to: gateway.address,
+          data: data2
+        }) as TransactionReceipt
+        console.log('count=', requests.length, 'gasUsed=', receipt.gasUsed, 'total logs=', receipt.logs.length)
+        if (requests.length === 1) {
+          // debugTransaction is VERY slow on hardhat - and crashes on OOM on big batch
+          console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
+        }
+        for (let i = 0; i < requests.length; i++) {
+          await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
+            requestFrom: accounts[i],
+            requestData: testToken.contract.methods.transfer(constants.ZERO_ADDRESS, 0).encodeABI()
+          })
+        }
+
+        // await expectEvent.inTransaction(receipt.transactionHash, BLSAddressAuthorizationsRegistrar, 'AuthorizationIssued', {
+        //   authorizer: from
+        // })
+        //
+        // await expectEvent.inTransaction(receipt.transactionHash, BLSBatchGateway, 'BatchRelayed', {
+        //   relayWorker: from,
+        //   batchSize: '1'
+        // })
+        //
+        // await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
+        //   requestFrom: from,
+        //   requestTo: to
+        // })
+      })
+    )
     it('should accept batch with a single element with compresses fields and emit BatchRelayed event', async function () {
     })
 

@@ -101,11 +101,17 @@ export class ERC20CalldataCacheDecoderInteractor implements ICalldataCacheDecode
   }
 
   async compressAddressesToIds (addresses: Address[][]): Promise<AddressesCachingResult> {
-    return { ids: addresses.map(it => it.map(toBN)), writeSlotsCount: 0 }
+    return {
+      senderAsIds: [],
+      targetAsIds: [],
+      paymasterAsIds: [],
+      cacheDecoders: [],
+      writeSlotsCount: 0
+    }
   }
 
   async compressErc20Transfer (_: { destination: Address, value: IntString }): Promise<CalldataCachingResult> {
-    const { ids: [destinationId], writeSlotsCount } = await this.compressAddressesToIds([[_.destination]])
+    const { targetAsIds: [destinationId], writeSlotsCount } = await this.compressAddressesToIds([[_.destination]])
     const methodSig = toBN(ERC20MethodSignatures.Transfer)
     const list: List = [methodSig, destinationId, toBN(_.value)]
     const cachedEncodedData = bufferToHex(encode(list))
