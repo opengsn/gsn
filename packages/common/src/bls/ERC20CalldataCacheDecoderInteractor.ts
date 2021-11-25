@@ -60,6 +60,10 @@ export class ERC20CalldataCacheDecoderInteractor implements ICalldataCacheDecode
     return this
   }
 
+  getCalldataCacheDecoderAddress (): Address {
+    return this.erc20CacheDecoderAddress
+  }
+
   async compressCalldata (abiEncodedCalldata: PrefixedHexString): Promise<CalldataCachingResult> {
     const erc20Call = this.decodeAbiEncodedERC20Calldata(abiEncodedCalldata)
     return await this.compressErc20Call(erc20Call)

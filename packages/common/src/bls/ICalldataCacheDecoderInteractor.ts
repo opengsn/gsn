@@ -1,6 +1,8 @@
 import { PrefixedHexString } from 'ethereumjs-util'
 import BN from 'bn.js'
 
+import { Address } from '../types/Aliases'
+
 export interface AddressesCachingResult {
   senderAsIds: BN[],
   targetAsIds: BN[],
@@ -15,5 +17,6 @@ export interface CalldataCachingResult {
 }
 
 export interface ICalldataCacheDecoderInteractor {
+  getCalldataCacheDecoderAddress: () => Address
   compressCalldata: (abiEncodedCalldata: PrefixedHexString) => Promise<CalldataCachingResult>
 }
