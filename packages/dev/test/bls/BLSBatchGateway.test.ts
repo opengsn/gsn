@@ -239,7 +239,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
 
         console.log('t1', aggregatedBlsSignature, requests, Array.from(authorizations.values()))
         const data = encodeBatch(Object.assign({}, batchInput, {
-          aggregatedBlsSignature,
+          blsSignature: aggregatedBlsSignature,
           relayRequestElements: requests,
           authorizations: Array.from(authorizations.values())
         }))
@@ -256,7 +256,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
           console.log(await txStorageOpcodes(web3.currentProvider, receipt.transactionHash))
         }
         const data2 = encodeBatch(Object.assign({}, batchInput, {
-          aggregatedBlsSignature,
+          blsSignature: aggregatedBlsSignature,
           relayRequestElements: requests,
           authorizations: []
         }))
