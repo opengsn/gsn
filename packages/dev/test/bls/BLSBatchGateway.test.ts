@@ -24,6 +24,8 @@ import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 import { txStorageOpcodes } from '../utils/debugTransaction'
+import sourceMap from 'source-map-support'
+sourceMap.install()
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const BatchGatewayCacheDecoder = artifacts.require('BatchGatewayCacheDecoder')
@@ -180,8 +182,6 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
     it.only('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
       const compressedRequest1 = await createRelayRequestAndAuthorization(relayRequest, from, decompressorInteractor, registrar)
 
-      console.log('t1', compressedRequest1.blsSignature.map(toBN), [compressedRequest1.relayRequestElement], [compressedRequest1.authorizationItem])
-
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature: compressedRequest1.blsSignature.map(toBN),
         relayRequestElements: [compressedRequest1.relayRequestElement],
@@ -210,7 +210,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
 
     [
       1,
-      // 2, 10, 15, 20
+      2, 10, 15, 20
     ].forEach(batchSize =>
       it.only(`should accept batch of ${batchSize}`, async function () {
         const requests: RelayRequestElement[] = []
@@ -237,7 +237,6 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
         const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures(sigs)
         // const aggregatedBlsSignature = sigs[0]
 
-        console.log('t1', aggregatedBlsSignature, requests, Array.from(authorizations.values()))
         const data = encodeBatch(Object.assign({}, batchInput, {
           blsSignature: aggregatedBlsSignature,
           relayRequestElements: requests,
@@ -273,7 +272,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
         for (let i = 0; i < requests.length; i++) {
           await expectEvent.inTransaction(receipt.transactionHash, BLSTestHub, 'ReceivedRelayCall', {
             requestFrom: accounts[i],
-            requestData: testToken.contract.methods.transfer(from, 0).encodeABI()
+            requestData: testToken.contract.methods.transfer(constants.ZERO_ADDRESS, 0).encodeABI()
           })
         }
 
