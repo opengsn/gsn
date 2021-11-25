@@ -5,14 +5,17 @@ import {
   StoredTransactionMetadata,
   StoredTransactionSerialized
 } from '@opengsn/relay/dist/StoredTransaction'
-import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
+import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
 import { bufferToHex, toBuffer } from 'ethereumjs-util'
 
 contract('StoredTransaction', function (accounts) {
   let tx: FeeMarketEIP1559Transaction
+  let legacyTx: Transaction
   let metadata: StoredTransactionMetadata
   let serialized: StoredTransactionSerialized
   let storedTx: StoredTransaction
+  let storedFromLegacyTx: StoredTransaction
+  const privateKey = Buffer.from('bb8183929e188ef9ea90a909eafd9a67374c6e209874cb3af468e1bcc33fa2c7', 'hex')
 
   before('create txstore', async function () {
     metadata = {
@@ -33,6 +36,7 @@ contract('StoredTransaction', function (accounts) {
       value: bufferToHex(toBuffer(1e18))
     }
     storedTx = { ...serialized, ...metadata }
+    storedFromLegacyTx = { ...serialized, ...metadata, txId: '0xa0a6b19c7b6cad00eedb0442f55afa636b985a3b2477a1fc073c685ba3e4326b' }
     tx = new FeeMarketEIP1559Transaction({
       to: '0x0E25E343655040C643feC98A34D6339b995ECc80'.toLowerCase(),
       gasLimit: 21000,
@@ -42,12 +46,26 @@ contract('StoredTransaction', function (accounts) {
       nonce: 111,
       value: 1e18
     })
-    tx = tx.sign(Buffer.from('bb8183929e188ef9ea90a909eafd9a67374c6e209874cb3af468e1bcc33fa2c7', 'hex'))
+    tx = tx.sign(privateKey)
+    legacyTx = new Transaction({
+      to: '0x0E25E343655040C643feC98A34D6339b995ECc80'.toLowerCase(),
+      gasLimit: 21000,
+      gasPrice: 1e9,
+      data: '0x12345678',
+      nonce: 111,
+      value: 1e18
+    })
+    legacyTx = legacyTx.sign(privateKey)
   })
 
-  it('should store all tx fields', async function () {
+  it('should store all tx fields when passing type 2 tx', async function () {
     const newStoredTx = createStoredTransaction(tx, metadata)
     assert.deepEqual(newStoredTx, storedTx)
+    assert.equal(parseInt(newStoredTx.value, 16), 1e18)
+  })
+  it('should store all tx fields when passing legacy tx', async function () {
+    const newStoredTx = createStoredTransaction(legacyTx, metadata)
+    assert.deepEqual(newStoredTx, storedFromLegacyTx)
     assert.equal(parseInt(newStoredTx.value, 16), 1e18)
   })
 })

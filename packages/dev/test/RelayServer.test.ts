@@ -790,6 +790,9 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       }
     })
   })
+  // TODO add _worker flow tests, specifically not trying to boost if balance is too low
+  describe('_worker', function () {
+  })
 
   describe('alerted state as griefing mitigation', function () {
     const alertedBlockDelay = 100

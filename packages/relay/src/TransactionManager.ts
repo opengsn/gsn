@@ -121,16 +121,35 @@ data         | ${transaction.data}
     return this.config.defaultGasLimit
   }
 
+  async validateBalance (signer: string, maxFeePerGas: number, gasLimit: number): Promise<void> {
+    const txCost = toBN(maxFeePerGas).mul(toBN(gasLimit))
+    const signerBalance = await this.contractInteractor.getBalance(signer)
+    if (txCost.gt(toBN(signerBalance))) {
+      throw new Error(`signer ${signer} balance ${signerBalance} too low: tx cost is ${txCost.toString()}`)
+    }
+  }
+
+  async tryBroadcastTransaction (signedTx: string, verifiedTxId: string): Promise<SignedTransactionDetails> {
+    try {
+      const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+      if (transactionHash.toLowerCase() !== verifiedTxId.toLowerCase()) {
+        throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${verifiedTxId}`)
+      }
+      return {
+        transactionHash,
+        signedTx
+      }
+    } catch (e) {
+      throw new Error(`Tx broadcast failed: ${(e as Error).message}`)
+    }
+  }
+
   async sendTransaction (txDetails: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = txDetails.method?.encodeABI() ?? '0x'
     const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
     const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? maxFeePerGas.toString())
 
-    const txCost = toBN(maxFeePerGas).mul(toBN(txDetails.gasLimit))
-    const signerBalance = await this.contractInteractor.getBalance(txDetails.signer)
-    if (txCost.gt(toBN(signerBalance))) {
-      throw new Error(`signer ${txDetails.signer} balance ${signerBalance} too low: tx cost is ${txCost.toString()}`)
-    }
+    await this.validateBalance(txDetails.signer, maxFeePerGas, txDetails.gasLimit)
     if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
       const msg = `Preventing to send transaction with action id ${txDetails.serverAction} to address(0)! Validate your configuration!`
       this.logger.error(msg)
@@ -180,18 +199,7 @@ data         | ${transaction.data}
     } finally {
       releaseMutex()
     }
-    try {
-      const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
-      if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
-        throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
-      }
-      return {
-        transactionHash,
-        signedTx: signedTransaction.rawTx
-      }
-    } catch (e) {
-      throw new Error(`Tx broadcast failed: ${(e as Error).message}`)
-    }
+    return await this.tryBroadcastTransaction(signedTransaction.rawTx, storedTx.txId)
   }
 
   async updateTransactionWithMinedBlock (tx: StoredTransaction, minedBlockNumber: number): Promise<void> {
@@ -214,7 +222,7 @@ data         | ${transaction.data}
   }
 
   async resendTransaction (tx: StoredTransaction, currentBlock: number, newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
-    // Resend transaction with exactly the same values except for gas price
+    await this.validateBalance(tx.from, newMaxFee, tx.gas)
     let txToSign: TypedTransaction
     if (this.transactionType === TransactionType.TYPE_TWO) {
       txToSign = new FeeMarketEIP1559Transaction(
@@ -247,14 +255,8 @@ data         | ${transaction.data}
     this.printSendTransactionLog(storedTx, tx.from)
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
-    if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
-      throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
-    }
-    return {
-      transactionHash,
-      signedTx: signedTransaction.rawTx
-    }
+
+    return await this.tryBroadcastTransaction(signedTransaction.rawTx, storedTx.txId)
   }
 
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
