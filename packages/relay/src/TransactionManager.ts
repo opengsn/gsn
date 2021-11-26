@@ -78,10 +78,10 @@ export class TransactionManager {
     const maxFeePerGasHumanReadableOld: string = new EthVal(maxFeePerGas).toGwei().toFixed(4)
     const maxPriorityFeePerGasHumanReadableOld: string = new EthVal(maxPriorityFeePerGas).toGwei().toFixed(4)
     this.logger.info(`Boosting stale transaction:
-hash         | ${txHash}
-maxFeePerGas     | ${maxFeePerGas} (${maxFeePerGasHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
+hash                     | ${txHash}
+maxFeePerGas             | ${maxFeePerGas} (${maxFeePerGasHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
 maxPriorityFeePerGas     | ${maxPriorityFeePerGas} (${maxPriorityFeePerGasHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
-created at   | block #${creationBlockNumber}
+created at               | block #${creationBlockNumber}
 `)
   }
 
@@ -98,15 +98,15 @@ created at   | block #${creationBlockNumber}
     const maxFeePerGasHumanReadable: string = new EthVal(maxFeePerGas).toGwei().toFixed(4)
     const maxPriorityFeePerGasHumanReadable: string = new EthVal(maxPriorityFeePerGas).toGwei().toFixed(4)
     this.logger.info(`Broadcasting transaction:
-hash         | 0x${transaction.txId}
-from         | ${from}
-to           | ${transaction.to.toString()}
-value        | ${valueString} (${valueHumanReadable} eth)
-nonce        | ${nonceString}
-maxFeePerGas     | ${maxFeePerGas} (${maxFeePerGasHumanReadable} gwei)
+hash                     | 0x${transaction.txId}
+from                     | ${from}
+to                       | ${transaction.to.toString()}
+value                    | ${valueString} (${valueHumanReadable} eth)
+nonce                    | ${nonceString}
+maxFeePerGas             | ${maxFeePerGas} (${maxFeePerGasHumanReadable} gwei)
 maxPriorityFeePerGas     | ${maxPriorityFeePerGas} (${maxPriorityFeePerGasHumanReadable} gwei)
-gasLimit     | ${parseInt('0x' + transaction.gas.toString(16))}
-data         | ${transaction.data}
+gasLimit                 | ${parseInt('0x' + transaction.gas.toString(16))}
+data                     | ${transaction.data}
 `)
   }
 
