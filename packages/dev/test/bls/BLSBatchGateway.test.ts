@@ -24,8 +24,6 @@ import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 import { txStorageOpcodes } from '../utils/debugTransaction'
-import sourceMap from 'source-map-support'
-sourceMap.install()
 
 const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
 const BatchGatewayCacheDecoder = artifacts.require('BatchGatewayCacheDecoder')
