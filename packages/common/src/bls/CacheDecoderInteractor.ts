@@ -15,10 +15,17 @@ import batchGatewayCacheDecoder from '../interfaces/IBatchGatewayCacheDecoder.js
 import { ContractInteractor } from '../ContractInteractor'
 import { GSNBatchingContractsDeployment } from '../GSNContractsDeployment'
 import {
-  AddressesCachingResult,
   CalldataCachingResult,
   ICalldataCacheDecoderInteractor
 } from './ICalldataCacheDecoderInteractor'
+
+export interface BatchAddressesCachingResult {
+  senderAsIds: BN[],
+  targetAsIds: BN[],
+  paymasterAsIds: BN[],
+  cacheDecoders: BN[],
+  writeSlotsCount: number
+}
 
 export interface BatchRelayRequestInfo {
   relayRequestElement: RelayRequestElement
@@ -60,13 +67,6 @@ export interface AuthorizationElement {
   authorizer: Address
   blsPublicKey: PrefixedHexString[]
   signature: PrefixedHexString
-}
-
-export enum SeparatelyCachedAddressTypes {
-  paymasters,
-  recipients,
-  decoders,
-  eoa
 }
 
 /**
@@ -207,14 +207,14 @@ export class CacheDecoderInteractor {
    * @return senderAsIds/targetAsIds/paymasterAsIds - arrays of all addresses or ids, ready to be encoded
    * @return slotsWritten how manys lot updates were needed to cache these values.
    */
-  async compressAddressesToIds(froms:Address[], tos: Address[], paymasters: Address[], cacheDecoders: Address[]): Promise<AddressesCachingResult> {
+  async compressAddressesToIds (froms: Address[], tos: Address[], paymasters: Address[], cacheDecoders: Address[]): Promise<BatchAddressesCachingResult> {
     const ret = await this.batchGatewayCacheDecoder.convertWordsToIds([
       froms,
       tos,
       paymasters,
       cacheDecoders,
     ])
-  // TODO
+    // TODO
     const countSlots = ret.flatMap(x => x)
       .reduce((sum, x) => x.gt(toBN('0xffffffff')) ? sum + 1 : sum, 0)
 
@@ -270,9 +270,8 @@ export class CacheDecoderInteractor {
     const baseRelayFee: BN = toBN(batchInfo.baseRelayFee)
     const maxAcceptanceBudget: BN = toBN(batchInfo.maxAcceptanceBudget)
 
-    const addressesCompressed = await this.compressAddressesToIds([batchInfo.workerAddress], [], [], [this.batchingContractsDeployment.batchGatewayCacheDecoder])
+    const addressesCompressed = await this.compressAddressesToIds([batchInfo.workerAddress], [], [], [batchInfo.defaultCalldataCacheDecoder])
 
-    const blsSignature: BN[] = []
     const authorizations: AuthorizationElement[] =
       batchInfo.transactions.filter(it => it.authorizationElement != null).map(it => it.authorizationElement!)
     const relayRequestElements: RelayRequestElement[] = batchInfo.transactions.map(it => it.relayRequestElement)
@@ -285,7 +284,7 @@ export class CacheDecoderInteractor {
       maxAcceptanceBudget,
       defaultCalldataCacheDecoder: addressesCompressed.cacheDecoders[0],
       relayWorker: addressesCompressed.senderAsIds[0],  //TODO: same cache as senders?
-      blsSignature,
+      blsSignature: batchInfo.aggregatedSignature,
       authorizations,
       relayRequestElements
     }

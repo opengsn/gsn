@@ -120,7 +120,7 @@ new target :${newBatchTarget}
       address: req.relayRequest.request.from,
       authorizationElement: req.metadata.authorizationElement
     })
-    this.validateSignature(req.relayRequest, authorizedBLSKey, req.metadata.signature)
+    await this.validateSignature(req.relayRequest, authorizedBLSKey, req.metadata.signature)
 
     // Add transaction to the current batch
     this.currentBatch.transactions.push({
@@ -179,7 +179,7 @@ Right worker address: (${this.workerAddress})
     }
   }
 
-  private validateSignature (relayRequest: RelayRequest, blsPublicKey: BN[], signature: PrefixedHexString): void {
+  async validateSignature (relayRequest: RelayRequest, blsPublicKey: BN[], signature: PrefixedHexString): Promise<void> {
     if (false) {
       throw new Error('BLS signature validation failed for RelayRequest')
     }
@@ -251,6 +251,7 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
   }
 
   async broadcastCurrentBatch (): Promise<PrefixedHexString> {
+    this.currentBatch.aggregatedSignature = this.aggregateSignatures()
     const { batchCompressedInput, writeSlotsCount } = await this.cacheDecoderInteractor.compressBatch(this.currentBatch)
     this.validateWriteSlotsCount(writeSlotsCount)
     const batchEncodedCallData = encodeBatch(batchCompressedInput)
@@ -330,7 +331,6 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     if (this.isCurrentBatchReady(blockNumber)) {
       this._workerSemaphoreOn = true
       this.closeCurrentBatch()
-      this.currentBatch.aggregatedSignature = this.aggregateSignatures()
       this.broadcastCurrentBatch().finally(() => {
         this._workerSemaphoreOn = false
       })

@@ -2,6 +2,8 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
+import "hardhat/console.sol";
+
 import "../interfaces/IBatchGatewayCacheDecoder.sol";
 
 import "../utils/GsnTypes.sol";
@@ -10,7 +12,6 @@ import "../utils/RLPReader.sol";
 import "./ERC20CacheDecoder.sol";
 import "./utils/BLSTypes.sol";
 import "./utils/CacheLibrary.sol";
-import "hardhat/console.sol";
 
 contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
     using RLPReader for bytes;
@@ -43,7 +44,6 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
         uint256[][] memory ret
     ) {
         ret = new uint256[][](4);
-        
         ret[0] = sendersCache.convertWordsToIdsInternal(words[0]);
         ret[1] = targetsCache.convertWordsToIdsInternal(words[1]);
         ret[2] = paymastersCache.convertWordsToIdsInternal(words[2]);

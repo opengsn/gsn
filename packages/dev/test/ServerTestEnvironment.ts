@@ -14,7 +14,10 @@ import {
   IRelayRecipientInstance,
   IStakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestTokenInstance, ERC20CacheDecoderInstance
+  TestTokenInstance,
+  ERC20CacheDecoderInstance,
+  BatchGatewayCacheDecoderInstance,
+  BLSAddressAuthorizationsRegistrarInstance, BLSBatchGatewayInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -134,6 +137,8 @@ export class ServerTestEnvironment {
   batchingContractsDeployment!: GSNBatchingContractsDeployment
   cacheDecoderInteractor!: CacheDecoderInteractor
   blsTypedDataSigner!: BLSTypedDataSigner
+  calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
+  batchingContractsInstances!: { batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance; authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance; batchGateway: BLSBatchGatewayInstance }
 
   constructor (provider: HttpProvider, accounts: Address[]) {
     this.provider = provider
@@ -201,7 +206,12 @@ export class ServerTestEnvironment {
     this.testToken = await TestToken.new()
     this.erc20CacheDecoder = await ERC20CacheDecoder.new()
     await this.testToken.setTrustedForwarder(this.forwarder.address)
-    this.batchingContractsDeployment = await deployBatchingContractsForHub(this.relayHub.address, this.forwarder.address)
+    this.batchingContractsInstances = await deployBatchingContractsForHub(this.relayHub.address, this.forwarder.address)
+    this.batchingContractsDeployment = {
+      batchGateway: this.batchingContractsInstances.batchGateway.address,
+      batchGatewayCacheDecoder: this.batchingContractsInstances.batchGatewayCacheDecoder.address,
+      authorizationsRegistrar: this.batchingContractsInstances.authorizationsRegistrar.address,
+    }
     await this.relayHub.setBatchGateway(this.batchingContractsDeployment.batchGateway)
 
     const cachingGasConstants: CachingGasConstants = {
@@ -209,8 +219,7 @@ export class ServerTestEnvironment {
       authorizationStorageSlots: 1,
       gasPerSlotL2: 1
     }
-    const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
-    calldataCacheDecoderInteractors[this.testToken.address.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
+    this.calldataCacheDecoderInteractors[this.testToken.address.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
       provider: web3.currentProvider as HttpProvider,
       erc20CacheDecoderAddress: this.erc20CacheDecoder.address
     })
@@ -218,7 +227,7 @@ export class ServerTestEnvironment {
       provider: web3.currentProvider as HttpProvider,
       batchingContractsDeployment: this.batchingContractsDeployment,
       contractInteractor: this.contractInteractor,
-      calldataCacheDecoderInteractors,
+      calldataCacheDecoderInteractors: this.calldataCacheDecoderInteractors,
       cachingGasConstants
     })
     await this.cacheDecoderInteractor.init()

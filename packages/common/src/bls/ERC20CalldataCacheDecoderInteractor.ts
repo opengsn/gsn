@@ -1,9 +1,9 @@
+import BN from 'bn.js'
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encode, List } from 'rlp'
 import { toBN } from 'web3-utils'
 
 import {
-  AddressesCachingResult,
   CalldataCachingResult,
   ICalldataCacheDecoderInteractor
 } from './ICalldataCacheDecoderInteractor'
@@ -13,6 +13,12 @@ import { Contract, TruffleContract } from '../LightTruffleContract'
 import { ERC20CacheDecoderInstance } from '@opengsn/contracts'
 
 import calldataCacheDecoderAbi from '../interfaces/ICalldataCacheDecoder.json'
+import { BatchAddressesCachingResult } from './CacheDecoderInteractor'
+
+export interface ERC20AddressesCachingResult {
+  holderAsIds: BN[]
+  writeSlotsCount: number
+}
 
 enum ERC20MethodSignatures {
   Transfer,
@@ -100,18 +106,18 @@ export class ERC20CalldataCacheDecoderInteractor implements ICalldataCacheDecode
     throw new Error('not implemented')
   }
 
-  async compressAddressesToIds (addresses: Address[][]): Promise<AddressesCachingResult> {
+  async compressAddressesToIds (addresses: Address[][]): Promise<ERC20AddressesCachingResult> {
+    if (addresses.length > 1) {
+      throw new Error('Unsupported input for "compressAddressesToIds"')
+    }
     return {
-      senderAsIds: [],
-      targetAsIds: [],
-      paymasterAsIds: [],
-      cacheDecoders: [],
+      holderAsIds: addresses[0].map(toBN),
       writeSlotsCount: 0
     }
   }
 
   async compressErc20Transfer (_: { destination: Address, value: IntString }): Promise<CalldataCachingResult> {
-    const { targetAsIds: [destinationId], writeSlotsCount } = await this.compressAddressesToIds([[_.destination]])
+    const { holderAsIds: [destinationId], writeSlotsCount } = await this.compressAddressesToIds([[_.destination]])
     const methodSig = toBN(ERC20MethodSignatures.Transfer)
     const list: List = [methodSig, destinationId, toBN(_.value)]
     const cachedEncodedData = bufferToHex(encode(list))

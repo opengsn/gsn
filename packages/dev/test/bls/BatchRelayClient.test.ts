@@ -49,8 +49,12 @@ contract.only('BatchRelayClient', function ([from]: string[]) {
     const testToken = await TestToken.new()
     erc20CacheDecoder = await ERC20CacheDecoder.new()
 
-    const batchingContractsDeployment = await deployBatchingContractsForHub(relayHub.address, forwarderInstance.address)
-
+    const batchingContractsInstances = await deployBatchingContractsForHub(relayHub.address, forwarderInstance.address)
+    const batchingContractsDeployment = {
+      batchGateway: batchingContractsInstances.batchGateway.address,
+      batchGatewayCacheDecoder: batchingContractsInstances.batchGatewayCacheDecoder.address,
+      authorizationsRegistrar: batchingContractsInstances.authorizationsRegistrar.address
+    }
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,
       authorizationStorageSlots: 1,

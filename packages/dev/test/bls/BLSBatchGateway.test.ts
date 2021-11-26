@@ -45,7 +45,7 @@ async function createAuthorizationSignature (
   return await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
 }
 
-async function createRelayRequestAndAuthorization (
+export async function createRelayRequestAndAuthorization (
   relayRequest: RelayRequest,
   from: Address,
   decompressorInteractor: CacheDecoderInteractor,
