@@ -262,12 +262,15 @@ data         | ${transaction.data}
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
     let isMaxGasPriceReached = false
     let newMaxFee = oldMaxFee * this.config.retryGasPriceFactor
-    const newMaxPriorityFee = oldMaxPriorityFee * this.config.retryGasPriceFactor
+    let newMaxPriorityFee = oldMaxPriorityFee * this.config.retryGasPriceFactor
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newMaxFee > parseInt(this.config.maxGasPrice)) {
       isMaxGasPriceReached = true
       newMaxFee = parseInt(this.config.maxGasPrice)
+    }
+    if (newMaxPriorityFee > newMaxFee) {
+      newMaxPriorityFee = newMaxFee
     }
     return { newMaxFee, newMaxPriorityFee, isMaxGasPriceReached }
   }

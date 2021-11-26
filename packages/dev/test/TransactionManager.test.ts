@@ -4,21 +4,49 @@ import Mutex from 'async-mutex/lib/Mutex'
 import * as ethUtils from 'ethereumjs-util'
 
 import { evmMineMany } from './TestUtils'
-import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
+import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 
 contract('TransactionManager', function (accounts) {
   const confirmationsNeeded = 12
-  let relayServer: RelayServer
+  let transactionManager: TransactionManager
   let env: ServerTestEnvironment
 
   before(async function () {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init()
     await env.newServerInstance()
-    relayServer = env.relayServer
+    transactionManager = env.relayServer.transactionManager
+  })
+
+  describe('_resolveNewGasPrice()', function () {
+    it('should return new gas fees when both below maxGasPrice', async function () {
+      const maxFeePerGas = 1e10
+      const maxPriorityFeePerGas = 1e9
+      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas)
+      assert.equal(newFees.newMaxFee, maxFeePerGas * transactionManager.config.retryGasPriceFactor)
+      assert.equal(newFees.newMaxPriorityFee, maxPriorityFeePerGas * transactionManager.config.retryGasPriceFactor)
+      assert.isFalse(newFees.isMaxGasPriceReached)
+    })
+    it('should return new gas fees when new maxFee above maxGasPrice', async function () {
+      const maxFeePerGas = parseInt(transactionManager.config.maxGasPrice) - 1
+      const maxPriorityFeePerGas = 1e9
+      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas)
+      assert.equal(newFees.newMaxFee.toString(), transactionManager.config.maxGasPrice)
+      assert.equal(newFees.newMaxPriorityFee, maxPriorityFeePerGas * transactionManager.config.retryGasPriceFactor)
+      assert.isTrue(newFees.isMaxGasPriceReached)
+    })
+    it('should return new gas fees when new maxPriorityFee above maxFee', async function () {
+      const maxFeePerGas = 1e9
+      const maxPriorityFeePerGas = parseInt(transactionManager.config.maxGasPrice) - 1
+      assert.isTrue(maxFeePerGas < maxPriorityFeePerGas)
+      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas)
+      assert.equal(newFees.newMaxFee, maxFeePerGas * transactionManager.config.retryGasPriceFactor)
+      assert.equal(newFees.newMaxPriorityFee, newFees.newMaxFee)
+      assert.isFalse(newFees.isMaxGasPriceReached)
+    })
   })
 
   describe('nonce counter asynchronous access protection', function () {
@@ -26,13 +54,13 @@ contract('TransactionManager', function (accounts) {
     let nonceMutexOrig: Mutex
     let signTransactionOrig: (signer: string, tx: TypedTransaction) => SignedTransaction
     before(function () {
-      _pollNonceOrig = relayServer.transactionManager.pollNonce
-      relayServer.transactionManager.pollNonce = async function (signer) {
+      _pollNonceOrig = transactionManager.pollNonce
+      transactionManager.pollNonce = async function (signer) {
         return await this.contractInteractor.getTransactionCount(signer, 'pending')
       }
     })
     after(function () {
-      relayServer.transactionManager.pollNonce = _pollNonceOrig
+      transactionManager.pollNonce = _pollNonceOrig
     })
 
     /**
@@ -40,8 +68,8 @@ contract('TransactionManager', function (accounts) {
      * unless mutex is implemented.
      */
     it('should fail if nonce is not mutexed', async function () {
-      nonceMutexOrig = relayServer.transactionManager.nonceMutex
-      relayServer.transactionManager.nonceMutex = {
+      nonceMutexOrig = transactionManager.nonceMutex
+      transactionManager.nonceMutex = {
         // @ts-ignore
         acquire: function () {
           // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -60,9 +88,9 @@ contract('TransactionManager', function (accounts) {
         // there may be multiple fields marked as 'unique', this checks that 'nonceSigner' is the one that throws
         assert.deepEqual(e.key, { nonce: 0, signer: env.relayServer.workerAddress })
         // since we forced the server to create an illegal tx with an already used nonce, we decrease the nonce
-        relayServer.transactionManager.nonces[1]--
+        transactionManager.nonces[1]--
       } finally {
-        relayServer.transactionManager.nonceMutex = nonceMutexOrig
+        transactionManager.nonceMutex = nonceMutexOrig
       }
     })
 
@@ -74,18 +102,18 @@ contract('TransactionManager', function (accounts) {
 
     it('should not deadlock if server returned error while locked', async function () {
       try {
-        signTransactionOrig = relayServer.transactionManager.workersKeyManager.signTransaction
-        relayServer.transactionManager.workersKeyManager.signTransaction = function () {
+        signTransactionOrig = transactionManager.workersKeyManager.signTransaction
+        transactionManager.workersKeyManager.signTransaction = function () {
           throw new Error('no tx for you')
         }
         try {
           await env.relayTransaction()
         } catch (e) {
           assert.include(e.message, 'no tx for you')
-          assert.isFalse(relayServer.transactionManager.nonceMutex.isLocked(), 'nonce mutex not released after exception')
+          assert.isFalse(transactionManager.nonceMutex.isLocked(), 'nonce mutex not released after exception')
         }
       } finally {
-        relayServer.transactionManager.workersKeyManager.signTransaction = signTransactionOrig
+        transactionManager.workersKeyManager.signTransaction = signTransactionOrig
       }
     })
   })
@@ -95,45 +123,45 @@ contract('TransactionManager', function (accounts) {
     let latestBlock: number
 
     beforeEach(async function () {
-      await relayServer.transactionManager.txStoreManager.clearAll()
-      relayServer.transactionManager._initNonces()
+      await transactionManager.txStoreManager.clearAll()
+      transactionManager._initNonces()
       const { signedTx } = await env.relayTransaction()
-      parsedTxHash = ethUtils.bufferToHex((TransactionFactory.fromSerializedData(toBuffer(signedTx), relayServer.transactionManager.rawTxOptions)).hash())
+      parsedTxHash = ethUtils.bufferToHex((TransactionFactory.fromSerializedData(toBuffer(signedTx), transactionManager.rawTxOptions)).hash())
       latestBlock = (await env.web3.eth.getBlock('latest')).number
     })
 
     it('should remove confirmed transactions from the recent transactions storage', async function () {
-      await relayServer.transactionManager.removeConfirmedTransactions(latestBlock)
-      let storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      await transactionManager.removeConfirmedTransactions(latestBlock)
+      let storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions[0].txId, parsedTxHash)
       await evmMineMany(confirmationsNeeded)
       const newLatestBlock = await env.web3.eth.getBlock('latest')
-      await relayServer.transactionManager.removeConfirmedTransactions(newLatestBlock.number)
-      storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      await transactionManager.removeConfirmedTransactions(newLatestBlock.number)
+      storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.deepEqual([], storedTransactions)
     })
 
     it('should remove stale boosted unconfirmed transactions', async function () {
-      await relayServer.transactionManager.removeConfirmedTransactions(latestBlock)
-      let storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      await transactionManager.removeConfirmedTransactions(latestBlock)
+      let storedTransactions = await transactionManager.txStoreManager.getAll()
       const oldTransaction = storedTransactions[0]
       assert.equal(storedTransactions.length, 1)
       assert.equal(oldTransaction.txId, parsedTxHash)
       // Forcing the manager to store a boosted transaction
       // Ganache is on auto-mine, so the server will throw after broadcasting on nonce error, after storing the boosted tx.
       try {
-        await relayServer.transactionManager.resendTransaction(
+        await transactionManager.resendTransaction(
           oldTransaction, latestBlock, oldTransaction.maxFeePerGas * 2, oldTransaction.maxPriorityFeePerGas * 2, false)
       } catch (e) {
         assert.include(e.message, 'Nonce too low. Expected nonce to be')
       }
-      storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions.length, 1)
       assert.notEqual(storedTransactions[0].txId, parsedTxHash)
       await evmMineMany(confirmationsNeeded)
       const newLatestBlock = await env.web3.eth.getBlock('latest')
-      await relayServer.transactionManager.removeConfirmedTransactions(newLatestBlock.number)
-      storedTransactions = await relayServer.transactionManager.txStoreManager.getAll()
+      await transactionManager.removeConfirmedTransactions(newLatestBlock.number)
+      storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.deepEqual([], storedTransactions)
     })
   })
