@@ -42,6 +42,8 @@ import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
+import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -203,13 +205,19 @@ export class ServerTestEnvironment {
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
     const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
     const gasPriceFetcher = new GasPriceFetcher('', '', this.contractInteractor, logger)
+    let reputationManager
+    if (config.runPaymasterReputations != null && config.runPaymasterReputations) {
+      const reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
+      reputationManager = new ReputationManager(reputationStoreManager, logger, {})
+    }
     const serverDependencies = {
       contractInteractor: this.contractInteractor,
       gasPriceFetcher,
       logger,
       txStoreManager,
       managerKeyManager,
-      workersKeyManager
+      workersKeyManager,
+      reputationManager
     }
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
     const transactionManager = new TransactionManager(serverDependencies, configureServer(mergedConfig))

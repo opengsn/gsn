@@ -502,29 +502,58 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     beforeEach(async function () {
       await env.relayServer.txStoreManager.clearAll()
     })
-    it('should not relay transaction if maxPossibleGas too high', async function () {
-      const req = await env.createRelayHttpRequest()
-      assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
-      const origMaxGas = env.relayServer.maxGasLimit
-      env.relayServer.maxGasLimit = 1
-      try {
-        await env.relayServer.createRelayTransaction(req)
-        assert.fail()
-      } catch (e) {
-        assert.include(e.message, 'exceeds maxGasLimit')
-      } finally {
-        env.relayServer.maxGasLimit = origMaxGas
-      }
-    })
 
-    it('should relay transaction', async function () {
+    it('should relay transaction without paymaster reputation', async function () {
       const req = await env.createRelayHttpRequest()
+      const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
+      const serverSpy = sinon.spy(env.relayServer)
+
       assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
       await env.relayServer.createRelayTransaction(req)
       const pendingTransactions = await env.relayServer.txStoreManager.getAll()
       assert.equal(pendingTransactions.length, 1)
       assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
-      // TODO: add asserts here!!!
+      sinon.assert.callOrder(
+        serverSpy.isReady,
+        serverSpy.validateInput,
+        serverSpy.validateGasFees,
+        serverSpy.validateFees,
+        serverSpy.validateMaxNonce,
+        serverSpy.validatePaymasterGasAndDataLimits,
+        serverSpy.validateViewCallSucceeds,
+        txMgrSpy.sendTransaction,
+        serverSpy.replenishServer
+      )
+      sinon.restore()
+    })
+
+    it('should relay transaction with paymaster reputation', async function () {
+      await env.newServerInstance({ runPaymasterReputations: true })
+      await env.clearServerStorage()
+      const req = await env.createRelayHttpRequest()
+      const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
+      const repSpy = sinon.spy(env.relayServer.reputationManager)
+      const serverSpy = sinon.spy(env.relayServer)
+
+      assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
+      await env.relayServer.createRelayTransaction(req)
+      const pendingTransactions = await env.relayServer.txStoreManager.getAll()
+      assert.equal(pendingTransactions.length, 1)
+      assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
+      sinon.assert.callOrder(
+        serverSpy.isReady,
+        serverSpy.validateInput,
+        serverSpy.validateGasFees,
+        serverSpy.validateFees,
+        serverSpy.validateMaxNonce,
+        serverSpy.validatePaymasterReputation,
+        serverSpy.validatePaymasterGasAndDataLimits,
+        serverSpy.validateViewCallSucceeds,
+        repSpy.onRelayRequestAccepted,
+        txMgrSpy.sendTransaction,
+        serverSpy.replenishServer
+      )
+      sinon.restore()
     })
   })
 
