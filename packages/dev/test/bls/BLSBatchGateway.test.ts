@@ -1,4 +1,4 @@
-import { toBN } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 import { HttpProvider } from 'web3-core'
 import { PrefixedHexString } from 'ethereumjs-util'
 
@@ -32,17 +32,13 @@ const BLSBatchGateway = artifacts.require('BLSBatchGateway')
 const BLSTestHub = artifacts.require('BLSTestHub')
 const TestToken = artifacts.require('TestToken')
 
-async function createAuthorizationSignature (
+async function createAuthorizationElement (
   from: string,
   blsKeypair: any,
-  registrar: BLSAddressAuthorizationsRegistrarInstance): Promise<string> {
-  const config = configureGSN({
-    methodSuffix: '_v4',
-    jsonStringifyRequest: false
-  })
-  const accountManager = new AccountManager(web3.currentProvider as HttpProvider, 1337, config)
+  registrar: BLSAddressAuthorizationsRegistrarInstance): Promise<AuthorizationElement> {
+  const accountManager = new AccountManager(web3.currentProvider as HttpProvider, 1337, configureGSN({}))
   accountManager.setBLSKeypair(blsKeypair)
-  return await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
+  return await accountManager.createAccountAuthorizationElement(from, registrar.address.toLowerCase())
 }
 
 export async function createRelayRequestAndAuthorization (
@@ -51,25 +47,18 @@ export async function createRelayRequestAndAuthorization (
   decompressorInteractor: CacheDecoderInteractor,
   registrar: BLSAddressAuthorizationsRegistrarInstance):
   Promise<{
-    authorizationItem: AuthorizationElement
+    authorizationElement: AuthorizationElement
     relayRequestElement: RelayRequestElement
     blsSignature: PrefixedHexString[]
   }> {
   const keypair = await BLSTypedDataSigner.newKeypair()
   const blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
-  const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
-  const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
-  const authorizationItem: AuthorizationElement = {
-    authorizer: from,
-    blsPublicKey,
-    ecdsaSignature: authorizationSignature,
-    blsSignature: ['0xff', '0xff']
-  }
+  const authorizationElement = await createAuthorizationElement(from, blsTypedDataSigner.blsKeypair, registrar)
   const relayRequestClone = cloneRelayRequest(relayRequest, { request: { from } })
   const { relayRequestElement } = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequestClone)
-  const blsSignature: PrefixedHexString[] = (await blsTypedDataSigner.signRelayRequestBLS(relayRequestClone)).map((it: BN) => { return it.toString('hex') })
+  const blsSignature: PrefixedHexString[] = (await blsTypedDataSigner.signRelayRequestBLS(relayRequestClone)).map((it: BN) => { return toHex(it) })
 
-  return { authorizationItem, relayRequestElement, blsSignature }
+  return { authorizationElement, relayRequestElement, blsSignature }
 }
 
 contract.only('BLSBatchGateway', function (accounts: string[]) {
@@ -184,7 +173,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature: compressedRequest1.blsSignature.map(toBN),
         relayRequestElements: [compressedRequest1.relayRequestElement],
-        authorizations: [compressedRequest1.authorizationItem]
+        authorizations: [compressedRequest1.authorizationElement]
       }))
       const receipt = await web3.eth.sendTransaction({
         from,
@@ -218,7 +207,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
         for (let counter = 0; counter < batchSize; counter++) {
           const from = accounts[counter]
 
-          const { relayRequestElement, authorizationItem, blsSignature } = await createRelayRequestAndAuthorization(
+          const { relayRequestElement, authorizationElement, blsSignature } = await createRelayRequestAndAuthorization(
             relayRequest,
             // {
             //   relayData: relayRequest.relayData,
@@ -230,7 +219,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
             // },
             from, decompressorInteractor, registrar)
           requests.push(relayRequestElement)
-          authorizations.set(from, authorizationItem)
+          authorizations.set(from, authorizationElement)
           sigs.push(blsSignature)
         }
         const aggregatedBlsSignature = blsTypedDataSigner.aggregateSignatures(sigs)
@@ -302,7 +291,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
       const data = encodeBatch(Object.assign({}, batchInput, {
         blsSignature: aggregatedBlsSignature,
         relayRequestElements: [compressedRequest1.relayRequestElement, compressedRequest2.relayRequestElement],
-        authorizations: [compressedRequest1.authorizationItem, compressedRequest2.authorizationItem]
+        authorizations: [compressedRequest1.authorizationElement, compressedRequest2.authorizationElement]
       }))
       const receipt = await web3.eth.sendTransaction({
         from,
@@ -325,14 +314,14 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
     })
 
     it('should reject batch with a single element with an incorrect BLS signature', async function () {
-      const authorizationSignature = await createAuthorizationSignature(from, blsTypedDataSigner.blsKeypair, registrar)
-      const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
-      const authorizationItem: AuthorizationElement = {
-        authorizer: from,
-        blsPublicKey,
-        ecdsaSignature: authorizationSignature,
-        blsSignature: ['0xff', '0xff']
-      }
+      const authorizationItem = await createAuthorizationElement(from, blsTypedDataSigner.blsKeypair, registrar)
+      // const blsPublicKey = blsTypedDataSigner.getPublicKeySerialized()
+      // const authorizationItem: AuthorizationElement = {
+      //   authorizer: from,
+      //   blsPublicKey,
+      //   ecdsaSignature: authorizationSignature,
+      //   blsSignature: ['0xff', '0xff']
+      // }
 
       // it seems that if the signature is not some BLS signature hardhat will revert the entire transaction
       const compressedRequest = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest)

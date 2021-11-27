@@ -8,6 +8,8 @@ import "../BaseRelayRecipient.sol";
 import "../utils/GsnEip712Library.sol";
 import "../interfaces/IBLSAddressAuthorizationsRegistrar.sol";
 
+import "./utils/BLS.sol";
+
 /*
  * This contract maintains a verified one-to-many mapping of
  * BLS public keys for Ethereum addresses that authorize these keys
@@ -24,7 +26,7 @@ contract BLSAddressAuthorizationsRegistrar is IBLSAddressAuthorizationsRegistrar
     bytes public constant APPROVAL_DATA_TYPE = "ApprovalData(uint256 blsPublicKey0,uint256 blsPublicKey1,uint256 blsPublicKey2,uint256 blsPublicKey3,string clientMessage)";
     bytes32 public constant APPROVAL_DATA_TYPEHASH = keccak256(APPROVAL_DATA_TYPE);
 
-    function verifySig(
+    function verifySigECDSA(
         ApprovalData memory approvalData,
         address signer,
         bytes memory sig)
@@ -36,6 +38,20 @@ contract BLSAddressAuthorizationsRegistrar is IBLSAddressAuthorizationsRegistrar
                 keccak256(getEncoded(approvalData))
             ));
         require(digest.recover(sig) == signer, "registrar: signature mismatch");
+    }
+
+    function verifySigBLS(
+        uint256[4] memory blsPublicKey,
+        uint256[2] memory blsSignature,
+        address signer
+    )
+    internal
+    view
+    {
+        bytes memory encodedAuthorization = abi.encode(signer);
+        uint256[2] memory message = BLS.hashToPoint("testing-evmbls", encodedAuthorization);
+        bool isSignatureValid = BLS.verifySingle(blsSignature, blsPublicKey, message);
+        require(isSignatureValid, "BLS signature check failed");
     }
 
     function getEncoded(
@@ -82,7 +98,8 @@ contract BLSAddressAuthorizationsRegistrar is IBLSAddressAuthorizationsRegistrar
     external
     override
     {
-        verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], "I UNDERSTAND WHAT I AM DOING"), authorizer, ecdsaSignature);
+        verifySigECDSA(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], "I UNDERSTAND WHAT I AM DOING"), authorizer, ecdsaSignature);
+        verifySigBLS(blsPublicKey, blsSignature, authorizer);
         // TODO: extract null-check logic for Key struct?
         require(authorizations[authorizer][0] == 0, "authorizer already has bls key");
         require(authorizations[authorizer][1] == 0, "authorizer already has bls key");

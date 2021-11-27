@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 import chalk from 'chalk'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { toBN } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 
 import {
   AuthorizationElement,
@@ -163,12 +163,11 @@ new target :${newBatchTarget}
       throw new Error('ECDSA signature verification failed for the Authorization Element')
     }
     console.log('validateAuthorizationSignature: ECDSA: ', ecdsaSignature)
-    const blsPublicKey = authorizationElement.blsPublicKey.map(toBN)
-    const pubkey = authorizationElement.blsPublicKey.map(toBN)
-    const message = await this.blsTypedDataSigner.authorizationElementToG1Point(authorizationElement)
-    return
-    // TODO
-    const isBLSSignatureValid = await this.blsVerifierInteractor.verifySingle(blsPublicKey, pubkey, message)
+    const blsPublicKey = authorizationElement.blsPublicKey
+    const blsSignature = [authorizationElement.blsSignature[0], authorizationElement.blsSignature[1]]
+    const blsMessageZ = (await this.blsTypedDataSigner.authorizationElementToG1Point(authorizationElement))
+    const blsMessage = [toHex(blsMessageZ[0]), toHex(blsMessageZ[1])]
+    const isBLSSignatureValid = await this.blsVerifierInteractor.verifySingle(blsSignature, blsPublicKey, blsMessage)
     if (!isBLSSignatureValid) {
       throw new Error('BLS signature verification failed for the Authorization Element')
     }

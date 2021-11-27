@@ -12,6 +12,7 @@ import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/com
 import { InternalBLSKeypairType, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { ApprovalDataInterface, TypedApprovalData } from '@opengsn/common/dist/bls/TypedApprovalData'
 import { AuthorizationElement } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { toHex } from 'web3-utils'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString
@@ -157,7 +158,7 @@ export class AccountManager {
    * @param registrarAddress
    * @returns authorisation - a serialized data used by the Gateway to authorise the public key in the first run
    */
-  async createAccountAuthorization (
+  async createAccountAuthorizationSignatureECDSA (
     ethereumAddress: Address,
     registrarAddress: Address
   ): Promise<PrefixedHexString> {
@@ -180,21 +181,30 @@ export class AccountManager {
     return await this.performSigning(ethereumAddress, signedData)
   }
 
+  async createAccountAuthorizationSignatureBLS (authorizationElement: AuthorizationElement): Promise<PrefixedHexString[]> {
+    if (this.blsTypedDataSigner == null) {
+      throw new Error('WTF')
+    }
+    return (await this.blsTypedDataSigner.signAuthorizationElementBLS(authorizationElement)).map((it: BN) => { return toHex(it) })
+  }
+
   // TODO: clean up
   async createAccountAuthorizationElement (
     ethereumAddress: Address,
     registrarAddress: Address): Promise<AuthorizationElement> {
-    const authorizationSignature = await this.createAccountAuthorization(ethereumAddress, registrarAddress)
+    const ecdsaSignature = await this.createAccountAuthorizationSignatureECDSA(ethereumAddress, registrarAddress)
     if (this.blsTypedDataSigner == null) {
       throw new Error('WTF')
     }
     const blsPublicKey = this.blsTypedDataSigner.getPublicKeySerialized()
-    return {
+    const authorizationElement: AuthorizationElement = {
       authorizer: ethereumAddress,
       blsPublicKey,
-      ecdsaSignature: authorizationSignature,
+      ecdsaSignature,
       blsSignature: []
     }
+    authorizationElement.blsSignature = await this.createAccountAuthorizationSignatureBLS(authorizationElement)
+    return authorizationElement
   }
 
   // TODO

@@ -100,7 +100,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
       }).init()
 
       const {
-        authorizationItem, blsSignature
+        authorizationElement, blsSignature
       } = await createRelayRequestAndAuthorization(relayRequest, accounts[0], cacheDecoderInteractor, env.batchingContractsInstances.authorizationsRegistrar)
 
       req = {
@@ -112,7 +112,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
           approvalData: '0x',
           relayMaxNonce: 9007199254740991,
           calldataCacheDecoder: env.erc20CacheDecoder.address.toLowerCase(),
-          authorizationElement: authorizationItem
+          authorizationElement
         }
       }
     })

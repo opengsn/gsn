@@ -120,9 +120,9 @@ export class BLSTypedDataSigner {
     //   console.error('_hex_to_mcl_G1_type: Incorrect hex signature string length!')
     // }
     // TODO: verify this is the right thing to do
-    const hexX = hex[0].padStart(64, '0')
-    const hexY = hex[1].padStart(64, '0')
-    const hexZ = hex[2].padStart(64, '0')
+    const hexX = hex[0].replace('0x', '').padStart(64, '0')
+    const hexY = hex[1].replace('0x', '').padStart(64, '0')
+    const hexZ = hex[2].replace('0x', '').padStart(64, '0')
     const bufferX = Buffer.from(hexX, 'hex').reverse()
     const bufferY = Buffer.from(hexY, 'hex').reverse()
     const bufferZ = Buffer.from(hexZ, 'hex').reverse()
@@ -167,6 +167,12 @@ export class BLSTypedDataSigner {
       secret,
       pubkey
     }
+  }
+
+  // TODO: duplicated code for R.R. and A.E., refactor!
+  async signAuthorizationElementBLS (authorizationElement: AuthorizationElement): Promise<BN[]> {
+    const message = await abiEncodeAuthorizationElement(authorizationElement)
+    return await this.signMessageWithBLS(message)
   }
 
   async signRelayRequestBLS (relayRequest: RelayRequest): Promise<BN[]> {

@@ -3,6 +3,7 @@ import { BLSVerifierContractInstance } from '@opengsn/contracts'
 import { Address, Web3ProviderBaseInterface } from '../types/Aliases'
 
 import blsVerifierContractAbi from '../interfaces/IBLSVerifierContract.json'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 export class BLSVerifierInteractor {
   private readonly BLSVerifierContract: Contract<BLSVerifierContractInstance>
@@ -27,11 +28,13 @@ export class BLSVerifierInteractor {
     return this
   }
 
-  async verifySingle (signature: BN[], pubkey: BN[], message: BN[]): Promise<boolean> {
+  async verifySingle (signature: PrefixedHexString[], pubkey: PrefixedHexString[], message: PrefixedHexString[]): Promise<boolean> {
     try {
+      // TODO: validate inputs again
       return await this.blsVerifierContractInstanceInstance.verifySingle(signature, pubkey, message)
     } catch (e) {
       console.log(e)
+      // TODO: returning 'false' from catch can conceal a ton of information! Check revert reason.
       return false
     }
   }
