@@ -141,9 +141,11 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
 
     function decodeAuthorizationItem(RLPReader.RLPItem[] memory authorizationRLPItem) public pure returns (BLSTypes.SignedKeyAuthorization memory){
         address sender = authorizationRLPItem[0].toAddress();
-        RLPReader.RLPItem[] memory blsPublicKeyItems = authorizationRLPItem[1].toList();
+        bytes memory signature = authorizationRLPItem[1].toBytes();
+        RLPReader.RLPItem[] memory blsPublicKeyItems = authorizationRLPItem[2].toList();
+        RLPReader.RLPItem[] memory blsSignatureItems = authorizationRLPItem[3].toList();
         uint256[4] memory blsPublicKey = [blsPublicKeyItems[0].toUint(), blsPublicKeyItems[1].toUint(), blsPublicKeyItems[2].toUint(), blsPublicKeyItems[3].toUint()];
-        bytes memory signature = authorizationRLPItem[2].toBytes();
-        return BLSTypes.SignedKeyAuthorization(sender, blsPublicKey, signature);
+        uint256[2] memory blsSignature = [blsSignatureItems[0].toUint(), blsSignatureItems[1].toUint()];
+        return BLSTypes.SignedKeyAuthorization(sender, signature, blsPublicKey, blsSignature);
     }
 }

@@ -75,13 +75,14 @@ contract BLSAddressAuthorizationsRegistrar is IBLSAddressAuthorizationsRegistrar
 
     function registerAddressAuthorization(
         address authorizer,
+        bytes memory ecdsaSignature,
         uint256[4] memory blsPublicKey,
-        bytes memory ecSignature
+        uint256[2] memory blsSignature
     )
     external
     override
     {
-        verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], "I UNDERSTAND WHAT I AM DOING"), authorizer, ecSignature);
+        verifySig(ApprovalData(blsPublicKey[0], blsPublicKey[1], blsPublicKey[2], blsPublicKey[3], "I UNDERSTAND WHAT I AM DOING"), authorizer, ecdsaSignature);
         // TODO: extract null-check logic for Key struct?
         require(authorizations[authorizer][0] == 0, "authorizer already has bls key");
         require(authorizations[authorizer][1] == 0, "authorizer already has bls key");

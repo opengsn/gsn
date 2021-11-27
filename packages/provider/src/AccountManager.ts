@@ -192,7 +192,8 @@ export class AccountManager {
     return {
       authorizer: ethereumAddress,
       blsPublicKey,
-      signature: authorizationSignature
+      ecdsaSignature: authorizationSignature,
+      blsSignature: []
     }
   }
 

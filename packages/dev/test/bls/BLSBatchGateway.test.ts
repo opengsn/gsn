@@ -62,7 +62,8 @@ export async function createRelayRequestAndAuthorization (
   const authorizationItem: AuthorizationElement = {
     authorizer: from,
     blsPublicKey,
-    signature: authorizationSignature
+    ecdsaSignature: authorizationSignature,
+    blsSignature: ['0xff', '0xff']
   }
   const relayRequestClone = cloneRelayRequest(relayRequest, { request: { from } })
   const { relayRequestElement } = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequestClone)
@@ -329,7 +330,8 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
       const authorizationItem: AuthorizationElement = {
         authorizer: from,
         blsPublicKey,
-        signature: authorizationSignature
+        ecdsaSignature: authorizationSignature,
+        blsSignature: ['0xff', '0xff']
       }
 
       // it seems that if the signature is not some BLS signature hardhat will revert the entire transaction

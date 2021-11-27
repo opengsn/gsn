@@ -21,6 +21,7 @@ import { encode, List } from 'rlp'
 import { EIP712TypedData } from 'eth-sig-util'
 import { RelayRequest } from './EIP712/RelayRequest'
 import Web3 from 'web3'
+import { AuthorizationElement } from './bls/CacheDecoderInteractor'
 
 export const ValidHexString = /^0x[A-Fa-f0-9]*$/
 
@@ -306,6 +307,13 @@ export function abiEncodeRelayRequest (relayRequest: RelayRequest): PrefixedHexS
   const web3 = new Web3()
   const types = [RelayRequestABITupleType]
   const parameters = [abiTupleRelayRequest(relayRequest)]
+  return web3.eth.abi.encodeParameters(types, parameters)
+}
+
+export function abiEncodeAuthorizationElement (authorizationElement: AuthorizationElement): PrefixedHexString {
+  const web3 = new Web3()
+  const types = ['address']
+  const parameters = [authorizationElement.authorizer]
   return web3.eth.abi.encodeParameters(types, parameters)
 }
 

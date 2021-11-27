@@ -7,8 +7,9 @@ import "../../utils/GsnTypes.sol";
 interface BLSTypes {
     struct SignedKeyAuthorization {
         address from;
+        bytes ecdsaSignature;
         uint256[4] blsPublicKey;
-        bytes signature;
+        uint256[2] blsSignature;
     }
 
     struct RelayRequestsElement {

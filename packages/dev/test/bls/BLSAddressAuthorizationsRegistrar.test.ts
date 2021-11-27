@@ -13,7 +13,7 @@ const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthoriza
 contract.only('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
   let registrar: BLSAddressAuthorizationsRegistrarInstance
   let accountManager: AccountManager
-  let authorizationSignature: PrefixedHexString
+  let authorizationEcdsaSignature: PrefixedHexString
 
   let blsPublicKey: string[]
 
@@ -32,12 +32,12 @@ contract.only('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
     blsPublicKey = g2ToBN(keypair.pubkey)
       .map(BigNumberToBN)
       .map((it: BN) => { return `0x${it.toString('hex')}` })
-    authorizationSignature = await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
+    authorizationEcdsaSignature = await accountManager.createAccountAuthorization(from, registrar.address.toLowerCase())
   })
 
   context('#registerAddressAuthorization()', function () {
     it('should register a correctly signed BLS public key to the given address', async function () {
-      const receipt = await registrar.registerAddressAuthorization(from, blsPublicKey, authorizationSignature)
+      const receipt = await registrar.registerAddressAuthorization(from, authorizationEcdsaSignature, blsPublicKey, [])
       const expectedPublicKeyHash = web3.utils.keccak256(web3.eth.abi.encodeParameter('uint256[4]', blsPublicKey))
       await expectEvent.inLogs(receipt.logs, 'AuthorizationIssued', {
         authorizer: from,
@@ -48,7 +48,7 @@ contract.only('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
     it('should revert and attempt to add incorrectly signed BLS public key to the given address', async function () {
       const differentSignature = await accountManager.createAccountAuthorization(from, from)
       await expectRevert(
-        registrar.registerAddressAuthorization(from, blsPublicKey, differentSignature),
+        registrar.registerAddressAuthorization(from, differentSignature, blsPublicKey, []),
         'registrar: signature mismatch')
     })
   })

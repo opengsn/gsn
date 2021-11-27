@@ -5,6 +5,7 @@ import { ERC20CacheDecoderInstance, TestTokenInstance } from '@opengsn/contracts
 import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
 import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
+import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 
 const TestToken = artifacts.require('TestToken')
 const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
@@ -12,7 +13,7 @@ const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
 contract.only('ERC20CacheDecoder', function ([destination]: string[]) {
   let testToken: TestTokenInstance
   let erc20CacheDecoder: ERC20CacheDecoderInstance
-  let cacheDecodersInteractor: CacheDecoderInteractor
+  let cacheDecodersInteractor: ERC20CalldataCacheDecoderInteractor
 
   let erc20transferCalldata: PrefixedHexString
   let erc20rlpEncodedNewInput: PrefixedHexString
@@ -21,26 +22,15 @@ contract.only('ERC20CacheDecoder', function ([destination]: string[]) {
   before(async function () {
     testToken = await TestToken.new()
     erc20CacheDecoder = await ERC20CacheDecoder.new()
-    // @ts-ignore
-    const batchingContractsDeployment: GSNBatchingContractsDeployment = {}
-    const calldataDecoders: ObjectMap<Address> = {}
-    calldataDecoders[testToken.address] = erc20CacheDecoder.address
-    const cachingGasConstants: CachingGasConstants = {
-      authorizationCalldataBytesLength: 1,
-      authorizationStorageSlots: 1,
-      gasPerSlotL2: 1
-    }
-    cacheDecodersInteractor = await new CacheDecoderInteractor({
+    cacheDecodersInteractor = await new ERC20CalldataCacheDecoderInteractor({
       provider: web3.currentProvider as HttpProvider,
-      batchingContractsDeployment,
-      contractInteractor: {} as ContractInteractor,
-      calldataCacheDecoderInteractors: {},
-      cachingGasConstants
+      erc20CacheDecoderAddress: erc20CacheDecoder.address
     })
       .init()
-    erc20transferCalldata = testToken.contract.methods.transfer(destination, value).encodeABI()
+    erc20transferCalldata = testToken.contract.methods.transfer(destination, value).encodeABI();
     // TODO create erc20 decoder/interactor
-    // ({ cachedEncodedData: erc20rlpEncodedNewInput } = await cacheDecodersInteractor.compressErc20Transfer(destination, value))
+    ({ cachedEncodedData: erc20rlpEncodedNewInput } =
+      await cacheDecodersInteractor.compressErc20Transfer({ destination, value }))
   })
 
   context('#convertAddressesToIds()', function () {})

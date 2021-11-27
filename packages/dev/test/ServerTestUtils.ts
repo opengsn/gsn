@@ -13,13 +13,18 @@ import { _sanitizeAbiDecoderEvent } from '@opengsn/common'
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
-abiDecoder.addABI(RelayHubABI)
-abiDecoder.addABI(StakeManagerABI)
-abiDecoder.addABI(PayMasterABI)
+/**
+ * abiDecoder is a global singleton, and can be cleared
+ */
+function initAbiDecoder(){
+  abiDecoder.addABI(RelayHubABI)
+  abiDecoder.addABI(StakeManagerABI)
+  abiDecoder.addABI(PayMasterABI)
 // @ts-ignore
-abiDecoder.addABI(TestRecipient.abi)
+  abiDecoder.addABI(TestRecipient.abi)
 // @ts-ignore
-abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
+  abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
+}
 
 async function resolveAllReceipts (transactionHashes: PrefixedHexString[]): Promise<TransactionReceipt[]> {
   // actually returns promise for '.all'
@@ -28,6 +33,7 @@ async function resolveAllReceipts (transactionHashes: PrefixedHexString[]): Prom
 }
 
 export async function assertRelayAdded (transactionHashes: PrefixedHexString[], server: RelayServer, checkWorkers = true): Promise<void> {
+  initAbiDecoder()
   const receipts = await resolveAllReceipts(transactionHashes)
   const registeredReceipt = receipts.find(r => {
     const decodedLogs = abiDecoder.decodeLogs(r.logs).map(_sanitizeAbiDecoderEvent)

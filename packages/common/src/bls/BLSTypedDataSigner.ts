@@ -24,7 +24,7 @@ import {
   PublicKey,
   deserializeHexStrToFr, secretToPubkey, hashToPoint
 } from './evmbls/mcl'
-import { abiEncodeRelayRequest } from '../Utils'
+import { abiEncodeAuthorizationElement, abiEncodeRelayRequest } from '../Utils'
 import { AuthorizationElement } from './CacheDecoderInteractor'
 
 export interface InternalBLSKeypairType {
@@ -116,9 +116,9 @@ export class BLSTypedDataSigner {
   }
 
   static _hex_to_mcl_G1_type (hex: PrefixedHexString[]): any {
-    if (hex[0].length !== 64 || hex[1].length !== 64) {
-      console.error('_hex_to_mcl_G1_type: Incorrect hex signature string length!')
-    }
+    // if (hex[0].length !== 64 || hex[1].length !== 64) {
+    //   console.error('_hex_to_mcl_G1_type: Incorrect hex signature string length!')
+    // }
     // TODO: verify this is the right thing to do
     const hexX = hex[0].padStart(64, '0')
     const hexY = hex[1].padStart(64, '0')
@@ -137,7 +137,7 @@ export class BLSTypedDataSigner {
     p.setY(y)
     p.setZ(z)
 
-    console.log(`_hex_to_mcl_G1_type input: ${JSON.stringify(hex)} output: ${JSON.stringify(g1ToHex(p))}`)
+    // console.log(`_hex_to_mcl_G1_type input: ${JSON.stringify(hex)} output: ${JSON.stringify(g1ToHex(p))}`)
 
     return p
   }
@@ -176,6 +176,12 @@ export class BLSTypedDataSigner {
 
   async relayRequestToG1Point (relayRequest: RelayRequest): Promise<BN[]> {
     const message = abiEncodeRelayRequest(relayRequest)
+    const m = hashToPoint(message)
+    return BLSTypedDataSigner.g1SignatureToBN(m)
+  }
+
+  async authorizationElementToG1Point (authorizationElement: AuthorizationElement): Promise<BN[]> {
+    const message = abiEncodeAuthorizationElement(authorizationElement)
     const m = hashToPoint(message)
     return BLSTypedDataSigner.g1SignatureToBN(m)
   }

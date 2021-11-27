@@ -36,7 +36,8 @@ interface IBLSAddressAuthorizationsRegistrar {
 
     function registerAddressAuthorization(
         address authorizer,
+        bytes memory ecdsaSignature,
         uint256[4] memory blsPublicKey,
-        bytes memory ecSignature
+        uint256[2] memory blsSignature
     ) external;
 }

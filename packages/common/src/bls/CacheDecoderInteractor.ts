@@ -65,8 +65,9 @@ export interface RelayRequestElement {
 
 export interface AuthorizationElement {
   authorizer: Address
+  ecdsaSignature: PrefixedHexString
   blsPublicKey: PrefixedHexString[]
-  signature: PrefixedHexString
+  blsSignature: PrefixedHexString[]
 }
 
 /**
@@ -336,11 +337,12 @@ const relayRequestElementToRLPArray = (it: RelayRequestElement): List => {
   ]
 }
 
-const authorizationElementToRLPArray = (it: AuthorizationElement): List => {
+function authorizationElementToRLPArray (it: AuthorizationElement): List {
   return [
     it.authorizer,
+    it.ecdsaSignature,
     it.blsPublicKey.map(toBN),
-    it.signature
+    it.blsSignature.map(toBN)
   ]
 }
 

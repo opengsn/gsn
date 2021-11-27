@@ -76,8 +76,9 @@ contract BLSBatchGateway {
         for (uint256 i; i < approvalItems.length; i++) {
             authorizationsRegistrar.registerAddressAuthorization(
                 approvalItems[i].from,
+                approvalItems[i].ecdsaSignature,
                 approvalItems[i].blsPublicKey,
-                approvalItems[i].signature
+                approvalItems[i].blsSignature
             );
         }
     }

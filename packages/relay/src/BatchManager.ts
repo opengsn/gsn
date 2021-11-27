@@ -149,19 +149,29 @@ new target :${newBatchTarget}
       if (!isSameAddress(_.authorizationElement.authorizer, _.address)) {
         throw new Error(`Requested a transaction from (${_.authorizationElement.authorizer}) but the included authorization is for (${_.address})`)
       }
-      const isSignatureValid = await this.validateAuthorizationSignature(_.authorizationElement)
-      if (!isSignatureValid) {
-        throw new Error('BLS signature verification failed for the Authorization Element')
-      }
+      await this.validateAuthorizationSignature(_.authorizationElement)
       authorizedBLSKey = _.authorizationElement.blsPublicKey.map(toBN) // TODO: types don't match
     }
     return authorizedBLSKey
   }
 
-  async validateAuthorizationSignature (authorizationElement: AuthorizationElement): Promise<boolean> {
-    const signature = JSON.parse(authorizationElement.signature)
+  async validateAuthorizationSignature (authorizationElement: AuthorizationElement): Promise<void> {
+    const ecdsaSignature = authorizationElement.ecdsaSignature
+    // TODO: verify ECDSA signature as well
+    const isEcdsaSignatureValid = true
+    if (!isEcdsaSignatureValid) {
+      throw new Error('ECDSA signature verification failed for the Authorization Element')
+    }
+    console.log('validateAuthorizationSignature: ECDSA: ', ecdsaSignature)
+    const blsPublicKey = authorizationElement.blsPublicKey.map(toBN)
     const pubkey = authorizationElement.blsPublicKey.map(toBN)
-    return await this.blsVerifierInteractor.verifySingle(signature, pubkey, [])
+    const message = await this.blsTypedDataSigner.authorizationElementToG1Point(authorizationElement)
+    return
+    // TODO
+    const isBLSSignatureValid = await this.blsVerifierInteractor.verifySingle(blsPublicKey, pubkey, message)
+    if (!isBLSSignatureValid) {
+      throw new Error('BLS signature verification failed for the Authorization Element')
+    }
   }
 
   private validateCurrentBatchParameters (req: RelayTransactionRequest): void {

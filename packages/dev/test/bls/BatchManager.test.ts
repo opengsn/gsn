@@ -150,7 +150,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
       const clock = sandbox.useFakeTimers()
       clock.setSystemTime(batchManager.currentBatch.targetSubmissionTimestamp - batchTimeThreshold + 1)
       assert.isTrue(batchManager.isCurrentBatchReady(0))
-      clock.reset()
+      clock.restore()
     })
 
     it('should return true when current batch is nearing the gas target', function () {
@@ -185,7 +185,8 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
     const authorizationElement: AuthorizationElement = {
       blsPublicKey,
       authorizer,
-      signature: '[]'
+      ecdsaSignature: '',
+      blsSignature: []
     }
 
     afterEach(function () {
