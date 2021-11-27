@@ -2,6 +2,8 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
+import "hardhat/console.sol";
+
 import "../interfaces/ICalldataCacheDecoder.sol";
 
 import "../utils/GsnTypes.sol";

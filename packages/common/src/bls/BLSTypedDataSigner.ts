@@ -28,8 +28,14 @@ import { abiEncodeRelayRequest } from '../Utils'
 import { AuthorizationElement } from './CacheDecoderInteractor'
 
 export interface InternalBLSKeypairType {
-  secret: SecretKey
-  pubkey: PublicKey
+  secret: SecretKey // FR
+  pubkey: PublicKey // G2
+}
+
+// TODO: an interface for this class should not leak any internal structures and use strings exclusively
+export interface ExternalBLSKeypairType {
+  secret: string
+  pubkey: string
 }
 
 export const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
@@ -55,15 +61,17 @@ export class BLSTypedDataSigner {
     return newKeyPair()
   }
 
+  static async parseKeypair (keypair: ExternalBLSKeypairType): Promise<InternalBLSKeypairType> {
+    const pubkey = this._hex_to_mcl_G2_type(JSON.parse(keypair.pubkey))
+    const secret = this._hex_to_mcl_FR_type(JSON.parse(keypair.secret))
+    return { pubkey, secret }
+  }
+
   aggregateSignatures (signatures: PrefixedHexString[][]): BN[] {
     let aggSignature = newG1()
     for (const signature of signatures) {
       const signatureG1 = BLSTypedDataSigner._hex_to_mcl_G1_type(signature)
       aggSignature = aggreagate(aggSignature, signatureG1)
-      console.log('A')
-      BLSTypedDataSigner.g1SignatureToBN(signatureG1) // REMOVE: logging only
-      BLSTypedDataSigner.g1SignatureToBN(aggSignature) // REMOVE: logging only
-      console.log('B')
     }
     return BLSTypedDataSigner.g1SignatureToBN(aggSignature)
   }
@@ -101,6 +109,10 @@ export class BLSTypedDataSigner {
     console.log(`_hex_to_mcl_G2_type input: ${JSON.stringify(hex)} output: ${JSON.stringify(g1ToHex(p))}`)
 
     return p
+  }
+
+  static _hex_to_mcl_FR_type (hex: PrefixedHexString[]): any {
+    return {}
   }
 
   static _hex_to_mcl_G1_type (hex: PrefixedHexString[]): any {
@@ -159,7 +171,7 @@ export class BLSTypedDataSigner {
 
   async signRelayRequestBLS (relayRequest: RelayRequest): Promise<BN[]> {
     const relayRequestEncoded = abiEncodeRelayRequest(relayRequest)
-    return await this.signTypedDataBLS(relayRequestEncoded)
+    return await this.signMessageWithBLS(relayRequestEncoded)
   }
 
   async relayRequestToG1Point (relayRequest: RelayRequest): Promise<BN[]> {
@@ -168,12 +180,10 @@ export class BLSTypedDataSigner {
     return BLSTypedDataSigner.g1SignatureToBN(m)
   }
 
-  // TODO: rename
-  async signTypedDataBLS (message: PrefixedHexString): Promise<BN[]> {
+  async signMessageWithBLS (message: PrefixedHexString): Promise<BN[]> {
     const {
       signature
     } = sign(message, this.blsKeypair.secret)
-    // const messageHashStr = JSON.stringify(g1ToBN(M))
     return BLSTypedDataSigner.g1SignatureToBN(signature)
   }
 
@@ -181,9 +191,9 @@ export class BLSTypedDataSigner {
     const signatureBN = g1ToBN(signature).map(BigNumberToBN)
     const signatureZasBN = toBN(mclToHex(signature.getZ()))
     signatureBN.push(signatureZasBN)
-    const hexX = signatureBN[0].toString('hex')
-    const hexY = signatureBN[1].toString('hex')
-    const hexZ = signatureBN[2].toString('hex')
+    // const hexX = signatureBN[0].toString('hex')
+    // const hexY = signatureBN[1].toString('hex')
+    // const hexZ = signatureBN[2].toString('hex')
     // console.log('g1SignatureToBN: signature: ', hexX, hexX.length, hexY, hexY.length, hexZ, hexZ.length)
     return signatureBN
   }
@@ -198,9 +208,5 @@ export class BLSTypedDataSigner {
   static hexStringToArrayBN (signature: PrefixedHexString): BN[] {
     const array: string[] = JSON.parse(signature)
     return array.map(toBN)
-  }
-
-  validateAuthorizationSignature (authorizationElement: AuthorizationElement): boolean {
-    return true
   }
 }

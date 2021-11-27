@@ -177,7 +177,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
       })
     })
 
-    it.only('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
+    it('should accept batch with a single element plus key approval and emit BatchRelayed event', async function () {
       const compressedRequest1 = await createRelayRequestAndAuthorization(relayRequest, from, decompressorInteractor, registrar)
 
       const data = encodeBatch(Object.assign({}, batchInput, {
@@ -210,7 +210,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
       1,
       2, 10, 15, 20
     ].forEach(batchSize =>
-      it.only(`should accept batch of ${batchSize}`, async function () {
+      it(`should accept batch of ${batchSize}`, async function () {
         const requests: RelayRequestElement[] = []
         const authorizations = new Map<string, AuthorizationElement>()
         const sigs: PrefixedHexString[][] = []
@@ -334,7 +334,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
 
       // it seems that if the signature is not some BLS signature hardhat will revert the entire transaction
       const compressedRequest = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequest)
-      const blsSignature = (await blsTypedDataSigner.signTypedDataBLS('0xffffffff')).map((it: BN) => { return it.toString('hex') })
+      const blsSignature = (await blsTypedDataSigner.signMessageWithBLS('0xffffffff')).map((it: BN) => { return it.toString('hex') })
       const data = encodeBatch(
         Object.assign({}, batchInput, {
           blsSignature,

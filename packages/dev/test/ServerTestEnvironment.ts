@@ -63,6 +63,7 @@ import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
+import { BLSVerifierInteractor } from '@opengsn/common/dist/bls/BLSVerifierInteractor'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -136,6 +137,7 @@ export class ServerTestEnvironment {
 
   batchingContractsDeployment!: GSNBatchingContractsDeployment
   cacheDecoderInteractor!: CacheDecoderInteractor
+  blsVerifierInteractor!: BLSVerifierInteractor
   blsTypedDataSigner!: BLSTypedDataSigner
   calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
   batchingContractsInstances!: { batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance; authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance; batchGateway: BLSBatchGatewayInstance }
@@ -230,6 +232,10 @@ export class ServerTestEnvironment {
       calldataCacheDecoderInteractors: this.calldataCacheDecoderInteractors,
       cachingGasConstants
     })
+    this.blsVerifierInteractor = new BLSVerifierInteractor({
+      provider: web3.currentProvider as HttpProvider,
+      blsVerifierContractAddress: constants.ZERO_ADDRESS
+    })
     await this.cacheDecoderInteractor.init()
     this.blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
   }
@@ -312,6 +318,7 @@ export class ServerTestEnvironment {
         workerAddress: workersKeyManager.getAddress(0),
         batchingContractsDeployment: this.batchingContractsDeployment,
         contractInteractor: this.contractInteractor,
+        blsVerifierInteractor: this.blsVerifierInteractor,
         transactionManager,
         blsTypedDataSigner: this.blsTypedDataSigner,
         cacheDecoderInteractor: this.cacheDecoderInteractor,

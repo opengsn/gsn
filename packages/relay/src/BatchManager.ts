@@ -19,6 +19,7 @@ import { ContractInteractor, GSNBatchingContractsDeployment, isSameAddress } fro
 import { ServerConfigParams } from './ServerConfigParams'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
+import { BLSVerifierInteractor } from '@opengsn/common/dist/bls/BLSVerifierInteractor'
 
 export interface SentBatchInfo extends BatchInfo {
   originalTransactionHash: PrefixedHexString
@@ -31,6 +32,7 @@ export class BatchManager {
   readonly contractInteractor: ContractInteractor
   readonly cacheDecoderInteractor: CacheDecoderInteractor
   readonly authorizationsRegistrarInteractor: BLSAddressAuthorizationsRegistrarInteractor
+  readonly blsVerifierInteractor: BLSVerifierInteractor
 
   readonly config: ServerConfigParams
   readonly batchHistory = new Map<number, SentBatchInfo>()
@@ -50,6 +52,7 @@ export class BatchManager {
     contractInteractor: ContractInteractor
     transactionManager: TransactionManager
     blsTypedDataSigner: BLSTypedDataSigner
+    blsVerifierInteractor: BLSVerifierInteractor
     cacheDecoderInteractor: CacheDecoderInteractor
     batchingContractsDeployment: GSNBatchingContractsDeployment
     authorizationsRegistrarInteractor: BLSAddressAuthorizationsRegistrarInteractor
@@ -60,6 +63,7 @@ export class BatchManager {
     this.contractInteractor = _.contractInteractor
     this.transactionManager = _.transactionManager
     this.blsTypedDataSigner = _.blsTypedDataSigner
+    this.blsVerifierInteractor = _.blsVerifierInteractor
     this.cacheDecoderInteractor = _.cacheDecoderInteractor
     this.batchingContractsDeployment = _.batchingContractsDeployment
     this.authorizationsRegistrarInteractor = _.authorizationsRegistrarInteractor
@@ -145,13 +149,19 @@ new target :${newBatchTarget}
       if (!isSameAddress(_.authorizationElement.authorizer, _.address)) {
         throw new Error(`Requested a transaction from (${_.authorizationElement.authorizer}) but the included authorization is for (${_.address})`)
       }
-      const isSignatureValid = this.blsTypedDataSigner.validateAuthorizationSignature(_.authorizationElement)
+      const isSignatureValid = await this.validateAuthorizationSignature(_.authorizationElement)
       if (!isSignatureValid) {
         throw new Error('BLS signature verification failed for the Authorization Element')
       }
       authorizedBLSKey = _.authorizationElement.blsPublicKey.map(toBN) // TODO: types don't match
     }
     return authorizedBLSKey
+  }
+
+  async validateAuthorizationSignature (authorizationElement: AuthorizationElement): Promise<boolean> {
+    const signature = JSON.parse(authorizationElement.signature)
+    const pubkey = authorizationElement.blsPublicKey.map(toBN)
+    return await this.blsVerifierInteractor.verifySingle(signature, pubkey, [])
   }
 
   private validateCurrentBatchParameters (req: RelayTransactionRequest): void {

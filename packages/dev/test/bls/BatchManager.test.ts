@@ -15,6 +15,7 @@ import {
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { stubBatchInput } from '../ServerTestEnvironment'
 import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
+import { BLSVerifierInteractor } from '@opengsn/common/dist/bls/BLSVerifierInteractor'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -25,6 +26,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
   let stubTransactionManager: SinonStubbedInstance<TransactionManager>
   let stubBLSTypedDataSigner: SinonStubbedInstance<BLSTypedDataSigner>
   let stubCacheDecoderInteractor: SinonStubbedInstance<CacheDecoderInteractor>
+  let stubVerifierInteractor: SinonStubbedInstance<BLSVerifierInteractor>
   let stubAuthorizationsInteractor: SinonStubbedInstance<BLSAddressAuthorizationsRegistrarInteractor>
 
   let batchRelayRequestInfo: BatchRelayRequestInfo
@@ -44,6 +46,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
     stubContractInteractor = sandbox.createStubInstance(ContractInteractor)
     stubBLSTypedDataSigner = sandbox.createStubInstance(BLSTypedDataSigner)
     stubAuthorizationsInteractor = sandbox.createStubInstance(BLSAddressAuthorizationsRegistrarInteractor)
+    stubVerifierInteractor = sandbox.createStubInstance(BLSVerifierInteractor)
 
     stubTransactionManager.sendTransaction
       .onFirstCall().returns(Promise.resolve({ transactionHash: '0xdeadbeef', signedTx: '' }))
@@ -70,6 +73,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
       contractInteractor: stubContractInteractor as any as ContractInteractor,
       transactionManager: stubTransactionManager as any as TransactionManager,
       cacheDecoderInteractor: stubCacheDecoderInteractor as any as CacheDecoderInteractor,
+      blsVerifierInteractor: stubVerifierInteractor as any as BLSVerifierInteractor,
       blsTypedDataSigner: stubBLSTypedDataSigner as any as BLSTypedDataSigner,
       batchingContractsDeployment: { batchGateway: '' } as GSNBatchingContractsDeployment,
       authorizationsRegistrarInteractor: stubAuthorizationsInteractor as any as BLSAddressAuthorizationsRegistrarInteractor
@@ -181,7 +185,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
     const authorizationElement: AuthorizationElement = {
       blsPublicKey,
       authorizer,
-      signature: ''
+      signature: '[]'
     }
 
     afterEach(function () {
@@ -195,7 +199,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
 
     it('should throw if new authorization element is included but its verification failed', async function () {
       stubAuthorizationsInteractor.getAuthorizedBLSPublicKey.onFirstCall().returns(Promise.resolve(null))
-      stubBLSTypedDataSigner.validateAuthorizationSignature.onFirstCall().returns(false)
+      stubVerifierInteractor.verifySingle.onFirstCall().returns(Promise.resolve(false))
 
       await expect(batchManager.getAuthorizedBLSPublicKey({
         address: authorizer,
@@ -205,7 +209,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
     it('should return a public key stored by the registrar')
     it('should return a public key included in a valid authorization', async function () {
       stubAuthorizationsInteractor.getAuthorizedBLSPublicKey.onFirstCall().returns(Promise.resolve(null))
-      stubBLSTypedDataSigner.validateAuthorizationSignature.onFirstCall().returns(true)
+      stubVerifierInteractor.verifySingle.onFirstCall().returns(Promise.resolve(true))
       const returnedPublicKey = await batchManager.getAuthorizedBLSPublicKey({
         address: authorizer,
         authorizationElement
