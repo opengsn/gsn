@@ -190,9 +190,8 @@ export class RelayClient {
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
     await this.dependencies.knownRelaysManager.refresh()
-    const { maxPriorityFeePerGas, maxFeePerGas } = await this._calculateGasFees()
-    gsnTransactionDetails.maxFeePerGas = toHex(gsnTransactionDetails.maxFeePerGas ?? maxFeePerGas)
-    gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas ?? maxPriorityFeePerGas)
+    gsnTransactionDetails.maxFeePerGas = toHex(gsnTransactionDetails.maxFeePerGas)
+    gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas)
     if (gsnTransactionDetails.gas == null) {
       const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
@@ -235,7 +234,7 @@ export class RelayClient {
     this.logger.warn(msg)
   }
 
-  async _calculateGasFees (): Promise<{ maxFeePerGas: PrefixedHexString, maxPriorityFeePerGas: PrefixedHexString }> {
+  async calculateGasFees (): Promise<{ maxFeePerGas: PrefixedHexString, maxPriorityFeePerGas: PrefixedHexString }> {
     const pct = this.config.gasPriceFactorPercent
     const gasFees = await this.dependencies.contractInteractor.getGasFees()
     let priorityFee = Math.round(parseInt(gasFees.priorityFeePerGas) * (pct + 100) / 100)

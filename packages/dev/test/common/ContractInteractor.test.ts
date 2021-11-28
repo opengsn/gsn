@@ -344,7 +344,9 @@ contract('ContractInteractor', function (accounts) {
           from: accounts[0],
           to: accounts[0],
           data: '0x' + 'ff'.repeat(msgDataLength),
-          clientId: '1'
+          clientId: '1',
+          maxFeePerGas: '0x1',
+          maxPriorityFeePerGas: '0x1'
         }
         const estimation = await contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
         const expectedEstimation = originalGasEstimation - msgDataLength * defaultEnvironment.gtxdatanonzero
@@ -356,7 +358,9 @@ contract('ContractInteractor', function (accounts) {
           from: accounts[0],
           to: accounts[0],
           data: '0x' + 'ff'.repeat(msgDataLength * 10000),
-          clientId: '1'
+          clientId: '1',
+          maxFeePerGas: '0x1',
+          maxPriorityFeePerGas: '0x1'
         }
         await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
           .to.eventually.be.rejectedWith('calldataGasCost exceeded originalGasEstimation')

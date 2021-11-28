@@ -163,7 +163,8 @@ contract('KnownRelaysManager 2', function (accounts) {
 
   const transactionDetails = {
     gas: '0x10000',
-    gasPrice: '0x300000',
+    maxFeePerGas: '0x300000',
+    maxPriorityFeePerGas: '0x300000',
     from: '',
     data: '',
     to: '',

@@ -9,8 +9,8 @@ export interface GsnTransactionDetails {
 
   readonly value?: IntString
   gas?: PrefixedHexString
-  maxFeePerGas?: PrefixedHexString
-  maxPriorityFeePerGas?: PrefixedHexString
+  maxFeePerGas: PrefixedHexString
+  maxPriorityFeePerGas: PrefixedHexString
   readonly paymasterData?: PrefixedHexString
   readonly clientId?: IntString
 

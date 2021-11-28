@@ -148,8 +148,15 @@ contract('RelayClient', function (accounts) {
       to,
       data,
       paymasterData: '0x',
-      clientId: '1'
+      clientId: '1',
+      maxFeePerGas: '0',
+      maxPriorityFeePerGas: '0'
     }
+  })
+
+  beforeEach(async function () {
+    const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
+    options = { ...options, maxFeePerGas, maxPriorityFeePerGas }
   })
 
   after(function () {
@@ -417,7 +424,7 @@ contract('RelayClient', function (accounts) {
       const relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
       await relayClient.init()
 
-      const calculatedGasPrice = await relayClient._calculateGasFees()
+      const calculatedGasPrice = await relayClient.calculateGasFees()
       assert.equal(calculatedGasPrice.maxPriorityFeePerGas, `0x${minPriorityFeePerGas.toString(16)}`)
     })
   })

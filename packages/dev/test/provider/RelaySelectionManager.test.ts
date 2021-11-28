@@ -58,7 +58,9 @@ contract('RelaySelectionManager', function (accounts) {
     data: '',
     to: '',
     forwarder: '',
-    paymaster: ''
+    paymaster: '',
+    maxFeePerGas: '',
+    maxPriorityFeePerGas: ''
   }
 
   let stubPingResponse: SinonStub

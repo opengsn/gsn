@@ -131,7 +131,14 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
-    const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
+    let gsnTransactionDetails: GsnTransactionDetails
+    try {
+      gsnTransactionDetails = this._fixGasFees({ ...payload.params[0] })
+    } catch (e) {
+      this.logger.error(e)
+      callback(e)
+      return
+    }
     this.relayClient.relayTransaction(gsnTransactionDetails)
       .then((relayingResult) => {
         if (relayingResult.transaction != null) {
@@ -204,6 +211,20 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     return gsnTransactionDetails?.useGSN ?? true
   }
 
+  _fixGasFees (txDetails: any): GsnTransactionDetails {
+    if (txDetails.maxFeePerGas != null && txDetails.maxPriorityFeePerGas != null) {
+      delete txDetails.gasPrice
+      return txDetails
+    }
+    if (txDetails.gasPrice != null && txDetails.maxFeePerGas == null && txDetails.maxPriorityFeePerGas == null) {
+      txDetails.maxFeePerGas = txDetails.gasPrice
+      txDetails.maxPriorityFeePerGas = txDetails.gasPrice
+      delete txDetails.gasPrice
+      return txDetails
+    }
+    throw new Error('Relay Provider: must provide either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
+  }
+
   /* wrapping HttpProvider interface */
 
   host: string
@@ -219,6 +240,10 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   newAccount (): AccountKeypair {
     return this.relayClient.newAccount()
+  }
+
+  async calculateGasFees (): Promise<{ maxFeePerGas: PrefixedHexString, maxPriorityFeePerGas: PrefixedHexString }> {
+    return await this.relayClient.calculateGasFees()
   }
 
   addAccount (privateKey: PrefixedHexString): void {
