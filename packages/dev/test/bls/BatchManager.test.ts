@@ -186,7 +186,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
       blsPublicKey,
       authorizer,
       ecdsaSignature: '',
-      blsSignature: []
+      blsSignature: ['', '']
     }
 
     afterEach(function () {
@@ -199,6 +199,8 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
     })
 
     it('should throw if new authorization element is included but its verification failed', async function () {
+      stubBLSTypedDataSigner.authorizationElementToG1Point
+        .onFirstCall().returns(Promise.resolve([toBN(15), toBN(15), toBN(1)]))
       stubAuthorizationsInteractor.getAuthorizedBLSPublicKey.onFirstCall().returns(Promise.resolve(null))
       stubVerifierInteractor.verifySingle.onFirstCall().returns(Promise.resolve(false))
 
@@ -209,6 +211,8 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
     })
     it('should return a public key stored by the registrar')
     it('should return a public key included in a valid authorization', async function () {
+      stubBLSTypedDataSigner.authorizationElementToG1Point
+        .returns(Promise.resolve([toBN(15), toBN(15), toBN(1)]))
       stubAuthorizationsInteractor.getAuthorizedBLSPublicKey.onFirstCall().returns(Promise.resolve(null))
       stubVerifierInteractor.verifySingle.onFirstCall().returns(Promise.resolve(true))
       const returnedPublicKey = await batchManager.getAuthorizedBLSPublicKey({

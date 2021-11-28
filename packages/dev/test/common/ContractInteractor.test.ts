@@ -204,7 +204,7 @@ contract.only('ContractInteractor', function (accounts) {
       let transaction = Transaction.fromTxData({
         to: constants.ZERO_ADDRESS,
         gasLimit: '0x5208',
-        gasPrice: 105157849,
+        gasPrice: 205157849,
         nonce
       }, contractInteractor.getRawTxOptions())
       transaction = transaction.sign(Buffer.from('8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba', 'hex'))

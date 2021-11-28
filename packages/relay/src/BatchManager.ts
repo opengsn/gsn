@@ -135,6 +135,7 @@ new target :${newBatchTarget}
 
     // Trigger the interval worker to send the batch faster if possible
     const blockNumber = await this.contractInteractor.getBlockNumberRightNow()
+    // eslint-disable-next-line no-void
     void this.intervalWorker(blockNumber)
   }
 
@@ -165,7 +166,7 @@ new target :${newBatchTarget}
     console.log('validateAuthorizationSignature: ECDSA: ', ecdsaSignature)
     const blsPublicKey = authorizationElement.blsPublicKey
     const blsSignature = [authorizationElement.blsSignature[0], authorizationElement.blsSignature[1]]
-    const blsMessageZ = (await this.blsTypedDataSigner.authorizationElementToG1Point(authorizationElement))
+    const blsMessageZ = await this.blsTypedDataSigner.authorizationElementToG1Point(authorizationElement)
     const blsMessage = [toHex(blsMessageZ[0]), toHex(blsMessageZ[1])]
     const isBLSSignatureValid = await this.blsVerifierInteractor.verifySingle(blsSignature, blsPublicKey, blsMessage)
     if (!isBLSSignatureValid) {
@@ -199,10 +200,10 @@ Right worker address: (${this.workerAddress})
   }
 
   async validateSignature (relayRequest: RelayRequest, blsPublicKey: BN[], signature: PrefixedHexString): Promise<void> {
+    // eslint-disable-next-line no-constant-condition
     if (false) {
       throw new Error('BLS signature validation failed for RelayRequest')
     }
-    return
   }
 
   private isAuthorizationValid (from: Address, authorizationElement: AuthorizationElement | undefined): boolean {

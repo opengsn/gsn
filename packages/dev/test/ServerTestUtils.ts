@@ -16,13 +16,13 @@ const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythi
 /**
  * abiDecoder is a global singleton, and can be cleared
  */
-function initAbiDecoder(){
+function initAbiDecoder (): void {
   abiDecoder.addABI(RelayHubABI)
   abiDecoder.addABI(StakeManagerABI)
   abiDecoder.addABI(PayMasterABI)
-// @ts-ignore
+  // @ts-ignore
   abiDecoder.addABI(TestRecipient.abi)
-// @ts-ignore
+  // @ts-ignore
   abiDecoder.addABI(TestPaymasterEverythingAccepted.abi)
 }
 

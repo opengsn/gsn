@@ -1,5 +1,4 @@
 import { Address } from '@opengsn/common/dist/types/Aliases'
-import { GSNBatchingContractsDeployment } from '@opengsn/common'
 import {
   BatchGatewayCacheDecoderInstance,
   BLSAddressAuthorizationsRegistrarInstance,
@@ -12,12 +11,11 @@ const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthoriza
 
 export async function deployBatchingContractsForHub (
   relayHub: Address,
-  gatewayForwarder: Address
-): Promise<{
-  batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance
-  authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance
-  batchGateway: BLSBatchGatewayInstance
-}> {
+  gatewayForwarder: Address): Promise<{
+    batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance
+    authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance
+    batchGateway: BLSBatchGatewayInstance
+  }> {
   const authorizationsRegistrar = await BLSAddressAuthorizationsRegistrar.new()
   const batchGatewayCacheDecoder = await BatchGatewayCacheDecoder.new(gatewayForwarder)
   const batchGateway = await BLSBatchGateway.new(batchGatewayCacheDecoder.address, authorizationsRegistrar.address, relayHub)

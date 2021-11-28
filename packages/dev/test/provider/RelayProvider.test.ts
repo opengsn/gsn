@@ -268,6 +268,7 @@ contract('RelayProvider', function (accounts) {
       })
       const relayProvider = new RelayProvider(badRelayClient)
       await relayProvider.init()
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises,@typescript-eslint/promise-function-async
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -278,6 +279,7 @@ contract('RelayProvider', function (accounts) {
       const badRelayClient = new BadRelayClient(false, true, { provider: underlyingProvider, config })
       const relayProvider = new RelayProvider(badRelayClient)
       await relayProvider.init()
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises,@typescript-eslint/promise-function-async
       const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
         reject(error)
       }))
@@ -292,6 +294,7 @@ contract('RelayProvider', function (accounts) {
           ...config
         }
       }).init()
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises,@typescript-eslint/promise-function-async
       const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
         if (error != null) {
           reject(error)

@@ -14,13 +14,12 @@ function getComponent (key: string, components: AbiOutput[]): AbiOutput | undefi
 function retypeItem (abiOutput: AbiOutput, ret: any): any {
   // array of some type. parse each member separately
   if (abiOutput.type.endsWith('[]')) {
-    const arrayMemberType = abiOutput.type.substr(0, abiOutput.type.length - 2);
+    const arrayMemberType = abiOutput.type.substr(0, abiOutput.type.length - 2)
     return ret.map((item: any) => retypeItem({
       ...abiOutput,
       type: arrayMemberType
     }, item))
-  } else
-  if (abiOutput.type.includes('int')) {
+  } else if (abiOutput.type.includes('int')) {
     return toBN(ret)
   } else if (abiOutput.type.includes('tuple') && abiOutput.components != null) {
     const keys = Object.keys(ret)

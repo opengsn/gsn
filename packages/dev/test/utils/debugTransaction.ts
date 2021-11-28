@@ -34,7 +34,7 @@ export async function debugTransaction (provider: any, hash: string): Promise<De
   }))
 }
 
-//output SSTORE and SLOAD opcodes from a transaction.
+// output SSTORE and SLOAD opcodes from a transaction.
 export async function txStorageOpcodes (provider: any, hash: string): Promise<any> {
   const ret = await debugTransaction(provider, hash)
   const opcodes: { [key: string]: number } = {}

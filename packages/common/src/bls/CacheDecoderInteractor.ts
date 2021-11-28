@@ -20,10 +20,10 @@ import {
 } from './ICalldataCacheDecoderInteractor'
 
 export interface BatchAddressesCachingResult {
-  senderAsIds: BN[],
-  targetAsIds: BN[],
-  paymasterAsIds: BN[],
-  cacheDecoders: BN[],
+  senderAsIds: BN[]
+  targetAsIds: BN[]
+  paymasterAsIds: BN[]
+  cacheDecoders: BN[]
   writeSlotsCount: number
 }
 
@@ -134,7 +134,7 @@ export class CacheDecoderInteractor {
   }
 
   async init (): Promise<this> {
-    this.batchGatewayCacheDecoder = await this.BatchGatewayCacheDecoder.at(this.batchingContractsDeployment.batchGatewayCacheDecoder!)
+    this.batchGatewayCacheDecoder = await this.BatchGatewayCacheDecoder.at(this.batchingContractsDeployment.batchGatewayCacheDecoder)
     return this
   }
 
@@ -164,7 +164,7 @@ export class CacheDecoderInteractor {
     } else {
       methodData = toBuffer(_.cachedEncodedData)
     }
-    const cacheDecoder = toBN(0)  //TODO: for un-compressed calldata
+    const cacheDecoder = toBN(0) // TODO: for un-compressed calldata
     const relayRequestElement = {
       nonce,
       paymaster: resolved.paymasterAsIds[0],
@@ -173,7 +173,7 @@ export class CacheDecoderInteractor {
       gasLimit,
       calldataGas,
       methodData,
-      cacheDecoder, // resolved.cacheDecoder[0] ???
+      cacheDecoder // resolved.cacheDecoder[0] ???
     }
     return {
       relayRequestElement,
@@ -213,7 +213,7 @@ export class CacheDecoderInteractor {
       froms,
       tos,
       paymasters,
-      cacheDecoders,
+      cacheDecoders
     ])
     // TODO
     const countSlots = ret.flatMap(x => x)
@@ -228,7 +228,7 @@ export class CacheDecoderInteractor {
     }
   }
 
-  _calculateCalldataCostForRelayRequestsElement (relayRequestElement: RelayRequestElement, authorizationElement ?: AuthorizationElement): BN {
+  _calculateCalldataCostForRelayRequestsElement (relayRequestElement: RelayRequestElement, authorizationElement?: AuthorizationElement): BN {
     if (this.contractInteractor == null) {
       throw new Error('ContractInteractor is not initialized')
     }
@@ -241,7 +241,7 @@ export class CacheDecoderInteractor {
     return relayRequestElementCost
   }
 
-  async calculateTotalCostForRelayRequestsElement (combinedCachingResult: CombinedCachingResult, authorizationElement ?: AuthorizationElement): Promise<{
+  async calculateTotalCostForRelayRequestsElement (combinedCachingResult: CombinedCachingResult, authorizationElement?: AuthorizationElement): Promise<{
     authorizationStorageCost: BN
     storageL2Cost: BN
     calldataCost: BN
@@ -249,7 +249,7 @@ export class CacheDecoderInteractor {
   }> {
     const calldataCost = this._calculateCalldataCostForRelayRequestsElement(combinedCachingResult.relayRequestElement, authorizationElement)
     const storageL2Cost = toBN(this.cachingGasConstants.gasPerSlotL2 * combinedCachingResult.writeSlotsCount)
-    let authorizationStorageCost = toBN(0)
+    const authorizationStorageCost = toBN(0)
     if (authorizationElement != null
     ) {
       toBN(this.cachingGasConstants.gasPerSlotL2 * this.cachingGasConstants.authorizationStorageSlots)
@@ -274,6 +274,7 @@ export class CacheDecoderInteractor {
     const addressesCompressed = await this.compressAddressesToIds([batchInfo.workerAddress], [], [], [batchInfo.defaultCalldataCacheDecoder])
 
     const authorizations: AuthorizationElement[] =
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       batchInfo.transactions.filter(it => it.authorizationElement != null).map(it => it.authorizationElement!)
     const relayRequestElements: RelayRequestElement[] = batchInfo.transactions.map(it => it.relayRequestElement)
 
@@ -284,7 +285,7 @@ export class CacheDecoderInteractor {
       baseRelayFee,
       maxAcceptanceBudget,
       defaultCalldataCacheDecoder: addressesCompressed.cacheDecoders[0],
-      relayWorker: addressesCompressed.senderAsIds[0],  //TODO: same cache as senders?
+      relayWorker: addressesCompressed.senderAsIds[0], // TODO: same cache as senders?
       blsSignature: batchInfo.aggregatedSignature,
       authorizations,
       relayRequestElements

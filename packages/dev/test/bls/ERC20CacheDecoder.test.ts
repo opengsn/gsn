@@ -2,9 +2,6 @@ import { HttpProvider } from 'web3-core'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import { ERC20CacheDecoderInstance, TestTokenInstance } from '@opengsn/contracts'
-import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
-import { ContractInteractor, GSNBatchingContractsDeployment } from '@opengsn/common'
-import { Address, ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 
 const TestToken = artifacts.require('TestToken')

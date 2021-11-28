@@ -1,15 +1,9 @@
 import { constants, defaultEnvironment } from '@opengsn/common'
 import { deployHub, startRelay } from '../TestUtils'
 import {
-  BLSBatchGatewayInstance,
-  BatchGatewayCacheDecoderInstance,
-  ERC20CacheDecoderInstance,
   RelayHubInstance,
   StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestTokenInstance,
-  GatewayForwarderInstance,
-  BLSAddressAuthorizationsRegistrarInstance
+  TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 
@@ -17,8 +11,6 @@ const StakeManager = artifacts.require('StakeManager')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
 contract('Batch Relaying Flow', function ([a, relayOwner]: string[]) {
-  let testToken: TestTokenInstance
-
   // unmodified GSN components
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let stakeManager: StakeManagerInstance
@@ -32,11 +24,13 @@ contract('Batch Relaying Flow', function ([a, relayOwner]: string[]) {
   let relayProcess: ChildProcessWithoutNullStreams
 
   before(async function () {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     paymaster = await TestPaymasterEverythingAccepted.new()
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS)
 
     // 2. start batch server
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     relayProcess = await startRelay(relayHub.address, stakeManager, {
       runBatching: true,
       stake: 1e18,

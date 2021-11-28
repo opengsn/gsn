@@ -6,7 +6,7 @@ import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
-  import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
 import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
@@ -35,8 +35,8 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { BatchManager } from './BatchManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import Timeout = NodeJS.Timeout
 import { getRelayRequestID } from '@opengsn/common'
+import Timeout = NodeJS.Timeout
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -844,7 +844,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     this.ready = isReady
   }
 
-  //*************** BATCH CODE - REWRITE AFTER MERGE WITH EIP-1559  ***************//
+  // ************** BATCH CODE - REWRITE AFTER MERGE WITH EIP-1559  ***************//
   // note that ~90% of the code is exactly same - extract shared logic
   // all logic that is not identical should be moved to the BatchManager!
 

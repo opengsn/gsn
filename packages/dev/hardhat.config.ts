@@ -11,7 +11,7 @@ module.exports = {
   },
   networks: {
     hardhat: { chainId: 1337 },
-    mainnet: { url: 'https://mainnet.infura.io/v3/' + process.env.INFURA_ID },
+    mainnet: { url: `https://mainnet.infura.io/v3/${process.env.INFURA_ID}` },
     npmtest: { // used from "npm test". see package.json
       url: 'http://127.0.0.1:8544'
     }

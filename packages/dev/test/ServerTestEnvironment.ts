@@ -141,7 +141,7 @@ export class ServerTestEnvironment {
   blsVerifierInteractor!: BLSVerifierInteractor
   blsTypedDataSigner!: BLSTypedDataSigner
   calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
-  batchingContractsInstances!: { batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance; authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance; batchGateway: BLSBatchGatewayInstance }
+  batchingContractsInstances!: { batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance, authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance, batchGateway: BLSBatchGatewayInstance }
 
   constructor (provider: HttpProvider, accounts: Address[]) {
     this.provider = provider
@@ -191,7 +191,7 @@ export class ServerTestEnvironment {
     this.gasLess = this.relayClient.newAccount().address
   }
 
-  static async newContractInteractor (provider: HttpProvider, paymasterAddress?: Address) {
+  static async newContractInteractor (provider: HttpProvider, paymasterAddress?: Address): Promise<ContractInteractor> {
     const logger = createServerLogger('error', '', '')
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const contractInteractor = new ContractInteractor({
@@ -205,7 +205,7 @@ export class ServerTestEnvironment {
     return contractInteractor
   }
 
-  async initBatching () {
+  async initBatching (): Promise<void> {
     this.testToken = await TestToken.new()
     this.erc20CacheDecoder = await ERC20CacheDecoder.new()
     const blsContract = await BLSContract.new()
@@ -214,7 +214,7 @@ export class ServerTestEnvironment {
     this.batchingContractsDeployment = {
       batchGateway: this.batchingContractsInstances.batchGateway.address,
       batchGatewayCacheDecoder: this.batchingContractsInstances.batchGatewayCacheDecoder.address,
-      authorizationsRegistrar: this.batchingContractsInstances.authorizationsRegistrar.address,
+      authorizationsRegistrar: this.batchingContractsInstances.authorizationsRegistrar.address
     }
     await this.relayHub.setBatchGateway(this.batchingContractsDeployment.batchGateway)
 
@@ -314,7 +314,7 @@ export class ServerTestEnvironment {
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
     const transactionManager = new TransactionManager(serverDependencies, configureServer(mergedConfig))
 
-    if (config.runBatching) {
+    if (config.runBatching === true) {
       serverDependencies.batchManager = new BatchManager({
         config: configureServer(mergedConfig),
         newMinGasPrice: 0,

@@ -41,6 +41,7 @@ export class HttpServer {
       // used to work before workspaces, needs research
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.post('/relay', this.relayHandler.bind(this))
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.post('/relay-batched', this.relayHandler.bind(this))
       this.relayService.on('error', (e) => { console.error('httpServer:', e) })
     }

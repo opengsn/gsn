@@ -9,10 +9,11 @@ export interface RelayRequest {
 // https://stackoverflow.com/a/51365037
 type RecursivePartial<T> = {
   [P in keyof T]?:
+  // eslint-disable-next-line @typescript-eslint/array-type
   T[P] extends (infer U)[] ? RecursivePartial<U>[] :
     T[P] extends object ? RecursivePartial<T[P]> :
-      T[P];
-};
+      T[P]
+}
 
 export function cloneRelayRequest (relayRequest: RelayRequest, overrides: RecursivePartial<RelayRequest> = {}): RelayRequest {
   return {

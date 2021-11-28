@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.packages.json",
   "include": [
+    "hardhat.config.ts",
     "src/**/*.ts",
     "test/**/*.ts",
     "../contracts/types/truffle-contracts/index.d.ts",

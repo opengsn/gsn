@@ -13,7 +13,6 @@ import { Contract, TruffleContract } from '../LightTruffleContract'
 import { ERC20CacheDecoderInstance } from '@opengsn/contracts'
 
 import calldataCacheDecoderAbi from '../interfaces/ICalldataCacheDecoder.json'
-import { BatchAddressesCachingResult } from './CacheDecoderInteractor'
 
 export interface ERC20AddressesCachingResult {
   holderAsIds: BN[]

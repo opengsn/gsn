@@ -41,7 +41,8 @@ contract.only('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
 
   context('#registerAddressAuthorization()', function () {
     it('should register a correctly signed BLS public key to the given address', async function () {
-      const receipt = await registrar.registerAddressAuthorization(from, authorizationEcdsaSignature, blsPublicKey, authorizationBLSSignature)
+      const authorizationBLSSignatureNoZ = [authorizationBLSSignature[0], authorizationBLSSignature[1]]
+      const receipt = await registrar.registerAddressAuthorization(from, authorizationEcdsaSignature, blsPublicKey, authorizationBLSSignatureNoZ)
       const expectedPublicKeyHash = web3.utils.keccak256(web3.eth.abi.encodeParameter('uint256[4]', blsPublicKey))
       await expectEvent.inLogs(receipt.logs, 'AuthorizationIssued', {
         authorizer: from,
