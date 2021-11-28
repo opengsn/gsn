@@ -31,7 +31,7 @@ import "@opengsn/contracts/src/forwarder/test/TestForwarder.sol";
 import "@opengsn/contracts/src/forwarder/test/TestForwarderTarget.sol";
 
 import "@opengsn/contracts/src/bls/utils/BLS.sol";
-import "@opengsn/contracts/src/bls/BLSContract.sol";
+import "@opengsn/contracts/src/bls/BLSVerifierContract.sol";
 import "@opengsn/contracts/src/bls/BLSAddressAuthorizationsRegistrar.sol";
 import "@opengsn/contracts/src/bls/BLSBatchGateway.sol";
 import "@opengsn/contracts/src/bls/BatchGatewayCacheDecoder.sol";

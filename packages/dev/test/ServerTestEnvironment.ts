@@ -72,9 +72,9 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
 const TestToken = artifacts.require('TestToken')
-const BLSContract = artifacts.require('BLSContract')
 const GatewayForwarder = artifacts.require('GatewayForwarder')
 const ERC20CacheDecoder = artifacts.require('ERC20CacheDecoder')
+const BLSVerifierContract = artifacts.require('BLSVerifierContract')
 
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(StakeManagerABI)
@@ -208,7 +208,7 @@ export class ServerTestEnvironment {
   async initBatching (): Promise<void> {
     this.testToken = await TestToken.new()
     this.erc20CacheDecoder = await ERC20CacheDecoder.new()
-    const blsContract = await BLSContract.new()
+    const blsVerifierContract = await BLSVerifierContract.new()
     await this.testToken.setTrustedForwarder(this.forwarder.address)
     this.batchingContractsInstances = await deployBatchingContractsForHub(this.relayHub.address, this.forwarder.address)
     this.batchingContractsDeployment = {
@@ -236,7 +236,7 @@ export class ServerTestEnvironment {
     })
     this.blsVerifierInteractor = new BLSVerifierInteractor({
       provider: web3.currentProvider as HttpProvider,
-      blsVerifierContractAddress: blsContract.address
+      blsVerifierContractAddress: blsVerifierContract.address
     })
     await this.blsVerifierInteractor.init()
     await this.cacheDecoderInteractor.init()

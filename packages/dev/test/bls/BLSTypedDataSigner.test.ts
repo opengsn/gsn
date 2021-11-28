@@ -8,17 +8,17 @@ import {
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { g2ToBN } from '@opengsn/common/dist/bls/evmbls/mcl'
 import { cloneRelayRequest, RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { BLSContractInstance } from '@opengsn/contracts'
+import { BLSVerifierContractInstance } from '@opengsn/contracts'
 
-const BLSContract = artifacts.require('BLSContract')
+const BLSVerifierContract = artifacts.require('BLSVerifierContract')
 
 contract.only('BLSTypedDataSigner', function ([address]: string[]) {
-  let blsContract: BLSContractInstance
+  let blsVerifierContract: BLSVerifierContractInstance
 
   let relayRequest: RelayRequest
 
   before(async function () {
-    blsContract = await BLSContract.new()
+    blsVerifierContract = await BLSVerifierContract.new()
     relayRequest = {
       request: {
         to: address,
@@ -52,7 +52,7 @@ contract.only('BLSTypedDataSigner', function ([address]: string[]) {
       const blsPointMessage = await blsTypedDataSigner.relayRequestToG1Point(relayRequest)
       const hexSigWithoutZ = [toHex(signature[0]), toHex(signature[1])]
       const hexMessageWithoutZ = [toHex(blsPointMessage[0]), toHex(blsPointMessage[1])]
-      const onChainValid = await blsContract.verifySingle(hexSigWithoutZ, pubkey, hexMessageWithoutZ)
+      const onChainValid = await blsVerifierContract.verifySingle(hexSigWithoutZ, pubkey, hexMessageWithoutZ)
       assert.isTrue(onChainValid, 'single signature validation failed')
     })
   })
@@ -87,7 +87,7 @@ contract.only('BLSTypedDataSigner', function ([address]: string[]) {
       const aggregatedSignature = blsTypedDataSigner1.aggregateSignatures(signatures)
       const hexSigWithoutZ = [toHex(aggregatedSignature[0]), toHex(aggregatedSignature[1])]
 
-      const onChainValid = await blsContract.verifyMultiple(hexSigWithoutZ, pubkeys, hexMessageWithoutZ)
+      const onChainValid = await blsVerifierContract.verifyMultiple(hexSigWithoutZ, pubkeys, hexMessageWithoutZ)
       assert.isTrue(onChainValid, 'aggregated signature validation failed')
     })
   })
