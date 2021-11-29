@@ -50,6 +50,11 @@ export function address2topic (address: string): string {
   return '0x' + '0'.repeat(24) + address.toLowerCase().slice(2)
 }
 
+// This coversion is only needed since WS provider returns error as false instead of null/undefined in (error,result)
+export function errorAsBoolean (err: any): boolean {
+  return err as boolean
+}
+
 // extract revert reason from a revert bytes array.
 export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string | null {
   if (revertBytes == null) { return null }
@@ -107,7 +112,7 @@ export async function getEip712Signature (
       if (result?.error != null) {
         error = result.error
       }
-      if ((error as any as boolean) || result == null) {
+      if ((errorAsBoolean(error)) || result == null) {
         reject((error as any).message ?? error)
       } else {
         resolve(result.result)
@@ -226,9 +231,24 @@ export function getDataAndSignature (tx: TypedTransaction, chainId: number): { d
   }
   let input: List
   if (!tx.supports(Capability.EIP1559FeeMarket)) {
-    input = [bnToUnpaddedBuffer(tx.nonce), bnToUnpaddedBuffer((tx as Transaction).gasPrice), bnToUnpaddedBuffer(tx.gasLimit), tx.to.toBuffer(), bnToUnpaddedBuffer(tx.value), tx.data]
+    input = [
+      bnToUnpaddedBuffer(tx.nonce),
+      bnToUnpaddedBuffer((tx as Transaction).gasPrice),
+      bnToUnpaddedBuffer(tx.gasLimit),
+      tx.to.toBuffer(),
+      bnToUnpaddedBuffer(tx.value),
+      tx.data
+    ]
   } else {
-    input = [bnToUnpaddedBuffer(tx.nonce), bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxPriorityFeePerGas), bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxFeePerGas), bnToUnpaddedBuffer(tx.gasLimit), tx.to.toBuffer(), bnToUnpaddedBuffer(tx.value), tx.data]
+    input = [
+      bnToUnpaddedBuffer(tx.nonce),
+      bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxPriorityFeePerGas),
+      bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxFeePerGas),
+      bnToUnpaddedBuffer(tx.gasLimit),
+      tx.to.toBuffer(),
+      bnToUnpaddedBuffer(tx.value),
+      tx.data
+    ]
   }
   input.push(
     toBuffer(chainId),

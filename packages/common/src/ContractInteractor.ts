@@ -23,7 +23,7 @@ import { LoggerInterface } from './LoggerInterface'
 import {
   address2topic,
   calculateCalldataBytesZeroNonzero,
-  decodeRevertReason,
+  decodeRevertReason, errorAsBoolean,
   event2topic,
   PaymasterGasAndDataLimits
 } from './Utils'
@@ -382,7 +382,7 @@ export class ContractInteractor {
           if (revertMsg != null) {
             reject(new Error(revertMsg))
           }
-          if (err as boolean) {
+          if (errorAsBoolean(err)) {
             reject(err)
           } else {
             resolve(res.result)
@@ -773,7 +773,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
           id: Date.now()
         },
         (e: Error | null | boolean, r: any) => {
-          if (e as any as boolean) {
+          if (errorAsBoolean(e)) {
             reject(e)
           } else {
             resolve(r.result)
@@ -938,9 +938,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
         ],
         id: Date.now()
       }, (e: Error | null, r: any) => {
-        if (e as any as boolean) {
+        if (errorAsBoolean(e)) {
           reject(e)
-        } else if (r.error as boolean) {
+        } else if (errorAsBoolean(r.error)) {
           reject(r.error)
         } else {
           resolve(r.result)
