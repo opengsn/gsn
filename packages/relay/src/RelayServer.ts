@@ -322,7 +322,7 @@ export class RelayServer extends EventEmitter {
     })
 
     const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
-    if (maxPossibleGas >= this.maxGasLimit) {
+    if (maxPossibleGas > this.maxGasLimit) {
       throw new Error(`maxPossibleGas (${maxPossibleGas}) exceeds maxGasLimit (${this.maxGasLimit})`)
     }
     const maxCharge =
