@@ -99,7 +99,6 @@ contract('ProxyRelayProvider', function () {
       const { maxFeePerGas, maxPriorityFeePerGas } = await proxyRelayProvider.calculateGasFees()
       const tx1 = await counter.increment({
         from: gaslessAccount.address,
-        // @ts-ignore
         maxFeePerGas,
         maxPriorityFeePerGas
       })
@@ -110,7 +109,6 @@ contract('ProxyRelayProvider', function () {
       assert.strictEqual(countAfter1.toNumber(), 1)
       const tx2 = await counter.increment({
         from: gaslessAccount.address,
-        // @ts-ignore
         maxFeePerGas,
         maxPriorityFeePerGas
       })
