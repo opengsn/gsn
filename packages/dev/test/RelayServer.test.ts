@@ -311,7 +311,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
     })
 
-    describe('#validateFees()', function () {
+    describe('#validateRelayFees()', function () {
       describe('with trusted paymaster', function () {
         beforeEach(async function () {
           await env.relayServer._initTrustedPaymasters([env.paymaster.address])
@@ -329,7 +329,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         it('should bypass fee checks and not throw if given trusted paymasters', async function () {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
-          env.relayServer.validateFees(req)
+          env.relayServer.validateRelayFees(req)
         })
       })
 
@@ -338,7 +338,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
           try {
-            env.relayServer.validateFees(req)
+            env.relayServer.validateRelayFees(req)
             assert.fail()
           } catch (e) {
             assert.include(e.message, 'Unacceptable baseRelayFee:')
@@ -350,7 +350,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.pctRelayFee = wrongPctRelayFee
           try {
-            env.relayServer.validateFees(req)
+            env.relayServer.validateRelayFees(req)
             assert.fail()
           } catch (e) {
             assert.include(e.message, 'Unacceptable pctRelayFee:')
@@ -560,7 +560,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           serverSpy.validateRequestTxType,
           serverSpy.validateInput,
           serverSpy.validateGasFees,
-          serverSpy.validateFees,
+          serverSpy.validateRelayFees,
           serverSpy.validateMaxNonce,
           serverSpy.validatePaymasterGasAndDataLimits,
           serverSpy.validateViewCallSucceeds,
@@ -590,7 +590,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           serverSpy.validateRequestTxType,
           serverSpy.validateInput,
           serverSpy.validateGasFees,
-          serverSpy.validateFees,
+          serverSpy.validateRelayFees,
           serverSpy.validateMaxNonce,
           serverSpy.validatePaymasterReputation,
           serverSpy.validatePaymasterGasAndDataLimits,

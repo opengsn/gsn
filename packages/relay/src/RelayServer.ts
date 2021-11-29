@@ -220,7 +220,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateFees (req: RelayTransactionRequest): void {
+  validateRelayFees (req: RelayTransactionRequest): void {
     // if trusted paymaster, we trust it to handle fees
     if (this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
       return
@@ -395,7 +395,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     const currentBlock = await this.contractInteractor.getBlockNumber()
     this.validateInput(req, currentBlock)
-    this.validateFees(req)
+    this.validateRelayFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
     if (this.config.runPaymasterReputations) {
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
