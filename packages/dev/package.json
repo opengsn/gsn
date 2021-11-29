@@ -12,12 +12,15 @@
   },
   "scripts": {
     "tsc": "tsc",
+    "watch-tsc": "tsc -w",
     "truffle-compile": "truffle compile",
     "lint": "eslint -f unix .",
+    "lint-fix": "yarn lint --fix",
     "test": "lerna run tsc && truffle --compile-all --network npmtest test",
     "truffle-console": "truffle console",
     "truffle-test": "truffle test --compile-all ",
     "test-only": "truffle --network npmtest test",
+    "just-truffle-test": "truffle test",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {

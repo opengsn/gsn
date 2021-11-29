@@ -42,6 +42,12 @@ module.exports = {
       },
       network_id: 1
     },
+    goerli: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://goerli.infura.io/v3/f40be2b1a3914db682491dc62a19ad43')
+      },
+      network_id: 5
+    },
     kovan: {
       provider: function () {
         return new HDWalletProvider(mnemonic, 'https://kovan.infura.io/v3/f40be2b1a3914db682491dc62a19ad43')

@@ -13,6 +13,7 @@ import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 // compiled folder populated by "prepublish"
 import StakeManager from './compiled/StakeManager.json'
 import RelayHub from './compiled/RelayHub.json'
+import RelayRegistrar from './compiled/RelayRegistrar.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
@@ -50,6 +51,7 @@ interface DeployOptions {
   deployPaymaster?: boolean
   forwarderAddress?: string
   relayHubAddress?: string
+  relayRegistryAddress?: string
   stakeManagerAddress?: string
   penalizerAddress?: string
   registryAddress?: string
@@ -350,6 +352,14 @@ export class CommandsLogic {
       ]
     }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
 
+    const rrInstance = await this.getContractInstance(RelayRegistrar, {
+      arguments: [rInstance.options.address, true]
+    }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
+
+    if (!isSameAddress(await rInstance.methods.relayRegistrar().call(), rrInstance.options.address)) {
+      await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
+    }
+
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, { ...options }, deployOptions.skipConfirmation)
     if (deployOptions.registryHubId != null) {
       await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ ...options })
@@ -366,6 +376,7 @@ export class CommandsLogic {
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
       penalizerAddress: pInstance.options.address,
+      relayRegistrarAddress: rrInstance.options.address,
       forwarderAddress: fInstance.options.address,
       versionRegistryAddress: regInstance.options.address,
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS

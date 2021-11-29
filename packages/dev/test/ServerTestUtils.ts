@@ -5,6 +5,7 @@ import { toBN } from 'web3-utils'
 
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
+import RelayRegistrarABI from '@opengsn/common/dist/interfaces/IRelayRegistrar.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { PrefixedHexString } from 'ethereumjs-util'
@@ -15,6 +16,7 @@ const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythi
 abiDecoder.addABI(RelayHubABI)
 abiDecoder.addABI(StakeManagerABI)
 abiDecoder.addABI(PayMasterABI)
+abiDecoder.addABI(RelayRegistrarABI)
 // @ts-ignore
 abiDecoder.addABI(TestRecipient.abi)
 // @ts-ignore

@@ -21,6 +21,7 @@ import { toBN } from 'web3-utils'
 require('source-map-support').install({ errorFormatterForce: true })
 
 const RelayHub = artifacts.require('RelayHub')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const localhostOne = 'http://localhost:8090'
 
@@ -53,6 +54,12 @@ export async function startRelay (
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
+  if (options.loggingProvider) {
+    args.push('--loggingProvider', options.loggingProvider)
+  }
+  if (options.confirmationsNeeded) {
+    args.push('--confirmationsNeeded', options.confirmationsNeeded)
+  }
 
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
@@ -278,6 +285,10 @@ export async function deployHub (
     stakeManager,
     penalizer,
     relayHubConfiguration)
+
+  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
+  await hub.setRegistrar(relayRegistrar.address)
+
   return hub
 }
 

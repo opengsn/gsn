@@ -15,7 +15,7 @@ import {
   TestPaymasterVariableGasLimitsInstance,
   StakeManagerInstance,
   IForwarderInstance,
-  PenalizerInstance
+  PenalizerInstance, RelayRegistrarInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -29,6 +29,7 @@ const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
@@ -47,6 +48,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const senderNonce = new BN('0')
 
   let relayHub: RelayHubInstance
+  let relayRegistrar: RelayRegistrarInstance
+
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
@@ -66,6 +69,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
+
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
@@ -83,7 +88,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayHub.registerRelayServer(0, fee, '', { from: relayManager })
+    await relayRegistrar.registerRelayServer(0, fee, '', { from: relayManager })
+
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
     relayRequest = {
       request: {

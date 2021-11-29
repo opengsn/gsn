@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "tsc": "tsc",
+    "watch-tsc": "tsc -w",
     "lint": "eslint -f unix .",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
   },
