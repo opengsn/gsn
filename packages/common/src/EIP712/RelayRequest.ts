@@ -1,11 +1,8 @@
 import { RelayData } from './RelayData'
 import { ForwardRequest } from './ForwardRequest'
 
-export interface BaseRelayRequest {
+export interface RelayRequest {
   request: ForwardRequest
-}
-
-export interface RelayRequest extends BaseRelayRequest {
   relayData: RelayData
 }
 
