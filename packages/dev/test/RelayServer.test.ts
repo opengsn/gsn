@@ -8,7 +8,7 @@ import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { RelayServer } from '@opengsn/relay/dist/RelayServer'
+import { RelayServer, TransactionType } from '@opengsn/relay/dist/RelayServer'
 import { SendTransactionDetails, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
@@ -21,6 +21,7 @@ import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransac
 import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -229,6 +230,18 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `priorityFee given ${wrongPriorityFee} too low : ${env.relayServer.minPriorityFeePerGas}`)
+        }
+      })
+
+      it('should fail to relay with maxPriorityFeePerGas > maxFeePerGas', async function () {
+        const req = await env.createRelayHttpRequest({ maxFeePerGas: toHex(1e9), maxPriorityFeePerGas: toHex(1e10) })
+        try {
+          env.relayServer.validateInput(req, 0)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `maxFee ${req.relayRequest.relayData.maxFeePerGas} cannot be lower than priorityFee ${req.relayRequest.relayData.maxPriorityFeePerGas}`)
         }
       })
 
@@ -503,57 +516,76 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await env.relayServer.txStoreManager.clearAll()
     })
 
-    it('should relay transaction without paymaster reputation', async function () {
-      const req = await env.createRelayHttpRequest()
-      const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
-      const serverSpy = sinon.spy(env.relayServer)
+    async function fixTxDetails (details: Partial<GsnTransactionDetails>, type: number): Promise<void> {
+      if (type === TransactionType.TYPE_TWO) {
+        const { baseFeePerGas, priorityFeePerGas } = await env.relayServer.contractInteractor.getGasFees()
+        details.maxFeePerGas = toHex(parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
+        details.maxPriorityFeePerGas = toHex(priorityFeePerGas)
+        assert.isTrue(details.maxFeePerGas > details.maxPriorityFeePerGas)
+      }
+    }
 
-      assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
-      await env.relayServer.createRelayTransaction(req)
-      const pendingTransactions = await env.relayServer.txStoreManager.getAll()
-      assert.equal(pendingTransactions.length, 1)
-      assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
-      sinon.assert.callOrder(
-        serverSpy.isReady,
-        serverSpy.validateInput,
-        serverSpy.validateGasFees,
-        serverSpy.validateFees,
-        serverSpy.validateMaxNonce,
-        serverSpy.validatePaymasterGasAndDataLimits,
-        serverSpy.validateViewCallSucceeds,
-        txMgrSpy.sendTransaction,
-        serverSpy.replenishServer
-      )
-      sinon.restore()
-    })
+    const options = [
+      { title: 'legacy', type: TransactionType.LEGACY },
+      { title: 'type 2', type: TransactionType.TYPE_TWO }
+    ]
+    options.forEach(params => {
+      it(`should relay ${params.title} transaction without paymaster reputation`, async function () {
+        const overrideDetails: Partial<GsnTransactionDetails> = {}
+        await fixTxDetails(overrideDetails, params.type)
+        const req = await env.createRelayHttpRequest(overrideDetails)
+        const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
+        const serverSpy = sinon.spy(env.relayServer)
 
-    it('should relay transaction with paymaster reputation', async function () {
-      await env.newServerInstance({ runPaymasterReputations: true })
-      await env.clearServerStorage()
-      const req = await env.createRelayHttpRequest()
-      const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
-      const repSpy = sinon.spy(env.relayServer.reputationManager)
-      const serverSpy = sinon.spy(env.relayServer)
+        assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
+        await env.relayServer.createRelayTransaction(req)
+        const pendingTransactions = await env.relayServer.txStoreManager.getAll()
+        assert.equal(pendingTransactions.length, 1)
+        assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
+        sinon.assert.callOrder(
+          serverSpy.isReady,
+          serverSpy.validateInput,
+          serverSpy.validateGasFees,
+          serverSpy.validateFees,
+          serverSpy.validateMaxNonce,
+          serverSpy.validatePaymasterGasAndDataLimits,
+          serverSpy.validateViewCallSucceeds,
+          txMgrSpy.sendTransaction,
+          serverSpy.replenishServer
+        )
+        sinon.restore()
+      })
 
-      assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
-      await env.relayServer.createRelayTransaction(req)
-      const pendingTransactions = await env.relayServer.txStoreManager.getAll()
-      assert.equal(pendingTransactions.length, 1)
-      assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
-      sinon.assert.callOrder(
-        serverSpy.isReady,
-        serverSpy.validateInput,
-        serverSpy.validateGasFees,
-        serverSpy.validateFees,
-        serverSpy.validateMaxNonce,
-        serverSpy.validatePaymasterReputation,
-        serverSpy.validatePaymasterGasAndDataLimits,
-        serverSpy.validateViewCallSucceeds,
-        repSpy.onRelayRequestAccepted,
-        txMgrSpy.sendTransaction,
-        serverSpy.replenishServer
-      )
-      sinon.restore()
+      it(`should relay ${params.title} transaction without paymaster reputation`, async function () {
+        await env.newServerInstance({ runPaymasterReputations: true })
+        await env.clearServerStorage()
+        const overrideDetails: Partial<GsnTransactionDetails> = {}
+        await fixTxDetails(overrideDetails, params.type)
+        const req = await env.createRelayHttpRequest()
+        const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
+        const repSpy = sinon.spy(env.relayServer.reputationManager)
+        const serverSpy = sinon.spy(env.relayServer)
+
+        assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
+        await env.relayServer.createRelayTransaction(req)
+        const pendingTransactions = await env.relayServer.txStoreManager.getAll()
+        assert.equal(pendingTransactions.length, 1)
+        assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
+        sinon.assert.callOrder(
+          serverSpy.isReady,
+          serverSpy.validateInput,
+          serverSpy.validateGasFees,
+          serverSpy.validateFees,
+          serverSpy.validateMaxNonce,
+          serverSpy.validatePaymasterReputation,
+          serverSpy.validatePaymasterGasAndDataLimits,
+          serverSpy.validateViewCallSucceeds,
+          repSpy.onRelayRequestAccepted,
+          txMgrSpy.sendTransaction,
+          serverSpy.replenishServer
+        )
+        sinon.restore()
+      })
     })
   })
 
