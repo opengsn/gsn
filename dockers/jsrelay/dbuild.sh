@@ -9,7 +9,7 @@ IMAGE=opengsn/jsrelay
 #build docker image of relay
 #rebuild if there is a newer src file:
 find ./dbuild.sh ../../packages/*/src/ -type f -newer dist/relayserver.js 2>&1 | grep . && {
-	yarn prepare
+	yarn preprocess
 	npx webpack
 }
 
