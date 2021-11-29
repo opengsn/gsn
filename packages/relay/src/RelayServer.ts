@@ -543,7 +543,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     const latestBlock = await this.contractInteractor.getBlock('latest')
     // todo remove once updating to web3 1.6.1
-    // @ts-ignore
     if (latestBlock.baseFeePerGas != null) {
       this.transactionType = TransactionType.TYPE_TWO
     }
@@ -669,12 +668,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _refreshPriorityFee (): Promise<void> {
     const minPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
-    // if (this.transactionType == TransactionType.TYPE_TWO) {
-    //   // todo remove once updating to web3 1.6.1
-    //   // @ts-ignore
-    //   const baseFee = (await this.contractInteractor.getBlock('latest')).baseFeePerGas.toString()
-    //   minPriorityFeePerGas -= parseInt(baseFee)
-    // }
     this.minPriorityFeePerGas = Math.floor(minPriorityFeePerGas * this.config.gasPriceFactor)
     if (this.minPriorityFeePerGas === 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
