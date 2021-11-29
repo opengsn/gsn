@@ -194,8 +194,9 @@ export class ContractInteractor {
     const initStartTimestamp = Date.now()
     this.logger.debug('interactor init start')
     if (this.rawTxOptions != null) {
-      throw new Error('_init was already called')
+      throw new Error('init was already called')
     }
+    await this.web3.eth.getBlockNumber().catch((e: Error) => { throw new Error(`getBlockNumber failed: ${e.message}\nCheck your internet/ethereum node connection`) })
     await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility()

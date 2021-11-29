@@ -69,6 +69,57 @@ contract('ContractInteractor', function (accounts) {
     return '0x'.padEnd(42, `${n}`)
   }
 
+  context('init()', function () {
+    it('should throw on bad node/internet connection', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      const stub = sinon.stub(contractInteractor.web3.eth, 'getBlockNumber').rejects(new Error('No block number for you'))
+      try {
+        await expect(contractInteractor.init())
+          .to.eventually.rejectedWith('No block number for you')
+      } finally {
+        stub.restore()
+      }
+    })
+    it('should complete initialization', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      const spy = sinon.spy(contractInteractor)
+      await contractInteractor.init()
+      sinon.assert.callOrder(
+        spy._resolveDeployment,
+        spy._initializeContracts,
+        spy._validateCompatibility,
+        spy._initializeNetworkParams
+      )
+      assert.exists(contractInteractor.relayHubInstance)
+      assert.exists(contractInteractor.relayHubConfiguration)
+    })
+    it('should not initialize twice', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      await contractInteractor.init().catch((e: Error) => { assert.equal(e.message, 'init was already called') })
+    })
+  })
+
   context('#validateRelayCall', () => {
     const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     it('should return relayCall revert reason', async () => {
