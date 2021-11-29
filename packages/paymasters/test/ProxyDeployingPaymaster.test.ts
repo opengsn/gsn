@@ -433,11 +433,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       assert.equal(counter1.toString(), '0')
 
       // Call counter.increment from identity
-      const { maxFeePerGas } = await relayProvider.calculateGasFees()
+      const { maxFeePerGas, maxPriorityFeePerGas } = await relayProvider.calculateGasFees()
       const tx = await proxy.methods.execute(0, counter.address, 0, encodedCall).send({
         from: senderAddress,
         gas: 5000000,
-        gasPrice: maxFeePerGas
+        maxFeePerGas,
+        maxPriorityFeePerGas
       })
 
       // Check that increment was called
@@ -449,11 +450,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     it('should pay with token to make a call if proxy is deployed', async function () {
       const counter1 = await counter.get()
       assert.equal(counter1.toString(), '1')
-      const { maxFeePerGas } = await relayProvider.calculateGasFees()
+      const { maxFeePerGas, maxPriorityFeePerGas } = await relayProvider.calculateGasFees()
       const tx = await proxy.methods.execute(0, counter.address, 0, encodedCall).send({
         from: senderAddress,
         gas: 5000000,
-        gasPrice: maxFeePerGas
+        maxFeePerGas,
+        maxPriorityFeePerGas
       })
 
       const counter2 = await counter.get()
