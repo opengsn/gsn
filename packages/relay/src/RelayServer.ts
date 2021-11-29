@@ -170,6 +170,12 @@ export class RelayServer extends EventEmitter {
     return statsResponse
   }
 
+  validateRequestTxType (req: RelayTransactionRequest): void {
+    if (this.transactionType === TransactionType.LEGACY && req.relayRequest.relayData.maxFeePerGas !== req.relayRequest.relayData.maxPriorityFeePerGas) {
+      throw new Error(`Network ${this.contractInteractor.getNetworkType()} doesn't support eip1559`)
+    }
+  }
+
   validateInput (req: RelayTransactionRequest, currentBlockNumber: number): void {
     // Check that the relayHub is the correct one
     if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
@@ -382,9 +388,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (!this.isReady()) {
       throw new Error('relay not ready')
     }
-    if (this.transactionType === TransactionType.LEGACY && req.relayRequest.relayData.maxFeePerGas !== req.relayRequest.relayData.maxPriorityFeePerGas) {
-      throw new Error(`Network ${this.contractInteractor.getNetworkType()} doesn't support eip1559`)
-    }
+    this.validateRequestTxType(req)
     if (this.alerted) {
       this.logger.error('Alerted state: slowing down traffic')
       await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))

@@ -259,6 +259,19 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
+      it('should fail to relay legacy tx with maxPriorityFeePerGas != maxFeePerGas', async function () {
+        const req = await env.createRelayHttpRequest({ maxFeePerGas: toHex(1e9), maxPriorityFeePerGas: toHex(1e10) })
+        try {
+          env.relayServer.transactionType = TransactionType.LEGACY
+          env.relayServer.validateRequestTxType(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Network ${env.relayServer.contractInteractor.getNetworkType()} doesn't support eip1559`)
+        }
+      })
+
       it('should fail to relay with wrong hub address', async function () {
         const wrongHubAddress = '0xdeadface'
         const req = await env.createRelayHttpRequest()
@@ -544,6 +557,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
         sinon.assert.callOrder(
           serverSpy.isReady,
+          serverSpy.validateRequestTxType,
           serverSpy.validateInput,
           serverSpy.validateGasFees,
           serverSpy.validateFees,
@@ -573,6 +587,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
         sinon.assert.callOrder(
           serverSpy.isReady,
+          serverSpy.validateRequestTxType,
           serverSpy.validateInput,
           serverSpy.validateGasFees,
           serverSpy.validateFees,
