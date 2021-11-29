@@ -20,6 +20,14 @@ import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { ether } from '@opengsn/common'
 import Web3 from 'web3'
 
+const TestRecipient = artifacts.require('TestRecipient')
+const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const TestPaymasterPreconfiguredApproval = artifacts.require('TestPaymasterPreconfiguredApproval')
+
+const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
+const Forwarder = artifacts.require('Forwarder')
+
 const options = [
   {
     title: 'Direct-',
@@ -38,13 +46,6 @@ const options = [
 ]
 
 options.forEach(params => {
-  const TestRecipient = artifacts.require('TestRecipient')
-  const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
-  const TestPaymasterPreconfiguredApproval = artifacts.require('TestPaymasterPreconfiguredApproval')
-
-  const StakeManager = artifacts.require('StakeManager')
-  const Penalizer = artifacts.require('Penalizer')
-  const Forwarder = artifacts.require('Forwarder')
   contract(params.title + 'Flow', function (accounts) {
     let from: Address
     let sr: TestRecipientInstance
