@@ -378,7 +378,7 @@ contract('ContractInteractor', function (accounts) {
     })
   })
 
-  context.skip('#LightTruffleContract', () => {
+  context('#LightTruffleContract', () => {
     let contractInteractor: ContractInteractor
     let relayReg: RelayRegistrarInstance
     let lightreg: IRelayRegistrarInstance
