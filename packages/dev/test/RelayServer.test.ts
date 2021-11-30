@@ -8,7 +8,7 @@ import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { RelayServer, TransactionType } from '@opengsn/relay/dist/RelayServer'
+import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { SendTransactionDetails, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
@@ -22,6 +22,7 @@ import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 

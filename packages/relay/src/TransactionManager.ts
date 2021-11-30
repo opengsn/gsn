@@ -16,8 +16,8 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 import { constants } from '@opengsn/common/dist/Constants'
 import { GasPriceFetcher } from './GasPriceFetcher'
-import { TransactionType } from './RelayServer'
 import { toBN } from 'web3-utils'
+import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString

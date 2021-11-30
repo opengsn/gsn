@@ -34,6 +34,7 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 import Timeout = NodeJS.Timeout
 
 /**
@@ -49,11 +50,6 @@ const GAS_FACTOR = 1.1
  * A constant oversupply of gas to each 'relayCall' transaction.
  */
 const GAS_RESERVE = 100000
-
-export enum TransactionType {
-  LEGACY,
-  TYPE_TWO = 2
-}
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface

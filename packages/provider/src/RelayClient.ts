@@ -11,7 +11,7 @@ import { AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { decodeRevertReason } from '@opengsn/common/dist/Utils'
+import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -34,7 +34,6 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
-import { removeNullValues } from '@opengsn/common'
 import { toBN, toHex } from 'web3-utils'
 
 // forwarder requests are signed with expiration time.

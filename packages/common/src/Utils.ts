@@ -50,7 +50,7 @@ export function address2topic (address: string): string {
   return '0x' + '0'.repeat(24) + address.toLowerCase().slice(2)
 }
 
-// This coversion is only needed since WS provider returns error as false instead of null/undefined in (error,result)
+// This conversion is needed since WS provider returns error as false instead of null/undefined in (error,result)
 export function errorAsBoolean (err: any): boolean {
   return err as boolean
 }

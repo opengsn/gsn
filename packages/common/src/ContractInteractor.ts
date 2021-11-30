@@ -24,7 +24,8 @@ import { LoggerInterface } from './LoggerInterface'
 import {
   address2topic,
   calculateCalldataBytesZeroNonzero,
-  decodeRevertReason, errorAsBoolean,
+  decodeRevertReason,
+  errorAsBoolean,
   event2topic,
   PaymasterGasAndDataLimits
 } from './Utils'
@@ -34,7 +35,8 @@ import {
   IPaymasterInstance,
   IPenalizerInstance,
   IRelayHubInstance,
-  IRelayRecipientInstance, IRelayRegistrarInstance,
+  IRelayRecipientInstance,
+  IRelayRegistrarInstance,
   IStakeManagerInstance,
   IVersionRegistryInstance
 } from '@opengsn/contracts/types/truffle-contracts'
@@ -48,17 +50,20 @@ import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import {
   ActiveManagerEvents,
-  HubUnauthorized, RelayRegisteredEventInfo,
+  HubUnauthorized,
+  RelayRegisteredEventInfo,
   RelayServerRegistered,
   RelayWorkersAdded,
-  StakeInfo, StakePenalized, StakeUnlocked
+  StakeInfo,
+  StakePenalized,
+  StakeUnlocked
 } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
-
+import { TransactionType } from './types/TransactionType'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -121,6 +126,7 @@ export class ContractInteractor {
   private networkType?: string
   private paymasterVersion?: SemVerString
   readonly environment: Environment
+  transactionType: TransactionType = TransactionType.LEGACY
 
   constructor (
     {
@@ -196,7 +202,10 @@ export class ContractInteractor {
     if (this.rawTxOptions != null) {
       throw new Error('init was already called')
     }
-    await this.web3.eth.getBlockNumber().catch((e: Error) => { throw new Error(`getBlockNumber failed: ${e.message}\nCheck your internet/ethereum node connection`) })
+    const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
+    if (block.baseFeePerGas != null) {
+      this.transactionType = TransactionType.TYPE_TWO
+    }
     await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility()
@@ -368,6 +377,17 @@ export class ContractInteractor {
     return latestBlock.gasLimit
   }
 
+  _fixGasFees (relayRequest: RelayRequest): { gasPrice?: string, maxFeePerGas?: string, maxPriorityFeePerGas?: string } {
+    if (this.transactionType === TransactionType.LEGACY) {
+      return { gasPrice: toHex(relayRequest.relayData.maxFeePerGas) }
+    } else {
+      return {
+        maxFeePerGas: toHex(relayRequest.relayData.maxFeePerGas),
+        maxPriorityFeePerGas: toHex(relayRequest.relayData.maxPriorityFeePerGas)
+      }
+    }
+  }
+
   /**
    * make a view call to relayCall(), just like the way it will be called by the relayer.
    * returns:
@@ -385,6 +405,7 @@ export class ContractInteractor {
     try {
       const encodedRelayCall = this.encodeABI(relayCallABIData)
       const res: string = await new Promise((resolve, reject) => {
+        const gasFees = this._fixGasFees(relayCallABIData.relayRequest)
         const rpcPayload = {
           jsonrpc: '2.0',
           id: 1,
@@ -393,10 +414,9 @@ export class ContractInteractor {
             {
               from: relayCallABIData.relayRequest.relayData.relayWorker,
               to: relayHub.address,
-              // TODO fix gasPrice
-              gasPrice: toHex(relayCallABIData.relayRequest.relayData.maxFeePerGas),
               gas: toHex(viewCallGasLimit),
-              data: encodedRelayCall
+              data: encodedRelayCall,
+              ...gasFees
             },
             'latest'
           ]
