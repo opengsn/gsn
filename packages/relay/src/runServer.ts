@@ -23,7 +23,22 @@ import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './pe
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
-import { Environment, EnvironmentsKeys, gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
+import {
+  Environment,
+  EnvironmentsKeys,
+  GSNBatchingContractsDeployment,
+  gsnRequiredVersion,
+  gsnRuntimeVersion,
+  VersionsManager
+} from '@opengsn/common'
+import { BLSVerifierInteractor } from '@opengsn/common/dist/bls/BLSVerifierInteractor'
+import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { ObjectMap } from '@opengsn/common/dist/types/Aliases'
+import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
+import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
+import { BatchManager } from './BatchManager'
+import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 
 function error (err: string): never {
   console.error(err)
@@ -140,7 +155,9 @@ async function run (): Promise<void> {
   console.log('Creating managers...\n')
   const managerKeyManager = new KeyManager(1, workdir + '/manager')
   const workersKeyManager = new KeyManager(1, workdir + '/workers')
-  const txStoreManager = new TxStoreManager({ workdir, autoCompactionInterval: config.dbAutoCompactionInterval }, logger)
+  const txStoreManager = new TxStoreManager({
+    workdir, autoCompactionInterval: config.dbAutoCompactionInterval
+  }, logger)
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
@@ -190,6 +207,55 @@ async function run (): Promise<void> {
     console.log('Running Penalizer: initializing penalizer service...\n')
     await penalizerService.init()
   }
+
+  let batchManager: BatchManager | undefined
+  if (config.runBatching) {
+    const batchingContractsDeployment: GSNBatchingContractsDeployment = {
+      batchGateway: config.batchGatewayAddress,
+      batchGatewayCacheDecoder: config.batchGatewayCacheDecoderAddress,
+      authorizationsRegistrar: config.authorizationsRegistrarAddress
+    }
+    const blsVerifierInteractor = new BLSVerifierInteractor({
+      provider: web3provider,
+      blsVerifierContractAddress: config.blsVerifierContractAddress
+    })
+    const blsTypedDataSigner = new BLSTypedDataSigner({})
+    const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
+    calldataCacheDecoderInteractors[config.batchTargetAddress.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
+      provider: web3provider,
+      erc20CacheDecoderAddress: config.calldataCacheDecoder
+    })
+    const cachingGasConstants: CachingGasConstants = {
+      authorizationCalldataBytesLength: 1,
+      authorizationStorageSlots: 1,
+      gasPerSlotL2: 1
+    }
+    const cacheDecoderInteractor = new CacheDecoderInteractor({
+      provider: web3provider,
+      batchingContractsDeployment,
+      contractInteractor,
+      calldataCacheDecoderInteractors,
+      cachingGasConstants
+    })
+    const authorizationsRegistrarInteractor = new BLSAddressAuthorizationsRegistrarInteractor({
+      provider: web3provider,
+      addressAuthorizationsRegistrarAddress: config.authorizationsRegistrarAddress
+    })
+    batchManager = new BatchManager({
+      config,
+      newMinGasPrice: 0,
+      workerAddress: workersKeyManager.getAddress(0),
+      batchingContractsDeployment,
+      contractInteractor,
+      blsVerifierInteractor,
+      transactionManager,
+      blsTypedDataSigner,
+      cacheDecoderInteractor,
+      authorizationsRegistrarInteractor
+    })
+    dependencies.batchManager = batchManager
+  }
+
   console.log('Creating relay server...\n')
   const relay = new RelayServer(config, transactionManager, dependencies)
   console.log('Initializing penalizer service...\n')

@@ -24,6 +24,7 @@ export enum LoggingProviderMode {
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
+  config: string,
   ownerAddress: string
   baseRelayFee: string
   pctRelayFee: number
@@ -92,11 +93,18 @@ export interface ServerConfigParams {
   batchDurationMS: number
   batchDurationBlocks: number
   batchGasOverhead: string
-  batchGasThreshold: number
+  batchGasThreshold: string
   batchTimeThreshold: number
   batchBlocksThreshold: number
   batchDefaultCalldataCacheDecoder: string
   trustedCalldataCacheDecoders: Address[]
+  batchGatewayAddress: string
+  batchGatewayCacheDecoderAddress: string
+  authorizationsRegistrarAddress: string
+  blsVerifierContractAddress: string
+  // TODO: not viable - create API allowing RelayRequests to pass one of the supported calldata types, use calldataCD by target type!
+  batchTargetAddress: string
+  calldataCacheDecoder: string
 }
 
 export interface ServerDependencies {
@@ -112,6 +120,7 @@ export interface ServerDependencies {
 }
 
 export const serverDefaultConfiguration: ServerConfigParams = {
+  config: '',
   ownerAddress: constants.ZERO_ADDRESS,
   alertedBlockDelay: 0,
   minAlertedDelayMS: 0,
@@ -171,16 +180,23 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   batchMinimalGasLimit: '0',
   batchDurationMS: 0,
   batchDurationBlocks: 0,
-  batchGasThreshold: 0,
+  batchGasThreshold: '0',
   batchTimeThreshold: 0,
   batchBlocksThreshold: 0,
   batchDefaultCalldataCacheDecoder: '',
-  trustedCalldataCacheDecoders: []
+  trustedCalldataCacheDecoders: [],
+  batchGatewayAddress: '',
+  batchGatewayCacheDecoderAddress: '',
+  authorizationsRegistrarAddress: '',
+  blsVerifierContractAddress: '',
+  batchTargetAddress: '',
+  calldataCacheDecoder: ''
 }
 
 const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 'number' | 'boolean' | 'list' } = {
   ownerAddress: 'string',
   baseRelayFee: 'number',
+  config: 'string',
   pctRelayFee: 'number',
   url: 'string',
   port: 'number',
@@ -241,7 +257,21 @@ const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 
   batchTargetGasLimit: 'string',
   batchDurationMS: 'number',
   batchDurationBlocks: 'number',
-  batchDefaultCalldataCacheDecoder: 'string'
+  batchDefaultCalldataCacheDecoder: 'string',
+
+  batchGasOverhead: 'string',
+  batchTargetSize: 'number',
+  batchMinimalGasLimit: 'string',
+  batchGasThreshold: 'string',
+  batchTimeThreshold: 'number',
+  batchBlocksThreshold: 'number',
+  trustedCalldataCacheDecoders: 'list',
+  batchGatewayAddress: 'string',
+  batchGatewayCacheDecoderAddress: 'string',
+  authorizationsRegistrarAddress: 'string',
+  blsVerifierContractAddress: 'string',
+  batchTargetAddress: 'string',
+  calldataCacheDecoder: 'string'
 }
 
 // by default: no waiting period - use VersionRegistry entries immediately.

@@ -34,7 +34,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
   const relayRequestGasLimit = toBN(777)
   const batchTargetGasLimit = relayRequestGasLimit.muln(3).addn(5).toString()
   const batchTargetSize = 15
-  const batchGasThreshold = 6
+  const batchGasThreshold = '6'
   const batchTimeThreshold = 3
   const batchBlocksThreshold = 3
 

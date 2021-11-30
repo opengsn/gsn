@@ -54,7 +54,7 @@ export function getPublicKeySerialized (pubkey: PublicKey): PrefixedHexString[] 
  *
  */
 export class BLSTypedDataSigner {
-  readonly blsKeypair: InternalBLSKeypairType
+  readonly blsKeypair?: InternalBLSKeypairType
 
   static async newKeypair (): Promise<InternalBLSKeypairType> {
     await this.init()
@@ -148,15 +148,21 @@ export class BLSTypedDataSigner {
     setDomain('testing-evmbls')
   }
 
-  constructor (_: { keypair: InternalBLSKeypairType }) {
+  constructor (_: { keypair?: InternalBLSKeypairType }) {
     this.blsKeypair = _.keypair
   }
 
   getPublicKeySerialized (): PrefixedHexString[] {
+    if (this.blsKeypair == null) {
+      throw new Error('No BLS key')
+    }
     return getPublicKeySerialized(this.blsKeypair.pubkey)
   }
 
   getPrivateKeySerialized (): PrefixedHexString {
+    if (this.blsKeypair == null) {
+      throw new Error('No BLS key')
+    }
     return this.blsKeypair.secret.serializeToHexStr()
   }
 
@@ -193,6 +199,9 @@ export class BLSTypedDataSigner {
   }
 
   async signMessageWithBLS (message: PrefixedHexString): Promise<BN[]> {
+    if (this.blsKeypair == null) {
+      throw new Error('No BLS key')
+    }
     const {
       signature
     } = sign(message, this.blsKeypair.secret)

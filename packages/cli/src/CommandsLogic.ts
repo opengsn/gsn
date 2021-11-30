@@ -17,6 +17,12 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import VersionRegistryAbi from './compiled/VersionRegistry.json'
+import BLSBatchGateway from './compiled/BLSBatchGateway.json'
+import BatchGatewayCacheDecoder from './compiled/BatchGatewayCacheDecoder.json'
+import BLSAddressAuthorizationsRegistrar from './compiled/BLSAddressAuthorizationsRegistrar.json'
+import BLSVerifierContract from './compiled/BLSVerifierContract.json'
+import ERC20CacheDecoder from './compiled/ERC20CacheDecoder.json'
+
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
@@ -58,6 +64,27 @@ interface DeployOptions {
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
   penalizerConfiguration: PenalizerConfiguration
+}
+
+export interface BatchingDeployOptions {
+  from: Address
+  gasPrice: string
+  gasLimit: number | IntString
+  forwarderAddress: string
+  relayHubAddress: string
+  verbose?: boolean
+  skipConfirmation?: boolean
+}
+
+/**
+ * TODO: this only exists for an initial test run; verifier and erc20CD should NOT be part of what is deployed!
+ */
+export interface GSNBatchingContractsExtendedDeployment {
+  batchGateway: Address
+  batchGatewayCacheDecoder: Address
+  authorizationsRegistrar: Address
+  blsVerifierContract: Address
+  erc20CacheDecoder: Address
 }
 
 /**
@@ -409,6 +436,43 @@ export class CommandsLogic {
     await pmInstance.methods.setRelayHub(hub).send(options)
     await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send(options)
     return pmInstance
+  }
+
+  async deployBatchingContracts (deployOptions: BatchingDeployOptions): Promise<GSNBatchingContractsExtendedDeployment> {
+    ow(deployOptions, ow.object.partialShape(DeployOptionsPartialShape))
+    const options: Required<SendOptions> = {
+      from: deployOptions.from,
+      gas: deployOptions.gasLimit,
+      value: 0,
+      gasPrice: deployOptions.gasPrice
+    }
+    const batchGatewayCacheDecoderInstance = await this.getContractInstance(BatchGatewayCacheDecoder, {
+      arguments: [deployOptions.forwarderAddress]
+    }, undefined, { ...options }, deployOptions.skipConfirmation)
+
+    const authorizationsRegistrarInstance = await this.getContractInstance(BLSAddressAuthorizationsRegistrar, {
+      arguments: []
+    }, undefined, { ...options }, deployOptions.skipConfirmation)
+
+    const batchGatewayInstance = await this.getContractInstance(BLSBatchGateway, {
+      arguments: [batchGatewayCacheDecoderInstance.options.address, authorizationsRegistrarInstance.options.address, deployOptions.relayHubAddress]
+    }, undefined, { ...options }, deployOptions.skipConfirmation)
+
+    const blsVerifierInstance = await this.getContractInstance(BLSVerifierContract, {
+      arguments: []
+    }, undefined, { ...options }, deployOptions.skipConfirmation)
+
+    const erc20CacheDecoderInstance = await this.getContractInstance(ERC20CacheDecoder, {
+      arguments: []
+    }, undefined, { ...options }, deployOptions.skipConfirmation)
+
+    return {
+      batchGateway: batchGatewayInstance.options.address,
+      batchGatewayCacheDecoder: batchGatewayCacheDecoderInstance.options.address,
+      authorizationsRegistrar: authorizationsRegistrarInstance.options.address,
+      blsVerifierContract: blsVerifierInstance.options.address,
+      erc20CacheDecoder: erc20CacheDecoderInstance.options.address
+    }
   }
 
   async confirm (): Promise<void> {

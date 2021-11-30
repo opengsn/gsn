@@ -6,6 +6,7 @@ import path from 'path'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { GSNBatchingContractsExtendedDeployment } from './CommandsLogic'
 
 const cliInfuraId = '$INFURA_ID'
 export const networks = new Map<string, string>([
@@ -120,6 +121,19 @@ export function showDeployment (deploymentResult: GSNContractsDeployment, title:
   VersionRegistry: ${deploymentResult.versionRegistryAddress}
   Forwarder: ${deploymentResult.forwarderAddress}
   Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.paymasterAddress}`)
+}
+
+export function showBatchingDeployment (deploymentResult: GSNBatchingContractsExtendedDeployment, title: string | undefined): void {
+  if (title != null) {
+    console.log(title)
+  }
+  console.log(`
+BatchGateway: ${deploymentResult.batchGateway}
+BatchGatewayCacheDecoder: ${deploymentResult.batchGatewayCacheDecoder}
+AuthorizationsRegistrar: ${deploymentResult.authorizationsRegistrar}
+BLSVerifierContract: ${deploymentResult.blsVerifierContract}
+ERC20CacheDecoder: ${deploymentResult.erc20CacheDecoder}
+`)
 }
 
 export function loadDeployment (workdir: string): GSNContractsDeployment {
