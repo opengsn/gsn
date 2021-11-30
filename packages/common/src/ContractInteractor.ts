@@ -705,15 +705,7 @@ export class ContractInteractor {
   }
 
   async estimateGas (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
-    return await this.web3.eth.estimateGas({
-      from: gsnTransactionDetails.from,
-      to: gsnTransactionDetails.to,
-      value: gsnTransactionDetails.value,
-      data: gsnTransactionDetails.data,
-      gas: gsnTransactionDetails.gas,
-      maxPriorityFeePerGas: gsnTransactionDetails.maxPriorityFeePerGas != null ? parseInt(gsnTransactionDetails.maxPriorityFeePerGas) : undefined,
-      maxFeePerGas: gsnTransactionDetails.maxFeePerGas != null ? parseInt(gsnTransactionDetails.maxFeePerGas) : undefined
-    })
+    return await this.web3.eth.estimateGas(gsnTransactionDetails)
   }
 
   async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {

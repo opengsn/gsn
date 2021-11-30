@@ -670,7 +670,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       this.minPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }
     if (this.minPriorityFeePerGas > parseInt(this.config.maxGasPrice)) {
-      throw new Error(`network gas price ${this.minPriorityFeePerGas} is higher than max gas price ${this.config.maxGasPrice}`)
+      throw new Error(`network minPriorityFeePerGas ${this.minPriorityFeePerGas} is higher than config.maxGasPrice ${this.config.maxGasPrice}`)
     }
   }
 
