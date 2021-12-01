@@ -808,27 +808,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   async getFeeHistory (blockCount: number | BigNumber | BN | string, lastBlock: number | BigNumber | BN | string, rewardPercentiles: number[]): Promise<FeeHistoryResult> {
-    // web3 incorrectly converts blockCount type from prefixed hex string to number, hardhat doesn't handle that properly
-    // see https://github.com/ChainSafe/web3.js/pull/4529
-    // once it's fixed and web3 version is updated use:
-    // return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
-    return await new Promise((resolve, reject) => {
-      // @ts-ignore
-      this.web3.currentProvider.send(
-        {
-          jsonrpc: '2.0',
-          method: 'eth_feeHistory',
-          params: [blockCount, lastBlock, rewardPercentiles],
-          id: Date.now()
-        },
-        (e: Error | null | boolean, r: any) => {
-          if (errorAsBoolean(e)) {
-            reject(e)
-          } else {
-            resolve(r.result)
-          }
-        })
-    })
+    return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
   }
 
   async getMaxPriorityFee (): Promise<string> {
