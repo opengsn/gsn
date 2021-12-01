@@ -466,7 +466,6 @@ export class ContractInteractor {
 
   async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: IntString): Promise<BN> {
     const maxViewableGasLimitBN = toBN(maxViewableGasLimit)
-    // TODO fix gasPrice
     const gasPrice = toBN(relayRequest.relayData.maxFeePerGas)
     if (gasPrice.eqn(0)) {
       return maxViewableGasLimitBN
