@@ -50,6 +50,7 @@ contract('RegistrationManager', function (accounts) {
     env.newServerInstanceNoFunding({}, serverWorkdirs)
     await env.clearServerStorage()
     relayServer = env.relayServer
+    await relayServer.init()
   })
 
   // When running server before staking/funding it, or when balance gets too low

@@ -35,7 +35,6 @@ export interface ServerConfigParams {
   ethereumNodeUrl: string
   workdir: string
   checkInterval: number
-  readyTimeout: number
   devMode: boolean
   loggingProvider: LoggingProviderMode
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
@@ -122,7 +121,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
   checkInterval: 10000,
-  readyTimeout: 30000,
   devMode: false,
   loggingProvider: LoggingProviderMode.NONE,
   runPenalizer: true,
@@ -170,7 +168,6 @@ const ConfigParamsTypes = {
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',
-  readyTimeout: 'number',
   devMode: 'boolean',
   loggingProvider: 'number',
   logLevel: 'string',

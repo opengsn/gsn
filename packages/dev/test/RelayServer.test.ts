@@ -837,36 +837,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
-  describe('Function testing', function () {
-    let relayServer: RelayServer
-
-    beforeEach(function () {
-      relayServer = env.relayServer
-    })
-    it('_workerSemaphore', async function () {
-      assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false first')
-      const workerOrig = relayServer._worker
-      let shouldRun = true
-      try {
-        relayServer._worker = async function (): Promise<PrefixedHexString[]> {
-          // eslint-disable-next-line no-unmodified-loop-condition
-          while (shouldRun) {
-            await sleep(200)
-          }
-          return []
-        }
-        const latestBlock = await env.web3.eth.getBlock('latest')
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        relayServer._workerSemaphore(latestBlock.number)
-        assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
-        shouldRun = false
-        await sleep(200)
-        assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false after')
-      } finally {
-        relayServer._worker = workerOrig
-      }
-    })
-  })
   // TODO add _worker flow tests, specifically not trying to boost if balance is too low
   describe('_worker', function () {
   })
