@@ -229,28 +229,22 @@ export function getDataAndSignature (tx: TypedTransaction, chainId: number): { d
   if (tx.s == null || tx.r == null || tx.v == null) {
     throw new Error('tx signature must be defined')
   }
-  let input: List
+  const input: List = [bnToUnpaddedBuffer(tx.nonce)]
   if (!tx.supports(Capability.EIP1559FeeMarket)) {
-    input = [
-      bnToUnpaddedBuffer(tx.nonce),
-      bnToUnpaddedBuffer((tx as Transaction).gasPrice),
-      bnToUnpaddedBuffer(tx.gasLimit),
-      tx.to.toBuffer(),
-      bnToUnpaddedBuffer(tx.value),
-      tx.data
-    ]
+    input.push(
+      bnToUnpaddedBuffer((tx as Transaction).gasPrice)
+    )
   } else {
-    input = [
-      bnToUnpaddedBuffer(tx.nonce),
+    input.push(
       bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxPriorityFeePerGas),
-      bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxFeePerGas),
-      bnToUnpaddedBuffer(tx.gasLimit),
-      tx.to.toBuffer(),
-      bnToUnpaddedBuffer(tx.value),
-      tx.data
-    ]
+      bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxFeePerGas)
+    )
   }
   input.push(
+    bnToUnpaddedBuffer(tx.gasLimit),
+    tx.to.toBuffer(),
+    bnToUnpaddedBuffer(tx.value),
+    tx.data,
     toBuffer(chainId),
     unpadBuffer(toBuffer(0)),
     unpadBuffer(toBuffer(0))
