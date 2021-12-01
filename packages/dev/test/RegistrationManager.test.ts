@@ -182,7 +182,7 @@ contract('RegistrationManager', function (accounts) {
       const receipts = await newServer._worker(latestBlock.number)
       await newServer._worker(latestBlock.number + 1)
       assert.equal(newServer.lastScannedBlock, latestBlock.number + 1)
-      assert.equal(newServer.minPriorityFeePerGas, expectedGasPrice)
+      assert.equal(newServer.minMaxPriorityFeePerGas, expectedGasPrice)
       assert.equal(newServer.isReady(), true, 'relay no ready?')
       const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
       assert.deepEqual(newServer.registrationManager.stakeRequired.currentValue, oneEther)

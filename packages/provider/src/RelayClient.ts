@@ -48,9 +48,9 @@ export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHe
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
   if (
     gsnTransactionDetails.maxPriorityFeePerGas != null &&
-    parseInt(pingResponse.minPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
+    parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
   ) {
-    throw new Error(`Proposed priority gas fee: ${gsnTransactionDetails.maxPriorityFeePerGas}; relay's minPriorityFeePerGas: ${pingResponse.minPriorityFeePerGas}`)
+    throw new Error(`Proposed priority gas fee: ${gsnTransactionDetails.maxPriorityFeePerGas}; relay's minMaxPriorityFeePerGas: ${pingResponse.minMaxPriorityFeePerGas}`)
   }
 }
 
@@ -238,8 +238,8 @@ export class RelayClient {
     const pct = this.config.gasPriceFactorPercent
     const gasFees = await this.dependencies.contractInteractor.getGasFees()
     let priorityFee = Math.round(parseInt(gasFees.priorityFeePerGas) * (pct + 100) / 100)
-    if (this.config.minPriorityFeePerGas != null && priorityFee < this.config.minPriorityFeePerGas) {
-      priorityFee = this.config.minPriorityFeePerGas
+    if (this.config.minMaxPriorityFeePerGas != null && priorityFee < this.config.minMaxPriorityFeePerGas) {
+      priorityFee = this.config.minMaxPriorityFeePerGas
     }
     const maxPriorityFeePerGas = `0x${priorityFee.toString(16)}`
     let maxFeePerGas = `0x${Math.round((parseInt(gasFees.baseFeePerGas) + priorityFee) * (pct + 100) / 100).toString(16)}`

@@ -58,7 +58,7 @@ export class RelayServer extends EventEmitter {
   ready = false
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
-  minPriorityFeePerGas: number = 0
+  minMaxPriorityFeePerGas: number = 0
   _workerSemaphoreOn = false
   alerted = false
   alertedBlock: number = 0
@@ -129,8 +129,8 @@ export class RelayServer extends EventEmitter {
     this.logger.info(`Server worker  address  | ${this.workerAddress}`)
   }
 
-  getMinPriorityFeePerGas (): number {
-    return this.minPriorityFeePerGas
+  getMinMaxPriorityFeePerGas (): number {
+    return this.minMaxPriorityFeePerGas
   }
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
@@ -145,7 +145,7 @@ export class RelayServer extends EventEmitter {
       relayManagerAddress: this.managerAddress,
       relayHubAddress: this.relayHubContract?.address ?? '',
       ownerAddress: this.config.ownerAddress,
-      minPriorityFeePerGas: this.getMinPriorityFeePerGas().toString(),
+      minMaxPriorityFeePerGas: this.getMinMaxPriorityFeePerGas().toString(),
       maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
       chainId: this.chainId.toString(),
       networkId: this.networkId.toString(),
@@ -202,9 +202,9 @@ export class RelayServer extends EventEmitter {
   validateGasFees (req: RelayTransactionRequest): void {
     const requestPriorityFee = parseInt(req.relayRequest.relayData.maxPriorityFeePerGas)
     const requestMaxFee = parseInt(req.relayRequest.relayData.maxFeePerGas)
-    if (this.minPriorityFeePerGas > requestPriorityFee) {
+    if (this.minMaxPriorityFeePerGas > requestPriorityFee) {
       throw new Error(
-        `priorityFee given ${requestPriorityFee} too low : ${this.minPriorityFeePerGas}`)
+        `priorityFee given ${requestPriorityFee} too low : ${this.minMaxPriorityFeePerGas}`)
     }
     if (parseInt(this.config.maxGasPrice) < requestMaxFee) {
       throw new Error(
@@ -663,14 +663,14 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _refreshPriorityFee (): Promise<void> {
-    const minPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
-    this.minPriorityFeePerGas = Math.floor(minPriorityFeePerGas * this.config.gasPriceFactor)
-    if (this.minPriorityFeePerGas === 0) {
+    const minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
+    this.minMaxPriorityFeePerGas = Math.floor(minMaxPriorityFeePerGas * this.config.gasPriceFactor)
+    if (this.minMaxPriorityFeePerGas === 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
-      this.minPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
+      this.minMaxPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }
-    if (this.minPriorityFeePerGas > parseInt(this.config.maxGasPrice)) {
-      throw new Error(`network minPriorityFeePerGas ${this.minPriorityFeePerGas} is higher than config.maxGasPrice ${this.config.maxGasPrice}`)
+    if (this.minMaxPriorityFeePerGas > parseInt(this.config.maxGasPrice)) {
+      throw new Error(`network maxPriorityFeePerGas ${this.minMaxPriorityFeePerGas} is higher than config.maxGasPrice ${this.config.maxGasPrice}`)
     }
   }
 

@@ -221,7 +221,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
 
       it('should fail to relay with low maxPriorityFeePerGas', async function () {
-        const wrongPriorityFee = env.relayServer.minPriorityFeePerGas - 1
+        const wrongPriorityFee = env.relayServer.minMaxPriorityFeePerGas - 1
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.maxPriorityFeePerGas = wrongPriorityFee.toString()
         try {
@@ -230,7 +230,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         } catch (e) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `priorityFee given ${wrongPriorityFee} too low : ${env.relayServer.minPriorityFeePerGas}`)
+            `priorityFee given ${wrongPriorityFee} too low : ${env.relayServer.minMaxPriorityFeePerGas}`)
         }
       })
 
@@ -392,22 +392,22 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     describe('#_refreshPriorityFee()', function () {
       it('should set min gas price to network average * gas price factor', async function () {
-        env.relayServer.minPriorityFeePerGas = 0
+        env.relayServer.minMaxPriorityFeePerGas = 0
         await env.relayServer._refreshPriorityFee()
         const priorityFee = parseInt(await env.relayServer.contractInteractor.getMaxPriorityFee())
-        assert.equal(env.relayServer.minPriorityFeePerGas, env.relayServer.config.gasPriceFactor * priorityFee)
+        assert.equal(env.relayServer.minMaxPriorityFeePerGas, env.relayServer.config.gasPriceFactor * priorityFee)
       })
       it('should throw when min gas price is higher than max', async function () {
         await env.relayServer._refreshPriorityFee()
         const originalMaxPrice = env.relayServer.config.maxGasPrice
-        env.relayServer.config.maxGasPrice = (env.relayServer.minPriorityFeePerGas - 1).toString()
+        env.relayServer.config.maxGasPrice = (env.relayServer.minMaxPriorityFeePerGas - 1).toString()
         try {
           await env.relayServer._refreshPriorityFee()
           assert.fail()
         } catch (e) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message,
-            `network minPriorityFeePerGas ${env.relayServer.minPriorityFeePerGas} is higher than config.maxGasPrice ${env.relayServer.config.maxGasPrice}`)
+            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxGasPrice ${env.relayServer.config.maxGasPrice}`)
         } finally {
           env.relayServer.config.maxGasPrice = originalMaxPrice
         }
