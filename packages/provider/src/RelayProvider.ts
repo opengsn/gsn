@@ -133,7 +133,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
     let gsnTransactionDetails: GsnTransactionDetails
     try {
-      gsnTransactionDetails = this._fixGasFees({ ...payload.params[0] })
+      gsnTransactionDetails = this._fixGasFees(payload.params[0])
     } catch (e) {
       this.logger.error(e)
       callback(e)
@@ -211,7 +211,8 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     return gsnTransactionDetails?.useGSN ?? true
   }
 
-  _fixGasFees (txDetails: any): GsnTransactionDetails {
+  _fixGasFees (_txDetails: any): GsnTransactionDetails {
+    const txDetails = { ..._txDetails }
     if (txDetails.maxFeePerGas != null && txDetails.maxPriorityFeePerGas != null) {
       delete txDetails.gasPrice
       return txDetails
