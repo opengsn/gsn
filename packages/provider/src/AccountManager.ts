@@ -9,7 +9,11 @@ import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { InternalBLSKeypairType, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import {
+  InternalBLSKeypairType,
+  BLSTypedDataSigner,
+  ExternalBLSKeypairType
+} from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { ApprovalDataInterface, TypedApprovalData } from '@opengsn/common/dist/bls/TypedApprovalData'
 import { AuthorizationElement } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { toHex } from 'web3-utils'
@@ -28,13 +32,14 @@ export class AccountManager {
   private readonly web3: Web3
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
-  private blsTypedDataSigner?: BLSTypedDataSigner
+  private readonly blsTypedDataSigner: BLSTypedDataSigner
   readonly chainId: number
 
   constructor (provider: Web3ProviderBaseInterface, chainId: number, config: GSNConfig) {
     this.web3 = new Web3(provider as any)
     this.chainId = chainId
     this.config = config
+    this.blsTypedDataSigner = new BLSTypedDataSigner()
   }
 
   addAccount (privateKey: PrefixedHexString): void {
@@ -147,8 +152,26 @@ export class AccountManager {
    * Only a single BLS keypair is currently supported
    * @param keypair
    */
-  setBLSKeypair (keypair: InternalBLSKeypairType): void { // TODO: does not make sense, accept serialized keypair
-    this.blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
+  setBLSKeypair (keypair: ExternalBLSKeypairType): void {
+    // TODO: does not make sense, accept serialized keypair here!
+    this.blsTypedDataSigner.setKeypair(keypair)
+  }
+
+  _setBLSKeypairInternal (keypair: InternalBLSKeypairType): void {
+    this.blsTypedDataSigner.setKeypair(keypair)
+  }
+
+  /**
+   * Creates a new BLS keypair and initializes the {@link BLSTypedDataSigner} instance with this keypair.
+   */
+  async newBLSKeypair (): Promise<InternalBLSKeypairType> {
+    const blsTypedDataSigner = new BLSTypedDataSigner()
+    const keypair = await blsTypedDataSigner.newKeypair()
+    if (blsTypedDataSigner.blsKeypair != null) {
+      throw new Error('BLS Keypair already set!')
+    }
+    this._setBLSKeypairInternal(keypair)
+    return keypair
   }
 
   /**

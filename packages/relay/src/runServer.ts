@@ -38,7 +38,9 @@ import { ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 import { BatchManager } from './BatchManager'
-import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
+import {
+  BLSAddressAuthorizationsRegistrarInteractor
+} from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 
 function error (err: string): never {
   console.error(err)
@@ -219,11 +221,11 @@ async function run (): Promise<void> {
       provider: web3provider,
       blsVerifierContractAddress: config.blsVerifierContractAddress
     })
-    const blsTypedDataSigner = new BLSTypedDataSigner({})
+    const blsTypedDataSigner = new BLSTypedDataSigner()
     const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
     calldataCacheDecoderInteractors[config.batchTargetAddress.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
       provider: web3provider,
-      erc20CacheDecoderAddress: config.calldataCacheDecoder
+      erc20CacheDecoderAddress: config.batchDefaultCalldataCacheDecoderAddress
     })
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,

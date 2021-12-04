@@ -318,6 +318,7 @@ export function abiEncodeAuthorizationElement (authorizationElement: Authorizati
 }
 
 export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString = '0x'): PrefixedHexString {
+  const web3 = new Web3()
   const types = ['address', 'uint256', 'bytes']
   const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]
   return web3.utils.keccak256(web3.eth.abi.encodeParameters(types, parameters))

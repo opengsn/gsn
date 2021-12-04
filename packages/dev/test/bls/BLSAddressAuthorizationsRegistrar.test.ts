@@ -4,7 +4,7 @@ import { HttpProvider } from 'web3-core'
 import { configureGSN } from '../TestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { BigNumberToBN, BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { BigNumberToBN } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { g2ToBN } from '@opengsn/common/dist/bls/evmbls/mcl'
 
 const TestUtil = artifacts.require('TestUtil')
@@ -28,8 +28,7 @@ contract.only('BLSAddressAuthorizationsRegistrar', function ([from]: string[]) {
     })
     accountManager = new AccountManager(web3.currentProvider as HttpProvider, chainId, config)
 
-    const keypair = await BLSTypedDataSigner.newKeypair()
-    accountManager.setBLSKeypair(keypair)
+    const keypair = await accountManager.newBLSKeypair()
     blsPublicKey = g2ToBN(keypair.pubkey)
       .map(BigNumberToBN)
       .map((it: BN) => { return `0x${it.toString('hex')}` })

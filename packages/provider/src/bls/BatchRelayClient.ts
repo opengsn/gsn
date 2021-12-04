@@ -52,6 +52,7 @@ export class BatchRelayClient extends RelayClient {
     if (relayInfo.pingResponse.validUntil == null) {
       throw new Error('validUntil missing in PingResponse')
     }
+    // TODO: check validUntil is far enough in the future
     return relayInfo.pingResponse.validUntil
   }
 
@@ -113,11 +114,30 @@ export class BatchRelayClient extends RelayClient {
   async _sendRelayRequestToServer (relayRequestID: string, httpRequest: RelayTransactionRequest, relayInfo: RelayInfo): Promise<RelayingAttempt> {
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
-      await this.dependencies.httpClient.relayTransactionInBatch(relayInfo.relayInfo.relayUrl, httpRequest)
+      const relayRequestIDFromServer = await this.dependencies.httpClient.relayTransactionInBatch(relayInfo.relayInfo.relayUrl, httpRequest)
+      this._validateRelayRequestID(relayRequestID, relayRequestIDFromServer)
+      const blockNumber = await this.dependencies.contractInteractor.getBlockNumberRightNow()
+      this._saveTransactionDetailsForLater(relayRequestID, blockNumber, httpRequest.relayRequest.request.validUntil)
       return {}
     } catch (error) {
       return this._onRelayTransactionError(error, relayInfo, httpRequest)
     }
+  }
+
+  _validateRelayRequestID (relayRequestID: string, relayRequestIDFromServer: string): void {
+    if (relayRequestID.toLowerCase() !== relayRequestIDFromServer.toLowerCase()) {
+      throw new Error(`Returned relayRequestID ${relayRequestIDFromServer} did not match local ${relayRequestID}`)
+    }
+  }
+
+  _saveTransactionDetailsForLater (
+    relayRequestID: string,
+    submissionBlock: number,
+    validUntil: string): void {
+    this.submittedRelayRequests.set(relayRequestID, {
+      validUntil,
+      submissionBlock
+    })
   }
 
   /**

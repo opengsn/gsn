@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+// @ts-ignore
+import abiDecoder from 'abi-decoder'
 import childProcess, { ChildProcessWithoutNullStreams } from 'child_process'
 import fs from 'fs'
 import path from 'path'
@@ -20,6 +22,9 @@ import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
+const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
+const BLSBatchGateway = artifacts.require('BLSBatchGateway')
+const TestToken = artifacts.require('TestToken')
 const RelayHub = artifacts.require('RelayHub')
 
 const localhostOne = 'http://localhost:8090'
@@ -81,6 +86,36 @@ export async function startRelay (
   if (options.refreshStateTimeoutBlocks) {
     args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
   }
+  if (options.runBatching) {
+    args.push('--runBatching')
+  }
+  if (options.batchGatewayAddress) {
+    args.push('--batchGatewayAddress', options.batchGatewayAddress)
+  }
+  if (options.batchGatewayCacheDecoderAddress) {
+    args.push('--batchGatewayCacheDecoderAddress', options.batchGatewayCacheDecoderAddress)
+  }
+  if (options.authorizationsRegistrarAddress) {
+    args.push('--authorizationsRegistrarAddress', options.authorizationsRegistrarAddress)
+  }
+  if (options.blsVerifierContractAddress) {
+    args.push('--blsVerifierContractAddress', options.blsVerifierContractAddress)
+  }
+  if (options.batchTargetAddress) {
+    args.push('--batchTargetAddress', options.batchTargetAddress)
+  }
+  if (options.batchDefaultCalldataCacheDecoderAddress) {
+    args.push('--batchDefaultCalldataCacheDecoderAddress', options.batchDefaultCalldataCacheDecoderAddress)
+  }
+  if (options.batchTargetGasLimit) {
+    args.push('--batchTargetGasLimit', options.batchTargetGasLimit)
+  }
+  if (options.batchGasOverhead) {
+    args.push('--batchGasOverhead', options.batchGasOverhead)
+  }
+  if (options.batchDurationBlocks) {
+    args.push('--batchDurationBlocks', options.batchDurationBlocks)
+  }
   const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
     [runServerPath, ...args])
@@ -131,7 +166,7 @@ export async function startRelay (
   }
   assert.ok(res, 'can\'t ping server')
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  assert.ok(res.relayWorkerAddress, `server returned unknown response ${res.toString()}`)
+  assert.ok(res.relayWorkerAddress, `server returned unknown response ${JSON.stringify(res)}`)
   const relayManagerAddress = res.relayManagerAddress
   console.log('Relay Server Address', relayManagerAddress)
   // @ts-ignore
@@ -289,9 +324,22 @@ export async function emptyBalance (source: Address, target: Address): Promise<v
   const gasPrice = toBN(1e9)
   const txCost = toBN(defaultEnvironment.mintxgascost).mul(gasPrice)
   let balance = toBN(await web3.eth.getBalance(source))
-  await web3.eth.sendTransaction({ from: source, to: target, value: balance.sub(txCost), gasPrice, gas: defaultEnvironment.mintxgascost })
+  await web3.eth.sendTransaction({
+    from: source, to: target, value: balance.sub(txCost), gasPrice, gas: defaultEnvironment.mintxgascost
+  })
   balance = toBN(await web3.eth.getBalance(source))
   assert.isTrue(balance.eqn(0))
+}
+
+export function initializeAbiDecoderForBLS (): void {
+  // @ts-ignore
+  abiDecoder.addABI(BLSAddressAuthorizationsRegistrar.abi)
+  // @ts-ignore
+  abiDecoder.addABI(BLSBatchGateway.abi)
+  // @ts-ignore
+  abiDecoder.addABI(TestToken.abi)
+  // @ts-ignore
+  abiDecoder.addABI(RelayHub.abi)
 }
 
 /**

@@ -28,11 +28,14 @@ export class HttpClient {
 
   // TODO: I am not sure returning an empty string is a good idea here. What data we may need from a 'relayBatchMode'?
   async relayTransactionInBatch (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
-    const { error }: { signedTx: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relayBatchMode', request)
+    const { relayRequestID, error }: { relayRequestID: string, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay-batched', request)
     if (error != null) {
       throw new Error(`Got error response from relay: ${error}`)
     }
-    return ''
+    if (relayRequestID == null) {
+      throw new Error('body.relayRequestID field missing.')
+    }
+    return relayRequestID
   }
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {

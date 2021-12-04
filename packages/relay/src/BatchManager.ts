@@ -17,9 +17,11 @@ import { SendTransactionDetails, TransactionManager } from './TransactionManager
 import { ServerAction } from './StoredTransaction'
 import { ContractInteractor, GSNBatchingContractsDeployment, isSameAddress } from '@opengsn/common'
 import { ServerConfigParams } from './ServerConfigParams'
-import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
-import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
+import {
+  BLSAddressAuthorizationsRegistrarInteractor
+} from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 import { BLSVerifierInteractor } from '@opengsn/common/dist/bls/BLSVerifierInteractor'
+import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 
 export interface SentBatchInfo extends BatchInfo {
   originalTransactionHash: PrefixedHexString
@@ -69,8 +71,14 @@ export class BatchManager {
     this.authorizationsRegistrarInteractor = _.authorizationsRegistrarInteractor
   }
 
-  nextBatch (nextBatchId?: number): void {
-    const currentBlockNumber = 0
+  async init (): Promise<this> {
+    await this.cacheDecoderInteractor.init()
+    await this.blsTypedDataSigner.init()
+    await this.blsVerifierInteractor.init()
+    return this
+  }
+
+  nextBatch (currentBlockNumber: number, nextBatchId?: number): void {
     const id = nextBatchId ?? this.currentBatch.id + 1
     const targetBlock = currentBlockNumber + this.config.batchDurationBlocks
     const targetSubmissionTimestamp = Date.now() + this.config.batchDurationMS
@@ -78,7 +86,7 @@ export class BatchManager {
       id,
       targetSubmissionTimestamp,
       targetBlock,
-      defaultCalldataCacheDecoder: this.config.batchDefaultCalldataCacheDecoder,
+      defaultCalldataCacheDecoderAddress: this.config.batchDefaultCalldataCacheDecoderAddress,
       targetSize: this.config.batchTargetSize,
       transactions: [],
       aggregatedSignature: [],
@@ -86,10 +94,11 @@ export class BatchManager {
       targetGasLimit: toBN(this.config.batchTargetGasLimit ?? 0),
       gasPrice: toBN(this.newMinGasPrice),
       workerAddress: this.workerAddress,
-      pctRelayFee: 0,
-      baseRelayFee: 0,
+      pctRelayFee: this.config.pctRelayFee,
+      baseRelayFee: this.config.baseRelayFee,
       maxAcceptanceBudget: this.config.maxAcceptanceBudget
     }
+    this.printCurrentBlockInfo()
     this.validateCurrentBatchParameters2()
   }
 
@@ -108,7 +117,7 @@ new target :${newBatchTarget}
     this.currentBatch.targetSubmissionTimestamp = newBatchTarget
   }
 
-  private closeCurrentBatch (): void {
+  closeCurrentBatch (): void {
     this.currentBatch.isOpen = false
   }
 
@@ -185,6 +194,20 @@ new target :${newBatchTarget}
         `gasPrice given ${requestGasPrice} not equal current batch gasPrice ${this.currentBatch.gasPrice.toString()}`)
     }
 
+    const requestGasLimit = parseInt(req.relayRequest.request.gas)
+    const currentBatchGasLimit = this.getCurrentBatchGasLimit()
+    const combinedGasLimit = currentBatchGasLimit.add(toBN(requestGasLimit))
+    if (combinedGasLimit.gt(this.currentBatch.targetGasLimit)) {
+      // TODO: test; TODO: implement adding transactions to the future batches
+      throw new Error(`
+This transaction required too much gas and does not fit the current batch.
+Current batch gas     | ${currentBatchGasLimit.toString()}
+Request gas limit     | ${requestGasLimit.toString()}
+Total                 | ${combinedGasLimit.toString()}
+Batch maximum         | ${this.currentBatch.targetGasLimit.toString()}
+`)
+    }
+
     const validUntil = parseInt(req.relayRequest.request.validUntil)
     if (validUntil !== this.currentBatch.targetBlock) {
       throw new Error(
@@ -233,14 +256,14 @@ Right worker address: (${this.workerAddress})
 
     if (isCurrentBatchReady) {
       const timeMessage = `
-target time         : ${this.currentBatch.targetSubmissionTimestamp} (${new Date(this.currentBatch.targetSubmissionTimestamp).toISOString()})
-current time        : ${now} (${new Date(now).toISOString()})`
+target time         | ${this.currentBatch.targetSubmissionTimestamp} (${new Date(this.currentBatch.targetSubmissionTimestamp).toISOString()})
+current time        | ${now} (${new Date(now).toISOString()})`
       const gasLimitMessage = `
-target gas limit    : ${this.currentBatch.targetGasLimit.toString()}
-current gas limit   : ${currentBatchGasLimit.toString()}`
+target gas limit    | ${this.currentBatch.targetGasLimit.toString()}
+current gas limit   | ${currentBatchGasLimit.toString()}`
       const blockMessage = `
-target block        : ${this.currentBatch.targetBlock}
-current block       : ${blockNumber}`
+target block        | ${this.currentBatch.targetBlock}
+current block       | ${blockNumber}`
       const sizeMessage = `
 target size         : ${this.currentBatch.targetSize}
 current size        : ${this.currentBatch.transactions.length}`
@@ -287,7 +310,7 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
         serverAction: ServerAction.EXECUTE_BATCH_RELAY_CALL,
         method,
         destination: this.batchingContractsDeployment.batchGateway,
-        gasLimit: this.currentBatch.targetGasLimit.toNumber(),
+        gasLimit: this.currentBatch.targetGasLimit.add(toBN(this.config.batchGasOverhead)).toNumber(),
         creationBlockNumber: currentBlock,
         gasPrice: this.currentBatch.gasPrice.toString()
       }
@@ -295,7 +318,7 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
 
     // sends a transaction here
     this.onCurrentBatchBroadcast(transactionHash, 0, Date.now())
-    this.nextBatch()
+    this.nextBatch(currentBlock)
     return transactionHash
   }
 
@@ -328,6 +351,7 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
   }
 
   setNewMinGasPrice (newGasPrice: number): void {
+    console.log('setNewMinGasPrice', newGasPrice)
     this.newMinGasPrice = newGasPrice
   }
 
@@ -351,9 +375,13 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     if (this.isCurrentBatchReady(blockNumber)) {
       this._workerSemaphoreOn = true
       this.closeCurrentBatch()
-      this.broadcastCurrentBatch().finally(() => {
-        this._workerSemaphoreOn = false
-      })
+      this.broadcastCurrentBatch()
+        .catch(error => {
+          console.error(error)
+        })
+        .finally(() => {
+          this._workerSemaphoreOn = false
+        })
     }
   }
 
@@ -365,5 +393,16 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     // 2. batchDurationMS > > timeThreshold
     // 3. gas target < < block gas limit
     // 4. gas overhead < < gas target
+  }
+
+  private printCurrentBlockInfo (): void {
+    console.log(`
+New batch is initialized:
+Batch number       | ${this.currentBatch.id}
+Target gas         | ${this.currentBatch.targetGasLimit.toString()}
+Target size        | ${this.currentBatch.targetSize}
+Target time        | ${this.currentBatch.targetSubmissionTimestamp}
+Target block       | ${this.currentBatch.targetBlock}
+`)
   }
 }

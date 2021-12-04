@@ -95,6 +95,12 @@ const DeployOptionsPartialShape = {
   gasPrice: ow.string
 }
 
+const BatchDeployOptionsPartialShape = {
+  from: ow.string,
+  gasPrice: ow.string,
+  relayHubAddress: ow.string
+}
+
 interface RegistrationResult {
   success: boolean
   transactions?: string[]
@@ -439,7 +445,7 @@ export class CommandsLogic {
   }
 
   async deployBatchingContracts (deployOptions: BatchingDeployOptions): Promise<GSNBatchingContractsExtendedDeployment> {
-    ow(deployOptions, ow.object.partialShape(DeployOptionsPartialShape))
+    ow(deployOptions, ow.object.partialShape(BatchDeployOptionsPartialShape))
     const options: Required<SendOptions> = {
       from: deployOptions.from,
       gas: deployOptions.gasLimit,
@@ -465,6 +471,9 @@ export class CommandsLogic {
     const erc20CacheDecoderInstance = await this.getContractInstance(ERC20CacheDecoder, {
       arguments: []
     }, undefined, { ...options }, deployOptions.skipConfirmation)
+
+    const rInstance = await this.getContractInstance(RelayHub, {}, deployOptions.relayHubAddress, { ...options })
+    rInstance.methods.setBatchGateway(batchGatewayInstance.options.address)
 
     return {
       batchGateway: batchGatewayInstance.options.address,

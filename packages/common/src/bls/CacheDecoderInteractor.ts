@@ -37,7 +37,7 @@ export interface BatchInfo {
   id: number
   workerAddress: Address
   transactions: BatchRelayRequestInfo[]
-  defaultCalldataCacheDecoder: Address
+  defaultCalldataCacheDecoderAddress: Address
   aggregatedSignature: BN[]
   isOpen: boolean
   targetSize: number
@@ -46,7 +46,7 @@ export interface BatchInfo {
   targetSubmissionTimestamp: number
   gasPrice: BN
   pctRelayFee: number
-  baseRelayFee: number
+  baseRelayFee: string
   maxAcceptanceBudget: number
 }
 
@@ -204,9 +204,9 @@ export class CacheDecoderInteractor {
    * returned values are compressed values - either original value if not found in cache, or IDs if they are already cached.
    * NOTE: order matters: if multiple requests use the same to address, the first one will have the full item (to be written into cache)
    *  and the rest of the requessts will use that cache item
-   * @param relqyRequest - request to get from,to,paymaster addresses from.
+   * @param relayRequest - request to get from,to,paymaster addresses from.
    * @return senderAsIds/targetAsIds/paymasterAsIds - arrays of all addresses or ids, ready to be encoded
-   * @return slotsWritten how manys lot updates were needed to cache these values.
+   * @return slotsWritten how many slot updates were needed to cache these values.
    */
   async compressAddressesToIds (froms: Address[], tos: Address[], paymasters: Address[], cacheDecoders: Address[]): Promise<BatchAddressesCachingResult> {
     const ret = await this.batchGatewayCacheDecoder.convertWordsToIds([
@@ -271,7 +271,7 @@ export class CacheDecoderInteractor {
     const baseRelayFee: BN = toBN(batchInfo.baseRelayFee)
     const maxAcceptanceBudget: BN = toBN(batchInfo.maxAcceptanceBudget)
 
-    const addressesCompressed = await this.compressAddressesToIds([batchInfo.workerAddress], [], [], [batchInfo.defaultCalldataCacheDecoder])
+    const addressesCompressed = await this.compressAddressesToIds([batchInfo.workerAddress], [], [], [batchInfo.defaultCalldataCacheDecoderAddress])
 
     const authorizations: AuthorizationElement[] =
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -284,9 +284,9 @@ export class CacheDecoderInteractor {
       pctRelayFee,
       baseRelayFee,
       maxAcceptanceBudget,
-      defaultCalldataCacheDecoder: addressesCompressed.cacheDecoders[0],
+      defaultCalldataCacheDecoderAddress: addressesCompressed.cacheDecoders[0],
       relayWorker: addressesCompressed.senderAsIds[0], // TODO: same cache as senders?
-      blsSignature: batchInfo.aggregatedSignature,
+      blsSignature: batchInfo.aggregatedSignature.slice(0, 2),
       authorizations,
       relayRequestElements
     }
@@ -319,7 +319,7 @@ export interface RLPBatchCompressedInput {
   pctRelayFee: BN
   baseRelayFee: BN
   maxAcceptanceBudget: BN
-  defaultCalldataCacheDecoder: BN
+  defaultCalldataCacheDecoderAddress: BN
   blsSignature: BN[]
   authorizations: AuthorizationElement[]
   relayRequestElements: RelayRequestElement[]
@@ -365,7 +365,7 @@ export function encodeBatch (
     input.baseRelayFee,
     input.maxAcceptanceBudget,
     input.relayWorker,
-    input.defaultCalldataCacheDecoder,
+    input.defaultCalldataCacheDecoderAddress,
     input.blsSignature[0],
     input.blsSignature[1],
     batchItems,

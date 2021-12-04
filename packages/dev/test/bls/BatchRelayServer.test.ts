@@ -7,7 +7,7 @@ import { GSNConfig } from '@opengsn/provider'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
-import { revert, snapshot } from '../TestUtils'
+import { initializeAbiDecoderForBLS, revert, snapshot } from '../TestUtils'
 import {
   CacheDecoderInteractor,
   CachingGasConstants
@@ -16,25 +16,12 @@ import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { createRelayRequestAndAuthorization } from './BLSBatchGateway.test'
 import { ContractInteractor } from '@opengsn/common'
 
-const BLSAddressAuthorizationsRegistrar = artifacts.require('BLSAddressAuthorizationsRegistrar')
-const BLSBatchGateway = artifacts.require('BLSBatchGateway')
-const TestToken = artifacts.require('TestToken')
-const RelayHub = artifacts.require('RelayHub')
-
-// @ts-ignore
-abiDecoder.addABI(BLSAddressAuthorizationsRegistrar.abi)
-// @ts-ignore
-abiDecoder.addABI(BLSBatchGateway.abi)
-// @ts-ignore
-abiDecoder.addABI(TestToken.abi)
-// @ts-ignore
-abiDecoder.addABI(RelayHub.abi)
-
 contract.only('BatchRelayServer integration test', function (accounts: Truffle.Accounts) {
   let globalId: string
   let env: ServerTestEnvironment
 
   before(async function () {
+    initializeAbiDecoderForBLS()
     globalId = (await snapshot()).result
     const relayClientConfig: Partial<GSNConfig> = {}
 
@@ -46,7 +33,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
       batchTargetGasLimit: '10000000',
       batchDurationMS: 120000,
       batchDurationBlocks: 1000,
-      batchDefaultCalldataCacheDecoder: env.erc20CacheDecoder.address
+      batchDefaultCalldataCacheDecoderAddress: env.erc20CacheDecoder.address
     })
     await env.clearServerStorage()
   })
@@ -61,7 +48,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
     let req: RelayTransactionRequest
 
     before(async function () {
-      env.relayServer.batchManager?.nextBatch(0)
+      env.relayServer.batchManager?.nextBatch(0, 0)
 
       const relayRequest: RelayRequest = {
         request: {

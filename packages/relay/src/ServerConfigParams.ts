@@ -24,7 +24,7 @@ export enum LoggingProviderMode {
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
-  config: string,
+  config: string
   ownerAddress: string
   baseRelayFee: string
   pctRelayFee: number
@@ -96,7 +96,7 @@ export interface ServerConfigParams {
   batchGasThreshold: string
   batchTimeThreshold: number
   batchBlocksThreshold: number
-  batchDefaultCalldataCacheDecoder: string
+  batchDefaultCalldataCacheDecoderAddress: string
   trustedCalldataCacheDecoders: Address[]
   batchGatewayAddress: string
   batchGatewayCacheDecoderAddress: string
@@ -104,7 +104,6 @@ export interface ServerConfigParams {
   blsVerifierContractAddress: string
   // TODO: not viable - create API allowing RelayRequests to pass one of the supported calldata types, use calldataCD by target type!
   batchTargetAddress: string
-  calldataCacheDecoder: string
 }
 
 export interface ServerDependencies {
@@ -183,14 +182,13 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   batchGasThreshold: '0',
   batchTimeThreshold: 0,
   batchBlocksThreshold: 0,
-  batchDefaultCalldataCacheDecoder: '',
+  batchDefaultCalldataCacheDecoderAddress: '',
   trustedCalldataCacheDecoders: [],
   batchGatewayAddress: '',
   batchGatewayCacheDecoderAddress: '',
   authorizationsRegistrarAddress: '',
   blsVerifierContractAddress: '',
-  batchTargetAddress: '',
-  calldataCacheDecoder: ''
+  batchTargetAddress: ''
 }
 
 const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 'number' | 'boolean' | 'list' } = {
@@ -257,7 +255,7 @@ const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 
   batchTargetGasLimit: 'string',
   batchDurationMS: 'number',
   batchDurationBlocks: 'number',
-  batchDefaultCalldataCacheDecoder: 'string',
+  batchDefaultCalldataCacheDecoderAddress: 'string',
 
   batchGasOverhead: 'string',
   batchTargetSize: 'number',
@@ -270,8 +268,7 @@ const ConfigParamsTypes: { [k in keyof ServerConfigParams | string]: 'string' | 
   batchGatewayCacheDecoderAddress: 'string',
   authorizationsRegistrarAddress: 'string',
   blsVerifierContractAddress: 'string',
-  batchTargetAddress: 'string',
-  calldataCacheDecoder: 'string'
+  batchTargetAddress: 'string'
 }
 
 // by default: no waiting period - use VersionRegistry entries immediately.

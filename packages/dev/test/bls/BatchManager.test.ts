@@ -14,7 +14,9 @@ import {
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { stubBatchInput } from '../ServerTestEnvironment'
-import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
+import {
+  BLSAddressAuthorizationsRegistrarInteractor
+} from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 import { BLSVerifierInteractor } from '@opengsn/common/dist/bls/BLSVerifierInteractor'
 
 const { expect, assert } = chai.use(chaiAsPromised)
@@ -101,7 +103,7 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
       const nextBatchId = 7
 
       assert.isUndefined(batchManager.currentBatch)
-      await batchManager.nextBatch(nextBatchId)
+      await batchManager.nextBatch(0, nextBatchId)
 
       assert.equal(batchManager.currentBatch.id, nextBatchId)
       assert.equal(batchManager.currentBatch.transactions.length, 0)
@@ -166,8 +168,8 @@ contract.only('BatchManager', function ([authorizer]: string[]) {
     })
 
     it('should return true when current batch is nearing the target block', function () {
-      assert.isFalse(batchManager.isCurrentBatchReady(96))
-      assert.isTrue(batchManager.isCurrentBatchReady(97))
+      assert.isFalse(batchManager.isCurrentBatchReady(batchManager.currentBatch.targetBlock - 4))
+      assert.isTrue(batchManager.isCurrentBatchReady(batchManager.currentBatch.targetBlock - 3))
     })
 
     it('should return true when current batch is nearing the target transactions count', function () {

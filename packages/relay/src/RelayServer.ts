@@ -143,6 +143,10 @@ export class RelayServer extends EventEmitter {
         throw new Error(`This paymaster will not be served, status: ${status}`)
       }
     }
+    const batchInfo: any = {}
+    if (this.batchManager != null) {
+      batchInfo.validUntil = this.batchManager.currentBatch?.targetBlock.toString()
+    }
     return {
       relayWorkerAddress: this.workerAddress,
       relayManagerAddress: this.managerAddress,
@@ -153,7 +157,8 @@ export class RelayServer extends EventEmitter {
       chainId: this.chainId.toString(),
       networkId: this.networkId.toString(),
       ready: this.isReady() ?? false,
-      version: gsnRuntimeVersion
+      version: gsnRuntimeVersion,
+      ...batchInfo
     }
   }
 
@@ -545,6 +550,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 `)
     this.initialized = true
 
+    await this.batchManager?.init()
     // Assume started server is not registered until _worker figures stuff out
     this.registrationManager.printNotRegisteredMessage()
     this.logger.debug(`server init finished in ${Date.now() - initStartTimestamp} ms`)
@@ -671,6 +677,11 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.alerted && this.alertedBlock + this.config.alertedBlockDelay < currentBlockNumber) {
       this.logger.warn(`Relay exited alerted state. Alerted block: ${this.alertedBlock}. Current block number: ${currentBlockNumber}`)
       this.alerted = false
+    }
+    // TODO: this is not the most optimal place to initialize first batch
+    if (this.ready && this.batchManager?.currentBatch == null) {
+      const nextBatchId = 0 // TODO: continuous count
+      this.batchManager?.nextBatch(currentBlockNumber, nextBatchId)
     }
     return transactionHashes
   }
@@ -867,7 +878,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
 
     this.validateFeesExact(req)
-    await this.validateViewCallSucceedsBatch(req, this.config.maxAcceptanceBudget, parseInt(this.config.batchTargetGasLimit))
+    await this.validateViewCallSucceedsBatch(req, this.config.maxAcceptanceBudget, parseInt(this.config.batchTargetGasLimit) + parseInt(this.config.batchGasOverhead))
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.onRelayRequestAccepted(req.relayRequest.relayData.paymaster)
     }

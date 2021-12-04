@@ -381,8 +381,6 @@ export class RelayClient {
   async _sendRelayRequestToServer (relayRequestID: string, httpRequest: RelayTransactionRequest, relayInfo: RelayInfo): Promise<RelayingAttempt> {
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
-      const blockNumber = await this.dependencies.contractInteractor.getBlockNumberRightNow()
-      this._saveTransactionDetailsForLater(relayRequestID, blockNumber, httpRequest.relayRequest.request.validUntil)
       const hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
       const transaction = Transaction.fromSerializedTx(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
       return {
@@ -392,16 +390,6 @@ export class RelayClient {
     } catch (error) {
       return this._onRelayTransactionError(error, relayInfo, httpRequest)
     }
-  }
-
-  _saveTransactionDetailsForLater (
-    relayRequestID: string,
-    submissionBlock: number,
-    validUntil: string): void {
-    this.submittedRelayRequests.set(relayRequestID, {
-      validUntil,
-      submissionBlock
-    })
   }
 
   _onRelayTransactionError (error: Error, relayInfo: RelayInfo, httpRequest: RelayTransactionRequest): { error: Error } {

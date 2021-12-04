@@ -14,16 +14,41 @@ import {
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 
 import { BaseTransactionReceipt, JsonRpcCallback, RelayProvider } from '../RelayProvider'
-import { _dumpRelayingResult, RelayClient, RelayingResult, SubmittedRelayRequestInfo } from '../RelayClient'
-import { removeHexPrefix } from '@opengsn/common'
+import {
+  _dumpRelayingResult,
+  GSNUnresolvedConstructorInput,
+  RelayClient,
+  RelayingResult,
+  SubmittedRelayRequestInfo
+} from '../RelayClient'
+import { GSNBatchingContractsDeployment, removeHexPrefix } from '@opengsn/common'
+import { BatchRelayClient } from './BatchRelayClient'
+import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { ExternalBLSKeypairType, InternalBLSKeypairType } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 
 export class BatchRelayProvider extends RelayProvider {
   web3: Web3
+
+  static newBatchingProvider (
+    input: GSNUnresolvedConstructorInput,
+    batchingContractsDeployment: GSNBatchingContractsDeployment,
+    cacheDecoderInteractor: CacheDecoderInteractor
+  ): BatchRelayProvider {
+    return new BatchRelayProvider(new BatchRelayClient(input, batchingContractsDeployment, cacheDecoderInteractor))
+  }
 
   constructor (relayClient: RelayClient) {
     super(relayClient)
     this.web3 = new Web3(relayClient.getUnderlyingProvider() as HttpProvider)
     abiDecoder.addABI(RelayHubABI)
+  }
+
+  async newBLSKeypair (): Promise<InternalBLSKeypairType> {
+    return await this.relayClient.dependencies.accountManager.newBLSKeypair()
+  }
+
+  setBLSKeypair (keypair: ExternalBLSKeypairType): void {
+    return this.relayClient.dependencies.accountManager.setBLSKeypair(keypair)
   }
 
   async _onRelayTransactionFulfilled (relayingResult: RelayingResult, payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
@@ -124,11 +149,11 @@ export class BatchRelayProvider extends RelayProvider {
    * @param batchTransactionReceipt - the receipt containing all events emitted during the batch execution
    */
   _translateBatchReceiptToTransactionReceipt (
-  // TODO: horrible code; due to 'decodeLogs' losing logIndex, need multiple different iterators; refactor or modify the decodeLogs
+    // TODO: horrible code; due to 'decodeLogs' losing logIndex, need multiple different iterators; refactor or modify the decodeLogs
     relayRequestID: string,
     batchTransactionReceipt: TransactionReceipt
   ): TransactionReceipt {
-    const decodedHubLogs = abiDecoder.decodeLogs(batchTransactionReceipt.logs)
+    const decodedHubLogs = abiDecoder.decodeLogs(batchTransactionReceipt.logs).filter((it: any) => [TransactionRelayed, TransactionRejectedByPaymaster].includes(it.name))
     const methodIDs = abiDecoder.getMethodIDs()
     const hubEventsIndexes = batchTransactionReceipt.logs
       .filter(
@@ -143,11 +168,11 @@ export class BatchRelayProvider extends RelayProvider {
     for (let i = batchTransactionReceipt.logs.length - 1; i >= 0; i--) {
       const rawEvent = batchTransactionReceipt.logs[i]
       if (rawEvent.logIndex === hubEventsIndexes[j]) {
-        if (decodedHubLogs[j].events.find((it: any) => it.name === 'relayRequestID').value === relayRequestID) {
+        if (decodedHubLogs[j].events.find((it: any) => it.name === 'relayRequestID')?.value === relayRequestID) {
           isInRange = true
           j--
           continue
-        } else if (decodedHubLogs[j].events.find((it: any) => it.name === 'relayRequestID').value !== relayRequestID && isInRange) {
+        } else if (decodedHubLogs[j].events.find((it: any) => it.name === 'relayRequestID')?.value !== relayRequestID && isInRange) {
           break
         }
         j--
@@ -156,7 +181,7 @@ export class BatchRelayProvider extends RelayProvider {
         eventsForCurrentRelayRequestId.push(rawEvent)
       }
     }
-    return Object.assign({}, batchTransactionReceipt, { logs: eventsForCurrentRelayRequestId.reverse() })
+    return Object.assign({}, batchTransactionReceipt, { logs: eventsForCurrentRelayRequestId.reverse(), status: '0x1' })
   }
 
   _createTransactionRevertedReceipt (): TransactionReceipt {

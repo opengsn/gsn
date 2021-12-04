@@ -45,8 +45,9 @@ contract.only('BLSTypedDataSigner', function ([address]: string[]) {
 
   context('#signRelayRequestBLS()', function () {
     it('should sign RelayRequest correctly', async function () {
-      const keypair = await BLSTypedDataSigner.newKeypair()
-      const blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
+      const blsTypedDataSigner = new BLSTypedDataSigner()
+      const keypair = await blsTypedDataSigner.newKeypair()
+      blsTypedDataSigner.setKeypair(keypair)
       const pubkey = blsTypedDataSigner.getPublicKeySerialized()
       const signature = await blsTypedDataSigner.signRelayRequestBLS(relayRequest)
       const blsPointMessage = await blsTypedDataSigner.relayRequestToG1Point(relayRequest)
@@ -59,12 +60,17 @@ contract.only('BLSTypedDataSigner', function ([address]: string[]) {
 
   context('#aggregateSignatures()', function () {
     it('should aggregate multiple signatures into a single valid one', async function () {
-      const keypair1 = await BLSTypedDataSigner.newKeypair()
-      const keypair2 = await BLSTypedDataSigner.newKeypair()
-      const keypair3 = await BLSTypedDataSigner.newKeypair()
-      const blsTypedDataSigner1 = new BLSTypedDataSigner({ keypair: keypair1 })
-      const blsTypedDataSigner2 = new BLSTypedDataSigner({ keypair: keypair2 })
-      const blsTypedDataSigner3 = new BLSTypedDataSigner({ keypair: keypair3 })
+      const blsTypedDataSigner1 = new BLSTypedDataSigner()
+      const blsTypedDataSigner2 = new BLSTypedDataSigner()
+      const blsTypedDataSigner3 = new BLSTypedDataSigner()
+
+      const keypair1 = await blsTypedDataSigner1.newKeypair()
+      const keypair2 = await blsTypedDataSigner2.newKeypair()
+      const keypair3 = await blsTypedDataSigner3.newKeypair()
+
+      blsTypedDataSigner1.setKeypair(keypair1)
+      blsTypedDataSigner2.setKeypair(keypair2)
+      blsTypedDataSigner3.setKeypair(keypair3)
 
       const relayRequest2 = cloneRelayRequest(relayRequest, { request: { data: '0xdeadc0de' } })
       const relayRequest3 = cloneRelayRequest(relayRequest, { request: { data: '0xdecafbad' } })
@@ -94,8 +100,8 @@ contract.only('BLSTypedDataSigner', function ([address]: string[]) {
 
   context('#deserializeHexStringKeypair()', function () {
     it('should convert hex strings of public, private keys into a valid MCL G2 object', async function () {
-      const keypair = await BLSTypedDataSigner.newKeypair()
-      const blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
+      const blsTypedDataSigner = new BLSTypedDataSigner()
+      await blsTypedDataSigner.newKeypair()
       const privateKeySerialized = '495fcacda7aa8ddaf59f3c81eae6a66a2abc935a8d405a0cbcad20c57c89670b'
       const publicKey0Serialized = '1696d393da25ffbb2b0b8061ed6cfb5de57186a5df5e032cb3cc08593da203c3'
       const deserializedKeypair = blsTypedDataSigner.deserializeHexStringKeypair(privateKeySerialized)

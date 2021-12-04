@@ -54,9 +54,9 @@ export function getPublicKeySerialized (pubkey: PublicKey): PrefixedHexString[] 
  *
  */
 export class BLSTypedDataSigner {
-  readonly blsKeypair?: InternalBLSKeypairType
+  blsKeypair?: InternalBLSKeypairType
 
-  static async newKeypair (): Promise<InternalBLSKeypairType> {
+  async newKeypair (): Promise<InternalBLSKeypairType> {
     await this.init()
     return newKeyPair()
   }
@@ -142,14 +142,14 @@ export class BLSTypedDataSigner {
     return p
   }
 
-  private static async init (): Promise<void> {
+  async init (): Promise<void> {
     await init()
     setMappingMode(MAPPING_MODE_TI)
     setDomain('testing-evmbls')
   }
 
-  constructor (_: { keypair?: InternalBLSKeypairType }) {
-    this.blsKeypair = _.keypair
+  setKeypair (blsKeypair: InternalBLSKeypairType): void {
+    this.blsKeypair = blsKeypair
   }
 
   getPublicKeySerialized (): PrefixedHexString[] {

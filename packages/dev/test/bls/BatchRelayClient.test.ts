@@ -1,7 +1,6 @@
 import { HttpProvider } from 'web3-core'
 import sinon, { SinonStub } from 'sinon'
 
-import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { BatchRelayClient } from '@opengsn/provider/dist/bls/BatchRelayClient'
 import {
   CacheDecoderInteractor,
@@ -120,11 +119,10 @@ contract.only('BatchRelayClient', function ([from]: string[]) {
     sinon.stub(batchClient, '_validateRequestBeforeSending').onFirstCall().returns(Promise.resolve({}))
     // TODO: should return some kind of JSON API response
     spyOnRelayTransactionInBatch =
-      sinon.stub(batchClient.dependencies.httpClient, 'relayTransactionInBatch').onFirstCall().returns(Promise.resolve('ok'))
+      sinon.stub(batchClient.dependencies.httpClient, 'relayTransactionInBatch')
+        .onFirstCall().returns(Promise.resolve('0xdeadbeef'))
 
-    // TODO: discuss how this API should be exposed
-    const keypair = await BLSTypedDataSigner.newKeypair()
-    batchClient.dependencies.accountManager.setBLSKeypair(keypair)
+    await batchClient.dependencies.accountManager.newBLSKeypair()
 
     const data = testToken.contract.methods.transfer(from, 0).encodeABI()
     gsnTransactionDetails = {
@@ -137,6 +135,10 @@ contract.only('BatchRelayClient', function ([from]: string[]) {
 
   context('#relayTransaction()', function () {
     it('should construct a valid HTTP request and send it to the batch API on the RelayServer', async function () {
+      // TODO: this is stubbing method of the class under test, refactor
+      sinon.stub(batchClient, '_validateRelayRequestID')
+        .onFirstCall()
+        .returns()
       const relayingResult = await batchClient.relayTransaction(gsnTransactionDetails)
       assert.equal(relayingResult.relayRequestID?.length, 66)
       const sinonSpyCall = spyOnRelayTransactionInBatch.getCall(0)

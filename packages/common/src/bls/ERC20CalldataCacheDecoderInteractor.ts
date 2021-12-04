@@ -1,4 +1,5 @@
 import BN from 'bn.js'
+import Web3 from 'web3'
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encode, List } from 'rlp'
 import { toBN } from 'web3-utils'
@@ -80,6 +81,7 @@ export class ERC20CalldataCacheDecoderInteractor implements ICalldataCacheDecode
     if (method === -1) {
       throw new Error(`Failed to compress data for methodID ${methodID}: unknown methodID`)
     }
+    const web3 = new Web3()
     const abiEncodedParameters = abiEncodedCalldata.substr(10)
     let data: { [key: string]: any } = {}
     switch (method) {

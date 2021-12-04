@@ -17,7 +17,9 @@ import {
   TestTokenInstance,
   ERC20CacheDecoderInstance,
   BatchGatewayCacheDecoderInstance,
-  BLSAddressAuthorizationsRegistrarInstance, BLSBatchGatewayInstance
+  BLSAddressAuthorizationsRegistrarInstance,
+  BLSBatchGatewayInstance,
+  BLSVerifierContractInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -60,7 +62,9 @@ import {
   RLPBatchCompressedInput
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
-import { BLSAddressAuthorizationsRegistrarInteractor } from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
+import {
+  BLSAddressAuthorizationsRegistrarInteractor
+} from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 import { BLSVerifierInteractor } from '@opengsn/common/dist/bls/BLSVerifierInteractor'
@@ -92,7 +96,7 @@ export const stubBatchInput: RLPBatchCompressedInput = {
   pctRelayFee: toBN(15),
   baseRelayFee: toBN(15),
   maxAcceptanceBudget: toBN(15),
-  defaultCalldataCacheDecoder: toBN(0),
+  defaultCalldataCacheDecoderAddress: toBN(0),
   blsSignature: [],
   relayRequestElements: [],
   authorizations: []
@@ -115,6 +119,7 @@ export class ServerTestEnvironment {
   recipient!: IRelayRecipientInstance
   testToken!: TestTokenInstance
   erc20CacheDecoder!: ERC20CacheDecoderInstance
+  blsVerifierContract!: BLSVerifierContractInstance
 
   relayOwner!: Address
   gasLess!: Address
@@ -139,7 +144,7 @@ export class ServerTestEnvironment {
   batchingContractsDeployment!: GSNBatchingContractsDeployment
   cacheDecoderInteractor!: CacheDecoderInteractor
   blsVerifierInteractor!: BLSVerifierInteractor
-  blsTypedDataSigner!: BLSTypedDataSigner
+  // blsTypedDataSigner!: BLSTypedDataSigner
   calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
   batchingContractsInstances!: { batchGatewayCacheDecoder: BatchGatewayCacheDecoderInstance, authorizationsRegistrar: BLSAddressAuthorizationsRegistrarInstance, batchGateway: BLSBatchGatewayInstance }
 
@@ -208,7 +213,7 @@ export class ServerTestEnvironment {
   async initBatching (): Promise<void> {
     this.testToken = await TestToken.new()
     this.erc20CacheDecoder = await ERC20CacheDecoder.new()
-    const blsVerifierContract = await BLSVerifierContract.new()
+    this.blsVerifierContract = await BLSVerifierContract.new()
     await this.testToken.setTrustedForwarder(this.forwarder.address)
     this.batchingContractsInstances = await deployBatchingContractsForHub(this.relayHub.address, this.forwarder.address)
     this.batchingContractsDeployment = {
@@ -236,11 +241,10 @@ export class ServerTestEnvironment {
     })
     this.blsVerifierInteractor = new BLSVerifierInteractor({
       provider: web3.currentProvider as HttpProvider,
-      blsVerifierContractAddress: blsVerifierContract.address
+      blsVerifierContractAddress: this.blsVerifierContract.address
     })
     await this.blsVerifierInteractor.init()
     await this.cacheDecoderInteractor.init()
-    this.blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
   }
 
   async newServerInstance (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs, unstakeDelay = constants.weekInSec): Promise<void> {
@@ -313,6 +317,7 @@ export class ServerTestEnvironment {
     }
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
     const transactionManager = new TransactionManager(serverDependencies, configureServer(mergedConfig))
+    const blsTypedDataSigner = new BLSTypedDataSigner()
 
     if (config.runBatching === true) {
       serverDependencies.batchManager = new BatchManager({
@@ -323,7 +328,7 @@ export class ServerTestEnvironment {
         contractInteractor: this.contractInteractor,
         blsVerifierInteractor: this.blsVerifierInteractor,
         transactionManager,
-        blsTypedDataSigner: this.blsTypedDataSigner,
+        blsTypedDataSigner,
         cacheDecoderInteractor: this.cacheDecoderInteractor,
         authorizationsRegistrarInteractor: {} as BLSAddressAuthorizationsRegistrarInteractor
       })

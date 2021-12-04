@@ -151,12 +151,12 @@ export class HttpServer {
     }
     try {
       ow(req.body, ow.object.exactShape(RelayTransactionRequestShape))
-      const signedTx = await this.relayService.createRelayTransaction(req.body)
-      res.send({ signedTx })
+      const relayRequestID = await this.relayService.createBatchedRelayTransaction(req.body)
+      res.send({ relayRequestID })
     } catch (e) {
       const error: string = e.message
       res.send({ error })
-      this.logger.error(`tx failed: ${error}`)
+      this.logger.error(`tx failed: ${error} ${(e as Error)?.stack}`)
     }
   }
 }

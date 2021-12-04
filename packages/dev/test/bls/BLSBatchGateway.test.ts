@@ -51,8 +51,9 @@ export async function createRelayRequestAndAuthorization (
     relayRequestElement: RelayRequestElement
     blsSignature: PrefixedHexString[]
   }> {
-  const keypair = await BLSTypedDataSigner.newKeypair()
-  const blsTypedDataSigner = new BLSTypedDataSigner({ keypair })
+  const blsTypedDataSigner = new BLSTypedDataSigner()
+  const keypair = await blsTypedDataSigner.newKeypair()
+  blsTypedDataSigner.setKeypair(keypair)
   const authorizationElement = await createAuthorizationElement(from, blsTypedDataSigner.blsKeypair, registrar)
   const relayRequestClone = cloneRelayRequest(relayRequest, { request: { from } })
   const { relayRequestElement } = await decompressorInteractor.compressRelayRequestAndCalldata(relayRequestClone)
@@ -103,7 +104,7 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
     pctRelayFee: toBN(15),
     baseRelayFee: toBN(15),
     maxAcceptanceBudget: toBN(15),
-    defaultCalldataCacheDecoder: toBN(0),
+    defaultCalldataCacheDecoderAddress: toBN(0),
     blsSignature: [],
     relayRequestElements: [],
     authorizations: []
@@ -119,8 +120,10 @@ contract.only('BLSBatchGateway', function (accounts: string[]) {
 
     relayRequest.request.to = testToken.address
     relayRequest.request.data = testToken.contract.methods.transfer(constants.ZERO_ADDRESS, 0).encodeABI()
-    batchInput.defaultCalldataCacheDecoder = toBN(calldataCacheDecoder.address)
-    blsTypedDataSigner = new BLSTypedDataSigner({ keypair: await BLSTypedDataSigner.newKeypair() })
+    batchInput.defaultCalldataCacheDecoderAddress = toBN(calldataCacheDecoder.address)
+    blsTypedDataSigner = new BLSTypedDataSigner()
+    const keypair = await blsTypedDataSigner.newKeypair()
+    blsTypedDataSigner.setKeypair(keypair)
     const cachingGasConstants: CachingGasConstants = {
       authorizationCalldataBytesLength: 1,
       authorizationStorageSlots: 1,
