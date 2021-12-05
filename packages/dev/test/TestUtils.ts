@@ -104,6 +104,9 @@ export async function startRelay (
   if (options.batchTargetAddress) {
     args.push('--batchTargetAddress', options.batchTargetAddress)
   }
+  if (options.batchDurationMS) {
+    args.push('--batchDurationMS', options.batchDurationMS)
+  }
   if (options.batchDefaultCalldataCacheDecoderAddress) {
     args.push('--batchDefaultCalldataCacheDecoderAddress', options.batchDefaultCalldataCacheDecoderAddress)
   }
