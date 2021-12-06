@@ -756,7 +756,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         sinon.assert.calledWith(loggerSpy, logMessage)
       }
 
-      it('should withdraw once and remove file if repeat is false', async function () {
+      it('should withdraw once and mark file if repeat is false', async function () {
         const withdrawConfig = JSON.stringify({
           withdrawOnEthBalanceReached,
           leaveManagerWithAmountEth,
