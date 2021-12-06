@@ -837,7 +837,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async withdrawToOwnerIfNeeded (blockNumber: number): Promise<PrefixedHexString[]> {
     try {
-      const txHashes: PrefixedHexString[] = []
+      let txHashes: PrefixedHexString[] = []
       const filename = `${this.config.workdir}/withdraw.json`
       if (!this.isReady() || !fs.existsSync(filename)) {
         return txHashes
@@ -846,17 +846,18 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       if (withdrawalAmount.eqn(0)) {
         return txHashes
       }
-      txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(blockNumber, withdrawalAmount))
+      txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(blockNumber, withdrawalAmount))
       if (!repeat) {
         this.logger.info('Removing withdraw file.')
         fs.rmSync(filename)
       } else {
         this.logger.info('Repeated withdrawals set. Keeping withdrawal file.')
       }
+      return txHashes
     } catch (e) {
       this.logger.error(`withdrawToOwnerIfNeeded: ${(e as Error).message}`)
+      return []
     }
-    return []
   }
 
   /**

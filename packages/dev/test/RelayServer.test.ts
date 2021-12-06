@@ -29,7 +29,7 @@ const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract.only('RelayServer', function (accounts: Truffle.Accounts) {
+contract('RelayServer', function (accounts: Truffle.Accounts) {
   const alertedBlockDelay = 0
   const baseRelayFee = '12'
 
@@ -606,24 +606,13 @@ contract.only('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
-  describe.only('withdrawToOwnerIfNeeded', function () {
+  describe('withdrawToOwnerIfNeeded', function () {
     let configFilename: string
     let currentBlockNumber: number
     const onceWithdrawConfig = JSON.stringify({
       withdrawOnEthBalanceReached: 1e18,
       leaveManagerWithAmountEth: 0.5e18,
       repeat: false
-    })
-    const repeatedWithdrawConfig = JSON.stringify({
-      withdrawOnEthBalanceReached: 3e18,
-      leaveManagerWithAmountEth: 1e18,
-      repeat: true
-    })
-    const smallWithdrawConfig = JSON.stringify({
-      withdrawOnEthBalanceReached: 3e18,
-      leaveManagerWithAmountEth: 1e18,
-      repeat: false,
-      smallAmount: true
     })
     beforeEach(async function () {
       await env.newServerInstance({}, getTemporaryWorkdirs())
@@ -774,23 +763,52 @@ contract.only('RelayServer', function (accounts: Truffle.Accounts) {
     })
 
     describe('withdraw manager hub balance to owner', function () {
+      const withdrawOnEthBalanceReached = 3e18
+      const leaveManagerWithAmountEth = 1e18
       beforeEach(async function () {
         await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
         await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 1e18.toString() })
       })
+
+      async function assertWithdrawToOwner (withdrawConfig: any, logMessage: string): Promise<void> {
+        const owner = env.relayServer.config.ownerAddress
+        const balanceBefore = await env.web3.eth.getBalance(owner)
+        const serverSpy = sinon.spy(env.relayServer)
+        const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
+        const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
+        fs.writeFileSync(configFilename, withdrawConfig)
+        const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+        const balanceAfter = await env.web3.eth.getBalance(owner)
+        assert.deepEqual(txHashes.length, 1)
+        assert.equal(toBN(balanceBefore).add(toBN(withdrawOnEthBalanceReached).sub(toBN(leaveManagerWithAmountEth))).toString(), balanceAfter)
+        sinon.assert.callOrder(
+          serverSpy.isReady,
+          serverSpy._resolveWithdrawalConfig,
+          sendBalanceSpy,
+          loggerSpy
+        )
+        sinon.assert.calledWith(loggerSpy, logMessage)
+      }
+
       it('should withdraw once and remove file if repeat is false', async function () {
-        // const serverSpy = sinon.spy(env.relayServer)
-        // const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
-        // assert.deepEqual(txHashes.length, 1)
-        // assert.isTrue(serverSpy.isReady.returnValues[0])
+        const withdrawConfig = JSON.stringify({
+          withdrawOnEthBalanceReached,
+          leaveManagerWithAmountEth,
+          repeat: false
+        })
+        await assertWithdrawToOwner(withdrawConfig, 'Removing withdraw file.')
+        assert.isFalse(fs.existsSync(configFilename))
       })
+
       it('should withdraw and keep file if repeat is true', async function () {
-
+        const withdrawConfig = JSON.stringify({
+          withdrawOnEthBalanceReached,
+          leaveManagerWithAmountEth,
+          repeat: true
+        })
+        await assertWithdrawToOwner(withdrawConfig, 'Repeated withdrawals set. Keeping withdrawal file.')
+        assert.isTrue(fs.existsSync(configFilename))
       })
-    })
-
-    it('should never throw', async function () {
-
     })
   })
 
