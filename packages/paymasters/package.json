@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@ethereumjs/tx": "^3.2.0",
-    "@typechain/truffle-v5": "^4.0.1",
+    "@typechain/truffle-v5": "^6.0.0",
     "@types/chai": "^4.2.12",
     "@types/ethereumjs-util": "^6.1.0",
     "@types/mocha": "^8.2.0",
@@ -49,9 +49,9 @@
   "peerDependencies": {
     "@types/bn.js": "^5.1.0",
     "bn.js": "^5.2.0",
-    "web3": "^1.2.6",
-    "web3-core": "^1.2.6",
-    "web3-eth-contract": "^1.2.6",
-    "web3-utils": "^1.2.6"
+    "web3": "^1.6.1",
+    "web3-core": "^1.6.1",
+    "web3-eth-contract": "^1.6.1",
+    "web3-utils": "^1.6.1"
   }
 }

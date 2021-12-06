@@ -38,6 +38,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const baseFee = new BN('300')
   const fee = new BN('10')
   const gasPrice = new BN(1e9)
+  const maxFeePerGas = 1e9.toString()
+  const maxPriorityFeePerGas = 1e9.toString()
   const gasLimit = new BN('1000000')
   const externalGasLimit = 5e6.toString()
   const paymasterData = '0x'
@@ -102,7 +104,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       relayData: {
         baseRelayFee: baseFee.toString(),
         pctRelayFee: fee.toString(),
-        gasPrice: gasPrice.toString(),
+        maxFeePerGas: maxFeePerGas.toString(),
+        maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
         transactionCalldataGasUsed: '',
         relayWorker,
         forwarder,
@@ -138,27 +141,33 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   beforeEach(prepareForHub)
 
   describe('#calculateCharge()', function () {
-    it('should calculate fee correctly', async function () {
-      const gasUsed = 1e8
-      const gasPrice = 1e9
-      const baseRelayFee = 1000000
-      const pctRelayFee = 10
-      const relayData = {
-        pctRelayFee,
-        baseRelayFee,
-        gasPrice,
-        transactionCalldataGasUsed: '',
-        gasLimit: 0,
-        relayWorker,
-        forwarder,
-        paymaster: paymaster.address,
-        paymasterData,
-        clientId
-      }
-      const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData)
-      const expectedCharge = baseRelayFee + gasUsed * gasPrice * (pctRelayFee + 100) / 100
-      assert.equal(charge.toString(), expectedCharge.toString())
-    })
+    [[1e9, 1e9, 1e9], [1e9, 1e10, 1e10], [1e9, 1e9, 1e10], [1e10, 1e9, 1e10], [1e9, 1e10, 1e11], [1e11, 1e10, 1e9], [1e10, 1e9, 1e11], [1e9, 1e11, 1e10]]
+      .forEach(([maxFeePerGas, maxPriorityFeePerGas, gasPrice]) => {
+        it('should calculate charge correctly', async function () {
+          const gasUsed = 1e8
+          const baseRelayFee = 1000000
+          const pctRelayFee = 10
+          const relayData = {
+            pctRelayFee,
+            baseRelayFee,
+            maxFeePerGas,
+            maxPriorityFeePerGas,
+            transactionCalldataGasUsed: '',
+            gasLimit: 0,
+            relayWorker,
+            forwarder,
+            paymaster: paymaster.address,
+            paymasterData,
+            clientId
+          }
+          // Hardhat always has block.basefee == 0 on eth_call https://github.com/nomiclabs/hardhat/issues/1688
+          const baseFeePerGas = 0
+          const charge = await relayHub.calculateCharge(gasUsed.toString(), relayData, { gasPrice })
+          const chargeableGasPrice = Math.min(maxFeePerGas, gasPrice, maxPriorityFeePerGas + baseFeePerGas)
+          const expectedCharge = baseRelayFee + gasUsed * chargeableGasPrice * (pctRelayFee + 100) / 100
+          assert.equal(charge.toString(), expectedCharge.toString())
+        })
+      })
   })
 
   describe('#relayCall()', function () {
@@ -166,7 +175,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     it('should set correct gas limits and pass correct \'gasUsedWithoutPost\' to the \'postRelayCall\'', async () => {
       const gasPrice = 1e9
       const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', {
-        gasPrice,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
         pctRelayFee: 0,
         baseRelayFee: 0,
         transactionCalldataGasUsed: '',
@@ -309,7 +319,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             relayData: {
               baseRelayFee: '0',
               pctRelayFee: '0',
-              gasPrice: '1',
+              maxFeePerGas: '1',
+              maxPriorityFeePerGas: '1',
               transactionCalldataGasUsed: '',
               relayWorker,
               forwarder,
@@ -404,7 +415,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               baseRelayFee: '0',
               pctRelayFee: '0',
               transactionCalldataGasUsed: '',
-              gasPrice: '1',
+              maxFeePerGas: '1',
+              maxPriorityFeePerGas: '1',
               relayWorker,
               forwarder,
               paymaster: paymaster.address,
@@ -485,7 +497,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     baseRelayFee,
                     pctRelayFee,
                     transactionCalldataGasUsed: '',
-                    gasPrice: gasPrice.toString(),
+                    maxFeePerGas: maxFeePerGas.toString(),
+                    maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
                     relayWorker,
                     forwarder,
                     paymaster: paymaster.address,

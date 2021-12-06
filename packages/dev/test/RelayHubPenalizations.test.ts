@@ -26,7 +26,6 @@ import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { getDataAndSignature } from '@opengsn/common/dist'
-import { TransactionReceipt } from 'web3-core'
 import { toBN } from 'web3-utils'
 
 const RelayHub = artifacts.require('RelayHub')
@@ -62,7 +61,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     data: '0x1234',
     baseFee: 1000,
     fee: 10,
-    gasPrice: 50,
+    maxFeePerGas: 50,
+    maxPriorityFeePerGas: 50,
     gasLimit: 1e6,
     nonce: 0,
     paymaster: ''
@@ -140,7 +140,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayData: {
               baseRelayFee: encodedCallArgs.baseFee.toString(),
               pctRelayFee: encodedCallArgs.fee.toString(),
-              gasPrice: encodedCallArgs.gasPrice.toString(),
+              maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
+              maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
               transactionCalldataGasUsed: '0',
               relayWorker: relayWorker,
               forwarder,
@@ -345,7 +346,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           to: other,
           value: ether('0.5'),
           gasPrice: 1e9
-        }) as TransactionReceipt;
+        });
         ({
           data: penalizableTxData,
           signature: penalizableTxSignature
@@ -530,7 +531,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             to: other,
             value: ether('0.5'),
             gasPrice: 1e9
-          }) as TransactionReceipt
+          })
           const { data, signature } = await getDataAndSignatureFromHash(receipt.transactionHash, chainId)
 
           const method = await commitPenalizationAndReturnMethod(
@@ -567,7 +568,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             to: other,
             value: ether('0.5'),
             gasPrice
-          }) as TransactionReceipt
+          })
 
           const res = await stakeManager.unlockStake(relayManager, { from: relayOwner })
           expectEvent(res, StakeUnlocked, {
@@ -588,6 +589,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           const baseFee = new BN('300')
           const fee = new BN('10')
           const gasPrice = new BN(1e9)
+          const maxFeePerGas = new BN(1e9)
+          const maxPriorityFeePerGas = new BN(1e9)
           const gasLimit = new BN('1000000')
           const senderNonce = new BN('0')
           const txData = recipient.contract.methods.emitMessage('').encodeABI()
@@ -602,7 +605,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               validUntil: '0'
             },
             relayData: {
-              gasPrice: gasPrice.toString(),
+              maxFeePerGas: maxFeePerGas.toString(),
+              maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
               baseRelayFee: baseFee.toString(),
               pctRelayFee: fee.toString(),
               transactionCalldataGasUsed: '0',
@@ -656,7 +660,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             to: other,
             value: ether('0.5'),
             gasPrice: 1e9
-          }) as TransactionReceipt;
+          });
           ({
             data: penalizableTxData,
             signature: penalizableTxSignature
@@ -718,7 +722,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           relayData: {
             baseRelayFee: encodedCallArgs.baseFee.toString(),
             pctRelayFee: encodedCallArgs.fee.toString(),
-            gasPrice: encodedCallArgs.gasPrice.toString(),
+            maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
+            maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
             transactionCalldataGasUsed: '0',
             relayWorker,
             forwarder,

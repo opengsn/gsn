@@ -1,6 +1,6 @@
-import { Transaction } from '@ethereumjs/tx'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { Capability, FeeMarketEIP1559Transaction, Transaction, TypedTransaction } from '@ethereumjs/tx'
 import * as ethUtils from 'ethereumjs-util'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 
 export enum ServerAction {
@@ -25,7 +25,8 @@ export interface StoredTransactionMetadata {
 export interface StoredTransactionSerialized {
   readonly to: Address
   readonly gas: number
-  readonly gasPrice: number
+  maxFeePerGas: number
+  maxPriorityFeePerGas: number
   readonly data: PrefixedHexString
   readonly nonce: number
   readonly txId: PrefixedHexString
@@ -46,18 +47,27 @@ export type StoredTransaction = StoredTransactionSerialized & StoredTransactionM
  * @param tx
  * @param metadata
  */
-export function createStoredTransaction (tx: Transaction, metadata: StoredTransactionMetadata): StoredTransaction {
+export function createStoredTransaction (tx: TypedTransaction, metadata: StoredTransactionMetadata): StoredTransaction {
   if (tx.to == null) {
     throw new Error('tx.to must be defined')
   }
-  const details: StoredTransactionSerialized = {
-    to: ethUtils.bufferToHex(tx.to.toBuffer()),
-    gas: ethUtils.bufferToInt(tx.gasLimit.toBuffer()),
-    gasPrice: ethUtils.bufferToInt(tx.gasPrice.toBuffer()),
-    data: ethUtils.bufferToHex(tx.data),
-    nonce: ethUtils.bufferToInt(tx.nonce.toBuffer()),
-    txId: ethUtils.bufferToHex(tx.hash()),
-    value: ethUtils.bufferToHex(tx.value.toBuffer())
+  const details: Partial<StoredTransactionSerialized> =
+    {
+      to: ethUtils.bufferToHex(tx.to.toBuffer()),
+      gas: ethUtils.bufferToInt(tx.gasLimit.toBuffer()),
+      data: ethUtils.bufferToHex(tx.data),
+      nonce: ethUtils.bufferToInt(tx.nonce.toBuffer()),
+      txId: ethUtils.bufferToHex(tx.hash()),
+      value: ethUtils.bufferToHex(tx.value.toBuffer())
+    }
+  if (tx.supports(Capability.EIP1559FeeMarket)) {
+    tx = tx as FeeMarketEIP1559Transaction
+    details.maxFeePerGas = ethUtils.bufferToInt(tx.maxFeePerGas.toBuffer())
+    details.maxPriorityFeePerGas = ethUtils.bufferToInt(tx.maxPriorityFeePerGas.toBuffer())
+  } else {
+    tx = tx as Transaction
+    details.maxFeePerGas = ethUtils.bufferToInt(tx.gasPrice.toBuffer())
+    details.maxPriorityFeePerGas = ethUtils.bufferToInt(tx.gasPrice.toBuffer())
   }
-  return Object.assign({}, details, metadata)
+  return Object.assign({}, details as StoredTransactionSerialized, metadata)
 }

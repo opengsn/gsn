@@ -7,13 +7,13 @@ import fs from 'fs'
 import ow from 'ow'
 import { toHex } from 'web3-utils'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { Transaction } from '@ethereumjs/tx'
+import { TypedTransaction } from '@ethereumjs/tx'
 
 export const KEYSTORE_FILENAME = 'keystore'
 
 export interface SignedTransaction {
   rawTx: PrefixedHexString
-  signedEthJsTx: Transaction
+  signedEthJsTx: TypedTransaction
 }
 export class KeyManager {
   private readonly hdkey: EthereumHDKey
@@ -86,7 +86,7 @@ export class KeyManager {
     return this._privateKeys[signer] != null
   }
 
-  signTransaction (signer: string, tx: Transaction): SignedTransaction {
+  signTransaction (signer: string, tx: TypedTransaction): SignedTransaction {
     ow(signer, ow.string)
     const privateKey = this._privateKeys[signer]
     if (privateKey === undefined) {

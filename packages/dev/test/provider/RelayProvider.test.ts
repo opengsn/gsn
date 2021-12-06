@@ -63,7 +63,8 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       pctRelayFee: '1',
       baseRelayFee: '1',
       transactionCalldataGasUsed: '0',
-      gasPrice: '4494095',
+      maxFeePerGas: '4494095',
+      maxPriorityFeePerGas: '4494095',
       paymaster,
       paymasterData,
       clientId,
@@ -150,10 +151,9 @@ contract('RelayProvider', function (accounts) {
     it('should relay transparently', async function () {
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
-        // @ts-ignore
-        forceGasPrice: '0x51f4d5c00',
-        // TODO: for some reason estimated values are crazy high!
+        gasPrice: '0x51f4d5c00',
         gas: '100000',
+        // @ts-ignore
         paymaster
       })
 
@@ -177,10 +177,10 @@ contract('RelayProvider', function (accounts) {
       })
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
-        // @ts-ignore
-        forceGasPrice: '0x51f4d5c00',
+        gasPrice: '0x51f4d5c00',
         value,
         gas: '100000',
+        // @ts-ignore
         paymaster
       })
 
@@ -246,8 +246,7 @@ contract('RelayProvider', function (accounts) {
           {
             from: gasLess,
             gas: '0x186a0',
-            gasPrice: '0x4a817c800',
-            forceGasPrice: '0x51f4d5c00',
+            gasPrice: '0x51f4d5c00',
             paymaster,
             forwarder: forwarderAddress,
             to: testRecipient.address,

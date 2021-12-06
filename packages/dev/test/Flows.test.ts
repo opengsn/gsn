@@ -18,6 +18,7 @@ import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { ether } from '@opengsn/common'
+import Web3 from 'web3'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -33,8 +34,14 @@ const options = [
     relay: false
   },
   {
-    title: 'Relayed-',
-    relay: true
+    title: 'Legacy Relayed-',
+    relay: true,
+    type: 0
+  },
+  {
+    title: 'Type 2 Relayed-',
+    relay: true,
+    type: 2
   }
 ]
 
@@ -48,6 +55,7 @@ options.forEach(params => {
     const gasless = accounts[10]
     let relayproc: ChildProcessWithoutNullStreams
     let relayClientConfig: Partial<GSNConfig>
+    let relayProvider: RelayProvider
 
     before(async () => {
       await emptyBalance(gasless, accounts[0])
@@ -76,6 +84,12 @@ options.forEach(params => {
       }
 
       const forwarder = await Forwarder.new()
+      // truffle uses web3.version 1.2.1 which doesn't support eip 1559.
+      // It passes both gasPrice and maxFeePerGas/maxPriorityFeePerGas to the node, which returns
+      // error: 'Cannot send both gasPrice and maxFeePerGas params'
+      // TODO update truffle version
+      // @ts-ignore
+      TestRecipient.web3 = new Web3(web3.currentProvider.host)
       sr = await TestRecipient.new(forwarder.address)
 
       await registerForwarderForGsn(forwarder)
@@ -103,7 +117,7 @@ options.forEach(params => {
           maxPaymasterDataLength: 4
         }
 
-        const relayProvider = await RelayProvider.newProvider(
+        relayProvider = await RelayProvider.newProvider(
           {
             provider: web3.currentProvider as HttpProvider,
             config: relayClientConfig
@@ -142,7 +156,9 @@ options.forEach(params => {
       console.log('running gasless-emitMessage (should fail for direct, succeed for relayed)')
       let ex: Error | undefined
       try {
-        const res = await sr.emitMessage('hello, from gasless', { from: gasless, gas: 1e6 })
+        const txDetails: any = { from: gasless, gas: 1e6 }
+        await fixTxDetails(txDetails, relayProvider)
+        const res = await sr.emitMessage('hello, from gasless', txDetails)
         console.log('res after gasless emit:', res.logs[0].args.message)
       } catch (e) {
         ex = e
@@ -157,8 +173,10 @@ options.forEach(params => {
       }
     })
     it(params.title + 'running testRevert (should always fail)', async () => {
+      const txDetails: any = { from }
+      await fixTxDetails(txDetails, relayProvider)
       await asyncShouldThrow(async () => {
-        await sr.testRevert({ from: from })
+        await sr.testRevert(txDetails)
       }, 'always fail')
     })
 
@@ -171,6 +189,13 @@ options.forEach(params => {
        * to the recipient. We are setting 10M as a block gas limit, so cannot go much higher than 9M gas here.
        */
       describe('with different gas limits', function () {
+        before(async function () {
+          relayProvider = await RelayProvider.newProvider(
+            {
+              provider: web3.currentProvider as HttpProvider,
+              config: relayClientConfig
+            }).init()
+        });
         // note: cannot set 'innerGasLimit' too close to 'maxViewableGasLimit' and expect it to pass
         [1e4, 1e5, 1e6, 1e7]
           .forEach(innerGasLimit =>
@@ -178,7 +203,9 @@ options.forEach(params => {
               const gas = innerGasLimit
               let res: any
               try {
-                res = await sr.emitMessageNoParams({ from, gas })
+                const txDetails: any = { from, gas }
+                await fixTxDetails(txDetails, relayProvider)
+                res = await sr.emitMessageNoParams(txDetails)
               } catch (e) {
                 console.log('error is ', e.message)
                 throw e
@@ -207,7 +234,7 @@ options.forEach(params => {
         })
 
         const setRecipientProvider = async function (asyncApprovalData: AsyncDataCallback): Promise<void> {
-          relayProvider =
+          const relayProvider =
             await RelayProvider.newProvider({
               provider: web3.currentProvider as HttpProvider,
               config: relayClientConfig,
@@ -227,12 +254,14 @@ options.forEach(params => {
 
             await setRecipientProvider(async () => '0x414243')
 
-            await sr.emitMessage('xxx', {
+            const txDetails: any = {
               from: gasless,
               // @ts-ignore - it seems we still allow passing paymaster as a tx parameter
               paymaster: approvalPaymaster.address,
               gas: 1e6
-            })
+            }
+            await fixTxDetails(txDetails, relayProvider)
+            await sr.emitMessage('xxx', txDetails)
           } catch (e) {
             console.log('error1: ', e)
             throw e
@@ -248,11 +277,13 @@ options.forEach(params => {
         it(params.title + 'fail if asyncApprovalData throws', async () => {
           await setRecipientProvider(() => { throw new Error('approval-exception') })
           await asyncShouldThrow(async () => {
-            await sr.emitMessage('xxx', {
+            const txDetails: any = {
               from: gasless,
               // @ts-ignore
               paymaster: approvalPaymaster.address
-            })
+            }
+            await fixTxDetails(txDetails, relayProvider)
+            await sr.emitMessage('xxx', txDetails)
           }, 'approval-exception')
         })
 
@@ -265,10 +296,11 @@ options.forEach(params => {
             })
             await asyncShouldThrow(async () => {
               await setRecipientProvider(async () => '0x')
-
-              await sr.emitMessage('xxx', {
+              const txDetails: any = {
                 from: gasless
-              })
+              }
+              await fixTxDetails(txDetails, relayProvider)
+              await sr.emitMessage('xxx', txDetails)
             }, 'unexpected approvalData: \'\' instead of')
           } catch (e) {
             console.log('error3: ', e)
@@ -282,6 +314,18 @@ options.forEach(params => {
           }
         })
       })
+    }
+
+    async function fixTxDetails (txDetails: any, relayProvider: RelayProvider): Promise<void> {
+      if (params.relay) {
+        const { maxFeePerGas, maxPriorityFeePerGas } = await relayProvider.calculateGasFees()
+        if (params.type === 2) {
+          txDetails.maxFeePerGas = maxFeePerGas
+          txDetails.maxPriorityFeePerGas = maxPriorityFeePerGas
+        } else {
+          txDetails.gasPrice = maxPriorityFeePerGas
+        }
+      }
     }
 
     async function asyncShouldThrow (asyncFunc: () => Promise<any>, str?: string): Promise<void> {

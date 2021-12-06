@@ -69,6 +69,7 @@ export interface ServerConfigParams {
   dbAutoCompactionInterval: number
   retryGasPriceFactor: number
   maxGasPrice: string
+  defaultPriorityFee: string
   defaultGasLimit: number
   requestMinValidBlocks: number
 
@@ -143,7 +144,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxGasPrice: 100e9.toString(),
+  maxGasPrice: 500e9.toString(),
+  defaultPriorityFee: 1e9.toString(),
 
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
@@ -213,6 +215,7 @@ const ConfigParamsTypes = {
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
+  defaultPriorityFee: 'string',
   coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number',

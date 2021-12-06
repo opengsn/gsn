@@ -51,7 +51,8 @@ contract('Utils', function (accounts) {
       const encodedFunction = '0xdeadbeef'
       const pctRelayFee = '15'
       const baseRelayFee = '1000'
-      const gasPrice = '10000000'
+      const maxFeePerGas = '10000000'
+      const maxPriorityFeePerGas = '10000000'
       const gasLimit = '500000'
       // const forwarder = accounts[6]
       const paymaster = accounts[7]
@@ -84,7 +85,8 @@ contract('Utils', function (accounts) {
           validUntil: '0'
         },
         relayData: {
-          gasPrice,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
           pctRelayFee,
           baseRelayFee,
           transactionCalldataGasUsed: '0',

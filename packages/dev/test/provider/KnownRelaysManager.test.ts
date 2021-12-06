@@ -56,6 +56,7 @@ contract('KnownRelaysManager', function (
     owner,
     other,
     workerRelayWorkersAdded,
+    workerRelayWorkersAdded2,
     workerRelayServerRegistered,
     workerNotActive
   ]) {
@@ -115,6 +116,9 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerRelayServerRegistered], {
         from: activeRelayServerRegistered
       })
+      await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
+        from: activeRelayWorkersAdded
+      })
       await relayHub.addRelayWorkers([workerNotActive], {
         from: notActiveRelay
       })
@@ -126,36 +130,37 @@ contract('KnownRelaysManager', function (
       })
       await relayRegistrar.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
       await relayRegistrar.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeRelayWorkersAdded })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
       await relayRegistrar.registerRelayServer('0', '0', '', { from: activeRelayServerRegistered })
-      await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
+      await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })
       await relayHub.relayCall(10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
         from: workerTransactionRelayed,
         gas,
-        gasPrice: txTransactionRelayed.relayRequest.relayData.gasPrice
+        gasPrice: txTransactionRelayed.relayRequest.relayData.maxFeePerGas
       })
       await paymaster.setReturnInvalidErrorCode(true)
       await relayHub.relayCall(10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', {
         from: workerPaymasterRejected,
         gas,
-        gasPrice: txPaymasterRejected.relayRequest.relayData.gasPrice
+        gasPrice: txPaymasterRejected.relayRequest.relayData.maxFeePerGas
       })
     })
 
-    it.skip('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
+    it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
       async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
         const infos = await knownRelaysManager.getRelayInfoForManagers()
         const actual = infos.map(info => info.relayManager)
         assert.equal(actual.length, 4)
-        assert.equal(actual[0], activeRelayServerRegistered)
-        assert.equal(actual[1], activeRelayWorkersAdded)
-        assert.equal(actual[2], activeTransactionRelayed)
-        assert.equal(actual[3], activePaymasterRejected)
+        assert.equal(actual[0], activeTransactionRelayed)
+        assert.equal(actual[1], activePaymasterRejected)
+        assert.equal(actual[2], activeRelayWorkersAdded)
+        assert.equal(actual[3], activeRelayServerRegistered)
       })
   })
 })
@@ -166,7 +171,8 @@ contract('KnownRelaysManager 2', function (accounts) {
 
   const transactionDetails = {
     gas: '0x10000',
-    gasPrice: '0x300000',
+    maxFeePerGas: '0x300000',
+    maxPriorityFeePerGas: '0x300000',
     from: '',
     data: '',
     to: '',

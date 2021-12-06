@@ -43,11 +43,14 @@ contract('GsnTestEnvironment', function () {
     })
 
     it('should relay using relayTransaction', async () => {
+      const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
       const ret = await relayClient.relayTransaction({
         from: sender,
         to: sr.address,
         gas: '0x' + 1e6.toString(16),
-        data: sr.contract.methods.emitMessage('hello').encodeABI()
+        data: sr.contract.methods.emitMessage('hello').encodeABI(),
+        maxFeePerGas,
+        maxPriorityFeePerGas
       })
       assert.deepEqual([...ret.relayingErrors.values(), ...ret.pingErrors.values()], [])
       const events = await sr.contract.getPastEvents()

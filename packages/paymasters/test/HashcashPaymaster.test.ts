@@ -9,6 +9,7 @@ import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
+import { disableTruffleAutoEstimateGas } from '@opengsn/dev/dist/test/TestUtils'
 
 const HashcashPaymaster = artifacts.require('HashcashPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')
@@ -30,7 +31,9 @@ contract('HashcashPaymaster', ([from]) => {
       }
     } = await GsnTestEnvironment.startGsn(host))
 
+    disableTruffleAutoEstimateGas(SampleRecipient)
     s = await SampleRecipient.new()
+
     await s.setForwarder(forwarderAddress!)
 
     pm = await HashcashPaymaster.new(10)

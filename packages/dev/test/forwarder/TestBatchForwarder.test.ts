@@ -61,6 +61,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     await paymaster.setTrustedForwarder(forwarder.address)
     await paymaster.setRelayHub(hub.address)
 
+    const gasPrice = await web3.eth.getGasPrice()
     sharedRelayRequestData = {
       request: {
         to: recipient.address,
@@ -75,7 +76,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         pctRelayFee: '1',
         baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
-        gasPrice: await web3.eth.getGasPrice(),
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         relayWorker: relayWorker,
         forwarder: forwarder.address,
         paymaster: paymaster.address,
@@ -90,7 +92,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.relayData.maxFeePerGas = 1e6.toString()
+      relayRequest.relayData.maxPriorityFeePerGas = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
@@ -128,7 +131,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.relayData.maxFeePerGas = 1e6.toString()
+      relayRequest.relayData.maxPriorityFeePerGas = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
@@ -161,7 +165,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.relayData.maxFeePerGas = 1e6.toString()
+      relayRequest.relayData.maxPriorityFeePerGas = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI()

@@ -44,7 +44,7 @@ contract('RelaySelectionManager', function (accounts) {
     relayWorkerAddress: '',
     relayManagerAddress: '',
     relayHubAddress: '',
-    minGasPrice: '1',
+    minMaxPriorityFeePerGas: '1',
     maxAcceptanceBudget: 1e10.toString(),
     ready: true,
     version: '1'
@@ -58,7 +58,9 @@ contract('RelaySelectionManager', function (accounts) {
     data: '',
     to: '',
     forwarder: '',
-    paymaster: ''
+    paymaster: '',
+    maxFeePerGas: '',
+    maxPriorityFeePerGas: ''
   }
 
   let stubPingResponse: SinonStub
@@ -145,7 +147,7 @@ contract('RelaySelectionManager', function (accounts) {
           relayWorkerAddress: relayManager,
           relayManagerAddress: relayManager,
           relayHubAddress: relayManager,
-          minGasPrice: '1',
+          minMaxPriorityFeePerGas: '1',
           ownerAddress: accounts[0],
           maxAcceptanceBudget: 1e10.toString(),
           ready: true,

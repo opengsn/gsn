@@ -96,8 +96,8 @@ context('#ServerConfigParams', () => {
       expectThrow(() => parseServerConfig(['--asdasd'], {}), 'unexpected param asdasd')
     })
 
-    it.skip('should throw on invalid type of cmdline param', function () {
-      expectThrow(() => parseServerConfig(['--debug=asd'], {}), 'Invalid boolean: debug')
+    it('should throw on invalid type of cmdline param', function () {
+      expectThrow(() => parseServerConfig(['--devMode=asd'], {}), 'Invalid boolean: devMode')
     })
 
     it('should throw on missing config file', function () {
@@ -139,7 +139,7 @@ context('#ServerConfigParams', () => {
     it('should fail on invalid relayhub address', async () => {
       const config = { relayHubAddress: '123' }
       await expectRevert(resolveServerConfig(config, provider),
-        'Provided address "123" is invalid, the capitalization checksum test failed, or its an indrect IBAN address which can\'t be converted')
+        'Provided address 123 is invalid, the capitalization checksum test failed, or it\'s an indirect IBAN address which can\'t be converted')
     })
 
     it('should fail on no-contract relayhub address', async () => {

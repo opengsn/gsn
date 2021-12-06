@@ -42,6 +42,8 @@ import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
+import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -158,7 +160,6 @@ export class ServerTestEnvironment {
     await this.relayServer._worker(latestBlock.number)
     latestBlock = await this.web3.eth.getBlock('latest')
     await this.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
-
     // This run should call 'registerRelayServer' and 'addWorkers'
     const receipts = await this.relayServer._worker(latestBlock.number)
     await assertRelayAdded(receipts, this.relayServer) // sanity check
@@ -204,13 +205,19 @@ export class ServerTestEnvironment {
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
     const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
     const gasPriceFetcher = new GasPriceFetcher('', '', this.contractInteractor, logger)
+    let reputationManager
+    if (config.runPaymasterReputations != null && config.runPaymasterReputations) {
+      const reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
+      reputationManager = new ReputationManager(reputationStoreManager, logger, {})
+    }
     const serverDependencies = {
       contractInteractor: this.contractInteractor,
       gasPriceFetcher,
       logger,
       txStoreManager,
       managerKeyManager,
-      workersKeyManager
+      workersKeyManager,
+      reputationManager
     }
     const mergedConfig: Partial<ServerConfigParams> = Object.assign({}, shared, config)
     const transactionManager = new TransactionManager(serverDependencies, configureServer(mergedConfig))
@@ -243,7 +250,8 @@ export class ServerTestEnvironment {
       to: this.recipient.address,
       data: this.encodedFunction,
       gas: toHex(1000000),
-      gasPrice: toHex(20000000000)
+      maxFeePerGas: toHex(20000000000),
+      maxPriorityFeePerGas: toHex(20000000000)
     }
 
     const mergedDeployment = Object.assign({}, this.relayClient.dependencies.contractInteractor.getDeployment(), overrideDeployment)

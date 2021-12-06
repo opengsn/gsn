@@ -85,6 +85,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
 
     const paymasterData = web3.eth.abi.encodeParameter('address', nonUniswap)
 
+    const gasPrice = await web3.eth.getGasPrice()
     relayRequest = {
       relayData: {
         relayWorker: relay,
@@ -93,7 +94,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         pctRelayFee: '1',
         baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
-        gasPrice: await web3.eth.getGasPrice(),
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         paymasterData,
         clientId: '1'
       },
@@ -223,7 +225,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const _relayRequest = cloneRelayRequest(relayRequest)
       _relayRequest.request.from = from
       _relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
-      _relayRequest.relayData.gasPrice = 1e9.toString()
+      _relayRequest.relayData.maxFeePerGas = 1e9.toString()
+      _relayRequest.relayData.maxPriorityFeePerGas = 1e9.toString()
       _relayRequest.relayData.pctRelayFee = '0'
       _relayRequest.relayData.baseRelayFee = '0'
       _relayRequest.relayData.paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)

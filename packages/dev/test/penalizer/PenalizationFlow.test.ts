@@ -68,7 +68,7 @@ contract('PenalizationFlow', function (accounts) {
         relayWorkerAddress,
         relayManagerAddress,
         relayHubAddress: env.relayHub.address,
-        minGasPrice: '0',
+        minMaxPriorityFeePerGas: '0',
         maxAcceptanceBudget: '999999999',
         ready: true,
         version: gsnRuntimeVersion
@@ -93,16 +93,18 @@ contract('PenalizationFlow', function (accounts) {
       httpClient
     }
 
+    relayClient = new RelayClient({ provider: currentProvider, config, overrideDependencies })
+    await relayClient.init()
+    const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
     gsnTransactionDetails = {
       from: accounts[0],
       to: env.recipient.address,
       data: env.recipient.contract.methods.emitMessage('hello world').encodeABI(),
       paymasterData: '0x',
-      clientId: '1'
+      clientId: '1',
+      maxFeePerGas,
+      maxPriorityFeePerGas
     }
-
-    relayClient = new RelayClient({ provider: currentProvider, config, overrideDependencies })
-    await relayClient.init()
   })
 
   after(async function () {

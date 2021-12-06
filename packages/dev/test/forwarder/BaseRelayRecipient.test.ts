@@ -21,7 +21,7 @@ contract('BaseRelayRecipient', ([from, sender]: string[]) => {
   it('#_msgSender', async function () {
     async function callMsgSender (from: string, appended = ''): Promise<any> {
       const encoded = recipient.contract.methods.publicMsgSender().encodeABI() as string
-      const ret = await web3.eth.call({ from, to: recipient.address, data: encoded + appended.replace(/^0x/, '') }) as string
+      const ret = await web3.eth.call({ from, to: recipient.address, data: encoded + appended.replace(/^0x/, '') })
       return web3.eth.abi.decodeParameter('address', ret)
     }
 
@@ -42,7 +42,7 @@ contract('BaseRelayRecipient', ([from, sender]: string[]) => {
         from,
         to: recipient.address,
         data: encoded + appended.replace(/^0x/, '')
-      }) as string
+      })
       return web3.eth.abi.decodeParameter('bytes', ret)
     }
 

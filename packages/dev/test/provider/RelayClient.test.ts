@@ -19,7 +19,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from '@opengsn/provider/dist/RelayClient'
+import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, EmptyDataCallback } from '@opengsn/provider/dist/RelayClient'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '@opengsn/provider/dist/GSNConfigurator'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
@@ -153,8 +153,15 @@ contract('RelayClient', function (accounts) {
       to,
       data,
       paymasterData: '0x',
-      clientId: '1'
+      clientId: '1',
+      maxFeePerGas: '0',
+      maxPriorityFeePerGas: '0'
     }
+  })
+
+  beforeEach(async function () {
+    const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
+    options = { ...options, maxFeePerGas, maxPriorityFeePerGas }
   })
 
   after(function () {
@@ -182,7 +189,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should allow to override metamask defaults', async () => {
-      const minGasPrice = 777
+      const minMaxPriorityFeePerGas = 777
       const suffix = 'suffix'
       const metamaskProvider = {
         isMetaMask: true,
@@ -193,7 +200,7 @@ contract('RelayClient', function (accounts) {
       const constructorInput: GSNUnresolvedConstructorInput = {
         provider: metamaskProvider,
         config: {
-          minGasPrice,
+          minMaxPriorityFeePerGas: minMaxPriorityFeePerGas,
           paymasterAddress: paymaster.address,
           methodSuffix: suffix,
           jsonStringifyRequest: 5 as any
@@ -206,7 +213,7 @@ contract('RelayClient', function (accounts) {
       await anotherRelayClient._initInternal()
       assert.equal(anotherRelayClient.config.methodSuffix, suffix)
       assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
-      assert.equal(anotherRelayClient.config.minGasPrice, minGasPrice)
+      assert.equal(anotherRelayClient.config.minMaxPriorityFeePerGas, minMaxPriorityFeePerGas)
       assert.equal(anotherRelayClient.config.sliceSize, defaultGsnConfig.sliceSize, 'default value expected for a skipped field')
     })
   })
@@ -296,16 +303,6 @@ contract('RelayClient', function (accounts) {
       } finally {
         server?.close()
       }
-    })
-
-    it('should use forceGasPrice if provided', async function () {
-      const forceGasPrice = '0x777777777'
-      const optionsForceGas = Object.assign({}, options, { forceGasPrice })
-      const { transaction, pingErrors, relayingErrors } = await relayClient.relayTransaction(optionsForceGas)
-      assert.equal(pingErrors.size, 0)
-      assert.equal(relayingErrors.size, 0)
-      // @ts-ignore
-      assert.equal(parseInt(transaction.gasPrice.toString('hex'), 16), parseInt(forceGasPrice))
     })
 
     it('should return errors encountered in ping', async function () {
@@ -422,18 +419,18 @@ contract('RelayClient', function (accounts) {
   })
 
   describe('#_calculateDefaultGasPrice()', function () {
-    it('should use minimum gas price if calculated is to low', async function () {
-      const minGasPrice = 1e18
+    it('should use minimum gas price if calculated is too low', async function () {
+      const minMaxPriorityFeePerGas = 1e18
       const gsnConfig: Partial<GSNConfig> = {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: paymaster.address,
-        minGasPrice
+        minMaxPriorityFeePerGas: minMaxPriorityFeePerGas
       }
       const relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
       await relayClient.init()
 
-      const calculatedGasPrice = await relayClient._calculateGasPrice()
-      assert.equal(calculatedGasPrice, `0x${minGasPrice.toString(16)}`)
+      const calculatedGasPrice = await relayClient.calculateGasFees()
+      assert.equal(calculatedGasPrice.maxPriorityFeePerGas, `0x${minMaxPriorityFeePerGas.toString(16)}`)
     })
   })
 
@@ -461,7 +458,7 @@ contract('RelayClient', function (accounts) {
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
-        minGasPrice: '',
+        minMaxPriorityFeePerGas: '',
         maxAcceptanceBudget: 1e10.toString(),
         ready: true,
         version: ''
@@ -470,14 +467,15 @@ contract('RelayClient', function (accounts) {
         relayInfo: {
           relayManager,
           relayUrl,
-          baseRelayFee: '',
-          pctRelayFee: ''
+          baseRelayFee: '0',
+          pctRelayFee: '0'
         },
         pingResponse
       }
       optionsWithGas = Object.assign({}, options, {
         gas: '0xf4240',
-        gasPrice: '0x51f4d5c00'
+        maxFeePerGas: '0x51f4d5c00',
+        maxPriorityFeePerGas: '0x51f4d5c00'
       })
     })
 
@@ -596,17 +594,21 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should throw if variable length parameters are bigger than reported', async function () {
-      const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
-        return '0x' + 'ff'.repeat(101)
+      try {
+        const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+          return '0x' + 'ff'.repeat(101)
+        }
+        relayClient.dependencies.asyncApprovalData = getLongData
+        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+          .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
+
+        relayClient.dependencies.asyncPaymasterData = getLongData
+        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+          .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
+      } finally {
+        relayClient.dependencies.asyncApprovalData = EmptyDataCallback
+        relayClient.dependencies.asyncPaymasterData = EmptyDataCallback
       }
-
-      relayClient.dependencies.asyncApprovalData = getLongData
-      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
-        .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
-
-      relayClient.dependencies.asyncPaymasterData = getLongData
-      await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
-        .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
     })
   })
 
@@ -648,23 +650,23 @@ contract('RelayClient', function (accounts) {
 
     it('should succeed to relay, but report ping error', async () => {
       const relayingResult = await relayClient.relayTransaction(options)
-      assert.isNotNull(relayingResult.transaction)
       assert.match(relayingResult.pingErrors.get(cheapRelayerUrl)?.message as string, /ECONNREFUSED/,
         `relayResult: ${_dumpRelayingResult(relayingResult)}`)
+      assert.exists(relayingResult.transaction)
     })
 
-    it('use preferred relay if one is set', async () => {
+    it('should use preferred relay if one is set', async () => {
       relayClient = new RelayClient({
         provider: underlyingProvider,
         config: {
-          preferredRelays: ['http://localhost:8090'],
-          ...gsnConfig
+          ...gsnConfig,
+          preferredRelays: ['http://localhost:8090']
         }
       })
       await relayClient.init()
       const relayingResult = await relayClient.relayTransaction(options)
-      assert.isNotNull(relayingResult.transaction)
       assert.equal(relayingResult.pingErrors.size, 0)
+      assert.exists(relayingResult.transaction)
     })
   })
 })

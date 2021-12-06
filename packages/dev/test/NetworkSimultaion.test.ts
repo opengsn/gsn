@@ -167,7 +167,8 @@ contract('Network Simulation for Relay Server', function (accounts) {
         // All transaction must come from different senders or else will be rejected on 'nonce mismatch'
         const overrideTxParams: Partial<GsnTransactionDetails> = {
           from: accounts[i],
-          gasPrice: i === fairlyPricedTransactionIndex ? gasPriceAboveMarket : gasPriceBelowMarket
+          maxPriorityFeePerGas: i === fairlyPricedTransactionIndex ? gasPriceAboveMarket : gasPriceBelowMarket,
+          maxFeePerGas: i === fairlyPricedTransactionIndex ? gasPriceAboveMarket : gasPriceBelowMarket
         }
         const { signedTx } = await env.relayTransaction(false, overrideTxParams)
         rawTxOptions = env.relayServer.transactionManager.rawTxOptions

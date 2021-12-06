@@ -90,6 +90,13 @@ module.exports = {
       },
       network_id: '6'
     },
+    matic: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://rpc-mainnet.maticvigil.com/')
+      },
+      skipDryRun: true,
+      network_id: 137
+    },
     arbitrum_rinkeby: {
       provider: function () {
         return new HDWalletProvider(mnemonic, 'https://rinkeby.arbitrum.io/rpc')
@@ -104,7 +111,7 @@ module.exports = {
     solc: {
       version: '0.8.7',
       settings: {
-        evmVersion: 'istanbul',
+        evmVersion: 'london',
         optimizer: {
           enabled: true,
           runs: 200 // Optimize for how many times you intend to run the code

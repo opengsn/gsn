@@ -2,7 +2,7 @@
 import EthVal from 'ethval'
 import chalk from 'chalk'
 import { Mutex } from 'async-mutex'
-import { Transaction, TxOptions } from '@ethereumjs/tx'
+import { FeeMarketEIP1559Transaction, Transaction, TxOptions, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
@@ -11,16 +11,13 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { TxStoreManager } from './TxStoreManager'
 import { KeyManager, SignedTransaction } from './KeyManager'
 import { ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import {
-  createStoredTransaction,
-  ServerAction,
-  StoredTransaction,
-  StoredTransactionMetadata
-} from './StoredTransaction'
+import { createStoredTransaction, ServerAction, StoredTransaction, StoredTransactionMetadata } from './StoredTransaction'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 import { constants } from '@opengsn/common/dist/Constants'
 import { GasPriceFetcher } from './GasPriceFetcher'
+import { toBN } from 'web3-utils'
+import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString
@@ -34,7 +31,8 @@ export interface SendTransactionDetails {
   destination: Address
   value?: IntString
   gasLimit: number
-  gasPrice?: IntString
+  maxFeePerGas?: IntString
+  maxPriorityFeePerGas?: IntString
   creationBlockNumber: number
 }
 
@@ -48,7 +46,7 @@ export class TransactionManager {
   config: ServerConfigParams
   logger: LoggerInterface
   gasPriceFetcher: GasPriceFetcher
-
+  transactionType!: TransactionType
   rawTxOptions!: TxOptions
 
   constructor (dependencies: ServerDependencies, config: ServerConfigParams) {
@@ -68,41 +66,47 @@ export class TransactionManager {
     this.nonces[this.workersKeyManager.getAddress(0)] = 0
   }
 
-  async _init (): Promise<void> {
+  async _init (transactionType: TransactionType): Promise<void> {
+    this.transactionType = transactionType
     this.rawTxOptions = this.contractInteractor.getRawTxOptions()
     if (this.rawTxOptions == null) {
       throw new Error('_init failed for TransactionManager, was ContractInteractor properly initialized?')
     }
   }
 
-  printBoostedTransactionLog (txHash: string, creationBlockNumber: number, gasPrice: number, isMaxGasPriceReached: boolean): void {
-    const gasPriceHumanReadableOld: string = new EthVal(gasPrice).toGwei().toFixed(4)
+  printBoostedTransactionLog (txHash: string, creationBlockNumber: number, maxFeePerGas: number, maxPriorityFeePerGas: number, isMaxGasPriceReached: boolean): void {
+    const maxFeePerGasHumanReadableOld: string = new EthVal(maxFeePerGas).toGwei().toFixed(4)
+    const maxPriorityFeePerGasHumanReadableOld: string = new EthVal(maxPriorityFeePerGas).toGwei().toFixed(4)
     this.logger.info(`Boosting stale transaction:
-hash         | ${txHash}
-gasPrice     | ${gasPrice} (${gasPriceHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
-created at   | block #${creationBlockNumber}
+hash                     | ${txHash}
+maxFeePerGas             | ${maxFeePerGas} (${maxFeePerGasHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
+maxPriorityFeePerGas     | ${maxPriorityFeePerGas} (${maxPriorityFeePerGasHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
+created at               | block #${creationBlockNumber}
 `)
   }
 
-  printSendTransactionLog (transaction: Transaction, from: Address): void {
+  printSendTransactionLog (transaction: StoredTransaction, from: Address): void {
     if (transaction.to == null) {
       throw new Error('transaction.to must be defined')
     }
     const valueString = transaction.value.toString()
     const nonceString = transaction.nonce.toString()
-    const gasPriceString = parseInt('0x' + transaction.gasPrice.toString('hex'))
+    const maxFeePerGas = transaction.maxFeePerGas
+    const maxPriorityFeePerGas = transaction.maxPriorityFeePerGas
 
     const valueHumanReadable: string = new EthVal(valueString).toEth().toFixed(4)
-    const gasPriceHumanReadable: string = new EthVal(gasPriceString).toGwei().toFixed(4)
+    const maxFeePerGasHumanReadable: string = new EthVal(maxFeePerGas).toGwei().toFixed(4)
+    const maxPriorityFeePerGasHumanReadable: string = new EthVal(maxPriorityFeePerGas).toGwei().toFixed(4)
     this.logger.info(`Broadcasting transaction:
-hash         | 0x${transaction.hash().toString('hex')}
-from         | ${from}
-to           | ${transaction.to.toString()}
-value        | ${valueString} (${valueHumanReadable} eth)
-nonce        | ${nonceString}
-gasPrice     | ${gasPriceString} (${gasPriceHumanReadable} gwei)
-gasLimit     | ${parseInt('0x' + transaction.gasLimit.toString('hex'))}
-data         | 0x${transaction.data.toString('hex')}
+hash                     | 0x${transaction.txId}
+from                     | ${from}
+to                       | ${transaction.to.toString()}
+value                    | ${valueString} (${valueHumanReadable} eth)
+nonce                    | ${nonceString}
+maxFeePerGas             | ${maxFeePerGas} (${maxFeePerGasHumanReadable} gwei)
+maxPriorityFeePerGas     | ${maxPriorityFeePerGas} (${maxPriorityFeePerGasHumanReadable} gwei)
+gasLimit                 | ${parseInt('0x' + transaction.gas.toString(16))}
+data                     | ${transaction.data}
 `)
   }
 
@@ -117,51 +121,85 @@ data         | 0x${transaction.data.toString('hex')}
     return this.config.defaultGasLimit
   }
 
-  async sendTransaction ({ signer, method, destination, value = '0x', gasLimit, gasPrice, creationBlockNumber, serverAction }: SendTransactionDetails): Promise<SignedTransactionDetails> {
-    const encodedCall = method?.encodeABI() ?? '0x'
-    const _gasPrice = parseInt(gasPrice ?? await this.gasPriceFetcher.getGasPrice())
-    const releaseMutex = await this.nonceMutex.acquire()
-    if (isSameAddress(destination, constants.ZERO_ADDRESS)) {
-      const msg = `Preventing to send transaction with action id ${serverAction} to address(0)! Validate your configuration!`
+  async validateBalance (signer: string, maxFeePerGas: number, gasLimit: number): Promise<void> {
+    const txCost = toBN(maxFeePerGas).mul(toBN(gasLimit))
+    const signerBalance = await this.contractInteractor.getBalance(signer)
+    if (txCost.gt(toBN(signerBalance))) {
+      throw new Error(`signer ${signer} balance ${signerBalance} too low: tx cost is ${txCost.toString()}`)
+    }
+  }
+
+  async tryBroadcastTransaction (signedTx: string, verifiedTxId: string): Promise<SignedTransactionDetails> {
+    try {
+      const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+      if (transactionHash.toLowerCase() !== verifiedTxId.toLowerCase()) {
+        throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${verifiedTxId}`)
+      }
+      return {
+        transactionHash,
+        signedTx
+      }
+    } catch (e) {
+      throw new Error(`Tx broadcast failed: ${(e as Error).message}`)
+    }
+  }
+
+  async sendTransaction (txDetails: SendTransactionDetails): Promise<SignedTransactionDetails> {
+    const encodedCall = txDetails.method?.encodeABI() ?? '0x'
+    const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
+    const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? maxFeePerGas.toString())
+
+    await this.validateBalance(txDetails.signer, maxFeePerGas, txDetails.gasLimit)
+    if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
+      const msg = `Preventing to send transaction with action id ${txDetails.serverAction} to address(0)! Validate your configuration!`
       this.logger.error(msg)
       throw new Error(msg)
     }
+    const releaseMutex = await this.nonceMutex.acquire()
     let signedTransaction: SignedTransaction
     let storedTx: StoredTransaction
     try {
-      const nonce = await this.pollNonce(signer)
-      const txToSign = new Transaction({
-        to: destination,
-        value: value,
-        gasLimit,
-        gasPrice: _gasPrice,
-        data: Buffer.from(encodedCall.slice(2), 'hex'),
-        nonce
-      }, this.rawTxOptions)
+      const nonce = await this.pollNonce(txDetails.signer)
+
+      let txToSign: TypedTransaction
+      if (this.transactionType === TransactionType.TYPE_TWO) {
+        // todo add better maxFeePerGas, maxPriorityFeePerGas defaults
+        txToSign = new FeeMarketEIP1559Transaction({
+          to: txDetails.destination,
+          value: txDetails.value,
+          gasLimit: txDetails.gasLimit,
+          maxFeePerGas,
+          maxPriorityFeePerGas: maxPriorityFeePerGas,
+          data: Buffer.from(encodedCall.slice(2), 'hex'),
+          nonce
+        }, this.rawTxOptions)
+      } else {
+        txToSign = new Transaction({
+          to: txDetails.destination,
+          value: txDetails.value,
+          gasLimit: txDetails.gasLimit,
+          gasPrice: maxFeePerGas,
+          data: Buffer.from(encodedCall.slice(2), 'hex'),
+          nonce
+        }, this.rawTxOptions)
+      }
       // TODO omg! do not do this!
-      const keyManager = this.managerKeyManager.isSigner(signer) ? this.managerKeyManager : this.workersKeyManager
-      signedTransaction = keyManager.signTransaction(signer, txToSign)
+      const keyManager = this.managerKeyManager.isSigner(txDetails.signer) ? this.managerKeyManager : this.workersKeyManager
+      signedTransaction = keyManager.signTransaction(txDetails.signer, txToSign)
       const metadata: StoredTransactionMetadata = {
-        from: signer,
+        from: txDetails.signer,
         attempts: 1,
-        serverAction,
-        creationBlockNumber
+        serverAction: txDetails.serverAction,
+        creationBlockNumber: txDetails.creationBlockNumber
       }
       storedTx = createStoredTransaction(signedTransaction.signedEthJsTx, metadata)
-      this.nonces[signer]++
+      this.nonces[txDetails.signer]++
       await this.txStoreManager.putTx(storedTx, false)
-      this.printSendTransactionLog(signedTransaction.signedEthJsTx, signer)
+      this.printSendTransactionLog(storedTx, txDetails.signer)
     } finally {
       releaseMutex()
     }
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
-    if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
-      throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
-    }
-    return {
-      transactionHash,
-      signedTx: signedTransaction.rawTx
-    }
+    return await this.tryBroadcastTransaction(signedTransaction.rawTx, storedTx.txId)
   }
 
   async updateTransactionWithMinedBlock (tx: StoredTransaction, minedBlockNumber: number): Promise<void> {
@@ -169,7 +207,7 @@ data         | 0x${transaction.data.toString('hex')}
     await this.txStoreManager.putTx(storedTx, true)
   }
 
-  async updateTransactionWithAttempt (txToUpdate: Transaction, tx: StoredTransaction, currentBlock: number): Promise<StoredTransaction> {
+  async updateTransactionWithAttempt (txToUpdate: TypedTransaction, tx: StoredTransaction, currentBlock: number): Promise<StoredTransaction> {
     const metadata: StoredTransactionMetadata = {
       attempts: tx.attempts + 1,
       boostBlockNumber: currentBlock,
@@ -183,46 +221,58 @@ data         | 0x${transaction.data.toString('hex')}
     return storedTx
   }
 
-  async resendTransaction (tx: StoredTransaction, currentBlock: number, newGasPrice: number, isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
-    // Resend transaction with exactly the same values except for gas price
-    const txToSign = new Transaction(
-      {
-        to: tx.to,
-        gasLimit: tx.gas,
-        gasPrice: newGasPrice,
-        data: tx.data,
-        nonce: tx.nonce,
-        value: tx.value
-      },
-      this.rawTxOptions)
-
+  async resendTransaction (tx: StoredTransaction, currentBlock: number, newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
+    await this.validateBalance(tx.from, newMaxFee, tx.gas)
+    let txToSign: TypedTransaction
+    if (this.transactionType === TransactionType.TYPE_TWO) {
+      txToSign = new FeeMarketEIP1559Transaction(
+        {
+          to: tx.to,
+          gasLimit: tx.gas,
+          maxFeePerGas: newMaxFee,
+          maxPriorityFeePerGas: newMaxPriorityFee,
+          data: tx.data,
+          nonce: tx.nonce,
+          value: tx.value
+        },
+        this.rawTxOptions)
+    } else {
+      txToSign = new Transaction(
+        {
+          to: tx.to,
+          gasLimit: tx.gas,
+          gasPrice: newMaxFee,
+          data: tx.data,
+          nonce: tx.nonce,
+          value: tx.value
+        },
+        this.rawTxOptions)
+    }
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
     const signedTransaction = keyManager.signTransaction(tx.from, txToSign)
     const storedTx = await this.updateTransactionWithAttempt(signedTransaction.signedEthJsTx, tx, currentBlock)
-    this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.gasPrice, isMaxGasPriceReached)
-    this.printSendTransactionLog(signedTransaction.signedEthJsTx, tx.from)
+    this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.maxFeePerGas, tx.maxPriorityFeePerGas, isMaxGasPriceReached)
+    this.printSendTransactionLog(storedTx, tx.from)
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
-    const transactionHash = await this.contractInteractor.broadcastTransaction(signedTransaction.rawTx)
-    if (transactionHash.toLowerCase() !== storedTx.txId.toLowerCase()) {
-      throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${storedTx.txId}`)
-    }
-    return {
-      transactionHash,
-      signedTx: signedTransaction.rawTx
-    }
+
+    return await this.tryBroadcastTransaction(signedTransaction.rawTx, storedTx.txId)
   }
 
-  _resolveNewGasPrice (oldGasPrice: number): { newGasPrice: number, isMaxGasPriceReached: boolean } {
+  _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
     let isMaxGasPriceReached = false
-    let newGasPrice = oldGasPrice * this.config.retryGasPriceFactor
+    let newMaxFee = oldMaxFee * this.config.retryGasPriceFactor
+    let newMaxPriorityFee = oldMaxPriorityFee * this.config.retryGasPriceFactor
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
-    if (newGasPrice > parseInt(this.config.maxGasPrice)) {
+    if (newMaxFee > parseInt(this.config.maxGasPrice)) {
       isMaxGasPriceReached = true
-      newGasPrice = parseInt(this.config.maxGasPrice)
+      newMaxFee = parseInt(this.config.maxGasPrice)
     }
-    return { newGasPrice, isMaxGasPriceReached }
+    if (newMaxPriorityFee > newMaxFee) {
+      newMaxPriorityFee = newMaxFee
+    }
+    return { newMaxFee, newMaxPriorityFee, isMaxGasPriceReached }
   }
 
   async pollNonce (signer: Address): Promise<number> {
@@ -314,10 +364,10 @@ data         | 0x${transaction.data.toString('hex')}
     }
 
     // Calculate new gas price as a % increase over the previous one
-    const { newGasPrice, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.gasPrice)
-    const underpricedTransactions = sortedTxs.filter(it => it.gasPrice <= newGasPrice)
+    const { newMaxFee, newMaxPriorityFee, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.maxFeePerGas, oldestPendingTx.maxPriorityFeePerGas)
+    const underpricedTransactions = sortedTxs.filter(it => it.maxFeePerGas < newMaxFee || it.maxPriorityFeePerGas < newMaxPriorityFee)
     for (const transaction of underpricedTransactions) {
-      const boostedTransactionDetails = await this.resendTransaction(transaction, currentBlockHeight, newGasPrice, isMaxGasPriceReached)
+      const boostedTransactionDetails = await this.resendTransaction(transaction, currentBlockHeight, newMaxFee, newMaxPriorityFee, isMaxGasPriceReached)
       boostedTransactions.set(transaction.txId, boostedTransactionDetails)
       this.logger.debug(`Replaced transaction: nonce: ${transaction.nonce} sender: ${signer} | ${transaction.txId} => ${boostedTransactionDetails.transactionHash}`)
       if (transaction.attempts > 2) {

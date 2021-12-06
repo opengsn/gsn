@@ -3,7 +3,6 @@ import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
 import BN from 'bn.js'
 import { PastEventOptions } from 'web3-eth-contract'
-// import '../utils/chaiHelper'
 import {
   PenalizerInstance,
   RelayHubInstance,
@@ -29,6 +28,7 @@ import { AddressZero } from 'ethers/constants'
 import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -69,8 +69,95 @@ contract('ContractInteractor', function (accounts) {
     return '0x'.padEnd(42, `${n}`)
   }
 
+  context('init()', function () {
+    it('should throw on bad node/internet connection', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      const stub = sinon.stub(contractInteractor.web3.eth, 'getBlock').rejects(new Error('No block number for you'))
+      try {
+        await expect(contractInteractor.init())
+          .to.eventually.rejectedWith('No block number for you')
+      } finally {
+        stub.restore()
+      }
+    })
+    it('should complete initialization', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      assert.equal(contractInteractor.transactionType, TransactionType.LEGACY)
+      const spy = sinon.spy(contractInteractor)
+      await contractInteractor.init()
+      sinon.assert.callOrder(
+        spy._resolveDeployment,
+        spy._initializeContracts,
+        spy._validateCompatibility,
+        spy._initializeNetworkParams
+      )
+      assert.exists(contractInteractor.relayHubInstance)
+      assert.exists(contractInteractor.relayHubConfiguration)
+      assert.equal(contractInteractor.transactionType, TransactionType.TYPE_TWO)
+    })
+    it('should not initialize twice', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      await contractInteractor.init().catch((e: Error) => { assert.equal(e.message, 'init was already called') })
+    })
+  })
+
   context('#validateRelayCall', () => {
     const versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
+    let relayRequest: RelayRequest
+    let encodedData: RelayCallABI
+    before(function () {
+      relayRequest = {
+        request: {
+          to: constants.ZERO_ADDRESS,
+          data: '0x12345678',
+          from: constants.ZERO_ADDRESS,
+          nonce: '1',
+          value: '0',
+          gas: '50000',
+          validUntil: '0'
+        },
+        relayData: {
+          maxFeePerGas: '11',
+          maxPriorityFeePerGas: '1',
+          pctRelayFee: '0',
+          baseRelayFee: '0',
+          transactionCalldataGasUsed: '0',
+          relayWorker: workerAddress,
+          forwarder: constants.ZERO_ADDRESS,
+          paymaster: pm.address,
+          paymasterData: '0x',
+          clientId: '1'
+        }
+      }
+      encodedData = {
+        maxAcceptanceBudget: '200000',
+        relayRequest,
+        signature: '0x',
+        approvalData: '0x'
+      }
+    })
+
     it('should return relayCall revert reason', async () => {
       const contractInteractor = new ContractInteractor(
         {
@@ -82,36 +169,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-
-      const relayRequest: RelayRequest = {
-        request: {
-          to: constants.ZERO_ADDRESS,
-          data: '0x12345678',
-          from: constants.ZERO_ADDRESS,
-          nonce: '1',
-          value: '0',
-          gas: '50000',
-          validUntil: '0'
-        },
-        relayData: {
-          gasPrice: '1',
-          pctRelayFee: '0',
-          baseRelayFee: '0',
-          transactionCalldataGasUsed: '0',
-          relayWorker: workerAddress,
-          forwarder: constants.ZERO_ADDRESS,
-          paymaster: pm.address,
-          paymasterData: '0x',
-          clientId: '1'
-        }
-      }
       const blockGasLimit = await contractInteractor._getBlockGasLimit()
-      const encodedData: RelayCallABI = {
-        maxAcceptanceBudget: '200000',
-        relayRequest,
-        signature: '0x',
-        approvalData: '0x'
-      }
       const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
@@ -146,7 +204,8 @@ contract('ContractInteractor', function (accounts) {
           validUntil: '0'
         },
         relayData: {
-          gasPrice: '1',
+          maxFeePerGas: '1',
+          maxPriorityFeePerGas: '1',
           pctRelayFee: '0',
           baseRelayFee: '0',
           transactionCalldataGasUsed: '0',
@@ -169,6 +228,77 @@ contract('ContractInteractor', function (accounts) {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',
         reverted: false
+      })
+    })
+
+    it('should use gasPrice on networks without eip1559 support', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          versionManager,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      await contractInteractor.init()
+      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
+      try {
+        contractInteractor.transactionType = TransactionType.LEGACY
+        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+      } finally {
+        sinon.assert.calledOnce(spy)
+        const rpcPayload = spy.getCall(0).args[0]
+        assert.equal(rpcPayload.method, 'eth_call')
+        assert.equal(rpcPayload.params[0].gasPrice, toHex(relayRequest.relayData.maxFeePerGas))
+        spy.restore()
+      }
+    })
+
+    it('should use maxFeePerGas/maxPriorityFeePerGas on networks with eip1559 support', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          versionManager,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      await contractInteractor.init()
+      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
+      try {
+        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+      } finally {
+        sinon.assert.calledOnce(spy)
+        const rpcPayload = spy.getCall(0).args[0]
+        assert.equal(rpcPayload.method, 'eth_call')
+        assert.equal(rpcPayload.params[0].maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
+        assert.equal(rpcPayload.params[0].maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
+        spy.restore()
+      }
+    })
+
+    context('#__fixGasFees()', () => {
+      it('should return gas fees depending on network support', async function () {
+        const contractInteractor = new ContractInteractor(
+          {
+            environment,
+            provider: web3.currentProvider as HttpProvider,
+            logger,
+            maxPageSize,
+            deployment: { paymasterAddress: pm.address }
+          })
+        await contractInteractor.init()
+        contractInteractor.transactionType = TransactionType.LEGACY
+        let gasFees = contractInteractor._fixGasFees(relayRequest)
+        assert.equal(gasFees.gasPrice, toHex(relayRequest.relayData.maxFeePerGas))
+        contractInteractor.transactionType = TransactionType.TYPE_TWO
+        gasFees = contractInteractor._fixGasFees(relayRequest)
+        assert.equal(gasFees.maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
+        assert.equal(gasFees.maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
       })
     })
   })
@@ -352,7 +482,9 @@ contract('ContractInteractor', function (accounts) {
           from: accounts[0],
           to: accounts[0],
           data: '0x' + 'ff'.repeat(msgDataLength),
-          clientId: '1'
+          clientId: '1',
+          maxFeePerGas: '0x1',
+          maxPriorityFeePerGas: '0x1'
         }
         const estimation = await contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
         const expectedEstimation = originalGasEstimation - msgDataLength * defaultEnvironment.gtxdatanonzero
@@ -364,7 +496,9 @@ contract('ContractInteractor', function (accounts) {
           from: accounts[0],
           to: accounts[0],
           data: '0x' + 'ff'.repeat(msgDataLength * 10000),
-          clientId: '1'
+          clientId: '1',
+          maxFeePerGas: '0x1',
+          maxPriorityFeePerGas: '0x1'
         }
         await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
           .to.eventually.be.rejectedWith('calldataGasCost exceeded originalGasEstimation')
@@ -372,7 +506,7 @@ contract('ContractInteractor', function (accounts) {
     })
   })
 
-  context.skip('#LightTruffleContract', () => {
+  context('#LightTruffleContract', () => {
     let contractInteractor: ContractInteractor
     let relayReg: RelayRegistrarInstance
     let lightreg: IRelayRegistrarInstance

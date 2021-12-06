@@ -305,6 +305,14 @@ export async function emptyBalance (source: Address, target: Address): Promise<v
   assert.isTrue(balance.eqn(0))
 }
 
+export function disableTruffleAutoEstimateGas (truffleContract: any): void {
+  if (truffleContract.autoGas) {
+    truffleContract.autoGas = false
+  }
+  truffleContract.defaults
+  delete truffleContract.class_defaults.gas
+}
+
 /**
  * Not all "signatures" are valid, so using a hard-coded one for predictable error message.
  */

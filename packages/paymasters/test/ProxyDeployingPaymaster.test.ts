@@ -124,7 +124,8 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
   const gasData = {
     pctRelayFee: '0',
     baseRelayFee: '0',
-    gasPrice: '1',
+    maxFeePerGas: '1',
+    maxPriorityFeePerGas: '1',
     gasLimit: 1e6.toString()
   }
 
@@ -362,6 +363,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     let counter: TestCounterInstance
     let proxy: any
     let encodedCall: string
+    let relayProvider: RelayProvider
 
     before(async function () {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -418,7 +420,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         paymasterAddress: paymaster.address
       }
       encodedCall = counter.contract.methods.increment().encodeABI()
-      const relayProvider = await RelayProvider.newProvider({
+      relayProvider = await RelayProvider.newProvider({
         provider: web3.currentProvider as HttpProvider,
         overrideDependencies: {
           asyncPaymasterData: async () => {
@@ -436,9 +438,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       assert.equal(counter1.toString(), '0')
 
       // Call counter.increment from identity
+      const { maxFeePerGas, maxPriorityFeePerGas } = await relayProvider.calculateGasFees()
       const tx = await proxy.methods.execute(0, counter.address, 0, encodedCall).send({
         from: senderAddress,
-        gas: 5000000
+        gas: 5000000,
+        maxFeePerGas,
+        maxPriorityFeePerGas
       })
 
       // Check that increment was called
@@ -450,10 +455,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     it('should pay with token to make a call if proxy is deployed', async function () {
       const counter1 = await counter.get()
       assert.equal(counter1.toString(), '1')
-
+      const { maxFeePerGas, maxPriorityFeePerGas } = await relayProvider.calculateGasFees()
       const tx = await proxy.methods.execute(0, counter.address, 0, encodedCall).send({
         from: senderAddress,
-        gas: 5000000
+        gas: 5000000,
+        maxFeePerGas,
+        maxPriorityFeePerGas
       })
 
       const counter2 = await counter.get()
@@ -469,10 +476,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       assert.strictEqual(balance1, '0')
 
       const value = 1e16
+      const { maxFeePerGas } = await relayProvider.calculateGasFees()
       await proxy.methods.execute(0, counter.address, value.toString(), encodedCall).send({
         from: senderAddress,
         gas: 5000000,
-        value
+        value,
+        gasPrice: maxFeePerGas
       })
 
       const counter2 = await counter.get()

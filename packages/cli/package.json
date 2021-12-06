@@ -47,11 +47,11 @@
     "winston": "^3.3.3"
   },
   "devDependencies": {
-    "web3-core": "1.2.6",
-    "web3-core-helpers": "1.2.6",
-    "web3-eth": "1.2.6",
-    "web3-eth-abi": "1.2.6",
-    "web3-eth-contract": "1.2.6",
-    "web3-utils": "1.2.6"
+    "web3-core": "1.6.1",
+    "web3-core-helpers": "1.6.1",
+    "web3-eth": "1.6.1",
+    "web3-eth-abi": "1.6.1",
+    "web3-eth-contract": "1.6.1",
+    "web3-utils": "1.6.1"
   }
 }

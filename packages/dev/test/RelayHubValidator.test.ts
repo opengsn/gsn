@@ -48,7 +48,8 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
           validUntil: '0'
         },
         relayData: {
-          gasPrice: '0',
+          maxFeePerGas: '0',
+          maxPriorityFeePerGas: '0',
           pctRelayFee: '1',
           baseRelayFee: '2',
           relayWorker,
@@ -88,7 +89,8 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
         validUntil: '0'
       },
       relayData: {
-        gasPrice: '0',
+        maxFeePerGas: '0',
+        maxPriorityFeePerGas: '0',
         pctRelayFee: '1',
         baseRelayFee: '2',
         relayWorker,

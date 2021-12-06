@@ -21,7 +21,7 @@ const RelayRegistrar = artifacts.require('RelayRegistrar')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
-contract.skip('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]: string[]) {
+contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]: string[]) {
   let arbRelayHub: ArbRelayHubInstance
   let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
@@ -83,7 +83,8 @@ contract.skip('ArbRelayHub', function ([from, relayWorker, relayManager, relayOw
           pctRelayFee: '0',
           baseRelayFee: '0',
           transactionCalldataGasUsed,
-          gasPrice: 1e8.toString(),
+          maxFeePerGas: 1e8.toString(),
+          maxPriorityFeePerGas: 1e8.toString(),
           relayWorker,
           forwarder: forwarder.address,
           paymaster: paymaster.address,

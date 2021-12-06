@@ -4,7 +4,7 @@ import BN from 'bn.js'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
-import { HttpProvider, TransactionReceipt } from 'web3-core'
+import { HttpProvider } from 'web3-core'
 import { fromWei, toBN } from 'web3-utils'
 import ow from 'ow'
 
@@ -234,18 +234,17 @@ export class CommandsLogic {
       } else {
         console.log('Funding relayer')
 
-        const _fundTx = await this.web3.eth.sendTransaction({
+        const fundTx = await this.web3.eth.sendTransaction({
           from: options.from,
           to: relayAddress,
           value: options.funds,
           gas: 1e6,
           gasPrice: options.gasPrice
         })
-        const fundTx = _fundTx as TransactionReceipt
         if (fundTx.transactionHash == null) {
           return {
             success: false,
-            error: `Fund transaction reverted: ${JSON.stringify(_fundTx)}`
+            error: `Fund transaction reverted: ${JSON.stringify(fundTx)}`
           }
         }
         transactions.push(fundTx.transactionHash)
