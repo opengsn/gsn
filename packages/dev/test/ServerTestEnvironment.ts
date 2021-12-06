@@ -198,7 +198,8 @@ export class ServerTestEnvironment {
       runPaymasterReputations: false,
       ownerAddress: this.relayOwner,
       relayHubAddress: this.relayHub.address,
-      checkInterval: 100
+      checkInterval: 100,
+      workdir: serverWorkdirs?.workdir
     }
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
