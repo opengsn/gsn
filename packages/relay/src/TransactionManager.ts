@@ -163,7 +163,6 @@ data                     | ${transaction.data}
 
       let txToSign: TypedTransaction
       if (this.transactionType === TransactionType.TYPE_TWO) {
-        // todo add better maxFeePerGas, maxPriorityFeePerGas defaults
         txToSign = new FeeMarketEIP1559Transaction({
           to: txDetails.destination,
           value: txDetails.value,

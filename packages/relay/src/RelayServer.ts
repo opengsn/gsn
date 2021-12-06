@@ -55,8 +55,7 @@ const GAS_RESERVE = 100000
 const WithdrawalConfigShape = {
   withdrawOnEthBalanceReached: ow.number,
   leaveManagerWithAmountEth: ow.number,
-  repeat: ow.boolean,
-  smallAmount: ow.optional.boolean
+  repeat: ow.boolean
 }
 
 export class RelayServer extends EventEmitter {
@@ -436,7 +435,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
   }
 
   start (): void {
-    this.logger.debug(`Started polling for new blocks every ${this.config.checkInterval}ms`)
+    this.logger.info(`Started polling for new blocks every ${this.config.checkInterval}ms`)
     this.running = true
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     setTimeout(this.intervalHandler.bind(this), this.config.checkInterval)
@@ -811,7 +810,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _resolveWithdrawalConfig (filename: string): Promise<{ withdrawalAmount: BN, repeat: boolean }> {
     this.logger.debug('Parsing withdrawal config file')
-    const withdrawConfig: { repeat: boolean, withdrawOnEthBalanceReached: number, leaveManagerWithAmountEth: number, smallAmount: boolean } = JSON.parse(
+    const withdrawConfig: { repeat: boolean, withdrawOnEthBalanceReached: number, leaveManagerWithAmountEth: number } = JSON.parse(
       fs.readFileSync(filename, 'utf8'))
     ow(withdrawConfig, ow.object.exactShape(WithdrawalConfigShape))
     const withdrawOnEthBalanceReached = toBN(withdrawConfig.withdrawOnEthBalanceReached)
@@ -823,9 +822,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       throw new Error(`leaveManagerWithAmountEth must be at least managerTargetBalance ${this.config.managerTargetBalance}`)
     }
 
-    if (withdrawOnEthBalanceReached.sub(leaveManagerWithAmountEth).lt(toBN(1e18)) && !withdrawConfig.smallAmount) {
-      throw new Error('Are you really sure that you want to withdraw less than 1 eth?? Add "smallAmount": true to your config then')
-    }
     const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
     let withdrawalAmount = managerHubBalance.sub(leaveManagerWithAmountEth)
     if (withdrawOnEthBalanceReached.gt(managerHubBalance)) {
@@ -848,8 +844,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       }
       txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(blockNumber, withdrawalAmount))
       if (!repeat) {
-        this.logger.info('Removing withdraw file.')
-        fs.rmSync(filename)
+        this.logger.info('Withdrew to owner. Marking withdraw file.')
+        fs.renameSync(filename, filename + '.done')
       } else {
         this.logger.info('Repeated withdrawals set. Keeping withdrawal file.')
       }
