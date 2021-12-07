@@ -35,8 +35,6 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import fs from 'fs'
-import ow from 'ow'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -51,12 +49,6 @@ const GAS_FACTOR = 1.1
  * A constant oversupply of gas to each 'relayCall' transaction.
  */
 const GAS_RESERVE = 100000
-
-const WithdrawalConfigShape = {
-  withdrawOnEthBalanceReached: ow.number,
-  leaveManagerWithAmountEth: ow.number,
-  repeat: ow.boolean
-}
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
@@ -808,47 +800,22 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return getLatestEventData(events)
   }
 
-  async _resolveWithdrawalConfig (filename: string): Promise<{ withdrawalAmount: BN, repeat: boolean }> {
-    this.logger.debug('Parsing withdrawal config file')
-    const withdrawConfig: { repeat: boolean, withdrawOnEthBalanceReached: number, leaveManagerWithAmountEth: number } = JSON.parse(
-      fs.readFileSync(filename, 'utf8'))
-    ow(withdrawConfig, ow.object.exactShape(WithdrawalConfigShape))
-    const withdrawOnEthBalanceReached = toBN(withdrawConfig.withdrawOnEthBalanceReached)
-    const leaveManagerWithAmountEth = toBN(withdrawConfig.leaveManagerWithAmountEth)
-    if (withdrawOnEthBalanceReached.lt(leaveManagerWithAmountEth)) {
-      throw new Error('withdrawOnEthBalanceReached must be at least leaveManagerWithAmountEth')
-    }
-    if (leaveManagerWithAmountEth.lt(toBN(this.config.managerTargetBalance))) {
-      throw new Error(`leaveManagerWithAmountEth must be at least managerTargetBalance ${this.config.managerTargetBalance}`)
-    }
-
-    const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
-    let withdrawalAmount = managerHubBalance.sub(leaveManagerWithAmountEth)
-    if (withdrawOnEthBalanceReached.gt(managerHubBalance)) {
-      // We didn't reach the given hub eth balance to withdraw yet
-      withdrawalAmount = toBN(0)
-    }
-    return { withdrawalAmount, repeat: withdrawConfig.repeat }
-  }
-
   async withdrawToOwnerIfNeeded (blockNumber: number): Promise<PrefixedHexString[]> {
     try {
       let txHashes: PrefixedHexString[] = []
-      const filename = `${this.config.workdir}/withdraw.json`
-      if (!this.isReady() || !fs.existsSync(filename)) {
+      if (!this.isReady() || this.config.withdrawToOwnerOnBalance == null) {
         return txHashes
       }
-      const { withdrawalAmount, repeat } = await this._resolveWithdrawalConfig(filename)
-      if (withdrawalAmount.eqn(0)) {
+      // todo multiply workerTargetBalance by workerCount when adding multiple workers
+      const reserveBalance = toBN(this.config.managerTargetBalance).add(toBN(this.config.workerTargetBalance))
+      const effectiveWithdrawOnBalance = toBN(this.config.withdrawToOwnerOnBalance).add(reserveBalance)
+      const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
+      if (managerHubBalance.lt(effectiveWithdrawOnBalance)) {
         return txHashes
       }
+      const withdrawalAmount = managerHubBalance.sub(reserveBalance)
       txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(blockNumber, withdrawalAmount))
-      if (!repeat) {
-        this.logger.info('Withdrew to owner. Marking withdraw file.')
-        fs.renameSync(filename, filename + '.done')
-      } else {
-        this.logger.info('Repeated withdrawals set. Keeping withdrawal file.')
-      }
+      this.logger.info(`Withdrew ${withdrawalAmount.toString()} to owner`)
       return txHashes
     } catch (e) {
       this.logger.error(`withdrawToOwnerIfNeeded: ${(e as Error).message}`)

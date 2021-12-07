@@ -4,7 +4,9 @@ import {
   filterType,
   parseServerConfig,
   resolveServerConfig,
-  serverDefaultConfiguration
+  ServerConfigParams,
+  serverDefaultConfiguration,
+  validateBalanceParams
 } from '@opengsn/relay/dist/ServerConfigParams'
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
@@ -130,6 +132,79 @@ context('#ServerConfigParams', () => {
       }
     })
   })
+
+  context('_validateBalanceParams', function () {
+    it('should throw if workerMinBalance > workerTargetBalance', function () {
+      const config: ServerConfigParams = {
+        ...serverDefaultConfiguration,
+        workerTargetBalance: 1e18,
+        workerMinBalance: 2e18
+      }
+      try {
+        validateBalanceParams(config)
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, 'workerTargetBalance must be at least workerMinBalance')
+      }
+    })
+    it('should throw if managerMinBalance > managerTargetBalance', function () {
+      const config: ServerConfigParams = {
+        ...serverDefaultConfiguration,
+        managerTargetBalance: 1e18,
+        managerMinBalance: 2e18
+      }
+      try {
+        validateBalanceParams(config)
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, 'managerTargetBalance must be at least managerMinBalance')
+      }
+    })
+    it('should throw if minHubWithdrawalBalance > withdrawToOwnerOnBalance', function () {
+      const config: ServerConfigParams = {
+        ...serverDefaultConfiguration,
+        withdrawToOwnerOnBalance: 1e18,
+        minHubWithdrawalBalance: 2e18
+      }
+      try {
+        validateBalanceParams(config)
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, 'withdrawToOwnerOnBalance must be at least minHubWithdrawalBalance')
+      }
+    })
+    it('should throw if managerTargetBalance + workerTargetBalance > withdrawToOwnerOnBalance', function () {
+      const config: ServerConfigParams = {
+        ...serverDefaultConfiguration,
+        managerTargetBalance: 1e18,
+        workerTargetBalance: 1e18,
+        withdrawToOwnerOnBalance: 1.9e18
+      }
+      try {
+        validateBalanceParams(config)
+        assert.fail()
+      } catch (e) {
+        assert.include(e.message, 'withdrawToOwnerOnBalance must be larger than managerTargetBalance + workerTargetBalance')
+      }
+    })
+    it('should not throw on serverDefaultConfiguration', function () {
+      validateBalanceParams(serverDefaultConfiguration)
+    })
+    it('should not throw on valid balance parameters with/without owner withdrawal', function () {
+      const config: ServerConfigParams = {
+        ...serverDefaultConfiguration,
+        managerTargetBalance: 1e18,
+        workerTargetBalance: 1e18,
+        minHubWithdrawalBalance: 1e18,
+        workerMinBalance: 0.5e18,
+        managerMinBalance: 0.5e18
+      }
+      validateBalanceParams(config)
+      config.withdrawToOwnerOnBalance = 4e18
+      validateBalanceParams(config)
+    })
+  })
+
   context('#resolveServerConfig', () => {
     const provider = web3.currentProvider
     it('should fail on missing hub/oracle', async () => {

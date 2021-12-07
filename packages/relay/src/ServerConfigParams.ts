@@ -13,6 +13,7 @@ import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+import { toBN } from 'web3-utils'
 
 export enum LoggingProviderMode {
   NONE,
@@ -62,6 +63,7 @@ export interface ServerConfigParams {
   managerMinStake: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
+  withdrawToOwnerOnBalance?: number
   refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutBlocks: number
   confirmationsNeeded: number
@@ -189,6 +191,7 @@ const ConfigParamsTypes = {
   managerMinStake: 'string',
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
+  withdrawToOwnerOnBalance: 'number',
   defaultGasLimit: 'number',
   requestMinValidBlocks: 'number',
 
@@ -360,9 +363,35 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
+  const finalConfig = { ...serverDefaultConfiguration, ...config }
+  validateBalanceParams(finalConfig)
   return {
-    config: { ...serverDefaultConfiguration, ...config },
+    config: finalConfig,
     environment
+  }
+}
+
+export function validateBalanceParams (config: ServerConfigParams): void {
+  const workerTargetBalance = toBN(config.workerTargetBalance)
+  const managerTargetBalance = toBN(config.managerTargetBalance)
+  const managerMinBalance = toBN(config.managerMinBalance)
+  const workerMinBalance = toBN(config.workerMinBalance)
+  const minHubWithdrawalBalance = toBN(config.minHubWithdrawalBalance)
+  if (managerTargetBalance.lt(managerMinBalance)) {
+    throw new Error('managerTargetBalance must be at least managerMinBalance')
+  }
+  if (workerTargetBalance.lt(workerMinBalance)) {
+    throw new Error('workerTargetBalance must be at least workerMinBalance')
+  }
+  if (config.withdrawToOwnerOnBalance == null) {
+    return
+  }
+  const withdrawToOwnerOnBalance = toBN(config.withdrawToOwnerOnBalance)
+  if (minHubWithdrawalBalance.gt(withdrawToOwnerOnBalance)) {
+    throw new Error('withdrawToOwnerOnBalance must be at least minHubWithdrawalBalance')
+  }
+  if (managerTargetBalance.add(workerTargetBalance).gte(withdrawToOwnerOnBalance)) {
+    throw new Error('withdrawToOwnerOnBalance must be larger than managerTargetBalance + workerTargetBalance')
   }
 }
 

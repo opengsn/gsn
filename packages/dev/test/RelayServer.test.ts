@@ -23,7 +23,6 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import fs from 'fs'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -607,24 +606,17 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   })
 
   describe('withdrawToOwnerIfNeeded', function () {
-    let configFilename: string
     let currentBlockNumber: number
-    const onceWithdrawConfig = JSON.stringify({
-      withdrawOnEthBalanceReached: 1e18,
-      leaveManagerWithAmountEth: 0.5e18,
-      repeat: false
-    })
+    const withdrawToOwnerOnBalance = 3e18
     beforeEach(async function () {
-      await env.newServerInstance({}, getTemporaryWorkdirs())
-      configFilename = `${env.relayServer.config.workdir}/withdraw.json`
-      assert.isFalse(fs.existsSync(configFilename))
+      await env.newServerInstance({ withdrawToOwnerOnBalance }, getTemporaryWorkdirs())
+      assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, withdrawToOwnerOnBalance)
       currentBlockNumber = await env.web3.eth.getBlockNumber()
     })
     afterEach(async function () {
       sinon.restore()
     })
     it('should not withdraw if relayer is not ready', async function () {
-      fs.writeFileSync(configFilename, onceWithdrawConfig)
       env.relayServer.setReadyState(false)
       const serverSpy = sinon.spy(env.relayServer)
       const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
@@ -633,7 +625,9 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.isFalse(serverSpy.isReady.returnValues[0])
     })
 
-    it('should not withdraw if missing config file', async function () {
+    it('should not withdraw if withdrawToOwnerOnBalance is not given', async function () {
+      await env.newServerInstance({}, getTemporaryWorkdirs())
+      assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, undefined)
       const serverSpy = sinon.spy(env.relayServer)
       const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
       assert.deepEqual(txHashes, [])
@@ -642,140 +636,126 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
 
     describe('_resolveWithdrawalConfig', function () {
-      async function assertReturnedError (message: string): Promise<void> {
-        const spy = sinon.spy(env.relayServer.logger, 'error')
-        await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
-        sinon.assert.calledWith(spy, `withdrawToOwnerIfNeeded: ${message}`)
-        spy.restore()
-      }
-      it('should throw with bad config file', async function () {
-        const badWithdrawConfig = JSON.stringify({
-          withdrawOnEthBalanceReached: 1e18,
-          leaveManagerWithAmountEth: 0.5e18,
-          repeat: false,
-          blah: 'blah'
-        })
-        fs.writeFileSync(configFilename, badWithdrawConfig)
-        try {
-          await env.relayServer._resolveWithdrawalConfig(configFilename)
-          assert.fail()
-        } catch (e) {
-          assert.include(e.message, 'Did not expect property `blah` to exist, got `blah` in object `withdrawConfig`')
-          await assertReturnedError(e.message)
-        }
-      })
+      // async function assertReturnedError (message: string): Promise<void> {
+      //   const spy = sinon.spy(env.relayServer.logger, 'error')
+      //   await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      //   sinon.assert.calledWith(spy, `withdrawToOwnerIfNeeded: ${message}`)
+      //   spy.restore()
+      // }
 
-      it('should throw if withdrawOnEthBalanceReached < leaveManagerWithAmountEth', async function () {
-        const badWithdrawConfig = JSON.stringify({
-          withdrawOnEthBalanceReached: 0.5e18,
-          leaveManagerWithAmountEth: 1e18,
-          repeat: false
-        })
-        fs.writeFileSync(configFilename, badWithdrawConfig)
-        try {
-          await env.relayServer._resolveWithdrawalConfig(configFilename)
-          assert.fail()
-        } catch (e) {
-          assert.include(e.message, 'withdrawOnEthBalanceReached must be at least leaveManagerWithAmountEth')
-          await assertReturnedError(e.message)
-        }
-      })
-
-      it('should throw if leaveManagerWithAmountEth < managerTargetBalance', async function () {
-        const badWithdrawConfig = JSON.stringify({
-          withdrawOnEthBalanceReached: env.relayServer.config.managerTargetBalance * 10,
-          leaveManagerWithAmountEth: env.relayServer.config.managerTargetBalance / 2,
-          repeat: false
-        })
-        fs.writeFileSync(configFilename, badWithdrawConfig)
-        try {
-          await env.relayServer._resolveWithdrawalConfig(configFilename)
-          assert.fail()
-        } catch (e) {
-          assert.include(e.message, `leaveManagerWithAmountEth must be at least managerTargetBalance ${env.relayServer.config.managerTargetBalance}`)
-          await assertReturnedError(e.message)
-        }
-      })
-
-      it('should return withdrawalAmount 0  if withdrawOnEthBalanceReached > managerHubBalance', async function () {
-        await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 1e18.toString() })
-        const hubBalance = await env.relayHub.balanceOf(env.relayServer.managerAddress)
-        const badWithdrawConfig = JSON.stringify({
-          withdrawOnEthBalanceReached: parseInt(hubBalance.add(toBN(1e18)).toString()),
-          leaveManagerWithAmountEth: 0.5e18,
-          repeat: false
-        })
-        fs.writeFileSync(configFilename, badWithdrawConfig)
-        const { withdrawalAmount, repeat } = await env.relayServer._resolveWithdrawalConfig(configFilename)
-        assert.isFalse(repeat)
-        assert.isTrue(withdrawalAmount.eq(toBN(0)))
-      })
-
-      it('should return correct withdrawalAmount and repeat flag', async function () {
-        await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
-        await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
-        const leaveManagerWithAmountEth = 0.5e18
-        const withdrawConfig = JSON.stringify({
-          withdrawOnEthBalanceReached: 2e18,
-          leaveManagerWithAmountEth: leaveManagerWithAmountEth,
-          repeat: true
-        })
-        fs.writeFileSync(configFilename, withdrawConfig)
-        const { withdrawalAmount, repeat } = await env.relayServer._resolveWithdrawalConfig(configFilename)
-        assert.isTrue(repeat)
-        const hubBalance = await env.relayHub.balanceOf(env.relayServer.managerAddress)
-        assert.isTrue(withdrawalAmount.eq(hubBalance.sub(toBN(leaveManagerWithAmountEth))))
-      })
+      // it('should throw if withdrawOnEthBalanceReached < leaveManagerWithAmountEth', async function () {
+      //   const badWithdrawConfig = JSON.stringify({
+      //     withdrawOnEthBalanceReached: 0.5e18,
+      //     leaveManagerWithAmountEth: 1e18,
+      //     repeat: false
+      //   })
+      //   fs.writeFileSync(configFilename, badWithdrawConfig)
+      //   try {
+      //     await env.relayServer._resolveWithdrawalConfig(configFilename)
+      //     assert.fail()
+      //   } catch (e) {
+      //     assert.include(e.message, 'withdrawOnEthBalanceReached must be at least leaveManagerWithAmountEth')
+      //     await assertReturnedError(e.message)
+      //   }
+      // })
+      //
+      // it('should throw if leaveManagerWithAmountEth < managerTargetBalance', async function () {
+      //   const badWithdrawConfig = JSON.stringify({
+      //     withdrawOnEthBalanceReached: env.relayServer.config.managerTargetBalance * 10,
+      //     leaveManagerWithAmountEth: env.relayServer.config.managerTargetBalance / 2,
+      //     repeat: false
+      //   })
+      //   fs.writeFileSync(configFilename, badWithdrawConfig)
+      //   try {
+      //     await env.relayServer._resolveWithdrawalConfig(configFilename)
+      //     assert.fail()
+      //   } catch (e) {
+      //     assert.include(e.message, `leaveManagerWithAmountEth must be at least managerTargetBalance ${env.relayServer.config.managerTargetBalance}`)
+      //     await assertReturnedError(e.message)
+      //   }
+      // })
+      //
+      // it('should return withdrawalAmount 0  if withdrawOnEthBalanceReached > managerHubBalance', async function () {
+      //   await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 1e18.toString() })
+      //   const hubBalance = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      //   const badWithdrawConfig = JSON.stringify({
+      //     withdrawOnEthBalanceReached: parseInt(hubBalance.add(toBN(1e18)).toString()),
+      //     leaveManagerWithAmountEth: 0.5e18,
+      //     repeat: false
+      //   })
+      //   fs.writeFileSync(configFilename, badWithdrawConfig)
+      //   const { withdrawalAmount, repeat } = await env.relayServer._resolveWithdrawalConfig(configFilename)
+      //   assert.isFalse(repeat)
+      //   assert.isTrue(withdrawalAmount.eq(toBN(0)))
+      // })
+      //
+      // it('should return correct withdrawalAmount and repeat flag', async function () {
+      //   await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      //   await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      //   const leaveManagerWithAmountEth = 0.5e18
+      //   const withdrawConfig = JSON.stringify({
+      //     withdrawOnEthBalanceReached: 2e18,
+      //     leaveManagerWithAmountEth: leaveManagerWithAmountEth,
+      //     repeat: true
+      //   })
+      //   fs.writeFileSync(configFilename, withdrawConfig)
+      //   const { withdrawalAmount, repeat } = await env.relayServer._resolveWithdrawalConfig(configFilename)
+      //   assert.isTrue(repeat)
+      //   const hubBalance = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      //   assert.isTrue(withdrawalAmount.eq(hubBalance.sub(toBN(leaveManagerWithAmountEth))))
+      // })
     })
 
-    describe('withdraw manager hub balance to owner', function () {
-      const withdrawOnEthBalanceReached = 3e18
-      const leaveManagerWithAmountEth = 1e18
-      beforeEach(async function () {
-        await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
-        await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 1e18.toString() })
-      })
+    it('should withdraw to owner when hub balance is sufficient', async function () {
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      const owner = env.relayServer.config.ownerAddress
+      const balanceBefore = toBN(await env.web3.eth.getBalance(owner))
+      const serverSpy = sinon.spy(env.relayServer)
+      const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
+      const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
+      const managerTargetBalance = toBN(env.relayServer.config.managerTargetBalance)
+      const workerTargetBalance = toBN(env.relayServer.config.workerTargetBalance)
+      const reserveBalance = managerTargetBalance.add(workerTargetBalance)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
+      const withdrawalAmount = managerHubBalanceBefore.sub(reserveBalance)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const balanceAfter = await env.web3.eth.getBalance(owner)
+      assert.deepEqual(txHashes.length, 1)
+      assert.equal(balanceBefore.add(withdrawalAmount).toString(), balanceAfter)
+      sinon.assert.callOrder(
+        serverSpy.isReady,
+        sendBalanceSpy,
+        loggerSpy
+      )
+      sinon.assert.calledWith(loggerSpy, `Withdrew ${withdrawalAmount.toString()} to owner`)
+      sinon.assert.calledWith(sendBalanceSpy, currentBlockNumber, withdrawalAmount)
+    })
 
-      async function assertWithdrawToOwner (withdrawConfig: any, logMessage: string): Promise<void> {
-        const owner = env.relayServer.config.ownerAddress
-        const balanceBefore = await env.web3.eth.getBalance(owner)
-        const serverSpy = sinon.spy(env.relayServer)
-        const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
-        const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
-        fs.writeFileSync(configFilename, withdrawConfig)
-        const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
-        const balanceAfter = await env.web3.eth.getBalance(owner)
-        assert.deepEqual(txHashes.length, 1)
-        assert.equal(toBN(balanceBefore).add(toBN(withdrawOnEthBalanceReached).sub(toBN(leaveManagerWithAmountEth))).toString(), balanceAfter)
-        sinon.assert.callOrder(
-          serverSpy.isReady,
-          serverSpy._resolveWithdrawalConfig,
-          sendBalanceSpy,
-          loggerSpy
-        )
-        sinon.assert.calledWith(loggerSpy, logMessage)
-      }
-
-      it('should withdraw once and mark file if repeat is false', async function () {
-        const withdrawConfig = JSON.stringify({
-          withdrawOnEthBalanceReached,
-          leaveManagerWithAmountEth,
-          repeat: false
-        })
-        await assertWithdrawToOwner(withdrawConfig, 'Withdrew to owner. Marking withdraw file.')
-        assert.isFalse(fs.existsSync(configFilename))
-        assert.isTrue(fs.existsSync(configFilename + '.done'))
-      })
-
-      it('should withdraw and keep file if repeat is true', async function () {
-        const withdrawConfig = JSON.stringify({
-          withdrawOnEthBalanceReached,
-          leaveManagerWithAmountEth,
-          repeat: true
-        })
-        await assertWithdrawToOwner(withdrawConfig, 'Repeated withdrawals set. Keeping withdrawal file.')
-        assert.isTrue(fs.existsSync(configFilename))
-      })
+    it('should not withdraw to owner when hub balance is too low', async function () {
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 1e18.toString() })
+      const owner = env.relayServer.config.ownerAddress
+      const balanceBefore = toBN(await env.web3.eth.getBalance(owner))
+      const serverSpy = sinon.spy(env.relayServer)
+      const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
+      const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
+      const managerTargetBalance = toBN(env.relayServer.config.managerTargetBalance)
+      const workerTargetBalance = toBN(env.relayServer.config.workerTargetBalance)
+      const reserveBalance = managerTargetBalance.add(workerTargetBalance)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance)))
+      assert.isTrue(managerHubBalanceBefore.lt(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const balanceAfter = await env.web3.eth.getBalance(owner)
+      assert.deepEqual(txHashes.length, 0)
+      assert.equal(balanceBefore.toString(), balanceAfter)
+      sinon.assert.callOrder(
+        serverSpy.isReady
+      )
+      sinon.assert.notCalled(loggerSpy)
+      sinon.assert.notCalled(sendBalanceSpy)
     })
   })
 
