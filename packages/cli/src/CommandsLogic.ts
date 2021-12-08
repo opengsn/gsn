@@ -48,7 +48,7 @@ export interface RegisterOptions {
 }
 
 export interface WithdrawOptions {
-  withdrawAmount: number | string
+  withdrawAmount: BN
   keyManager: KeyManager
   config: ServerConfigParams
   broadcast: boolean
@@ -338,36 +338,49 @@ export class CommandsLogic {
     try {
       console.log('Withdrawing from GSN relayer to owner')
       const relayManager = options.keyManager.getAddress(0)
+      console.log('relayManager is', relayManager)
       const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
-      const { owner } = await stakeManager.getStakeInfo(options.config.relayHubAddress)
+      const { owner } = await stakeManager.getStakeInfo(relayManager)
       if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
         // throw new Error(`Already owned by ${owner}, our account=${options.from}`)
         throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
       }
 
       const balance = await relayHub.balanceOf(relayManager)
-      if (balance.lt(toBN(options.withdrawAmount))) {
+      console.log('manager hub balance is', balance.toString())
+      if (balance.lt(options.withdrawAmount)) {
         throw new Error(`Relay manager hub balance ${balance.toString()} lower than withdrawalAmount`)
       }
-      // todo send hub balance to owner
-      const encodedCall = relayHub.contract.methods.withdraw(options.withdrawAmount, owner).encodeABI()
+      const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
+      const encodedCall = method.encodeABI()
+      console.log('encodedCall', encodedCall)
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
-      const gasPrice = await this.contractInteractor.getGasPrice()
+      const gasPrice = parseInt(await this.contractInteractor.getGasPrice())
+      const gasLimit = 1e5
+      console.log('gasPrice, nonce', gasPrice, nonce)
       const txToSign = new Transaction({
         to: options.config.relayHubAddress,
         value: 0,
-        gasLimit: 2e5,
+        gasLimit,
         gasPrice,
         data: Buffer.from(encodedCall.slice(2), 'hex'),
         nonce
       }, this.contractInteractor.getRawTxOptions())
+      console.log('Calling in view mode')
+      await method.call({
+        from: relayManager,
+        to: options.config.relayHubAddress,
+        value: 0,
+        gas: gasLimit,
+        gasPrice
+      })
+      console.log('Signing tx', txToSign.toJSON())
       const signedTx = options.keyManager.signTransaction(relayManager, txToSign)
-      // eslint-disable-next-line
-      console.log(`signed withdrawal tx: ${signedTx.signedEthJsTx.toJSON()}`)
       console.log(`signed withdrawal hex tx: ${signedTx.rawTx}`)
       if (options.broadcast) {
+        console.log('broadcasting tx')
         const txHash = await this.contractInteractor.broadcastTransaction(signedTx.rawTx)
         transactions.push(txHash)
       }

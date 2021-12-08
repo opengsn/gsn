@@ -66,9 +66,9 @@ export function getKeystorePath (keystorePath: string): string {
   if (!fs.existsSync(keystorePath)) {
     throw new Error(`keystorePath ${keystorePath} not found`)
   }
-  if (fs.lstatSync(keystorePath).isDirectory()) {
+  if (fs.lstatSync(keystorePath).isDirectory() && fs.existsSync(keystorePath + '/keystore')) {
     return keystorePath
-  } else if (fs.lstatSync(keystorePath).isFile()) {
+  } else if (fs.lstatSync(keystorePath).isFile() && path.basename(keystorePath) === 'keystore') {
     return path.dirname(keystorePath)
   }
   throw new Error(`keystorePath ${keystorePath} not a file or directory`)
