@@ -457,6 +457,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     this._workerSemaphoreOn = true
 
+    await this.batchManager?.intervalWorker(blockNumber)
+
     await this._worker(blockNumber)
       .then((transactions) => {
         if (transactions.length !== 0) {

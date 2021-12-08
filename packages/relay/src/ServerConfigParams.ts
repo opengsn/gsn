@@ -175,10 +175,10 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   runBatching: false,
   batchGasOverhead: '0',
   batchTargetGasLimit: '0',
-  batchTargetSize: 0,
+  batchTargetSize: 10, // TEMP
   batchMinimalGasLimit: '0',
   batchDurationMS: 0,
-  batchDurationBlocks: 0,
+  batchDurationBlocks: 1000, // TEMP: enough blocks into the future, so that all requests will have the same value
   batchGasThreshold: '0',
   batchTimeThreshold: 0,
   batchBlocksThreshold: 0,

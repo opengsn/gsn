@@ -234,6 +234,9 @@ Right worker address: (${this.workerAddress})
   }
 
   isCurrentBatchReady (blockNumber: number): boolean {
+    if ( this.currentBatch==null) {
+      return false
+    }
     const now = Date.now()
     const isTimeNearTarget = this.currentBatch.targetSubmissionTimestamp - now < this.config.batchTimeThreshold
     const currentBatchGasLimit = this.getCurrentBatchGasLimit()

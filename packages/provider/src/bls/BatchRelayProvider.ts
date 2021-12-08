@@ -21,10 +21,11 @@ import {
   RelayingResult,
   SubmittedRelayRequestInfo
 } from '../RelayClient'
-import { GSNBatchingContractsDeployment, removeHexPrefix } from '@opengsn/common'
+import { event2topic, GSNBatchingContractsDeployment, removeHexPrefix } from '@opengsn/common'
 import { BatchRelayClient } from './BatchRelayClient'
 import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { ExternalBLSKeypairType, InternalBLSKeypairType } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+import { batchLog } from '@opengsn/relay/dist/BatchManager'
 
 export class BatchRelayProvider extends RelayProvider {
   web3: Web3
@@ -149,39 +150,30 @@ export class BatchRelayProvider extends RelayProvider {
    * @param batchTransactionReceipt - the receipt containing all events emitted during the batch execution
    */
   _translateBatchReceiptToTransactionReceipt (
-    // TODO: horrible code; due to 'decodeLogs' losing logIndex, need multiple different iterators; refactor or modify the decodeLogs
     relayRequestID: string,
     batchTransactionReceipt: TransactionReceipt
   ): TransactionReceipt {
-    const decodedHubLogs = abiDecoder.decodeLogs(batchTransactionReceipt.logs).filter((it: any) => [TransactionRelayed, TransactionRejectedByPaymaster].includes(it.name))
-    const methodIDs = abiDecoder.getMethodIDs()
-    const hubEventsIndexes = batchTransactionReceipt.logs
-      .filter(
-        it => {
-          return [TransactionRelayed, TransactionRejectedByPaymaster].includes(methodIDs[removeHexPrefix(it.topics[0])]?.name)
+
+    // TODO: this code doesn't belong here. should move into RelayClient
+    const topics = event2topic(this.relayClient.dependencies.contractInteractor.relayHubInstance.contract, ['TransactionRelayed', 'TransactionRejectedByPaymaster']) as string[]
+    let previousIndex = 0
+    let currentIndex = -1
+    batchTransactionReceipt.logs.find((log, index) => {
+      if (topics.includes(log.topics[0])) {
+        if (log.topics[3] === relayRequestID) {
+          currentIndex = index
+          return true
         }
-      )
-      .map(it => it.logIndex)
-    const eventsForCurrentRelayRequestId = []
-    let j = hubEventsIndexes.length - 1
-    let isInRange = false
-    for (let i = batchTransactionReceipt.logs.length - 1; i >= 0; i--) {
-      const rawEvent = batchTransactionReceipt.logs[i]
-      if (rawEvent.logIndex === hubEventsIndexes[j]) {
-        if (decodedHubLogs[j].events.find((it: any) => it.name === 'relayRequestID')?.value === relayRequestID) {
-          isInRange = true
-          j--
-          continue
-        } else if (decodedHubLogs[j].events.find((it: any) => it.name === 'relayRequestID')?.value !== relayRequestID && isInRange) {
-          break
-        }
-        j--
+        previousIndex = index + 1
       }
-      if (isInRange) {
-        eventsForCurrentRelayRequestId.push(rawEvent)
-      }
-    }
-    return Object.assign({}, batchTransactionReceipt, { logs: eventsForCurrentRelayRequestId.reverse(), status: '0x1' })
+    })
+    if (currentIndex === -1) throw Error('request event not found')
+
+    const logs = batchTransactionReceipt.logs.slice(previousIndex, currentIndex)
+    // TODO: should decode logs[currentIndex] for status:
+    //  TransactionRelayed.status or TransactionRejectedByPaymaster
+
+    return Object.assign({}, batchTransactionReceipt, { logs, status: '0x1' })
   }
 
   _createTransactionRevertedReceipt (): TransactionReceipt {
