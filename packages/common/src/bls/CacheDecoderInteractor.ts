@@ -115,6 +115,7 @@ export class CacheDecoderInteractor {
 
   constructor (_: {
     provider: Web3ProviderBaseInterface
+    // TODO: cannot accept C.I. here as it creates a circular initialisation dependency
     contractInteractor: ContractInteractor
     batchingContractsDeployment: GSNBatchingContractsDeployment
     calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor>

@@ -22,6 +22,8 @@ import BatchGatewayCacheDecoder from './compiled/BatchGatewayCacheDecoder.json'
 import BLSAddressAuthorizationsRegistrar from './compiled/BLSAddressAuthorizationsRegistrar.json'
 import BLSVerifierContract from './compiled/BLSVerifierContract.json'
 import ERC20CacheDecoder from './compiled/ERC20CacheDecoder.json'
+import GatewayForwarder from './compiled/GatewayForwarder.json'
+import TestToken from './compiled/TestToken.json'
 
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -62,6 +64,7 @@ interface DeployOptions {
   registryHubId?: string
   verbose?: boolean
   skipConfirmation?: boolean
+  skipRegisterForwarderForGsn?: boolean
   relayHubConfiguration: RelayHubConfiguration
   penalizerConfiguration: PenalizerConfiguration
 }
@@ -394,7 +397,9 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
-    await registerForwarderForGsn(fInstance, options)
+    if (!deployOptions.skipRegisterForwarderForGsn) {
+      await registerForwarderForGsn(fInstance, options)
+    }
 
     this.deployment = {
       relayHubAddress: rInstance.options.address,
@@ -495,5 +500,37 @@ export class CommandsLogic {
         throw new Error('User rejected')
       }
     }
+  }
+
+  async deployGatewayForwarder (deployOptions: BatchingDeployOptions): Promise<string> {
+    const options: Required<SendOptions> = {
+      from: deployOptions.from,
+      gas: deployOptions.gasLimit,
+      value: 0,
+      gasPrice: deployOptions.gasPrice
+    }
+    const fInstance = await this.getContractInstance(
+      GatewayForwarder, {
+        arguments: [
+          deployOptions.relayHubAddress
+        ]
+      }, undefined, { ...options }, deployOptions.skipConfirmation
+    )
+    return fInstance.options.address
+  }
+
+  async deployTestToken (deployOptions: BatchingDeployOptions): Promise<string> {
+    const options: Required<SendOptions> = {
+      from: deployOptions.from,
+      gas: deployOptions.gasLimit,
+      value: 0,
+      gasPrice: deployOptions.gasPrice
+    }
+    const ttInstance = await this.getContractInstance(
+      TestToken, {}, undefined, { ...options }, deployOptions.skipConfirmation
+    )
+    await ttInstance.methods.setTrustedForwarder(deployOptions.forwarderAddress)
+    await ttInstance.methods.mint(1e18.toString())
+    return ttInstance.options.address
   }
 }

@@ -23,6 +23,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
   .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
   .option('--yes, --skipConfirmation', 'skip con')
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
+  .option('--skipRegisterForwarderForGsn', 'whether to set current GSN domain for EIP-712 signature verification', false)
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .option('-l, --gasLimit <number>', 'gas limit to give to all transactions', '5000000')
   .parse(process.argv);
@@ -59,6 +60,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
     relayHubConfiguration,
     penalizerConfiguration,
     deployPaymaster: commander.testPaymaster,
+    skipRegisterForwarderForGsn: commander.skipRegisterForwarderForGsn,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,
     forwarderAddress: commander.forwarder,

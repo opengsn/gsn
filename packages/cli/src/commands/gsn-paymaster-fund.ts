@@ -23,6 +23,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(nodeURL, logger, { relayHubAddress: hub }, mnemonic)
+  await logic.init()
   const from = commander.from ?? await logic.findWealthyAccount()
   const amount = commander.amount ?? ether('1')
 
