@@ -9,7 +9,7 @@ IMAGE=opengsn/cli
 #build docker image of cli tools
 #rebuild if there is a newer src file:
 find *.* ../../packages/*/src -type f -newer dist/gsn.js 2>&1 | grep . && {
-	yarn prepare
+	yarn preprocess
 	perl -pi -e 's/^#.*//; s/.*(start|run).*//' ../../packages/cli/dist/commands/gsn.js
 	npx webpack
 }

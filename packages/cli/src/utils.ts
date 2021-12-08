@@ -6,6 +6,7 @@ import path from 'path'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 
 const cliInfuraId = '$INFURA_ID'
 export const networks = new Map<string, string>([
@@ -59,6 +60,25 @@ export function getMnemonic (mnemonicFile: string): string | undefined {
   }
   console.log('Using mnemonic from file ' + mnemonicFile)
   return fs.readFileSync(mnemonicFile, { encoding: 'utf8' }).replace(/\r?\n|\r/g, '')
+}
+
+export function getKeystorePath (keystorePath: string): string {
+  if (!fs.existsSync(keystorePath)) {
+    throw new Error(`keystorePath ${keystorePath} not found`)
+  }
+  if (fs.lstatSync(keystorePath).isDirectory()) {
+    return keystorePath
+  } else if (fs.lstatSync(keystorePath).isFile()) {
+    return path.dirname(keystorePath)
+  }
+  throw new Error(`keystorePath ${keystorePath} not a file or directory`)
+}
+
+export function getServerConfig (configFilename: string): ServerConfigParams {
+  if (!fs.existsSync(configFilename) || !fs.lstatSync(configFilename).isFile()) {
+    throw new Error(`configFilename ${configFilename} must be a file`)
+  }
+  return JSON.parse(fs.readFileSync(configFilename, 'utf8'))
 }
 
 export function getRelayHubConfiguration (configFile: string): RelayHubConfiguration | undefined {

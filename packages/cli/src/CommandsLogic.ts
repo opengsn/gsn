@@ -10,7 +10,7 @@ import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 
-// compiled folder populated by "prepublish"
+// compiled folder populated by "preprocess"
 import StakeManager from './compiled/StakeManager.json'
 import RelayHub from './compiled/RelayHub.json'
 import RelayRegistrar from './compiled/RelayRegistrar.json'
@@ -30,6 +30,9 @@ import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
+import { KeyManager } from '@opengsn/relay/dist/KeyManager'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { Transaction } from '@ethereumjs/tx'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -42,6 +45,13 @@ export interface RegisterOptions {
   funds: string | BN
   relayUrl: string
   unstakeDelay: string
+}
+
+export interface WithdrawOptions {
+  withdrawAmount: number | string
+  keyManager: KeyManager
+  config: ServerConfigParams
+  broadcast: boolean
 }
 
 interface DeployOptions {
@@ -75,6 +85,8 @@ interface RegistrationResult {
   transactions?: string[]
   error?: string
 }
+
+type WithdrawalResult = RegistrationResult
 
 export interface SendOptions {
   from: string
@@ -317,6 +329,58 @@ export class CommandsLogic {
         transactions,
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         error: error.message
+      }
+    }
+  }
+
+  async withdrawToOwner (options: WithdrawOptions): Promise<WithdrawalResult> {
+    const transactions: string[] = []
+    try {
+      console.log('Withdrawing from GSN relayer to owner')
+      const relayManager = options.keyManager.getAddress(0)
+      const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
+      const stakeManagerAddress = await relayHub.stakeManager()
+      const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
+      const { owner } = await stakeManager.getStakeInfo(options.config.relayHubAddress)
+      if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
+        // throw new Error(`Already owned by ${owner}, our account=${options.from}`)
+        throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
+      }
+
+      const balance = await relayHub.balanceOf(relayManager)
+      if (balance.lt(toBN(options.withdrawAmount))) {
+        throw new Error(`Relay manager hub balance ${balance.toString()} lower than withdrawalAmount`)
+      }
+      // todo send hub balance to owner
+      const encodedCall = relayHub.contract.methods.withdraw(options.withdrawAmount, owner).encodeABI()
+      const nonce = await this.contractInteractor.getTransactionCount(relayManager)
+      const gasPrice = await this.contractInteractor.getGasPrice()
+      const txToSign = new Transaction({
+        to: options.config.relayHubAddress,
+        value: 0,
+        gasLimit: 2e5,
+        gasPrice,
+        data: Buffer.from(encodedCall.slice(2), 'hex'),
+        nonce
+      }, this.contractInteractor.getRawTxOptions())
+      const signedTx = options.keyManager.signTransaction(relayManager, txToSign)
+      // eslint-disable-next-line
+      console.log(`signed withdrawal tx: ${signedTx.signedEthJsTx.toJSON()}`)
+      console.log(`signed withdrawal hex tx: ${signedTx.rawTx}`)
+      if (options.broadcast) {
+        const txHash = await this.contractInteractor.broadcastTransaction(signedTx.rawTx)
+        transactions.push(txHash)
+      }
+      return {
+        success: true,
+        transactions
+      }
+    } catch (e) {
+      return {
+        success: false,
+        transactions,
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        error: e.message
       }
     }
   }
