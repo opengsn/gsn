@@ -303,6 +303,32 @@ export function parseServerConfig (args: string[], env: any): any {
   return entriesToObj(Object.entries(config).map(explicitType))
 }
 
+export async function resolveConfigRelayHubAddress (config: Partial<ServerConfigParams>, contractInteractor: ContractInteractor): Promise<string> {
+  let relayHubAddress: string
+  if (config.versionRegistryAddress != null) {
+    if (config.relayHubAddress != null) {
+      error('missing param: must have either relayHubAddress or versionRegistryAddress')
+    }
+    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
+    contractInteractor.validateAddress(config.versionRegistryAddress, 'Invalid param versionRegistryAddress: ')
+    if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
+      error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
+    }
+    const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
+    const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
+    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
+    console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
+    relayHubAddress = value
+  } else {
+    if (config.relayHubAddress == null) {
+      error('missing param: must have either relayHubAddress or versionRegistryAddress')
+    }
+    contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
+    relayHubAddress = config.relayHubAddress
+  }
+  return relayHubAddress
+}
+
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
   config: ServerConfigParams
@@ -333,26 +359,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   })
   await contractInteractor._initializeContracts()
   await contractInteractor._initializeNetworkParams()
-  if (config.versionRegistryAddress != null) {
-    if (config.relayHubAddress != null) {
-      error('missing param: must have either relayHubAddress or versionRegistryAddress')
-    }
-    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
-    contractInteractor.validateAddress(config.versionRegistryAddress, 'Invalid param versionRegistryAddress: ')
-    if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
-      error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
-    }
-    const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
-    const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
-    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
-    console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
-    config.relayHubAddress = value
-  } else {
-    if (config.relayHubAddress == null) {
-      error('missing param: must have either relayHubAddress or versionRegistryAddress')
-    }
-    contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
-  }
+  config.relayHubAddress = await resolveConfigRelayHubAddress(config, contractInteractor)
 
   if (config.relayHubAddress == null) {
     error('relayHubAddress is still null')

@@ -31,7 +31,7 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { resolveConfigRelayHubAddress, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction } from '@ethereumjs/tx'
 
 export interface RegisterOptions {
@@ -339,7 +339,8 @@ export class CommandsLogic {
       console.log('Withdrawing from GSN relayer to owner')
       const relayManager = options.keyManager.getAddress(0)
       console.log('relayManager is', relayManager)
-      const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
+      const relayHubAddress = await resolveConfigRelayHubAddress(options.config, this.contractInteractor)
+      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { owner } = await stakeManager.getStakeInfo(relayManager)
@@ -348,7 +349,7 @@ export class CommandsLogic {
       }
 
       const balance = await relayHub.balanceOf(relayManager)
-      console.log('manager hub balance is', balance.toString())
+      console.log('Relay manager hub balance is', balance.toString())
       if (balance.lt(options.withdrawAmount)) {
         throw new Error(`Relay manager hub balance ${balance.toString()} lower than withdrawalAmount`)
       }
@@ -360,7 +361,7 @@ export class CommandsLogic {
       const gasLimit = 1e5
       console.log('gasPrice, nonce', gasPrice, nonce)
       const txToSign = new Transaction({
-        to: options.config.relayHubAddress,
+        to: relayHubAddress,
         value: 0,
         gasLimit,
         gasPrice,
@@ -370,7 +371,7 @@ export class CommandsLogic {
       console.log('Calling in view mode')
       await method.call({
         from: relayManager,
-        to: options.config.relayHubAddress,
+        to: relayHubAddress,
         value: 0,
         gas: gasLimit,
         gasPrice
