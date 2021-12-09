@@ -10,7 +10,6 @@ import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { initializeAbiDecoderForBLS, startRelay, stopRelay } from '../TestUtils'
 import { BatchRelayProvider } from '@opengsn/provider/dist/bls/BatchRelayProvider'
 import { ether, sleep } from '@opengsn/common'
-import * as util from 'util'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 
@@ -71,10 +70,11 @@ contract.only('Batch Relaying Flow', function (accounts: string[]) {
     const bathingRelayProvider = BatchRelayProvider.newBatchingProvider(
       {
         provider: env.provider,
-        config
-      },
-      env.batchingContractsDeployment,
-      env.cacheDecoderInteractor)
+        config,
+        batchingContractsDeployment: env.batchingContractsDeployment,
+        target: env.testToken.address,
+        calldataCacheDecoder: env.erc20CacheDecoder.address
+      })
     await bathingRelayProvider.init()
     await bathingRelayProvider.newBLSKeypair()
 
@@ -90,13 +90,12 @@ contract.only('Batch Relaying Flow', function (accounts: string[]) {
   })
 
   it('should relay batch', async function () {
-
     const tx1 = testToken.transfer(accounts[3], 200000, {
       from: accounts[0],
       gas: innerTransactionGas
     })
 
-    //TODO: removing this sometime causes:
+    // TODO: removing this sometime causes:
     // Can't insert key 0xb354ecf032e9e14442be590d9eaee37d2924b67a, it violates the unique constraint"
     await sleep(1000)
 

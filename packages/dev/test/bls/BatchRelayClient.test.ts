@@ -86,8 +86,11 @@ contract.only('BatchRelayClient', function ([from]: string[]) {
         paymasterAddress: paymaster.address,
         ...config
       },
-      provider: underlyingProvider
-    }, batchingContractsDeployment, cacheDecoderInteractor)
+      provider: underlyingProvider,
+      batchingContractsDeployment,
+      target: testToken.address,
+      calldataCacheDecoder: erc20CacheDecoder.address
+    })
 
     await batchClient.init()
 

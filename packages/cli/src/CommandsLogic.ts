@@ -397,7 +397,7 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
     }
-    if (!deployOptions.skipRegisterForwarderForGsn) {
+    if (deployOptions.skipRegisterForwarderForGsn !== true) {
       await registerForwarderForGsn(fInstance, options)
     }
 

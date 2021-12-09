@@ -11,30 +11,27 @@ import {
   TransactionRelayed
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
-import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
-
-import { BaseTransactionReceipt, JsonRpcCallback, RelayProvider } from '../RelayProvider'
 import {
   _dumpRelayingResult,
-  GSNUnresolvedConstructorInput,
   RelayClient,
   RelayingResult,
   SubmittedRelayRequestInfo
 } from '../RelayClient'
-import { event2topic, GSNBatchingContractsDeployment, removeHexPrefix } from '@opengsn/common'
-import { BatchRelayClient } from './BatchRelayClient'
-import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
+import { event2topic } from '@opengsn/common'
 import { ExternalBLSKeypairType, InternalBLSKeypairType } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
+
+import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
+
+import { BaseTransactionReceipt, JsonRpcCallback, RelayProvider } from '../RelayProvider'
+import { BatchRelayClient, GSNBatchingUnresolvedConstructorInput } from './BatchRelayClient'
 
 export class BatchRelayProvider extends RelayProvider {
   web3: Web3
 
   static newBatchingProvider (
-    input: GSNUnresolvedConstructorInput,
-    batchingContractsDeployment: GSNBatchingContractsDeployment,
-    cacheDecoderInteractor: CacheDecoderInteractor
+    input: GSNBatchingUnresolvedConstructorInput
   ): BatchRelayProvider {
-    return new BatchRelayProvider(new BatchRelayClient(input, batchingContractsDeployment, cacheDecoderInteractor))
+    return new BatchRelayProvider(new BatchRelayClient(input))
   }
 
   constructor (relayClient: RelayClient) {

@@ -4,14 +4,14 @@ import { toHex } from 'web3-utils'
 
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { IntString } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString, ObjectMap } from '@opengsn/common/dist/types/Aliases'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { asRelayCallAbi, getRelayRequestID, GSNBatchingContractsDeployment } from '@opengsn/common'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 
 import {
   AuthorizationElement,
-  CacheDecoderInteractor
+  CacheDecoderInteractor, CachingGasConstants
 } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 
 import {
@@ -22,19 +22,48 @@ import {
 } from '../RelayClient'
 
 import { GsnSendToRelayerEvent, GsnSignRequestEvent } from '../GsnEvents'
+import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
+import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
+
+export interface GSNBatchingUnresolvedConstructorInput extends GSNUnresolvedConstructorInput {
+  // TODO: this only supports one target and does not allow stubbing
+  target: Address
+  calldataCacheDecoder: Address
+  batchingContractsDeployment: GSNBatchingContractsDeployment
+}
 
 export class BatchRelayClient extends RelayClient {
-  private readonly batchingContractsDeployment: GSNBatchingContractsDeployment
-  cacheDecoderInteractor: CacheDecoderInteractor
+  private readonly rawBatchConstructorInput: GSNBatchingUnresolvedConstructorInput
+  cacheDecoderInteractor!: CacheDecoderInteractor
 
   constructor (
-    rawConstructorInput: GSNUnresolvedConstructorInput,
-    batchingContractsDeployment: GSNBatchingContractsDeployment,
-    cacheDecoderInteractor: CacheDecoderInteractor
+    rawBatchConstructorInput: GSNBatchingUnresolvedConstructorInput
   ) {
-    super(rawConstructorInput)
-    this.batchingContractsDeployment = batchingContractsDeployment
-    this.cacheDecoderInteractor = cacheDecoderInteractor
+    super(rawBatchConstructorInput)
+    this.rawBatchConstructorInput = rawBatchConstructorInput
+  }
+
+  async init (): Promise<this> {
+    await super.init()
+    const cachingGasConstants: CachingGasConstants = {
+      authorizationCalldataBytesLength: 1,
+      authorizationStorageSlots: 1,
+      gasPerSlotL2: 1
+    }
+    const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
+    calldataCacheDecoderInteractors[this.rawBatchConstructorInput.target.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
+      provider: this.rawBatchConstructorInput.provider,
+      erc20CacheDecoderAddress: this.rawBatchConstructorInput.calldataCacheDecoder
+    })
+    this.cacheDecoderInteractor = new CacheDecoderInteractor({
+      provider: this.rawBatchConstructorInput.provider,
+      batchingContractsDeployment: this.rawBatchConstructorInput.batchingContractsDeployment,
+      contractInteractor: this.dependencies.contractInteractor,
+      calldataCacheDecoderInteractors,
+      cachingGasConstants
+    })
+    await this.cacheDecoderInteractor.init()
+    return this
   }
 
   /**
@@ -66,7 +95,7 @@ export class BatchRelayClient extends RelayClient {
     const encodedRelayCall = this.dependencies.contractInteractor.encodeABI(asRelayCallAbi(httpRequestWithoutSignature))
 
     return {
-      from: this.batchingContractsDeployment.batchGateway,
+      from: this.rawBatchConstructorInput.batchingContractsDeployment.batchGateway,
       to: this._getResolvedDeployment().relayHubAddress,
       gasPrice: toHex(httpRequest.relayRequest.relayData.gasPrice),
       gas: toHex(viewCallGasLimit),
@@ -79,7 +108,7 @@ export class BatchRelayClient extends RelayClient {
     let authorizationElement: AuthorizationElement | undefined
     const authorizationIssued = await this.dependencies.accountManager.isAuthorizationIssuedToCurrentBLSPrivateKey(relayRequest.request.from)
     if (!authorizationIssued) {
-      authorizationElement = await this.dependencies.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.batchingContractsDeployment.authorizationsRegistrar)
+      authorizationElement = await this.dependencies.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.rawBatchConstructorInput.batchingContractsDeployment.authorizationsRegistrar)
     }
     await this._fillInComputedFieldsWithAuthorization(relayRequest, authorizationElement)
     const signature = await this.dependencies.accountManager.signBLSALTBN128(relayRequest)

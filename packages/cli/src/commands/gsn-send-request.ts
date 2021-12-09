@@ -3,22 +3,18 @@ import fs from 'fs'
 import Web3 from 'web3'
 import { HttpProvider } from 'web3-core'
 
-import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
+import { Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+import { BatchRelayProvider } from '@opengsn/provider/dist/bls/BatchRelayProvider'
 import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
+import { GSNBatchingUnresolvedConstructorInput } from '@opengsn/provider/dist/bls/BatchRelayClient'
+
+import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
 import { CommandsLogic } from '../CommandsLogic'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
-import { ObjectMap, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
-import { BatchRelayProvider } from '@opengsn/provider/dist/bls/BatchRelayProvider'
 import {
-  ContractInteractor, defaultEnvironment,
-  GSNBatchingContractsDeployment, gsnRequiredVersion,
-  gsnRuntimeVersion,
-  LoggerInterface,
-  VersionsManager
+  GSNBatchingContractsDeployment,
+  LoggerInterface
 } from '@opengsn/common'
-import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
-import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
-import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
 
 function commaSeparatedList (value: string, _dummyPrevious: string[]): string[] {
   return value.split(',')
@@ -59,12 +55,12 @@ async function getProvider (
     const overrideDependencies: Partial<GSNDependencies> = {
       logger
     }
-    const input: GSNUnresolvedConstructorInput = {
-      provider,
-      config,
-      overrideDependencies
-    }
     if (!batching) {
+      const input: GSNUnresolvedConstructorInput = {
+        provider,
+        config,
+        overrideDependencies
+      }
       return await RelayProvider.newProvider(input).init()
     } else {
       const batchingContractsDeployment: GSNBatchingContractsDeployment = {
@@ -72,34 +68,15 @@ async function getProvider (
         batchGatewayCacheDecoder: commander.batchGatewayCacheDecoder,
         authorizationsRegistrar: commander.authorizationsRegistrar
       }
-      // TODO: this monstrous deployment is mostly not needed, refactor!
-      const contractInteractor = new ContractInteractor({
+      const input: GSNBatchingUnresolvedConstructorInput = {
         provider,
-        logger,
-        environment: defaultEnvironment,
-        maxPageSize: 0,
-        versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
-        deployment: {}
-      })
-      const calldataCacheDecoderInteractors: ObjectMap<ICalldataCacheDecoderInteractor> = {}
-      calldataCacheDecoderInteractors[commander.to.toLowerCase()] = new ERC20CalldataCacheDecoderInteractor({
-        provider,
-        erc20CacheDecoderAddress: commander.erc20CacheDecoder
-      })
-      const cachingGasConstants: CachingGasConstants = {
-        authorizationCalldataBytesLength: 1,
-        authorizationStorageSlots: 1,
-        gasPerSlotL2: 1
-      }
-      const cacheDecoderInteractor = new CacheDecoderInteractor({
-        provider,
+        config,
+        overrideDependencies,
         batchingContractsDeployment,
-        contractInteractor,
-        calldataCacheDecoderInteractors,
-        cachingGasConstants
-      })
-      await cacheDecoderInteractor.init()
-      const batchRelayProvider = await BatchRelayProvider.newBatchingProvider(input, batchingContractsDeployment, cacheDecoderInteractor).init()
+        target: commander.to,
+        calldataCacheDecoder: commander.erc20CacheDecoder
+      }
+      const batchRelayProvider = await BatchRelayProvider.newBatchingProvider(input).init()
       await batchRelayProvider.relayClient.dependencies.accountManager.newBLSKeypair()
       return batchRelayProvider
     }

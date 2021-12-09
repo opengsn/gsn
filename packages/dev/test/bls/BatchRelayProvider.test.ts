@@ -6,10 +6,9 @@ import { toHex } from 'web3-utils'
 import { BatchRelayClient } from '@opengsn/provider/dist/bls/BatchRelayClient'
 import { BatchRelayProvider } from '@opengsn/provider/dist/bls/BatchRelayProvider'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { CacheDecoderInteractor, CachingGasConstants } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import {
   _sanitizeAbiDecoderEvent,
-  constants, ContractInteractor,
+  constants,
   defaultEnvironment,
   getRelayRequestID,
   GSNBatchingContractsDeployment
@@ -46,7 +45,6 @@ contract.only('BatchRelayProvider', function ([from, relayWorker]: string[]) {
   let testRecipient: TestRecipientInstance
   let testBatchGateway: BLSTestBatchGatewayInstance
 
-  let cacheDecoderInteractor: CacheDecoderInteractor
   let batchClient: BatchRelayClient
   let batchProvider: BatchRelayProvider
   let batchingContractsDeployment: GSNBatchingContractsDeployment
@@ -70,28 +68,19 @@ contract.only('BatchRelayProvider', function ([from, relayWorker]: string[]) {
     await paymaster.setRelayHub(relayHub.address)
     // TODO: de-duplicate GSN deployment code
     testRecipient = await TestRecipient.new(forwarderInstance.address)
-    const cachingGasConstants: CachingGasConstants = {
-      authorizationCalldataBytesLength: 1,
-      authorizationStorageSlots: 1,
-      gasPerSlotL2: 1
-    }
     // @ts-ignore
     batchingContractsDeployment = {}
-    cacheDecoderInteractor = new CacheDecoderInteractor({
-      provider: underlyingProvider,
-      contractInteractor: {} as ContractInteractor,
-      calldataCacheDecoderInteractors: {},
-      batchingContractsDeployment,
-      cachingGasConstants
-    })
     // TODO: if it is possible not to create unnecessary objects, just use stubs
     batchClient = new BatchRelayClient({
       config: {
         paymasterAddress: paymaster.address,
         ...config
       },
-      provider: underlyingProvider
-    }, batchingContractsDeployment, cacheDecoderInteractor)
+      provider: underlyingProvider,
+      batchingContractsDeployment,
+      target: '',
+      calldataCacheDecoder: ''
+    })
     await batchClient.init()
     batchProvider = new BatchRelayProvider(batchClient)
 
